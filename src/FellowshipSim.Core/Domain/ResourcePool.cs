@@ -6,7 +6,9 @@ namespace FellowshipSim.Core.Domain;
 /// </summary>
 public sealed record ResourceDef(string Name, double Max, double Initial = 0)
 {
-    public string AplName => Name.ToLowerInvariant().Replace(' ', '_').Replace("'", "");
+    public string AplName => AplNames.GetOrAdd(Name, n => n.ToLowerInvariant().Replace(' ', '_').Replace("'", ""));
+    // Not a field of the record (it would join its equality): action lists read it at every decision.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> AplNames = new();
     public IReadOnlyList<string> Aliases { get; init; } = [];
 }
 
