@@ -46,18 +46,11 @@ public class TalonStrike : GlacialBlast
         // consumes Glacial Assault in the logs).
         int spikes = assault ? Rime.MaxWinterOrbs : Math.Max(1, hero.WinterOrbs);
         double multiplier = 1.0;
-        if (assault)
-        {
-            multiplier = ConsumeGlacialAssault(ctx);
-            // INFERRED from logs (not the tooltip): cast "as if" with full Winter Orbs, it counts them as spent for Wisdom of
-            // the North. Across 10 logs this removes 46 of 62 Ice Blitz cooldown misses while some casts still land right
-            // as Ice Blitz comes back (so it is not too fast).
-            hero.NotifyResourceSpent(Rime.WinterOrbsResource, spikes, ctx.CurrentTime);
-        }
-        else
-        {
-            hero.SpendWinterOrbs(spikes, ctx);
-        }
+        // With Glacial Assault no Winter Orbs change hands, so Wisdom of the North has nothing to count (game data
+        // GA_Rime_Talent_SpendersSwap_SingleTarget: the proc path sets the cost to MaxResourcesTertiary only for the spike
+        // count and writes no ResourcesTertiary; per the user, pending an in-game test).
+        if (assault) multiplier = ConsumeGlacialAssault(ctx);
+        else hero.SpendWinterOrbs(spikes, ctx);
 
         for (int i = 0; i < spikes; i++)
         {

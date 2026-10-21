@@ -45,8 +45,8 @@ Measured on 10 Rime logs (fights on Wyrmheart and Apostate Veras, July to Octobe
   further refund adds 2s to Rising Spirit instead of restarting it.
 - **Frost Swallows:** every Winter Orb earned sends 3 swallows at enemies (undocumented). Flight of the Navir's 5
   circling swallows come back when they hit, so a Cold Snap right after a Freezing Torrent tick may send only 4.
-- **Wisdom of the North:** counts orbs spent, orbs that overflow, and the 5 orbs a free Glacial Assault Talon Strike
-  fires "as if" spent (inferred: it explains 46 of 62 Ice Blitz cooldown misses).
+- **Wisdom of the North:** 0.3s per orb spent and per orb that overflows. A free Glacial Assault Talon Strike counts
+  nothing: it changes no Winter Orbs (game data; per the user, pending an in-game test).
 
 ## Not yet checked against a log
 
