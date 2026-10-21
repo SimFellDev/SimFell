@@ -45,6 +45,8 @@ public sealed class Rime : Hero
     /// <summary>Icy Talons: Glacial Blast and Ice Comet are replaced by Talon Strike and Rising Talons.</summary>
     public bool HasIcyTalons { get; internal set; }
 
+    public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
+
     public int WinterOrbs
     {
         get => (int)ResourceAmount(WinterOrbsResource);

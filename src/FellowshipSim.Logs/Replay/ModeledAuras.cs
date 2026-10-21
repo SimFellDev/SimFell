@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace FellowshipSim.Logs.Replay;
 
 /// <summary>
@@ -20,11 +18,7 @@ public static class ModeledAuras
         owners.AddRange(hero.Traits);
         owners.AddRange(hero.Legendaries);
         owners.AddRange(hero.Sets);
-        var declared = owners
-            .Select(o => o.GetType()).Distinct()
-            .SelectMany(t => t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy))
-            .Where(f => f.FieldType == typeof(AuraDef))
-            .Select(f => (AuraDef)f.GetValue(null)!);
+        var declared = AuraDef.DeclaredOn(owners.Select(o => o.GetType()));
         // Passive auras are left out: they are on all fight in the engine and logs do not report them as buffs.
         return declared.Concat(hero.RuntimeAuras)
             .Select(a => a.LogId)

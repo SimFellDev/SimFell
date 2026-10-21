@@ -37,6 +37,33 @@ $env:FELLOWSHIPLOGS_CLIENT_ID = "..."; $env:FELLOWSHIPLOGS_CLIENT_SECRET = "..."
 export FELLOWSHIPLOGS_CLIENT_ID=... FELLOWSHIPLOGS_CLIENT_SECRET=...
 ```
 
+## Edit action lists
+
+The **Action lists** section of the web page edits an action list without writing its text. Each action has an
+ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. Each name in a
+condition has a colour for its kind (buff, debuff, cooldown, resource), and a wavy underline marks a name the hero
+does not have. Conditions in the editor chain with `and`, `or` and `not`; the text has `&`, `|` and `!`. A `&`, `|`
+or `!` typed in the editor becomes its word when you leave the field. Parentheses stay as written. **Insert** adds a buff, debuff,
+cooldown, resource or fight value, joined with `and` or `or` after a value. **Action list text** has the text of
+the list. Text pasted there loads into the editor. **Save** writes `data/apls/<hero>/<name>.simc`.
+
+A target picks the enemy for the cast, written `target_if=` in the text:
+
+- `target_if=min:debuff.<name>.remains`: the enemy with the lowest value (`max:` for the highest)
+- `target_if=debuff.<name>.down`: the first enemy where it is true; the action is skipped when there is none
+
+`target.*` and `debuff.*` in the action's `if` read the enemy picked.
+
+Each decision starts at the default list (`actions+=/`). **Add action list** adds a named list (`actions.aoe+=/`), and an
+action's **Type** runs it:
+
+- `run_action_list,name=aoe`: `aoe` runs, and the actions after this one do not
+- `call_action_list,name=aoe`: `aoe` runs, then the next action when nothing in `aoe` is cast
+
+Both take an `if` like any other action. A list the decision is already in is skipped. A list named by
+`run_action_list` has a warning until it has an action that is always ready: an ability with no cooldown and no cast
+requirement (Frost Bolt for Rime), with no condition or target.
+
 ## The two checks
 
 - **Exact replay** (the review pages): the log decides every crit, proc and target, and each engine hit is compared
@@ -79,7 +106,7 @@ Runs the engine tests and replays every downloaded fight, rewriting its review p
 | `src/FellowshipSim.Server` | Local web server (`wwwroot` is the page) |
 | `tests/FellowshipSim.Tests` | Tests, including the free-dice runner |
 | `docs/` | [Adding a hero](docs/ADDING_A_HERO.md) |
-| `data/` | Your local data, not committed: `fights/` downloaded fights, `scripts/` replay scripts, `reviews/` all pages and results, `settings.json` |
+| `data/` | Your local data, not committed: `fights/` downloaded fights, `scripts/` replay scripts, `reviews/` all pages and results, `apls/` saved action lists, `settings.json` |
 
 Game values are constants at the top of each class. Rime (`src/FellowshipSim.Core/Heroes/Rime`) is the complete
 example; its `NOTES.md` lists what the combat logs showed.

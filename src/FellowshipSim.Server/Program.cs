@@ -14,6 +14,7 @@ builder.Services.AddHttpClient("fellowshiplogs", c => c.Timeout = TimeSpan.FromM
 builder.Services.AddSingleton(new ReplayLibrary(dataDirectory));
 builder.Services.AddSingleton<LogsSettingsStore>();
 builder.Services.AddSingleton<ReviewJobs>();
+builder.Services.AddSingleton<ActionListStore>();
 
 var app = builder.Build();
 

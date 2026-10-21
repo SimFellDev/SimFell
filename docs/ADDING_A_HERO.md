@@ -61,6 +61,8 @@ public sealed class Elarion : Hero
         TalentSlot.InRow(1, 2, /* talent IDs in columns a, b, c */ 0, 0, 0)
         /* ... one row per talent row in game */);
 
+    public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
+
     public override void Initialize()
     {
         AddResource(Focus);
@@ -190,7 +192,8 @@ counts as it for talents inherits from it and overrides only what differs (Rime:
 A talent that deals damage of its own keeps that inside the talent: a small private `Ability` subclass for the damage
 numbers (coefficient, log ID, target falloff) and the talent's own state (Rime: `CoalescingFrost`).
 
-Also list every talent in the hero's `TalentTree`, one `TalentSlot.InRow(row, cost, a, b, c)` per row as in game.
+Also list every talent in the hero's `TalentTree`, one `TalentSlot.InRow(row, cost, a, b, c)` per row as in game, and return it
+from `TalentTreeSlots`. The action-list editor lists the auras of every talent in it.
 
 ## 4. Gear and other content
 

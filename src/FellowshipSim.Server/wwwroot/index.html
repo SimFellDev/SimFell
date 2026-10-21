@@ -48,8 +48,37 @@
       <h2>Reviews</h2>
       <div id="reviews"><p class="hint">No reviews yet.</p></div>
     </section>
+
+    <section class="card">
+      <h2>Action lists</h2>
+      <p class="hint">
+        Each time the hero can act, they cast the first action from the top of the default list with a ready ability and a
+        true condition. Run action list and Call action list run the actions of another list.
+      </p>
+      <div class="row apl-toolbar">
+        <label class="apl-field">Hero <select id="apl-hero"></select></label>
+        <label class="apl-field">Saved <select id="apl-saved"></select></label>
+        <input id="apl-name" placeholder="Action list name" autocomplete="off">
+        <button type="button" id="apl-save">Save</button>
+      </div>
+      <p id="apl-message" class="message"></p>
+      <div id="apl-lists"></div>
+      <div class="row apl-add-list">
+        <input id="apl-new-list" placeholder="New action list name (aoe)" spellcheck="false" autocomplete="off">
+        <button type="button" id="apl-add-list" class="secondary">Add action list</button>
+      </div>
+      <details class="apl-text">
+        <summary>Action list text</summary>
+        <textarea id="apl-text" spellcheck="false" rows="10"></textarea>
+        <div class="row">
+          <button type="button" id="apl-load-text" class="secondary">Load this text into the editor</button>
+        </div>
+        <p id="apl-text-message" class="message"></p>
+      </details>
+    </section>
   </main>
 
   <script src="app.js"></script>
+  <script src="apl.js"></script>
 </body>
 </html>

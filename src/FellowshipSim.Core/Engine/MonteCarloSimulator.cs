@@ -17,9 +17,9 @@ public class MonteCarloResult
 public class MonteCarloSimulator
 {
     private readonly Hero _hero;
-    private readonly List<AplAction> _actions;
+    private readonly AplActionLists _actions;
 
-    public MonteCarloSimulator(Hero hero, List<AplAction> actions)
+    public MonteCarloSimulator(Hero hero, AplActionLists actions)
     {
         _hero = hero;
         _actions = actions;
@@ -48,18 +48,7 @@ public class MonteCarloSimulator
             // event queue carry time forward to the next decision point.
             while (ctx.CurrentTime < duration)
             {
-                bool acted = false;
-                if (IsFreeToAct(ctx))
-                {
-                    foreach (var action in _actions)
-                    {
-                        if (action.CanExecute(_hero, ctx) && action.Execute(_hero, ctx))
-                        {
-                            acted = true;
-                            break;
-                        }
-                    }
-                }
+                bool acted = IsFreeToAct(ctx) && _actions.TryAct(_hero, ctx);
 
                 var next = NextDecisionTime(ctx);
                 if (!acted && next <= ctx.CurrentTime)

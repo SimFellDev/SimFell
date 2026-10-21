@@ -7,10 +7,14 @@ public enum AplToken
 {
     [Token(Example = "(")] LParen,
     [Token(Example = ")")] RParen,
-    [Token(Example = "&")] And,
-    [Token(Example = "|")] Or,
-    [Token(Example = "!")] Not,
+    [Token(Example = "&")] And, // also the word 'and'
+    [Token(Example = "|")] Or, // also the word 'or'
+    [Token(Example = "!")] Not, // also the word 'not'
     [Token(Example = "-")] Minus,
+    [Token(Example = "+")] Plus,
+    [Token(Example = "*")] Star,
+    [Token(Example = "%")] Percent,
+    [Token(Example = "%%")] DoublePercent,
     [Token(Example = "=")] Equal,
     [Token(Example = "!=")] NotEqual,
     [Token(Example = "<")] Less,
@@ -20,6 +24,7 @@ public enum AplToken
     [Token(Example = "+=")] PlusEqual,
     [Token(Example = "/")] Slash,
     [Token(Example = ",")] Comma,
+    [Token(Example = ":")] Colon,
     [Token(Category = "number")] Number,
     [Token(Category = "identifier")] Identifier,
 }

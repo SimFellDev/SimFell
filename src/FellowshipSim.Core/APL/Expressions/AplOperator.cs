@@ -4,6 +4,13 @@ public enum BinaryOperator
 {
     And,
     Or,
+    Add,
+    Subtract,
+    Multiply,
+    /// <summary>Written '%', as in SimulationCraft. Division by zero gives 0.</summary>
+    Divide,
+    /// <summary>Written '%%', as in SimulationCraft. A zero divisor gives 0.</summary>
+    Modulo,
     Equal,
     NotEqual,
     Less,
@@ -24,6 +31,11 @@ public static class AplOperatorSymbols
     {
         BinaryOperator.And => "&",
         BinaryOperator.Or => "|",
+        BinaryOperator.Add => "+",
+        BinaryOperator.Subtract => "-",
+        BinaryOperator.Multiply => "*",
+        BinaryOperator.Divide => "%",
+        BinaryOperator.Modulo => "%%",
         BinaryOperator.Equal => "=",
         BinaryOperator.NotEqual => "!=",
         BinaryOperator.Less => "<",

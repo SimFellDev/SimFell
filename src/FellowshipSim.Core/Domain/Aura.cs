@@ -33,6 +33,13 @@ public sealed record AuraDef(string Name, int LogId, SimTime Duration, int MaxSt
     /// <summary>An engine-internal aura that combat logs never show.</summary>
     public static AuraDef Internal(string name, double durationSeconds, int maxStacks = 1, params StatModifier[] modifiers) =>
         new(name, 0, durationSeconds <= 0 ? SimTime.Infinite : SimTime.FromSeconds(durationSeconds), maxStacks, modifiers);
+
+    /// <summary>Every aura declared as a <c>public static readonly AuraDef</c> on <paramref name="types"/> or their base classes.</summary>
+    public static IEnumerable<AuraDef> DeclaredOn(IEnumerable<Type> types) =>
+        types.Distinct()
+            .SelectMany(t => t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy))
+            .Where(f => f.FieldType == typeof(AuraDef))
+            .Select(f => (AuraDef)f.GetValue(null)!);
 }
 
 public class Aura

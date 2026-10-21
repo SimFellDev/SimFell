@@ -66,6 +66,9 @@ public abstract class Hero : Actor
     /// </summary>
     public double ClassDamageTuning { get; set; } = 1.0;
 
+    /// <summary>The hero's talent tree, as in game.</summary>
+    public abstract IReadOnlyList<TalentSlot> TalentTreeSlots { get; }
+
     /// <summary>
     /// Auras built at runtime (from a rank or a gem node) rather than declared as <c>public static readonly AuraDef</c>
     /// constants; see <see cref="Register"/>.

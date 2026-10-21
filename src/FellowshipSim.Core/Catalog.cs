@@ -54,6 +54,12 @@ public static class Catalog
     public static Legendary? CreateLegendary(string hero, int itemId) =>
         LegendaryTypes.TryGetValue((hero.ToLowerInvariant(), itemId), out var type) ? (Legendary)Activator.CreateInstance(type)! : null;
 
+    /// <summary>The trait, blessing, weapon, set and legendary classes <paramref name="hero"/> can have.</summary>
+    public static IEnumerable<Type> GearTypes(string hero) =>
+        TraitTypes.Values.Concat(BlessingTypes.Values).Concat(WeaponTypes.Values).Concat(SetTypes.Values)
+            .Concat(LegendaryTypes.Where(kv => kv.Key.Hero == hero.ToLowerInvariant()).Select(kv => kv.Value))
+            .Distinct();
+
     private static IEnumerable<Type> Types<T>() =>
         typeof(Catalog).Assembly.GetTypes().Where(t => typeof(T).IsAssignableFrom(t) && !t.IsAbstract && t.GetConstructor(Type.EmptyTypes) != null);
 
