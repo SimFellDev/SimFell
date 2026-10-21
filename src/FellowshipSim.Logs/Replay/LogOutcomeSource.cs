@@ -266,6 +266,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         if (hit == null) return false;
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
+        // A proc dealing its damage at once releases its hit right after the roll; it takes the group that proved it.
+        if (delay == 0.0) _hits.HoldGroup(hit, _options);
         return true;
     }
 
@@ -459,9 +461,9 @@ public sealed class HitLedger
     {
         // The nearest unclaimed group in time: engine and log tick times differ by a few milliseconds
         // (server frames), and travelling hits land after the engine releases them.
-        List<LogDamage>? best = null;
+        List<LogDamage>? best = TakeHeldGroup(logId, engineTime, options);
         double bestDistance = double.MaxValue;
-        foreach (var group in Groups(logId, options))
+        foreach (var group in best == null ? Groups(logId, options) : [])
         {
             var first = group[0];
             if (first.Time < engineTime - options.HitEarlySeconds) continue;
@@ -484,6 +486,23 @@ public sealed class HitLedger
             Reserve(h); // the hits on these targets match this group, not another group's
         }
         return best.Select(h => h.Target).Distinct().ToList();
+    }
+
+    private readonly Dictionary<int, List<LogDamage>> _heldGroups = new();
+
+    /// <summary>
+    /// Holds the group of <paramref name="hit"/>, the proof of a proc, for the proc's own multi-target hit: the next
+    /// <see cref="ClaimGroup"/> with its damage ID takes it. Without the hold that hit takes the nearest group, and two
+    /// procs whose groups land in one server frame (two Frost Swallows hits each triggering a Bursting Ice pulse) leave
+    /// the second proc without proof.
+    /// </summary>
+    public void HoldGroup(LogDamage hit, ReplayOptions options) => _heldGroups[hit.AbilityId] = GroupOf(hit, options).ToList();
+
+    private List<LogDamage>? TakeHeldGroup(int logId, double engineTime, ReplayOptions options)
+    {
+        if (!_heldGroups.Remove(logId, out var held) || _claimedGroups.Contains(held[0])) return null;
+        double first = held[0].Time;
+        return first >= engineTime - options.HitEarlySeconds && first <= engineTime + options.HitLateSeconds ? held : null;
     }
 
     /// <summary>Median of each hit's damage over the previous hit with the same ID, target and crit status (1 if unknown).</summary>
