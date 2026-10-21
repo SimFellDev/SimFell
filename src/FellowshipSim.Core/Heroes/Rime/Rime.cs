@@ -74,6 +74,7 @@ public sealed class Rime : Hero
         Abilities.Add(new FlightOfTheNavir(this));
         Abilities.Add(new WrathOfWinter(this));
         Abilities.Add(new FrostSwallows(this));
+        Abilities.Add(new FrigidWinds(this));
     }
 
     /// <summary>Spends Winter Orbs (a Spirit Refund may give them back).</summary>
