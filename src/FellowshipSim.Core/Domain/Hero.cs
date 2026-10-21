@@ -18,7 +18,9 @@ public abstract class Hero : Actor
             GainResource(SpiritPoints, Math.Min(dmg.Amount, enemy.MaxHealth) / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
         };
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
-        // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
+        // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate before the
+        // auras change (a recharge re-reads its rate from the auras as they are), then read the new rate.
+        Auras.OnChanging += AdvanceCooldowns;
         Auras.OnGained += (_, _, now) => AdvanceCooldowns(now);
         Auras.OnRemoved += (_, now) => AdvanceCooldowns(now);
     }

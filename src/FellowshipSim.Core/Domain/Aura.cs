@@ -114,6 +114,12 @@ public class AuraContainer
         finally { _notifying--; }
     }
 
+    /// <summary>
+    /// Raised just before an aura is applied, stacked, refreshed, loses stacks or is removed (time), while the auras are
+    /// still as they were.
+    /// </summary>
+    public event Action<SimTime>? OnChanging;
+
     /// <summary>Raised whenever an aura is applied, stacked or refreshed (aura, stacks before, time).</summary>
     public event Action<Aura, int, SimTime>? OnGained;
 
@@ -135,6 +141,7 @@ public class AuraContainer
     public Aura Apply(AuraDef def, SimTime now, int stacks = 1, int? setStacks = null)
     {
         CleanExpired(now);
+        OnChanging?.Invoke(now);
         var expires = def.Duration == SimTime.Infinite ? SimTime.Infinite : now + def.Duration + SimTime.FromSeconds(ExpiryLagSeconds);
         if (_auras.TryGetValue(def.Key, out var existing))
         {
@@ -217,6 +224,7 @@ public class AuraContainer
         {
             if (aura.Stacks > count)
             {
+                OnChanging?.Invoke(now);
                 aura.Stacks -= count;
                 _version++;
             }
@@ -226,6 +234,8 @@ public class AuraContainer
 
     public void Remove(string key, SimTime now = default)
     {
+        if (!_auras.ContainsKey(key)) return;
+        OnChanging?.Invoke(now);
         if (_auras.Remove(key, out var aura))
         {
             _version++;
