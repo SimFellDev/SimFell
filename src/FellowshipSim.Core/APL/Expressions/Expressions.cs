@@ -124,10 +124,10 @@ public class PropertyExpression : IAplExpression
 
 public class UnaryOpExpression : IAplExpression
 {
-    public string Operator { get; }
+    public UnaryOperator Operator { get; }
     public IAplExpression Operand { get; }
 
-    public UnaryOpExpression(string op, IAplExpression operand)
+    public UnaryOpExpression(UnaryOperator op, IAplExpression operand)
     {
         Operator = op;
         Operand = operand;
@@ -137,9 +137,9 @@ public class UnaryOpExpression : IAplExpression
     {
         return Operator switch
         {
-            "!" => !Operand.Evaluate(hero, ctx),
-            "-" => Operand.EvaluateNumeric(hero, ctx) != 0.0,
-            _ => Operand.Evaluate(hero, ctx)
+            UnaryOperator.Not => !Operand.Evaluate(hero, ctx),
+            UnaryOperator.Negate => Operand.EvaluateNumeric(hero, ctx) != 0.0,
+            _ => throw new InvalidOperationException($"Unsupported APL unary operator: '{Operator}'")
         };
     }
 
@@ -147,22 +147,22 @@ public class UnaryOpExpression : IAplExpression
     {
         return Operator switch
         {
-            "!" => Operand.Evaluate(hero, ctx) ? 0.0 : 1.0,
-            "-" => -Operand.EvaluateNumeric(hero, ctx),
-            _ => Operand.EvaluateNumeric(hero, ctx)
+            UnaryOperator.Not => Operand.Evaluate(hero, ctx) ? 0.0 : 1.0,
+            UnaryOperator.Negate => -Operand.EvaluateNumeric(hero, ctx),
+            _ => throw new InvalidOperationException($"Unsupported APL unary operator: '{Operator}'")
         };
     }
 
-    public override string ToString() => $"{Operator}({Operand})";
+    public override string ToString() => $"{Operator.Symbol()}({Operand})";
 }
 
 public class BinaryOpExpression : IAplExpression
 {
     public IAplExpression Left { get; init; }
     public IAplExpression Right { get; init; }
-    public string Operator { get; init; } // "&", "|", "=", "==", "!=", "<", ">", "<=", ">="
+    public BinaryOperator Operator { get; init; }
 
-    public BinaryOpExpression(IAplExpression left, string op, IAplExpression right)
+    public BinaryOpExpression(IAplExpression left, BinaryOperator op, IAplExpression right)
     {
         Left = left;
         Operator = op;
@@ -173,14 +173,14 @@ public class BinaryOpExpression : IAplExpression
     {
         return Operator switch
         {
-            "&" => Left.Evaluate(hero, ctx) && Right.Evaluate(hero, ctx),
-            "|" => Left.Evaluate(hero, ctx) || Right.Evaluate(hero, ctx),
-            "<" => Left.EvaluateNumeric(hero, ctx) < Right.EvaluateNumeric(hero, ctx),
-            "<=" => Left.EvaluateNumeric(hero, ctx) <= Right.EvaluateNumeric(hero, ctx),
-            ">" => Left.EvaluateNumeric(hero, ctx) > Right.EvaluateNumeric(hero, ctx),
-            ">=" => Left.EvaluateNumeric(hero, ctx) >= Right.EvaluateNumeric(hero, ctx),
-            "=" or "==" => Math.Abs(Left.EvaluateNumeric(hero, ctx) - Right.EvaluateNumeric(hero, ctx)) < 0.0001,
-            "!=" => Math.Abs(Left.EvaluateNumeric(hero, ctx) - Right.EvaluateNumeric(hero, ctx)) >= 0.0001,
+            BinaryOperator.And => Left.Evaluate(hero, ctx) && Right.Evaluate(hero, ctx),
+            BinaryOperator.Or => Left.Evaluate(hero, ctx) || Right.Evaluate(hero, ctx),
+            BinaryOperator.Less => Left.EvaluateNumeric(hero, ctx) < Right.EvaluateNumeric(hero, ctx),
+            BinaryOperator.LessEqual => Left.EvaluateNumeric(hero, ctx) <= Right.EvaluateNumeric(hero, ctx),
+            BinaryOperator.Greater => Left.EvaluateNumeric(hero, ctx) > Right.EvaluateNumeric(hero, ctx),
+            BinaryOperator.GreaterEqual => Left.EvaluateNumeric(hero, ctx) >= Right.EvaluateNumeric(hero, ctx),
+            BinaryOperator.Equal => Math.Abs(Left.EvaluateNumeric(hero, ctx) - Right.EvaluateNumeric(hero, ctx)) < 0.0001,
+            BinaryOperator.NotEqual => Math.Abs(Left.EvaluateNumeric(hero, ctx) - Right.EvaluateNumeric(hero, ctx)) >= 0.0001,
             _ => throw new InvalidOperationException($"Unsupported APL binary operator: '{Operator}'")
         };
     }
@@ -190,7 +190,7 @@ public class BinaryOpExpression : IAplExpression
         return Evaluate(hero, ctx) ? 1.0 : 0.0;
     }
 
-    public override string ToString() => $"({Left} {Operator} {Right})";
+    public override string ToString() => $"({Left} {Operator.Symbol()} {Right})";
 }
 
 internal static class AuraLookup
