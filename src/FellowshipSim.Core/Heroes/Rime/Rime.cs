@@ -14,8 +14,8 @@ public sealed class Rime : Hero
     public const int MaxWinterOrbs = 5;
     public const double AnimaPerWinterOrb = 9.0;
     /// <summary>
-    /// Undocumented in the game (game data ability 1033 lists "Rime.AutoDamageProjectile.OrbReward" as its source):
-    /// every Winter Orb earned sends 3 Frost Swallows at enemies.
+    /// Every Winter Orb earned sends 3 Frost Swallows at enemies (game data "Rime.AutoDamageProjectile.NumProjectiles",
+    /// BPFL_Rime.Rime_FireAnimaSpikeVolley).
     /// </summary>
     public const int SwallowsPerWinterOrb = 3;
 
