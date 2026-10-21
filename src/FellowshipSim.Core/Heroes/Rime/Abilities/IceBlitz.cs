@@ -28,13 +28,30 @@ public class IceBlitz : RimeAbility
         TriggerCooldown(ctx);
     }
 
-    /// <summary>"The duration of Ice Blitz is extended by 0.1 seconds each time a Frost Swallow hits an enemy" (Flight of the Navir's too).</summary>
+    /// <summary>
+    /// "The duration of Ice Blitz is extended by 0.1 seconds each time a Frost Swallow hits an enemy" (Flight of the Navir's too).
+    /// GA_Rime_Passive_Talent_SpecifiedAbilityHitsReduceCooldown_HitMonitor extends only while
+    /// <c>Buff.Duration - remaining - AddedDuration &gt;= 0</c>, so the time left is at most 20s
+    /// (<c>Rime.AutoProjectileOnResourceGainBuff.Buff.Duration</c>). The time left excludes the expiry lag, since the
+    /// game's remaining duration has none.
+    /// </summary>
     public override void Connect()
     {
         var swallows = new FrostSwallows?[] { Rime.GetAbility<FrostSwallows>(), Rime.GetAbility<FlightOfTheNavir>()?.Swallows };
         foreach (var s in swallows.OfType<FrostSwallows>())
         {
-            s.Hit += _ => Rime.Auras.Extend(Buff, SimTime.FromSeconds(ExtensionPerSwallowSeconds));
+            s.Hit += dmg => Extend(dmg.Timestamp);
+        }
+    }
+
+    private void Extend(SimTime now)
+    {
+        var buff = Rime.Auras.Get(Buff, now);
+        if (buff == null) return;
+        double remaining = (buff.ExpiresAt - now).TotalSeconds - AuraContainer.ExpiryLagSeconds;
+        if (BuffSeconds - remaining - ExtensionPerSwallowSeconds >= 0)
+        {
+            Rime.Auras.Extend(Buff, SimTime.FromSeconds(ExtensionPerSwallowSeconds));
         }
     }
 }
