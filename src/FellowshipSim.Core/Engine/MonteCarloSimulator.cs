@@ -10,6 +10,8 @@ public class MonteCarloResult
     public double StandardDeviation { get; init; }
     public double TotalMeanDamage { get; init; }
     public Dictionary<string, double> AbilityDpsBreakdown { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Total damage of each fight, in seed order.</summary>
+    public IReadOnlyList<double> IterationDamage { get; init; } = [];
     public int Iterations { get; init; }
     public double DurationSeconds { get; init; }
 }
@@ -25,15 +27,18 @@ public class MonteCarloSimulator
         _actions = actions;
     }
 
-    public MonteCarloResult Run(SimTime duration, int iterations = 100, int targetCount = 1)
+    /// <summary>Runs <paramref name="iterations"/> fights. Fight i uses seed <paramref name="firstSeed"/> + i, so a run can be repeated exactly.</summary>
+    public MonteCarloResult Run(SimTime duration, int iterations = 100, int targetCount = 1, int firstSeed = 1)
     {
         double totalSeconds = Math.Max(1.0, duration.TotalSeconds);
         var iterationDps = new List<double>(iterations);
+        var iterationDamage = new List<double>(iterations);
         var abilityDamageAggregator = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
         for (int iter = 0; iter < iterations; iter++)
         {
             var ctx = new SimulationContext(_hero);
+            ctx.Rng.Seed(firstSeed + iter);
             _hero.ResetForIteration();
             _hero.BeginFight(ctx);
 
@@ -62,6 +67,7 @@ public class MonteCarloSimulator
 
             double iterDps = ctx.TotalDamage / totalSeconds;
             iterationDps.Add(iterDps);
+            iterationDamage.Add(ctx.TotalDamage);
 
             foreach (var (ability, dmg) in ctx.AbilityDamage)
             {
@@ -91,6 +97,7 @@ public class MonteCarloSimulator
             StandardDeviation = stdDev,
             TotalMeanDamage = meanDps * totalSeconds,
             AbilityDpsBreakdown = abilityDps,
+            IterationDamage = iterationDamage,
             Iterations = iterations,
             DurationSeconds = totalSeconds
         };
