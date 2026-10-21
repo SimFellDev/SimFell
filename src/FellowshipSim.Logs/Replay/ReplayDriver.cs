@@ -394,10 +394,14 @@ public sealed class ReplayDriver
     /// <summary>
     /// Situational auras (<see cref="Hero.SituationalAuras"/>) depend on what the engine does not simulate, so the replay
     /// gives the hero each one exactly when the log does. One whose first logged event is a loss was up as the fight began.
+    /// Dungeon buffs the log shows as the player's own (<see cref="PartyBuffs"/>, e.g. Breaker of Chains) follow the log
+    /// the same way.
     /// </summary>
     private void FollowSituationalAuras()
     {
-        foreach (var aura in _hero.SituationalAuras)
+        var ownAuraIds = _script.Observations.Auras.Where(a => a.Target.Id == _script.Player.Id).Select(a => a.AbilityId).ToHashSet();
+        var dungeonBuffs = PartyBuffs.All.Where(b => ownAuraIds.Contains(b.Aura.LogId)).Select(b => b.Aura with { Duration = SimTime.Infinite });
+        foreach (var aura in _hero.SituationalAuras.Concat(dungeonBuffs))
         {
             var events = _script.Observations.Auras
                 .Where(a => a.AbilityId == aura.LogId && a.Target.Id == _script.Player.Id)
