@@ -1,4 +1,5 @@
 using FellowshipSim.Core;
+using FellowshipSim.Core.Customization;
 using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Logs.Replay;
@@ -58,6 +59,7 @@ public sealed class ReplayDriver
         var build = script.Character ?? throw new InvalidOperationException("Replay script has no character.");
         var hero = HeroImporter.Import(build);
         ClassTuningHistory.Apply(hero, script.FightDate);
+        DungeonModifiers.Apply(hero, script.DungeonModifiers);
         return hero;
     }
 

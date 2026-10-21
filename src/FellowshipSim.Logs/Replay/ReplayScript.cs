@@ -18,6 +18,8 @@ public class ReplayScript
     [JsonPropertyName("fight_name")] public string FightName { get; set; } = string.Empty;
     /// <summary>When the fight was logged (UTC): balance changes in force then apply.</summary>
     [JsonPropertyName("fight_date")] public DateTime? FightDate { get; set; }
+    /// <summary>The dungeon's modifiers, by Modifiers tag table id.</summary>
+    [JsonPropertyName("dungeon_modifiers")] public List<int> DungeonModifiers { get; set; } = new();
     [JsonPropertyName("duration_s")] public double DurationSeconds { get; set; }
     [JsonPropertyName("player")] public ReplayPlayer Player { get; set; } = new();
     [JsonPropertyName("character")] public CharacterBuild? Character { get; set; }

@@ -320,6 +320,7 @@ public static class ReplayScriptBuilder
             ["fight_id"] = fight["id"]?.DeepClone(),
             ["fight_name"] = fight["name"]?.DeepClone(),
             ["fight_date"] = FightDate(raw),
+            ["dungeon_modifiers"] = DungeonModifiers(events),
             ["duration_s"] = Rel(fightEnd),
             ["player"] = new JsonObject { ["id"] = playerId, ["name"] = playerName, ["hero"] = hero },
             ["combatant_info"] = combatant?.DeepClone(),
@@ -346,6 +347,13 @@ public static class ReplayScriptBuilder
         if (raw["report_start_time"] is not { } start) return null;
         double ms = Num(start) + Num(raw["fight"]?["startTime"]);
         return DateTimeOffset.FromUnixTimeMilliseconds((long)ms).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
+    }
+
+    /// <summary>The dungeon's modifiers ("affixes" of its dungeonstart event), by Modifiers tag table id.</summary>
+    private static JsonArray DungeonModifiers(IEnumerable<JsonObject> events)
+    {
+        var start = events.FirstOrDefault(e => Str(e["type"]) == "dungeonstart");
+        return new JsonArray((start?["affixes"]?.AsArray() ?? []).Select(a => (JsonNode?)Int(a)).ToArray());
     }
 
     /// <summary>Page boundaries in the API overlap: drops exact duplicate events, then orders by time.</summary>
