@@ -35,7 +35,7 @@ public static class PartyBuffs
             modifiers: [StatModifier.More(StatType.DamageScale, 1.2), StatModifier.Increased(StatType.Haste, 1.2)])),
 
         // Breaker of Chains (Urrak Markets, every player near a Slavebind Totem as it dies): CooldownRecovery x1.3 for 12
-        // seconds (game data GE_UM_CageDeath_Buff, op Multiplicitive, so it joins the recovery pool as +0.3). Weapon
+        // seconds (game data GE_UM_CageDeath_Buff, op Multiplicitive, so it adds 0.3 to CooldownRecovery). Weapon
         // cooldowns ignore it. The log shows it as the player's own buff.
         new(AuraDef.Effect("Breaker of Chains", BreakerOfChainsEffectId, 12,
             modifiers: StatModifier.Increased(StatType.CooldownRecovery, 1.3))),

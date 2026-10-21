@@ -39,8 +39,8 @@ public class Chronoshift : Ability
         AoeTargetThreshold = TargetThreshold;
         // Chronoshift's own cooldown recovers at 8x while channeling too (per the user).
         OwnRecoveryAuraLogIds.Add(_barrier.LogId);
-        // The barrier's CooldownRecovery 8 joins the recovery pool while channeling (+7: cooldowns tick at 8x),
-        // and leaves it when the channel ends or is stopped.
+        // The barrier's CooldownRecovery 8 adds 7 to CooldownRecovery while channeling, and stops when the channel ends
+        // or is stopped.
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

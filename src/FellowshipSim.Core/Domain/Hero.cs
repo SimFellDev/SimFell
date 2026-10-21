@@ -308,35 +308,36 @@ public abstract class Hero : Actor
     }
 
     /// <summary>
-    /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
-    /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top. Weapon abilities ignore the pool except for their own
-    /// effects: Chronoshift recovers at 8x while channeling it (per the user; 10 Rime logs: no early casts, and ruru's
-    /// fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool).
-    /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
+    /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). The cooldown's time rate is built from
+    /// TimeRate magnitudes (game data CREffectAttributeGEComponent): GE_HeroAttributesBase gives CooldownRecovery - 1 to
+    /// cooldowns tagged EffectLogic.TimeRateInfluencedByCooldownRecovery and Haste - 1 to those tagged
+    /// EffectLogic.TimeRateInfluencedByHaste; The Monarch gives its percentage to CooldownType.Regular.Major. How the game
+    /// combines several magnitudes is native code not decoded; here each multiplies the rate by (1 + magnitude), which fits
+    /// combat logs better than a sum (Chronoshift cycles in yMAZVJL9hTpFjqbC fight 7, Y4wpb2f3gc8LqJDX fight 25,
+    /// g6zBdpvJCmh2HfrD fight 31; per the user). CooldownRecovery sums its "Multiplicitive" modifiers as 1 + sum(m - 1)
+    /// (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1). Weapon abilities ignore CooldownRecovery except for
+    /// their own effects: Chronoshift recovers at 8x while channeling it (per the user; 10 Rime logs: no early casts, and
+    /// ruru's fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool).
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
-        bool weaponOwnOnly = ability.IgnoresCooldownRecovery;
-        double pool = 1.0 + (weaponOwnOnly ? 0.0 : CooldownAcceleration(ability, now));
-        if (!weaponOwnOnly)
+        double haste = ability.ChargesRechargeWithHaste ? 1.0 + GetHaste(now) : 1.0;
+        if (!ability.IgnoresCooldownRecovery)
         {
-            pool += Auras.SumBonuses(StatType.CooldownRecovery, now);
+            return (1.0 + Auras.SumBonuses(StatType.CooldownRecovery, now)) * (1.0 + CooldownAcceleration(ability, now)) * haste;
         }
-        else
+        double recovery = 1.0;
+        foreach (var aura in Auras.Active(now))
         {
-            foreach (var aura in Auras.Active(now))
+            // Weapon abilities only speed up from their own recovery effects (Chronoshift's barrier, per the user).
+            if (!ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
+            var mods = aura.Modifiers;
+            for (int i = 0; i < mods.Count; i++)
             {
-                // Weapon abilities only speed up from their own recovery effects (Chronoshift's barrier, per the user).
-                if (!ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
-                var mods = aura.Modifiers;
-                for (int i = 0; i < mods.Count; i++)
-                {
-                    if (mods[i].Type == StatType.CooldownRecovery) pool += mods[i].Value - 1.0;
-                }
+                if (mods[i].Type == StatType.CooldownRecovery) recovery += mods[i].Value - 1.0;
             }
         }
-        return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
+        return recovery * haste;
     }
 
     /// <summary>Recovery bonuses specific to an ability (e.g. The Monarch for Major abilities), as fractions.</summary>
