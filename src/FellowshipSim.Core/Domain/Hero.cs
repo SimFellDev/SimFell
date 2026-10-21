@@ -542,14 +542,15 @@ public sealed class CooldownState
     }
 
     /// <summary>
-    /// Takes <paramref name="amount"/> cooldown-seconds off the charge recharging (a flat shave: worth fewer real seconds
-    /// while recovery is fast).
+    /// Takes <paramref name="amount"/> real seconds off the charge recharging: the time left until it returns, at the
+    /// current rate, falls by the amount. Game data passes the seconds to native ReduceCooldownForAbility, which is not
+    /// decoded; real seconds fit combat logs better than cooldown-seconds (per the user).
     /// </summary>
     public void Reduce(SimTime amount, SimTime now)
     {
         Advance(now);
         if (!Recharging) return;
-        _remaining -= amount.TotalSeconds;
+        _remaining -= amount.TotalSeconds * _rate;
         while (Recharging && _remaining <= 0)
         {
             _charges++;
