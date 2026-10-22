@@ -67,16 +67,20 @@ public sealed class Rime : Hero
         Abilities.Add(new GlacialBlast(this));
         Abilities.Add(new TalonStrike(this));
         Abilities.Add(new RisingTalons(this));
-        Abilities.Add(new BurstingIce(this));
+        Abilities.Add(_burstingIce = new BurstingIce(this));
         Abilities.Add(new FreezingTorrent(this));
         Abilities.Add(new FrostBolt(this));
         Abilities.Add(new IceComet(this));
         Abilities.Add(new IceBlitz(this));
         Abilities.Add(new WintersBlessing(this));
-        Abilities.Add(new FlightOfTheNavir(this));
+        Abilities.Add(_flightOfTheNavir = new FlightOfTheNavir(this));
         Abilities.Add(new WrathOfWinter(this));
-        Abilities.Add(new FrostSwallows(this));
+        Abilities.Add(_frostSwallows = new FrostSwallows(this));
     }
+
+    private BurstingIce? _burstingIce;
+    private FlightOfTheNavir? _flightOfTheNavir;
+    private FrostSwallows? _frostSwallows;
 
     /// <summary>Spends Winter Orbs (a Spirit Refund may give them back).</summary>
     public void SpendWinterOrbs(int count, SimulationContext? ctx = null) => SpendResource(WinterOrbsResource, count, ctx);
@@ -86,7 +90,7 @@ public sealed class Rime : Hero
     {
         for (int i = 0; i < count; i++)
         {
-            if (ctx != null) GetAbility<FrostSwallows>()?.AttackEnemies(ctx, SwallowsPerWinterOrb);
+            if (ctx != null) _frostSwallows?.AttackEnemies(ctx, SwallowsPerWinterOrb);
             GainResource(WinterOrbsResource, 1, ctx, target);
         }
     }
@@ -107,7 +111,7 @@ public sealed class Rime : Hero
     public override void ResetForIteration()
     {
         ResetCombatState();
-        GetAbility<BurstingIce>()?.ResetState();
-        GetAbility<FlightOfTheNavir>()?.ResetState();
+        _burstingIce?.ResetState();
+        _flightOfTheNavir?.ResetState();
     }
 }

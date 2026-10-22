@@ -14,22 +14,23 @@ public class WisdomOfTheNorth : Talent
 
     public override void Bind(Hero hero)
     {
+        Ability?[] reduced = [hero.GetAbility<IceBlitz>(), hero.GetAbility<FlightOfTheNavir>(), hero.GetAbility<WintersBlessing>()];
+        void ReduceCooldowns(int orbs, SimTime now)
+        {
+            var amount = SimTime.FromSeconds(ReductionPerOrbSeconds * orbs);
+            foreach (var ability in reduced)
+            {
+                if (ability != null) hero.ReduceCooldown(ability.Name, amount, now);
+            }
+        }
         // "...for each Winters Orb you spend or that overflows your maximum."
         hero.OnResourceSpent += (resource, amount, now) =>
         {
-            if (resource == Rime.WinterOrbsResource) ReduceCooldowns(hero, (int)amount, now);
+            if (resource == Rime.WinterOrbsResource) ReduceCooldowns((int)amount, now);
         };
         hero.OnResourceOverflow += (resource, amount, now) =>
         {
-            if (resource == Rime.WinterOrbsResource) ReduceCooldowns(hero, (int)amount, now);
+            if (resource == Rime.WinterOrbsResource) ReduceCooldowns((int)amount, now);
         };
-    }
-
-    public static void ReduceCooldowns(Hero hero, int orbs, SimTime now)
-    {
-        var amount = SimTime.FromSeconds(ReductionPerOrbSeconds * orbs);
-        hero.ReduceCooldown<IceBlitz>(amount, now);
-        hero.ReduceCooldown<FlightOfTheNavir>(amount, now);
-        hero.ReduceCooldown<WintersBlessing>(amount, now);
     }
 }

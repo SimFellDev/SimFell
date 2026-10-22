@@ -51,8 +51,7 @@ public class Chronoshift : Ability
 
     public override void OnChannelTick(SimulationContext ctx, EnemyTarget target, double fraction)
     {
-        var enemies = ctx.ActiveEnemies.ToList();
-        if (enemies.Count == 0 && target != null) enemies.Add(target);
+        IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 && target != null ? [target] : ctx.ActiveEnemies;
         DealAoeDamage(ctx, enemies, damageMultiplier: fraction);
     }
 

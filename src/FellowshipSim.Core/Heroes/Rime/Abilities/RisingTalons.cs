@@ -58,7 +58,7 @@ public class RisingTalons : IceComet
         // (@ 32.358: an enemy appearing after the cast is hit by every wave). The target falloff is fixed at the cast too
         // (PrkThcx8Y3RgVXyq @ 38.61: waves on 19, 7 and 3 enemies deal the same per hit).
         var now = ctx.CurrentTime;
-        int enemiesAtCast = Math.Max(1, ctx.ActiveEnemies.Count());
+        int enemiesAtCast = Math.Max(1, ctx.ActiveEnemies.Count);
         double falloff = enemiesAtCast > TargetThreshold ? Math.Sqrt(TargetThreshold / enemiesAtCast) : 1.0;
         double damage = BaseDamage(ctx, null) * CastDamageMultiplier * falloff;
         // The waves keep the crit chance of the cast, with what talents added to it (it counts as an Ice Comet for them).

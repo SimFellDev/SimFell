@@ -28,6 +28,9 @@ public class FreezingTorrent : RimeAbility
     public void ExtendChannel(double seconds) => ChannelDuration += SimTime.FromSeconds(seconds);
 
     private bool _soulfrost;
+    private FlightOfTheNavir? _flightOfTheNavir;
+
+    public override void Connect() => _flightOfTheNavir = Rime.GetAbility<FlightOfTheNavir>();
 
     /// <summary>
     /// The channel's final tick deals full damage instead of the part of a tick left (Supreme Torrent). Combat logs
@@ -54,7 +57,7 @@ public class FreezingTorrent : RimeAbility
         if (FullFinalTick) fraction = 1.0;
         // Flight of the Navir: every tick (the partial one too) sends a swallow at an enemy of its choosing
         // (yMAZVJL9hTpFjqbC fight 7 @ 49.522: 10 ticks, 10 hits; @ 34.229: one per tick until Flight of the Navir ends).
-        Rime.GetAbility<FlightOfTheNavir>()?.CommandSwallow(ctx);
+        _flightOfTheNavir?.CommandSwallow(ctx);
         Rime.AddAnima(AnimaPerTick, ctx, target);
         DealDamage(ctx, target, damageMultiplier: fraction, extraCritChance: _soulfrost ? SoulfrostTorrent.CritChance : 0.0);
     }

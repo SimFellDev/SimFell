@@ -57,12 +57,12 @@ public class FrostwyrmsSpite : Legendary
             if (ability != coldSnap || consumed == 0 || target == null || hero.SimContext is not { } ctx) return;
             int stacks = consumed;
             consumed = 0;
-            var others = ctx.ActiveEnemies.Where(e => e != target).ToList();
-            var struck = ctx.Outcomes.SelectTargets(LogIds.Effect(DamageEffectId), others, ctx).Take(stacks).ToList();
-            double falloff = struck.Count > ExtraHitTargetThreshold ? Math.Sqrt(ExtraHitTargetThreshold / struck.Count) : 1.0;
-            foreach (var enemy in struck)
+            var selected = ctx.Outcomes.SelectTargets(LogIds.Effect(DamageEffectId), ctx.ActiveEnemiesExcept(target), ctx);
+            int struck = Math.Min(stacks, selected.Count);
+            double falloff = struck > ExtraHitTargetThreshold ? Math.Sqrt(ExtraHitTargetThreshold / struck) : 1.0;
+            for (int i = 0; i < struck; i++)
             {
-                coldSnap.DealDamage(ctx, enemy, damageMultiplier: DamageMultiplier(stacks) * falloff,
+                coldSnap.DealDamage(ctx, selected[i], damageMultiplier: DamageMultiplier(stacks) * falloff,
                     overrideName: DamageName, overrideId: LogIds.Effect(DamageEffectId));
             }
         };

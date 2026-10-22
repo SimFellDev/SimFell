@@ -90,7 +90,7 @@ public class GlacialBlast : RimeAbility
     protected void Explode(SimulationContext ctx, EnemyTarget target, double initialDamage)
     {
         if (initialDamage <= 0.0) return;
-        var nearby = ctx.Outcomes.SelectTargets(GlacialAssaultExplosionId, ctx.ActiveEnemies.Where(e => e != target).ToList(), ctx);
+        var nearby = ctx.Outcomes.SelectTargets(GlacialAssaultExplosionId, ctx.ActiveEnemiesExcept(target), ctx);
         if (nearby.Count == 0) return;
         double falloff = nearby.Count > GlacialAssaultExplosionTargetThreshold ? Math.Sqrt(GlacialAssaultExplosionTargetThreshold / nearby.Count) : 1.0;
         double damage = initialDamage * GlacialAssaultExplosionFraction * falloff;

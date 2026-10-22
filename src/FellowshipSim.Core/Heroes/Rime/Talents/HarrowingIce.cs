@@ -32,6 +32,7 @@ public class HarrowingIce : Talent
     {
         var burstingIce = hero.GetAbility<BurstingIce>();
         if (burstingIce == null) return;
+        var flightOfTheNavir = hero.GetAbility<FlightOfTheNavir>();
         burstingIce.PulseDamageMultipliers.Add(ctx => 1.0 + DamagePerStack * hero.Auras.GetStacks(Buff, ctx.CurrentTime));
         burstingIce.Pulsed += ctx =>
         {
@@ -40,7 +41,7 @@ public class HarrowingIce : Talent
             if (hero.Auras.GetStacks(Buff, now) >= Buff.MaxStacks)
             {
                 hero.Auras.Remove(Buff, now);
-                hero.ReduceCooldown<FlightOfTheNavir>(SimTime.FromSeconds(FlightOfTheNavirReductionSeconds), now);
+                if (flightOfTheNavir != null) hero.ReduceCooldown(flightOfTheNavir.Name, SimTime.FromSeconds(FlightOfTheNavirReductionSeconds), now);
             }
         };
     }

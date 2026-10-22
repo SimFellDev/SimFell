@@ -29,6 +29,26 @@ public class SimulationContext
     }
     private List<EnemyTarget>? _activeEnemies;
 
+    /// <summary>The enemies in combat now other than <paramref name="target"/>, in the same order (a snapshot, like <see cref="ActiveEnemies"/>).</summary>
+    public IReadOnlyList<EnemyTarget> ActiveEnemiesExcept(EnemyTarget? target)
+    {
+        // Speed: the list is kept until the enemies in combat or the target change; it is never changed once made.
+        var active = ActiveEnemies;
+        if (_others == null || !ReferenceEquals(active, _othersOf) || target != _othersExcept)
+        {
+            var others = new List<EnemyTarget>(active.Count);
+            foreach (var e in active)
+            {
+                if (e != target) others.Add(e);
+            }
+            (_others, _othersOf, _othersExcept) = (others, active, target);
+        }
+        return _others;
+    }
+    private List<EnemyTarget>? _others;
+    private IReadOnlyList<EnemyTarget>? _othersOf;
+    private EnemyTarget? _othersExcept;
+
     public SimulationKernel Kernel { get; } = new();
 
     /// <summary>The fraction of a full tick being dealt right now (below 1 during a partial final tick of a periodic effect).</summary>

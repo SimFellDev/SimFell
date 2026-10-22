@@ -26,7 +26,11 @@ public class TheUsurper : Blessing
         {
             if (ability.Category != AbilityCategory.Core || target == null || hero.SimContext is not { } ctx) return;
             if (!ctx.Outcomes.RollProc(ProcKey, Math.Clamp(hero.CritChance(now), 0.0, 1.0), ctx, target)) return;
-            var nearby = ctx.ActiveEnemies.OrderBy(e => e == target ? 0 : 1).Take(MaxTargets).ToList();
+            // The target first, then the others in order. Usually that is every active enemy as it stands.
+            var active = ctx.ActiveEnemies;
+            IReadOnlyList<EnemyTarget> nearby = active.Count <= MaxTargets && (active.Count == 0 || active[0] == target)
+                ? active
+                : active.OrderBy(e => e == target ? 0 : 1).Take(MaxTargets).ToList();
             verdict.DealAoeDamage(ctx, nearby);
         };
     }

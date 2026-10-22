@@ -30,7 +30,7 @@ public class PropertyExpression : IAplExpression
     public static IReadOnlyDictionary<string, Func<Hero, SimulationContext, double>> Named { get; } =
         new Dictionary<string, Func<Hero, SimulationContext, double>>
         {
-            ["active_enemies"] = (_, ctx) => Math.Max(1, ctx.AllEnemies.Count(e => !e.IsSleeping)),
+            ["active_enemies"] = (_, ctx) => Math.Max(1, ctx.ActiveEnemies.Count),
             ["target.health.pct"] = (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0,
             ["target.time_to_die"] = (_, _) => 60.0,
             ["fight_remains"] = (_, _) => 100.0,

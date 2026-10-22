@@ -74,7 +74,7 @@ public class CoalescingFrost : Talent
     private void Erupt(SimulationContext ctx, EnemyTarget target, bool dying)
     {
         if (!_stacks.Remove(target, out var state) || state.Stacks <= 0) return;
-        var enemies = ctx.ActiveEnemies.Where(e => !dying || e != target).ToList();
+        var enemies = dying ? ctx.ActiveEnemiesExcept(target) : ctx.ActiveEnemies;
         if (enemies.Count == 0) return;
         _eruption!.DealAoeDamage(ctx, enemies, damageMultiplier: state.Stacks);
     }
