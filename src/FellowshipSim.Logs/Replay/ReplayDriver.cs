@@ -19,7 +19,8 @@ public sealed class ReplayDriver
     private readonly SimulationContext _ctx;
     private readonly HitLedger _ledger;
     private readonly LogOutcomeSource _oracle;
-    private readonly LogAuraTimeline _logAuras;
+    /// <summary>The log's aura states, for the state checks (free dice makes none).</summary>
+    private readonly LogAuraTimeline? _logAuras;
     /// <summary>When the engine last removed each aura (by log ID) and its stacks then.</summary>
     private readonly Dictionary<int, (SimTime Time, int Stacks)> _engineRemoved = new();
     private readonly Dictionary<int, string> _externalAurasOnPlayer = new();
@@ -38,7 +39,7 @@ public sealed class ReplayDriver
         _ctx.Outcomes = _options.FreeDiceSeed is { } seed
             ? new FreeDiceOutcomeSource(script, new SimulationRng(seed))
             : _oracle;
-        _logAuras = new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
+        if (!FreeDice) _logAuras = new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
         hero.Auras.OnRemoved += (aura, at) => { if (aura.LogId > 0) _engineRemoved[aura.LogId] = (at, aura.Stacks); };
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability.Id, now.TotalSeconds);
     }
@@ -46,6 +47,9 @@ public sealed class ReplayDriver
     public SimulationContext Context => _ctx;
 
     private bool FreeDice => _options.FreeDiceSeed.HasValue;
+
+    /// <summary>Issues are recorded unless a free-dice run that never halts would discard them.</summary>
+    private bool KeepsIssues => !FreeDice || _options.StopOnFirstFailure;
 
     /// <summary>Heroes the engine can replay (every hero class in Heroes/).</summary>
     public static IReadOnlyList<string> SupportedHeroes => Catalog.Heroes.Keys.ToList();
@@ -70,7 +74,8 @@ public sealed class ReplayDriver
 
         // An enemy's arrival is only known from its first event in the log, so it was there a little earlier.
         double When(ReplayCommand c) => c.Kind == CommandKind.EnemyArise ? c.Time - _options.EnemyAriseLeadSeconds : c.Time;
-        var commands = SortedCommands(_script, _options.EnemyAriseLeadSeconds, When);
+        var order = OrderOf(_script, _options.EnemyAriseLeadSeconds, When);
+        var commands = order.Commands;
         var result = new ReplayResult
         {
             ReportCode = _script.ReportCode,
@@ -78,17 +83,15 @@ public sealed class ReplayDriver
             FightName = _script.FightName,
             PlayerName = _script.Player.Name,
             Hero = _script.Player.Hero,
-            TotalSteps = commands.Count(c => c.IsPlayerAction),
+            TotalSteps = order.PlayerActions,
             DurationSeconds = _script.DurationSeconds,
         };
-        result.LogDamage.AddRange(_script.Observations.Damage);
-        foreach (var c in commands.Where(c => c.Kind is CommandKind.Cast or CommandKind.CompleteCast))
-        {
-            result.LogCasts[c.AbilityName] = result.LogCasts.GetValueOrDefault(c.AbilityName) + 1;
-        }
+        // Free dice reads the log's damage from the script.
+        if (!FreeDice) result.LogDamage.AddRange(_script.Observations.Damage);
+        foreach (var (name, count) in order.LogCasts) result.LogCasts[name] = count;
         _hero.OnCastCompleted += (ability, _, _) => result.EngineCasts[ability.Name] = result.EngineCasts.GetValueOrDefault(ability.Name) + 1;
 
-        var cancelFor = MatchCastEnds(commands);
+        var cancelFor = order.CastEnds;
         ReplayStep? step = null;
 
         foreach (var cmd in commands)
@@ -111,7 +114,7 @@ public sealed class ReplayDriver
 
             Execute(cmd, step, cancelFor, result);
 
-            if (_oracle.PendingIssues.Any(i => i.Category == IssueCategory.Casts) && Halt(result)) break;
+            if (KeepsIssues && _oracle.PendingIssues.Any(i => i.Category == IssueCategory.Casts) && Halt(result)) break;
         }
 
         if (result.HaltedAt == null)
@@ -134,15 +137,28 @@ public sealed class ReplayDriver
         return result;
     }
 
-    // The script's commands in replay order, sorted once per script (free dice replays one script many times).
-    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ReplayScript, Tuple<double, List<ReplayCommand>>> _sorted = new();
+    /// <summary>
+    /// The script's commands in replay order, the command that ends each begin_cast, the number of player actions and the
+    /// log's casts by ability. Runs only read it.
+    /// </summary>
+    private sealed record CommandOrder(double AriseLead, List<ReplayCommand> Commands, Dictionary<ReplayCommand, ReplayCommand> CastEnds,
+        int PlayerActions, Dictionary<string, int> LogCasts);
 
-    private static List<ReplayCommand> SortedCommands(ReplayScript script, double ariseLead, Func<ReplayCommand, double> when)
+    // Built once per script: free dice replays one script many times, on several threads.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ReplayScript, CommandOrder> _orders = new();
+
+    private static CommandOrder OrderOf(ReplayScript script, double ariseLead, Func<ReplayCommand, double> when)
     {
-        if (_sorted.TryGetValue(script, out var cached) && cached.Item1 == ariseLead) return cached.Item2;
+        if (_orders.TryGetValue(script, out var cached) && cached.AriseLead == ariseLead) return cached;
         var commands = script.Commands.OrderBy(when).ToList();
-        _sorted.AddOrUpdate(script, Tuple.Create(ariseLead, commands));
-        return commands;
+        var logCasts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in commands.Where(c => c.Kind is CommandKind.Cast or CommandKind.CompleteCast))
+        {
+            logCasts[c.AbilityName] = logCasts.GetValueOrDefault(c.AbilityName) + 1;
+        }
+        var order = new CommandOrder(ariseLead, commands, MatchCastEnds(commands), commands.Count(c => c.IsPlayerAction), logCasts);
+        _orders.AddOrUpdate(script, order);
+        return order;
     }
 
     // ------------------------------------------------------------------ commands
@@ -194,7 +210,7 @@ public sealed class ReplayDriver
                 }
                 else
                 {
-                    _oracle.Report(_ctx, IssueCategory.Casts, $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
+                    if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
                 }
                 break;
         }
@@ -221,7 +237,7 @@ public sealed class ReplayDriver
             string still = $"Engine is still casting {_hero.CurrentCast.Ability.Name} (ends {_hero.CurrentCast.EndTime}) when the log casts {cmd.AbilityName}";
             if (!_options.ForceCasts)
             {
-                _oracle.Report(_ctx, IssueCategory.Casts, still, $"still casting: {_hero.CurrentCast.Ability.Name}");
+                if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, still, $"still casting: {_hero.CurrentCast.Ability.Name}");
                 return;
             }
             Force(step, result, cmd, still);
@@ -245,17 +261,17 @@ public sealed class ReplayDriver
         }
         if (!attempt.Succeeded)
         {
-            _oracle.Report(_ctx, IssueCategory.Casts, $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
+            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
             return;
         }
 
         if (cmd.Kind == CommandKind.BeginCast && attempt.Status == CastStatus.Resolved)
         {
-            _oracle.Report(_ctx, IssueCategory.Casts, $"Log shows a cast time for {cmd.AbilityName}, but the engine resolved it instantly", $"engine instant: {cmd.AbilityName}");
+            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log shows a cast time for {cmd.AbilityName}, but the engine resolved it instantly", $"engine instant: {cmd.AbilityName}");
         }
         else if (cmd.Kind == CommandKind.Cast && attempt.Status == CastStatus.Casting)
         {
-            _oracle.Report(_ctx, IssueCategory.Casts, $"Log cast {cmd.AbilityName} instantly, but the engine expects a {attempt.CastTime} cast", $"engine has cast time: {cmd.AbilityName}");
+            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log cast {cmd.AbilityName} instantly, but the engine expects a {attempt.CastTime} cast", $"engine has cast time: {cmd.AbilityName}");
             _ctx.CompleteCast(_hero);
         }
 
@@ -276,7 +292,7 @@ public sealed class ReplayDriver
         double logCast = end.Time - cmd.Time;
         if (Math.Abs(engineCast - logCast) > _options.CastTimeToleranceSeconds)
         {
-            _oracle.Report(_ctx, IssueCategory.Casts,
+            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts,
                 $"{cmd.AbilityName} cast takes {engineCast:F3}s in the engine and {logCast:F3}s in the log",
                 $"cast time: {cmd.AbilityName}");
         }
@@ -300,7 +316,7 @@ public sealed class ReplayDriver
             double late = current.EndTime.TotalSeconds - cmd.Time;
             if (late > _options.CastTimeToleranceSeconds)
             {
-                _oracle.Report(_ctx, IssueCategory.Casts,
+                if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts,
                     $"{cmd.AbilityName} cast takes {current.EndTime.TotalSeconds - current.StartTime.TotalSeconds:F3}s in the engine; the log completed it {late:F3}s sooner", $"cast too slow: {cmd.AbilityName}");
             }
             _ctx.CompleteCast(_hero);
@@ -312,7 +328,7 @@ public sealed class ReplayDriver
             return; // completed by the engine at the log's completion time
         }
 
-        _oracle.Report(_ctx, IssueCategory.Casts, $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
+        if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
     }
 
     /// <summary>
@@ -452,16 +468,16 @@ public sealed class ReplayDriver
         }
 
         var engineState = _hero.Auras.Active(_ctx.CurrentTime)
-            .Where(a => _logAuras.IsTracked(a.LogId))
+            .Where(a => _logAuras!.IsTracked(a.LogId))
             .ToDictionary(a => a.LogId, a => a.Stacks);
 
         // Each aura matches if the log shows the engine's stacks at some moment within the tolerance (server-frame timing).
         double tol = _options.AuraToleranceSeconds;
-        var shown = _logAuras.TrackedStateAt(cmd.Time - 0.001);
-        var window = _logAuras.ChangeTimesBetween(cmd.Time - tol, cmd.Time + tol)
+        var shown = _logAuras!.TrackedStateAt(cmd.Time - 0.001);
+        var window = _logAuras!.ChangeTimesBetween(cmd.Time - tol, cmd.Time + tol)
             .Prepend(cmd.Time - tol)
-            .Select(t => _logAuras.TrackedStateAt(t)).ToList();
-        foreach (var id in engineState.Keys.Union(shown.Keys).OrderBy(id => _logAuras.NameOf(id)))
+            .Select(t => _logAuras!.TrackedStateAt(t)).ToList();
+        foreach (var id in engineState.Keys.Union(shown.Keys).OrderBy(id => _logAuras!.NameOf(id)))
         {
             int engine = engineState.GetValueOrDefault(id);
             // An aura the engine removed within the tolerance still counts (the game ends auras on its next server frame).
@@ -471,7 +487,7 @@ public sealed class ReplayDriver
                 engine = removed.Stacks;
             }
             int log = window.Any(w => w.GetValueOrDefault(id) == engine) ? engine : shown.GetValueOrDefault(id);
-            var check = new AuraCheck(_logAuras.NameOf(id), engine, log);
+            var check = new AuraCheck(_logAuras!.NameOf(id), engine, log);
             step.Auras.Add(check);
             if (!check.Matches)
             {
@@ -480,7 +496,7 @@ public sealed class ReplayDriver
             }
         }
 
-        step.UntrackedLogAuras = _logAuras.UntrackedActiveAt(cmd.Time - 0.001);
+        step.UntrackedLogAuras = _logAuras!.UntrackedActiveAt(cmd.Time - 0.001);
         step.EngineHaste = _hero.GetHaste(_ctx.CurrentTime);
         step.HasteSources = _hero.Auras.Active(_ctx.CurrentTime)
             .SelectMany(a => a.Modifiers.Where(m => m.Type is StatType.Haste or StatType.HasteRating)
