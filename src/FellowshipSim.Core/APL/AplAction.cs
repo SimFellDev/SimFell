@@ -34,7 +34,10 @@ public class AplAction
 
     public Ability? ResolveAbility(Hero hero) => AplNames.FindAbility(hero, AbilityName);
 
-    /// <summary>Starts the action's ability and sets the global cooldown. Returns false if nothing was cast.</summary>
+    /// <summary>
+    /// Starts the action's ability. Returns false if nothing was cast, as for an action naming no ability of the hero. The
+    /// cast sets the hasted global cooldown (<see cref="SimulationContext.BeginCast"/>).
+    /// </summary>
     public bool Execute(Hero hero, SimulationContext ctx)
     {
         if (!TrySelectTarget(hero, ctx, out var target))
@@ -48,21 +51,7 @@ public class AplAction
         }
 
         var ability = ResolveAbility(hero);
-        if (ability == null)
-        {
-            hero.GlobalCooldownEndTime = ctx.CurrentTime + SimTime.FromSeconds(1.0);
-            return false;
-        }
-
-        var attempt = ctx.BeginCast(hero, ability, target);
-        if (!attempt.Succeeded) return false;
-
-        if (!ability.IgnoresGcd)
-        {
-            var gcd = attempt.CastTime == SimTime.Zero ? SimTime.FromSeconds(1.0) : attempt.CastTime;
-            hero.GlobalCooldownEndTime = ctx.CurrentTime + gcd;
-        }
-        return true;
+        return ability != null && ctx.BeginCast(hero, ability, target).Succeeded;
     }
 
     /// <summary>

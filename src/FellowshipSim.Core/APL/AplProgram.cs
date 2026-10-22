@@ -135,7 +135,10 @@ public sealed class BoundAplAction : BoundAplStep
         return Ability.CanCast(ctx);
     }
 
-    /// <summary>Starts the action's ability and sets the global cooldown. Returns false if nothing was cast.</summary>
+    /// <summary>
+    /// Starts the action's ability. Returns false if nothing was cast. The cast sets the hasted global cooldown
+    /// (<see cref="SimulationContext.BeginCast"/>).
+    /// </summary>
     public bool Execute(SimulationContext ctx)
     {
         if (!TrySelectTarget(ctx, out var target)) return false;
@@ -145,15 +148,7 @@ public sealed class BoundAplAction : BoundAplStep
             ctx.Player.CurrentTarget = target;
         }
 
-        var attempt = ctx.BeginCast(_hero, Ability, target);
-        if (!attempt.Succeeded) return false;
-
-        if (!Ability.IgnoresGcd)
-        {
-            var gcd = attempt.CastTime == SimTime.Zero ? SimTime.FromSeconds(1.0) : attempt.CastTime;
-            _hero.GlobalCooldownEndTime = ctx.CurrentTime + gcd;
-        }
-        return true;
+        return ctx.BeginCast(_hero, Ability, target).Succeeded;
     }
 
     /// <summary>
