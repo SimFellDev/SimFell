@@ -23,7 +23,7 @@ public class BurstingSwallows : Talent
         var swallows = new FrostSwallows?[] { hero.GetAbility<FrostSwallows>(), hero.GetAbility<FlightOfTheNavir>()?.Swallows };
         foreach (var s in swallows.OfType<FrostSwallows>())
         {
-            s.Hit += hit =>
+            s.Hit += (in hit) =>
             {
                 var ctx = hit.SimContext;
                 if (ctx == null || hit.Target == null) return;

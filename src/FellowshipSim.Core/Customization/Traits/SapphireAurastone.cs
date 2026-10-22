@@ -56,7 +56,7 @@ public class SapphireAurastone : Trait
             ctx.Schedule(SimTime.FromSeconds(FirstPulseSeconds), c => Pulse(c, id), DamageName);
         };
         hero.SpiritOfHeroismEnded += _ => active = false;
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (active && dmg.AbilityId != logId) stored += share * dmg.Amount;
         };

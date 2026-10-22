@@ -41,7 +41,7 @@ public class CoalescingFrost : Talent
         var torrent = rime.GetAbility<FreezingTorrent>();
         if (torrent == null) return;
         _eruption = new Eruption(rime);
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.AbilityId == torrent.DamageLogId && dmg.Amount > 0 && dmg.Target != null && dmg.SimContext != null)
             {

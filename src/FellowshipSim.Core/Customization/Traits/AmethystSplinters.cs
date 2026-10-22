@@ -57,7 +57,7 @@ public class AmethystSplinters : Trait
         // The fight the splinters belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;
 
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (!dmg.IsCrit || dmg.Target == null || dmg.Target.IsSleeping || dmg.SimContext == null || dmg.AbilityId == logId) return;
             var ctx = dmg.SimContext;

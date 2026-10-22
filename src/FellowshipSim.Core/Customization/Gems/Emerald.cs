@@ -37,7 +37,7 @@ public class Emerald : Gem
         {
             case 1: // First Strike: Expertise for 15s when dealing damage to an enemy for the first time.
                 FirstStrike = hero.Register(node.Grants!);
-                hero.OnDamageDealt += dmg =>
+                hero.OnDamageDealt += (in dmg) =>
                 {
                     if (dmg.Target == null || dmg.Target.Auras.HasAura(FirstStrikeTriggered, dmg.Timestamp)) return;
                     dmg.Target.Auras.Apply(FirstStrikeTriggered, dmg.Timestamp);

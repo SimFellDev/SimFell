@@ -32,7 +32,7 @@ public class DiamondStrike : Trait
     {
         var beam = new Beam(hero, ForRank(CoefficientByRank));
         var rppm = new RealPpm(ProcKey, ProcsPerMinute);
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target is not { } target || dmg.SimContext is not { } ctx || dmg.AbilityId == beam.DamageLogId) return;
             if (!rppm.Roll(hero, ctx, target)) return;

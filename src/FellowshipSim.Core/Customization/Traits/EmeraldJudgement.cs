@@ -42,7 +42,7 @@ public class EmeraldJudgement : Trait
         }
 
         // Speed: the handler captures nothing per hit; the spike's closures are made only when it erupts.
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target == null || dmg.Target.IsSleeping || dmg.SimContext == null || dmg.AbilityId == logId) return;
             // The spike erupts under the enemy whose hit triggered it.

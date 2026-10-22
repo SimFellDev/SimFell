@@ -36,7 +36,7 @@ public class Kindling : Trait
         }
 
         // Speed: the handler captures nothing per hit; the burn's closure is made only when it ignites.
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target is not { } target || dmg.SimContext is not { } ctx || dmg.AbilityId == dot.DamageLogId) return;
             if (fight != ctx)

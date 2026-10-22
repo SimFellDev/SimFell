@@ -54,7 +54,7 @@ public static class Counters
         var actions = Fight.Actions();
         int casts = 0, hits = 0;
         hero.OnCastCompleted += (_, _, _) => casts++;
-        hero.OnDamageDealt += _ => hits++;
+        hero.OnDamageDealt += (in _) => hits++;
         Console.WriteLine($"Fights on one hero, {Fight.Duration.TotalSeconds:F0} s, {targets} target(s)");
         Console.WriteLine("  fight      ms        damage  casts   hits  events  hasted timers");
         for (int fight = 1; fight <= 12; fight++)
@@ -99,7 +99,7 @@ public static class Counters
                 enemy.Auras.OnGained += (_, _, _) => _enemyChanges++;
                 enemy.Auras.OnRemoved += (_, _) => _enemyChanges++;
             }
-            hero.OnDamageDealt += _ => _hits++;
+            hero.OnDamageDealt += (in _) => _hits++;
             hero.OnCastCompleted += (ability, _, _) =>
             {
                 _casts++;

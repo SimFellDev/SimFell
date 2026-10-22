@@ -27,7 +27,7 @@ public class BraveMachinations : Trait
         {
             if (ability == weapon) reducedThisCast = false;
         };
-        weapon.Hit += hit =>
+        weapon.Hit += (in hit) =>
         {
             if (fight != hit.SimContext)
             {

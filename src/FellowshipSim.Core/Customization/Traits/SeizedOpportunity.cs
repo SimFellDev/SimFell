@@ -23,7 +23,7 @@ public class SeizedOpportunity : Trait
     {
         var buff = hero.Register(AuraDef.Effect("Seized Opportunity", BuffEffectId, DurationSeconds,
             modifiers: StatModifier.Add(StatType.CritRating, ForRank(CritRatingByRank))));
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (!dmg.IsCrit || hero.Auras.HasAura(buff, dmg.Timestamp)) return;
             var stacks = hero.Auras.Apply(Counter, dmg.Timestamp).Stacks;

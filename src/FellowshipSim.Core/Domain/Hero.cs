@@ -12,7 +12,7 @@ public abstract class Hero : Actor
     {
         AddResource(SpiritPoints);
         // Spirit Points from damage: a hit earns its share of the enemy's health times the enemy's Spirit Point value.
-        OnDamageDealt += dmg =>
+        OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target is not { SpiritPointValue: > 0, MaxHealth: > 0 } enemy || dmg.Amount <= 0) return;
             GainResource(SpiritPoints, Math.Min(dmg.Amount, enemy.MaxHealth) / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
@@ -102,7 +102,7 @@ public abstract class Hero : Actor
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
         modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste));
 
-    public event Action<DamageContext>? OnDamageDealt;
+    public event DamageDealtHandler? OnDamageDealt;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastStarted;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastCompleted;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastCancelled;
@@ -132,7 +132,7 @@ public abstract class Hero : Actor
     /// <summary>The channel in progress, if any.</summary>
     public ActiveChannel? CurrentChannel { get; internal set; }
 
-    public void TriggerDamageDealt(DamageContext ctx) => OnDamageDealt?.Invoke(ctx);
+    public void TriggerDamageDealt(in DamageContext hit) => OnDamageDealt?.Invoke(in hit);
     public void TriggerCastStarted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastStarted?.Invoke(a, t, now);
     public void TriggerCastCompleted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCompleted?.Invoke(a, t, now);
     public void TriggerCastCancelled(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCancelled?.Invoke(a, t, now);

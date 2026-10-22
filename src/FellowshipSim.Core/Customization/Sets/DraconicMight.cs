@@ -31,7 +31,7 @@ public class DraconicMight : SetBonus
         var ready = SimTime.Zero;
         // The fight the internal cooldown belongs to (each sim iteration and replay has its own).
         SimulationContext? fight = null;
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (!dmg.IsCrit || dmg.SimContext is not { } ctx) return;
             if (fight != ctx)

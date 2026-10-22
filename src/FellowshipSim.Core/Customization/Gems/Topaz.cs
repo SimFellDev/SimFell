@@ -33,7 +33,7 @@ public class Topaz : Gem
             case 1: // Adrenaline Rush: Haste for 10s each time you deal damage to an enemy at 30% health or less.
                 var rush = node.Grants!;
                 double threshold = node.Value("HealthThreshold");
-                hero.OnDamageDealt += dmg =>
+                hero.OnDamageDealt += (in dmg) =>
                 {
                     if (dmg.Target is { } target && target.HealthFraction <= threshold) hero.Auras.Apply(rush, dmg.Timestamp);
                 };

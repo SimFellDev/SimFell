@@ -92,7 +92,7 @@ public abstract class Ability
     /// One of this ability's hits landed (under <see cref="DamageLogId"/>), with its target, damage and whether it crit.
     /// Talents and other abilities that react to this ability's hits subscribe here.
     /// </summary>
-    public event Action<DamageContext>? Hit;
+    public event DamageDealtHandler? Hit;
 
     /// <summary>What talents added to the cast resolving now (<see cref="ResolveCast(SimulationContext, EnemyTarget, object?)"/>); null outside a cast.</summary>
     protected CastBonus? CurrentCast { get; private set; }
@@ -107,9 +107,9 @@ public abstract class Ability
         DamageLogId = id;
         Name = name;
         Category = category;
-        owner.OnDamageDealt += dmg =>
+        owner.OnDamageDealt += (in dmg) =>
         {
-            if (dmg.AbilityId == DamageLogId) Hit?.Invoke(dmg);
+            if (dmg.AbilityId == DamageLogId) Hit?.Invoke(in dmg);
         };
     }
 

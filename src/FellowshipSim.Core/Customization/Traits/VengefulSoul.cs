@@ -24,7 +24,7 @@ public class VengefulSoul : Trait
     {
         var buff = Buff.WithModifiers(StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + ForRank(MainStatByRank)));
         var rppm = new RealPpm(ProcKey, ProcsPerMinute);
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.IsCrit && dmg.SimContext is { } ctx && rppm.Roll(hero, ctx)) hero.Auras.Apply(buff, ctx.CurrentTime);
         };

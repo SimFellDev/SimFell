@@ -37,7 +37,7 @@ public class TheVehement : Blessing
         int hits = 0;
         // The fight the hits belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;
-        hero.OnDamageDealt += dmg =>
+        hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.SimContext == null || dmg.Target == null || !basicIds.Contains(dmg.AbilityId)) return;
             if (fight != dmg.SimContext)

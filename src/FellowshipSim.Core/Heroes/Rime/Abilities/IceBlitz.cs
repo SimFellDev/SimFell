@@ -34,7 +34,7 @@ public class IceBlitz : RimeAbility
         var swallows = new FrostSwallows?[] { Rime.GetAbility<FrostSwallows>(), Rime.GetAbility<FlightOfTheNavir>()?.Swallows };
         foreach (var s in swallows.OfType<FrostSwallows>())
         {
-            s.Hit += _ => Rime.Auras.Extend(Buff, SimTime.FromSeconds(ExtensionPerSwallowSeconds));
+            s.Hit += (in _) => Rime.Auras.Extend(Buff, SimTime.FromSeconds(ExtensionPerSwallowSeconds));
         }
     }
 }

@@ -31,7 +31,7 @@ public class VoidbringersTouch : Ability
         BaseCoefficient = CapCoefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
         IgnoresGcd = true;
-        owner.OnDamageDealt += dmg =>
+        owner.OnDamageDealt += (in dmg) =>
         {
             // A touch from an earlier fight stores nothing in this one.
             if (_target == null || dmg.AbilityId == DamageLogId || dmg.SimContext is not { } ctx || ctx != _fight) return;

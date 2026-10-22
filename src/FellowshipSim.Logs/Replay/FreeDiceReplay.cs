@@ -71,7 +71,7 @@ public static class FreeDiceReplay
         {
             var hero = ReplayDriver.CreateHero(script);
             var tallies = new Dictionary<int, Tally>();
-            hero.OnDamageDealt += dmg =>
+            hero.OnDamageDealt += (in dmg) =>
             {
                 if (!tallies.TryGetValue(dmg.AbilityId, out var t)) tallies[dmg.AbilityId] = t = new Tally { Name = dmg.AbilityName };
                 t.Damage += dmg.Amount;
