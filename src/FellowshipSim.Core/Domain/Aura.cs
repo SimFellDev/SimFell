@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace FellowshipSim.Core.Domain;
 
@@ -370,9 +371,17 @@ public class AuraContainer
         return _auras.ToDictionary(kv => kv.Key, kv => kv.Value.Stacks, StringComparer.Ordinal);
     }
 
+    /// <summary>Removes the auras run out at <paramref name="now"/>.</summary>
+    // Speed: every read of the auras makes this check, inlined; the scan runs only once an aura may have run out.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CleanExpired(SimTime now)
     {
         if (now == default || now < _nextExpiry) return;
+        RunOut(now);
+    }
+
+    private void RunOut(SimTime now)
+    {
         List<Aura>? expired = null;
         var next = SimTime.Infinite;
         foreach (var aura in _auras.Values)
@@ -396,50 +405,58 @@ public class AuraContainer
     }
 
     /// <summary>Applies every active modifier of <paramref name="type"/> to <paramref name="baseValue"/>.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double Fold(StatType type, double baseValue, SimTime now = default)
     {
         CleanExpired(now);
         int t = (int)type;
-        if (_foldVersions[t] != _statVersions[t])
-        {
-            var fold = new ModifierFold();
-            foreach (var aura in _auras.Values)
-            {
-                var mods = aura.Modifiers;
-                for (int i = 0; i < mods.Count; i++)
-                {
-                    if (mods[i].Type == type) fold.Accept(mods[i], aura.Stacks);
-                }
-            }
-            _folds[t] = fold;
-            _foldVersions[t] = _statVersions[t];
-        }
+        if (_foldVersions[t] != _statVersions[t]) Refold(type);
         return _folds[t].Apply(baseValue);
+    }
+
+    private void Refold(StatType type)
+    {
+        int t = (int)type;
+        var fold = new ModifierFold();
+        foreach (var aura in _auras.Values)
+        {
+            var mods = aura.Modifiers;
+            for (int i = 0; i < mods.Count; i++)
+            {
+                if (mods[i].Type == type) fold.Accept(mods[i], aura.Stacks);
+            }
+        }
+        _folds[t] = fold;
+        _foldVersions[t] = _statVersions[t];
     }
 
     /// <summary>
     /// Sum of (value - 1) over every active modifier of <paramref name="type"/>, ignoring stacks and how it combines (how
     /// cooldown recovery multipliers add up).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double SumBonuses(StatType type, SimTime now = default)
     {
         CleanExpired(now);
         int t = (int)type;
-        if (_bonusVersions[t] != _statVersions[t])
-        {
-            double sum = 0.0;
-            foreach (var aura in _auras.Values)
-            {
-                var mods = aura.Modifiers;
-                for (int i = 0; i < mods.Count; i++)
-                {
-                    if (mods[i].Type == type) sum += mods[i].Value - 1.0;
-                }
-            }
-            _bonuses[t] = sum;
-            _bonusVersions[t] = _statVersions[t];
-        }
+        if (_bonusVersions[t] != _statVersions[t]) Resum(type);
         return _bonuses[t];
+    }
+
+    private void Resum(StatType type)
+    {
+        int t = (int)type;
+        double sum = 0.0;
+        foreach (var aura in _auras.Values)
+        {
+            var mods = aura.Modifiers;
+            for (int i = 0; i < mods.Count; i++)
+            {
+                if (mods[i].Type == type) sum += mods[i].Value - 1.0;
+            }
+        }
+        _bonuses[t] = sum;
+        _bonusVersions[t] = _statVersions[t];
     }
 
     /// <summary>Sum of additive modifiers of <paramref name="type"/>.</summary>
