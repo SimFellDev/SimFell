@@ -34,13 +34,28 @@ public sealed class ScheduledEvent
 /// </summary>
 public class SimulationKernel
 {
-    private readonly PriorityQueue<ScheduledEvent, (long Ms, long Seq)> _queue = new();
+    // Speed: a binary heap of the events with their keys (time, then sequence) beside them, compared as two longs.
+    private Entry[] _heap = new Entry[64];
+    private int _count;
     private long _sequence;
+
+    private readonly struct Entry(long milliseconds, long sequence, ScheduledEvent ev)
+    {
+        public readonly long Milliseconds = milliseconds;
+        public readonly long Sequence = sequence;
+        public readonly ScheduledEvent Event = ev;
+
+        public bool Before(in Entry other) =>
+            Milliseconds < other.Milliseconds || (Milliseconds == other.Milliseconds && Sequence < other.Sequence);
+    }
+
+    /// <summary>Events in the queue, cancelled ones included until they reach the front.</summary>
+    public int Count => _count;
 
     public ScheduledEvent ScheduleAt(SimTime time, Action<SimulationContext> action, string label = "")
     {
         var ev = new ScheduledEvent(time, _sequence++, action, null, label);
-        _queue.Enqueue(ev, (time.Milliseconds, ev.Sequence));
+        Push(new Entry(time.Milliseconds, ev.Sequence, ev));
         return ev;
     }
 
@@ -48,17 +63,18 @@ public class SimulationKernel
     public ScheduledEvent ScheduleAt(SimTime time, PendingHit hit, string label = "")
     {
         var ev = new ScheduledEvent(time, _sequence++, null, hit, label);
-        _queue.Enqueue(ev, (time.Milliseconds, ev.Sequence));
+        Push(new Entry(time.Milliseconds, ev.Sequence, ev));
         return ev;
     }
 
     /// <summary>Time of the next live event, or null when the queue is empty.</summary>
     public SimTime? PeekNextTime()
     {
-        while (_queue.TryPeek(out var ev, out _))
+        while (_count > 0)
         {
+            var ev = _heap[0].Event;
             if (!ev.IsCancelled) return ev.Time;
-            _queue.Dequeue();
+            Pop();
         }
         return null;
     }
@@ -66,23 +82,59 @@ public class SimulationKernel
     /// <summary>Removes and returns the next live event due at or before <paramref name="maxTime"/>.</summary>
     public bool TryDequeueDue(SimTime maxTime, out ScheduledEvent ev)
     {
-        while (_queue.TryPeek(out ev!, out _))
+        while (_count > 0)
         {
+            ev = _heap[0].Event;
             if (ev.IsCancelled)
             {
-                _queue.Dequeue();
+                Pop();
                 continue;
             }
             if (ev.Time > maxTime) return false;
-            _queue.Dequeue();
+            Pop();
             return true;
         }
+        ev = null!;
         return false;
     }
 
     public void Clear()
     {
-        _queue.Clear();
+        Array.Clear(_heap, 0, _count);
+        _count = 0;
         _sequence = 0;
+    }
+
+    private void Push(Entry entry)
+    {
+        if (_count == _heap.Length) Array.Resize(ref _heap, _heap.Length * 2);
+        int i = _count++;
+        while (i > 0)
+        {
+            int parent = (i - 1) >> 1;
+            if (!entry.Before(_heap[parent])) break;
+            _heap[i] = _heap[parent];
+            i = parent;
+        }
+        _heap[i] = entry;
+    }
+
+    private void Pop()
+    {
+        int last = --_count;
+        var entry = _heap[last];
+        _heap[last] = default;
+        if (last == 0) return;
+        int i = 0;
+        while (true)
+        {
+            int child = 2 * i + 1;
+            if (child >= last) break;
+            if (child + 1 < last && _heap[child + 1].Before(_heap[child])) child++;
+            if (!_heap[child].Before(entry)) break;
+            _heap[i] = _heap[child];
+            i = child;
+        }
+        _heap[i] = entry;
     }
 }

@@ -12,7 +12,6 @@ namespace FellowshipSim.Benchmarks;
 public static class Counters
 {
     private static readonly FieldInfo Sequence = typeof(SimulationKernel).GetField("_sequence", BindingFlags.NonPublic | BindingFlags.Instance)!;
-    private static readonly FieldInfo Queue = typeof(SimulationKernel).GetField("_queue", BindingFlags.NonPublic | BindingFlags.Instance)!;
     private static readonly FieldInfo DamageDealt = typeof(Hero).GetField("_damageDealt", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
     public static void Run()
@@ -113,8 +112,7 @@ public static class Counters
         public void Print(string title, LoopCounts? loop)
         {
             long events = (long)Sequence.GetValue(_ctx.Kernel)!;
-            object queue = Queue.GetValue(_ctx.Kernel)!;
-            int queued = (int)queue.GetType().GetProperty("Count")!.GetValue(queue)!;
+            int queued = _ctx.Kernel.Count;
             // The tally's own handler is not counted.
             int subscribers = ((System.Collections.ICollection)DamageDealt.GetValue(_hero)!).Count - 1;
             Console.WriteLine(title);
