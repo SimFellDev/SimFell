@@ -81,12 +81,9 @@ public class IciclesOfAnzhyr : Ability
         {
             bool cursed = enemy.Auras.HasAura(Curse, ctx.CurrentTime);
             double multiplier = falloff * (cursed ? CursedDamageMultiplier : 1.0);
-            ctx.ApplyDamage(Owner, enemy, DamageLogId, Name, canCrit: true,
-                c => new SimulationContext.HitNumbers(
-                    damage * multiplier * Owner.DamageMultiplierAgainst(enemy, c.CurrentTime),
-                    critChance + Owner.CritChanceAgainst(enemy, c.CurrentTime) - Owner.CritChance(c.CurrentTime),
-                    critMultiplier),
-                snapshot: true);
+            var now = ctx.CurrentTime;
+            ctx.ApplyDamage(Owner, enemy, damage * multiplier * Owner.DamageMultiplierAgainst(enemy, now), DamageLogId, Name, canCrit: true,
+                critChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now), critMultiplier, snapshot: true);
             if (final)
             {
                 // Re-applying the curse gives it the new cast's snapshot; a new curse also starts ticking.
@@ -107,12 +104,9 @@ public class IciclesOfAnzhyr : Ability
         void Tick(SimulationContext c)
         {
             if (enemy.IsSleeping || !_curses.TryGetValue(enemy, out var snap)) return;
-            c.ApplyDamage(Owner, enemy, _curse.DamageLogId, CurseName, canCrit: true,
-                cc => new SimulationContext.HitNumbers(
-                    snap.Damage * Owner.DamageMultiplierAgainst(enemy, cc.CurrentTime),
-                    snap.CritChance + Owner.CritChanceAgainst(enemy, cc.CurrentTime) - Owner.CritChance(cc.CurrentTime),
-                    snap.CritMultiplier),
-                snapshot: true);
+            var now = c.CurrentTime;
+            c.ApplyDamage(Owner, enemy, snap.Damage * Owner.DamageMultiplierAgainst(enemy, now), _curse.DamageLogId, CurseName, canCrit: true,
+                snap.CritChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now), snap.CritMultiplier, snapshot: true);
             HastedTimer.Start(c, Owner, CurseTickSeconds, Tick, CurseName);
         }
         HastedTimer.Start(ctx, Owner, CurseTickSeconds, Tick, CurseName);

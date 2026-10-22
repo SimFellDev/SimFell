@@ -117,12 +117,9 @@ public class IceComet : RimeAbility
         double falloff = fixedFalloff ?? (AoeTargetThreshold > 0 && struck.Count > AoeTargetThreshold ? Math.Sqrt(AoeTargetThreshold / struck.Count) : 1.0);
         foreach (var enemy in struck)
         {
-            ctx.ApplyDamage(Owner, enemy, DamageLogId, Name, canCrit: true,
-                c => new SimulationContext.HitNumbers(
-                    damage * falloff * Owner.DamageMultiplierAgainst(enemy, c.CurrentTime),
-                    critChance + Owner.CritChanceAgainst(enemy, c.CurrentTime) - Owner.CritChance(c.CurrentTime),
-                    critMultiplier),
-                snapshot: true);
+            var now = ctx.CurrentTime;
+            ctx.ApplyDamage(Owner, enemy, damage * falloff * Owner.DamageMultiplierAgainst(enemy, now), DamageLogId, Name, canCrit: true,
+                critChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now), critMultiplier, snapshot: true);
         }
     }
 }

@@ -6,17 +6,21 @@ namespace FellowshipSim.Core.Engine;
 /// </summary>
 public sealed class ScheduledEvent
 {
-    internal ScheduledEvent(SimTime time, long sequence, Action<SimulationContext> action, string label)
+    internal ScheduledEvent(SimTime time, long sequence, Action<SimulationContext>? action, PendingHit? hit, string label)
     {
         Time = time;
         Sequence = sequence;
         Action = action;
+        Hit = hit;
         Label = label;
     }
 
     public SimTime Time { get; }
     internal long Sequence { get; }
-    internal Action<SimulationContext> Action { get; }
+    /// <summary>What the event does; null when it is a hit's landing (<see cref="Hit"/>).</summary>
+    internal Action<SimulationContext>? Action { get; }
+    /// <summary>The travelling hit that lands at <see cref="Time"/>.</summary>
+    internal PendingHit? Hit { get; }
     /// <summary>The event's name for debugging. Call sites pass a fixed name, such as the ability's, so scheduling builds no string.</summary>
     public string Label { get; }
     public bool IsCancelled { get; private set; }
@@ -35,7 +39,15 @@ public class SimulationKernel
 
     public ScheduledEvent ScheduleAt(SimTime time, Action<SimulationContext> action, string label = "")
     {
-        var ev = new ScheduledEvent(time, _sequence++, action, label);
+        var ev = new ScheduledEvent(time, _sequence++, action, null, label);
+        _queue.Enqueue(ev, (time.Milliseconds, ev.Sequence));
+        return ev;
+    }
+
+    /// <summary>Schedules <paramref name="hit"/> to land at <paramref name="time"/>.</summary>
+    public ScheduledEvent ScheduleAt(SimTime time, PendingHit hit, string label = "")
+    {
+        var ev = new ScheduledEvent(time, _sequence++, null, hit, label);
         _queue.Enqueue(ev, (time.Milliseconds, ev.Sequence));
         return ev;
     }

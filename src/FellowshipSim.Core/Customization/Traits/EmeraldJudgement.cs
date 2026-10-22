@@ -29,14 +29,8 @@ public class EmeraldJudgement : Trait
         const string name = DamageName;
         const double coefficient = Coefficient;
 
-        hero.OnDamageDealt += dmg =>
+        void Erupt(SimulationContext ctx, EnemyTarget target)
         {
-            if (dmg.Target == null || dmg.Target.IsSleeping || dmg.SimContext == null || dmg.AbilityId == logId) return;
-            var ctx = dmg.SimContext;
-            // The spike erupts under the enemy whose hit triggered it.
-            var target = dmg.Target;
-            if (!rppm.Roll(hero, ctx, target)) return;
-
             // The spike also triggers First Strike, when it lands (combat logs: First Strike refreshes with the spike's hit).
             var firstStrike = hero.Gems.OfType<Emerald>().FirstOrDefault()?.FirstStrike;
             ctx.ApplyDamage(hero, target, logId, name, canCrit: true, c => new SimulationContext.HitNumbers(
@@ -45,6 +39,14 @@ public class EmeraldJudgement : Trait
                 hero.CritChanceAgainst(target, c.CurrentTime),
                 hero.CritMultiplier(c.CurrentTime)),
                 onLanded: firstStrike == null ? null : (c, dealt) => { if (dealt > 0.0) hero.Auras.Apply(firstStrike, c.CurrentTime); });
+        }
+
+        // Speed: the handler captures nothing per hit; the spike's closures are made only when it erupts.
+        hero.OnDamageDealt += dmg =>
+        {
+            if (dmg.Target == null || dmg.Target.IsSleeping || dmg.SimContext == null || dmg.AbilityId == logId) return;
+            // The spike erupts under the enemy whose hit triggered it.
+            if (rppm.Roll(hero, dmg.SimContext, dmg.Target)) Erupt(dmg.SimContext, dmg.Target);
         };
     }
 }

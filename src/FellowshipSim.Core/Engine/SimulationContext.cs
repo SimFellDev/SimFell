@@ -87,7 +87,8 @@ public class SimulationContext
         {
             if (ev.Time > CurrentTime) CurrentTime = ev.Time;
             ev.HasFired = true;
-            ev.Action(this);
+            if (ev.Hit is { } hit) Land(hit);
+            else ev.Action!(this);
         }
         if (time > CurrentTime) CurrentTime = time;
         Player.Auras.CleanExpired(CurrentTime);
@@ -302,62 +303,113 @@ public class SimulationContext
         Func<SimulationContext, HitNumbers> compute, bool? forcedCrit = null, Action<SimulationContext, double>? onLanded = null,
         bool snapshot = false)
     {
-        double tickFraction = CurrentTickFraction;
-        HitRequest Request(SimulationContext ctx)
-        {
-            var n = compute(ctx);
-            double chance = 0.0, baseDamage = n.BaseDamage;
-            if (canCrit)
-            {
-                // Grievous: base x (2 + overflow) x (1 + crit power), i.e. the overflow is added to the crit double.
-                if (n.CritChance > 1.0) baseDamage *= (StatBlock.BaseCritMultiplier + n.CritChance - 1.0) / StatBlock.BaseCritMultiplier;
-                chance = Math.Clamp(n.CritChance, 0.0, 1.0);
-            }
-            return new HitRequest(source, target, abilityId, abilityName, baseDamage, canCrit, chance, n.CritMultiplier, ctx.CurrentTime, tickFraction)
-            {
-                FlatDamage = n.FlatDamage * tickFraction,
-            };
-        }
+        var hit = RentHit(source, target, abilityId, abilityName, canCrit, forcedCrit, onLanded, snapshot);
+        hit.FromCompute(compute);
+        return ApplyDamage(hit);
+    }
 
-        var released = Request(this);
-        var outcome = forcedCrit.HasValue ? new HitOutcome(forcedCrit.Value) : Outcomes.ResolveHit(released, this);
-        double dealt = 0.0;
+    /// <summary>
+    /// Deals one hit with fixed numbers (no dependence on the moment it lands). A <paramref name="snapshot"/> hit lands
+    /// with the time of its release.
+    /// </summary>
+    public double ApplyDamage(Hero source, EnemyTarget? target, double baseDamage, int abilityId, string abilityName,
+        bool canCrit, double critChance, double critMultiplier, bool? forcedCrit = null, bool snapshot = false)
+    {
+        var hit = RentHit(source, target, abilityId, abilityName, canCrit, forcedCrit, onLanded: null, snapshot);
+        hit.FromNumbers(new HitNumbers(baseDamage, critChance, critMultiplier));
+        return ApplyDamage(hit);
+    }
 
-        void Land(SimulationContext ctx)
-        {
-            // A hit on a target already gone hits nothing; its projectile still finishes (e.g. a swallow comes back).
-            if (outcome.Missed) { onLanded?.Invoke(ctx, 0.0); return; }
-            var landed = snapshot || ctx.CurrentTime == released.Time ? released : Request(ctx);
-            double multiplier = forcedCrit.HasValue
-                ? (outcome.IsCrit ? landed.CritMultiplier : 1.0)
-                : ctx.Outcomes.Land(landed, outcome, ctx);
-            dealt = landed.BaseDamage * multiplier + landed.FlatDamage;
+    // Speed: hits are pooled. A hit returns to the pool once it has landed; one still travelling when the fight resets
+    // leaves the queue with it.
+    private readonly Stack<PendingHit> _hitPool = new();
 
-            ctx.TotalDamage += dealt;
-            ctx._abilityDamage[abilityName] = ctx._abilityDamage.GetValueOrDefault(abilityName, 0.0) + dealt;
-            if (target != null && target.MaxHealth > 0)
-            {
-                target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
-            }
-            source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, outcome.IsCrit, ctx.CurrentTime, ctx));
-            if (!forcedCrit.HasValue) ctx.Outcomes.HitFinished(ctx);
-            onLanded?.Invoke(ctx, dealt);
-        }
+    /// <summary>A hit from the pool, to be filled with its numbers and dealt with <see cref="ApplyDamage(PendingHit)"/>.</summary>
+    internal PendingHit RentHit(Hero source, EnemyTarget? target, int abilityId, string abilityName, bool canCrit, bool? forcedCrit,
+        Action<SimulationContext, double>? onLanded, bool snapshot)
+    {
+        var hit = _hitPool.TryPop(out var pooled) ? pooled : new PendingHit();
+        hit.Begin(source, target, abilityId, abilityName, canCrit, forcedCrit, onLanded, snapshot);
+        return hit;
+    }
+
+    /// <summary>Releases <paramref name="hit"/>: decides its crit and travel, and lands it now or after its travel time.</summary>
+    internal double ApplyDamage(PendingHit hit)
+    {
+        hit.TickFraction = CurrentTickFraction;
+        var released = Request(hit);
+        hit.Released = released;
+        var outcome = hit.ForcedCrit.HasValue ? new HitOutcome(hit.ForcedCrit.Value) : Outcomes.ResolveHit(released, this);
+        hit.Outcome = outcome;
 
         // The hit lands (and triggers procs) after its travel time; damage uses the stats at landing.
         if (outcome.LandingDelay > SimTime.Zero)
         {
-            Schedule(outcome.LandingDelay, Land, abilityName);
+            Kernel.ScheduleAt(CurrentTime + outcome.LandingDelay, hit, hit.AbilityName);
             return released.BaseDamage * (outcome.IsCrit ? released.CritMultiplier : 1.0) + released.FlatDamage;
         }
-        Land(this);
+        return Land(hit);
+    }
+
+    private HitRequest Request(PendingHit hit)
+    {
+        var n = hit.Compute(this);
+        double chance = 0.0, baseDamage = n.BaseDamage;
+        if (hit.CanCrit)
+        {
+            // Grievous: base x (2 + overflow) x (1 + crit power), i.e. the overflow is added to the crit double.
+            if (n.CritChance > 1.0) baseDamage *= (StatBlock.BaseCritMultiplier + n.CritChance - 1.0) / StatBlock.BaseCritMultiplier;
+            chance = Math.Clamp(n.CritChance, 0.0, 1.0);
+        }
+        double tickFraction = hit.TickFraction;
+        return new HitRequest(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, baseDamage, hit.CanCrit, chance, n.CritMultiplier, CurrentTime, tickFraction)
+        {
+            FlatDamage = n.FlatDamage * tickFraction,
+        };
+    }
+
+    /// <summary>The hit lands: deals its damage, raises <see cref="Hero.OnDamageDealt"/> and returns it to the pool.</summary>
+    private double Land(PendingHit hit)
+    {
+        var outcome = hit.Outcome;
+        var onLanded = hit.OnLanded;
+        double dealt = 0.0;
+        // A hit on a target already gone hits nothing; its projectile still finishes (e.g. a swallow comes back).
+        if (outcome.Missed)
+        {
+            onLanded?.Invoke(this, 0.0);
+            ReturnHit(hit);
+            return dealt;
+        }
+        var released = hit.Released;
+        var landed = hit.Snapshot || CurrentTime == released.Time ? released : Request(hit);
+        bool forced = hit.ForcedCrit.HasValue;
+        double multiplier = forced
+            ? (outcome.IsCrit ? landed.CritMultiplier : 1.0)
+            : Outcomes.Land(landed, outcome, this);
+        dealt = landed.BaseDamage * multiplier + landed.FlatDamage;
+
+        var source = hit.Source;
+        var target = hit.Target;
+        string abilityName = hit.AbilityName;
+        TotalDamage += dealt;
+        _abilityDamage[abilityName] = _abilityDamage.GetValueOrDefault(abilityName, 0.0) + dealt;
+        if (target != null && target.MaxHealth > 0)
+        {
+            target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
+        }
+        source.TriggerDamageDealt(new DamageContext(source, target, hit.AbilityId, abilityName, dealt, outcome.IsCrit, CurrentTime, this));
+        if (!forced) Outcomes.HitFinished(this);
+        onLanded?.Invoke(this, dealt);
+        ReturnHit(hit);
         return dealt;
     }
 
-    /// <summary>Deals one hit with fixed numbers (no dependence on the moment it lands).</summary>
-    public double ApplyDamage(Hero source, EnemyTarget? target, double baseDamage, int abilityId, string abilityName,
-        bool canCrit, double critChance, double critMultiplier, bool? forcedCrit = null) =>
-        ApplyDamage(source, target, abilityId, abilityName, canCrit, _ => new HitNumbers(baseDamage, critChance, critMultiplier), forcedCrit);
+    private void ReturnHit(PendingHit hit)
+    {
+        hit.Clear();
+        _hitPool.Push(hit);
+    }
 
     /// <summary>Deals one hit using the source's crit chance (plus <paramref name="bonusCritChance"/>) and crit multiplier at landing.</summary>
     public double ApplyDamage(

@@ -248,13 +248,9 @@ public abstract class Ability
         // Damage, crit chance and crit power are read when the hit lands; what talents added to the cast is kept.
         double castCrit = CurrentCast?.CritChance ?? 0.0;
         double castDamage = CastDamageMultiplier;
-        return ctx.ApplyDamage(Owner, target, overrideId ?? DamageLogId, overrideName ?? Name, canCrit,
-            c => new SimulationContext.HitNumbers(
-                BaseDamage(c, target, damageMultiplier * castDamage),
-                Owner.CritChanceAgainst(target, c.CurrentTime) + CritChanceBonus + extraCritChance + castCrit,
-                CritMultiplierAt(c.CurrentTime),
-                BonusCoefficient * Owner.PrimaryAttribute(c.CurrentTime)),
-            forcedCrit, onLanded, SnapshotsDamage);
+        var hit = ctx.RentHit(Owner, target, overrideId ?? DamageLogId, overrideName ?? Name, canCrit, forcedCrit, onLanded, SnapshotsDamage);
+        hit.FromAbility(this, damageMultiplier * castDamage, castCrit, extraCritChance);
+        return ctx.ApplyDamage(hit);
     }
 
     public virtual double DealAoeDamage(SimulationContext ctx, IEnumerable<EnemyTarget> targets, double damageMultiplier = 1.0, bool canCrit = true, string? overrideName = null, int? overrideId = null, bool? forcedCrit = null,

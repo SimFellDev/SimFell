@@ -27,32 +27,35 @@ public class AmethystSplinters : Trait
     public override int Id => TraitId;
     public override string Name => TraitName;
 
+    /// <summary>The splinter on one enemy. It keeps its own tick handler, so a tick allocates none.</summary>
     private sealed class Splinter
     {
+        public Splinter(Hero hero, EnemyTarget target, int logId)
+        {
+            Tick = ctx =>
+            {
+                NextTick = null;
+                if (target.IsSleeping || ctx.CurrentTime >= EndsAt) return;
+                // The crit's damage already includes the hero's damage buffs, so the ticks are not scaled again.
+                ctx.ApplyDamage(hero, target, TickValue, logId, DotName, canCrit: false, 0.0, 1.0);
+                // Keep the rhythm: a crit landing before the next tick restarts the 8 seconds.
+                NextTick = HastedTimer.Start(ctx, hero, TickPeriodSeconds, Tick!, DotName);
+            };
+        }
+
         public double TickValue;
         public SimTime EndsAt;
         public HastedTimer? NextTick;
+        public readonly Action<SimulationContext> Tick;
     }
 
     public override void Bind(Hero hero)
     {
         double share = ForRank(DamageShareByRank);
         int logId = LogIds.Effect(DotEffectId);
-        const string name = DotName;
         var splinters = new Dictionary<EnemyTarget, Splinter>();
         // The fight the splinters belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;
-
-        void Tick(SimulationContext ctx, EnemyTarget target, Splinter s)
-        {
-            s.NextTick = null;
-            if (target.IsSleeping || ctx.CurrentTime >= s.EndsAt) return;
-            double value = s.TickValue;
-            // The crit's damage already includes the hero's damage buffs, so the ticks are not scaled again.
-            ctx.ApplyDamage(hero, target, logId, name, canCrit: false, _ => new SimulationContext.HitNumbers(value, 0.0, 1.0));
-            // Keep the rhythm: a crit landing before the next tick restarts the 8 seconds.
-            s.NextTick = HastedTimer.Start(ctx, hero, TickPeriodSeconds, c => Tick(c, target, s), name);
-        }
 
         hero.OnDamageDealt += dmg =>
         {
@@ -64,16 +67,12 @@ public class AmethystSplinters : Trait
                 fight = ctx;
                 splinters.Clear();
             }
-            if (!splinters.TryGetValue(dmg.Target, out var s)) splinters[dmg.Target] = s = new Splinter();
+            if (!splinters.TryGetValue(dmg.Target, out var s)) splinters[dmg.Target] = s = new Splinter(hero, dmg.Target, logId);
             // The damage not yet dealt (the time left in unhasted ticks) carries over into the new 8 seconds.
             double left = s.EndsAt > now ? s.TickValue * (s.EndsAt - now).TotalSeconds / TickPeriodSeconds : 0.0;
             s.TickValue = (left + dmg.Amount * share) / BaseTicks;
             s.EndsAt = now + SimTime.FromSeconds(DurationSeconds);
-            if (s.NextTick == null)
-            {
-                var target = dmg.Target;
-                s.NextTick = HastedTimer.Start(ctx, hero, TickPeriodSeconds, c => Tick(c, target, s), name);
-            }
+            s.NextTick ??= HastedTimer.Start(ctx, hero, TickPeriodSeconds, s.Tick, DotName);
         };
     }
 }

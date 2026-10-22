@@ -27,6 +27,15 @@ public class Kindling : Trait
         var burning = new Dictionary<EnemyTarget, PeriodicEffect>();
         // The fight the burning enemies belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;
+        void Ignite(SimulationContext ctx, EnemyTarget target)
+        {
+            if (burning.TryGetValue(target, out var old) && old.IsActive) old.Stop(ctx);
+            burning[target] = PeriodicEffect.BeginHasted(ctx, hero, TraitName, DurationSeconds, TickSeconds,
+                tickOnStart: false, partialFinalTick: false,
+                onTick: (c, fraction) => { if (!target.IsSleeping) dot.DealDamage(c, target, damageMultiplier: fraction); });
+        }
+
+        // Speed: the handler captures nothing per hit; the burn's closure is made only when it ignites.
         hero.OnDamageDealt += dmg =>
         {
             if (dmg.Target is not { } target || dmg.SimContext is not { } ctx || dmg.AbilityId == dot.DamageLogId) return;
@@ -35,11 +44,7 @@ public class Kindling : Trait
                 fight = ctx;
                 burning.Clear();
             }
-            if (!rppm.Roll(hero, ctx, target)) return;
-            if (burning.TryGetValue(target, out var old) && old.IsActive) old.Stop(ctx);
-            burning[target] = PeriodicEffect.BeginHasted(ctx, hero, TraitName, DurationSeconds, TickSeconds,
-                tickOnStart: false, partialFinalTick: false,
-                onTick: (c, fraction) => { if (!target.IsSleeping) dot.DealDamage(c, target, damageMultiplier: fraction); });
+            if (rppm.Roll(hero, ctx, target)) Ignite(ctx, target);
         };
     }
 

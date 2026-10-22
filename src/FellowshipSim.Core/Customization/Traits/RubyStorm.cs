@@ -29,7 +29,7 @@ public class RubyStorm : Trait
             double damage = share * hero.Stats.MaxHealth;
             foreach (var enemy in ctx.Outcomes.SelectTargets(logId, ctx.ActiveEnemies, ctx))
             {
-                ctx.ApplyDamage(hero, enemy, logId, TraitName, canCrit: false, _ => new SimulationContext.HitNumbers(damage, 0.0, 1.0));
+                ctx.ApplyDamage(hero, enemy, damage, logId, TraitName, canCrit: false, 0.0, 1.0);
             }
         };
     }
