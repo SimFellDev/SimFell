@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace FellowshipSim.Core.Engine;
 
 /// <summary>Everything the damage pipeline knows about a hit before its random parts are decided.</summary>
@@ -116,20 +118,49 @@ public class RandomOutcomeSource : IOutcomeSource
     public void HitFinished(SimulationContext ctx) { }
 }
 
-public class SimulationRng
+/// <summary>The simulation's random numbers: xoshiro256** (Blackman and Vigna, 2018), seeded through SplitMix64.</summary>
+public sealed class SimulationRng
 {
-    private Random _random;
+    private ulong _s0, _s1, _s2, _s3;
 
     public SimulationRng(int seed = 42)
     {
-        _random = new Random(seed);
+        Seed(seed);
     }
 
     public void Seed(int seed)
     {
-        _random = new Random(seed);
+        // SplitMix64 spreads the seed over the four state words, so the state is never all zero.
+        ulong x = (ulong)seed;
+        _s0 = SplitMix64(ref x);
+        _s1 = SplitMix64(ref x);
+        _s2 = SplitMix64(ref x);
+        _s3 = SplitMix64(ref x);
     }
 
-    public bool Roll(double chance) => _random.NextDouble() < chance;
-    public double NextDouble() => _random.NextDouble();
+    public bool Roll(double chance) => NextDouble() < chance;
+
+    /// <summary>Uniform in [0, 1): the top 53 bits of the next number.</summary>
+    public double NextDouble() => (NextUInt64() >> 11) * (1.0 / (1UL << 53));
+
+    private ulong NextUInt64()
+    {
+        ulong result = BitOperations.RotateLeft(_s1 * 5, 7) * 9;
+        ulong t = _s1 << 17;
+        _s2 ^= _s0;
+        _s3 ^= _s1;
+        _s1 ^= _s2;
+        _s0 ^= _s3;
+        _s2 ^= t;
+        _s3 = BitOperations.RotateLeft(_s3, 45);
+        return result;
+    }
+
+    private static ulong SplitMix64(ref ulong x)
+    {
+        ulong z = x += 0x9E3779B97F4A7C15UL;
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+        return z ^ (z >> 31);
+    }
 }
