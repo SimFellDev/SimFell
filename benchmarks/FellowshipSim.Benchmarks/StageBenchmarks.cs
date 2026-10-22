@@ -51,15 +51,27 @@ public class AuraBenchmarks
 
     private Hero _hero = null!;
     private SimulationContext _ctx = null!;
+    private Hero _noCooldowns = null!;
+    private SimulationContext _noCooldownsCtx = null!;
 
     [GlobalSetup]
-    public void GlobalSetup() => (_hero, _ctx, _) = Fight.AtMidFight(1);
+    public void GlobalSetup()
+    {
+        (_hero, _ctx, _) = Fight.AtMidFight(1);
+        // The same hero with no cooldown states: an aura change advances no cooldown.
+        (_noCooldowns, _noCooldownsCtx, _) = Fight.AtMidFight(1);
+        _noCooldowns.Cooldowns.Clear();
+    }
 
     [Benchmark]
     public double ApplyRemoveCritAura() => ApplyRemove(_hero, _ctx, CritAura);
 
     [Benchmark]
     public double ApplyRemoveNoStatAura() => ApplyRemove(_hero, _ctx, NoStatAura);
+
+    /// <summary><see cref="ApplyRemoveNoStatAura"/> with no cooldowns; the difference is the cooldown advance of two changes.</summary>
+    [Benchmark]
+    public double ApplyRemoveNoStatAuraNoCooldowns() => ApplyRemove(_noCooldowns, _noCooldownsCtx, NoStatAura);
 
     public static double ApplyRemove(Hero hero, SimulationContext ctx, AuraDef def)
     {
@@ -95,8 +107,8 @@ public class HasteAuraBenchmarks
 /// <summary>
 /// Stage C: one hit on a hero 60 s into a fight. <see cref="FrostBoltDealDamage"/> is the full path (base damage from
 /// stats, crit, the hit closures, OnDamageDealt to every subscriber); <see cref="ApplyDamageFixedNumbers"/> skips the stat
-/// reads; <see cref="DamageDealtFanOut"/> is the OnDamageDealt fan-out alone. Hits trigger procs, so each iteration starts
-/// from a new hero.
+/// reads; <see cref="DamageDealtFanOut"/> is the OnDamageDealt fan-out alone, and <see cref="DamageDealtFanOutNoTarget"/>
+/// its floor. Hits trigger procs, so each iteration starts from a new hero.
 /// </summary>
 [MemoryDiagnoser]
 public class HitBenchmarks
@@ -132,6 +144,12 @@ public class HitBenchmarks
     [InvocationCount(HitsPerIteration)]
     public void DamageDealtFanOut() =>
         _hero.TriggerDamageDealt(new DamageContext(_hero, _target, _frostBolt.DamageLogId, _frostBolt.Name, 1000.0, false, _ctx.CurrentTime, _ctx));
+
+    /// <summary>The fan-out of a hit with no target and no damage: most subscribers return at their first check.</summary>
+    [Benchmark]
+    [InvocationCount(HitsPerIteration)]
+    public void DamageDealtFanOutNoTarget() =>
+        _hero.TriggerDamageDealt(new DamageContext(_hero, null, _frostBolt.DamageLogId, _frostBolt.Name, 0.0, false, _ctx.CurrentTime, _ctx));
 }
 
 /// <summary>
