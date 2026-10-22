@@ -228,6 +228,5 @@ public class BinaryOpExpression : IAplExpression
 internal static class AuraLookup
 {
     /// <summary>An active aura whose name, as an APL slug ("glacial_assault"), matches <paramref name="slug"/>.</summary>
-    public static Aura? Find(AuraContainer auras, string slug, SimTime now) =>
-        auras.Active(now).FirstOrDefault(a => AplNames.Slug(a.Name) == slug || a.Key == slug);
+    public static Aura? Find(AuraContainer auras, string slug, SimTime now) => auras.FindActive(slug, now);
 }

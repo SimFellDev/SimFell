@@ -19,12 +19,13 @@ public class MonteCarloResult
 public class MonteCarloSimulator
 {
     private readonly Hero _hero;
-    private readonly AplActionLists _actions;
+    private readonly AplProgram _program;
 
+    /// <summary>A simulator of <paramref name="hero"/> casting by <paramref name="actions"/>; an action naming no ability of the hero throws.</summary>
     public MonteCarloSimulator(Hero hero, AplActionLists actions)
     {
         _hero = hero;
-        _actions = actions;
+        _program = actions.Bind(hero);
     }
 
     /// <summary>Runs <paramref name="iterations"/> fights. Fight i uses seed <paramref name="firstSeed"/> + i, so a run can be repeated exactly.</summary>
@@ -53,7 +54,7 @@ public class MonteCarloSimulator
             // event queue carry time forward to the next decision point.
             while (ctx.CurrentTime < duration)
             {
-                bool acted = IsFreeToAct(ctx) && _actions.TryAct(_hero, ctx);
+                bool acted = IsFreeToAct(ctx) && _program.TryAct(ctx);
 
                 var next = NextDecisionTime(ctx);
                 if (!acted && next <= ctx.CurrentTime)

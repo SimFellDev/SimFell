@@ -43,6 +43,8 @@ public abstract class Hero : Actor
     public List<Customization.Sets.SetBonus> Sets { get; } = new();
 
     public Dictionary<string, CooldownState> Cooldowns { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Changes whenever a cooldown state is added to <see cref="Cooldowns"/> or they are cleared.</summary>
+    public int CooldownsVersion { get; private set; }
     public SimTime GlobalCooldownEndTime { get; set; } = SimTime.Zero;
 
     /// <summary>The global cooldown before haste (per the user: 1.5s, hasted).</summary>
@@ -469,6 +471,7 @@ public abstract class Hero : Actor
                 rateAt: now => CooldownRate(ability, now),
                 nextCheckpoint: now => Auras.NextExpiry(now));
             Cooldowns[ability.Name] = state;
+            CooldownsVersion++;
         }
         return state;
     }
@@ -530,6 +533,7 @@ public abstract class Hero : Actor
         Auras.ClearAll();
         Auras.ClearTimers();
         Cooldowns.Clear();
+        CooldownsVersion++;
         GlobalCooldownEndTime = SimTime.Zero;
         CurrentCast = null;
         CurrentChannel = null;

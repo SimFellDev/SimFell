@@ -14,7 +14,7 @@ public class AplDecisionBenchmarks
 {
     private Hero _hero = null!;
     private SimulationContext _ctx = null!;
-    private IReadOnlyList<AplAction> _actions = null!;
+    private IReadOnlyList<BoundAplStep> _actions = null!;
 
     [Params(1, 8)]
     public int Targets { get; set; }
@@ -23,7 +23,7 @@ public class AplDecisionBenchmarks
     public void GlobalSetup()
     {
         var (hero, ctx, actions) = Fight.AtMidFight(Targets);
-        (_hero, _ctx, _actions) = (hero, ctx, actions.Actions);
+        (_hero, _ctx, _actions) = (hero, ctx, actions.Bind(hero).Actions);
     }
 
     [Benchmark]
@@ -32,7 +32,7 @@ public class AplDecisionBenchmarks
         int ready = 0;
         foreach (var action in _actions)
         {
-            if (action.ListAction != null ? action.ConditionHolds(_hero, _ctx) : action.CanExecute(_hero, _ctx)) ready++;
+            if (action is BoundAplAction ability ? ability.CanExecute(_ctx) : action.ConditionHolds(_ctx)) ready++;
         }
         return ready;
     }

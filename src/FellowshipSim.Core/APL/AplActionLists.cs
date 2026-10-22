@@ -36,31 +36,12 @@ public sealed class AplActionLists(IReadOnlyDictionary<string, List<AplAction>> 
     /// <summary>The actions of <see cref="AplActionLine.DefaultList"/>.</summary>
     public IReadOnlyList<AplAction> Actions => Lists.GetValueOrDefault(AplActionLine.DefaultList) ?? [];
 
-    /// <summary>Casts the first ready action, starting at <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.</summary>
-    public bool TryAct(Hero hero, SimulationContext ctx) => TryAct(hero, ctx, AplActionLine.DefaultList, []);
+    /// <summary>The lists bound to <paramref name="hero"/> (<see cref="AplProgram.Bind"/>).</summary>
+    public AplProgram Bind(Hero hero) => AplProgram.Bind(this, hero);
 
-    // A list already running in this decision is skipped, so lists that name each other end.
-    private bool TryAct(Hero hero, SimulationContext ctx, string list, HashSet<string> running)
-    {
-        if (!Lists.TryGetValue(list, out var actions) || !running.Add(list)) return false;
-        try
-        {
-            foreach (var action in actions)
-            {
-                if (action.ListAction is { } listAction)
-                {
-                    if (running.Contains(action.ListName!) || !action.ConditionHolds(hero, ctx)) continue;
-                    bool acted = TryAct(hero, ctx, action.ListName!, running);
-                    if (acted || listAction == AplListAction.Run) return acted;
-                    continue;
-                }
-                if (action.CanExecute(hero, ctx) && action.Execute(hero, ctx)) return true;
-            }
-            return false;
-        }
-        finally
-        {
-            running.Remove(list);
-        }
-    }
+    // Each hero's program is bound once.
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<Hero, AplProgram> _bound = new();
+
+    /// <summary>Casts the first ready action, starting at <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.</summary>
+    public bool TryAct(Hero hero, SimulationContext ctx) => _bound.GetValue(hero, Bind).TryAct(ctx);
 }

@@ -213,6 +213,14 @@ public class AplEditorTests
     public void Script_Rejects_A_Bad_List_Action(string script, string message) =>
         Assert.Equal(message, Assert.Throws<ParseException>(() => AplParser.ParseScript(script)).Message);
 
+    [Fact]
+    public void Bind_Rejects_An_Action_Naming_No_Ability_Of_The_Hero()
+    {
+        var (hero, _) = Fight(100);
+        var error = Assert.Throws<InvalidOperationException>(() => AplParser.ParseScript("actions+=/frost_bolt\nactions+=/no_such_ability").Bind(hero));
+        Assert.Equal("APL: Rime has no ability named `no_such_ability`.", error.Message);
+    }
+
     // The action a decision casts with one enemy at full health, or null when nothing is cast. Frost Bolt has a cast
     // time; Cold Snap is instant and spends a charge.
     private static string? CastBy(string script)

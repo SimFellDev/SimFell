@@ -65,6 +65,8 @@ public class Aura
 
     public AuraDef Def { get; }
     public string Name => Def.Name;
+    /// <summary>The aura's action-list name ("glacial_assault"). Not on <see cref="AuraDef"/>: a cached field would join its record equality.</summary>
+    public string AplSlug => field ??= APL.AplNames.Slug(Def.Name);
     public int LogId => Def.LogId;
     public string Key => Def.Key;
     public SimTime Duration => Def.Duration;
@@ -280,6 +282,17 @@ public class AuraContainer
     {
         CleanExpired(now);
         return _auras.Values;
+    }
+
+    /// <summary>The first active aura whose action-list name or key is <paramref name="slug"/>, or null.</summary>
+    public Aura? FindActive(string slug, SimTime now)
+    {
+        CleanExpired(now);
+        foreach (var aura in _auras.Values)
+        {
+            if (aura.AplSlug == slug || aura.Key == slug) return aura;
+        }
+        return null;
     }
 
     public Dictionary<string, int> GetActiveAuraStacks(SimTime now = default)
