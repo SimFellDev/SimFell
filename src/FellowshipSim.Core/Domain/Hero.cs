@@ -29,6 +29,8 @@ public abstract class Hero : Actor
     private static readonly int CooldownRateStats =
         AuraDef.MaskOf(StatType.CooldownRecovery) | AuraDef.MaskOf(StatType.Haste) | AuraDef.MaskOf(StatType.HasteRating);
 
+    private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
+
     private bool ChangesCooldownRate(Aura aura) =>
         aura.Def.Changes(CooldownRateStats) || (CooldownAccelerationAuraKeys.Count > 0 && CooldownAccelerationAuraKeys.Contains(aura.Key));
 
@@ -394,7 +396,7 @@ public abstract class Hero : Actor
             foreach (var aura in Auras.Active(now))
             {
                 // Weapon abilities only speed up from their own recovery effects (Chronoshift's barrier, per the user).
-                if (!ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
+                if (!aura.Def.Changes(CooldownRecoveryStat) || !ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
                 var mods = aura.Modifiers;
                 for (int i = 0; i < mods.Count; i++)
                 {

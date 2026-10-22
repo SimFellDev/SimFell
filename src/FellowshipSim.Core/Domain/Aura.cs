@@ -417,9 +417,12 @@ public class AuraContainer
     private void Refold(StatType type)
     {
         int t = (int)type;
+        int stat = AuraDef.MaskOf(type);
         var fold = new ModifierFold();
         foreach (var aura in _auras.Values)
         {
+            // An aura with no modifier of the stat adds nothing to its fold.
+            if (!aura.Def.Changes(stat)) continue;
             var mods = aura.Modifiers;
             for (int i = 0; i < mods.Count; i++)
             {
@@ -446,9 +449,11 @@ public class AuraContainer
     private void Resum(StatType type)
     {
         int t = (int)type;
+        int stat = AuraDef.MaskOf(type);
         double sum = 0.0;
         foreach (var aura in _auras.Values)
         {
+            if (!aura.Def.Changes(stat)) continue;
             var mods = aura.Modifiers;
             for (int i = 0; i < mods.Count; i++)
             {
