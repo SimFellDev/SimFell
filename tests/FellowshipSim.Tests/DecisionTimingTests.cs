@@ -59,6 +59,24 @@ public class DecisionTimingTests
     }
 
     [Fact]
+    public void A_Product_Of_Remaining_Times_Passing_Its_Threshold_At_T_Casts_At_T()
+    {
+        var hero = Tester.Create();
+        var starts = CastStarts(hero);
+        SimTime? markExpires = null;
+        hero.Auras.OnGained += (aura, _, _) => { if (aura.Def == Tester.Mark) markExpires = aura.ExpiresAt; };
+        // After Mark and Strike the hero waits: the product falls as both remaining times fall.
+        Fight(hero, "actions+=/mark\nactions+=/strike\nactions+=/gather,if=buff.mark.remains*cooldown.strike.remains<4", seconds: 5);
+
+        long strike = starts.Single(s => s.Ability.Name == "Strike").At.Milliseconds;
+        long expires = markExpires!.Value.Milliseconds, ready = strike + 4250;
+        // The first millisecond after Strike's global cooldown at which the product is below 4.
+        long expected = strike + 1500;
+        while ((expires - expected) / 1000.0 * ((ready - expected) / 1000.0) >= 4) expected++;
+        Assert.Equal(expected, starts.Single(s => s.Ability.Name == "Gather").At.Milliseconds);
+    }
+
+    [Fact]
     public void An_Aura_Runs_Out_At_Its_Expiry_While_Nothing_Reads_It()
     {
         var hero = Tester.Create();

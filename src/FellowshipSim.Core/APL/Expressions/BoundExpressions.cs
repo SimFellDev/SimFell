@@ -6,10 +6,11 @@ namespace FellowshipSim.Core.APL.Expressions;
 /// the <see cref="IAplExpression"/> it was bound from.
 /// </summary>
 /// <remarks>
-/// Between events a value is linear in time: resources, enemies and health change only in events, an aura read changes
-/// when the aura runs out, a cooldown read when a charge returns, and a remaining time falls by a second per second.
-/// <see cref="Until"/>, <see cref="Slope"/> and <see cref="NumericAt"/> describe that line, and <see cref="NextChange"/>
-/// solves the time the expression's truth changes on it.
+/// Between events a value is a quotient of two polynomials in time (<see cref="TimeCurve"/>): resources, enemies and
+/// health change only in events, an aura read changes when the aura runs out, a cooldown read when a charge returns, and a
+/// remaining time falls by a second per second; sums, products and quotients of these are such quotients.
+/// <see cref="Until"/>, <see cref="Curve"/> and <see cref="NumericAt"/> describe the value up to its next break, and
+/// <see cref="NextChange"/> solves the time the expression's truth changes.
 /// </remarks>
 public abstract class BoundExpression
 {
@@ -17,13 +18,13 @@ public abstract class BoundExpression
     public abstract double EvaluateNumeric(SimulationContext ctx);
 
     /// <summary>
-    /// The end of the current line of <see cref="EvaluateNumeric"/> with no event before it: the next time an aura it reads
-    /// runs out or a charge returns. <see cref="SimTime.Infinite"/> when only an event changes it.
+    /// The next break of <see cref="EvaluateNumeric"/> with no event before it: the next time an aura it reads runs out, a
+    /// charge returns or a remainder wraps. <see cref="SimTime.Infinite"/> when only an event changes it.
     /// </summary>
     internal abstract SimTime Until(SimulationContext ctx);
 
-    /// <summary>Change of <see cref="EvaluateNumeric"/> per millisecond until <see cref="Until"/>; NaN when it is not linear.</summary>
-    internal virtual double Slope(SimulationContext ctx) => 0.0;
+    /// <summary><see cref="EvaluateNumeric"/> from now to <see cref="Until"/>, by the milliseconds after now.</summary>
+    internal virtual TimeCurve Curve(SimulationContext ctx) => TimeCurve.Constant(EvaluateNumeric(ctx));
 
     /// <summary><see cref="EvaluateNumeric"/> at <paramref name="time"/>, from the current time to <see cref="Until"/>, with no event before it.</summary>
     internal abstract double NumericAt(SimulationContext ctx, SimTime time);
@@ -33,10 +34,13 @@ public abstract class BoundExpression
 
     /// <summary>
     /// The earliest time after the current time at which <see cref="Evaluate"/> can give another value with no event before
-    /// it, or <see cref="SimTime.Infinite"/>. A value read as a truth changes when it crosses 0.
+    /// it, or <see cref="SimTime.Infinite"/>. A value read as a truth changes where its numerator or denominator is 0.
     /// </summary>
-    public virtual SimTime NextChange(SimulationContext ctx) =>
-        Crossing.First(ctx, this, Until(ctx), EvaluateNumeric(ctx), Slope(ctx), 0.0);
+    public virtual SimTime NextChange(SimulationContext ctx)
+    {
+        var curve = Curve(ctx);
+        return Crossing.First(ctx, this, Until(ctx), curve.Numerator, curve.Denominator);
+    }
 
     /// <summary>Binds <paramref name="expression"/> to <paramref name="hero"/>.</summary>
     public static BoundExpression Bind(IAplExpression expression, Hero hero) => expression switch
@@ -66,38 +70,180 @@ public abstract class BoundExpression
     }
 }
 
-/// <summary>The first time a truth on a line of values changes.</summary>
+/// <summary>
+/// A value as a function of the milliseconds τ after the current time: <see cref="Numerator"/>(τ) /
+/// <see cref="Denominator"/>(τ), each a polynomial with its coefficients from τ⁰ up.
+/// </summary>
+internal readonly struct TimeCurve(double[] numerator, double[] denominator)
+{
+    public double[] Numerator { get; } = numerator;
+    public double[] Denominator { get; } = denominator;
+
+    public static TimeCurve Constant(double value) => new([value], [1.0]);
+
+    /// <summary>A value of <paramref name="value"/> now that changes by <paramref name="perMillisecond"/> each millisecond.</summary>
+    public static TimeCurve Line(double value, double perMillisecond) => new([value, perMillisecond], [1.0]);
+
+    public bool IsConstant => Polynomial.Degree(Numerator) <= 0 && Polynomial.Degree(Denominator) <= 0;
+
+    public static TimeCurve operator -(TimeCurve a) => new(Polynomial.Scale(a.Numerator, -1.0), a.Denominator);
+
+    public static TimeCurve operator +(TimeCurve a, TimeCurve b) => new(
+        Polynomial.Add(Polynomial.Multiply(a.Numerator, b.Denominator), Polynomial.Multiply(b.Numerator, a.Denominator)),
+        Polynomial.Multiply(a.Denominator, b.Denominator));
+
+    public static TimeCurve operator -(TimeCurve a, TimeCurve b) => a + -b;
+
+    public static TimeCurve operator *(TimeCurve a, TimeCurve b) =>
+        new(Polynomial.Multiply(a.Numerator, b.Numerator), Polynomial.Multiply(a.Denominator, b.Denominator));
+
+    public static TimeCurve operator /(TimeCurve a, TimeCurve b) =>
+        new(Polynomial.Multiply(a.Numerator, b.Denominator), Polynomial.Multiply(a.Denominator, b.Numerator));
+
+    /// <summary>The numerator of this curve less <paramref name="value"/>: 0 where the curve equals the value.</summary>
+    public double[] NumeratorLess(double value) => Polynomial.Add(Numerator, Polynomial.Scale(Denominator, -value));
+}
+
+/// <summary>Polynomials as their coefficients from x⁰ up.</summary>
+internal static class Polynomial
+{
+    /// <summary>The highest power with a coefficient that is not 0; -1 for the zero polynomial.</summary>
+    public static int Degree(double[] p)
+    {
+        int degree = p.Length - 1;
+        while (degree >= 0 && p[degree] == 0.0) degree--;
+        return degree;
+    }
+
+    public static double[] Add(double[] a, double[] b)
+    {
+        var sum = new double[Math.Max(a.Length, b.Length)];
+        for (int i = 0; i < a.Length; i++) sum[i] += a[i];
+        for (int i = 0; i < b.Length; i++) sum[i] += b[i];
+        return sum;
+    }
+
+    public static double[] Scale(double[] p, double factor)
+    {
+        var scaled = new double[p.Length];
+        for (int i = 0; i < p.Length; i++) scaled[i] = p[i] * factor;
+        return scaled;
+    }
+
+    public static double[] Multiply(double[] a, double[] b)
+    {
+        var product = new double[a.Length + b.Length - 1];
+        for (int i = 0; i < a.Length; i++)
+        {
+            for (int j = 0; j < b.Length; j++) product[i + j] += a[i] * b[j];
+        }
+        return product;
+    }
+
+    public static double Evaluate(double[] p, double x)
+    {
+        double value = 0.0;
+        for (int i = p.Length - 1; i >= 0; i--) value = value * x + p[i];
+        return value;
+    }
+
+    private static double[] Derivative(double[] p)
+    {
+        if (p.Length <= 1) return [0.0];
+        var derivative = new double[p.Length - 1];
+        for (int i = 1; i < p.Length; i++) derivative[i - 1] = p[i] * i;
+        return derivative;
+    }
+
+    /// <summary>
+    /// Adds the real roots of <paramref name="p"/> between <paramref name="low"/> and <paramref name="high"/> to
+    /// <paramref name="roots"/>. Between two turning points a polynomial rises or falls, so each stretch holds at most one
+    /// root, found by halving the stretch; the turning points are the roots of the derivative.
+    /// </summary>
+    public static void Roots(double[] p, double low, double high, List<double> roots)
+    {
+        int degree = Degree(p);
+        if (degree <= 0) return;
+        // Every root lies within Cauchy's bound.
+        double bound = 0.0;
+        for (int i = 0; i < degree; i++) bound = Math.Max(bound, Math.Abs(p[i] / p[degree]));
+        high = Math.Min(high, 1.0 + bound);
+        low = Math.Max(low, -1.0 - bound);
+        if (!(low < high)) return;
+        if (degree == 1)
+        {
+            double root = -p[0] / p[1];
+            if (root > low && root < high) roots.Add(root);
+            return;
+        }
+        var turns = new List<double>();
+        Roots(Derivative(p), low, high, turns);
+        turns.Sort();
+        turns.Add(high);
+        double a = low, fa = Evaluate(p, low);
+        foreach (double b in turns)
+        {
+            double fb = Evaluate(p, b);
+            if (fb == 0.0) roots.Add(b);
+            else if (fa != 0.0 && (fa < 0.0) != (fb < 0.0)) roots.Add(Halve(p, a, fa, b));
+            (a, fa) = (b, fb);
+        }
+    }
+
+    // The root of p between a and b, where p(a) and p(b) have opposite signs.
+    private static double Halve(double[] p, double a, double fa, double b)
+    {
+        for (int i = 0; i < 200 && b - a > 1e-6; i++)
+        {
+            double middle = 0.5 * (a + b);
+            double fm = Evaluate(p, middle);
+            if (fm == 0.0) return middle;
+            if ((fm < 0.0) == (fa < 0.0)) (a, fa) = (middle, fm);
+            else b = middle;
+        }
+        return 0.5 * (a + b);
+    }
+}
+
+/// <summary>The first time a truth on a curve of values changes.</summary>
 internal static class Crossing
 {
     /// <summary>
     /// The first whole millisecond after the current time and before <paramref name="until"/> at which
-    /// <paramref name="expression"/>'s truth differs from now, where the truth depends on a value that starts at
-    /// <paramref name="value"/> and changes by <paramref name="slope"/> per millisecond and changes truth only where the
-    /// value passes one of <paramref name="thresholds"/>. Else <paramref name="until"/>: the line ends there.
+    /// <paramref name="expression"/>'s truth differs from now, where the truth can change only at a root of one of
+    /// <paramref name="polynomials"/> (in the milliseconds after now). Else <paramref name="until"/>: the curve ends there.
     /// </summary>
-    public static SimTime First(SimulationContext ctx, BoundExpression expression, SimTime until, double value, double slope,
-        params ReadOnlySpan<double> thresholds)
+    public static SimTime First(SimulationContext ctx, BoundExpression expression, SimTime until, params ReadOnlySpan<double[]> polynomials)
     {
         var now = ctx.CurrentTime;
         var limit = Later(now, until);
-        // A value that is not linear in time can change truth at any millisecond.
-        if (double.IsNaN(slope)) return Earlier(limit, Next(now));
-        if (slope == 0.0) return limit;
+        var roots = new List<double>();
+        foreach (var p in polynomials) Polynomial.Roots(p, -3.0, limit.Milliseconds - (double)now.Milliseconds, roots);
+        if (roots.Count == 0) return limit;
+        roots.Sort();
         bool current = expression.Evaluate(ctx);
-        var first = limit;
-        foreach (double threshold in thresholds)
+        foreach (double root in roots)
         {
-            double at = now.Milliseconds + (threshold - value) / slope;
-            if (!(at > now.Milliseconds - 1) || at - 2 >= first.Milliseconds) continue;
-            // The line crosses the threshold at `at`; rounding moves the change of truth by a millisecond or two.
-            for (long ms = Math.Max(now.Milliseconds + 1, (long)Math.Floor(at) - 2); ms < first.Milliseconds && ms <= (long)Math.Ceiling(at) + 2; ms++)
-            {
-                if (expression.EvaluateAt(ctx, SimTime.FromMilliseconds(ms)) == current) continue;
-                first = SimTime.FromMilliseconds(ms);
-                break;
-            }
+            if (FirstAround(now, limit, root, ms => expression.EvaluateAt(ctx, ms) != current) is { } changed) return changed;
         }
-        return first;
+        return limit;
+    }
+
+    /// <summary>
+    /// The first millisecond after <paramref name="now"/> and before <paramref name="limit"/>, within two of
+    /// <paramref name="root"/> (milliseconds after now; rounding moves a change by a millisecond or two), at which
+    /// <paramref name="changed"/> holds. Null when none does.
+    /// </summary>
+    public static SimTime? FirstAround(SimTime now, SimTime limit, double root, Func<SimTime, bool> changed)
+    {
+        double at = now.Milliseconds + root;
+        if (at - 2 >= limit.Milliseconds) return null;
+        for (long ms = Math.Max(now.Milliseconds + 1, (long)Math.Floor(at) - 2); ms < limit.Milliseconds && ms <= (long)Math.Ceiling(at) + 2; ms++)
+        {
+            var time = SimTime.FromMilliseconds(ms);
+            if (changed(time)) return time;
+        }
+        return null;
     }
 
     /// <summary>The first millisecond after <paramref name="time"/>.</summary>
@@ -188,8 +334,10 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
     // The aura found now runs out at its expiry; another aura of the name appears only in an event.
     internal override SimTime Until(SimulationContext ctx) => Find(ctx, ctx.CurrentTime)?.ExpiresAt ?? SimTime.Infinite;
 
-    internal override double Slope(SimulationContext ctx) =>
-        property == AuraProperty.Remains && Find(ctx, ctx.CurrentTime) is { } aura && aura.ExpiresAt != SimTime.Infinite ? -0.001 : 0.0;
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        property == AuraProperty.Remains && Find(ctx, ctx.CurrentTime) is { } aura && aura.ExpiresAt != SimTime.Infinite
+            ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001)
+            : TimeCurve.Constant(EvaluateNumeric(ctx));
 
     internal override double NumericAt(SimulationContext ctx, SimTime time)
     {
@@ -241,8 +389,10 @@ internal sealed class BoundCooldown : BoundNumeric
     internal override SimTime Until(SimulationContext ctx) =>
         State() is { } state && state.ChargesAt(ctx.CurrentTime) < state.MaxCharges ? state.NextChargeAt : SimTime.Infinite;
 
-    internal override double Slope(SimulationContext ctx) =>
-        _property == CooldownProperty.Remains && State() is { } state && state.ChargesAt(ctx.CurrentTime) == 0 ? -0.001 : 0.0;
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        _property == CooldownProperty.Remains && State() is { } state && state.ChargesAt(ctx.CurrentTime) == 0 && state.NextChargeAt > ctx.CurrentTime
+            ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001)
+            : TimeCurve.Constant(EvaluateNumeric(ctx));
 
     internal override double NumericAt(SimulationContext ctx, SimTime time)
     {
@@ -272,7 +422,7 @@ internal sealed class BoundNegate(BoundExpression operand) : BoundExpression
     public override bool Evaluate(SimulationContext ctx) => operand.EvaluateNumeric(ctx) != 0.0;
     public override double EvaluateNumeric(SimulationContext ctx) => -operand.EvaluateNumeric(ctx);
     internal override SimTime Until(SimulationContext ctx) => operand.Until(ctx);
-    internal override double Slope(SimulationContext ctx) => -operand.Slope(ctx);
+    internal override TimeCurve Curve(SimulationContext ctx) => -operand.Curve(ctx);
     internal override double NumericAt(SimulationContext ctx, SimTime time) => -operand.NumericAt(ctx, time);
     internal override bool EvaluateAt(SimulationContext ctx, SimTime time) => operand.NumericAt(ctx, time) != 0.0;
 }
@@ -319,22 +469,44 @@ internal sealed class BoundBinary(BoundExpression left, BinaryOperator op, Bound
         _ => r == 0.0 ? 0.0 : l % r
     };
 
-    internal override SimTime Until(SimulationContext ctx) =>
-        IsArithmetic ? Crossing.Earlier(left.Until(ctx), right.Until(ctx)) : NextChange(ctx);
-
-    internal override double Slope(SimulationContext ctx)
+    internal override SimTime Until(SimulationContext ctx)
     {
-        if (!IsArithmetic) return 0.0;
-        double sl = left.Slope(ctx), sr = right.Slope(ctx);
-        if (sl == 0.0 && sr == 0.0) return 0.0;
+        if (!IsArithmetic) return NextChange(ctx);
+        var now = ctx.CurrentTime;
+        var until = Crossing.Earlier(left.Until(ctx), right.Until(ctx));
+        if (op is not (BinaryOperator.Divide or BinaryOperator.Modulo)) return until;
+        var divisor = right.Curve(ctx);
+        // A quotient or remainder by a divisor of exactly 0 reads 0; a divisor that moves leaves 0 the next millisecond.
+        if (right.EvaluateNumeric(ctx) == 0.0) return divisor.IsConstant ? until : Crossing.Earlier(until, Crossing.Next(now));
+        if (op == BinaryOperator.Divide) return until;
+        // A remainder wraps where the quotient passes a whole number, and where the divisor passes 0.
+        var dividend = left.Curve(ctx);
+        double whole = Math.Truncate(left.EvaluateNumeric(ctx) / right.EvaluateNumeric(ctx));
+        var roots = new List<double>();
+        double span = Crossing.Later(now, until).Milliseconds - (double)now.Milliseconds;
+        for (double k = whole - 1; k <= whole + 1; k++) Polynomial.Roots((dividend - TimeCurve.Constant(k) * divisor).Numerator, 0.0, span, roots);
+        Polynomial.Roots(divisor.Numerator, 0.0, span, roots);
+        foreach (double root in roots)
+        {
+            until = Crossing.Earlier(until, Crossing.Later(now, SimTime.FromMilliseconds(now.Milliseconds + (long)Math.Floor(root))));
+        }
+        return until;
+    }
+
+    internal override TimeCurve Curve(SimulationContext ctx)
+    {
+        if (!IsArithmetic) return TimeCurve.Constant(EvaluateNumeric(ctx));
+        var l = left.Curve(ctx);
+        var r = right.Curve(ctx);
+        if (op is BinaryOperator.Divide or BinaryOperator.Modulo && right.EvaluateNumeric(ctx) == 0.0) return TimeCurve.Constant(0.0);
         return op switch
         {
-            BinaryOperator.Add => sl + sr,
-            BinaryOperator.Subtract => sl - sr,
-            BinaryOperator.Multiply when sl == 0.0 => left.EvaluateNumeric(ctx) * sr,
-            BinaryOperator.Multiply when sr == 0.0 => right.EvaluateNumeric(ctx) * sl,
-            BinaryOperator.Divide when sr == 0.0 && right.EvaluateNumeric(ctx) != 0.0 => sl / right.EvaluateNumeric(ctx),
-            _ => double.NaN,
+            BinaryOperator.Add => l + r,
+            BinaryOperator.Subtract => l - r,
+            BinaryOperator.Multiply => l * r,
+            BinaryOperator.Divide => l / r,
+            // Until the remainder wraps, it is the dividend less a whole number of divisors.
+            _ => l - TimeCurve.Constant(Math.Truncate(left.EvaluateNumeric(ctx) / right.EvaluateNumeric(ctx))) * r,
         };
     }
 
@@ -358,13 +530,12 @@ internal sealed class BoundBinary(BoundExpression left, BinaryOperator op, Bound
     {
         if (op is BinaryOperator.And or BinaryOperator.Or) return Crossing.Earlier(left.NextChange(ctx), right.NextChange(ctx));
         if (!IsComparison) return base.NextChange(ctx);
-        // A comparison changes where the difference of its sides passes 0 (or the equality tolerance), or where a side's
-        // line ends.
+        // A comparison changes where the difference of its sides passes 0 (or the equality tolerance), where it has a pole,
+        // or where a side's curve ends.
         var until = Crossing.Earlier(left.Until(ctx), right.Until(ctx));
-        double difference = left.EvaluateNumeric(ctx) - right.EvaluateNumeric(ctx);
-        double slope = left.Slope(ctx) - right.Slope(ctx);
+        var difference = left.Curve(ctx) - right.Curve(ctx);
         return op is BinaryOperator.Equal or BinaryOperator.NotEqual
-            ? Crossing.First(ctx, this, until, difference, slope, -0.0001, 0.0001)
-            : Crossing.First(ctx, this, until, difference, slope, 0.0);
+            ? Crossing.First(ctx, this, until, difference.NumeratorLess(-0.0001), difference.NumeratorLess(0.0001), difference.Denominator)
+            : Crossing.First(ctx, this, until, difference.Numerator, difference.Denominator);
     }
 }

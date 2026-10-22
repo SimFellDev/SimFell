@@ -197,7 +197,8 @@ public sealed class BoundAplAction : BoundAplStep
 
     /// <summary>
     /// The earliest time the <c>target_if</c> pick can change: a candidate's truth for <c>first</c>; for <c>min</c> and
-    /// <c>max</c>, the end of a candidate's line or the time two candidates' values cross.
+    /// <c>max</c>, the end of a candidate's curve or the first millisecond the pick differs where two candidates' values
+    /// cross.
     /// </summary>
     private SimTime SelectionChange(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates)
     {
@@ -209,14 +210,14 @@ public sealed class BoundAplAction : BoundAplStep
             foreach (var enemy in candidates) next = Crossing.Earlier(next, ChangeAt(ctx, enemy, expression));
             return next;
         }
-        Span<(double Value, double Slope)> lines = stackalloc (double, double)[candidates.Count];
+        var curves = new TimeCurve[candidates.Count];
         var current = ctx.Player.CurrentTarget;
         try
         {
             for (int i = 0; i < candidates.Count; i++)
             {
                 ctx.Player.CurrentTarget = candidates[i];
-                lines[i] = (expression.EvaluateNumeric(ctx), expression.Slope(ctx));
+                curves[i] = expression.Curve(ctx);
                 next = Crossing.Earlier(next, Crossing.Later(now, expression.Until(ctx)));
             }
         }
@@ -224,22 +225,50 @@ public sealed class BoundAplAction : BoundAplStep
         {
             ctx.Player.CurrentTarget = current;
         }
-        for (int i = 0; i < lines.Length; i++)
+        var roots = new List<double>();
+        for (int i = 0; i < curves.Length; i++)
         {
-            for (int j = i + 1; j < lines.Length; j++)
+            for (int j = i + 1; j < curves.Length; j++)
             {
-                double slope = lines[i].Slope - lines[j].Slope;
-                if (double.IsNaN(slope)) return Crossing.Earlier(next, Crossing.Next(now));
-                if (slope == 0.0) continue;
-                // The two lines cross at `at`: the pick is checked again a millisecond before.
-                double at = now.Milliseconds + (lines[j].Value - lines[i].Value) / slope;
-                if (at > now.Milliseconds && at - 1 < next.Milliseconds)
+                var difference = curves[i] - curves[j];
+                Polynomial.Roots(difference.Numerator, -3.0, next.Milliseconds - (double)now.Milliseconds, roots);
+                Polynomial.Roots(difference.Denominator, -3.0, next.Milliseconds - (double)now.Milliseconds, roots);
+            }
+        }
+        roots.Sort();
+        var picked = PickAt(ctx, candidates, now);
+        foreach (double root in roots)
+        {
+            if (Crossing.FirstAround(now, next, root, time => PickAt(ctx, candidates, time) != picked) is { } changed) return changed;
+        }
+        return next;
+    }
+
+    /// <summary>The <c>min</c> or <c>max</c> pick among <paramref name="candidates"/> at <paramref name="time"/>, as <see cref="Select"/> picks it now.</summary>
+    private EnemyTarget? PickAt(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates, SimTime time)
+    {
+        var (selection, expression) = _targetIf!;
+        EnemyTarget? best = null;
+        double bestValue = 0;
+        var current = ctx.Player.CurrentTarget;
+        try
+        {
+            foreach (var enemy in candidates)
+            {
+                ctx.Player.CurrentTarget = enemy;
+                double value = expression.NumericAt(ctx, time);
+                if (best == null || (selection == AplTargetSelection.Min ? value < bestValue : value > bestValue))
                 {
-                    next = Crossing.Later(now, SimTime.FromMilliseconds((long)Math.Floor(at) - 1));
+                    best = enemy;
+                    bestValue = value;
                 }
             }
         }
-        return next;
+        finally
+        {
+            ctx.Player.CurrentTarget = current;
+        }
+        return best;
     }
 
     // NextChange of `expression` with `target` as the hero's current target, then restored (as EvaluateAt).
