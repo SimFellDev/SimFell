@@ -16,7 +16,7 @@ public static class Scaling
     private const string RunMode = "scale-run";
 
     /// <summary>
-    /// <c>scale &lt;mc|mc8|freedice&gt; [iterations] [core counts]</c>: one process per core count (default 1, 2, 4 and 8),
+    /// <c>scale &lt;mc|mc8|mc-idle|mc8-idle|freedice&gt; [iterations] [core counts]</c>: one process per core count (default 1, 2, 4 and 8),
     /// then a table.
     /// </summary>
     public static void Run(string[] args)
@@ -80,12 +80,12 @@ public static class Scaling
             Process.GetCurrentProcess().ProcessorAffinity = (nint)long.Parse(args[3]);
         }
 
-        Action work = workload switch
-        {
-            "mc" or "mc8" => MonteCarlo(iterations, workload == "mc8" ? 8 : 1, System.Numerics.BitOperations.PopCount(ulong.Parse(args[3]))),
-            "freedice" => FreeDice(iterations),
-            _ => throw new ArgumentException($"Unknown workload '{workload}' (mc, mc8 or freedice)"),
-        };
+        int cores = System.Numerics.BitOperations.PopCount(ulong.Parse(args[3]));
+        Action work = Fight.MonteCarloWorkload(workload) is (int targets, bool idle)
+            ? MonteCarlo(iterations, targets, idle, cores)
+            : workload == "freedice"
+                ? FreeDice(iterations)
+                : throw new ArgumentException($"Unknown workload '{workload}' (mc, mc8, mc-idle, mc8-idle or freedice)");
 
         var process = Process.GetCurrentProcess();
         var cpu = process.TotalProcessorTime;
@@ -107,9 +107,9 @@ public static class Scaling
     }
 
     /// <summary>One Monte Carlo run of <paramref name="iterations"/> fights on <paramref name="cores"/> threads.</summary>
-    private static Action MonteCarlo(int iterations, int targets, int cores)
+    private static Action MonteCarlo(int iterations, int targets, bool idle, int cores)
     {
-        var simulator = new MonteCarloSimulator(Fight.NewHero, Fight.Actions());
+        var simulator = new MonteCarloSimulator(Fight.NewHero, Fight.Actions(idle));
         return () => simulator.Run(Fight.Duration, iterations, targets, degreeOfParallelism: cores);
     }
 

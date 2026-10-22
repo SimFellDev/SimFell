@@ -7,9 +7,9 @@ using FellowshipSim.Core.Engine;
 using FellowshipSim.Logs.Replay;
 
 // counters: the work done in one fight. sequence <targets>: fights one after another on one hero, with each one's time
-// and work. profile <mc|mc8|freedice> <seconds>: fights back to back on one thread, for a trace. scale <mc|mc8|freedice>
-// [iterations] [core counts]: many iterations at fixed core counts. hero: the first hero of a new process, then the next
-// thousand.
+// and work. profile <mc|mc8|mc-idle|mc8-idle|freedice> <seconds>: fights back to back on one thread, for a trace.
+// scale <mc|mc8|mc-idle|mc8-idle|freedice> [iterations] [core counts]: many iterations at fixed core counts. hero: the
+// first hero of a new process, then the next thousand. The -idle workloads use the action list that idles.
 // Anything else goes to BenchmarkDotNet (e.g. --filter *MonteCarlo*).
 switch (args.FirstOrDefault())
 {
@@ -35,7 +35,7 @@ switch (args.FirstOrDefault())
 
 var types = new List<Type>
 {
-    typeof(MonteCarloBenchmarks), typeof(HeroBenchmarks), typeof(FreeDiceBenchmarks),
+    typeof(MonteCarloBenchmarks), typeof(IdleMonteCarloBenchmarks), typeof(HeroBenchmarks), typeof(FreeDiceBenchmarks),
     typeof(AplDecisionBenchmarks), typeof(AuraBenchmarks), typeof(HasteAuraBenchmarks), typeof(HitBenchmarks), typeof(EventQueueBenchmarks),
 };
 if (FreeDiceBenchmarks.ScriptPath == null)
@@ -68,29 +68,28 @@ static void Profile(string workload, double seconds)
 {
     var clock = Stopwatch.StartNew();
     int fights = 0;
-    switch (workload)
+    if (Fight.MonteCarloWorkload(workload) is (int targets, bool idle))
     {
-        case "mc":
-        case "mc8":
-            int targets = workload == "mc8" ? 8 : 1;
-            var simulator = new MonteCarloSimulator(Fight.NewHero, Fight.Actions());
-            while (clock.Elapsed.TotalSeconds < seconds)
-            {
-                simulator.Run(Fight.Duration, iterations: 10, targetCount: targets, degreeOfParallelism: 1);
-                fights += 10;
-            }
-            break;
-        case "freedice":
-            var script = ReplayScript.Load(FreeDiceBenchmarks.ScriptPath
-                ?? throw new InvalidOperationException($"{FreeDiceBenchmarks.ScriptVariable} names no replay script"));
-            while (clock.Elapsed.TotalSeconds < seconds)
-            {
-                FreeDiceBenchmarks.Run(script, seed: 1 + fights);
-                fights++;
-            }
-            break;
-        default:
-            throw new ArgumentException($"Unknown profile workload '{workload}' (mc, mc8 or freedice)");
+        var simulator = new MonteCarloSimulator(Fight.NewHero, Fight.Actions(idle));
+        while (clock.Elapsed.TotalSeconds < seconds)
+        {
+            simulator.Run(Fight.Duration, iterations: 10, targetCount: targets, degreeOfParallelism: 1);
+            fights += 10;
+        }
+    }
+    else if (workload == "freedice")
+    {
+        var script = ReplayScript.Load(FreeDiceBenchmarks.ScriptPath
+            ?? throw new InvalidOperationException($"{FreeDiceBenchmarks.ScriptVariable} names no replay script"));
+        while (clock.Elapsed.TotalSeconds < seconds)
+        {
+            FreeDiceBenchmarks.Run(script, seed: 1 + fights);
+            fights++;
+        }
+    }
+    else
+    {
+        throw new ArgumentException($"Unknown profile workload '{workload}' (mc, mc8, mc-idle, mc8-idle or freedice)");
     }
     Console.WriteLine($"{workload}: {fights} fights in {clock.Elapsed.TotalSeconds:F1} s ({clock.Elapsed.TotalMilliseconds / fights:F2} ms per fight)");
 }

@@ -10,9 +10,13 @@ The fight is the test fixture's Rime (`tests/FellowshipSim.Tests/Fixtures/rime_c
 `FellowshipSim.Benchmarks/Fixtures/rime.simc`, against training mobs. The benchmarks run with server GC, not
 concurrent, as the tests and the server do.
 
+The action list that idles is `rime.simc` without Frost Bolt, the action that is always ready. The hero is then free
+with nothing to cast whenever every other action waits for a cooldown, a resource or a condition.
+
 | Class | Benchmark |
 |---|---|
 | `MonteCarloBenchmarks` | A 300 s Monte Carlo fight at 1 and 8 targets: one fight on a new hero, ten fights each on a new hero, and ten fights on one hero, all on one thread; eighty fights on eight threads. |
+| `IdleMonteCarloBenchmarks` | Ten 300 s fights on one hero and one thread at 1 and 8 targets, with the action list that idles. |
 | `HeroBenchmarks` | One hero imported from the fixture's build. |
 | `FreeDiceBenchmarks` | One free-dice run of a replay script on one thread. |
 | `AplDecisionBenchmarks` | One evaluation of every action in the list on a hero 60 s into a fight. |
@@ -61,7 +65,8 @@ arguments.
 bin/Release/net10.0/FellowshipSim.Benchmarks counters
 ```
 
-This prints one fight's counts at 1 and 8 targets, and for the free-dice script when `SIMFELL_BENCH_REPLAY` is set:
+This prints one fight's counts at 1 and 8 targets, with the fixture's action list and the one that idles, and for the
+free-dice script when `SIMFELL_BENCH_REPLAY` is set:
 casts, decisions, fixed 0.1 s idle steps, aura changes, cooldown states, hits, `OnDamageDealt` subscribers and events
 scheduled. A stage's time per fight is its micro-benchmark time multiplied by its count.
 
@@ -82,13 +87,14 @@ import) and the mean time of the next thousand.
 ## Many iterations at fixed core counts
 
 ```
-bin/Release/net10.0/FellowshipSim.Benchmarks scale <mc|mc8|freedice> [iterations] [core counts]
+bin/Release/net10.0/FellowshipSim.Benchmarks scale <mc|mc8|mc-idle|mc8-idle|freedice> [iterations] [core counts]
 
 # 100,000 Monte Carlo fights at 1 target on one core
 bin/Release/net10.0/FellowshipSim.Benchmarks scale mc 100000 1
 ```
 
-This runs `iterations` (default 100,000) through `MonteCarloSimulator.Run` (`mc` is 1 target, `mc8` is 8 targets) or
+This runs `iterations` (default 100,000) through `MonteCarloSimulator.Run` (`mc` is 1 target, `mc8` is 8 targets, and
+`mc-idle` and `mc8-idle` have the action list that idles) or
 `FreeDiceReplay.Run`, once per core count. A Monte Carlo run has one thread per core, each with its own hero. The mode
 prints wall time, CPU time, iterations per second, scaling efficiency,
 bytes allocated, GC counts, the share of wall time in GC pauses and the peak working set. The default core counts are
@@ -106,9 +112,10 @@ a few seconds at 1 core, so runs much shorter than 100,000 iterations read low a
 
 ## Profiles
 
-`profile <mc|mc8|freedice> <seconds>` runs fights back to back on one thread for that long. `mc` is 1 target and `mc8`
-is 8 targets. Record a trace of it with `dotnet-trace` (`dotnet tool install -g dotnet-trace`). On Windows,
-`dotnet-trace` needs the program's full path with backslashes:
+`profile <mc|mc8|mc-idle|mc8-idle|freedice> <seconds>` runs fights back to back on one thread for that long. `mc` is
+1 target and `mc8` is 8 targets; the `-idle` workloads have the action list that idles. Record a trace of it with
+`dotnet-trace` (`dotnet tool install -g dotnet-trace`). On Windows, `dotnet-trace` needs the program's full path with
+backslashes:
 
 ```
 # allocations by type

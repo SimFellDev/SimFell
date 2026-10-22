@@ -72,6 +72,28 @@ public class MonteCarloBenchmarks
 }
 
 /// <summary>
+/// Ten 300 s Monte Carlo fights on one hero and one thread, as <see cref="MonteCarloBenchmarks.TenFightsOneHero"/>, with
+/// the action list that idles (<see cref="Fight.IdleAplText"/>). Time is per fight.
+/// </summary>
+[MemoryDiagnoser]
+public class IdleMonteCarloBenchmarks
+{
+    private const int Fights = 10;
+    private MonteCarloSimulator _simulator = null!;
+
+    [Params(1, 8)]
+    public int Targets { get; set; }
+
+    [IterationSetup]
+    public void IterationSetup() => _simulator = new MonteCarloSimulator(Fight.NewHero, Fight.IdleActions());
+
+    [Benchmark(OperationsPerInvoke = Fights)]
+    [InvocationCount(1)]
+    public double TenFightsOneHero() =>
+        _simulator.Run(Fight.Duration, iterations: Fights, targetCount: Targets, degreeOfParallelism: 1).TotalMeanDamage;
+}
+
+/// <summary>
 /// One hero imported from the fixture's build: its class, talents, gear and abilities. Monte Carlo builds one per thread.
 /// </summary>
 [MemoryDiagnoser]

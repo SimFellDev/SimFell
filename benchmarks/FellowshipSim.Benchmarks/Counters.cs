@@ -17,14 +17,15 @@ public static class Counters
 
     public static void Run()
     {
+        foreach (bool idle in new[] { false, true })
         foreach (int targets in new[] { 1, 8 })
         {
             var hero = Fight.NewHero();
             var ctx = Fight.Start(hero, targets);
             var tally = new Tally(hero, ctx);
             var loop = new LoopCounts();
-            Fight.RunTo(hero, ctx, Fight.Actions(), Fight.Duration, loop);
-            tally.Print($"Monte Carlo, {Fight.Duration.TotalSeconds:F0} s, {targets} target(s)", loop);
+            Fight.RunTo(hero, ctx, Fight.Actions(idle), Fight.Duration, loop);
+            tally.Print($"Monte Carlo, {Fight.Duration.TotalSeconds:F0} s, {targets} target(s){(idle ? ", the action list that idles" : "")}", loop);
         }
 
         if (FreeDiceBenchmarks.ScriptPath is { } path)

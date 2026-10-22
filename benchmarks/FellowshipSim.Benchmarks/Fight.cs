@@ -25,6 +25,31 @@ public static class Fight
 
     public static AplActionLists Actions() => AplParser.ParseScript(AplText);
 
+    /// <summary>
+    /// The fixture's action list without Frost Bolt, its action that is always ready: the hero is free with nothing to cast
+    /// whenever every other action waits for a cooldown, a resource or a condition.
+    /// </summary>
+    public static string IdleAplText { get; } = string.Join('\n', AplText.Split('\n').Where(line =>
+        line.Trim() is not { Length: > 0 } action || action.StartsWith('#') || AplParser.ParseActionLine(action) is not { AbilityName: "frost_bolt" }));
+
+    public static AplActionLists IdleActions() => AplParser.ParseScript(IdleAplText);
+
+    /// <summary>The fixture's action list, or the one that idles (<see cref="IdleAplText"/>).</summary>
+    public static AplActionLists Actions(bool idle) => idle ? IdleActions() : Actions();
+
+    /// <summary>
+    /// The Monte Carlo workloads of the command modes: <c>mc</c> (1 target), <c>mc8</c> (8 targets), and <c>mc-idle</c> and
+    /// <c>mc8-idle</c> with the action list that idles. Null for another name.
+    /// </summary>
+    public static (int Targets, bool Idle)? MonteCarloWorkload(string workload) => workload switch
+    {
+        "mc" => (1, false),
+        "mc8" => (8, false),
+        "mc-idle" => (1, true),
+        "mc8-idle" => (8, true),
+        _ => null,
+    };
+
     public static Hero NewHero() => HeroImporter.Import(Build);
 
     /// <summary>A new fight on <paramref name="hero"/> against <paramref name="targets"/> training mobs, set up as <see cref="MonteCarloSimulator"/> sets up each fight.</summary>
