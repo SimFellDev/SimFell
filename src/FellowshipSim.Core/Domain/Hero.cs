@@ -425,13 +425,16 @@ public abstract class Hero : Actor
     /// </summary>
     public double PrimaryAttribute(SimTime now)
     {
+        if (IsCurrent(ref _primaryAttribute, StatType.PrimaryAttribute, StatType.PrimaryAttributeMultiplier, now)) return _primaryAttribute.Value;
         double value = Auras.Fold(StatType.PrimaryAttribute, Stats.PrimaryStat, now);
-        return value * Auras.Fold(StatType.PrimaryAttributeMultiplier, 1.0, now);
+        return _primaryAttribute.Value = value * Auras.Fold(StatType.PrimaryAttributeMultiplier, 1.0, now);
     }
 
     public double CritChance(SimTime now) =>
-        StatBlock.WithExtraRating(Stats.CritPercent, Stats.CritRating, Auras.Fold(StatType.CritRating, 0.0, now))
-        + Auras.Fold(StatType.CritChance, 0.0, now);
+        IsCurrent(ref _critChance, StatType.CritRating, StatType.CritChance, now)
+            ? _critChance.Value
+            : _critChance.Value = StatBlock.WithExtraRating(Stats.CritPercent, Stats.CritRating, Auras.Fold(StatType.CritRating, 0.0, now))
+                                  + Auras.Fold(StatType.CritChance, 0.0, now);
 
     public double CritChanceAgainst(EnemyTarget? target, SimTime now)
     {
@@ -447,18 +450,56 @@ public abstract class Hero : Actor
     public double CritMultiplier(SimTime now) => Auras.Fold(StatType.CritMultiplier, StatBlock.BaseCritMultiplier, now);
 
     /// <summary>Total haste at <paramref name="now"/>: rating haste (with rating buffs) plus haste from auras.</summary>
-    public double GetHaste(SimTime now) => Math.Max(0.0,
-        StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now))
-        + Auras.Fold(StatType.Haste, 0.0, now));
+    public double GetHaste(SimTime now) =>
+        IsCurrent(ref _haste, StatType.HasteRating, StatType.Haste, now)
+            ? _haste.Value
+            : _haste.Value = Math.Max(0.0,
+                StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now))
+                + Auras.Fold(StatType.Haste, 0.0, now));
 
     public double Expertise(SimTime now) =>
-        StatBlock.WithExtraRating(Stats.ExpertisePercent, Stats.ExpertiseRating, Auras.Fold(StatType.ExpertiseRating, 0.0, now))
-        + Auras.Fold(StatType.Expertise, 0.0, now);
+        IsCurrent(ref _expertise, StatType.ExpertiseRating, StatType.Expertise, now)
+            ? _expertise.Value
+            : _expertise.Value = StatBlock.WithExtraRating(Stats.ExpertisePercent, Stats.ExpertiseRating, Auras.Fold(StatType.ExpertiseRating, 0.0, now))
+                                 + Auras.Fold(StatType.Expertise, 0.0, now);
 
     /// <summary>Spirit as a fraction (0.30 = 30% Spirit).</summary>
     public double SpiritPercent(SimTime now) =>
-        StatBlock.WithExtraRating(Stats.SpiritPercent, Stats.SpiritRating, Auras.Fold(StatType.SpiritRating, 0.0, now))
-        + Auras.Fold(StatType.Spirit, 0.0, now);
+        IsCurrent(ref _spirit, StatType.SpiritRating, StatType.Spirit, now)
+            ? _spirit.Value
+            : _spirit.Value = StatBlock.WithExtraRating(Stats.SpiritPercent, Stats.SpiritRating, Auras.Fold(StatType.SpiritRating, 0.0, now))
+                              + Auras.Fold(StatType.Spirit, 0.0, now);
+
+    // Speed: each of these stats is kept until an aura with a modifier of one of its two stats changes, or the stat block
+    // changes. A hit then reads Main Stat, crit chance, haste, Expertise and Spirit without folding auras or applying
+    // diminishing returns again. The kept value is the one a new computation would give.
+    private DerivedStat _primaryAttribute, _critChance, _haste, _expertise, _spirit;
+
+    /// <summary>
+    /// True when <paramref name="stat"/> was computed from the current auras of <paramref name="first"/> and
+    /// <paramref name="second"/> and the current stat block; otherwise it takes their versions for the value about to be
+    /// computed. Expired auras are removed first, as every read of the auras does.
+    /// </summary>
+    private bool IsCurrent(ref DerivedStat stat, StatType first, StatType second, SimTime now)
+    {
+        Auras.CleanExpired(now);
+        return stat.IsCurrent(Auras.StatVersion(first), Auras.StatVersion(second), Stats);
+    }
+
+    /// <summary>A stat computed from two aura stats and the stat block, with the versions it was computed at.</summary>
+    private struct DerivedStat
+    {
+        public double Value;
+        private int _first, _second, _blockVersion;
+        private StatBlock? _block;
+
+        public bool IsCurrent(int first, int second, StatBlock block)
+        {
+            if (ReferenceEquals(_block, block) && _first == first && _second == second && _blockVersion == block.Version) return true;
+            (_first, _second, _block, _blockVersion) = (first, second, block, block.Version);
+            return false;
+        }
+    }
 
     /// <summary>Outgoing damage multiplier from auras ("DamageScale").</summary>
     public double DamageScale(SimTime now) => Auras.Fold(StatType.DamageScale, 1.0, now);

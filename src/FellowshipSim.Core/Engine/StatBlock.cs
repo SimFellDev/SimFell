@@ -142,7 +142,7 @@ public class StatBlock
     public const double HealthPerStamina = 56.0;
 
     /// <summary>The primary stat (Intellect, Strength or Agility) from the character sheet.</summary>
-    public double PrimaryStat { get; set; }
+    public double PrimaryStat { get; set { field = value; Version++; } }
     public double Stamina { get; set; } = 635;
     public double Armor { get; set; } = 539;
 
@@ -150,22 +150,22 @@ public class StatBlock
     public double? LoggedMaxHealth { get; set; }
     public double MaxHealth => LoggedMaxHealth ?? Stamina * HealthPerStamina;
 
-    public double CritRating { get; set; }
-    public double HasteRating { get; set; }
-    public double ExpertiseRating { get; set; }
-    public double SpiritRating { get; set; }
+    public double CritRating { get; set { field = value; Version++; } }
+    public double HasteRating { get; set { field = value; Version++; } }
+    public double ExpertiseRating { get; set { field = value; Version++; } }
+    public double SpiritRating { get; set { field = value; Version++; } }
 
     /// <summary>Permanent percent bonuses beyond ratings (gem nodes, set bonuses), added on top of the base percentages.</summary>
-    public double BonusCritChance { get; set; }
-    public double BonusHaste { get; set; }
-    public double BonusExpertise { get; set; }
-    public double BonusSpirit { get; set; }
+    public double BonusCritChance { get; set { field = value; Version++; } }
+    public double BonusHaste { get; set { field = value; Version++; } }
+    public double BonusExpertise { get; set { field = value; Version++; } }
+    public double BonusSpirit { get; set { field = value; Version++; } }
 
     /// <summary>Base percentages from the log's ratings; when set they replace the derived base percentages.</summary>
-    public double? SheetCritChance { get; set; }
-    public double? SheetHaste { get; set; }
-    public double? SheetExpertise { get; set; }
-    public double? SheetSpirit { get; set; }
+    public double? SheetCritChance { get; set { field = value; Version++; } }
+    public double? SheetHaste { get; set { field = value; Version++; } }
+    public double? SheetExpertise { get; set { field = value; Version++; } }
+    public double? SheetSpirit { get; set { field = value; Version++; } }
 
     /// <summary>
     /// True when the stats come from a log. Its primary stat already includes always-on primary stat bonuses (gem nodes,
@@ -184,6 +184,9 @@ public class StatBlock
     public double SpiritPercent => (SheetSpirit ?? DerivedSpirit) + BonusSpirit;
 
     public double CooldownReductionPct { get; set; }
+
+    /// <summary>Changes whenever the primary stat, a rating, a bonus percentage or a sheet percentage is set.</summary>
+    public int Version { get; private set; }
 
     /// <summary>
     /// Percentage for a rating stat after <paramref name="extraRating"/> more rating, keeping the base
