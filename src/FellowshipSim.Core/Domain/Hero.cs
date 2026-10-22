@@ -19,8 +19,6 @@ public abstract class Hero : Actor
         };
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
-        // Speed: after an aura that cannot change a cooldown's rate, the recharges progress without reading the rate again.
-        // They still progress at every aura change, so a recharge is subtracted in the same steps and rounds the same.
         Auras.OnGained += (aura, _, now) => AuraChanged(aura, now);
         Auras.OnRemoved += (aura, now) => AuraChanged(aura, now);
     }
@@ -31,16 +29,16 @@ public abstract class Hero : Actor
 
     private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
 
+    /// <summary>
+    /// An aura with cooldown recovery or haste, or one a cooldown acceleration reads, progresses every recharge to now at
+    /// the old rate and reads the new one. Speed: any other aura leaves the recharges, whose rate it cannot change.
+    /// </summary>
     private void AuraChanged(Aura aura, SimTime now)
     {
         bool acceleration = CooldownAccelerationAuraKeys.Count > 0 && CooldownAccelerationAuraKeys.Contains(aura.Key);
         if (acceleration) _accelerationAuraChanges++;
-        AdvanceCooldowns(now, readRate: acceleration || aura.Def.Changes(CooldownRateStats));
-    }
-
-    private void AdvanceCooldowns(SimTime now, bool readRate)
-    {
-        foreach (var state in Cooldowns.Values) state.Advance(now, readRate);
+        if (!acceleration && !aura.Def.Changes(CooldownRateStats)) return;
+        foreach (var state in Cooldowns.Values) state.Advance(now);
     }
 
     // Speed: CooldownRate reads only the auras' cooldown recovery and haste, the auras a cooldown acceleration reads (counted
@@ -748,13 +746,7 @@ public sealed class CooldownState
     }
 
     /// <summary>Progresses the recharge to <paramref name="now"/> at the rate last read, then reads the rate at <paramref name="now"/>.</summary>
-    public void Advance(SimTime now) => Advance(now, readRate: true);
-
-    /// <summary>
-    /// <see cref="Advance(SimTime)"/>. With <paramref name="readRate"/> false the rate is not read at
-    /// <paramref name="now"/>: nothing the rate depends on has changed since it was last read.
-    /// </summary>
-    internal void Advance(SimTime now, bool readRate)
+    public void Advance(SimTime now)
     {
         if (now == default || now < _last || _advancing) return;
         _advancing = true;
@@ -778,7 +770,7 @@ public sealed class CooldownState
             _last = now;
             // Speed: a full cooldown reads no rate; Spend reads it when a recharge starts.
             _rateStale = !Recharging;
-            if (!_rateStale && readRate) ReadRate(now);
+            if (!_rateStale) ReadRate(now);
         }
         finally { _advancing = false; }
     }
