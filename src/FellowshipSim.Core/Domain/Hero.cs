@@ -477,6 +477,7 @@ public abstract class Hero : Actor
         Resources.Get(SpiritPoints).Initial = StartingSpiritPoints;
         Resources.Reset();
         Auras.ClearAll();
+        Auras.ClearTimers();
         Cooldowns.Clear();
         GlobalCooldownEndTime = SimTime.Zero;
         CurrentCast = null;

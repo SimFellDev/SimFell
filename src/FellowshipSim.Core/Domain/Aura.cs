@@ -103,6 +103,16 @@ public class AuraContainer
 
     internal void AddTimer(HastedTimer timer) => _timers.Add(timer);
 
+    /// <summary>
+    /// A new fight starts: the last fight's timers stop receiving updates. A timer reads haste at its own fight's time, so a
+    /// stale timer would expire this fight's auras at the end time of the last one.
+    /// </summary>
+    internal void ClearTimers()
+    {
+        _timers.Clear();
+        _finishedTimers = 0;
+    }
+
     /// <summary>A timer finished: finished timers are cleared out in batches (they ignore updates meanwhile).</summary>
     internal void RemoveTimer(HastedTimer timer)
     {

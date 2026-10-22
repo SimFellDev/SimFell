@@ -33,7 +33,8 @@ public class VoidbringersTouch : Ability
         IgnoresGcd = true;
         owner.OnDamageDealt += dmg =>
         {
-            if (_target == null || dmg.AbilityId == DamageLogId || dmg.SimContext is not { } ctx) return;
+            // A touch from an earlier fight stores nothing in this one.
+            if (_target == null || dmg.AbilityId == DamageLogId || dmg.SimContext is not { } ctx || ctx != _fight) return;
             _stored += StoredShare * dmg.Amount;
             // It erupts on reaching the cap, or as soon as it holds more than the enemy's remaining health.
             if (_stored >= Cap(ctx) || (_target.MaxHealth > 0 && _stored >= _target.CurrentHealth)) Erupt(ctx);

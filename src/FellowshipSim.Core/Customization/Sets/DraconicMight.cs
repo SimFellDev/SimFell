@@ -29,9 +29,17 @@ public class DraconicMight : SetBonus
     {
         var rppm = new RealPpm(ProcKey, ProcsPerMinute);
         var ready = SimTime.Zero;
+        // The fight the internal cooldown belongs to (each sim iteration and replay has its own).
+        SimulationContext? fight = null;
         hero.OnDamageDealt += dmg =>
         {
-            if (!dmg.IsCrit || dmg.SimContext is not { } ctx || ctx.CurrentTime < ready || !rppm.Roll(hero, ctx)) return;
+            if (!dmg.IsCrit || dmg.SimContext is not { } ctx) return;
+            if (fight != ctx)
+            {
+                fight = ctx;
+                ready = SimTime.Zero;
+            }
+            if (ctx.CurrentTime < ready || !rppm.Roll(hero, ctx)) return;
             ready = ctx.CurrentTime + SimTime.FromSeconds(InternalCooldownSeconds);
             hero.Auras.Apply(Buff, ctx.CurrentTime);
         };

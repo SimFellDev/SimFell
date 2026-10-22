@@ -35,9 +35,16 @@ public class TheVehement : Blessing
         // with the counter at 2; PCaMVTFbZzNLrfx3 fight 5 never does in the same situation (10 times). Not modeled.
         var basicIds = hero.Abilities.Where(a => a.Category == AbilityCategory.Basic).Select(a => a.DamageLogId).ToHashSet();
         int hits = 0;
+        // The fight the hits belong to (each sim iteration and replay has its own).
+        SimulationContext? fight = null;
         hero.OnDamageDealt += dmg =>
         {
             if (dmg.SimContext == null || dmg.Target == null || !basicIds.Contains(dmg.AbilityId)) return;
+            if (fight != dmg.SimContext)
+            {
+                fight = dmg.SimContext;
+                hits = 0;
+            }
             hits++;
             if (hits < threshold)
             {

@@ -13,8 +13,16 @@ public class RealPpm
         BasePpm = basePpm;
     }
 
+    /// <summary>The fight of the last attempt (each sim iteration and replay has its own). A new fight starts at time 0.</summary>
+    private SimulationContext? _fight;
+
     public bool Roll(Hero hero, SimulationContext ctx, EnemyTarget? target = null)
     {
+        if (_fight != ctx)
+        {
+            LastProcAttemptTime = SimTime.Zero;
+            _fight = ctx;
+        }
         double timeSinceLastSeconds = (ctx.CurrentTime - LastProcAttemptTime).TotalSeconds;
         LastProcAttemptTime = ctx.CurrentTime;
 

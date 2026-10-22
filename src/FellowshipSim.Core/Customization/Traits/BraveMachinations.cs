@@ -21,12 +21,19 @@ public class BraveMachinations : Trait
         weapon.CritChanceBonus += ForRank(CritChanceByRank);
         double reduction = ForRank(CooldownReductionByRank);
         bool reducedThisCast = false;
+        // The fight the flag belongs to (each sim iteration and replay has its own).
+        SimulationContext? fight = null;
         hero.OnCastCompleted += (ability, _, _) =>
         {
             if (ability == weapon) reducedThisCast = false;
         };
         weapon.Hit += hit =>
         {
+            if (fight != hit.SimContext)
+            {
+                fight = hit.SimContext;
+                reducedThisCast = false;
+            }
             if (!hit.IsCrit || reducedThisCast) return;
             reducedThisCast = true;
             hero.ReduceCooldown(weapon.Name, SimTime.FromSeconds(reduction * weapon.Cooldown.TotalSeconds), hit.Timestamp);

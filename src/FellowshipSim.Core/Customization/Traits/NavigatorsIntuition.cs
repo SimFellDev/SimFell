@@ -43,9 +43,17 @@ public class NavigatorsIntuition : Trait
         });
         var buff = hero.Register(AuraDef.Effect(name, effectId, BuffSeconds, modifiers: StatModifier.Add(rating, ForRank(RatingByRank))));
         var ready = SimTime.Zero;
+        // The fight the internal cooldown belongs to (each sim iteration and replay has its own).
+        SimulationContext? fight = null;
         hero.OnCastCompleted += (ability, target, now) =>
         {
-            if (target == null || ability.BaseCoefficient <= 0 || now < ready || hero.SimContext is not { } ctx) return;
+            if (target == null || ability.BaseCoefficient <= 0 || hero.SimContext is not { } ctx) return;
+            if (fight != ctx)
+            {
+                fight = ctx;
+                ready = SimTime.Zero;
+            }
+            if (now < ready) return;
             if (!ctx.Outcomes.RollProc(ProcKey(rating), ProcChance, ctx)) return;
             ready = now + SimTime.FromSeconds(InternalCooldownSeconds);
             hero.Auras.Apply(buff, now);
