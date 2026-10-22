@@ -26,6 +26,45 @@ public class DecisionTimingTests
         }
     }
 
+    [Fact]
+    public void An_Action_Whose_Cooldown_Is_Ready_At_T_Casts_At_T()
+    {
+        // Strike's cooldown is longer than the global cooldown, so the hero waits with nothing to cast.
+        var hero = Tester.Create();
+        var starts = CastStarts(hero);
+        Fight(hero, "actions+=/strike", seconds: 20);
+        Assert.Equal([0L, 4250, 8500, 12750, 17000], starts.Select(s => s.At.Milliseconds));
+    }
+
+    [Fact]
+    public void A_Resource_Threshold_Crossed_At_T_Casts_At_T()
+    {
+        // Gather's Focus arrives 2.345 s after its cast, while the hero waits with nothing to cast.
+        var hero = Tester.Create();
+        var starts = CastStarts(hero);
+        Fight(hero, "actions+=/strike,if=focus>=5\nactions+=/gather", seconds: 5);
+        Assert.Equal([("Gather", 0L), ("Strike", 2345L)], starts.Select(s => (s.Ability.Name, s.At.Milliseconds)));
+    }
+
+    [Fact]
+    public void A_Remaining_Time_Passing_Its_Threshold_At_T_Casts_At_T()
+    {
+        var hero = Tester.Create();
+        var starts = CastStarts(hero);
+        SimTime? markExpires = null;
+        hero.Auras.OnGained += (aura, _, _) => { if (aura.Def == Tester.Mark) markExpires = aura.ExpiresAt; };
+        Fight(hero, "actions+=/strike,if=buff.mark.up&buff.mark.remains<2\nactions+=/mark", seconds: 6);
+        // The remaining time is below 2 s from the first millisecond after 2 s before the expiry.
+        Assert.Equal([("Mark", 0L), ("Strike", markExpires!.Value.Milliseconds - 1999)], starts.Select(s => (s.Ability.Name, s.At.Milliseconds)));
+    }
+
+    private static List<(SimTime At, Ability Ability)> CastStarts(Hero hero)
+    {
+        var starts = new List<(SimTime, Ability)>();
+        hero.OnCastStarted += (ability, _, now) => starts.Add((now, ability));
+        return starts;
+    }
+
     private static void Fight(Hero hero, string apl, int seconds, int targets = 1) =>
         // One thread: the simulator fights on the hero given.
         new MonteCarloSimulator(() => hero, AplParser.ParseScript(apl))
@@ -33,4 +72,50 @@ public class DecisionTimingTests
 
     private static CharacterBuild Fixture() => System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rime_character.json")))!;
+
+    /// <summary>A hero with no stats, talents or gear, and three abilities that deal no damage.</summary>
+    private sealed class Tester : Hero
+    {
+        public static readonly ResourceDef Focus = new("Focus", Max: 10);
+        public static readonly AuraDef Mark = AuraDef.Internal("Mark", 5.555);
+
+        public static Tester Create()
+        {
+            var hero = new Tester();
+            hero.Initialize();
+            return hero;
+        }
+
+        public override IReadOnlyList<TalentSlot> TalentTreeSlots => [];
+
+        public override void Initialize()
+        {
+            AddResource(Focus);
+            Abilities.Add(new TestAbility(this, 1, "Strike", cooldownSeconds: 4.25, (_, _) => { }));
+            // Gather's Focus arrives after a delay.
+            Abilities.Add(new TestAbility(this, 2, "Gather", cooldownSeconds: 60,
+                (ctx, hero) => ctx.Schedule(SimTime.FromSeconds(2.345), c => hero.GainResource(Focus, 5, c), "Gather")));
+            Abilities.Add(new TestAbility(this, 3, "Mark", cooldownSeconds: 60, (ctx, hero) => hero.Auras.Apply(Mark, ctx.CurrentTime)));
+        }
+
+        public override void ResetForIteration() => ResetCombatState();
+    }
+
+    /// <summary>An instant ability with a cooldown whose cast does <paramref name="effect"/>.</summary>
+    private sealed class TestAbility : Ability
+    {
+        private readonly Action<SimulationContext, Hero> _effect;
+
+        public TestAbility(Hero owner, int id, string name, double cooldownSeconds, Action<SimulationContext, Hero> effect) : base(owner, id, name)
+        {
+            _effect = effect;
+            SetCooldown(cooldownSeconds);
+        }
+
+        public override void Execute(SimulationContext ctx, EnemyTarget target)
+        {
+            TriggerCooldown(ctx);
+            _effect(ctx, Owner);
+        }
+    }
 }

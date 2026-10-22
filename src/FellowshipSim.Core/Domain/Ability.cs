@@ -178,6 +178,15 @@ public abstract class Ability
         return true;
     }
 
+    /// <summary>
+    /// The earliest time after now at which <see cref="CanCast(SimulationContext)"/> can change with no event before it:
+    /// the return of a charge while none is left. The resources and auras the checks read change in events.
+    /// </summary>
+    public SimTime NextCastChange(SimulationContext ctx) =>
+        Cooldown > SimTime.Zero && Owner.Cooldowns.TryGetValue(Name, out var state) && state.ChargesAt(ctx.CurrentTime) == 0
+            ? state.NextChargeAt
+            : SimTime.Infinite;
+
     /// <summary>Spends a charge and starts its recharge.</summary>
     public virtual void TriggerCooldown(SimulationContext ctx, double cooldownMultiplier = 1.0)
     {

@@ -124,7 +124,7 @@ public static class Counters
             {
                 Console.WriteLine($"  decision-loop passes    {loop.Passes}");
                 Console.WriteLine($"  action-list decisions   {loop.Decisions}  (cast nothing: {loop.EmptyDecisions})");
-                Console.WriteLine($"  0.1 s idle steps        {loop.IdlePolls}");
+                Console.WriteLine($"  idle wake-ups           {loop.IdleWakes}");
             }
             Console.WriteLine($"  hero aura gains         {_heroGains}  removals {_heroRemovals}  (touching haste or recovery: {_hasteOrRecoveryChanges})");
             if (loop != null) Console.WriteLine($"  enemy aura changes      {_enemyChanges}");

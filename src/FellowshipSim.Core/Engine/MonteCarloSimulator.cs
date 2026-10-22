@@ -131,7 +131,8 @@ public class MonteCarloSimulator
             var next = NextDecisionTime(hero);
             if (!acted && next <= ctx.CurrentTime)
             {
-                next = ctx.CurrentTime + SimTime.FromSeconds(0.1);
+                // Nothing was cast: decide again at the next event or when something the action list reads changes.
+                next = worker.Program.NextDecision(ctx);
             }
             ctx.RunUntil(next < duration ? next : duration);
         }

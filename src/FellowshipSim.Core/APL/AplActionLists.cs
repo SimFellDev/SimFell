@@ -43,9 +43,10 @@ public sealed class AplActionLists(IReadOnlyDictionary<string, List<AplAction>> 
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<Hero, AplProgram> _bound = new();
 
     /// <summary>Casts the first ready action, starting at <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.</summary>
-    public bool TryAct(Hero hero, SimulationContext ctx)
-    {
-        if (!_bound.TryGetValue(hero, out var program)) program = _bound.GetValue(hero, Bind);
-        return program.TryAct(ctx);
-    }
+    public bool TryAct(Hero hero, SimulationContext ctx) => Program(hero).TryAct(ctx);
+
+    /// <summary>The time of the next decision after one that cast nothing (<see cref="AplProgram.NextDecision"/>).</summary>
+    public SimTime NextDecision(Hero hero, SimulationContext ctx) => Program(hero).NextDecision(ctx);
+
+    private AplProgram Program(Hero hero) => _bound.TryGetValue(hero, out var program) ? program : _bound.GetValue(hero, Bind);
 }

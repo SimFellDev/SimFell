@@ -67,7 +67,7 @@ bin/Release/net10.0/FellowshipSim.Benchmarks counters
 
 This prints one fight's counts at 1 and 8 targets, with the fixture's action list and the one that idles, and for the
 free-dice script when `SIMFELL_BENCH_REPLAY` is set:
-casts, decisions, fixed 0.1 s idle steps, aura changes, cooldown states, hits, `OnDamageDealt` subscribers and events
+casts, decisions, idle wake-ups (decisions that cast nothing), aura changes, cooldown states, hits, `OnDamageDealt` subscribers and events
 scheduled. A stage's time per fight is its micro-benchmark time multiplied by its count.
 
 ```

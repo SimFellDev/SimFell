@@ -88,8 +88,8 @@ public static class Fight
             if (hero.CurrentChannel != null && hero.CurrentChannel.Ticks.End > next) next = hero.CurrentChannel.Ticks.End;
             if (!acted && next <= ctx.CurrentTime)
             {
-                next = ctx.CurrentTime + SimTime.FromSeconds(0.1);
-                if (counts != null) counts.IdlePolls++;
+                next = actions.NextDecision(hero, ctx);
+                if (counts != null) counts.IdleWakes++;
             }
             ctx.RunUntil(next < until ? next : until);
         }
@@ -140,6 +140,6 @@ public sealed class LoopCounts
     public int Decisions;
     /// <summary>Decisions that cast nothing.</summary>
     public int EmptyDecisions;
-    /// <summary>Passes that advanced the clock by the fixed 0.1 s step.</summary>
-    public int IdlePolls;
+    /// <summary>Passes where the hero was free and cast nothing, so the clock went to the next event or change the action list reads.</summary>
+    public int IdleWakes;
 }

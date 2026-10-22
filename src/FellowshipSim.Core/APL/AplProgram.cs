@@ -9,9 +9,12 @@ namespace FellowshipSim.Core.APL;
 /// </summary>
 public sealed class AplProgram
 {
+    private readonly Hero _hero;
     private readonly BoundAplList? _default;
+    private readonly BoundAplList[] _lists;
 
-    private AplProgram(BoundAplList? defaultList) => _default = defaultList;
+    private AplProgram(Hero hero, BoundAplList? defaultList, BoundAplList[] lists) =>
+        (_hero, _default, _lists) = (hero, defaultList, lists);
 
     /// <summary>The steps of <see cref="AplActionLine.DefaultList"/>.</summary>
     public IReadOnlyList<BoundAplStep> Actions => _default?.Steps ?? [];
@@ -27,7 +30,36 @@ public sealed class AplProgram
         {
             bound[name].Steps = actions.Select(action => BindStep(action, hero, bound)).ToArray();
         }
-        return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList));
+        return new AplProgram(hero, bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
+    }
+
+    /// <summary>
+    /// The time of the next decision after one that cast nothing: the next event, or the earliest time anything the lists
+    /// read can change with no event before it (<see cref="NextChange"/>), whichever comes first.
+    /// </summary>
+    public SimTime NextDecision(SimulationContext ctx) =>
+        Crossing.Earlier(ctx.Kernel.PeekNextTime() ?? SimTime.Infinite, NextChange(ctx));
+
+    /// <summary>
+    /// The earliest time after now at which a condition, a target selection or a <see cref="Ability.CanCast(SimulationContext)"/>
+    /// of any list can change with no event before it, or <see cref="SimTime.Infinite"/>.
+    /// </summary>
+    public SimTime NextChange(SimulationContext ctx)
+    {
+        var now = ctx.CurrentTime;
+        var next = SimTime.Infinite;
+        foreach (var list in _lists)
+        {
+            foreach (var step in list.Steps)
+            {
+                var change = step is BoundAplAction action ? action.NextChange(ctx) : step.Condition?.NextChange(ctx) ?? SimTime.Infinite;
+                next = Crossing.Earlier(next, change);
+            }
+        }
+        // A hero aura runs out when it is next read rather than in an event: what CanCast reads and the rate a cooldown
+        // recharges at can change at the next expiry.
+        next = Crossing.Earlier(next, _hero.Auras.NextExpiry(now));
+        return Crossing.Later(now, next);
     }
 
     private static BoundAplStep BindStep(AplAction action, Hero hero, Dictionary<string, BoundAplList> lists)
@@ -149,6 +181,86 @@ public sealed class BoundAplAction : BoundAplStep
         }
 
         return ctx.BeginCast(_hero, Ability, target).Succeeded;
+    }
+
+    /// <summary>
+    /// The earliest time after now at which the action's target selection, its condition at its target or its ability's
+    /// <see cref="Ability.CanCast(SimulationContext)"/> can change with no event before it.
+    /// </summary>
+    internal SimTime NextChange(SimulationContext ctx)
+    {
+        var next = Ability.NextCastChange(ctx);
+        var active = ctx.ActiveEnemies;
+        if (_targetIf != null && active.Count > 0) next = Crossing.Earlier(next, SelectionChange(ctx, active));
+        if (Condition != null)
+        {
+            TrySelectTarget(ctx, out var target);
+            next = Crossing.Earlier(next, ChangeAt(ctx, target, Condition));
+        }
+        return next;
+    }
+
+    /// <summary>
+    /// The earliest time the <c>target_if</c> pick can change: a candidate's truth for <c>first</c>; for <c>min</c> and
+    /// <c>max</c>, the end of a candidate's line or the time two candidates' values cross.
+    /// </summary>
+    private SimTime SelectionChange(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates)
+    {
+        var (selection, expression) = _targetIf!;
+        var now = ctx.CurrentTime;
+        var next = SimTime.Infinite;
+        if (selection == AplTargetSelection.First)
+        {
+            foreach (var enemy in candidates) next = Crossing.Earlier(next, ChangeAt(ctx, enemy, expression));
+            return next;
+        }
+        Span<(double Value, double Slope)> lines = stackalloc (double, double)[candidates.Count];
+        var current = ctx.Player.CurrentTarget;
+        try
+        {
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                ctx.Player.CurrentTarget = candidates[i];
+                lines[i] = (expression.EvaluateNumeric(ctx), expression.Slope(ctx));
+                next = Crossing.Earlier(next, Crossing.Later(now, expression.Until(ctx)));
+            }
+        }
+        finally
+        {
+            ctx.Player.CurrentTarget = current;
+        }
+        for (int i = 0; i < lines.Length; i++)
+        {
+            for (int j = i + 1; j < lines.Length; j++)
+            {
+                double slope = lines[i].Slope - lines[j].Slope;
+                if (double.IsNaN(slope)) return Crossing.Earlier(next, Crossing.Next(now));
+                if (slope == 0.0) continue;
+                // The two lines cross at `at`: the pick is checked again a millisecond before.
+                double at = now.Milliseconds + (lines[j].Value - lines[i].Value) / slope;
+                if (at > now.Milliseconds && at - 1 < next.Milliseconds)
+                {
+                    next = Crossing.Later(now, SimTime.FromMilliseconds((long)Math.Floor(at) - 1));
+                }
+            }
+        }
+        return next;
+    }
+
+    // NextChange of `expression` with `target` as the hero's current target, then restored (as EvaluateAt).
+    private static SimTime ChangeAt(SimulationContext ctx, EnemyTarget? target, BoundExpression expression)
+    {
+        var current = ctx.Player.CurrentTarget;
+        if (target == null || target == current) return expression.NextChange(ctx);
+        ctx.Player.CurrentTarget = target;
+        try
+        {
+            return expression.NextChange(ctx);
+        }
+        finally
+        {
+            ctx.Player.CurrentTarget = current;
+        }
     }
 
     /// <summary>
