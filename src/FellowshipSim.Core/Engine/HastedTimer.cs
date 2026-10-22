@@ -21,7 +21,6 @@ public sealed class HastedTimer
     // Made once per timer: rescheduling happens on every haste change.
     private readonly Action<SimulationContext> _check;
     private readonly Action<SimulationContext> _due;
-    private readonly string _checkLabel;
 
     private HastedTimer(SimulationContext ctx, Hero hero, double baseSeconds, Action<SimulationContext> onFire, string label)
     {
@@ -40,7 +39,6 @@ public sealed class HastedTimer
             Finish();
             _onFire(c);
         };
-        _checkLabel = $"{label} haste check";
     }
 
     public bool IsActive { get; private set; } = true;
@@ -92,7 +90,7 @@ public sealed class HastedTimer
         var checkpoint = _hero.Auras.NextExpiry(now);
         if (checkpoint < due)
         {
-            _event = _ctx.ScheduleAt(checkpoint, _check, _checkLabel);
+            _event = _ctx.ScheduleAt(checkpoint, _check, _label);
             return;
         }
         _event = _ctx.ScheduleAt(due, _due, _label);

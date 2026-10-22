@@ -17,6 +17,7 @@ public sealed class ScheduledEvent
     public SimTime Time { get; }
     internal long Sequence { get; }
     internal Action<SimulationContext> Action { get; }
+    /// <summary>The event's name for debugging. Call sites pass a fixed name, such as the ability's, so scheduling builds no string.</summary>
     public string Label { get; }
     public bool IsCancelled { get; private set; }
     public bool HasFired { get; internal set; }

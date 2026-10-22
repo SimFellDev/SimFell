@@ -55,7 +55,7 @@ public class IciclesOfAnzhyr : Ability
         {
             bool final = i == Waves - 1;
             ctx.Schedule(SimTime.FromSeconds(FirstWaveSeconds + i * WaveIntervalSeconds),
-                c => Wave(c, target, final, damage, critChance, critMultiplier, curse), $"{Name} wave {i + 1}");
+                c => Wave(c, target, final, damage, critChance, critMultiplier, curse), Name);
         }
     }
 

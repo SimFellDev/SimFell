@@ -72,7 +72,7 @@ public class RisingTalons : IceComet
                 // Each wave is an impact with the damage of the cast; the falloff is already in it.
                 Impact(c, target, damage, critChance, critMultiplier, fixedFalloff: 1.0);
                 if (first) RaiseStruck(c, target);
-            }, $"{Name} wave {i + 1}");
+            }, Name);
         }
     }
 }

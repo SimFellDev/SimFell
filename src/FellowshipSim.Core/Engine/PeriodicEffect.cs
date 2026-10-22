@@ -152,7 +152,7 @@ public sealed class PeriodicEffect
             {
                 partial = Math.Min(fraction, 1.0);
             }
-        }, $"{name} expires"));
+        }, name));
         // ... and the partial tick and the end happen on the next server frame.
         effect._events.Add(ctx.Kernel.ScheduleAt(end, c =>
         {

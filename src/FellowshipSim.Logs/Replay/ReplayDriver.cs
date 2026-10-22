@@ -267,7 +267,7 @@ public sealed class ReplayDriver
             _handledCommands.Add(end);
             var at = SimTime.FromSeconds(end.Time);
             if (at >= cast.EndTime) at = SimTime.FromMilliseconds(cast.EndTime.Milliseconds - 1);
-            _ctx.ScheduleAt(at, c => { if (_hero.CurrentCast == cast) c.CancelCast(_hero); }, $"{cmd.AbilityName} cancelled");
+            _ctx.ScheduleAt(at, c => { if (_hero.CurrentCast == cast) c.CancelCast(_hero); }, cmd.AbilityName);
             return;
         }
 

@@ -233,7 +233,7 @@ public class SimulationContext
         ActiveChannel? channel = null;
         var ticks = PeriodicEffect.Begin(
             this,
-            $"{ability.Name} channel",
+            ability.Name,
             ability.ChannelDuration.TotalSeconds,
             period,
             ability.ChannelTicksOnStart,

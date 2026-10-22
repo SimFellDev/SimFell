@@ -56,7 +56,7 @@ public class VoidbringersTouch : Ability
         _target = target;
         _stored = 0.0;
         int touch = ++_touch;
-        ctx.Schedule(SimTime.FromSeconds(DurationSeconds), c => { if (touch == _touch) Erupt(c); }, $"{Name} expires");
+        ctx.Schedule(SimTime.FromSeconds(DurationSeconds), c => { if (touch == _touch) Erupt(c); }, Name);
     }
 
     /// <summary>

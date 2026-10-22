@@ -98,7 +98,7 @@ public class IceComet : RimeAbility
         {
             Impact(c, target, damage, critChance, critMultiplier, fixedFalloff: null);
             if (raisesStruck) RaiseStruck(c, target);
-        }, $"{Name} impact");
+        }, Name);
     }
 
     protected void RaiseStruck(SimulationContext ctx, EnemyTarget target)
