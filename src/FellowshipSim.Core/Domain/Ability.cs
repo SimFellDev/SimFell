@@ -107,11 +107,10 @@ public abstract class Ability
         DamageLogId = id;
         Name = name;
         Category = category;
-        owner.OnDamageDealt += (in dmg) =>
-        {
-            if (dmg.AbilityId == DamageLogId) Hit?.Invoke(in dmg);
-        };
+        owner.SubscribeHits(this);
     }
+
+    internal void RaiseHit(in DamageContext hit) => Hit?.Invoke(in hit);
 
     /// <summary>
     /// Called once the hero's abilities all exist (before talents and gear bind): an ability that reacts to another

@@ -13,7 +13,7 @@ public static class Counters
 {
     private static readonly FieldInfo Sequence = typeof(SimulationKernel).GetField("_sequence", BindingFlags.NonPublic | BindingFlags.Instance)!;
     private static readonly FieldInfo Queue = typeof(SimulationKernel).GetField("_queue", BindingFlags.NonPublic | BindingFlags.Instance)!;
-    private static readonly FieldInfo DamageDealt = typeof(Hero).GetField(nameof(Hero.OnDamageDealt), BindingFlags.NonPublic | BindingFlags.Instance)!;
+    private static readonly FieldInfo DamageDealt = typeof(Hero).GetField("_damageDealt", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
     public static void Run()
     {
@@ -113,7 +113,7 @@ public static class Counters
             object queue = Queue.GetValue(_ctx.Kernel)!;
             int queued = (int)queue.GetType().GetProperty("Count")!.GetValue(queue)!;
             // The tally's own handler is not counted.
-            int subscribers = ((Delegate?)DamageDealt.GetValue(_hero))?.GetInvocationList().Length - 1 ?? 0;
+            int subscribers = ((System.Collections.ICollection)DamageDealt.GetValue(_hero)!).Count - 1;
             Console.WriteLine(title);
             Console.WriteLine($"  total damage            {_ctx.TotalDamage:N0}");
             Console.WriteLine($"  casts                   {_casts}  ({string.Join(", ", _castsByAbility.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}"))})");
@@ -126,7 +126,7 @@ public static class Counters
             Console.WriteLine($"  hero aura gains         {_heroGains}  removals {_heroRemovals}  (touching haste or recovery: {_hasteOrRecoveryChanges})");
             if (loop != null) Console.WriteLine($"  enemy aura changes      {_enemyChanges}");
             Console.WriteLine($"  cooldown states         {_hero.Cooldowns.Count}  (advances on hero aura changes: {(long)(_heroGains + _heroRemovals) * _hero.Cooldowns.Count})");
-            Console.WriteLine($"  hits                    {_hits}  (OnDamageDealt subscribers: {subscribers}; handler calls: {(long)_hits * subscribers})");
+            Console.WriteLine($"  hits                    {_hits}  (OnDamageDealt and Ability.Hit subscribers: {subscribers})");
             Console.WriteLine($"  events scheduled        {events}  (left in queue at the end: {queued})");
         }
     }

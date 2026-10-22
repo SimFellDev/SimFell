@@ -102,7 +102,45 @@ public abstract class Hero : Actor
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
         modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste));
 
-    public event DamageDealtHandler? OnDamageDealt;
+    /// <summary>A hit of the hero landed. Handlers run in the order they subscribed, with those of <see cref="OnDamageDealtBy"/> and <see cref="Ability.Hit"/>.</summary>
+    public event DamageDealtHandler? OnDamageDealt
+    {
+        add { if (value != null) Subscribe(new DamageDealtSubscriber(null, null, value)); }
+        remove
+        {
+            int i = _damageDealt.FindLastIndex(s => s.Ability == null && s.DamageId == null && s.Handler == value);
+            if (i < 0) return;
+            _damageDealt.RemoveAt(i);
+            _damageDealtById.Clear();
+        }
+    }
+
+    /// <summary>Subscribes <paramref name="handler"/> to the hits with damage ID <paramref name="damageId"/> alone.</summary>
+    public void OnDamageDealtBy(int damageId, DamageDealtHandler handler) =>
+        Subscribe(new DamageDealtSubscriber(damageId, null, handler));
+
+    /// <summary>Raises <paramref name="ability"/>'s <see cref="Ability.Hit"/> for the hits with its <see cref="Ability.DamageLogId"/>.</summary>
+    internal void SubscribeHits(Ability ability) => Subscribe(new DamageDealtSubscriber(null, ability, null));
+
+    /// <summary>
+    /// One subscriber to landed hits: a handler of every hit, a handler of one damage ID, or an ability's
+    /// <see cref="Ability.Hit"/>. An ability's damage ID is read when the table of an ID is built, after its constructor.
+    /// </summary>
+    private readonly record struct DamageDealtSubscriber(int? DamageId, Ability? Ability, DamageDealtHandler? Handler)
+    {
+        public bool Receives(int damageId) =>
+            Ability != null ? Ability.DamageLogId == damageId : DamageId == null || DamageId == damageId;
+    }
+
+    private readonly List<DamageDealtSubscriber> _damageDealt = new();
+    // Speed: each damage ID has its own subscribers, in subscription order, so a hit reaches only the handlers it concerns.
+    private readonly Dictionary<int, DamageDealtSubscriber[]> _damageDealtById = new();
+
+    private void Subscribe(DamageDealtSubscriber subscriber)
+    {
+        _damageDealt.Add(subscriber);
+        _damageDealtById.Clear();
+    }
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastStarted;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastCompleted;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastCancelled;
@@ -132,7 +170,20 @@ public abstract class Hero : Actor
     /// <summary>The channel in progress, if any.</summary>
     public ActiveChannel? CurrentChannel { get; internal set; }
 
-    public void TriggerDamageDealt(in DamageContext hit) => OnDamageDealt?.Invoke(in hit);
+    public void TriggerDamageDealt(in DamageContext hit)
+    {
+        if (!_damageDealtById.TryGetValue(hit.AbilityId, out var subscribers))
+        {
+            int id = hit.AbilityId;
+            subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
+            _damageDealtById[id] = subscribers;
+        }
+        foreach (var subscriber in subscribers)
+        {
+            if (subscriber.Ability != null) subscriber.Ability.RaiseHit(in hit);
+            else subscriber.Handler!(in hit);
+        }
+    }
     public void TriggerCastStarted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastStarted?.Invoke(a, t, now);
     public void TriggerCastCompleted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCompleted?.Invoke(a, t, now);
     public void TriggerCastCancelled(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCancelled?.Invoke(a, t, now);
