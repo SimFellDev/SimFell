@@ -306,8 +306,10 @@ public sealed class BoundAplAction : BoundAplStep
         var (selection, expression) = _targetIf!;
         EnemyTarget? best = null;
         double bestValue = 0;
-        foreach (var enemy in candidates)
+        // By index: a foreach over the list interface allocates its enumerator.
+        for (int i = 0; i < candidates.Count; i++)
         {
+            var enemy = candidates[i];
             if (selection == AplTargetSelection.First)
             {
                 if (EvaluateAt(ctx, enemy, expression)) return enemy;

@@ -382,13 +382,15 @@ public class AuraContainer
 
     private void RunOut(SimTime now)
     {
-        List<Aura>? expired = null;
+        // Speed: the list of run-out auras is kept for the next scan, unless a removal's handlers start a scan of their own.
+        var expired = _expired ?? new List<Aura>();
+        _expired = null;
         var next = SimTime.Infinite;
         foreach (var aura in _auras.Values)
         {
             if (aura.IsExpired(now))
             {
-                (expired ??= new()).Add(aura);
+                expired.Add(aura);
             }
             else if (aura.ExpiresAt < next)
             {
@@ -397,12 +399,15 @@ public class AuraContainer
         }
         _nextExpiry = next;
         QueueExpiry();
-        if (expired == null) return;
         foreach (var aura in expired)
         {
             Remove(aura.Key, aura.ExpiresAt);
         }
+        expired.Clear();
+        _expired = expired;
     }
+
+    private List<Aura>? _expired;
 
     /// <summary>Applies every active modifier of <paramref name="type"/> to <paramref name="baseValue"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

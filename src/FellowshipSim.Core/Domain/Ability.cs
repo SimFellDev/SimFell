@@ -212,8 +212,20 @@ public abstract class Ability
     /// its hits get what they added. The engine resolves every cast this way; a proc that casts an ability for free passes
     /// itself as <paramref name="source"/>.
     /// </summary>
-    public void ResolveCast(SimulationContext ctx, EnemyTarget target, object? source = null) =>
-        ResolveCast(ctx, target, source, () => Execute(ctx, target));
+    public void ResolveCast(SimulationContext ctx, EnemyTarget target, object? source = null)
+    {
+        // As ResolveCast with an effect, without making a delegate for each cast.
+        var outer = CurrentCast;
+        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source);
+        try
+        {
+            Execute(ctx, target);
+        }
+        finally
+        {
+            CurrentCast = outer;
+        }
+    }
 
     /// <summary>Resolves <paramref name="effect"/> as a cast of this ability (a free cast that does less than <see cref="Execute"/>).</summary>
     protected void ResolveCast(SimulationContext ctx, EnemyTarget target, object? source, Action effect)
@@ -282,9 +294,10 @@ public abstract class Ability
         }
 
         double total = 0.0;
-        foreach (var t in targetList)
+        // By index: a foreach over the list interface allocates its enumerator.
+        for (int i = 0; i < targetList.Count; i++)
         {
-            total += DealDamage(ctx, t, damageMultiplier * falloffMultiplier, canCrit, overrideName, overrideId, forcedCrit, extraCritChance: extraCritChance);
+            total += DealDamage(ctx, targetList[i], damageMultiplier * falloffMultiplier, canCrit, overrideName, overrideId, forcedCrit, extraCritChance: extraCritChance);
         }
         return total;
     }

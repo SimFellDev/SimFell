@@ -524,13 +524,17 @@ public abstract class Hero : Actor
         if (ability.KnownCooldownVersion == CooldownsVersion && ReferenceEquals(ability.Owner, this) && ability.KnownCooldown is { } known) return known;
         if (!Cooldowns.TryGetValue(ability.Name, out var state))
         {
-            state = new CooldownState(ability.MaxCharges, rateAt: now => CooldownRate(ability, now));
+            state = NewCooldownState(ability);
             Cooldowns[ability.Name] = state;
             CooldownsVersion++;
         }
         (ability.KnownCooldown, ability.KnownCooldownVersion) = (state, CooldownsVersion);
         return state;
     }
+
+    // Its own method: the rate's closure over the ability is made only for a new state, not on every CooldownOf.
+    private CooldownState NewCooldownState(Ability ability) =>
+        new(ability.MaxCharges, rateAt: now => CooldownRate(ability, now));
 
     public bool IsCooldownReady(string name, SimTime now) =>
         !Cooldowns.TryGetValue(name, out var state) || state.ChargesAt(now) > 0;

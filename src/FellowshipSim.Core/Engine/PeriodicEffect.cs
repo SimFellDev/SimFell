@@ -71,10 +71,12 @@ public sealed class PeriodicEffect
 
         int fullTicks = (int)Math.Floor((durationSeconds + 1e-6) / periodSeconds);
         int firstTick = tickOnStart && tickDelaySeconds > 0 ? 0 : 1;
+        // One handler for every full tick.
+        Action<SimulationContext> fullTick = c => effect.Tick(c, 1.0);
         for (int k = firstTick; k <= fullTicks; k++)
         {
             var at = start + SimTime.FromSeconds(Math.Min(k * periodSeconds + tickDelaySeconds, durationSeconds));
-            effect._events.Add(ctx.Kernel.ScheduleAt(at, c => effect.Tick(c, 1.0), name));
+            effect._events.Add(ctx.Kernel.ScheduleAt(at, fullTick, name));
         }
 
         double remainder = durationSeconds - fullTicks * periodSeconds;
@@ -119,6 +121,8 @@ public sealed class PeriodicEffect
         var end = nominalEnd + SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds);
         var effect = new PeriodicEffect(name, start, end, basePeriodSeconds, onTick, onEnd);
         var lastTick = start;
+        // One handler for every tick, made once.
+        Action<SimulationContext>? fire = null;
 
         void Fire(SimulationContext cc)
         {
@@ -130,14 +134,15 @@ public sealed class PeriodicEffect
 
         void ScheduleNext(SimulationContext c)
         {
+            fire ??= Fire;
             if (retimeOnHasteChange)
             {
-                effect._nextHastedTick = HastedTimer.Start(c, hero, basePeriodSeconds, Fire, name);
+                effect._nextHastedTick = HastedTimer.Start(c, hero, basePeriodSeconds, fire, name);
                 return;
             }
             // The period is fixed by the haste when the previous tick fired.
             var period = SimTime.FromSeconds(basePeriodSeconds / (1.0 + hero.GetHaste(c.CurrentTime)));
-            effect._events.Add(c.Kernel.ScheduleAt(c.CurrentTime + period, Fire, name));
+            effect._events.Add(c.Kernel.ScheduleAt(c.CurrentTime + period, fire, name));
         }
 
         // The duration runs out at the nominal end (no more ticks; the partial tick is measured there) ...
