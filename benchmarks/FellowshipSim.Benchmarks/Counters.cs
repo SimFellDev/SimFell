@@ -57,11 +57,13 @@ public static class Counters
         hero.OnDamageDealt += (in _) => hits++;
         Console.WriteLine($"Fights on one hero, {Fight.Duration.TotalSeconds:F0} s, {targets} target(s)");
         Console.WriteLine("  fight      ms        damage  casts   hits  events  hasted timers");
+        // One thread: the simulator builds one hero, the one above.
+        var simulator = new MonteCarloSimulator(() => hero, actions);
         for (int fight = 1; fight <= 12; fight++)
         {
             (casts, hits) = (0, 0);
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            var result = new MonteCarloSimulator(hero, actions).Run(Fight.Duration, iterations: 1, targetCount: targets);
+            var result = simulator.Run(Fight.Duration, iterations: 1, targetCount: targets, degreeOfParallelism: 1);
             clock.Stop();
             long events = (long)Sequence.GetValue(hero.SimContext!.Kernel)!;
             int timers = ((System.Collections.ICollection)Timers.GetValue(hero.Auras)!).Count;

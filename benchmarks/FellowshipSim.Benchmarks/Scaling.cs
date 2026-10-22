@@ -82,7 +82,7 @@ public static class Scaling
 
         Action work = workload switch
         {
-            "mc" or "mc8" => MonteCarlo(iterations, workload == "mc8" ? 8 : 1),
+            "mc" or "mc8" => MonteCarlo(iterations, workload == "mc8" ? 8 : 1, System.Numerics.BitOperations.PopCount(ulong.Parse(args[3]))),
             "freedice" => FreeDice(iterations),
             _ => throw new ArgumentException($"Unknown workload '{workload}' (mc, mc8 or freedice)"),
         };
@@ -106,10 +106,11 @@ public static class Scaling
         Console.WriteLine(m.ToString());
     }
 
-    private static Action MonteCarlo(int iterations, int targets)
+    /// <summary>One Monte Carlo run of <paramref name="iterations"/> fights on <paramref name="cores"/> threads.</summary>
+    private static Action MonteCarlo(int iterations, int targets, int cores)
     {
-        var simulator = new MonteCarloSimulator(Fight.NewHero(), Fight.Actions());
-        return () => simulator.Run(Fight.Duration, iterations, targets);
+        var simulator = new MonteCarloSimulator(Fight.NewHero, Fight.Actions());
+        return () => simulator.Run(Fight.Duration, iterations, targets, degreeOfParallelism: cores);
     }
 
     private static Action FreeDice(int iterations)

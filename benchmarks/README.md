@@ -12,7 +12,8 @@ concurrent, as the tests and the server do.
 
 | Class | Benchmark |
 |---|---|
-| `MonteCarloBenchmarks` | A 300 s Monte Carlo fight at 1 and 8 targets: one fight on a new hero, ten fights each on a new hero, and ten fights on one hero. |
+| `MonteCarloBenchmarks` | A 300 s Monte Carlo fight at 1 and 8 targets: one fight on a new hero, ten fights each on a new hero, and ten fights on one hero, all on one thread; eighty fights on eight threads. |
+| `HeroBenchmarks` | One hero imported from the fixture's build. |
 | `FreeDiceBenchmarks` | One free-dice run of a replay script on one thread. |
 | `AplDecisionBenchmarks` | One evaluation of every action in the list on a hero 60 s into a fight. |
 | `AuraBenchmarks` | One aura applied and removed on a hero 60 s into a fight, with a stat read after each change. |
@@ -71,6 +72,13 @@ bin/Release/net10.0/FellowshipSim.Benchmarks sequence 8
 This runs twelve fights one after another on one hero at 8 targets (or the number given), with each fight's time,
 damage, casts, hits, events and hasted timers. Each fight has the same seed, so each one has the damage, casts, hits and events of the first.
 
+```
+bin/Release/net10.0/FellowshipSim.Benchmarks hero
+```
+
+This prints the time of the first hero in a new process (with the catalog's setup and the first compilation of the
+import) and the mean time of the next thousand.
+
 ## Many iterations at fixed core counts
 
 ```
@@ -81,9 +89,8 @@ bin/Release/net10.0/FellowshipSim.Benchmarks scale mc 100000 1
 ```
 
 This runs `iterations` (default 100,000) through `MonteCarloSimulator.Run` (`mc` is 1 target, `mc8` is 8 targets) or
-`FreeDiceReplay.Run`, once per core count. `MonteCarloSimulator.Run` runs its fights on one thread, so a Monte Carlo
-run uses one core at any core count; the core-count sweep is for a parallel Monte Carlo. The mode prints wall time,
-CPU time, iterations per second, scaling efficiency,
+`FreeDiceReplay.Run`, once per core count. A Monte Carlo run has one thread per core, each with its own hero. The mode
+prints wall time, CPU time, iterations per second, scaling efficiency,
 bytes allocated, GC counts, the share of wall time in GC pauses and the peak working set. The default core counts are
 1, 2, 4 and 8; `1,8` runs only those. A run on every logical processor leaves the machine unusable while it runs. A run
 whose working set passes 8 GB is stopped.

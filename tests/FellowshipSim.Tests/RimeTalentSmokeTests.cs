@@ -79,7 +79,9 @@ public class RimeTalentSmokeTests(ITestOutputHelper output)
         var hero = HeroImporter.Import(build);
         var gained = new Dictionary<string, int>();
         hero.Auras.OnGained += (aura, _, _) => gained[aura.Def.Name] = gained.GetValueOrDefault(aura.Def.Name) + 1;
-        var result = new MonteCarloSimulator(hero, AplParser.ParseScript(Apl)).Run(SimTime.FromSeconds(300), iterations, targets);
+        // One thread: the simulator builds one hero, the one above.
+        var result = new MonteCarloSimulator(() => hero, AplParser.ParseScript(Apl))
+            .Run(SimTime.FromSeconds(300), iterations, targets, degreeOfParallelism: 1);
         return (result, hero, gained);
     }
 }

@@ -8,7 +8,8 @@ using FellowshipSim.Logs.Replay;
 
 // counters: the work done in one fight. sequence <targets>: fights one after another on one hero, with each one's time
 // and work. profile <mc|mc8|freedice> <seconds>: fights back to back on one thread, for a trace. scale <mc|mc8|freedice>
-// [iterations] [core counts]: many iterations at fixed core counts.
+// [iterations] [core counts]: many iterations at fixed core counts. hero: the first hero of a new process, then the next
+// thousand.
 // Anything else goes to BenchmarkDotNet (e.g. --filter *MonteCarlo*).
 switch (args.FirstOrDefault())
 {
@@ -27,11 +28,14 @@ switch (args.FirstOrDefault())
     case "profile":
         Profile(args.ElementAtOrDefault(1) ?? "mc", double.Parse(args.ElementAtOrDefault(2) ?? "30", System.Globalization.CultureInfo.InvariantCulture));
         return;
+    case "hero":
+        FirstHero();
+        return;
 }
 
 var types = new List<Type>
 {
-    typeof(MonteCarloBenchmarks), typeof(FreeDiceBenchmarks),
+    typeof(MonteCarloBenchmarks), typeof(HeroBenchmarks), typeof(FreeDiceBenchmarks),
     typeof(AplDecisionBenchmarks), typeof(AuraBenchmarks), typeof(HasteAuraBenchmarks), typeof(HitBenchmarks), typeof(EventQueueBenchmarks),
 };
 if (FreeDiceBenchmarks.ScriptPath == null)
@@ -47,6 +51,19 @@ IConfig config = args.Any(a => a is "--job" or "-j")
     : DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(true).WithGcConcurrent(false));
 BenchmarkSwitcher.FromTypes(types.ToArray()).Run(args, config);
 
+// The first hero includes the catalog's setup and the first compilation of the import.
+static void FirstHero()
+{
+    _ = Fight.Build;
+    var clock = Stopwatch.StartNew();
+    Fight.NewHero();
+    double first = clock.Elapsed.TotalMilliseconds;
+    const int heroes = 1000;
+    clock.Restart();
+    for (int i = 0; i < heroes; i++) Fight.NewHero();
+    Console.WriteLine($"first hero {first:F2} ms; next {heroes} heroes {clock.Elapsed.TotalMilliseconds / heroes * 1000:F1} µs each");
+}
+
 static void Profile(string workload, double seconds)
 {
     var clock = Stopwatch.StartNew();
@@ -56,11 +73,10 @@ static void Profile(string workload, double seconds)
         case "mc":
         case "mc8":
             int targets = workload == "mc8" ? 8 : 1;
-            var hero = Fight.NewHero();
-            var simulator = new MonteCarloSimulator(hero, Fight.Actions());
+            var simulator = new MonteCarloSimulator(Fight.NewHero, Fight.Actions());
             while (clock.Elapsed.TotalSeconds < seconds)
             {
-                simulator.Run(Fight.Duration, iterations: 10, targetCount: targets);
+                simulator.Run(Fight.Duration, iterations: 10, targetCount: targets, degreeOfParallelism: 1);
                 fights += 10;
             }
             break;

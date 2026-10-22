@@ -59,7 +59,8 @@ public class MonteCarloSeedTests
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rime_character.json")))!;
-        var hero = HeroImporter.Import(build);
-        return new MonteCarloSimulator(hero, AplParser.ParseScript(apl)).Run(SimTime.FromSeconds(seconds), iterations, targets, firstSeed);
+        // One thread: one hero fights every fight of the run.
+        return new MonteCarloSimulator(build, AplParser.ParseScript(apl))
+            .Run(SimTime.FromSeconds(seconds), iterations, targets, firstSeed, degreeOfParallelism: 1, keepFightDamage: true);
     }
 }
