@@ -29,7 +29,7 @@ public static class Scaling
             : new[] { 1, 2, 4, 8, order.Count }.Where(n => n <= order.Count).Distinct().ToList();
 
         Console.WriteLine($"{workload}, {iterations:N0} iterations. Logical processors, first chosen first: {string.Join(",", order)}");
-        Console.WriteLine("cores  logical processors        wall s    CPU s   iter/s  efficiency  allocated GB   gen0  gen1  gen2  GC pause");
+        Console.WriteLine("cores  logical processors        wall s    CPU s   iter/s  efficiency  allocated GB   gen0  gen1  gen2  GC pause  peak GB");
         double? single = null;
         foreach (int cores in counts)
         {
@@ -45,15 +45,30 @@ public static class Scaling
             start.Environment["DOTNET_GCHeapCount"] = cores.ToString("x");
             start.Environment["DOTNET_GCHeapAffinitizeMask"] = mask.ToString("x");
             using var child = Process.Start(start)!;
-            string line = child.StandardOutput.ReadToEnd().Trim().Split('\n').Last().Trim();
-            child.WaitForExit();
-            var m = Measurement.Parse(line);
+            var output = child.StandardOutput.ReadToEndAsync();
+            var clock = Stopwatch.StartNew();
+            long peak = 0;
+            while (!child.WaitForExit(1000))
+            {
+                child.Refresh();
+                peak = Math.Max(peak, child.WorkingSet64);
+                if (peak <= WorkingSetLimitBytes) continue;
+                child.Kill(entireProcessTree: true);
+                child.WaitForExit();
+                Console.WriteLine($"{cores,5}  {Ranges(chosen),-22} aborted: working set passed {WorkingSetLimitBytes / 1e9:F0} GB after {clock.Elapsed.TotalSeconds:F0} s");
+                break;
+            }
+            if (peak > WorkingSetLimitBytes) continue;
+            var m = Measurement.Parse(output.Result.Trim().Split('\n').Last().Trim());
             double rate = iterations / m.WallSeconds;
             single ??= cores == 1 ? rate : null;
             string efficiency = single is { } one ? $"{rate / (one * cores),9:P0}" : "        -";
-            Console.WriteLine($"{cores,5}  {Ranges(chosen),-22} {m.WallSeconds,9:F1} {m.CpuSeconds,8:F1} {rate,8:N0}  {efficiency}  {m.AllocatedBytes / 1e9,12:F1} {m.Gen0,6} {m.Gen1,5} {m.Gen2,5} {m.PausePercent,8:P1}");
+            Console.WriteLine($"{cores,5}  {Ranges(chosen),-22} {m.WallSeconds,9:F1} {m.CpuSeconds,8:F1} {rate,8:N0}  {efficiency}  {m.AllocatedBytes / 1e9,12:F1} {m.Gen0,6} {m.Gen1,5} {m.Gen2,5} {m.PausePercent,8:P1} {m.PeakWorkingSetBytes / 1e9,8:F2}");
         }
     }
+
+    /// <summary>A run whose working set passes this is stopped (a fight that leaks state into the next grows without bound).</summary>
+    private const long WorkingSetLimitBytes = 8_000_000_000;
 
     /// <summary>The child process: pins itself, runs the workload once and prints one line of measurements.</summary>
     public static void RunChild(string[] args)
@@ -86,7 +101,8 @@ public static class Scaling
             (process.TotalProcessorTime - cpu).TotalSeconds,
             GC.GetTotalAllocatedBytes(precise: true) - allocated,
             GC.CollectionCount(0) - gen0, GC.CollectionCount(1) - gen1, GC.CollectionCount(2) - gen2,
-            (GC.GetTotalPauseDuration() - pause).TotalSeconds / clock.Elapsed.TotalSeconds);
+            (GC.GetTotalPauseDuration() - pause).TotalSeconds / clock.Elapsed.TotalSeconds,
+            process.PeakWorkingSet64);
         Console.WriteLine(m.ToString());
     }
 
@@ -103,16 +119,16 @@ public static class Scaling
         return () => FreeDiceReplay.Run(script, iterations);
     }
 
-    private sealed record Measurement(double WallSeconds, double CpuSeconds, long AllocatedBytes, int Gen0, int Gen1, int Gen2, double PausePercent)
+    private sealed record Measurement(double WallSeconds, double CpuSeconds, long AllocatedBytes, int Gen0, int Gen1, int Gen2, double PausePercent, long PeakWorkingSetBytes)
     {
         public override string ToString() =>
-            FormattableString.Invariant($"{WallSeconds:R} {CpuSeconds:R} {AllocatedBytes} {Gen0} {Gen1} {Gen2} {PausePercent:R}");
+            FormattableString.Invariant($"{WallSeconds:R} {CpuSeconds:R} {AllocatedBytes} {Gen0} {Gen1} {Gen2} {PausePercent:R} {PeakWorkingSetBytes}");
 
         public static Measurement Parse(string line)
         {
             var p = line.Split(' ');
             var c = System.Globalization.CultureInfo.InvariantCulture;
-            return new(double.Parse(p[0], c), double.Parse(p[1], c), long.Parse(p[2], c), int.Parse(p[3], c), int.Parse(p[4], c), int.Parse(p[5], c), double.Parse(p[6], c));
+            return new(double.Parse(p[0], c), double.Parse(p[1], c), long.Parse(p[2], c), int.Parse(p[3], c), int.Parse(p[4], c), int.Parse(p[5], c), double.Parse(p[6], c), long.Parse(p[7], c));
         }
     }
 
