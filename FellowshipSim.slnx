@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/FellowshipSim.Core/FellowshipSim.Core.csproj" />
+    <Project Path="src/FellowshipSim.Core.Generators/FellowshipSim.Core.Generators.csproj" />
     <Project Path="src/FellowshipSim.Logs/FellowshipSim.Logs.csproj" />
     <Project Path="src/FellowshipSim.Server/FellowshipSim.Server.csproj" />
   </Folder>
