@@ -6,8 +6,12 @@ namespace FellowshipSim.Core.Domain;
 /// </summary>
 public sealed record AuraDef(string Name, int LogId, SimTime Duration, int MaxStacks, IReadOnlyList<StatModifier> Modifiers)
 {
+    // Speed: Key is built once. Setting Name, LogId or SourceId rebuilds it, so a `with` copy has its own Key.
+    public string Name { get; init { field = value; Key = KeyOf(value, LogId, SourceId); } } = Name;
+    public int LogId { get; init { field = value; Key = KeyOf(Name, value, SourceId); } } = LogId;
+
     /// <summary>Who applied it, when the same aura from different sources stacks as separate instances (0 = one instance).</summary>
-    public int SourceId { get; init; }
+    public int SourceId { get; init { field = value; Key = KeyOf(Name, LogId, value); } }
 
     /// <summary>
     /// On refresh, up to this fraction of <see cref="Duration"/> of the time left carries over (0 = a refresh restarts the duration).
@@ -17,7 +21,10 @@ public sealed record AuraDef(string Name, int LogId, SimTime Duration, int MaxSt
     /// <summary>When above 0, a re-application adds this many seconds to the time left instead of restarting the duration.</summary>
     public double ReapplyExtendsSeconds { get; init; }
 
-    public string Key => LogId > 0 ? (SourceId > 0 ? $"#{LogId}@{SourceId}" : $"#{LogId}") : Name;
+    public string Key { get; private init; } = KeyOf(Name, LogId, 0);
+
+    private static string KeyOf(string name, int logId, int sourceId) =>
+        logId > 0 ? (sourceId > 0 ? $"#{logId}@{sourceId}" : $"#{logId}") : name;
 
     public AuraDef WithDuration(double seconds) => this with { Duration = SimTime.FromSeconds(seconds) };
     public AuraDef WithModifiers(params StatModifier[] modifiers) => this with { Modifiers = modifiers };
@@ -74,9 +81,9 @@ public class Aura
 
 public class AuraContainer
 {
-    private readonly Dictionary<string, Aura> _auras = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, long> _uptimeMs = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, SimTime> _activeSince = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Aura> _auras = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _uptimeMs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SimTime> _activeSince = new(StringComparer.Ordinal);
 
     // Speed: _version changes whenever an aura or its stacks change, which invalidates the cached folds; _nextExpiry is
     // never later than the earliest expiry, so CleanExpired only looks at the auras once one may have run out.
@@ -268,7 +275,7 @@ public class AuraContainer
     public Dictionary<string, int> GetActiveAuraStacks(SimTime now = default)
     {
         CleanExpired(now);
-        return _auras.ToDictionary(kv => kv.Key, kv => kv.Value.Stacks, StringComparer.OrdinalIgnoreCase);
+        return _auras.ToDictionary(kv => kv.Key, kv => kv.Value.Stacks, StringComparer.Ordinal);
     }
 
     public void CleanExpired(SimTime now)
