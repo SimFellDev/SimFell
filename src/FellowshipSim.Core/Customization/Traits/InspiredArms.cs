@@ -25,5 +25,6 @@ public class InspiredArms : Trait
             if (ability == hero.WeaponAbility) hero.Auras.Apply(Buff.WithDuration(fraction * ability.Cooldown.TotalSeconds), now);
         };
         hero.CooldownAccelerations.Add((_, now) => hero.Auras.HasAura(Buff, now) ? CooldownAcceleration : 0.0);
+        hero.CooldownAccelerationAuraKeys.Add(Buff.Key);
     }
 }

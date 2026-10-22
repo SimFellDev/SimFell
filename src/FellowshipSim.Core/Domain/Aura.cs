@@ -23,6 +23,24 @@ public sealed record AuraDef(string Name, int LogId, SimTime Duration, int MaxSt
 
     public string Key { get; private init; } = KeyOf(Name, LogId, 0);
 
+    // Speed: StatMask is built once. Setting Modifiers rebuilds it.
+    public IReadOnlyList<StatModifier> Modifiers { get; init { field = value; StatMask = MaskOf(value); } } = Modifiers;
+
+    /// <summary>The stats the aura's modifiers change: bit <c>1 &lt;&lt; (int)type</c> for each <see cref="StatType"/>.</summary>
+    public int StatMask { get; private init; } = MaskOf(Modifiers);
+
+    /// <summary>True when one of the aura's modifiers changes one of the stats in <paramref name="mask"/>.</summary>
+    public bool Changes(int mask) => (StatMask & mask) != 0;
+
+    public static int MaskOf(StatType type) => 1 << (int)type;
+
+    private static int MaskOf(IReadOnlyList<StatModifier> modifiers)
+    {
+        int mask = 0;
+        for (int i = 0; i < modifiers.Count; i++) mask |= MaskOf(modifiers[i].Type);
+        return mask;
+    }
+
     private static string KeyOf(string name, int logId, int sourceId) =>
         logId > 0 ? (sourceId > 0 ? $"#{logId}@{sourceId}" : $"#{logId}") : name;
 
@@ -278,7 +296,8 @@ public class AuraContainer
         return _auras.TryGetValue(key, out var aura) ? aura.Stacks : 0;
     }
 
-    public IEnumerable<Aura> Active(SimTime now = default)
+    /// <summary>The active auras. A <c>foreach</c> over them allocates no enumerator.</summary>
+    public Dictionary<string, Aura>.ValueCollection Active(SimTime now = default)
     {
         CleanExpired(now);
         return _auras.Values;

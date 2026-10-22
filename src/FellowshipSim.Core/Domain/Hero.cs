@@ -19,13 +19,22 @@ public abstract class Hero : Actor
         };
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
-        Auras.OnGained += (_, _, now) => AdvanceCooldowns(now);
-        Auras.OnRemoved += (_, now) => AdvanceCooldowns(now);
+        // Speed: after an aura that cannot change a cooldown's rate, the recharges progress without reading the rate again.
+        // They still progress at every aura change, so a recharge is subtracted in the same steps and rounds the same.
+        Auras.OnGained += (aura, _, now) => AdvanceCooldowns(now, readRate: ChangesCooldownRate(aura));
+        Auras.OnRemoved += (aura, now) => AdvanceCooldowns(now, readRate: ChangesCooldownRate(aura));
     }
 
-    private void AdvanceCooldowns(SimTime now)
+    /// <summary>The stats <see cref="CooldownRate"/> reads (a weapon ability's own recovery auras are cooldown recovery too).</summary>
+    private static readonly int CooldownRateStats =
+        AuraDef.MaskOf(StatType.CooldownRecovery) | AuraDef.MaskOf(StatType.Haste) | AuraDef.MaskOf(StatType.HasteRating);
+
+    private bool ChangesCooldownRate(Aura aura) =>
+        aura.Def.Changes(CooldownRateStats) || (CooldownAccelerationAuraKeys.Count > 0 && CooldownAccelerationAuraKeys.Contains(aura.Key));
+
+    private void AdvanceCooldowns(SimTime now, bool readRate)
     {
-        foreach (var state in Cooldowns.Values) state.Advance(now);
+        foreach (var state in Cooldowns.Values) state.Advance(now, readRate);
     }
 
     /// <summary>The simulation the hero is in (for effects triggered by events that carry no context, e.g. casts).</summary>
@@ -88,6 +97,9 @@ public abstract class Hero : Actor
 
     /// <summary>Cooldown acceleration for specific abilities (0.05 = cooldown recovers 5% faster).</summary>
     public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
+
+    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> entry reads, other than through haste (e.g. Inspired Arms).</summary>
+    public HashSet<string> CooldownAccelerationAuraKeys { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Seconds added to Spirit of Heroism.</summary>
     public double SpiritOfHeroismDurationBonus { get; set; }
@@ -561,6 +573,8 @@ public sealed class CooldownState
     private double _rechargeBase;
     private SimTime _last;
     private double _rate = 1.0;
+    // Set when Advance skipped reading the rate of a full cooldown.
+    private bool _rateStale;
     private bool _advancing;
 
     public CooldownState(int maxCharges, Func<SimTime, double>? rateAt = null, Func<SimTime, SimTime>? nextCheckpoint = null)
@@ -594,6 +608,14 @@ public sealed class CooldownState
         {
             _rechargeBase = rechargeSeconds;
             _remaining = rechargeSeconds;
+            // The rate as Advance(now) would have read it, had it been recharging.
+            if (_rateStale && !_advancing)
+            {
+                _advancing = true;
+                try { _rate = _rateAt(now); }
+                finally { _advancing = false; }
+            }
+            _rateStale = false;
         }
     }
 
@@ -630,7 +652,13 @@ public sealed class CooldownState
     }
 
     /// <summary>Progresses the recharge to <paramref name="now"/>, re-reading the rate at every checkpoint on the way.</summary>
-    public void Advance(SimTime now)
+    public void Advance(SimTime now) => Advance(now, readRate: true);
+
+    /// <summary>
+    /// <see cref="Advance(SimTime)"/>. With <paramref name="readRate"/> false the rate is read at the checkpoints on the way
+    /// but not at <paramref name="now"/>: nothing the rate depends on has changed since it was last read.
+    /// </summary>
+    internal void Advance(SimTime now, bool readRate)
     {
         if (now == default || now < _last || _advancing) return;
         _advancing = true;
@@ -657,7 +685,9 @@ public sealed class CooldownState
                 _rate = _rateAt(t);
             }
             _last = now;
-            _rate = _rateAt(now);
+            // Speed: a full cooldown reads no rate; Spend reads it when a recharge starts.
+            _rateStale = !Recharging;
+            if (!_rateStale && readRate) _rate = _rateAt(now);
         }
         finally { _advancing = false; }
     }
