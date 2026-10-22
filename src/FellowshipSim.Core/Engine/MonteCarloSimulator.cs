@@ -46,8 +46,14 @@ public class MonteCarloSimulator
     public MonteCarloSimulator(CharacterBuild build, AplActionLists actions) : this(() => HeroImporter.Import(build), actions) { }
 
     /// <summary>
+    /// Threads of a run given no degree of parallelism: 80% of <see cref="Environment.ProcessorCount"/>, rounded down, and
+    /// at least 1. The other processors stay free for the rest of the machine.
+    /// </summary>
+    public static int DefaultDegreeOfParallelism => Math.Max(1, Environment.ProcessorCount * 4 / 5);
+
+    /// <summary>
     /// Runs <paramref name="iterations"/> fights on up to <paramref name="degreeOfParallelism"/> threads
-    /// (<see cref="Environment.ProcessorCount"/> when null). Fight i uses seed <paramref name="firstSeed"/> + i, so a run
+    /// (<see cref="DefaultDegreeOfParallelism"/> when null). Fight i uses seed <paramref name="firstSeed"/> + i, so a run
     /// can be repeated exactly. <paramref name="keepFightDamage"/> keeps each fight's damage in
     /// <see cref="MonteCarloResult.IterationDamage"/>.
     /// </summary>
@@ -57,7 +63,7 @@ public class MonteCarloSimulator
         double totalSeconds = Math.Max(1.0, duration.TotalSeconds);
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
         var total = new Totals();
-        var options = new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism ?? Environment.ProcessorCount };
+        var options = new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism ?? DefaultDegreeOfParallelism };
 
         Parallel.For(0, iterations, options,
             () => (Worker: _idle.TryTake(out var worker) ? worker : NewWorker(), Totals: new Totals()),
