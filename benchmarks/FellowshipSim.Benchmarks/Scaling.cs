@@ -51,7 +51,9 @@ public static class Scaling
             while (!child.WaitForExit(1000))
             {
                 child.Refresh();
-                peak = Math.Max(peak, child.WorkingSet64);
+                // The child can exit between the wait and the read.
+                try { peak = Math.Max(peak, child.WorkingSet64); }
+                catch (InvalidOperationException) { break; }
                 if (peak <= WorkingSetLimitBytes) continue;
                 child.Kill(entireProcessTree: true);
                 child.WaitForExit();
