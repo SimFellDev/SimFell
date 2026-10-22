@@ -16,8 +16,8 @@ public static class Scaling
     private const string RunMode = "scale-run";
 
     /// <summary>
-    /// <c>scale &lt;mc|mc8|freedice&gt; [iterations] [core counts]</c>: one process per core count (default 1,2,4,8 and all
-    /// logical processors), then a table.
+    /// <c>scale &lt;mc|mc8|freedice&gt; [iterations] [core counts]</c>: one process per core count (default 1, 2, 4 and 8),
+    /// then a table.
     /// </summary>
     public static void Run(string[] args)
     {
@@ -26,7 +26,7 @@ public static class Scaling
         var order = ProcessorOrder();
         var counts = args.ElementAtOrDefault(3) is { } list
             ? list.Split(',').Select(int.Parse).ToList()
-            : new[] { 1, 2, 4, 8, order.Count }.Where(n => n <= order.Count).Distinct().ToList();
+            : new[] { 1, 2, 4, 8 }.Where(n => n <= order.Count).ToList();
 
         Console.WriteLine($"{workload}, {iterations:N0} iterations. Logical processors, first chosen first: {string.Join(",", order)}");
         Console.WriteLine("cores  logical processors        wall s    CPU s   iter/s  efficiency  allocated GB   gen0  gen1  gen2  GC pause  peak GB");

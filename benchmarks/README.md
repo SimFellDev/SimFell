@@ -76,8 +76,9 @@ bin/Release/net10.0/FellowshipSim.Benchmarks scale <mc|mc8|freedice> [iterations
 
 This runs `iterations` (default 100,000) through `MonteCarloSimulator.Run` (`mc` is 1 target, `mc8` is 8 targets) or
 `FreeDiceReplay.Run`, once per core count, and prints wall time, CPU time, iterations per second, scaling efficiency,
-bytes allocated, GC counts and the share of wall time in GC pauses. The default core counts are 1, 2, 4, 8 and every
-logical processor; `1,8` runs only those.
+bytes allocated, GC counts, the share of wall time in GC pauses and the peak working set. The default core counts are
+1, 2, 4 and 8; `1,8` runs only those. A run on every logical processor leaves the machine unusable while it runs. A run
+whose working set passes 8 GB is stopped.
 
 Each core count runs in its own process. The process is pinned to that many logical processors, and its runtime
 processor count and server GC heap count equal the core count, so code that sizes its parallelism from the processor
