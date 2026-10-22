@@ -31,15 +31,35 @@ public class ResourceState
 public class ResourcePool
 {
     private readonly Dictionary<ResourceDef, ResourceState> _resources = new();
+    // Speed: a hero has a few resources, and callers pass the declared ResourceDef. It is found by reference before the
+    // dictionary, which hashes and compares a record's fields. Rebuilt whenever the dictionary changes.
+    private (ResourceDef Type, ResourceState State)[] _byReference = [];
+
+    private bool TryGet(ResourceDef type, out ResourceState state)
+    {
+        foreach (var (known, knownState) in _byReference)
+        {
+            if (!ReferenceEquals(known, type)) continue;
+            state = knownState;
+            return true;
+        }
+        return _resources.TryGetValue(type, out state!);
+    }
+
+    private void Set(ResourceDef type, ResourceState state)
+    {
+        _resources[type] = state;
+        _byReference = _resources.Select(kv => (kv.Key, kv.Value)).ToArray();
+    }
 
     public void Register(ResourceDef type, double max, double initial)
     {
-        _resources[type] = new ResourceState(max, initial);
+        Set(type, new ResourceState(max, initial));
     }
 
     public void Add(ResourceDef type, double amount)
     {
-        if (_resources.TryGetValue(type, out var res))
+        if (TryGet(type, out var res))
         {
             res.Current = Math.Min(res.Max, res.Current + amount);
         }
@@ -47,7 +67,7 @@ public class ResourcePool
 
     public bool Consume(ResourceDef type, double amount)
     {
-        if (_resources.TryGetValue(type, out var res) && res.Current >= amount)
+        if (TryGet(type, out var res) && res.Current >= amount)
         {
             res.Current -= amount;
             return true;
@@ -57,10 +77,10 @@ public class ResourcePool
 
     public ResourceState Get(ResourceDef type)
     {
-        if (!_resources.TryGetValue(type, out var res))
+        if (!TryGet(type, out var res))
         {
             res = new ResourceState(100, 0);
-            _resources[type] = res;
+            Set(type, res);
         }
         return res;
     }
@@ -87,13 +107,13 @@ public class ResourcePool
     {
         foreach (var (k, v) in snapshot)
         {
-            if (_resources.TryGetValue(k, out var state))
+            if (TryGet(k, out var state))
             {
                 state.Current = v;
             }
             else
             {
-                _resources[k] = new ResourceState(100, v);
+                Set(k, new ResourceState(100, v));
             }
         }
     }

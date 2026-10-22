@@ -518,12 +518,15 @@ public abstract class Hero : Actor
 
     public CooldownState CooldownOf(Ability ability)
     {
+        // Speed: an ability of this hero keeps its state until the hero's states change.
+        if (ability.KnownCooldownVersion == CooldownsVersion && ReferenceEquals(ability.Owner, this) && ability.KnownCooldown is { } known) return known;
         if (!Cooldowns.TryGetValue(ability.Name, out var state))
         {
             state = new CooldownState(ability.MaxCharges, rateAt: now => CooldownRate(ability, now));
             Cooldowns[ability.Name] = state;
             CooldownsVersion++;
         }
+        (ability.KnownCooldown, ability.KnownCooldownVersion) = (state, CooldownsVersion);
         return state;
     }
 

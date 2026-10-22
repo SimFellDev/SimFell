@@ -96,6 +96,12 @@ public abstract class Ability
     /// </summary>
     public event DamageDealtHandler? Hit;
 
+    /// <summary>The state <see cref="Hero.CooldownOf"/> last found for this ability, at <see cref="KnownCooldownVersion"/>.</summary>
+    internal CooldownState? KnownCooldown;
+
+    /// <summary>The owner's <see cref="Hero.CooldownsVersion"/> when <see cref="KnownCooldown"/> was found.</summary>
+    internal int KnownCooldownVersion = -1;
+
     /// <summary>What talents added to the cast resolving now (<see cref="ResolveCast(SimulationContext, EnemyTarget, object?)"/>); null outside a cast.</summary>
     protected CastBonus? CurrentCast { get; private set; }
 

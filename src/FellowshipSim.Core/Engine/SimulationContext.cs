@@ -1,10 +1,17 @@
+using System.Runtime.InteropServices;
+
 namespace FellowshipSim.Core.Engine;
 
 public class SimulationContext
 {
     private readonly Dictionary<(int Id, int InstanceId), EnemyTarget> _enemyLookup = new();
     private readonly List<EnemyTarget> _enemies = new();
-    private readonly Dictionary<string, double> _abilityDamage = new(StringComparer.OrdinalIgnoreCase);
+
+    // Damage by name, in the order the names first dealt damage; names equal but for case share one total. Speed: a hit
+    // finds its total by its name's string instance (hits use a few, mostly constants) without hashing the characters.
+    private readonly List<(string Name, double Damage)> _damageByName = new();
+    private readonly Dictionary<string, int> _damageSlotByName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _damageSlotByInstance = new(ReferenceEqualityComparer.Instance);
 
     public Hero Player { get; }
     public SimTime CurrentTime { get; private set; } = SimTime.Zero;
@@ -60,7 +67,30 @@ public class SimulationContext
     public IOutcomeSource Outcomes { get; set; }
 
     public double TotalDamage { get; private set; }
-    public IReadOnlyDictionary<string, double> AbilityDamage => _abilityDamage;
+
+    /// <summary>Damage dealt by name (a new dictionary of the totals so far, in the order the names first dealt damage).</summary>
+    public IReadOnlyDictionary<string, double> AbilityDamage
+    {
+        get
+        {
+            var totals = new Dictionary<string, double>(_damageByName.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, damage) in _damageByName) totals[name] = damage;
+            return totals;
+        }
+    }
+
+    /// <summary>The slot of <paramref name="name"/>'s total, added when the name first deals damage.</summary>
+    private int DamageSlot(string name)
+    {
+        if (!_damageSlotByName.TryGetValue(name, out int slot))
+        {
+            slot = _damageByName.Count;
+            _damageByName.Add((name, 0.0));
+            _damageSlotByName[name] = slot;
+        }
+        _damageSlotByInstance[name] = slot;
+        return slot;
+    }
 
     public SimulationContext(Hero player)
     {
@@ -393,7 +423,8 @@ public class SimulationContext
         var target = hit.Target;
         string abilityName = hit.AbilityName;
         TotalDamage += dealt;
-        _abilityDamage[abilityName] = _abilityDamage.GetValueOrDefault(abilityName, 0.0) + dealt;
+        if (!_damageSlotByInstance.TryGetValue(abilityName, out int slot)) slot = DamageSlot(abilityName);
+        CollectionsMarshal.AsSpan(_damageByName)[slot].Damage += dealt;
         if (target != null && target.MaxHealth > 0)
         {
             target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
@@ -432,7 +463,9 @@ public class SimulationContext
         // The cleared queue lost the event of the hero's next aura expiry.
         Player.Auras.RunOutIn(this);
         TotalDamage = 0;
-        _abilityDamage.Clear();
+        _damageByName.Clear();
+        _damageSlotByName.Clear();
+        _damageSlotByInstance.Clear();
         foreach (var enemy in _enemies)
         {
             enemy.Auras.ClearAll();
