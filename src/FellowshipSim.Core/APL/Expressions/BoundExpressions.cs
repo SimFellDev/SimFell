@@ -26,6 +26,12 @@ public abstract class BoundExpression
     /// <summary><see cref="EvaluateNumeric"/> from now to <see cref="Until"/>, by the milliseconds after now.</summary>
     internal virtual TimeCurve Curve(SimulationContext ctx) => TimeCurve.Constant(EvaluateNumeric(ctx));
 
+    /// <summary>
+    /// True when <see cref="EvaluateNumeric"/> holds its value until <see cref="Until"/>: the curve is constant, and no
+    /// crossing needs solving (nor the curve building).
+    /// </summary>
+    internal virtual bool IsLevel(SimulationContext ctx) => true;
+
     /// <summary><see cref="EvaluateNumeric"/> at <paramref name="time"/>, from the current time to <see cref="Until"/>, with no event before it.</summary>
     internal abstract double NumericAt(SimulationContext ctx, SimTime time);
 
@@ -38,6 +44,7 @@ public abstract class BoundExpression
     /// </summary>
     public virtual SimTime NextChange(SimulationContext ctx)
     {
+        if (IsLevel(ctx)) return Crossing.Later(ctx.CurrentTime, Until(ctx));
         var curve = Curve(ctx);
         return Crossing.First(ctx, this, Until(ctx), curve.Numerator, curve.Denominator);
     }
@@ -334,6 +341,9 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
     // The aura found now runs out at its expiry; another aura of the name appears only in an event.
     internal override SimTime Until(SimulationContext ctx) => Find(ctx, ctx.CurrentTime)?.ExpiresAt ?? SimTime.Infinite;
 
+    internal override bool IsLevel(SimulationContext ctx) =>
+        property != AuraProperty.Remains || Find(ctx, ctx.CurrentTime) is not { } aura || aura.ExpiresAt == SimTime.Infinite;
+
     internal override TimeCurve Curve(SimulationContext ctx) =>
         property == AuraProperty.Remains && Find(ctx, ctx.CurrentTime) is { } aura && aura.ExpiresAt != SimTime.Infinite
             ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001)
@@ -389,6 +399,9 @@ internal sealed class BoundCooldown : BoundNumeric
     internal override SimTime Until(SimulationContext ctx) =>
         State() is { } state && state.ChargesAt(ctx.CurrentTime) < state.MaxCharges ? state.NextChargeAt : SimTime.Infinite;
 
+    internal override bool IsLevel(SimulationContext ctx) =>
+        _property != CooldownProperty.Remains || State() is not { } state || state.ChargesAt(ctx.CurrentTime) != 0 || state.NextChargeAt <= ctx.CurrentTime;
+
     internal override TimeCurve Curve(SimulationContext ctx) =>
         _property == CooldownProperty.Remains && State() is { } state && state.ChargesAt(ctx.CurrentTime) == 0 && state.NextChargeAt > ctx.CurrentTime
             ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001)
@@ -423,6 +436,7 @@ internal sealed class BoundNegate(BoundExpression operand) : BoundExpression
     public override double EvaluateNumeric(SimulationContext ctx) => -operand.EvaluateNumeric(ctx);
     internal override SimTime Until(SimulationContext ctx) => operand.Until(ctx);
     internal override TimeCurve Curve(SimulationContext ctx) => -operand.Curve(ctx);
+    internal override bool IsLevel(SimulationContext ctx) => operand.IsLevel(ctx);
     internal override double NumericAt(SimulationContext ctx, SimTime time) => -operand.NumericAt(ctx, time);
     internal override bool EvaluateAt(SimulationContext ctx, SimTime time) => operand.NumericAt(ctx, time) != 0.0;
 }
@@ -493,6 +507,8 @@ internal sealed class BoundBinary(BoundExpression left, BinaryOperator op, Bound
         return until;
     }
 
+    internal override bool IsLevel(SimulationContext ctx) => !IsArithmetic || (left.IsLevel(ctx) && right.IsLevel(ctx));
+
     internal override TimeCurve Curve(SimulationContext ctx)
     {
         if (!IsArithmetic) return TimeCurve.Constant(EvaluateNumeric(ctx));
@@ -533,6 +549,7 @@ internal sealed class BoundBinary(BoundExpression left, BinaryOperator op, Bound
         // A comparison changes where the difference of its sides passes 0 (or the equality tolerance), where it has a pole,
         // or where a side's curve ends.
         var until = Crossing.Earlier(left.Until(ctx), right.Until(ctx));
+        if (left.IsLevel(ctx) && right.IsLevel(ctx)) return Crossing.Later(ctx.CurrentTime, until);
         var difference = left.Curve(ctx) - right.Curve(ctx);
         return op is BinaryOperator.Equal or BinaryOperator.NotEqual
             ? Crossing.First(ctx, this, until, difference.NumeratorLess(-0.0001), difference.NumeratorLess(0.0001), difference.Denominator)

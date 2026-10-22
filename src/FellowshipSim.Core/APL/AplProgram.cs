@@ -210,15 +210,30 @@ public sealed class BoundAplAction : BoundAplStep
             foreach (var enemy in candidates) next = Crossing.Earlier(next, ChangeAt(ctx, enemy, expression));
             return next;
         }
-        var curves = new TimeCurve[candidates.Count];
         var current = ctx.Player.CurrentTarget;
+        bool level = true;
+        try
+        {
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                ctx.Player.CurrentTarget = candidates[i];
+                level &= expression.IsLevel(ctx);
+                next = Crossing.Earlier(next, Crossing.Later(now, expression.Until(ctx)));
+            }
+        }
+        finally
+        {
+            ctx.Player.CurrentTarget = current;
+        }
+        // Values that hold until their curves end cannot cross before.
+        if (level) return next;
+        var curves = new TimeCurve[candidates.Count];
         try
         {
             for (int i = 0; i < candidates.Count; i++)
             {
                 ctx.Player.CurrentTarget = candidates[i];
                 curves[i] = expression.Curve(ctx);
-                next = Crossing.Earlier(next, Crossing.Later(now, expression.Until(ctx)));
             }
         }
         finally
