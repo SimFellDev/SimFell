@@ -120,6 +120,35 @@ public class AuraContainer
     private readonly double[] _bonuses = new double[StatTypes];
     private readonly int[] _bonusVersions = Enumerable.Repeat(-1, StatTypes).ToArray();
 
+    // The fight whose events run the auras out (a hero's auras), and the event queued for the next expiry.
+    private SimulationContext? _fight;
+    private ScheduledEvent? _expiry;
+    private Action<SimulationContext>? _runOut;
+
+    /// <summary>
+    /// From now on the auras run out in events of <paramref name="ctx"/>, each at its expiry, so what an expiry changes
+    /// (haste, a cooldown's rate) changes at that time. Without it an aura runs out when the auras are next read.
+    /// </summary>
+    internal void RunOutIn(SimulationContext ctx)
+    {
+        _fight = ctx;
+        _expiry?.Cancel();
+        _expiry = null;
+        QueueExpiry();
+    }
+
+    /// <summary>Queues the event of the next expiry, unless one is queued for that time or earlier.</summary>
+    private void QueueExpiry()
+    {
+        if (_fight == null || _nextExpiry == SimTime.Infinite) return;
+        if (_expiry is { HasFired: false, IsCancelled: false } queued)
+        {
+            if (queued.Time <= _nextExpiry) return;
+            queued.Cancel();
+        }
+        _expiry = _fight.ScheduleAt(_nextExpiry, _runOut ??= c => CleanExpired(c.CurrentTime), "Aura expiry");
+    }
+
     // Hasted timers re-read haste on every aura change. They are kept in a list rather than subscribing to the events,
     // since adding and removing event handlers copies the handler list each time (many timers start and stop per second).
     private readonly List<HastedTimer> _timers = new();
@@ -241,7 +270,9 @@ public class AuraContainer
     /// <summary>An aura's expiry was set: it may now be the next to run out.</summary>
     private void ExpiryChanged(SimTime expires)
     {
-        if (expires < _nextExpiry) _nextExpiry = expires;
+        if (expires >= _nextExpiry) return;
+        _nextExpiry = expires;
+        QueueExpiry();
     }
 
     /// <summary>Changes whenever the auras with a modifier of <paramref name="type"/> or their stacks change.</summary>
@@ -356,22 +387,12 @@ public class AuraContainer
             }
         }
         _nextExpiry = next;
+        QueueExpiry();
         if (expired == null) return;
         foreach (var aura in expired)
         {
             Remove(aura.Key, aura.ExpiresAt);
         }
-    }
-
-    /// <summary>The earliest time after <paramref name="now"/> an active aura runs out (Infinite if none does).</summary>
-    public SimTime NextExpiry(SimTime now)
-    {
-        var next = SimTime.Infinite;
-        foreach (var aura in _auras.Values)
-        {
-            if (aura.ExpiresAt > now && aura.ExpiresAt < next) next = aura.ExpiresAt;
-        }
-        return next;
     }
 
     /// <summary>Applies every active modifier of <paramref name="type"/> to <paramref name="baseValue"/>.</summary>
@@ -430,6 +451,8 @@ public class AuraContainer
         _activeSince.Clear();
         for (int t = 0; t < StatTypes; t++) _statVersions[t]++;
         _nextExpiry = SimTime.Infinite;
+        _expiry?.Cancel();
+        _expiry = null;
     }
 
     public void FinalizeUptimes(SimTime combatEndTime)

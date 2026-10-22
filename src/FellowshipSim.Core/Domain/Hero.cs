@@ -520,9 +520,7 @@ public abstract class Hero : Actor
     {
         if (!Cooldowns.TryGetValue(ability.Name, out var state))
         {
-            state = new CooldownState(ability.MaxCharges,
-                rateAt: now => CooldownRate(ability, now),
-                nextCheckpoint: now => Auras.NextExpiry(now));
+            state = new CooldownState(ability.MaxCharges, rateAt: now => CooldownRate(ability, now));
             Cooldowns[ability.Name] = state;
             CooldownsVersion++;
         }
@@ -603,12 +601,12 @@ public abstract class Hero : Actor
 /// Charges and recharge of one ability. A spent charge starts recharging immediately if none is recharging;
 /// charges recharge one at a time. The timer holds cooldown-seconds and drains at a rate (1 = real time) that may
 /// change while recharging (cooldown recovery, haste for charge abilities); the rate is re-read whenever
-/// <see cref="Advance"/> is called and at the checkpoints given (e.g. aura expiries).
+/// <see cref="Advance"/> is called. What the rate reads changes in events (an aura gained, removed or run out), and each
+/// of them advances the hero's cooldowns.
 /// </summary>
 public sealed class CooldownState
 {
     private readonly Func<SimTime, double> _rateAt;
-    private readonly Func<SimTime, SimTime> _nextCheckpoint;
     private int _charges;
     private double _remaining;   // cooldown-seconds left on the charge recharging
     private double _rechargeBase;
@@ -618,12 +616,11 @@ public sealed class CooldownState
     private bool _rateStale;
     private bool _advancing;
 
-    public CooldownState(int maxCharges, Func<SimTime, double>? rateAt = null, Func<SimTime, SimTime>? nextCheckpoint = null)
+    public CooldownState(int maxCharges, Func<SimTime, double>? rateAt = null)
     {
         MaxCharges = Math.Max(1, maxCharges);
         _charges = MaxCharges;
         _rateAt = rateAt ?? (_ => 1.0);
-        _nextCheckpoint = nextCheckpoint ?? (_ => SimTime.Infinite);
     }
 
     public int MaxCharges { get; }
@@ -692,12 +689,12 @@ public sealed class CooldownState
         if (!Recharging) _remaining = 0;
     }
 
-    /// <summary>Progresses the recharge to <paramref name="now"/>, re-reading the rate at every checkpoint on the way.</summary>
+    /// <summary>Progresses the recharge to <paramref name="now"/> at the rate last read, then reads the rate at <paramref name="now"/>.</summary>
     public void Advance(SimTime now) => Advance(now, readRate: true);
 
     /// <summary>
-    /// <see cref="Advance(SimTime)"/>. With <paramref name="readRate"/> false the rate is read at the checkpoints on the way
-    /// but not at <paramref name="now"/>: nothing the rate depends on has changed since it was last read.
+    /// <see cref="Advance(SimTime)"/>. With <paramref name="readRate"/> false the rate is not read at
+    /// <paramref name="now"/>: nothing the rate depends on has changed since it was last read.
     /// </summary>
     internal void Advance(SimTime now, bool readRate)
     {
@@ -706,24 +703,19 @@ public sealed class CooldownState
         try
         {
             var t = _last;
-            while (t < now)
+            while (t < now && Recharging)
             {
-                if (!Recharging) { t = now; break; }
-                var next = _nextCheckpoint(t);
-                if (next <= t || next > now) next = now;
-                double span = (next - t).TotalSeconds;
+                double span = (now - t).TotalSeconds;
                 double rate = Math.Max(1e-9, _rate);
-                if (_remaining <= span * rate)
+                if (_remaining > span * rate)
                 {
-                    // A charge returns before the next checkpoint.
-                    t += SimTime.FromSeconds(_remaining / rate);
-                    _charges++;
-                    _remaining = Recharging ? _rechargeBase : 0;
-                    continue;
+                    _remaining -= span * rate;
+                    break;
                 }
-                _remaining -= span * rate;
-                t = next;
-                _rate = _rateAt(t);
+                // A charge returns before now.
+                t += SimTime.FromSeconds(_remaining / rate);
+                _charges++;
+                _remaining = Recharging ? _rechargeBase : 0;
             }
             _last = now;
             // Speed: a full cooldown reads no rate; Spend reads it when a recharge starts.

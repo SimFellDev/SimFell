@@ -4,7 +4,8 @@ namespace FellowshipSim.Core.Engine;
 /// A one-shot timer that runs on hasted time: it fires after <c>baseSeconds</c> of progress, where progress runs at
 /// (1 + haste) per second. When the hero's haste changes part way, the time left shrinks or grows from that moment
 /// (combat logs: Amethyst Splinter ticks speed up as soon as Spirit of Heroism starts).
-/// Haste is re-read whenever an aura is gained or removed and at the next aura expiry.
+/// Haste is re-read whenever an aura with a haste modifier is gained or removed; a hero's aura runs out in an event at its
+/// expiry (<see cref="AuraContainer.RunOutIn"/>).
 /// </summary>
 public sealed class HastedTimer
 {
@@ -19,7 +20,6 @@ public sealed class HastedTimer
     private ScheduledEvent? _event;
     private bool _updating;
     // Made once per timer: rescheduling happens on every haste change.
-    private readonly Action<SimulationContext> _check;
     private readonly Action<SimulationContext> _due;
 
     private HastedTimer(SimulationContext ctx, Hero hero, double baseSeconds, Action<SimulationContext> onFire, string label)
@@ -32,7 +32,6 @@ public sealed class HastedTimer
         _remainingBase = baseSeconds;
         _lastUpdate = ctx.CurrentTime;
         _haste = hero.GetHaste(ctx.CurrentTime);
-        _check = _ => Update();
         _due = c =>
         {
             if (!IsActive) return;
@@ -85,14 +84,7 @@ public sealed class HastedTimer
     private void Reschedule()
     {
         _event?.Cancel();
-        var now = _ctx.CurrentTime;
-        var due = now + SimTime.FromSeconds(Math.Max(0.0, _remainingBase) / (1.0 + _haste));
-        var checkpoint = _hero.Auras.NextExpiry(now);
-        if (checkpoint < due)
-        {
-            _event = _ctx.ScheduleAt(checkpoint, _check, _label);
-            return;
-        }
+        var due = _ctx.CurrentTime + SimTime.FromSeconds(Math.Max(0.0, _remainingBase) / (1.0 + _haste));
         _event = _ctx.ScheduleAt(due, _due, _label);
     }
 

@@ -9,12 +9,10 @@ namespace FellowshipSim.Core.APL;
 /// </summary>
 public sealed class AplProgram
 {
-    private readonly Hero _hero;
     private readonly BoundAplList? _default;
     private readonly BoundAplList[] _lists;
 
-    private AplProgram(Hero hero, BoundAplList? defaultList, BoundAplList[] lists) =>
-        (_hero, _default, _lists) = (hero, defaultList, lists);
+    private AplProgram(BoundAplList? defaultList, BoundAplList[] lists) => (_default, _lists) = (defaultList, lists);
 
     /// <summary>The steps of <see cref="AplActionLine.DefaultList"/>.</summary>
     public IReadOnlyList<BoundAplStep> Actions => _default?.Steps ?? [];
@@ -30,7 +28,7 @@ public sealed class AplProgram
         {
             bound[name].Steps = actions.Select(action => BindStep(action, hero, bound)).ToArray();
         }
-        return new AplProgram(hero, bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
+        return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
     }
 
     /// <summary>
@@ -56,9 +54,6 @@ public sealed class AplProgram
                 next = Crossing.Earlier(next, change);
             }
         }
-        // A hero aura runs out when it is next read rather than in an event: what CanCast reads and the rate a cooldown
-        // recharges at can change at the next expiry.
-        next = Crossing.Earlier(next, _hero.Auras.NextExpiry(now));
         return Crossing.Later(now, next);
     }
 

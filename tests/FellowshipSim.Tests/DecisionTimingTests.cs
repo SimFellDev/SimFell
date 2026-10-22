@@ -6,7 +6,7 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>The times a Monte Carlo fight decides and casts at.</summary>
+/// <summary>The times a Monte Carlo fight decides, casts and runs auras out at.</summary>
 public class DecisionTimingTests
 {
     [Fact]
@@ -58,6 +58,19 @@ public class DecisionTimingTests
         Assert.Equal([("Mark", 0L), ("Strike", markExpires!.Value.Milliseconds - 1999)], starts.Select(s => (s.Ability.Name, s.At.Milliseconds)));
     }
 
+    [Fact]
+    public void An_Aura_Runs_Out_At_Its_Expiry_While_Nothing_Reads_It()
+    {
+        var hero = Tester.Create();
+        SimTime? markExpires = null;
+        var runOut = new List<(SimTime Now, SimTime Clock)>();
+        hero.Auras.OnGained += (aura, _, _) => { if (aura.Def == Tester.Mark) markExpires = aura.ExpiresAt; };
+        hero.Auras.OnRemoved += (aura, now) => { if (aura.Def == Tester.Mark) runOut.Add((now, hero.SimContext!.CurrentTime)); };
+        // Hold's 10 s cast covers Mark's expiry, and nothing reads the auras during it.
+        Fight(hero, "actions+=/mark\nactions+=/hold", seconds: 12);
+        Assert.Equal([(markExpires!.Value, markExpires.Value)], runOut);
+    }
+
     private static List<(SimTime At, Ability Ability)> CastStarts(Hero hero)
     {
         var starts = new List<(SimTime, Ability)>();
@@ -73,7 +86,7 @@ public class DecisionTimingTests
     private static CharacterBuild Fixture() => System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rime_character.json")))!;
 
-    /// <summary>A hero with no stats, talents or gear, and three abilities that deal no damage.</summary>
+    /// <summary>A hero with no stats, talents or gear, and four abilities that deal no damage.</summary>
     private sealed class Tester : Hero
     {
         public static readonly ResourceDef Focus = new("Focus", Max: 10);
@@ -96,20 +109,23 @@ public class DecisionTimingTests
             Abilities.Add(new TestAbility(this, 2, "Gather", cooldownSeconds: 60,
                 (ctx, hero) => ctx.Schedule(SimTime.FromSeconds(2.345), c => hero.GainResource(Focus, 5, c), "Gather")));
             Abilities.Add(new TestAbility(this, 3, "Mark", cooldownSeconds: 60, (ctx, hero) => hero.Auras.Apply(Mark, ctx.CurrentTime)));
+            Abilities.Add(new TestAbility(this, 4, "Hold", cooldownSeconds: 60, (_, _) => { }, castSeconds: 10));
         }
 
         public override void ResetForIteration() => ResetCombatState();
     }
 
-    /// <summary>An instant ability with a cooldown whose cast does <paramref name="effect"/>.</summary>
+    /// <summary>An ability with a cooldown whose cast does <paramref name="effect"/>.</summary>
     private sealed class TestAbility : Ability
     {
         private readonly Action<SimulationContext, Hero> _effect;
 
-        public TestAbility(Hero owner, int id, string name, double cooldownSeconds, Action<SimulationContext, Hero> effect) : base(owner, id, name)
+        public TestAbility(Hero owner, int id, string name, double cooldownSeconds, Action<SimulationContext, Hero> effect, double castSeconds = 0)
+            : base(owner, id, name)
         {
             _effect = effect;
             SetCooldown(cooldownSeconds);
+            CastTime = SimTime.FromSeconds(castSeconds);
         }
 
         public override void Execute(SimulationContext ctx, EnemyTarget target)

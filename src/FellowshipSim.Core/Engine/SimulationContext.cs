@@ -66,6 +66,7 @@ public class SimulationContext
     {
         Player = player;
         player.SimContext = this;
+        player.Auras.RunOutIn(this);
         Outcomes = new RandomOutcomeSource(Rng);
     }
 
@@ -78,8 +79,8 @@ public class SimulationContext
         Kernel.ScheduleAt(time < CurrentTime ? CurrentTime : time, action, label);
 
     /// <summary>
-    /// Advances the clock to <paramref name="time"/>, firing every queued event due on the way in time order.
-    /// This is the only way simulation time moves forward.
+    /// Advances the clock to <paramref name="time"/>, firing every queued event due on the way in time order (the hero's
+    /// aura expiries among them). This is the only way simulation time moves forward.
     /// </summary>
     public void RunUntil(SimTime time)
     {
@@ -91,7 +92,6 @@ public class SimulationContext
             else ev.Action!(this);
         }
         if (time > CurrentTime) CurrentTime = time;
-        Player.Auras.CleanExpired(CurrentTime);
     }
 
     // ------------------------------------------------------------------ enemies
@@ -429,6 +429,8 @@ public class SimulationContext
     {
         CurrentTime = SimTime.Zero;
         Kernel.Clear();
+        // The cleared queue lost the event of the hero's next aura expiry.
+        Player.Auras.RunOutIn(this);
         TotalDamage = 0;
         _abilityDamage.Clear();
         foreach (var enemy in _enemies)
