@@ -27,15 +27,15 @@ public class WrathOfWinter : RimeAbility
     }
 
     /// <summary>Rime's Spirit ability: it needs and spends the Spirit ability's cost in Spirit Points.</summary>
-    public override bool CanCast(SimulationContext ctx, out string? reason)
+    protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
         double points = Owner.ResourceAmount(Hero.SpiritPoints);
         if (points < Owner.SpiritAbilityCost)
         {
-            reason = $"{Name} needs {Owner.SpiritAbilityCost:0} Spirit Points (have {points:0.#})";
+            reason = explain ? $"{Name} needs {Owner.SpiritAbilityCost:0} Spirit Points (have {points:0.#})" : null;
             return false;
         }
-        return base.CanCast(ctx, out reason);
+        return base.CanCast(ctx, explain, out reason);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

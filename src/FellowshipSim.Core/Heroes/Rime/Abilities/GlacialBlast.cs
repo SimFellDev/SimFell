@@ -48,20 +48,20 @@ public class GlacialBlast : RimeAbility
         return SimTime.FromSeconds(seconds / (1.0 + Owner.GetHaste(now) + castHaste));
     }
 
-    public override bool CanCast(SimulationContext ctx, out string? reason) =>
-        MeetsRequirements(out reason) && base.CanCast(ctx, out reason);
+    protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason) =>
+        MeetsRequirements(explain, out reason) && base.CanCast(ctx, explain, out reason);
 
     /// <summary>Talent and Winter Orb requirements, checked before the cooldown.</summary>
-    protected virtual bool MeetsRequirements(out string? reason)
+    protected virtual bool MeetsRequirements(bool explain, out string? reason)
     {
         if (Rime.HasIcyTalons)
         {
-            reason = $"{Name} is replaced by Talon Strike (Icy Talons)";
+            reason = explain ? $"{Name} is replaced by Talon Strike (Icy Talons)" : null;
             return false;
         }
         if (Rime.WinterOrbs < DefaultWinterOrbCost && !GlacialAssaultReady)
         {
-            reason = $"{Name} needs {DefaultWinterOrbCost} Winter Orbs (have {Rime.WinterOrbs})";
+            reason = explain ? $"{Name} needs {DefaultWinterOrbCost} Winter Orbs (have {Rime.WinterOrbs})" : null;
             return false;
         }
         reason = null;

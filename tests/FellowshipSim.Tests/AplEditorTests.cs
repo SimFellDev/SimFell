@@ -270,7 +270,7 @@ public class AplEditorTests
         var (hero, ctx) = Fight(100);
         foreach (string slug in repeatable)
         {
-            Assert.True(AplNames.FindAbility(hero, slug)!.CanCast(ctx, out _), slug);
+            Assert.True(AplNames.FindAbility(hero, slug)!.CanCast(ctx), slug);
         }
     }
 

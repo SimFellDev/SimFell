@@ -155,15 +155,22 @@ public abstract class Ability
 
     public bool IsReady(SimTime now) => Owner.IsCooldownReady(Name, now);
 
+    /// <summary>Whether the ability can be cast right now.</summary>
+    public bool CanCast(SimulationContext ctx) => CanCast(ctx, explain: false, out _);
+
+    /// <summary>Whether the ability can be cast right now, and the reason when it cannot.</summary>
+    public bool CanCast(SimulationContext ctx, out string? reason) => CanCast(ctx, explain: true, out reason);
+
     /// <summary>
     /// Whether the ability can be cast right now. The default checks charges/cooldown;
     /// abilities with resource costs or other requirements add their own checks.
     /// </summary>
-    public virtual bool CanCast(SimulationContext ctx, out string? reason)
+    /// <param name="explain">Build <paramref name="reason"/>. Action lists check every decision and discard the reason.</param>
+    protected virtual bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
         if (Cooldown > SimTime.Zero && Owner.CooldownOf(this).ChargesAt(ctx.CurrentTime) == 0)
         {
-            reason = $"{Name} on cooldown ({Owner.GetCooldownRemains(Name, ctx.CurrentTime):F2}s remaining)";
+            reason = explain ? $"{Name} on cooldown ({Owner.GetCooldownRemains(Name, ctx.CurrentTime):F2}s remaining)" : null;
             return false;
         }
         reason = null;

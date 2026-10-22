@@ -32,16 +32,16 @@ public class RisingTalons : IceComet
         AoeTargetThreshold = TargetThreshold;
     }
 
-    protected override bool MeetsRequirements(out string? reason)
+    protected override bool MeetsRequirements(bool explain, out string? reason)
     {
         if (!Rime.HasIcyTalons)
         {
-            reason = $"{Name} needs Icy Talons";
+            reason = explain ? $"{Name} needs Icy Talons" : null;
             return false;
         }
         if (Rime.WinterOrbs < 1)
         {
-            reason = $"{Name} needs a Winter Orb";
+            reason = explain ? $"{Name} needs a Winter Orb" : null;
             return false;
         }
         reason = null;

@@ -29,7 +29,7 @@ public class AplAction
         }
 
         var ability = ResolveAbility(hero);
-        return ability == null || ability.CanCast(ctx, out _);
+        return ability == null || ability.CanCast(ctx);
     }
 
     public Ability? ResolveAbility(Hero hero) => AplNames.FindAbility(hero, AbilityName);

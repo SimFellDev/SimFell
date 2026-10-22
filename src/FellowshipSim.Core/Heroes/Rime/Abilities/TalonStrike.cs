@@ -22,16 +22,16 @@ public class TalonStrike : GlacialBlast
     /// <summary>Instant.</summary>
     public override SimTime GetAdjustedCastTime(SimTime now = default) => SimTime.Zero;
 
-    protected override bool MeetsRequirements(out string? reason)
+    protected override bool MeetsRequirements(bool explain, out string? reason)
     {
         if (!Rime.HasIcyTalons)
         {
-            reason = $"{Name} needs Icy Talons";
+            reason = explain ? $"{Name} needs Icy Talons" : null;
             return false;
         }
         if (Rime.WinterOrbs < 1 && !GlacialAssaultReady)
         {
-            reason = $"{Name} needs a Winter Orb";
+            reason = explain ? $"{Name} needs a Winter Orb" : null;
             return false;
         }
         reason = null;

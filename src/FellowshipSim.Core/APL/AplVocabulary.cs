@@ -72,7 +72,8 @@ public sealed class AplVocabulary
         Abilities = hero.Abilities.Select(a => new AplName(AplNames.Slug(a.Name), a.Name)).DistinctBy(n => n.Slug).ToList();
         RepeatableAbilities = hero.Abilities
             .Where(a => a.Category != AbilityCategory.None && a.Cooldown == SimTime.Zero
-                        && a.GetType().GetMethod(nameof(Ability.CanCast), [typeof(SimulationContext), typeof(string).MakeByRefType()])!.DeclaringType == typeof(Ability))
+                        && a.GetType().GetMethod(nameof(Ability.CanCast), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                            [typeof(SimulationContext), typeof(bool), typeof(string).MakeByRefType()])!.DeclaringType == typeof(Ability))
             .Select(a => AplNames.Slug(a.Name)).Distinct().ToList();
         Resources = hero.ResourceDefs.Append(Domain.Hero.SpiritPoints)
             .SelectMany(r => r.Aliases.Prepend(r.AplName).Select(slug => new AplName(slug, r.Name)))
