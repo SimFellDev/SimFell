@@ -21,6 +21,8 @@ public enum AbilityCategory
 /// An ability of a hero. Each ability class lists its game values as constants at the top (ID, name, coefficient,
 /// cooldown, cast time...) and passes them in its constructor; <see cref="Execute"/> is what it does.
 /// </summary>
+/// <remarks>Its non-public methods are kept for <see cref="APL.AplVocabulary"/>, which finds the overrides of <see cref="CanCast(SimulationContext)"/>.</remarks>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods)]
 public abstract class Ability
 {
     public int Id { get; }

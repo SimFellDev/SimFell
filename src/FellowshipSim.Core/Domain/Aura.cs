@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Domain;
 /// The definition of an aura (buff/debuff): identity, duration, stacking and stat modifiers.
 /// <see cref="LogId"/> is the ID combat logs use for it (effect ID + 1,000,000), or 0 for engine-internal auras.
 /// </summary>
-public sealed record AuraDef(string Name, int LogId, SimTime Duration, int MaxStacks, IReadOnlyList<StatModifier> Modifiers)
+public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, int MaxStacks, IReadOnlyList<StatModifier> Modifiers)
 {
     // Speed: Key is built once. Setting Name, LogId or SourceId rebuilds it, so a `with` copy has its own Key.
     public string Name { get; init { field = value; Key = KeyOf(value, LogId, SourceId); } } = Name;
@@ -59,12 +59,12 @@ public sealed record AuraDef(string Name, int LogId, SimTime Duration, int MaxSt
     public static AuraDef Internal(string name, double durationSeconds, int maxStacks = 1, params StatModifier[] modifiers) =>
         new(name, 0, durationSeconds <= 0 ? SimTime.Infinite : SimTime.FromSeconds(durationSeconds), maxStacks, modifiers);
 
-    /// <summary>Every aura declared as a <c>public static readonly AuraDef</c> on <paramref name="types"/> or their base classes.</summary>
+    /// <summary>
+    /// Every aura declared as a <c>public static readonly AuraDef</c> on <paramref name="types"/> or their base classes. The
+    /// table of declarations is written at build time by FellowshipSim.Core.Generators' DeclaredAurasGenerator.
+    /// </summary>
     public static IEnumerable<AuraDef> DeclaredOn(IEnumerable<Type> types) =>
-        types.Distinct()
-            .SelectMany(t => t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy))
-            .Where(f => f.FieldType == typeof(AuraDef))
-            .Select(f => (AuraDef)f.GetValue(null)!);
+        types.Distinct().SelectMany(t => Declared.GetValueOrDefault(t) ?? []);
 }
 
 public class Aura
