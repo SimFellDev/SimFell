@@ -3,6 +3,9 @@
 `FellowshipSim.Benchmarks` has the engine's [BenchmarkDotNet](https://benchmarkdotnet.org) benchmarks. Every benchmark
 reports its time and the bytes it allocates.
 
+Monte Carlo is the workload the engine is tuned for: gear and talent comparisons run it for up to millions of
+iterations. Free dice is an accuracy check against logged fights, so it has one benchmark: a single run.
+
 The fight is the test fixture's Rime (`tests/FellowshipSim.Tests/Fixtures/rime_character.json`) with the action list in
 `FellowshipSim.Benchmarks/Fixtures/rime.simc`, against training mobs. The benchmarks run with server GC, not
 concurrent, as the tests and the server do.
@@ -72,10 +75,15 @@ damage, casts, hits, events and hasted timers. Each fight has the same seed, so 
 
 ```
 bin/Release/net10.0/FellowshipSim.Benchmarks scale <mc|mc8|freedice> [iterations] [core counts]
+
+# 100,000 Monte Carlo fights at 1 target on one core
+bin/Release/net10.0/FellowshipSim.Benchmarks scale mc 100000 1
 ```
 
 This runs `iterations` (default 100,000) through `MonteCarloSimulator.Run` (`mc` is 1 target, `mc8` is 8 targets) or
-`FreeDiceReplay.Run`, once per core count, and prints wall time, CPU time, iterations per second, scaling efficiency,
+`FreeDiceReplay.Run`, once per core count. `MonteCarloSimulator.Run` runs its fights on one thread, so a Monte Carlo
+run uses one core at any core count; the core-count sweep is for a parallel Monte Carlo. The mode prints wall time,
+CPU time, iterations per second, scaling efficiency,
 bytes allocated, GC counts, the share of wall time in GC pauses and the peak working set. The default core counts are
 1, 2, 4 and 8; `1,8` runs only those. A run on every logical processor leaves the machine unusable while it runs. A run
 whose working set passes 8 GB is stopped.
