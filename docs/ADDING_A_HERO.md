@@ -13,7 +13,8 @@ src/FellowshipSim.Core/
   Heroes/<Hero>/  one folder per hero: <Hero>.cs, Abilities/ (one file each), Talents/ (one file each)
   Customization/  gear shared by all heroes: Traits/, Blessings/, Gems/, Sets/, Legendaries/, Weapons/, WeaponAbilities/
   Import/         CharacterBuild (a build by game IDs) and HeroImporter (build -> hero)
-  Catalog.cs      finds every class above by its ID: nothing to register by hand
+  Catalog.cs      finds every class above by its ID: nothing to register by hand. The IDs (Id, WeaponAbilityId,
+                  SetBonusIds, ItemIds, HeroName) are constants or lists of constants, read at build time
 
 src/FellowshipSim.Logs/
   Replay/         replaying combat logs and the review page, with everything only a replay needs (see section 5)
