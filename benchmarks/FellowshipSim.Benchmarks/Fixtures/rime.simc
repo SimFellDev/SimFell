@@ -1,0 +1,10 @@
+actions+=/chronoshift,if=cooldown.ice_blitz.remains>10
+actions+=/flight_of_the_navir
+actions+=/ice_blitz
+actions+=/winters_blessing,if=buff.ice_blitz.up|cooldown.ice_blitz.remains>20
+actions+=/bursting_ice,target_if=min:debuff.bursting_ice.remains,if=debuff.bursting_ice.remains<2
+actions+=/talon_strike,if=buff.glacial_assault.stack>=4|winter_orbs>=4
+actions+=/rising_talons,if=winter_orbs>=3&active_enemies>=3
+actions+=/freezing_torrent
+actions+=/cold_snap,if=cooldown.cold_snap.charges>=2|winter_orbs<=2
+actions+=/frost_bolt

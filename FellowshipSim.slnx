@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/FellowshipSim.Benchmarks/FellowshipSim.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/FellowshipSim.Core/FellowshipSim.Core.csproj" />
     <Project Path="src/FellowshipSim.Logs/FellowshipSim.Logs.csproj" />

@@ -8,3 +8,6 @@ obj/
 
 # Local data: downloaded fights, replay scripts, review pages and your FellowshipLogs API settings
 data/
+
+# BenchmarkDotNet results
+BenchmarkDotNet.Artifacts/

@@ -97,6 +97,16 @@ dotnet test -c Release
 
 Runs the engine tests and replays every downloaded fight, rewriting its review page.
 
+## Benchmarks
+
+```
+dotnet build benchmarks/FellowshipSim.Benchmarks -c Release
+cd benchmarks/FellowshipSim.Benchmarks
+bin/Release/net10.0/FellowshipSim.Benchmarks --filter *
+```
+
+[benchmarks/README.md](benchmarks/README.md) lists the benchmarks and has the free-dice script setting and the profiles.
+
 ## Where things are
 
 | Folder | What's there |
@@ -105,6 +115,7 @@ Runs the engine tests and replays every downloaded fight, rewriting its review p
 | `src/FellowshipSim.Logs` | FellowshipLogs client, turning a logged fight into a replay script, exact replay and free dice, their pages |
 | `src/FellowshipSim.Server` | Local web server (`wwwroot` is the page) |
 | `tests/FellowshipSim.Tests` | Tests, including the free-dice runner |
+| `benchmarks/` | Engine benchmarks (BenchmarkDotNet) and a trace summary script |
 | `docs/` | [Adding a hero](docs/ADDING_A_HERO.md) |
 | `data/` | Your local data, not committed: `fights/` downloaded fights, `scripts/` replay scripts, `reviews/` all pages and results, `apls/` saved action lists, `settings.json` |
 
