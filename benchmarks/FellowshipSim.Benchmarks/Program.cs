@@ -7,7 +7,8 @@ using FellowshipSim.Core.Engine;
 using FellowshipSim.Logs.Replay;
 
 // counters: the work done in one fight. sequence <targets>: fights one after another on one hero, with each one's time
-// and work. profile <mc|mc8|freedice> <seconds>: fights back to back on one thread, for a trace.
+// and work. profile <mc|mc8|freedice> <seconds>: fights back to back on one thread, for a trace. scale <mc|mc8|freedice>
+// [iterations] [core counts]: many iterations at fixed core counts.
 // Anything else goes to BenchmarkDotNet (e.g. --filter *MonteCarlo*).
 switch (args.FirstOrDefault())
 {
@@ -16,6 +17,12 @@ switch (args.FirstOrDefault())
         return;
     case "sequence":
         Counters.FightSequence(int.Parse(args.ElementAtOrDefault(1) ?? "1"));
+        return;
+    case "scale":
+        Scaling.Run(args);
+        return;
+    case "scale-run":
+        Scaling.RunChild(args);
         return;
     case "profile":
         Profile(args.ElementAtOrDefault(1) ?? "mc", double.Parse(args.ElementAtOrDefault(2) ?? "30", System.Globalization.CultureInfo.InvariantCulture));

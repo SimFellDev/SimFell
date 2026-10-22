@@ -68,6 +68,26 @@ bin/Release/net10.0/FellowshipSim.Benchmarks sequence 8
 This runs twelve fights one after another on one hero at 8 targets (or the number given), with each fight's time,
 damage, casts, hits, events and hasted timers. Each fight has the same seed, so each one has the damage, casts, hits and events of the first.
 
+## Many iterations at fixed core counts
+
+```
+bin/Release/net10.0/FellowshipSim.Benchmarks scale <mc|mc8|freedice> [iterations] [core counts]
+```
+
+This runs `iterations` (default 100,000) through `MonteCarloSimulator.Run` (`mc` is 1 target, `mc8` is 8 targets) or
+`FreeDiceReplay.Run`, once per core count, and prints wall time, CPU time, iterations per second, scaling efficiency,
+bytes allocated, GC counts and the share of wall time in GC pauses. The default core counts are 1, 2, 4, 8 and every
+logical processor; `1,8` runs only those.
+
+Each core count runs in its own process. The process is pinned to that many logical processors, and its runtime
+processor count and server GC heap count equal the core count, so code that sizes its parallelism from the processor
+count runs at that degree of parallelism. The logical processors are taken in this order: one per performance core,
+then one per efficiency core, then the second of each performance core. On an i7-14700KF that is 0, 2, 4 ... 14 (the
+8 performance cores), 16-27 (the 12 efficiency cores), then 1, 3 ... 15. The program prints the order it found.
+
+Scaling efficiency is iterations per second divided by the core count times the 1-core rate. A run has a fixed cost of
+a few seconds at 1 core, so runs much shorter than 100,000 iterations read low at 1 core and high in efficiency.
+
 ## Profiles
 
 `profile <mc|mc8|freedice> <seconds>` runs fights back to back on one thread for that long. `mc` is 1 target and `mc8`
