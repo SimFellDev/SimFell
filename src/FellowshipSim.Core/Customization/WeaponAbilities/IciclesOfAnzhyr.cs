@@ -44,6 +44,11 @@ public class IciclesOfAnzhyr : Ability
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
+        if (_fight != ctx)
+        {
+            _fight = ctx;
+            _curses.Clear();
+        }
         // The waves keep the damage, crit chance and crit power of the cast.
         var now = ctx.CurrentTime;
         double damage = BaseDamage(ctx, null);
@@ -64,6 +69,8 @@ public class IciclesOfAnzhyr : Ability
 
     /// <summary>Each cursed enemy's current curse (a re-application replaces its snapshot).</summary>
     private readonly Dictionary<EnemyTarget, CurseSnapshot> _curses = new();
+    /// <summary>The fight the curses belong to (each sim iteration and replay has its own).</summary>
+    private SimulationContext? _fight;
 
     private void Wave(SimulationContext ctx, EnemyTarget target, bool final, double damage, double critChance, double critMultiplier, CurseSnapshot curse)
     {

@@ -40,6 +40,8 @@ public class AmethystSplinters : Trait
         int logId = LogIds.Effect(DotEffectId);
         const string name = DotName;
         var splinters = new Dictionary<EnemyTarget, Splinter>();
+        // The fight the splinters belong to (each sim iteration and replay has its own).
+        SimulationContext? fight = null;
 
         void Tick(SimulationContext ctx, EnemyTarget target, Splinter s)
         {
@@ -57,6 +59,11 @@ public class AmethystSplinters : Trait
             if (!dmg.IsCrit || dmg.Target == null || dmg.Target.IsSleeping || dmg.SimContext == null || dmg.AbilityId == logId) return;
             var ctx = dmg.SimContext;
             var now = ctx.CurrentTime;
+            if (fight != ctx)
+            {
+                fight = ctx;
+                splinters.Clear();
+            }
             if (!splinters.TryGetValue(dmg.Target, out var s)) splinters[dmg.Target] = s = new Splinter();
             // The damage not yet dealt (the time left in unhasted ticks) carries over into the new 8 seconds.
             double left = s.EndsAt > now ? s.TickValue * (s.EndsAt - now).TotalSeconds / TickPeriodSeconds : 0.0;
