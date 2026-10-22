@@ -21,8 +21,8 @@ public abstract class Hero : Actor
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
         // Speed: after an aura that cannot change a cooldown's rate, the recharges progress without reading the rate again.
         // They still progress at every aura change, so a recharge is subtracted in the same steps and rounds the same.
-        Auras.OnGained += (aura, _, now) => AdvanceCooldowns(now, readRate: ChangesCooldownRate(aura));
-        Auras.OnRemoved += (aura, now) => AdvanceCooldowns(now, readRate: ChangesCooldownRate(aura));
+        Auras.OnGained += (aura, _, now) => AuraChanged(aura, now);
+        Auras.OnRemoved += (aura, now) => AuraChanged(aura, now);
     }
 
     /// <summary>The stats <see cref="CooldownRate"/> reads (a weapon ability's own recovery auras are cooldown recovery too).</summary>
@@ -31,12 +31,40 @@ public abstract class Hero : Actor
 
     private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
 
-    private bool ChangesCooldownRate(Aura aura) =>
-        aura.Def.Changes(CooldownRateStats) || (CooldownAccelerationAuraKeys.Count > 0 && CooldownAccelerationAuraKeys.Contains(aura.Key));
+    private void AuraChanged(Aura aura, SimTime now)
+    {
+        bool acceleration = CooldownAccelerationAuraKeys.Count > 0 && CooldownAccelerationAuraKeys.Contains(aura.Key);
+        if (acceleration) _accelerationAuraChanges++;
+        AdvanceCooldowns(now, readRate: acceleration || aura.Def.Changes(CooldownRateStats));
+    }
 
     private void AdvanceCooldowns(SimTime now, bool readRate)
     {
         foreach (var state in Cooldowns.Values) state.Advance(now, readRate);
+    }
+
+    // Speed: CooldownRate reads only the auras' cooldown recovery and haste, the auras a cooldown acceleration reads (counted
+    // as they change), the accelerations and the stat block. A recharge reads its rate again only after one of them changed;
+    // the rate it would read is the rate it has.
+    private (int Recovery, int Haste, int HasteRating, int Accelerations, int AccelerationAuras, StatBlock? Stats, int StatsVersion) _rateInputs;
+    private long _rateInputsVersion;
+    private int _accelerationAuraChanges;
+
+    /// <summary>
+    /// Changes whenever something <see cref="CooldownRate"/> reads may have changed. Expired auras are removed first, as the
+    /// rate's own read of the auras does.
+    /// </summary>
+    private long CooldownRateInputs(SimTime now)
+    {
+        Auras.CleanExpired(now);
+        var inputs = (Auras.StatVersion(StatType.CooldownRecovery), Auras.StatVersion(StatType.Haste), Auras.StatVersion(StatType.HasteRating),
+            CooldownAccelerations.Count, _accelerationAuraChanges, Stats, Stats.Version);
+        if (inputs != _rateInputs)
+        {
+            _rateInputs = inputs;
+            _rateInputsVersion++;
+        }
+        return _rateInputsVersion;
     }
 
     /// <summary>The simulation the hero is in (for effects triggered by events that carry no context, e.g. casts).</summary>
@@ -534,7 +562,9 @@ public abstract class Hero : Actor
 
     // Its own method: the rate's closure over the ability is made only for a new state, not on every CooldownOf.
     private CooldownState NewCooldownState(Ability ability) =>
-        new(ability.MaxCharges, rateAt: now => CooldownRate(ability, now));
+        new(ability.MaxCharges, rateAt: now => CooldownRate(ability, now), rateInputs: _rateInputsReader ??= CooldownRateInputs);
+
+    private Func<SimTime, long>? _rateInputsReader;
 
     public bool IsCooldownReady(string name, SimTime now) =>
         !Cooldowns.TryGetValue(name, out var state) || state.ChargesAt(now) > 0;
@@ -616,20 +646,39 @@ public abstract class Hero : Actor
 public sealed class CooldownState
 {
     private readonly Func<SimTime, double> _rateAt;
+    private readonly Func<SimTime, long>? _rateInputs;
     private int _charges;
     private double _remaining;   // cooldown-seconds left on the charge recharging
     private double _rechargeBase;
     private SimTime _last;
     private double _rate = 1.0;
+    // The version of the rate's inputs when it was last read (-1: never read).
+    private long _rateReadAt = -1;
     // Set when Advance skipped reading the rate of a full cooldown.
     private bool _rateStale;
     private bool _advancing;
 
-    public CooldownState(int maxCharges, Func<SimTime, double>? rateAt = null)
+    /// <param name="rateAt">The rate at a time.</param>
+    /// <param name="rateInputs">
+    /// A version of what the rate reads, at a time: while it is unchanged, the rate is not read again (the same rate).
+    /// </param>
+    public CooldownState(int maxCharges, Func<SimTime, double>? rateAt = null, Func<SimTime, long>? rateInputs = null)
     {
         MaxCharges = Math.Max(1, maxCharges);
         _charges = MaxCharges;
         _rateAt = rateAt ?? (_ => 1.0);
+        _rateInputs = rateInputs;
+    }
+
+    private void ReadRate(SimTime now)
+    {
+        if (_rateInputs != null)
+        {
+            long inputs = _rateInputs(now);
+            if (inputs == _rateReadAt) return;
+            _rateReadAt = inputs;
+        }
+        _rate = _rateAt(now);
     }
 
     public int MaxCharges { get; }
@@ -659,7 +708,7 @@ public sealed class CooldownState
             if (_rateStale && !_advancing)
             {
                 _advancing = true;
-                try { _rate = _rateAt(now); }
+                try { ReadRate(now); }
                 finally { _advancing = false; }
             }
             _rateStale = false;
@@ -729,7 +778,7 @@ public sealed class CooldownState
             _last = now;
             // Speed: a full cooldown reads no rate; Spend reads it when a recharge starts.
             _rateStale = !Recharging;
-            if (!_rateStale && readRate) _rate = _rateAt(now);
+            if (!_rateStale && readRate) ReadRate(now);
         }
         finally { _advancing = false; }
     }
