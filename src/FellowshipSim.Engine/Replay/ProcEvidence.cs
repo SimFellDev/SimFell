@@ -8,6 +8,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
 using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Rime.Talents;
+using FellowshipSim.Core.Heroes.Tariq.Abilities;
+using FellowshipSim.Core.Heroes.Tariq.Talents;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -76,6 +78,15 @@ public static class ProcEvidence
         // An enemy Pyromania chose gains Engulfing Flames at the cast.
         new(Pyromania.TargetProcKey, LogIds.Effect(EngulfingFlamesDot.EffectId), StackJump: 1),
         new(ReignOfFire.ProcKey, ReignOfFire.Buff.LogId),
+
+        // Tariq
+        new(Schism.SkullCrusherProcKey, Schism.SkullCrusherBuff.LogId),
+        new(Schism.HammerStormProcKey, Schism.HammerStormBuff.LogId),
+        new(KillEmAll.ProcKey, KillEmAll.Buff.LogId),
+        new(ExecutionersGrin.ProcKey, ExecutionersGrin.Buff.LogId),
+        // A free Chain Lightning's first hit lands 0.30s after the proc.
+        new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
+        new(AceOfSpades.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
