@@ -5,7 +5,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// <summary>
 /// Talent 87: "Your Thunder Call generates 30 Fury over its duration and grants you +5% Haste while it is active."
 /// Effect 1745 (21s, every 0.1s: 0.143% of maximum Fury) and effect 2753 (+5% Haste). Combat logs show neither as a buff,
-/// so both are internal here.
+/// so both are internal here. Combat logs (fXyzwGcQkTrLD34R fight 4): the Fury ticks are hasted, about 1.85 Fury a second at
+/// 29% haste.
 /// </summary>
 public class RideTheLightning : Talent
 {
