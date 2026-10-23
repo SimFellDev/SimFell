@@ -5,7 +5,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// <summary>
 /// Talent 153: "Each tick of Searing Blaze &amp; Engulfing Flames has a 10% chance to have +100% critical strike chance.
 /// The chance for Spontaneous Combustion to trigger is increased by +1% for every 5% critical strike chance you have."
-/// Ability 1255 has 4% in its text; the talent's 10% is used. UNVERIFIED: no combat log has this talent.
+/// Ability 1255 has 4% in its text; the talent's 10% is used. UNVERIFIED: Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa
+/// fight 31 have this talent, but a replay has no proof of its procs and takes each roll as not procced.
 /// </summary>
 public class SpontaneousCombustion : Talent
 {

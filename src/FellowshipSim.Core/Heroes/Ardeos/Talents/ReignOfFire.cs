@@ -4,7 +4,9 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
 /// Talent 157 / effect 2301 (12s): "Your Detonate casts have a chance to instantly grant you 1 charge of Fire Ball and
-/// cause your next Fire Ball to have +200% critical strike chance. (1.5 PPM)" UNVERIFIED: no combat log has this talent.
+/// cause your next Fire Ball to have +200% critical strike chance. (1.5 PPM)" Combat logs (1p7AXmHfwV9CYMxR fight 30,
+/// dBgbn8wD1RxL7Kma fight 9): 35 and 12 buffs, against 30.5 and 13.4 at 1.5 PPM over the Detonates cast. UNVERIFIED: the
+/// Fire Ball charge.
 /// </summary>
 public class ReignOfFire : Talent
 {
