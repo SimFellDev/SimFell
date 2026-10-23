@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Heroes.Ardeos;
+using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Rime;
 using FellowshipSim.Core.Heroes.Tariq;
 
@@ -35,6 +36,10 @@ public static class LogResources
         new(Rime.WinterOrbsResource, 5, Scale: 0.01),
         // Ardeos: Cinders as resource type 2, in hundredths (max 40000).
         new(Ardeos.Cinders, 2, Scale: 0.01, Tolerance: 1.0),
+        // Mara: Energy as resource type 2 and Combo Points as type 3, both in hundredths; both carry over between pulls.
+        // Energy regenerates between the engine's ticks, so it is compared within 3.
+        new(Mara.Energy, 2, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
+        new(Mara.ComboPoints, 3, Scale: 0.01, StartsFromLog: true),
         // Tariq: Fury as resource type 2, a share of a maximum that follows Strength. Compared within 2 (Bloodline and Ride
         // the Lightning tick between readings).
         new(Tariq.Fury, 2, Tolerance: 2.0, StartsFromLog: true, ShareOfMaximum: true),

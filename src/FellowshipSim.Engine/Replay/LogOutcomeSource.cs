@@ -33,6 +33,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             .OrderBy(a => a.Time)
             .ToList();
         _playerAuraIds = _playerAuraEvents.Select(a => a.AbilityId).ToHashSet();
+        _resourceReadings = script.Observations.Resources.OrderBy(r => r.Time).ToList();
         // The player's debuffs on enemies, with how many stacks each event added (for stack-jump evidence).
         foreach (var group in script.Observations.Auras
                      .Where(a => a.Source.Id == script.Player.Id && a.Target.Id != script.Player.Id)
@@ -212,7 +213,9 @@ public sealed class LogOutcomeSource : IOutcomeSource
         }
 
         double now = ctx.CurrentTime.TotalSeconds;
-        bool procced = evidence.StackJump > 0
+        bool procced = evidence.Resource != null
+            ? ClaimResourceEvidence(evidence, now)
+            : evidence.StackJump > 0
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
             ? ClaimAuraEvidence(evidence.LogId, now)
@@ -227,6 +230,60 @@ public sealed class LogOutcomeSource : IOutcomeSource
         }
         return procced;
     }
+
+    /// <summary>
+    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within 30%) between two
+    /// readings, the first at most a frame after the roll and the second within 0.5s of it, beyond what it regenerates
+    /// meanwhile. A reading at a cast is before its cost, so a cast's reading never starts a jump.
+    /// </summary>
+    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, double now)
+    {
+        if (!_resourceJumps.TryGetValue(evidence, out var jumps))
+        {
+            jumps = ResourceJumps(evidence);
+            _resourceJumps[evidence] = jumps;
+        }
+        for (int i = 0; i < jumps.Count; i++)
+        {
+            var jump = jumps[i];
+            if (jump.To < now - _options.SameTickSeconds) continue;
+            if (jump.From > now + PeriodicEffect.ServerFrameSeconds) break;
+            if (jump.To > now + ResourceEvidenceWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
+            _claimedResourceJumps.Add((evidence, i));
+            return true;
+        }
+        return false;
+    }
+
+    private List<(double From, double To)> ResourceJumps(ProcEvidence.Evidence evidence)
+    {
+        var jumps = new List<(double From, double To)>();
+        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
+        if (log == null) return jumps;
+        string type = log.LogResourceType.ToString();
+        double max = evidence.Resource!.Max;
+        LogResourceSnapshot? previous = null;
+        double previousAmount = 0;
+        foreach (var reading in _resourceReadings)
+        {
+            if (!reading.Resources.TryGetValue(type, out var value)) continue;
+            double amount = log.EngineAmount(value);
+            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds
+                && amount < max - 0.5 && previousAmount < max - 0.5)
+            {
+                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
+                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
+            }
+            previous = reading;
+            previousAmount = amount;
+        }
+        return jumps;
+    }
+
+    private const double ResourceEvidenceWindowSeconds = 0.5;
+    private readonly List<LogResourceSnapshot> _resourceReadings = [];
+    private readonly Dictionary<ProcEvidence.Evidence, List<(double From, double To)>> _resourceJumps = new();
+    private readonly HashSet<(ProcEvidence.Evidence, int)> _claimedResourceJumps = new();
 
     /// <summary>Proof of a proc that adds extra stacks: the debuff on <paramref name="target"/> gains <paramref name="jump"/> stacks at once.</summary>
     private bool ClaimStackEvidence(int logId, int jump, double now, EnemyTarget? target)
