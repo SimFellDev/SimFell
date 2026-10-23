@@ -478,9 +478,12 @@ public sealed class ReplayDriver
             }
         }
 
+        // The log shows one state per aura ID; the engine can have two auras with one ID (the hero's own Inspired Allegiance
+        // and another player's).
         var engineState = _hero.Auras.Active(_ctx.CurrentTime)
             .Where(a => _logAuras!.IsTracked(a.LogId))
-            .ToDictionary(a => a.LogId, a => a.Stacks);
+            .GroupBy(a => a.LogId)
+            .ToDictionary(g => g.Key, g => g.Max(a => a.Stacks));
 
         // Each aura matches if the log shows the engine's stacks at some moment within the tolerance (server-frame timing).
         double tol = _options.AuraToleranceSeconds;
