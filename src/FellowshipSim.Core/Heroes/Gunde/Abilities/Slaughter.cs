@@ -35,7 +35,10 @@ public class Slaughter : GundeAbility
     {
         TriggerCooldown(ctx);
         var rend = Gunde.Rend;
-        foreach (var enemy in ctx.ActiveEnemies.ToList())
+        // The enemies around Gunde with Rend on them (a replay follows the log's first ticks).
+        var withRend = ctx.ActiveEnemies.Where(rend.IsOn).ToList();
+        if (withRend.Count == 0) return;
+        foreach (var enemy in ctx.Outcomes.SelectTargets(DamageLogId, withRend, ctx))
         {
             if (!rend.IsOn(enemy)) continue;
             double consumed = rend.Consume(ctx, enemy);
