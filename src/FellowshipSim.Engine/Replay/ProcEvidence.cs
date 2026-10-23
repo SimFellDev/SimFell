@@ -1,6 +1,9 @@
 using FellowshipSim.Core.Customization.Aspects;
 using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Sigils;
+using FellowshipSim.Core.Heroes.Gunde;
+using FellowshipSim.Core.Heroes.Gunde.Abilities;
+using FellowshipSim.Core.Heroes.Gunde.Talents;
 using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Rime.Talents;
 
@@ -35,6 +38,15 @@ public static class ProcEvidence
         new(Kindling.ProcKey, LogIds.Effect(Kindling.DamageEffectId), DelaySeconds: 1.6),
         new(DiamondStrike.ProcKey, LogIds.Effect(DiamondStrike.DamageEffectId), DelaySeconds: 1.0),
         new(RubyStorm.ProcKey, LogIds.Effect(RubyStorm.DamageEffectId), DelaySeconds: 1.0),
+
+        // Gunde
+        // A Blood Feather picked up is a stack of Owed in Blood (a replay follows the log's stacks).
+        new(Gunde.FeatherProcKey, OwedInBlood.Buff.LogId),
+        // Bleeding Hearts' extra strike lands 0.23-0.30s after the cast.
+        new(BleedingHearts.ProcKey, HeartSplitter.AbilityId, DelaySeconds: 0.4, MinDelaySeconds: 0.15),
+        new(DeathsArc.ProcKey, DeathsArc.Buff.LogId),
+        new(GrimHarvest.ProcKey, GrimHarvest.Buff.LogId),
+        new(AncestralInstinct.ProcKey, AncestralInstinct.Buff.LogId),
 
         // Rime
         new(BurstingSwallows.ProcKey, LogIds.Effect(BurstingIce.PulseEffectId)),
