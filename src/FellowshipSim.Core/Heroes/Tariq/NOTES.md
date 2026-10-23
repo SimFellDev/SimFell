@@ -31,8 +31,8 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
   and the abilities whose tooltip says so.
 - **Hasted cooldowns:** Skull Crusher, Hammer Storm and Wild Swing, as well as the ones the game data lists. Skull
   Crushers come 0.835s apart at 20% haste.
-- **Leap Smash** lands 0.27-0.30s after the cast; Mouth for War's Focused Wrath stack and High Road's Fury come with
-  it. **Raging Tempest's leap** lands 0.30-0.46s after the cast.
+- **Leap Smash** deals its damage 0.27-0.30s after the cast; Mouth for War's Focused Wrath stack and High Road's Fury
+  come with it. **Raging Tempest's leap** deals its damage 0.30-0.46s after the cast.
 - **Chain Lightning:** the first hit 0.30s after the cast, then a hit every 0.05s. It hits enemies it has not hit
   yet first.
 - **Raging Tempest:** the buff comes with the cast at 1 stack and lasts 20s from the cast. Each Raging Currents hit adds
@@ -42,7 +42,7 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 ## Resources
 
 - **Fury** is logged as resource type 2, a share of a maximum that follows Strength. The replay reads it as a share of
-  100. It carries over between pulls.
+  100. Tariq loses none of it between pulls.
 - **Bloodline** and **Ride the Lightning** generate Fury on hasted ticks.
 - **Executioner's Grin** rolls on every cast, the weapon's too (fight 4 @ 66.7: Fated Strike).
 
@@ -56,7 +56,8 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 
 In fights 30 and 31 the set bonus Drakheim's Absolution (effect 3269, +20% Strength for 20s from the Spirit ability) is
 in the log, and the new logs' gear has no set data to import it from: every hit in a Raging Tempest window reads about
-1.2 times the engine's.
+1.2 times the engine's. Tariq dies twice in fight 30 (@ 117.0 and 403.1) and the log removes his buffs; the replay
+keeps them, Schism stacks included.
 
 ## Not yet checked against a log
 

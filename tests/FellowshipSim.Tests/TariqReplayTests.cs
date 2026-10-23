@@ -70,6 +70,14 @@ public class TariqReplayTests(ITestOutputHelper output)
         {
             output.WriteLine($"{group.Count(),5} [{group.Key.Category}] {group.Key.Subject}: {group.First().Message}");
         }
+        // TARIQ_ISSUE prints the first issues whose subject contains it, with their times.
+        if (Environment.GetEnvironmentVariable("TARIQ_ISSUE") is { } subject)
+        {
+            foreach (var issue in result.Steps.SelectMany(s => s.Issues).Where(i => i.Subject?.Contains(subject) == true).Take(15))
+            {
+                output.WriteLine($"  {issue.Time:F3} {issue.Message}");
+            }
+        }
         foreach (var unmodeled in result.UnmodeledAbilities) output.WriteLine($"unmodeled ability {unmodeled.Key}: {unmodeled.Value}");
         foreach (var unmodeled in result.UnmodeledCustomizations) output.WriteLine($"unmodeled {unmodeled}");
         foreach (var proc in result.ProcStats) output.WriteLine($"proc {proc.Key}: {proc.Procs}/{proc.Rolls} (expected {proc.ExpectedProcs:F1})");

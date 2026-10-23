@@ -20,7 +20,7 @@ public class ChainLightning : TariqAbility
 
     /// <summary>
     /// Combat logs (fXyzwGcQkTrLD34R fight 4, 58 casts): the first hit 0.30s after the cast, then a hit every 0.05s
-    /// (ability 1236 period 0.05, landing on alternate 1 and 2 server frames).
+    /// (ability 1236 period 0.05; the log rounds each to 1 or 2 server frames).
     /// </summary>
     public const double FirstHitSeconds = 0.30;
     public const double BounceSeconds = 0.05;

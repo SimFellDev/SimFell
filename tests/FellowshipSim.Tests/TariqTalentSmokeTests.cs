@@ -127,7 +127,7 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
         var hero = HeroImporter.Import(build);
         var gained = new Dictionary<string, int>();
         hero.Auras.OnGained += (aura, _, _) => gained[aura.Def.Name] = gained.GetValueOrDefault(aura.Def.Name) + 1;
-        // An enemy's debuffs count as "debuff:<name>" for each hit that lands on it while they hold.
+        // An enemy's debuffs count as "debuff:<name>" for each hit on it while they hold.
         hero.OnDamageDealt += (in hit) =>
         {
             if (hit.Target == null) return;

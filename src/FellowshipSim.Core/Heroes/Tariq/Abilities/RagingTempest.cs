@@ -19,7 +19,7 @@ public class RagingTempest : TariqAbility
     public const int MaxStacks = 20;
     public const double ExpertisePerStack = 0.01;
     /// <summary>
-    /// Combat logs (YC861NTRgLbmw4Qa fight 31, 11 casts): the leap lands 0.30-0.46s after the cast. The earliest, so a
+    /// Combat logs (YC861NTRgLbmw4Qa fight 31, 11 casts): the leap deals its damage 0.30-0.46s after the cast. The earliest, so a
     /// replay finds the logged hits after it.
     /// </summary>
     public const double LandingSeconds = 0.30;

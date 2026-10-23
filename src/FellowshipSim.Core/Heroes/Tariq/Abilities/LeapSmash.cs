@@ -19,7 +19,7 @@ public class LeapSmash : TariqAbility
     /// Smash crits 72-86% of the time against 35-44% for Face Breaker, and grievous crits come with it.
     /// </summary>
     public const double AddedCritChance = 0.40;
-    /// <summary>Combat logs (3 Tariq fights, 170 casts): the smash lands 0.27-0.30s after the cast; Mouth for War's stack comes with it.</summary>
+    /// <summary>Combat logs (3 Tariq fights, 170 casts): the smash deals its damage 0.27-0.30s after the cast, and Mouth for War's stack comes with it.</summary>
     public const double LandingSeconds = 0.30;
 
     /// <summary>A cast landed, with the enemies it hit (High Road, Mouth for War, Slayer's Mosh).</summary>

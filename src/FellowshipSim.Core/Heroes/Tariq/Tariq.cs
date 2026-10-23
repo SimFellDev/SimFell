@@ -4,7 +4,7 @@ using FellowshipSim.Core.Heroes.Tariq.Talents;
 namespace FellowshipSim.Core.Heroes.Tariq;
 
 /// <summary>
-/// Tariq, the Thunderlord. His generators build Fury, which Skull Crusher, Hammer Storm and Culling Strike spend. Thunder
+/// Tariq, the Thunderlord. His generators build Fury; Skull Crusher, Hammer Storm and Culling Strike spend it. Thunder
 /// Call (and Raging Tempest's Enhanced Thunder Call) charges his abilities with lightning and opens Chain Lightning.
 /// Abilities live in Abilities/, talents in Talents/.
 /// </summary>

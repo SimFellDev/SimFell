@@ -36,7 +36,7 @@ public abstract class Ability
     public bool IgnoresGcd { get; protected set; } = false;
 
     /// <summary>
-    /// The global cooldown this ability starts, before haste, where it differs from the hero's (game data: the ability's
+    /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
     /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
     /// </summary>
     public double? GlobalCooldownSeconds { get; protected set; }
