@@ -24,6 +24,9 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// <summary>When above 0, a re-application adds this many seconds to the time left instead of restarting the duration.</summary>
     public double ReapplyExtendsSeconds { get; init; }
 
+    /// <summary>When true, a re-application adds its stacks and leaves the time left as it is.</summary>
+    public bool ReapplyKeepsExpiry { get; init; }
+
     public string Key { get; private init; } = KeyOf(Name, LogId, 0);
 
     // Speed: StatMask is built once. Setting Modifiers rebuilds it.
@@ -228,7 +231,11 @@ public class AuraContainer
                 existing = new Aura(def) { AppliedAt = existing.AppliedAt, Stacks = existing.Stacks };
                 _auras[def.Key] = existing;
             }
-            if (def.ReapplyExtendsSeconds > 0 && expires != SimTime.Infinite && previousExpiry > now)
+            if (def.ReapplyKeepsExpiry && previousExpiry > now)
+            {
+                expires = previousExpiry;
+            }
+            else if (def.ReapplyExtendsSeconds > 0 && expires != SimTime.Infinite && previousExpiry > now)
             {
                 expires = previousExpiry + SimTime.FromSeconds(def.ReapplyExtendsSeconds);
             }
