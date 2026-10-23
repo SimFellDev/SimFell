@@ -11,6 +11,11 @@ public class Pyromania : ArdeosAbility
     public const string AbilityName = "Pyromania";
     public const double CooldownSeconds = 90.0;
     public const int ExtraTargets = 2;
+    /// <summary>
+    /// The choice of each other enemy, in the order of priority: certain in a sim; a replay takes the enemies the log shows
+    /// gaining Engulfing Flames at the cast.
+    /// </summary>
+    public const string TargetProcKey = "pyromania_target";
 
     public Pyromania(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
     {
@@ -32,6 +37,13 @@ public class Pyromania : ArdeosAbility
             .OrderBy(e => dots.Has(e, _dot))
             .ThenByDescending(e => e.CurrentHealth)
             .ToList();
-        foreach (var enemy in ctx.Outcomes.SelectTargets(_dot.DamageLogId, others, ctx).Take(ExtraTargets)) dots.Apply(ctx, _dot, enemy);
+        int chosen = 0;
+        foreach (var enemy in others)
+        {
+            if (chosen == ExtraTargets) break;
+            if (!ctx.Outcomes.RollProc(TargetProcKey, 1.0, ctx, enemy)) continue;
+            dots.Apply(ctx, _dot, enemy);
+            chosen++;
+        }
     }
 }

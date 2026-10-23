@@ -5,7 +5,9 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// <summary>
 /// Talent 162: "Your active Engulfing Flames and Searing Blaze durations are extended each time Fire Ball burns enemies
 /// up to a total of 3 seconds over its full duration." Each Fire Ball tick extends the enemy's Engulfing Flames and
-/// Searing Blaze by its share of the 3 seconds: 0.5s per tick of its 6 at the base tick rate, less at a faster rate.
+/// Searing Blaze by its share of the 3 seconds: 0.5s per tick of its 6. Combat logs (yMAZVJL9hTpFjqbC fight 7, 25.1 @
+/// 25.88-41.38s): an Engulfing Flames of 12s lasts 15.5s through 7 Fire Ball ticks, some in Wildfire: 0.5s each at any tick
+/// rate.
 /// </summary>
 public class SlowBurn : Talent
 {
@@ -27,7 +29,7 @@ public class SlowBurn : Talent
         double perTick = ExtensionOverDurationSeconds * burn.BasePeriod / burn.Duration;
         burn.Ticked += (ctx, dot, fraction) =>
         {
-            double seconds = perTick * fraction / ardeos.Dots.Rate(burn, ctx.CurrentTime);
+            double seconds = perTick * fraction;
             foreach (var other in ardeos.Dots.On(dot.Target).Where(d => d.Effect == engulfing || d.Effect == searing).ToList())
             {
                 ardeos.Dots.Extend(ctx, other, seconds);
