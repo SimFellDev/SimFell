@@ -200,7 +200,7 @@ public class SimulationContext
                 return CastAttempt.Rejected($"on global cooldown ({left:F2}s remaining)");
             }
             StopChannel(hero);
-            hero.GlobalCooldownEndTime = CurrentTime + SimTime.FromSeconds(hero.GlobalCooldownSeconds / (1.0 + hero.GetHaste(CurrentTime)));
+            hero.GlobalCooldownEndTime = CurrentTime + SimTime.FromSeconds((ability.GlobalCooldownSeconds ?? hero.GlobalCooldownSeconds) / (1.0 + hero.GetHaste(CurrentTime)));
         }
 
         var castTime = ability.GetAdjustedCastTime(CurrentTime);
