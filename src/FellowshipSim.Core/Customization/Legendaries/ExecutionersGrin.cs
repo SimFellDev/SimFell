@@ -6,7 +6,8 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// Legendary power 423 (Tariq's Stormlord Wraps, item 5900; Executioner's Unsanitary Bands, item 5225): "Your Abilities
 /// have a 6% chance to grant you Executioner's Grin for 8 seconds, causing your next Culling Strike to be useable on any
 /// target regardless of their health, and have no cost, and deal damage as if it spent 30 Fury." Effect 2267 (8s, 2
-/// stacks; its own text says 20 Fury). Rolled once per cast of any of Tariq's abilities.
+/// stacks; its own text says 20 Fury). Rolled once per cast of any ability, the weapon's too (combat logs, fXyzwGcQkTrLD34R
+/// fight 4 @ 66.7: a Fated Strike grants it).
 /// </summary>
 public class ExecutionersGrin : Legendary
 {
@@ -38,7 +39,7 @@ public class ExecutionersGrin : Legendary
         cullingStrike.FreeStrikeFury = FurySpent;
         hero.OnCastCompleted += (ability, _, now) =>
         {
-            if (ability is not TariqAbility || hero.SimContext is not { } ctx) return;
+            if (hero.SimContext is not { } ctx) return;
             if (ctx.Outcomes.RollProc(ProcKey, ProcChance, ctx)) hero.Auras.Apply(Buff, now);
         };
     }
