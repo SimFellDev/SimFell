@@ -402,7 +402,7 @@ public sealed class ReplayDriver
                 .OrderBy(r => r.Time).FirstOrDefault();
             if (first == null) continue;
             // Set at the moment of the reading, so what the engine gains before it (regeneration) does not count twice.
-            double value = first.Resources[logged.LogResourceType.ToString()].Amount * logged.Scale;
+            double value = logged.EngineAmount(first.Resources[logged.LogResourceType.ToString()]);
             var resource = logged.Resource;
             _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(0.0, first.Time - 0.001)), c =>
             {
@@ -469,7 +469,7 @@ public sealed class ReplayDriver
             {
                 var resource = logged.Resource;
                 if (!snapshot.Resources.TryGetValue(logged.LogResourceType.ToString(), out var value)) continue;
-                var check = new ResourceCheck(resource.Name, _hero.ResourceAmount(resource), value.Amount * logged.Scale, logged.Tolerance);
+                var check = new ResourceCheck(resource.Name, _hero.ResourceAmount(resource), logged.EngineAmount(value), logged.Tolerance);
                 step.Resources.Add(check);
                 if (!check.Matches)
                 {

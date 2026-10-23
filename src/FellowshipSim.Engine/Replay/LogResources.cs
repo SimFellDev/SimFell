@@ -13,9 +13,16 @@ public static class LogResources
     /// <paramref name="LogResourceType"/> is the log's resource type number, <paramref name="Scale"/> converts log values to
     /// engine units and <paramref name="Tolerance"/> is how far the engine may differ before the replay reports it. With
     /// <paramref name="StartsFromLog"/> the replay starts the resource at the log's first reading (it carries over from
-    /// earlier pulls of the dungeon).
+    /// earlier pulls of the dungeon). With <paramref name="ShareOfMaximum"/> the log's amount is read as a share of the
+    /// log's maximum, which is the engine's maximum (a maximum that changes during the fight, e.g. Tariq's Fury).
     /// </summary>
-    public sealed record LogResource(ResourceDef Resource, int LogResourceType, double Scale = 1.0, double Tolerance = 0.0, bool StartsFromLog = false);
+    public sealed record LogResource(ResourceDef Resource, int LogResourceType, double Scale = 1.0, double Tolerance = 0.0, bool StartsFromLog = false,
+        bool ShareOfMaximum = false)
+    {
+        /// <summary>The engine amount a log reading stands for.</summary>
+        public double EngineAmount(LogResourceValue value) =>
+            ShareOfMaximum ? (value.Max > 0 ? value.Amount / value.Max * Resource.Max : 0.0) : value.Amount * Scale;
+    }
 
     public static readonly LogResource[] All =
     [
