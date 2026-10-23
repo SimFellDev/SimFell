@@ -67,8 +67,9 @@ public class ArdeosReplayTests(ITestOutputHelper output)
         {
             output.WriteLine($"forced {forced.Count()}: {forced.First()}");
         }
-        string? dump = Environment.GetEnvironmentVariable("ARDEOS_HITS_CSV");
-        if (dump == null) return;
+        string? folder = Environment.GetEnvironmentVariable("ARDEOS_HITS_FOLDER");
+        if (folder == null) return;
+        string dump = Path.Combine(folder, $"hits_{result.ReportCode}_{result.FightId}.csv");
         var inv = System.Globalization.CultureInfo.InvariantCulture;
         File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3}",
             h.EngineTime, h.AbilityId, h.Target == null ? "" : $"{h.Target.Id}.{h.Target.Instance}", h.EngineAmount, h.Crit ? 1 : 0,

@@ -14,6 +14,11 @@ public class PyrophibianFrenzy : Talent
     public const double Chance = 0.025;
     public const double CritChance = 0.05;
     public const string ProcKey = "pyrophibian_frenzy";
+    /// <summary>
+    /// Combat logs (yMAZVJL9hTpFjqbC fight 7, Fc8v6yWxD14GQMnV fight 19; 92 frogs attacking alone): the frog's first attack
+    /// comes 1.2-1.3s after a tick twice as often as at any other delay.
+    /// </summary>
+    public const double FirstAttackSeconds = 1.25;
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -29,7 +34,7 @@ public class PyrophibianFrenzy : Talent
             {
                 if (hit.SimContext is not { } ctx || hit.Amount <= 0) return;
                 // The frog leaps at any enemy, so the proof is a frog attack on any of them.
-                if (ctx.Outcomes.RollProc(ProcKey, hit.IsCrit ? CritChance : Chance, ctx)) frogs.Spawn(ctx, 1);
+                if (ctx.Outcomes.RollProc(ProcKey, hit.IsCrit ? CritChance : Chance, ctx)) frogs.Spawn(ctx, 1, FirstAttackSeconds);
             };
         }
     }

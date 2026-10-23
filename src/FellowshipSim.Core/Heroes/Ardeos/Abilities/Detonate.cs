@@ -6,6 +6,9 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes 3 hits, about 0.3s apart,
 /// each the damage its effects deal per second at the cast (the hits that land later keep it); the hits crit on their
 /// own; the effects keep ticking. On many enemies the hits queue up and land up to several seconds late.
+/// The hits take the class tuning once more: replays of the two logged builds without Pyrophibian Frenzy
+/// (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9) come to 1.08 and 1.02 of the logged Detonate damage with it,
+/// 1.18 and 1.12 without.
 /// </summary>
 public class Detonate : ArdeosAbility
 {
@@ -45,7 +48,7 @@ public class Detonate : ArdeosAbility
         {
             double perSecond = 0.0;
             foreach (var dot in dots.On(enemy)) perSecond += dot.Effect.DamagePerSecond(ctx, dot);
-            double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier;
+            double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier * Owner.ClassDamageTuning;
             if (damage <= 0) continue;
             double critChance = Owner.CritChanceAgainst(enemy, now) + CritChanceBonus + (CurrentCast?.CritChance ?? 0.0);
             double critMultiplier = CritMultiplierAt(now);

@@ -20,6 +20,9 @@ public class FireFrogs : ArdeosAbility
     public const double FrogStaggerSeconds = 0.1;
     public const double AttackIntervalSeconds = 40.0 / 30.0;
 
+    /// <summary>The proc of each frog a cast conjures (always procs).</summary>
+    public const string ConjuredProcKey = "fire_frogs_conjured";
+
     public FireFrogAttack Attack { get; }
 
     /// <summary>Frogs a cast conjures (Frog Squad adds to it).</summary>
@@ -39,18 +42,24 @@ public class FireFrogs : ArdeosAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        Spawn(ctx, Frogs);
+        // Each frog of the cast is a certain proc: it always comes, and a replay takes the log's attacks of the cast's frogs
+        // as theirs, so they are no proof of Pyrophibian Frenzy's frogs.
+        for (int frog = 0; frog < Frogs; frog++) ctx.Outcomes.RollProc(ConjuredProcKey, 1.0, ctx);
+        Spawn(ctx, Frogs, FirstAttackSeconds);
     }
 
-    /// <summary>Conjures <paramref name="frogs"/> Fire Frogs, each performing <see cref="AttacksPerFrog"/> attacks.</summary>
-    public void Spawn(SimulationContext ctx, int frogs)
+    /// <summary>
+    /// Conjures <paramref name="frogs"/> Fire Frogs, each performing <see cref="AttacksPerFrog"/> attacks, the first
+    /// <paramref name="firstAttackSeconds"/> from now.
+    /// </summary>
+    public void Spawn(SimulationContext ctx, int frogs, double firstAttackSeconds)
     {
         _fight = ctx;
         for (int frog = 0; frog < frogs; frog++)
         {
             for (int attack = 0; attack < AttacksPerFrog; attack++)
             {
-                double delay = FirstAttackSeconds + frog * FrogStaggerSeconds + attack * AttackIntervalSeconds;
+                double delay = firstAttackSeconds + frog * FrogStaggerSeconds + attack * AttackIntervalSeconds;
                 ctx.Schedule(SimTime.FromSeconds(delay), Leap, AbilityName);
             }
         }
