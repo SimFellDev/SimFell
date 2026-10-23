@@ -5,8 +5,9 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// damage dealt by Heart Splitter is added to Rend. Exsanguinate: Heart Splitter exsanguinates the target's wounds,
 /// dealing an additional 30% of the Total Rend Damage active on the target." Cooldown 12s, shortened by Haste.
 /// Combat logs (n7zxK8harZT2wjDB fight 9 @ 16.404, Bloodfang#2): Exsanguinate (effect 3239) comes with the hit, after the
-/// hit's own Rend is added: 4492 = 0.3 x 1.1 (Deep Rend) x (621.5 + 1.85 x 7022). It neither crits nor takes damage
-/// multipliers.
+/// hit's own Rend is added: 4492 = 0.3 x 1.1 (Deep Rend) x (621.5 + 1.85 x 7022). "The Total Rend Damage active" is the
+/// Rend still to deal: with the Rend already dealt in it, Exsanguinate comes out 26% above the logs (Y4wpb2f3gc8LqJDX
+/// fight 25, 1375 hits), without it 5% above. It neither crits nor takes damage multipliers.
 /// </summary>
 public class HeartSplitter : GundeAbility
 {

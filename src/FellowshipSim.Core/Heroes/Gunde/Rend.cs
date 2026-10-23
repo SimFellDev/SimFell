@@ -62,16 +62,7 @@ public sealed class Rend
         _gunde.CheckSunderedFlesh(ctx, target);
     }
 
-    /// <summary>All the damage of <paramref name="target"/>'s Rend applications, dealt or not ("the Total Rend Damage active on the target").</summary>
-    public double Total(EnemyTarget target)
-    {
-        if (!_bleeds.TryGetValue(target, out var bleed)) return 0.0;
-        double total = 0.0;
-        foreach (var a in bleed.Applications) total += a.PerTick * Ticks;
-        return total;
-    }
-
-    /// <summary>The damage <paramref name="target"/>'s Rend has still to deal.</summary>
+    /// <summary>The damage <paramref name="target"/>'s Rend has still to deal (Exsanguinate, Slaughter).</summary>
     public double Remaining(EnemyTarget target)
     {
         if (!_bleeds.TryGetValue(target, out var bleed)) return 0.0;

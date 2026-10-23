@@ -8,7 +8,8 @@ namespace FellowshipSim.Tests;
 /// Replays every downloaded fight (data/fights) for its Gunde players alone, and prints per damage ID how the engine's
 /// hits compare with the log's, and the replay's most common issues. With no such fight downloaded it does nothing.
 /// GUNDE_FIGHT (a report code, or report code and fight ID as "code_fight") limits it to one fight; GUNDE_CHARACTER_JSON
-/// writes the replayed character there, GUNDE_HITS_CSV every hit pair.
+/// writes the replayed character there, GUNDE_HITS_CSV every hit pair; GUNDE_FREEDICE (a number of runs) adds a free dice
+/// replay of each fight.
 /// Run with: dotnet test --filter GundeReplayTests
 /// </summary>
 public class GundeReplayTests(ITestOutputHelper output)
@@ -37,6 +38,12 @@ public class GundeReplayTests(ITestOutputHelper output)
                                  $"{result.ForcedCasts.Count} forced casts");
                 Report(result, options);
                 Assert.True(result.MatchedLogHits > 0);
+                if (int.TryParse(Environment.GetEnvironmentVariable("GUNDE_FREEDICE"), out int runs) && runs > 0)
+                {
+                    var dice = FreeDiceReplay.Run(script, runs, firstSeed: 1);
+                    output.WriteLine($"free dice, {runs} runs: {dice.Mean / dice.LogDamage:P1} of log, log at the {dice.LogPercentile:P0} point");
+                    output.WriteLine(dice.ToString());
+                }
             }
         }
     }
