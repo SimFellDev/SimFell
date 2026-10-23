@@ -66,9 +66,12 @@ public static class ProcEvidence
         new(CoalescingFrost.DoubleStackProc, LogIds.Effect(CoalescingFrost.DebuffEffectId), StackJump: 2),
 
         // Ardeos
-        // Pyrophibian Frenzy's frog makes its first attack about 1.7s after the tick that spawned it, then 3 more (Frog
+        // Pyrophibian Frenzy's frog makes its first attack 1.2-1.3s after the tick that spawned it, then 3 more (Frog
         // Squad, in every logged build with the talent) 40 server frames apart.
-        new(PyrophibianFrenzy.ProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 2.2, MinDelaySeconds: 1.4,
+        new(PyrophibianFrenzy.ProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 1.35, MinDelaySeconds: 1.15,
+            FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
+        // A Fire Frogs cast's frogs make their first attacks 1.7-2.3s after it: their attacks are no proof of the talent's.
+        new(FireFrogs.ConjuredProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 2.4, MinDelaySeconds: 1.5,
             FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
         new(ReignOfFire.ProcKey, ReignOfFire.Buff.LogId),
     ];

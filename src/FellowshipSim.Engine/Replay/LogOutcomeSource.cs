@@ -267,13 +267,15 @@ public sealed class LogOutcomeSource : IOutcomeSource
         if (hit == null) return false;
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
-        // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks).
-        double tolerance = evidence.FollowingSpacingSeconds / 4.0;
+        // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks): each the first free
+        // hit from 3/4 to 3/2 of the spacing after the one before.
+        double previous = hit.Time;
         for (int k = 1; k <= evidence.FollowingHits; k++)
         {
-            double at = hit.Time + k * evidence.FollowingSpacingSeconds;
-            var following = _hits.Peek(logId, at - tolerance, at + tolerance, Free);
-            if (following != null) _claimedDamageEvidence.Add(following);
+            var following = _hits.Peek(logId, previous + 0.75 * evidence.FollowingSpacingSeconds, previous + 1.5 * evidence.FollowingSpacingSeconds, Free);
+            if (following == null) break;
+            _claimedDamageEvidence.Add(following);
+            previous = following.Time;
         }
         return true;
     }
