@@ -44,7 +44,7 @@ public class Detonate : ArdeosAbility
         else Owner.SpendResource(Ardeos.Cinders, CinderCost, ctx);
 
         var dots = Ardeos.Dots;
-        foreach (var enemy in dots.Active.Select(d => d.Target).Distinct().ToList())
+        foreach (var enemy in dots.Targets.ToList())
         {
             double perSecond = 0.0;
             foreach (var dot in dots.On(enemy)) perSecond += dot.Effect.DamagePerSecond(ctx, dot);

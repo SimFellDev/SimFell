@@ -11,6 +11,9 @@ public sealed class DotTracker
 
     private readonly Ardeos _hero;
     private readonly List<DotInstance> _active = new();
+    // Speed: every hit reads the effects on its target (Devouring Flame), so they are also kept per enemy.
+    private readonly Dictionary<EnemyTarget, List<DotInstance>> _byTarget = new();
+    private static readonly List<DotInstance> None = new();
     private SimulationContext? _fight;
 
     public DotTracker(Ardeos hero)
@@ -45,13 +48,26 @@ public sealed class DotTracker
         return rate;
     }
 
-    public IEnumerable<DotInstance> On(EnemyTarget target) => _active.Where(d => d.Target == target);
+    /// <summary>The enemies with an effect on them.</summary>
+    public IEnumerable<EnemyTarget> Targets => _byTarget.Where(kv => kv.Value.Count > 0).Select(kv => kv.Key);
 
-    public IEnumerable<DotInstance> On(EnemyTarget target, DamageOverTime effect) => _active.Where(d => d.Target == target && d.Effect == effect);
+    public IReadOnlyList<DotInstance> On(EnemyTarget target) => _byTarget.TryGetValue(target, out var on) ? on : None;
 
-    public bool Has(EnemyTarget target, DamageOverTime effect) => _active.Any(d => d.Target == target && d.Effect == effect);
+    public IEnumerable<DotInstance> On(EnemyTarget target, DamageOverTime effect) => On(target).Where(d => d.Effect == effect);
 
-    public int Count(EnemyTarget target, DamageOverTime effect) => _active.Count(d => d.Target == target && d.Effect == effect);
+    public bool Has(EnemyTarget target, DamageOverTime effect) => Count(target, effect) > 0;
+
+    public int Count(EnemyTarget target, DamageOverTime effect)
+    {
+        // By index: a foreach over the list interface allocates its enumerator.
+        var on = On(target);
+        int count = 0;
+        for (int i = 0; i < on.Count; i++)
+        {
+            if (on[i].Effect == effect) count++;
+        }
+        return count;
+    }
 
     /// <summary>
     /// Applies <paramref name="effect"/> to <paramref name="target"/> for its full duration, with <paramref name="pool"/>
@@ -65,7 +81,7 @@ public sealed class DotTracker
     {
         Begin(ctx);
         var now = ctx.CurrentTime;
-        var dot = effect.Stacking == DotStacking.Concurrent ? null : _active.FirstOrDefault(d => d.Target == target && d.Effect == effect);
+        var dot = effect.Stacking == DotStacking.Concurrent ? null : On(target).FirstOrDefault(d => d.Effect == effect);
         if (dot != null)
         {
             Advance(dot, now);
@@ -85,6 +101,8 @@ public sealed class DotTracker
                 TickAmount = pool / effect.BaseTicks, Stacks = Math.Min(effect.MaxStacks, stacks), Rate = Rate(effect, now),
             };
             _active.Add(dot);
+            if (!_byTarget.TryGetValue(target, out var on)) _byTarget[target] = on = new List<DotInstance>();
+            on.Add(dot);
         }
         dot.CinderScale = cinderScale;
         dot.ExpiresAt = now + SimTime.FromSeconds(effect.Duration + AuraContainer.ExpiryLagSeconds);
@@ -115,6 +133,7 @@ public sealed class DotTracker
             dot.Event?.Cancel();
         }
         _active.Clear();
+        _byTarget.Clear();
         _fight = null;
     }
 
@@ -129,7 +148,7 @@ public sealed class DotTracker
     private void EnemyDemising(SimulationContext ctx, EnemyTarget enemy)
     {
         if (_fight != ctx) return;
-        var on = _active.Where(d => d.Target == enemy).ToList();
+        var on = On(enemy).ToList();
         if (on.Count == 0) return;
         EnemyDying?.Invoke(ctx, enemy, on);
         foreach (var dot in on) End(ctx, dot);
@@ -199,16 +218,18 @@ public sealed class DotTracker
         dot.IsActive = false;
         dot.Event?.Cancel();
         _active.Remove(dot);
+        if (_byTarget.TryGetValue(dot.Target, out var on)) on.Remove(dot);
         UpdateDebuff(dot.Effect, dot.Target, ctx.CurrentTime);
     }
 
     /// <summary>The enemy's debuff shows the effect's instances (or stacks) while any is active.</summary>
     private void UpdateDebuff(DamageOverTime effect, EnemyTarget target, SimTime now)
     {
+        var on = On(target);
         int stacks = 0;
-        foreach (var dot in _active)
+        for (int i = 0; i < on.Count; i++)
         {
-            if (dot.Target == target && dot.Effect == effect) stacks += dot.Stacks;
+            if (on[i].Effect == effect) stacks += on[i].Stacks;
         }
         if (stacks == 0) target.Auras.Remove(effect.Debuff, now);
         else target.Auras.Apply(effect.Debuff, now, setStacks: stacks);
