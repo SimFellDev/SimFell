@@ -84,6 +84,9 @@ public abstract class Hero : Actor
     /// <summary>The global cooldown before haste (per the user: 1.5s, hasted).</summary>
     public double GlobalCooldownSeconds { get; set; } = 1.5;
 
+    /// <summary>Haste shortens the global cooldown (Mara's 1s global cooldown is not hasted).</summary>
+    public bool GlobalCooldownScalesWithHaste { get; protected set; } = true;
+
     /// <summary>Parts of the hero's build the engine does not model (filled when the build is imported).</summary>
     public List<string> UnmodeledFeatures { get; } = new();
 
