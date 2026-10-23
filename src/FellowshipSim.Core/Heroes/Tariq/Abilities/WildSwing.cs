@@ -11,7 +11,7 @@ public class WildSwing : TariqAbility
     public const string AbilityName = "Wild Swing";
     /// <summary>Placeholder WildSwingDmg: 129.14% of Strength.</summary>
     public const double Coefficient = 1.2914;
-    /// <summary>Game data cooldown 1.5, with nothing scaling it.</summary>
+    /// <summary>Game data cooldown 1.5; haste shortens it, as it does Skull Crusher's.</summary>
     public const double CooldownSeconds = 1.5;
     /// <summary>Ink.CleaveAttack.ResourceGain: 3% of maximum Fury.</summary>
     public const double FuryGain = 3.0;
@@ -21,12 +21,13 @@ public class WildSwing : TariqAbility
     public WildSwing(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        SetCooldown(CooldownSeconds, scalesWithHaste: true);
         AoeTargetThreshold = TargetThreshold;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
+        TriggerCooldown(ctx);
         Tariq.GainFury(FuryGain, ctx, target);
         // Combat logs (3 Tariq fights, 388 hits): no Wild Swing hit crits.
         double recklessness = 1.0 + Owner.CritChance(ctx.CurrentTime);

@@ -14,7 +14,10 @@ public class SkullCrusher : TariqAbility
     /// <summary>Placeholder SkullCrushLightnDmg: 406% of Strength.</summary>
     public const double LightningCoefficient = 4.06;
     public const double FuryCost = 25.0;
-    /// <summary>Game data cooldown 1, with nothing scaling it.</summary>
+    /// <summary>
+    /// Game data cooldown 1. Combat logs (fXyzwGcQkTrLD34R fight 4): Skull Crushers 0.835s apart at 20% haste, so haste
+    /// shortens it.
+    /// </summary>
     public const double CooldownSeconds = 1.0;
     /// <summary>
     /// GE_GlobalCooldown_TariqHeavySingleTarget: coefficient 1 on the hasted global cooldown, against 1.5 for the shared
@@ -30,7 +33,7 @@ public class SkullCrusher : TariqAbility
     public SkullCrusher(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        SetCooldown(CooldownSeconds, scalesWithHaste: true);
         GlobalCooldownSeconds = GlobalCooldown;
     }
 

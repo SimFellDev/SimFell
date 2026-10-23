@@ -14,7 +14,7 @@ public class HammerStorm : TariqAbility
     /// <summary>Placeholder HamrStormLightningDmg: 78% of Strength per spin.</summary>
     public const double LightningCoefficient = 0.78;
     public const double FuryCost = 50.0;
-    /// <summary>Game data cooldown 1.5, with nothing scaling it.</summary>
+    /// <summary>Game data cooldown 1.5; haste shortens it, as it does Skull Crusher's.</summary>
     public const double CooldownSeconds = 1.5;
     /// <summary>Game data channelTime 1 and channelTick 0.5 (HamrStormPeriod, a tick rate).</summary>
     public const double ChannelSeconds = 1.0;
@@ -37,7 +37,7 @@ public class HammerStorm : TariqAbility
     public HammerStorm(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        SetCooldown(CooldownSeconds, scalesWithHaste: true);
         SetChannel(ChannelSeconds, SpinPeriodSeconds);
         // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, then every hasted
         // half second, 3 spins in all.
