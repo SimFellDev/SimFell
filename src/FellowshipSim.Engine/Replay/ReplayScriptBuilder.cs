@@ -141,6 +141,9 @@ public static class ReplayScriptBuilder
             var res = e["targetResources"];
             if (res?["hitPoints"] is not { } hpNode || res["maxHitPoints"] is not { } maxNode || Num(maxNode) == 0) continue;
             double hp = Num(hpNode), maxNow = Num(maxNode);
+            // A killing blow logs the health below 0 as an unsigned 32-bit number (1p7AXmHfwV9CYMxR fight 30 @ 157.097:
+            // 4294950962 of 726971).
+            if (hp > maxNow) hp = 0;
             var key = (Int(e["targetID"])!.Value, Instance(e, "target"));
             double fraction = hp / maxNow;
             if (lastFraction.TryGetValue(key, out var last) && Math.Abs(fraction - last) < HealthSampleStep) continue;
@@ -148,7 +151,7 @@ public static class ReplayScriptBuilder
             commands.Add(new JsonObject
             {
                 ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "enemy_health", ["enemy"] = Unit(key.Item1, key.Item2),
-                ["hp"] = hpNode.DeepClone(), ["max_hp"] = maxNode.DeepClone(),
+                ["hp"] = hp, ["max_hp"] = maxNode.DeepClone(),
             });
         }
 
