@@ -1,0 +1,124 @@
+{
+  "Name": "-\u7384-",
+  "Hero": "Ardeos",
+  "PrimaryStat": 336,
+  "Stamina": 641,
+  "MaxHealth": 35647,
+  "Armor": 544,
+  "CritRating": 136,
+  "HasteRating": 141,
+  "ExpertiseRating": 61,
+  "SpiritRating": 187,
+  "SheetPercents": {
+    "crit": 0.2619,
+    "haste": 0.219,
+    "expertise": 0.0976,
+    "spirit": 0.2813
+  },
+  "Talents": [
+    146,
+    150,
+    678,
+    677,
+    162,
+    158,
+    226
+  ],
+  "Traits": [
+    {
+      "Id": 2,
+      "Rank": 4,
+      "Name": "Inspired Allegiance"
+    },
+    {
+      "Id": 42,
+      "Rank": 3,
+      "Name": "Hunter\u0027s Focus"
+    },
+    {
+      "Id": 47,
+      "Rank": 3,
+      "Name": "Visions of Grandeur"
+    },
+    {
+      "Id": 32,
+      "Rank": 1,
+      "Name": "Sapphire Aurastone"
+    },
+    {
+      "Id": 48,
+      "Rank": 4,
+      "Name": "Brave Machinations"
+    },
+    {
+      "Id": 31,
+      "Rank": 1,
+      "Name": "Amethyst Splinters"
+    },
+    {
+      "Id": 34,
+      "Rank": 1,
+      "Name": "Emerald Judgement"
+    },
+    {
+      "Id": 51,
+      "Rank": 2,
+      "Name": "Martial Initiative"
+    },
+    {
+      "Id": 37,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 6,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 55,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 52,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Blessings": [
+    {
+      "Id": 705,
+      "Rank": 1,
+      "Name": "The Monarch"
+    },
+    {
+      "Id": 709,
+      "Rank": 4,
+      "Name": "The Philosopher"
+    },
+    {
+      "Id": 699,
+      "Rank": 2,
+      "Name": "The Herald"
+    }
+  ],
+  "GemPower": {
+    "Sapphire": 1500,
+    "Emerald": 1500
+  },
+  "SetBonusIds": [
+    686,
+    691,
+    1771,
+    691,
+    5638,
+    686,
+    5638,
+    1771
+  ],
+  "LegendaryItemIds": [
+    5225
+  ],
+  "WeaponAbilityId": 1558
+}
