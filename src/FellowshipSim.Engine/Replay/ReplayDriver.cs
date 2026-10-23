@@ -430,7 +430,13 @@ public sealed class ReplayDriver
                 _ctx.Schedule(SimTime.FromSeconds(Math.Max(0.0, e.Time)), c =>
                 {
                     if (e.Type is "removebuff" or "removedebuff") c.Player.Auras.Remove(aura, c.CurrentTime);
-                    else if (e.IsGain || e.Stack != null) c.Player.Auras.Apply(aura, c.CurrentTime, setStacks: e.Stack ?? 1);
+                    else if (e.IsGain || e.Stack != null)
+                    {
+                        // A refresh logs no stacks: it keeps the ones it has (Gunde's Owed in Blood refreshes at 150).
+                        int held = c.Player.Auras.GetStacks(aura, c.CurrentTime);
+                        bool refresh = e.Type is "refreshbuff" or "refreshdebuff";
+                        c.Player.Auras.Apply(aura, c.CurrentTime, setStacks: e.Stack ?? (refresh && held > 0 ? held : 1));
+                    }
                 }, $"{aura.Name} (log)");
             }
         }
