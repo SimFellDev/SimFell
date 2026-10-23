@@ -62,6 +62,7 @@ public class ArdeosReplayTests(ITestOutputHelper output)
         output.WriteLine("");
         foreach (var unmodeled in result.UnmodeledAbilities) output.WriteLine($"unmodeled ability {unmodeled.Key}: {unmodeled.Value}");
         foreach (var unmodeled in result.UnmodeledCustomizations) output.WriteLine($"unmodeled {unmodeled}");
+        foreach (var external in result.UnmodeledExternalAuras) output.WriteLine($"unmodeled external aura {external.Key}: {external.Value}");
         foreach (var proc in result.ProcStats) output.WriteLine($"proc {proc.Key}: {proc.Procs}/{proc.Rolls} (expected {proc.ExpectedProcs:F1})");
         foreach (var forced in result.ForcedCasts.GroupBy(f => f.Split(':')[0]).OrderByDescending(g => g.Count()).Take(15))
         {
