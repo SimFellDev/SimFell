@@ -45,7 +45,7 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
     [InlineData(SquareHammer.TalentId, "aura:Square Hammer: Active")]
     [InlineData(BloodAndThunder.TalentId, "damage:Chain Lightning")]
     [InlineData(TheMotherload.TalentId, "damage:Chain Lightning")]
-    [InlineData(MouthForWar.TalentId, "aura:Focused Wrath")]
+    [InlineData(MouthForWar.TalentId, "more:aura:Focused Wrath")]
     [InlineData(Thunderstruck.TalentId, "damage:Chain Lightning")]
     [InlineData(Pneuma.TalentId, "damage:Culling Strike")]
     [InlineData(Sledgehammer.TalentId, "damage:Sledgehammer", 2)]
@@ -60,12 +60,24 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
     {
         foreach (int targets in new[] { 1, 8 }.Where(t => t >= minTargets))
         {
-            var (result, hero, gained) = Run([.. BaseTalents, talentId], targets, legendaryItemId: ExecutionersGrin.WrapsItemId);
+            // The base leaves the talent out, so only the talent can show the evidence.
+            int[] without = BaseTalents.Where(t => t != talentId).ToArray();
+            var (result, hero, gained) = Run([.. without, talentId], targets, legendaryItemId: ExecutionersGrin.WrapsItemId);
             Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
             Assert.Contains(hero.Talents, t => t.Id == talentId);
             Assert.True(result.MeanDps > 0);
-            Assert.True(Seen(result, gained, evidence, out string seen), $"Talent {talentId}: no {evidence} on {targets} target(s)");
-            output.WriteLine($"Talent {talentId} on {targets} target(s): {result.MeanDps:N0} DPS, {evidence} -> {seen}");
+            // "more:" evidence is there without the talent too (Focused Wrath's own cast): the talent must add to it.
+            bool more = evidence.StartsWith("more:");
+            string shown = more ? evidence["more:".Length..] : evidence;
+            double amount = Amount(result, gained, shown);
+            double baseline = 0.0;
+            if (more)
+            {
+                var (baseResult, _, baseGained) = Run(without, targets, legendaryItemId: ExecutionersGrin.WrapsItemId);
+                baseline = Amount(baseResult, baseGained, shown);
+            }
+            output.WriteLine($"Talent {talentId} on {targets} target(s): {result.MeanDps:N0} DPS, {shown} -> {amount:N0} (without: {baseline:N0})");
+            Assert.True(amount > baseline, $"Talent {talentId}: no {evidence} on {targets} target(s)");
         }
     }
 
@@ -78,8 +90,9 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
         var (result, hero, gained) = Run(BaseTalents, 3, legendaryItemId: itemId);
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Legendary"));
         Assert.Single(hero.Legendaries);
-        Assert.True(Seen(result, gained, evidence, out string seen), $"Legendary item {itemId}: no {evidence}");
-        output.WriteLine($"Legendary item {itemId}: {result.MeanDps:N0} DPS, {evidence} -> {seen}");
+        double amount = Amount(result, gained, evidence);
+        output.WriteLine($"Legendary item {itemId}: {result.MeanDps:N0} DPS, {evidence} -> {amount:N0}");
+        Assert.True(amount > 0, $"Legendary item {itemId}: no {evidence}");
     }
 
     [Fact]
@@ -91,17 +104,16 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
     }
 
-    private static bool Seen(MonteCarloResult result, Dictionary<string, int> gained, string evidence, out string seen)
+    /// <summary>Gains of an "aura:" or "debuff:" evidence, or the DPS of a "damage:" one.</summary>
+    private static double Amount(MonteCarloResult result, Dictionary<string, int> gained, string evidence)
     {
         string[] parts = evidence.Split(':', 2);
-        if (parts[0] is "aura" or "debuff")
+        return parts[0] switch
         {
-            string key = parts[0] == "debuff" ? evidence : parts[1];
-            seen = $"{gained.GetValueOrDefault(key)} gains";
-            return gained.GetValueOrDefault(key) > 0;
-        }
-        seen = $"{result.AbilityDpsBreakdown.GetValueOrDefault(parts[1]):N0} DPS";
-        return result.AbilityDpsBreakdown.GetValueOrDefault(parts[1]) > 0;
+            "aura" => gained.GetValueOrDefault(parts[1]),
+            "debuff" => gained.GetValueOrDefault(evidence),
+            _ => result.AbilityDpsBreakdown.GetValueOrDefault(parts[1]),
+        };
     }
 
     private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets,
