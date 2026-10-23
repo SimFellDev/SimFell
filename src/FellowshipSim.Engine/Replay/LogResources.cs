@@ -1,5 +1,6 @@
 using FellowshipSim.Core.Heroes.Ardeos;
 using FellowshipSim.Core.Heroes.Rime;
+using FellowshipSim.Core.Heroes.Tariq;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -34,5 +35,8 @@ public static class LogResources
         new(Rime.WinterOrbsResource, 5, Scale: 0.01),
         // Ardeos: Cinders as resource type 2, in hundredths (max 40000).
         new(Ardeos.Cinders, 2, Scale: 0.01, Tolerance: 1.0),
+        // Tariq: Fury as resource type 2, a share of a maximum that follows Strength. Compared within 2 (Bloodline and Ride
+        // the Lightning tick between readings).
+        new(Tariq.Fury, 2, Tolerance: 2.0, StartsFromLog: true, ShareOfMaximum: true),
     ];
 }
