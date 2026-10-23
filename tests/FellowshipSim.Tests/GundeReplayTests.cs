@@ -7,7 +7,8 @@ namespace FellowshipSim.Tests;
 /// <summary>
 /// Replays every downloaded fight (data/fights) for its Gunde players alone, and prints per damage ID how the engine's
 /// hits compare with the log's, and the replay's most common issues. With no such fight downloaded it does nothing.
-/// GUNDE_FIGHT (a report code, or report code and fight ID as "code_fight") limits it to one fight.
+/// GUNDE_FIGHT (a report code, or report code and fight ID as "code_fight") limits it to one fight; GUNDE_CHARACTER_JSON
+/// writes the replayed character there, GUNDE_HITS_CSV every hit pair.
 /// Run with: dotnet test --filter GundeReplayTests
 /// </summary>
 public class GundeReplayTests(ITestOutputHelper output)
@@ -24,6 +25,10 @@ public class GundeReplayTests(ITestOutputHelper output)
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero == "Gunde"))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
+                if (Environment.GetEnvironmentVariable("GUNDE_CHARACTER_JSON") is { } characterFile)
+                {
+                    File.WriteAllText(characterFile, System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                }
                 var options = new ReplayOptions { StopOnFirstFailure = false };
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, options).Run();
                 var (engineDamage, logDamage) = ReplayReportWriter.DamageTotals(result);
