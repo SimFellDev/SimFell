@@ -268,7 +268,11 @@ public abstract class Hero : Actor
             c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
         }
         ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+        OnFightBegins(ctx);
     }
+
+    /// <summary>Starts what runs for the whole fight on its own for one hero (Mara: Energy regeneration).</summary>
+    protected virtual void OnFightBegins(SimulationContext ctx) { }
 
     /// <summary>The resources this hero has (declared with <see cref="AddResource"/> in <see cref="Initialize"/>).</summary>
     public List<ResourceDef> ResourceDefs { get; } = new();
