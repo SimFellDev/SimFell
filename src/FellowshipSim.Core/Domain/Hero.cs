@@ -201,8 +201,11 @@ public abstract class Hero : Actor
     /// <summary>Spirit of Heroism started / ended.</summary>
     public event Action<SimulationContext>? SpiritOfHeroismStarted;
     public event Action<SimulationContext>? SpiritOfHeroismEnded;
-    /// <summary>A Spirit Refund triggered on a spend of the resource (the refund itself arrives a moment later).</summary>
-    public event Action<ResourceDef, double, SimulationContext>? OnSpiritRefund;
+    /// <summary>
+    /// A Spirit Refund triggered on a spend of the resource (the refund itself arrives a moment later), or with no resource
+    /// for a hero whose refund is not a spend.
+    /// </summary>
+    public event Action<ResourceDef?, double, SimulationContext>? OnSpiritRefund;
     /// <summary>A cast is about to resolve (also free casts from procs): talents add to it here (see <see cref="CastBonus"/>).</summary>
     public event Action<CastBonus>? OnCastResolving;
 
@@ -319,12 +322,24 @@ public abstract class Hero : Actor
         state.Current = Math.Max(0.0, state.Current - amount);
         NotifyResourceSpent(resource, amount, ctx?.CurrentTime ?? default);
         if (amount <= 0 || ctx == null || resource != SpiritRefundResource) return;
-        if (!RollSpiritRefund(ctx)) return;
-        // Rising Spirit comes with the spend; the resource comes back a moment later.
+        if (!TriggerSpiritRefund(resource, amount, ctx)) return;
+        // The resource comes back a moment after the spend.
+        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c => AddToResource(resource, amount, c, null, isGain: false), "Spirit Refund");
+    }
+
+    /// <summary>
+    /// Rolls a Spirit Refund. When it triggers, Rising Spirit and the Spirit Points come at once and
+    /// <see cref="OnSpiritRefund"/> is raised. A hero whose Spirit Refund comes from using an ability rather than spending
+    /// a resource (Gunde: abilities that apply Rend) calls this with no <paramref name="resource"/> and gives what its
+    /// refund gives itself.
+    /// </summary>
+    protected bool TriggerSpiritRefund(ResourceDef? resource, double amount, SimulationContext ctx)
+    {
+        if (!RollSpiritRefund(ctx)) return false;
         Auras.Apply(RisingSpirit, ctx.CurrentTime);
         OnSpiritRefund?.Invoke(resource, amount, ctx);
         GainResource(SpiritPoints, SpiritPointsPerSpiritRefund, ctx);
-        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c => AddToResource(resource, amount, c, null, isGain: false), "Spirit Refund");
+        return true;
     }
 
     /// <summary>Tells effects that count spent resource (e.g. cooldown reductions per point spent) that it was spent.</summary>
