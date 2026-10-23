@@ -1,6 +1,8 @@
 using FellowshipSim.Core.Customization.Aspects;
 using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Sigils;
+using FellowshipSim.Core.Heroes.Ardeos.Abilities;
+using FellowshipSim.Core.Heroes.Ardeos.Talents;
 using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
@@ -20,9 +22,12 @@ public static class ProcEvidence
     /// <paramref name="LogId"/> is the aura the proc applies or the hit it deals; it may appear up to
     /// <paramref name="DelaySeconds"/> after the roll (e.g. a projectile's travel), and not before
     /// <paramref name="MinDelaySeconds"/>. With <paramref name="StackJump"/>, the proof is instead that debuff on the
-    /// proc's enemy gaining that many stacks at once.
+    /// proc's enemy gaining that many stacks at once. With <paramref name="FollowingHits"/>, the proc deals that many more
+    /// hits with the ID, every <paramref name="FollowingSpacingSeconds"/> after the first: they belong to that proc and are
+    /// no proof of another.
     /// </summary>
-    public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0);
+    public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
+        int FollowingHits = 0, double FollowingSpacingSeconds = 0.0);
 
     public static readonly Evidence[] All =
     [
@@ -59,6 +64,13 @@ public static class ProcEvidence
         new(SoulfrostTorrent.ProcKey, SoulfrostTorrent.Buff.LogId),
         // A Freezing Torrent crit adding 2 stacks of Coalescing Frost at once instead of 1.
         new(CoalescingFrost.DoubleStackProc, LogIds.Effect(CoalescingFrost.DebuffEffectId), StackJump: 2),
+
+        // Ardeos
+        // Pyrophibian Frenzy's frog makes its first attack about 1.7s after the tick that spawned it, then 3 more (Frog
+        // Squad, in every logged build with the talent) 40 server frames apart.
+        new(PyrophibianFrenzy.ProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 2.2, MinDelaySeconds: 1.4,
+            FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
+        new(ReignOfFire.ProcKey, ReignOfFire.Buff.LogId),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);

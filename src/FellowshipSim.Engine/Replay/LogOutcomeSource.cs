@@ -216,7 +216,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
             ? ClaimAuraEvidence(evidence.LogId, now)
-            : ClaimDamageEvidence(evidence.LogId, now, evidence.MinDelaySeconds, evidence.DelaySeconds, target);
+            : ClaimDamageEvidence(evidence, now, target);
         if (procced)
         {
             stats.Procs++;
@@ -257,15 +257,24 @@ public sealed class LogOutcomeSource : IOutcomeSource
     }
 
     /// <summary>A group of log hits with the proc's damage ID landing at the roll (within one server tick, plus the effect's delay).</summary>
-    private bool ClaimDamageEvidence(int logId, double now, double minDelay, double delay, EnemyTarget? target)
+    private bool ClaimDamageEvidence(ProcEvidence.Evidence evidence, double now, EnemyTarget? target)
     {
         // Hits an engine hit already accounts for (matched, or a group claimed for its targets) are not evidence of a proc.
-        var hit = _hits.Peek(logId, now + minDelay - _options.SameTickSeconds, now + _options.SameTickSeconds + delay,
-            h => !_claimedDamageEvidence.Contains(h) && !_hits.IsAccountedFor(h)
-                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
+        bool Free(LogDamage h) => !_claimedDamageEvidence.Contains(h) && !_hits.IsAccountedFor(h);
+        int logId = evidence.LogId;
+        var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
+            h => Free(h) && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
         if (hit == null) return false;
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
+        // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks).
+        double tolerance = evidence.FollowingSpacingSeconds / 4.0;
+        for (int k = 1; k <= evidence.FollowingHits; k++)
+        {
+            double at = hit.Time + k * evidence.FollowingSpacingSeconds;
+            var following = _hits.Peek(logId, at - tolerance, at + tolerance, Free);
+            if (following != null) _claimedDamageEvidence.Add(following);
+        }
         return true;
     }
 

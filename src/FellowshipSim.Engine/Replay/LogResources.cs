@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Heroes.Ardeos;
 using FellowshipSim.Core.Heroes.Rime;
 
 namespace FellowshipSim.Engine.Replay;
@@ -24,5 +25,7 @@ public static class LogResources
         // (the log rounds it).
         new(Rime.Anima, 2, Scale: 0.01, Tolerance: 0.99),
         new(Rime.WinterOrbsResource, 5, Scale: 0.01),
+        // Ardeos: Cinders as resource type 2, in hundredths (max 40000).
+        new(Ardeos.Cinders, 2, Scale: 0.01, Tolerance: 1.0),
     ];
 }
