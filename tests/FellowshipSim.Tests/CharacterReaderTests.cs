@@ -5,37 +5,39 @@ using FellowshipSim.Engine.Replay;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>The relic in a combatantinfo event's gear (<see cref="CharacterReader"/>).</summary>
+/// <summary>The relics in a combatantinfo event's gear (<see cref="CharacterReader"/>).</summary>
 public class CharacterReaderTests
 {
-    // Gear as FellowshipLogs gives it from 2026-10-23 on: a relic has no "set" field, and its item ID names the passive.
+    // Gear as FellowshipLogs gives it from build 0.5.0 on: two relics with no "set" field, each item ID naming a passive.
     private const string Combatant = """
         {
           "strength": 300,
           "gear": [
             { "id": 5946, "quality": 5 },
-            { "id": 5926, "quality": 5, "name": "Orb of Inner Seas" }
+            { "id": 5926, "quality": 5, "name": "Orb of Inner Seas" },
+            { "id": 5924, "quality": 5, "name": "Orb of Gathering Storms" }
           ]
         }
         """;
 
     [Fact]
-    public void One_Relic_Gives_Its_Passive()
+    public void Each_Relic_Gives_Its_Passive()
     {
         var build = CharacterReader.FromCombatantInfo(JsonNode.Parse(Combatant)!.AsObject(), "player", "Rime");
-        Assert.Equal(AccursedTrophy.RelicPassiveId, build.RelicPassiveId);
+        Assert.Equal([AccursedTrophy.RelicPassiveId, UndyingHeart.RelicPassiveId], build.RelicPassiveIds);
 
         var hero = HeroImporter.Import(build);
-        Assert.IsType<AccursedTrophy>(hero.RelicPassive);
+        Assert.Collection(hero.RelicPassives, r => Assert.IsType<AccursedTrophy>(r), r => Assert.IsType<UndyingHeart>(r));
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Relic"));
     }
 
     [Fact]
-    public void A_Profile_Writes_The_Relic_It_Read()
+    public void A_Profile_Writes_The_Relics_It_Read()
     {
         var build = CharacterReader.FromCombatantInfo(JsonNode.Parse(Combatant)!.AsObject(), "player", "Rime");
         string text = new SimcProfile(build, "").Format();
         Assert.Contains("relic=accursed_trophy", text);
-        Assert.Equal(build.RelicPassiveId, SimcProfile.Parse(text).Build.RelicPassiveId);
+        Assert.Contains("relic=undying_heart", text);
+        Assert.Equal(build.RelicPassiveIds, SimcProfile.Parse(text).Build.RelicPassiveIds);
     }
 }

@@ -22,6 +22,7 @@ public class SimcProfileTests
         glyphs=the_philosopher:4
         gems=sapphire:1500
         relic=undying_heart
+        relic=dragonbone_dice
         legendary=frostwyrms_spite,id=5899
         weapon=ashas_chronoshift_spire
 

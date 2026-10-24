@@ -78,7 +78,8 @@ public abstract class Hero : Actor
     public List<Legendary> Legendaries { get; } = new();
     public List<Gem> Gems { get; } = new();
     public List<Talent> Talents { get; } = new();
-    public RelicPassive? RelicPassive { get; set; }
+    /// <summary>The passives of the relics worn, one per relic.</summary>
+    public List<RelicPassive> RelicPassives { get; } = new();
 
     public Dictionary<string, CooldownState> Cooldowns { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Changes whenever a cooldown state is added to <see cref="Cooldowns"/> or they are cleared.</summary>

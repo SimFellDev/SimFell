@@ -89,11 +89,18 @@ public sealed class BuildEditor(CharacterBuild build)
         }
     }
 
-    /// <summary>The relic's passive ID, or null for no relic passive.</summary>
-    public int? RelicPassive
+    /// <summary>Relics a build wears (combat logs from build 0.5.0 on: every hero wears two, each with its passive).</summary>
+    public const int RelicSlots = 2;
+
+    /// <summary>The passive ID of the relic in <paramref name="slot"/> (0 or 1), or null for no relic there.</summary>
+    public int? RelicPassive(int slot) => slot < Build.RelicPassiveIds.Count ? Build.RelicPassiveIds[slot] : null;
+
+    /// <summary>Puts the relic passive <paramref name="id"/> in <paramref name="slot"/>, or empties the slot for null.</summary>
+    public void SetRelicPassive(int slot, int? id)
     {
-        get => Build.RelicPassiveId == 0 ? null : Build.RelicPassiveId;
-        set => Build.RelicPassiveId = value ?? 0;
+        var slots = Enumerable.Range(0, RelicSlots).Select(RelicPassive).ToArray();
+        slots[slot] = id;
+        Build.RelicPassiveIds = slots.OfType<int>().ToList();
     }
 
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
@@ -147,10 +154,10 @@ public sealed class BuildEditor(CharacterBuild build)
             build.Glyphs.Remove(g);
             removed.Add($"glyph {g.Name ?? g.Id.ToString()}");
         }
-        if (build.RelicPassiveId != 0 && CoreCatalog.CreateRelicPassive(build.RelicPassiveId) == null)
+        foreach (int id in build.RelicPassiveIds.Where(id => CoreCatalog.CreateRelicPassive(id) == null).ToList())
         {
-            removed.Add($"relic passive {build.RelicPassiveId}");
-            build.RelicPassiveId = 0;
+            build.RelicPassiveIds.Remove(id);
+            removed.Add($"relic passive {id}");
         }
         foreach (int id in build.LegendaryItemIds.Where(id => CoreCatalog.CreateLegendary(build.Hero, id) == null).ToList())
         {
