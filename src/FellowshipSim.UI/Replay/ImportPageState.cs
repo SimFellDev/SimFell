@@ -13,6 +13,9 @@ public sealed class ImportPageState
 
     public Report? Report { get; set; }
 
+    /// <summary>The fight and player picked to import (fight ID, player ID); at first the ones the link names.</summary>
+    public (int FightId, int PlayerId)? Picked { get; set; }
+
     /// <summary>True to list every fight of a report whose link names one; false lists that fight alone.</summary>
     public bool ShowAllFights { get; set; }
 

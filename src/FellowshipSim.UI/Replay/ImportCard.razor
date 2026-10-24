@@ -36,7 +36,7 @@
             <div class="fights">
                 @foreach (var f in linked != null && !State.ShowAllFights ? [linked] : fights)
                 {
-                    bool selected = f.Id == report.SelectedFightId;
+                    bool selected = f.Id == State.Picked?.FightId;
                     <div @key="f.Id" class="fight @(selected ? "selected" : "")">
                         <div class="fight-head">
                             <span class="fight-name">@f.Name</span>
@@ -47,12 +47,12 @@
                         <div class="players">
                             @foreach (var p in f.Players)
                             {
-                                bool highlight = selected && p.Id == report.SelectedPlayerId;
-                                string kind = !p.Supported ? "player unsupported" : highlight ? "player linked" : "player";
-                                <button @key="p.Id" type="button" class="@kind"
+                                bool picked = selected && p.Id == State.Picked?.PlayerId;
+                                string kind = !p.Supported ? "player unsupported" : picked ? "player picked" : "player";
+                                <button @key="p.Id" type="button" class="@kind" aria-pressed="@picked"
                                         disabled="@(!p.Supported || Busy)"
-                                        title="@(p.Supported ? $"{Action} {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
-                                        @onclick="() => OnPick(report, f, p)">
+                                        title="@(p.Supported ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
+                                        @onclick="() => State.Picked = (f.Id, p.Id)">
                                     <span class="player-name">@p.Name</span>
                                     <span class="player-hero">@p.Hero</span>
                                 </button>
@@ -60,6 +60,11 @@
                         </div>
                     </div>
                 }
+            </div>
+            var pick = PickedIn(report);
+            <div class="import-bar">
+                <span class="meta">@(pick is { } chosen ? $"{chosen.Player.Name} ({chosen.Player.Hero}) in {chosen.Fight.Name}, fight {chosen.Fight.Id}" : "Pick a player above.")</span>
+                <button type="button" class="import-button" disabled="@(pick == null || Busy)" @onclick="() => OnPick(report, pick!.Value.Fight, pick!.Value.Player)">Import</button>
             </div>
         }
     </div>
@@ -76,11 +81,15 @@
     /// <summary>Called with the player picked, instead of <see cref="OnReplay"/>, when set.</summary>
     [Parameter] public EventCallback<PickedPlayer> OnPlayer { get; set; }
 
-    /// <summary>What picking a player does, before the player's name in each button's tooltip: "Replay", "Use the build of".</summary>
-    [Parameter] public string Action { get; set; } = "Replay";
-
     /// <summary>The line after a report loads, saying what to pick.</summary>
-    [Parameter] public string PickHint { get; set; } = "Pick a player to replay.";
+    [Parameter] public string PickHint { get; set; } = "Pick a player, then Import to replay their fight.";
+
+    // The picked fight and player of the report shown, when both are in it and the player's hero is supported.
+    private (ReportFight Fight, FightPlayer Player)? PickedIn(Report report)
+    {
+        if (State.Picked is not { } picked || report.Fights.FirstOrDefault(f => f.Id == picked.FightId) is not { } fight) return null;
+        return fight.Players.FirstOrDefault(p => p.Id == picked.PlayerId && p.Supported) is { } player ? (fight, player) : null;
+    }
 
     private Task OnPick(Report report, ReportFight fight, FightPlayer player) =>
         OnPlayer.HasDelegate
@@ -103,6 +112,7 @@
         State.Status = new MessageState("Loading report...");
         State.Report = null;
         State.ShowAllFights = false;
+        State.Picked = null;
         try
         {
             var loaded = await Reports.FindAsync(State.Link);
@@ -111,6 +121,8 @@
                 ? $"{loaded.Title} ({loaded.Code}): {linkedFight.Name}, fight {linkedFight.Id}. {PickHint}"
                 : $"{loaded.Title} ({loaded.Code}): {loaded.Fights.Count} fights. {PickHint}");
             State.Report = loaded;
+            // The link's fight and player start picked.
+            if (loaded.SelectedFightId is { } linkFight && loaded.SelectedPlayerId is { } linkPlayer) State.Picked = (linkFight, linkPlayer);
         }
         catch (Exception e)
         {

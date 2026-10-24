@@ -66,15 +66,35 @@
   font-size: 12px;
 }
 
-/* The player the link names. */
-.player.linked {
+/* The player picked to import (the link's at first). */
+.player.picked {
   background: var(--selected);
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.player.linked .player-name {
+.player.picked .player-name {
   color: var(--heading);
+}
+
+/* The pick, and the button that imports it. */
+.import-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.import-button {
+  min-height: 40px;
+  padding: 8px 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* A hero the engine does not have yet. */
