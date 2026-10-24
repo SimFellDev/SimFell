@@ -290,7 +290,7 @@ public static class ReplayScriptBuilder
                     ["t"] = Rel(Num(e["timestamp"])), ["ability_id"] = gid, ["ability_name"] = AbilityName(gid),
                     ["target"] = Unit(tgt, Instance(e, "target")),
                     ["amount"] = e["amount"]?.DeepClone() ?? 0, ["unmitigated"] = e["unmitigatedAmount"]?.DeepClone(),
-                    ["absorbed"] = e["absorbed"]?.DeepClone() ?? 0, ["overkill"] = e["overkill"]?.DeepClone() ?? 0,
+                    ["absorbed"] = e["absorbed"]?.DeepClone() ?? 0, ["blocked"] = e["blocked"]?.DeepClone() ?? 0, ["overkill"] = e["overkill"]?.DeepClone() ?? 0,
                     ["crit"] = Int(e["hitType"]) is HitTypeCrit or HitTypeGrievousCrit, ["hit_type"] = e["hitType"]?.DeepClone(), ["tick"] = e["tick"]?.GetValue<bool>() ?? false,
                 });
             }

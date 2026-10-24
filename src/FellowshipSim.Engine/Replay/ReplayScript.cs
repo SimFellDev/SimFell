@@ -133,8 +133,16 @@ public class LogDamage
     [JsonPropertyName("hit_type")] public int? HitType { get; set; }
     [JsonPropertyName("tick")] public bool Tick { get; set; }
 
+    /// <summary>Damage the enemy's block took off the hit (hit type 4).</summary>
+    [JsonPropertyName("blocked")] public double Blocked { get; set; }
+
     /// <summary>Damage the hit dealt before absorbs.</summary>
     public double TotalAmount => Amount + Absorbed;
+
+    /// <summary>
+    /// The hit's damage before absorbs and the block: what the engine's hit compares with, since the engine has no blocks.
+    /// </summary>
+    public double UnblockedAmount => TotalAmount + Blocked;
 }
 
 public class LogAura

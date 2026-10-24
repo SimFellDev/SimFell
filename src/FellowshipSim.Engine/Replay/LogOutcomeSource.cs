@@ -625,7 +625,8 @@ public sealed record HitPair(
     /// <summary>When the engine's hit landed (dealt its damage); null if it never landed.</summary>
     public double? LandedTime { get; init; }
 
-    public double? Ratio => Log == null || EngineAmount <= 0 ? null : Log.TotalAmount / EngineAmount;
+    /// <summary>Log over engine, with the log hit before its block (the engine has no blocks).</summary>
+    public double? Ratio => Log == null || EngineAmount <= 0 ? null : Log.UnblockedAmount / EngineAmount;
 
     public bool WithinSpread(ReplayOptions options)
     {
@@ -641,7 +642,7 @@ public sealed record HitPair(
         }
         // Overkill truncates the logged amount, so only an engine hit that is too small is detectable then.
         if (Log.Overkill > 0 && Log.TotalAmount < EngineAmount) return true;
-        return Log.TotalAmount >= low && Log.TotalAmount <= high;
+        return Log.UnblockedAmount >= low && Log.UnblockedAmount <= high;
     }
 }
 
