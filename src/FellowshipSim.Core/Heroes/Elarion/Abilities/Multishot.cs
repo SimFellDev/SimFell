@@ -6,8 +6,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// Supremacy, Focused Expanse) "always fire at least 3 arrows regardless of how many targets are in range, costs 50% less
 /// Focus, and deals magic damage".
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 496 casts): one arrow on each enemy around the
-/// target, logged under 1318 empowered or not; an Empowered Multishot strikes 3 enemies where a plain one would strike 1
-/// or 2, so its three arrows go to three enemies. The tooltip's "When your Highwind Arrow Ricochets to at least 3 enemies,
+/// target, logged under 1318 empowered or not. An Empowered Multishot with fewer than 3 enemies around fires its other
+/// arrows at them again (67 casts: 3 hits on 1 enemy; 12 casts: 3 hits on 2 enemies). The tooltip's "When your Highwind Arrow Ricochets to at least 3 enemies,
 /// you gain 1 charge of Multishot" holds no limit: no log shows a Multishot charge (effect 1898), and Multishot is cast
 /// with none.
 /// </summary>
@@ -20,6 +20,7 @@ public class Multishot : ElarionAbility
     public const double Cost = 20.0;
     public const double TargetThreshold = 12;
     public const double EmpoweredCostMultiplier = 0.5;
+    public const int EmpoweredMinimumArrows = 3;
 
     /// <summary>
     /// The buffs that make the next Multishot Empowered, in the order they are used: Skystrider's Supremacy, then Focused
@@ -57,7 +58,14 @@ public class Multishot : ElarionAbility
         foreach (var m in DamageMultipliers) multiplier *= m(now, empowered);
         empowering?.Use(now);
         IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 && target is { IsSleeping: false } ? [target] : ctx.ActiveEnemies;
-        DealAoeDamage(ctx, enemies, damageMultiplier: multiplier);
+        var struck = ctx.Outcomes.SelectTargets(DamageLogId, enemies, ctx);
+        double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
+        for (int i = 0; i < struck.Count; i++) DealDamage(ctx, struck[i], damageMultiplier: multiplier * falloff);
+        // The arrows past one per enemy go to the enemies struck, in turn.
+        if (empowered && struck.Count > 0)
+        {
+            for (int i = struck.Count; i < EmpoweredMinimumArrows; i++) DealDamage(ctx, struck[i % struck.Count], damageMultiplier: multiplier);
+        }
         Cast?.Invoke(ctx, empowered);
     }
 }

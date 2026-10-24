@@ -34,13 +34,13 @@ public sealed class LunarlightSalvo : Ability
     public const double EruptTargetThreshold = 12;
     public const string EruptProcKey = "lunarlight_salvo_erupt";
 
-    /// <summary>Multipliers on the chance of a hit with a damage ID to call down a salvo (Lunar Fury).</summary>
+    /// <summary>Multipliers on the chance of a hit with a damage ID to trigger a salvo (Lunar Fury).</summary>
     public List<Func<int, double>> ChanceMultipliers { get; } = new();
 
     /// <summary>Damage IDs whose salvos leave the stack of Lunarlight Mark (Lunarlight Affinity: Starfall Volley).</summary>
     public HashSet<int> KeepsMarkFor { get; } = new();
 
-    /// <summary>Damage IDs whose hits never call down a salvo: Shoot, the salvo and its eruption.</summary>
+    /// <summary>Damage IDs whose hits never trigger a salvo: Shoot, the salvo and its eruption.</summary>
     private readonly HashSet<int> _noSalvo;
 
     private readonly Erupt _erupt;
@@ -76,7 +76,7 @@ public sealed class LunarlightSalvo : Ability
         }
     }
 
-    /// <summary>The eruption of a salvo Heartseeker Barrage called down: magic damage to the enemies near the target.</summary>
+    /// <summary>The eruption of a salvo Heartseeker Barrage triggered: magic damage to the enemies near the target.</summary>
     private sealed class Erupt : Ability
     {
         public Erupt(Elarion owner) : base(owner, SalvoAbilityId, EruptName)

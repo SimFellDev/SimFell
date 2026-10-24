@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Heroes.Elarion;
 
 /// <summary>
 /// Elarion, the Skystrider. Focused Shot and passive regeneration build Focus; his other shots spend it. Lunarlight Mark
-/// marks enemies, and damage to a marked enemy can call down a Lunarlight Salvo. Abilities live in Abilities/, talents in
+/// marks enemies, and damage to a marked enemy can trigger a Lunarlight Salvo. Abilities live in Abilities/, talents in
 /// Talents/.
 /// </summary>
 public sealed class Elarion : Hero
@@ -15,7 +15,8 @@ public sealed class Elarion : Hero
 
     /// <summary>
     /// Focus regenerated per second before haste. The game data has the runtime formula Bowguy.ResourceGainPerInterval and
-    /// no value. Combat logs: see <see cref="FocusRate"/>.
+    /// no value. Combat logs (pWmcV42K39GHTLQX fight 23): with 5 per second raised by Haste the engine is within 1 Focus
+    /// of the log over the first 40 seconds, at 29-71% Haste.
     /// </summary>
     public const double FocusPerSecond = 5.0;
 
