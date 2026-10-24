@@ -14,7 +14,9 @@ The work covers the hero the prompt names alone: the game data of its abilities,
 they use. Every message, answer, commit, comment and file names that hero alone, and every message to a teammate and
 prompt for a `game-data-binary` run states this scope. Every search is narrowed to the hero's records or shared records
 before it prints: a query whose output can hold another hero's records (an item ID shared across heroes, per-hero
-descriptions, a broad grep over the export) is filtered first, by the hero field or the hero's asset path. The lead
+descriptions, a broad grep over the export) is filtered first, by the hero field or the hero's asset path. The export
+and the dumps are never searched as text: a grep for an ID matches every record that references it. A search parses the
+records, keeps those whose own ID and type are asked for, and prints only the fields asked for. The lead
 stops a run that names or reads any other hero's data, however briefly, a search's printed output included.
 
 SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
