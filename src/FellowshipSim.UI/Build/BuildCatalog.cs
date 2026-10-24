@@ -38,8 +38,8 @@ public sealed class BuildCatalog
             .Where(l => l.ItemIds.Count > 0)
             .Select(l => new BuildOption(l.ItemIds[0], l.Name, GameIcons.LegendaryPowers.GetValueOrDefault(l.LegendaryPowerId), l.IsModeled))
             .OrderBy(o => o.Name).ToList();
-        RelicPassives = Catalog.AllRelicPassives
-            .Select(r => new BuildOption(r.Id, r.Name, null))
+        Relics = Catalog.AllRelicPassives
+            .SelectMany(r => r.Items.Select(i => new RelicOption(i.Id, i.Name, r.Name)))
             .OrderBy(o => o.Name).ToList();
         var augmentations = Catalog.AllAugmentations.ToList();
         List<BuildOption> OfKind<T>() => augmentations.OfType<T>().Cast<Augmentation>()
@@ -69,7 +69,7 @@ public sealed class BuildCatalog
 
     public IReadOnlyList<BuildOption> Legendaries { get; }
 
-    public IReadOnlyList<BuildOption> RelicPassives { get; }
+    public IReadOnlyList<RelicOption> Relics { get; }
 
     public IReadOnlyList<BuildOption> Aspects { get; }
 

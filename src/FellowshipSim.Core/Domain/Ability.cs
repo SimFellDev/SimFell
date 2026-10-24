@@ -35,6 +35,15 @@ public abstract class Ability
     public int MaxCharges { get; protected set; } = 1;
     public bool IgnoresGcd { get; protected set; } = false;
 
+    /// <summary>
+    /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
+    /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
+    /// </summary>
+    public double? GlobalCooldownSeconds { get; protected set; }
+
+    /// <summary>Whether haste shortens the global cooldown this ability starts, when it differs from the hero's. Null for the hero's.</summary>
+    public bool? GlobalCooldownScalesWithHaste { get; protected set; }
+
     /// <summary>The ID combat logs use for this ability's damage (the ability ID unless it deals damage through an effect).</summary>
     public int DamageLogId { get; protected set; }
 

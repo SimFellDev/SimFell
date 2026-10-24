@@ -170,7 +170,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         foreach (var s in r.Steps)
         {
             var matched = s.Hits.Where(h => h.Log != null).ToList();
-            double engineSum = matched.Sum(h => h.EngineAmount), logSum = matched.Sum(h => h.Log!.TotalAmount);
+            double engineSum = matched.Sum(h => h.EngineAmount), logSum = matched.Sum(h => h.Log!.UnblockedAmount);
             bool stateOk = s.Resources.All(c => c.Matches) && s.Auras.All(a => a.Matches);
             string cls = !s.Passed ? "fail" : !s.Modeled ? "skip" : "";
             string index = s.Passed ? s.Index.ToString() : $"<a href=\"#step-{s.Index}\">{s.Index}</a>";
@@ -368,7 +368,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
             {
                 bool bad = h.Log == null || h.Ratio is < 0.9 or > 1.1;
                 sb.Append($"<tr class=\"{(bad ? "fail" : "")}\"><td class=num>{h.EngineTime:F3}</td><td class=num>{(h.Log != null ? h.Log.Time.ToString("F3") : "—")}</td><td>{E(h.AbilityName)}</td><td>{E(h.Target?.ToString() ?? "")}</td>");
-                sb.Append($"<td>{(h.Log == null ? $"({h.CritChance:P0})" : h.Crit ? "crit" : "")}</td><td class=num>{h.EngineAmount:F0}</td><td class=num>{(h.Log != null ? h.Log.TotalAmount.ToString("F0") : "missing")}</td><td class=num>{(h.Ratio.HasValue ? h.Ratio.Value.ToString("F3") : "—")}</td></tr>");
+                sb.Append($"<td>{(h.Log == null ? $"({h.CritChance:P0})" : h.Crit ? "crit" : "")}</td><td class=num>{h.EngineAmount:F0}</td><td class=num>{(h.Log != null ? E(h.Log.ComparedAmountText()) : "missing")}</td><td class=num>{(h.Ratio.HasValue ? h.Ratio.Value.ToString("F3") : "—")}</td></tr>");
             }
             sb.Append("</tbody></table></div>");
         }

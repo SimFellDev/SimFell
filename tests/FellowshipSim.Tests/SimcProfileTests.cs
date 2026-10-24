@@ -21,7 +21,8 @@ public class SimcProfileTests
         protective_enchant=the_oak:1
         glyphs=the_philosopher:4
         gems=sapphire:1500
-        relic=undying_heart
+        relic1=orb_of_gathering_storms,id=5924
+        relic2=orb_of_awakened_gaze,id=5925
         legendary=frostwyrms_spite,id=5899
         weapon=ashas_chronoshift_spire
 
@@ -51,7 +52,7 @@ public class SimcProfileTests
     [Fact]
     public void Covetous_Greed_Raises_Every_Gem_Power()
     {
-        var profile = SimcProfile.Parse("rime=\"x\"\ngems=sapphire:1000/ruby:400\nrelic=covetous_greed");
+        var profile = SimcProfile.Parse("rime=\"x\"\ngems=sapphire:1000/ruby:400\nrelic1=orb_of_hidden_riches,id=5921");
         var hero = HeroImporter.Import(profile.Build);
         Assert.Equal([1250.0, 500.0], hero.Gems.Select(g => g.Power));
     }

@@ -42,6 +42,8 @@ public sealed class ReplayDriver
         if (!FreeDice) _logAuras = new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
         hero.Auras.OnRemoved += (aura, at) => { if (aura.LogId > 0) _engineRemoved[aura.LogId] = (at, aura.Stacks); };
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability.Id, now.TotalSeconds);
+        // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
+        _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
     }
 
     public SimulationContext Context => _ctx;
@@ -192,6 +194,14 @@ public sealed class ReplayDriver
 
             case CommandKind.ExternalAura:
                 ApplyExternalAura(cmd, result);
+                break;
+
+            case CommandKind.PlayerDeath:
+                Die();
+                break;
+
+            case CommandKind.PlayerRevive:
+                Revive(cmd.Time);
                 break;
 
             case CommandKind.Cast:
@@ -397,18 +407,54 @@ public sealed class ReplayDriver
     {
         foreach (var logged in LogResources.All.Where(l => l.StartsFromLog && _hero.ResourceDefs.Contains(l.Resource)))
         {
-            var first = _script.Observations.Resources
-                .Where(r => r.Resources.ContainsKey(logged.LogResourceType.ToString()))
-                .OrderBy(r => r.Time).FirstOrDefault();
-            if (first == null) continue;
-            // Set at the moment of the reading, so what the engine gains before it (regeneration) does not count twice.
-            double value = first.Resources[logged.LogResourceType.ToString()].Amount * logged.Scale;
-            var resource = logged.Resource;
-            _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(0.0, first.Time - 0.001)), c =>
-            {
-                var state = _hero.Resources.Get(resource);
-                state.Current = Math.Min(state.Max, value);
-            }, $"{resource.Name} from the log");
+            SetFromFirstReading(logged, 0.0);
+        }
+    }
+
+    /// <summary>
+    /// Sets the resource to the log's first reading at or after <paramref name="from"/>, at the moment of the reading, so
+    /// what the engine gains before it (regeneration) does not count twice.
+    /// </summary>
+    private void SetFromFirstReading(LogResources.LogResource logged, double from)
+    {
+        var first = _script.Observations.Resources
+            .Where(r => r.Time >= from && r.Resources.ContainsKey(logged.LogResourceType.ToString()))
+            .OrderBy(r => r.Time).FirstOrDefault();
+        if (first == null) return;
+        double value = logged.EngineAmount(first.Resources[logged.LogResourceType.ToString()]);
+        var resource = logged.Resource;
+        _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(from, first.Time - 0.001)), c =>
+        {
+            var state = _hero.Resources.Get(resource);
+            state.Current = Math.Min(state.Max, value);
+        }, $"{resource.Name} from the log");
+    }
+
+    /// <summary>
+    /// The player dies: the cast or channel ends and the hero loses every aura but its passive and situational ones and
+    /// those that keep on death (<see cref="AuraDef.KeepsOnDeath"/>). Damage over time on enemies goes on.
+    /// </summary>
+    private void Die()
+    {
+        if (_hero.CurrentCast != null) _ctx.CancelCast(_hero);
+        if (_hero.CurrentChannel != null) _ctx.StopChannel(_hero);
+        var now = _ctx.CurrentTime;
+        foreach (var aura in _hero.Auras.Active(now).ToList())
+        {
+            if (aura.LogId <= 0 || aura.Def.KeepsOnDeath || _hero.PassiveAuras.Contains(aura.Def) || _hero.SituationalAuras.Contains(aura.Def)) continue;
+            _hero.Auras.Remove(aura.Def, now);
+        }
+    }
+
+    /// <summary>
+    /// The player is back: every resource the log reports takes the log's first reading after it (the log shows 75% of
+    /// the Spirit Points at death, and other resources refilled or emptied).
+    /// </summary>
+    private void Revive(double time)
+    {
+        foreach (var logged in LogResources.All.Where(l => _hero.ResourceDefs.Contains(l.Resource)))
+        {
+            SetFromFirstReading(logged, time);
         }
     }
 
@@ -430,7 +476,13 @@ public sealed class ReplayDriver
                 _ctx.Schedule(SimTime.FromSeconds(Math.Max(0.0, e.Time)), c =>
                 {
                     if (e.Type is "removebuff" or "removedebuff") c.Player.Auras.Remove(aura, c.CurrentTime);
-                    else if (e.IsGain || e.Stack != null) c.Player.Auras.Apply(aura, c.CurrentTime, setStacks: e.Stack ?? 1);
+                    else if (e.IsGain || e.Stack != null)
+                    {
+                        // A refresh logs no stacks: it keeps the ones it has (Gunde's Owed in Blood refreshes at 150).
+                        int held = c.Player.Auras.GetStacks(aura, c.CurrentTime);
+                        bool refresh = e.Type is "refreshbuff" or "refreshdebuff";
+                        c.Player.Auras.Apply(aura, c.CurrentTime, setStacks: e.Stack ?? (refresh && held > 0 ? held : 1));
+                    }
                 }, $"{aura.Name} (log)");
             }
         }
@@ -463,7 +515,7 @@ public sealed class ReplayDriver
             {
                 var resource = logged.Resource;
                 if (!snapshot.Resources.TryGetValue(logged.LogResourceType.ToString(), out var value)) continue;
-                var check = new ResourceCheck(resource.Name, _hero.ResourceAmount(resource), value.Amount * logged.Scale, logged.Tolerance);
+                var check = new ResourceCheck(resource.Name, _hero.ResourceAmount(resource), logged.EngineAmount(value), logged.Tolerance);
                 step.Resources.Add(check);
                 if (!check.Matches)
                 {
@@ -472,8 +524,8 @@ public sealed class ReplayDriver
             }
         }
 
-        // One entry per log ID, as the log keeps it: a buff two players give (Inspired Allegiance) is two engine auras,
-        // one per source, with the same log ID.
+        // The log shows one state per aura ID; the engine can have two auras with one ID (the hero's own Inspired Allegiance
+        // and another player's).
         var engineState = _hero.Auras.Active(_ctx.CurrentTime)
             .Where(a => _logAuras!.IsTracked(a.LogId))
             .GroupBy(a => a.LogId)

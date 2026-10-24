@@ -63,7 +63,11 @@ public class ReplayOptions
     /// <summary>A log hit may land this long after the engine hit (projectile travel).</summary>
     public double HitLateSeconds { get; set; } = 2.0;
     /// <summary>Log hits with the same damage ID landing within this window belong to one multi-target hit.</summary>
-    public double HitGroupSeconds { get; set; } = 0.006;
+    /// <remarks>
+    /// Combat logs (Y4wpb2f3gc8LqJDX fight 25, Gunde): a pulse on 20-27 enemies is logged over up to 9ms; separate pulses
+    /// land at least a server frame (33ms) apart.
+    /// </remarks>
+    public double HitGroupSeconds { get; set; } = 0.010;
     /// <summary>A log hit still unmatched this long after it landed is reported as missing from the engine.</summary>
     public double SettleSeconds { get; set; } = 2.1;
 

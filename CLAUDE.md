@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 SimFell is a combat simulator for *Fellowship* (.NET 10, C# preview language version). It checks itself against
-FellowshipLogs combat logs. Rime is the only hero. `README.md` has setup and use. `docs/ADDING_A_HERO.md` has the engine
+FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara and Tariq. `README.md` has setup and use. `docs/ADDING_A_HERO.md` has the engine
 layout, the hook tables and the conventions for heroes, abilities, talents and gear. Read it before adding or changing
 game content.
 
@@ -102,4 +102,4 @@ and for the web app `visitors/` and `keys/` (the visitor cookie keys).
   names its source (tooltip text, game data record or combat logs); `UNVERIFIED` marks a value no log has confirmed.
 - Combat log IDs are game IDs plus an offset: effects + 1,000,000, talents + 2,000,000, traits + 3,000,000
   (`Domain/LogIds.cs`). Logs match blessings by name.
-- `Heroes/Rime/NOTES.md` lists the mechanics the combat logs showed for Rime.
+- Each hero's `Heroes/<Hero>/NOTES.md` lists the mechanics the combat logs showed for that hero.

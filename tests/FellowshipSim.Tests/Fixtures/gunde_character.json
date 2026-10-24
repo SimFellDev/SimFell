@@ -1,0 +1,113 @@
+{
+  "Name": "Culex",
+  "Hero": "Gunde",
+  "PrimaryStat": 332,
+  "Stamina": 536,
+  "MaxHealth": 30610,
+  "Armor": 598,
+  "CritRating": 78,
+  "HasteRating": 253,
+  "ExpertiseRating": 86,
+  "SpiritRating": 128,
+  "SheetPercents": {
+    "crit": 0.1743,
+    "haste": 0.3672,
+    "expertise": 0.1368,
+    "spirit": 0.2006
+  },
+  "Talents": [
+    750,
+    751,
+    762,
+    754,
+    749,
+    764,
+    767,
+    768,
+    757
+  ],
+  "Augmentations": [
+    {
+      "Id": 34,
+      "Rank": 1,
+      "Name": "Emerald Judgement"
+    },
+    {
+      "Id": 42,
+      "Rank": 4,
+      "Name": "Hunter\u0027s Focus"
+    },
+    {
+      "Id": 51,
+      "Rank": 3,
+      "Name": "Martial Initiative"
+    },
+    {
+      "Id": 2,
+      "Rank": 4,
+      "Name": "Inspired Allegiance"
+    },
+    {
+      "Id": 48,
+      "Rank": 1,
+      "Name": "Brave Machinations"
+    },
+    {
+      "Id": 47,
+      "Rank": 1,
+      "Name": "Visions of Grandeur"
+    },
+    {
+      "Id": 41,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 38,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 53,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 56,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Glyphs": [
+    {
+      "Id": 703,
+      "Rank": 4,
+      "Name": "The Wayfarer"
+    },
+    {
+      "Id": 705,
+      "Rank": 1,
+      "Name": "The Monarch"
+    },
+    {
+      "Id": 704,
+      "Rank": 4,
+      "Name": "The Subduer"
+    },
+    {
+      "Id": 701,
+      "Rank": 4,
+      "Name": "The Sinister"
+    }
+  ],
+  "GemPower": {
+    "Sapphire": 625,
+    "Amethyst": 625,
+    "Emerald": 1500,
+    "Ruby": 125
+  },
+  "LegendaryItemIds": [
+    5220
+  ],
+  "WeaponAbilityId": 160
+}

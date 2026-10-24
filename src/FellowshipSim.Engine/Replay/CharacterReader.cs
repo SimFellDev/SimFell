@@ -69,17 +69,21 @@ public static class CharacterReader
             if (id > 0) build.Talents.Add(id);
         }
 
-        // Gear: augmentations (augmentation ID + 3,000,000), glyphs, the relic and legendary items. Glyphs carry per-item
+        // Gear: augmentations (augmentation ID + 3,000,000), glyphs, the relics and legendary items. Glyphs carry per-item
         // IDs in logs, so they are matched to the game's glyphs by name.
         var augmentations = new List<(int Id, int Rank, string? Name)>();
         var glyphs = new List<(int Id, int Rank, string? Name)>();
         var statEnchants = new List<(int Id, int Rank, string? Name)>();
-        var relicPassives = Catalog.AllRelicPassives.ToList();
         foreach (var item in combatant["gear"]?.AsArray() ?? [])
         {
             if (item == null) continue;
             int itemId = (int)Num(item["id"]);
-            if (relicPassives.FirstOrDefault(r => r.ItemIds.Contains(itemId)) is { } relicPassive) build.RelicPassiveIds.Add(relicPassive.Id);
+            if (Catalog.RelicItemOf(itemId) != null)
+            {
+                // Relic slots fill in gear order.
+                if (build.Relic1ItemId == 0) build.Relic1ItemId = itemId;
+                else build.Relic2ItemId = itemId;
+            }
             foreach (var t in item["traits"]?.AsArray() ?? [])
             {
                 int id = (int)Num(t?["id"]) - LogIds.AugmentationOffset;

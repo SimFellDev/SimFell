@@ -133,18 +133,18 @@ public sealed class BuildEditor(CharacterBuild build)
         }
     }
 
-    public bool HasRelicPassive(int id) => Build.RelicPassiveIds.Contains(id);
-
-    /// <summary>
-    /// Equips the relic passive, or takes it off when equipped. Equipping one more than
-    /// <see cref="RelicPassive.MaxPerBuild"/> is refused: false.
-    /// </summary>
-    public bool ToggleRelicPassive(int id)
+    /// <summary>The item ID of the relic in slot 1, or null for no relic.</summary>
+    public int? Relic1
     {
-        if (Build.RelicPassiveIds.Remove(id)) return true;
-        if (Build.RelicPassiveIds.Count >= RelicPassive.MaxPerBuild) return false;
-        Build.RelicPassiveIds.Add(id);
-        return true;
+        get => Build.Relic1ItemId == 0 ? null : Build.Relic1ItemId;
+        set => Build.Relic1ItemId = value ?? 0;
+    }
+
+    /// <summary>The item ID of the relic in slot 2, or null for no relic.</summary>
+    public int? Relic2
+    {
+        get => Build.Relic2ItemId == 0 ? null : Build.Relic2ItemId;
+        set => Build.Relic2ItemId = value ?? 0;
     }
 
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
@@ -217,10 +217,15 @@ public sealed class BuildEditor(CharacterBuild build)
             build.Glyphs.Remove(g);
             removed.Add($"glyph {g.Name ?? g.Id.ToString()}");
         }
-        foreach (int id in build.RelicPassiveIds.Where(id => CoreCatalog.CreateRelicPassive(id) == null).ToList())
+        if (build.Relic1ItemId != 0 && CoreCatalog.RelicPassiveOfItem(build.Relic1ItemId) == null)
         {
-            build.RelicPassiveIds.Remove(id);
-            removed.Add($"relic passive {id}");
+            removed.Add($"relic item {build.Relic1ItemId}");
+            build.Relic1ItemId = 0;
+        }
+        if (build.Relic2ItemId != 0 && CoreCatalog.RelicPassiveOfItem(build.Relic2ItemId) == null)
+        {
+            removed.Add($"relic item {build.Relic2ItemId}");
+            build.Relic2ItemId = 0;
         }
         foreach (int id in build.LegendaryItemIds.Where(id => CoreCatalog.CreateLegendary(build.Hero, id) == null).ToList())
         {

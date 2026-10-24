@@ -9,10 +9,11 @@ public class GildedBroach : RelicPassive
     public const int RelicPassiveId = 782;
     public const string RelicPassiveName = "Gilded Broach";
     public const int OrbItemId = 5919;
+    public const string OrbItemName = "Orb of Sanguine Restoration";
 
     public override int Id => RelicPassiveId;
     public override string Name => RelicPassiveName;
-    public override IReadOnlyList<int> ItemIds => [OrbItemId];
+    public override IReadOnlyList<RelicItem> Items => [new(OrbItemId, OrbItemName)];
 
     public override void Bind(Hero hero) { }
 }

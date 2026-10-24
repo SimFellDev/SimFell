@@ -31,19 +31,23 @@ public abstract class Hero : Actor
     private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
 
     /// <summary>
-    /// An aura with cooldown recovery or haste progresses every recharge to now at the old rate and reads the new one.
-    /// Speed: any other aura leaves the recharges, whose rate it cannot change.
+    /// An aura with cooldown recovery or haste, or one a cooldown acceleration reads, progresses every recharge to now at
+    /// the old rate and reads the new one. Speed: any other aura leaves the recharges, whose rate it cannot change.
     /// </summary>
     private void AuraChanged(Aura aura, SimTime now)
     {
-        if (!aura.Def.Changes(CooldownRateStats)) return;
+        bool acceleration = CooldownAccelerationAuraKeys.Count > 0 && CooldownAccelerationAuraKeys.Contains(aura.Key);
+        if (acceleration) _accelerationAuraChanges++;
+        if (!acceleration && !aura.Def.Changes(CooldownRateStats)) return;
         foreach (var state in Cooldowns.Values) state.Advance(now);
     }
 
-    // Speed: CooldownRate reads only the auras' cooldown recovery and haste, the accelerations and the stat block. A
-    // recharge reads its rate again only after one of them changed; the rate it would read is the rate it has.
-    private (int Recovery, int Haste, int HasteRating, int Accelerations, StatBlock? Stats, int StatsVersion) _rateInputs;
+    // Speed: CooldownRate reads only the auras' cooldown recovery and haste, the auras a cooldown acceleration reads (counted
+    // as they change), the accelerations and the stat block. A recharge reads its rate again only after one of them changed;
+    // the rate it would read is the rate it has.
+    private (int Recovery, int Haste, int HasteRating, int Accelerations, int AccelerationAuras, StatBlock? Stats, int StatsVersion) _rateInputs;
     private long _rateInputsVersion;
+    private int _accelerationAuraChanges;
 
     /// <summary>
     /// Changes whenever something <see cref="CooldownRate"/> reads may have changed. Expired auras are removed first, as the
@@ -53,7 +57,7 @@ public abstract class Hero : Actor
     {
         Auras.CleanExpired(now);
         var inputs = (Auras.StatVersion(StatType.CooldownRecovery), Auras.StatVersion(StatType.Haste), Auras.StatVersion(StatType.HasteRating),
-            CooldownAccelerations.Count, Stats, Stats.Version);
+            CooldownAccelerations.Count, _accelerationAuraChanges, Stats, Stats.Version);
         if (inputs != _rateInputs)
         {
             _rateInputs = inputs;
@@ -74,8 +78,12 @@ public abstract class Hero : Actor
     public List<Legendary> Legendaries { get; } = new();
     public List<Gem> Gems { get; } = new();
     public List<Talent> Talents { get; } = new();
-    /// <summary>The passives of the relics equipped.</summary>
-    public List<RelicPassive> RelicPassives { get; } = new();
+    /// <summary>The passive of the relic in slot 1.</summary>
+    public RelicPassive? Relic1 { get; set; }
+    /// <summary>The passive of the relic in slot 2.</summary>
+    public RelicPassive? Relic2 { get; set; }
+    /// <summary>The passives of both relic slots.</summary>
+    public IEnumerable<RelicPassive> RelicPassives => new[] { Relic1, Relic2 }.OfType<RelicPassive>();
 
     public Dictionary<string, CooldownState> Cooldowns { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Changes whenever a cooldown state is added to <see cref="Cooldowns"/> or they are cleared.</summary>
@@ -84,6 +92,9 @@ public abstract class Hero : Actor
 
     /// <summary>The global cooldown before haste (per the user: 1.5s, hasted).</summary>
     public double GlobalCooldownSeconds { get; set; } = 1.5;
+
+    /// <summary>Haste shortens the global cooldown (Mara's 1s global cooldown is not hasted).</summary>
+    public bool GlobalCooldownScalesWithHaste { get; protected set; } = true;
 
     /// <summary>Parts of the hero's build the engine does not model (filled when the build is imported).</summary>
     public List<string> UnmodeledFeatures { get; } = new();
@@ -133,6 +144,9 @@ public abstract class Hero : Actor
     /// <summary>Cooldown acceleration for specific abilities (0.05 = cooldown recovers 5% faster).</summary>
     public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
 
+    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> entry reads, other than through haste (e.g. Glorious Purpose).</summary>
+    public HashSet<string> CooldownAccelerationAuraKeys { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Seconds added to Spirit of Heroism.</summary>
     public double SpiritOfHeroismDurationBonus { get; set; }
 
@@ -144,9 +158,12 @@ public abstract class Hero : Actor
     public const double SpiritOfHeroismSeconds = 20.0;
     public const double SpiritOfHeroismHaste = 0.3;
 
-    /// <summary>Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds.</summary>
+    /// <summary>
+    /// Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds. Combat logs: it stays through the
+    /// hero's death (4 deaths, none removed it).
+    /// </summary>
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
-        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste));
+        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
 
     /// <summary>A hit of the hero landed. Handlers run in the order they subscribed, with those of <see cref="OnDamageDealtBy"/> and <see cref="Ability.Hit"/>.</summary>
     public event DamageDealtHandler? OnDamageDealt
@@ -205,8 +222,11 @@ public abstract class Hero : Actor
     /// <summary>Spirit of Heroism started / ended.</summary>
     public event Action<SimulationContext>? SpiritOfHeroismStarted;
     public event Action<SimulationContext>? SpiritOfHeroismEnded;
-    /// <summary>A Spirit Refund triggered on a spend of the resource (the refund itself arrives a moment later).</summary>
-    public event Action<ResourceDef, double, SimulationContext>? OnSpiritRefund;
+    /// <summary>
+    /// A Spirit Refund triggered on a spend of the resource (the refund itself arrives a moment later), or with no resource
+    /// for a hero whose refund is not a spend.
+    /// </summary>
+    public event Action<ResourceDef?, double, SimulationContext>? OnSpiritRefund;
     /// <summary>A cast is about to resolve (also free casts from procs): talents add to it here (see <see cref="CastBonus"/>).</summary>
     public event Action<CastBonus>? OnCastResolving;
 
@@ -269,7 +289,11 @@ public abstract class Hero : Actor
             c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
         }
         ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+        OnFightBegins(ctx);
     }
+
+    /// <summary>Starts what runs for the whole fight on its own for one hero (Mara: Energy regeneration).</summary>
+    protected virtual void OnFightBegins(SimulationContext ctx) { }
 
     /// <summary>The resources this hero has (declared with <see cref="AddResource"/> in <see cref="Initialize"/>).</summary>
     public List<ResourceDef> ResourceDefs { get; } = new();
@@ -323,12 +347,24 @@ public abstract class Hero : Actor
         state.Current = Math.Max(0.0, state.Current - amount);
         NotifyResourceSpent(resource, amount, ctx?.CurrentTime ?? default);
         if (amount <= 0 || ctx == null || resource != SpiritRefundResource) return;
-        if (!RollSpiritRefund(ctx)) return;
-        // Rising Spirit comes with the spend; the resource comes back a moment later.
+        if (!TriggerSpiritRefund(resource, amount, ctx)) return;
+        // The resource comes back a moment after the spend.
+        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c => AddToResource(resource, amount, c, null, isGain: false), "Spirit Refund");
+    }
+
+    /// <summary>
+    /// Rolls a Spirit Refund. When it triggers, Rising Spirit and the Spirit Points come at once and
+    /// <see cref="OnSpiritRefund"/> is raised. A hero whose Spirit Refund comes from using an ability rather than spending
+    /// a resource (Gunde: abilities that apply Rend) calls this with no <paramref name="resource"/> and gives what its
+    /// refund gives itself.
+    /// </summary>
+    protected bool TriggerSpiritRefund(ResourceDef? resource, double amount, SimulationContext ctx)
+    {
+        if (!RollSpiritRefund(ctx)) return false;
         Auras.Apply(RisingSpirit, ctx.CurrentTime);
         OnSpiritRefund?.Invoke(resource, amount, ctx);
         GainResource(SpiritPoints, SpiritPointsPerSpiritRefund, ctx);
-        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c => AddToResource(resource, amount, c, null, isGain: false), "Spirit Refund");
+        return true;
     }
 
     /// <summary>Tells effects that count spent resource (e.g. cooldown reductions per point spent) that it was spent.</summary>

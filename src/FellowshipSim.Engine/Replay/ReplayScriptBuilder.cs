@@ -8,8 +8,8 @@ namespace FellowshipSim.Engine.Replay;
 /// hero-agnostic replay script for one player:
 /// <list type="bullet">
 /// <item><c>commands</c>: what the engine is told to do, in time order (begin_cast, complete_cast, cancel_cast, cast,
-/// stop_channel, enemy_arise, enemy_demise, enemy_health, and external_aura: buffs and debuffs other actors put on the
-/// player or on enemies, which the engine cannot produce itself).</item>
+/// stop_channel, enemy_arise, enemy_demise, enemy_health, player_death, player_revive, and external_aura: buffs and
+/// debuffs other actors put on the player or on enemies, which the engine cannot produce itself).</item>
 /// <item><c>observations</c>: what actually happened, used only to check the engine (the player's damage to enemies,
 /// the player's own auras, resource snapshots, channel markers).</item>
 /// </list>
@@ -17,7 +17,12 @@ namespace FellowshipSim.Engine.Replay;
 /// </summary>
 public static class ReplayScriptBuilder
 {
-    /// <summary>Combat log hit types: 1 a normal hit, 2 a critical strike, 22 a grievous critical strike (crit chance beyond 100%).</summary>
+    /// <summary>
+    /// Combat log hit types (FellowshipAnalyzer HitType): 0 a miss, 1 a normal hit, 2 a critical strike, 7 a dodge, 22 a
+    /// grievous critical strike (crit chance beyond 100%). A miss and a dodge deal no damage.
+    /// </summary>
+    public const int HitTypeMiss = 0;
+    public const int HitTypeDodge = 7;
     public const int HitTypeCrit = 2;
     public const int HitTypeGrievousCrit = 22;
 
@@ -42,7 +47,7 @@ public static class ReplayScriptBuilder
     private static readonly Dictionary<string, int> KindOrder = new()
     {
         ["enemy_arise"] = 0, ["enemy_health"] = 1, ["external_aura"] = 1, ["cancel_cast"] = 2, ["stop_channel"] = 3,
-        ["begin_cast"] = 4, ["complete_cast"] = 4, ["cast"] = 4, ["enemy_demise"] = 9,
+        ["begin_cast"] = 4, ["complete_cast"] = 4, ["cast"] = 4, ["player_revive"] = 1, ["player_death"] = 8, ["enemy_demise"] = 9,
     };
 
     /// <summary>The players of a raw fight (actor ID, name, hero).</summary>
@@ -141,6 +146,9 @@ public static class ReplayScriptBuilder
             var res = e["targetResources"];
             if (res?["hitPoints"] is not { } hpNode || res["maxHitPoints"] is not { } maxNode || Num(maxNode) == 0) continue;
             double hp = Num(hpNode), maxNow = Num(maxNode);
+            // A killing blow logs the health below 0 as an unsigned 32-bit number (1p7AXmHfwV9CYMxR fight 30 @ 157.097:
+            // 4294950962 of 726971).
+            if (hp > maxNow) hp = 0;
             var key = (Int(e["targetID"])!.Value, Instance(e, "target"));
             double fraction = hp / maxNow;
             if (lastFraction.TryGetValue(key, out var last) && Math.Abs(fraction - last) < HealthSampleStep) continue;
@@ -148,8 +156,32 @@ public static class ReplayScriptBuilder
             commands.Add(new JsonObject
             {
                 ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "enemy_health", ["enemy"] = Unit(key.Item1, key.Item2),
-                ["hp"] = hpNode.DeepClone(), ["max_hp"] = maxNode.DeepClone(),
+                ["hp"] = hp, ["max_hp"] = maxNode.DeepClone(),
             });
+        }
+
+        // ---- Player deaths -------------------------------------------------------------------
+        // A dead player's events log their health below 0 as an unsigned 32-bit number (above their maximum). Many returns
+        // log no resurrect event (a release, or a wipe): the player is back at their first event with health in range.
+        bool Alive(JsonNode e, string prefix) => e[$"{prefix}Resources"] is { } r && r["hitPoints"] is { } hpNode
+            && r["maxHitPoints"] is { } maxNode && Num(hpNode) > 0 && Num(hpNode) <= Num(maxNode);
+        bool dead = false;
+        foreach (var e in events)
+        {
+            string type = Str(e["type"]);
+            bool onPlayer = Int(e["targetID"]) == playerId, byPlayer = Int(e["sourceID"]) == playerId;
+            if (!dead)
+            {
+                if (type != "death" || !onPlayer) continue;
+                dead = true;
+                commands.Add(new JsonObject { ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "player_death" });
+                continue;
+            }
+            if ((type == "resurrect" && onPlayer) || (byPlayer && Alive(e, "source")) || (onPlayer && Alive(e, "target")))
+            {
+                dead = false;
+                commands.Add(new JsonObject { ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "player_revive" });
+            }
         }
 
         // ---- Player actions ------------------------------------------------------------------
@@ -259,7 +291,7 @@ public static class ReplayScriptBuilder
                     ["t"] = Rel(Num(e["timestamp"])), ["ability_id"] = gid, ["ability_name"] = AbilityName(gid),
                     ["target"] = Unit(tgt, Instance(e, "target")),
                     ["amount"] = e["amount"]?.DeepClone() ?? 0, ["unmitigated"] = e["unmitigatedAmount"]?.DeepClone(),
-                    ["absorbed"] = e["absorbed"]?.DeepClone() ?? 0, ["overkill"] = e["overkill"]?.DeepClone() ?? 0,
+                    ["absorbed"] = e["absorbed"]?.DeepClone() ?? 0, ["blocked"] = e["blocked"]?.DeepClone() ?? 0, ["overkill"] = e["overkill"]?.DeepClone() ?? 0,
                     ["crit"] = Int(e["hitType"]) is HitTypeCrit or HitTypeGrievousCrit, ["hit_type"] = e["hitType"]?.DeepClone(), ["tick"] = e["tick"]?.GetValue<bool>() ?? false,
                 });
             }

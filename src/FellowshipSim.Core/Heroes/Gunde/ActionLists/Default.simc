@@ -1,0 +1,14 @@
+# Swing the weapon whenever the swing timer allows.
+actions+=/attack
+actions+=/bloodbound_spirit
+actions+=/fated_strike
+# Rupture in Reign in Blood: its hit adds 30% more of its damage to Rend.
+actions+=/reign_in_blood,if=cooldown.rupture.up
+actions+=/rupture,if=buff.reign_in_blood.up|cooldown.reign_in_blood.remains>20
+actions+=/owed_in_blood,if=buff.owed_in_blood.stack>=100|buff.reign_in_blood.up
+actions+=/heart_splitter
+actions+=/slaughter,if=cooldown.heart_splitter.remains>1
+actions+=/grim_carve
+actions+=/blood_arc
+actions+=/reavers_edge
+actions+=/double_strike

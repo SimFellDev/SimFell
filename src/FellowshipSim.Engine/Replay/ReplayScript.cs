@@ -73,6 +73,8 @@ public static class CommandKind
     public const string CompleteCast = "complete_cast";
     public const string CancelCast = "cancel_cast";
     public const string StopChannel = "stop_channel";
+    public const string PlayerDeath = "player_death";
+    public const string PlayerRevive = "player_revive";
 }
 
 public class ReplayCommand
@@ -127,10 +129,24 @@ public class LogDamage
     [JsonPropertyName("absorbed")] public double Absorbed { get; set; }
     [JsonPropertyName("overkill")] public double Overkill { get; set; }
     [JsonPropertyName("crit")] public bool Crit { get; set; }
+    /// <summary>The log's hit type (<see cref="ReplayScriptBuilder.HitTypeCrit"/>, <see cref="ReplayScriptBuilder.HitTypeGrievousCrit"/>).</summary>
+    [JsonPropertyName("hit_type")] public int? HitType { get; set; }
     [JsonPropertyName("tick")] public bool Tick { get; set; }
+
+    /// <summary>Damage the enemy's block took off the hit (hit type 4).</summary>
+    [JsonPropertyName("blocked")] public double Blocked { get; set; }
 
     /// <summary>Damage the hit dealt before absorbs.</summary>
     public double TotalAmount => Amount + Absorbed;
+
+    /// <summary>
+    /// The hit's damage before absorbs and the block: what the engine's hit compares with, since the engine has no blocks.
+    /// </summary>
+    public double UnblockedAmount => TotalAmount + Blocked;
+
+    /// <summary>The amount a hit check compares, for display: the unblocked amount, with the blocked part when there is one.</summary>
+    public string ComparedAmountText() =>
+        Blocked > 0 ? $"{UnblockedAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ({Blocked.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} blocked)" : TotalAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 public class LogAura

@@ -174,18 +174,26 @@
                 }
             </select>
         </label>
-    </div>
-    <h3 class="section">Relic passives <span class="meta">· @Build.RelicPassiveIds.Count of @RelicPassive.MaxPerBuild equipped</span></h3>
-    <div class="chips">
-        @foreach (var r in Catalog.RelicPassives)
-        {
-            bool on = Editor.HasRelicPassive(r.Id);
-            bool full = !on && Build.RelicPassiveIds.Count >= RelicPassive.MaxPerBuild;
-            <button @key="r.Id" type="button" class="chip @(on ? "picked" : "")" aria-pressed="@on" disabled="@full"
-                    title="@(full ? $"Take off one of the {RelicPassive.MaxPerBuild} first" : null)" @onclick="() => Set(() => Editor.ToggleRelicPassive(r.Id))">
-                @r.Name
-            </button>
-        }
+        <label>
+            Relic 1
+            <select @bind:get="Editor.Relic1?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic1 = Id(v))">
+                <option value="">None</option>
+                @foreach (var r in Catalog.Relics)
+                {
+                    <option @key="r.ItemId" value="@r.ItemId">@r.Name (@r.PassiveName)</option>
+                }
+            </select>
+        </label>
+        <label>
+            Relic 2
+            <select @bind:get="Editor.Relic2?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic2 = Id(v))">
+                <option value="">None</option>
+                @foreach (var r in Catalog.Relics)
+                {
+                    <option @key="r.ItemId" value="@r.ItemId">@r.Name (@r.PassiveName)</option>
+                }
+            </select>
+        </label>
     </div>
     <h3 class="section">Gem powers</h3>
     <div class="gems">

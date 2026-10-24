@@ -33,6 +33,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             .OrderBy(a => a.Time)
             .ToList();
         _playerAuraIds = _playerAuraEvents.Select(a => a.AbilityId).ToHashSet();
+        _resourceReadings = script.Observations.Resources.OrderBy(r => r.Time).ToList();
         // The player's debuffs on enemies, with how many stacks each event added (for stack-jump evidence).
         foreach (var group in script.Observations.Auras
                      .Where(a => a.Source.Id == script.Player.Id && a.Target.Id != script.Player.Id)
@@ -183,7 +184,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         if (!_options.UnverifiedDamageIds.Contains(landed.AbilityId) && !pair.WithinSpread(_options))
         {
             Report(ctx, IssueCategory.Damage,
-                $"{landed.AbilityName} on {target} at {match.Time:F3}: log {match.TotalAmount:F0}{(match.Crit ? " (crit)" : "")} vs engine {pair.EngineAmount:F0} " +
+                $"{landed.AbilityName} on {target} at {match.Time:F3}: log {match.ComparedAmountText()}{(match.Crit ? " (crit)" : "")} vs engine {pair.EngineAmount:F0} " +
                 $"(ratio {pair.Ratio:F3}, allowed {1 - _options.DamageSpread:F2}-{(1 + _options.DamageSpread) * (1 + _options.UnexplainedHighMargin):F3})",
                 $"damage {(pair.Ratio > 1 ? "too low" : "too high")}: {landed.AbilityName} ({landed.AbilityId})");
         }
@@ -212,11 +213,13 @@ public sealed class LogOutcomeSource : IOutcomeSource
         }
 
         double now = ctx.CurrentTime.TotalSeconds;
-        bool procced = evidence.StackJump > 0
+        bool procced = evidence.Resource != null
+            ? ClaimResourceEvidence(evidence, now)
+            : evidence.StackJump > 0
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
             ? ClaimAuraEvidence(evidence.LogId, now)
-            : ClaimDamageEvidence(evidence.LogId, now, evidence.MinDelaySeconds, evidence.DelaySeconds, target);
+            : ClaimDamageEvidence(evidence, now, target);
         if (procced)
         {
             stats.Procs++;
@@ -227,6 +230,60 @@ public sealed class LogOutcomeSource : IOutcomeSource
         }
         return procced;
     }
+
+    /// <summary>
+    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within 30%) between two
+    /// readings, the first at most a frame after the roll and the second within 0.5s of it, beyond what it regenerates
+    /// meanwhile. A reading at a cast is before its cost, so a cast's reading never starts a jump.
+    /// </summary>
+    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, double now)
+    {
+        if (!_resourceJumps.TryGetValue(evidence, out var jumps))
+        {
+            jumps = ResourceJumps(evidence);
+            _resourceJumps[evidence] = jumps;
+        }
+        for (int i = 0; i < jumps.Count; i++)
+        {
+            var jump = jumps[i];
+            if (jump.To < now - _options.SameTickSeconds) continue;
+            if (jump.From > now + PeriodicEffect.ServerFrameSeconds) break;
+            if (jump.To > now + ResourceEvidenceWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
+            _claimedResourceJumps.Add((evidence, i));
+            return true;
+        }
+        return false;
+    }
+
+    private List<(double From, double To)> ResourceJumps(ProcEvidence.Evidence evidence)
+    {
+        var jumps = new List<(double From, double To)>();
+        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
+        if (log == null) return jumps;
+        string type = log.LogResourceType.ToString();
+        double max = evidence.Resource!.Max;
+        LogResourceSnapshot? previous = null;
+        double previousAmount = 0;
+        foreach (var reading in _resourceReadings)
+        {
+            if (!reading.Resources.TryGetValue(type, out var value)) continue;
+            double amount = log.EngineAmount(value);
+            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds
+                && amount < max - 0.5 && previousAmount < max - 0.5)
+            {
+                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
+                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
+            }
+            previous = reading;
+            previousAmount = amount;
+        }
+        return jumps;
+    }
+
+    private const double ResourceEvidenceWindowSeconds = 0.5;
+    private readonly List<LogResourceSnapshot> _resourceReadings = [];
+    private readonly Dictionary<ProcEvidence.Evidence, List<(double From, double To)>> _resourceJumps = new();
+    private readonly HashSet<(ProcEvidence.Evidence, int)> _claimedResourceJumps = new();
 
     /// <summary>Proof of a proc that adds extra stacks: the debuff on <paramref name="target"/> gains <paramref name="jump"/> stacks at once.</summary>
     private bool ClaimStackEvidence(int logId, int jump, double now, EnemyTarget? target)
@@ -257,15 +314,28 @@ public sealed class LogOutcomeSource : IOutcomeSource
     }
 
     /// <summary>A group of log hits with the proc's damage ID landing at the roll (within one server tick, plus the effect's delay).</summary>
-    private bool ClaimDamageEvidence(int logId, double now, double minDelay, double delay, EnemyTarget? target)
+    private bool ClaimDamageEvidence(ProcEvidence.Evidence evidence, double now, EnemyTarget? target)
     {
         // Hits an engine hit already accounts for (matched, or a group claimed for its targets) are not evidence of a proc.
-        var hit = _hits.Peek(logId, now + minDelay - _options.SameTickSeconds, now + _options.SameTickSeconds + delay,
-            h => !_claimedDamageEvidence.Contains(h) && !_hits.IsAccountedFor(h)
+        // A hit type proves a proc of the hit itself: its group is claimed before the roll (a Wild Swing the enemy avoided).
+        bool Free(LogDamage h) => !_claimedDamageEvidence.Contains(h) && (evidence.HitTypes != null || !_hits.IsAccountedFor(h));
+        int logId = evidence.LogId;
+        var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
+            h => Free(h) && (evidence.HitTypes == null || (h.HitType is { } type && evidence.HitTypes.Contains(type)))
                  && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
         if (hit == null) return false;
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
+        // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks): each the first free
+        // hit from 3/4 to 3/2 of the spacing after the one before.
+        double previous = hit.Time;
+        for (int k = 1; k <= evidence.FollowingHits; k++)
+        {
+            var following = _hits.Peek(logId, previous + 0.75 * evidence.FollowingSpacingSeconds, previous + 1.5 * evidence.FollowingSpacingSeconds, Free);
+            if (following == null) break;
+            _claimedDamageEvidence.Add(following);
+            previous = following.Time;
+        }
         return true;
     }
 
@@ -555,7 +625,8 @@ public sealed record HitPair(
     /// <summary>When the engine's hit landed (dealt its damage); null if it never landed.</summary>
     public double? LandedTime { get; init; }
 
-    public double? Ratio => Log == null || EngineAmount <= 0 ? null : Log.TotalAmount / EngineAmount;
+    /// <summary>Log over engine, with the log hit before its block (the engine has no blocks).</summary>
+    public double? Ratio => Log == null || EngineAmount <= 0 ? null : Log.UnblockedAmount / EngineAmount;
 
     public bool WithinSpread(ReplayOptions options)
     {
@@ -571,7 +642,7 @@ public sealed record HitPair(
         }
         // Overkill truncates the logged amount, so only an engine hit that is too small is detectable then.
         if (Log.Overkill > 0 && Log.TotalAmount < EngineAmount) return true;
-        return Log.TotalAmount >= low && Log.TotalAmount <= high;
+        return Log.UnblockedAmount >= low && Log.UnblockedAmount <= high;
     }
 }
 

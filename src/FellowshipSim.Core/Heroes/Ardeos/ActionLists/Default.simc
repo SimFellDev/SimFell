@@ -1,0 +1,11 @@
+# Fire Ball, Fire Frogs and the cooldowns on cooldown; Searing Blaze kept up; Detonate every Burning Ember; Infernal Wave between.
+actions+=/incinerate
+actions+=/wildfire
+actions+=/pyromania
+actions+=/apocalypse
+actions+=/fire_frogs
+actions+=/fire_ball
+actions+=/searing_blaze,if=!debuff.searing_blaze.up
+actions+=/engulfing_flames
+actions+=/detonate
+actions+=/infernal_wave
