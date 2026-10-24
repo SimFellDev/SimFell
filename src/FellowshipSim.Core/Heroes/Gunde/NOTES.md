@@ -34,7 +34,7 @@ unless noted. Only the two Y4wpb2f3gc8LqJDX fights (22 September 2026) are from 
 - **Crimson Strikes:** the next cast that applies Rend gets +15% on all its hits. A Grim Carve spin after a Blood Arc uses it up without the bonus if the Grim Carve was cast first. Bleeding Hearts' extra strike has no share of it.
 - **Serrated Edge:** lasts 8s (the tooltip says 10). The next Heart Splitter, Rupture, Reaver's Edge or Grim Carve uses it
   up; Owed in Blood, Reign in Blood, Slaughter, Fated Strike, Warbound and Jawbreaker leave it.
-- **Bloodbound Spirit:** 5 pulses, 0.035s after the cast and then every 1.5s, each with the damage of the cast. It has no cast time since patch 0.4.5.0.
+- **Bloodbound Spirit:** 5 pulses, 0.035s after the cast and then every 1.5s, each with the damage of the first (Drakheim's Absolution's Main Stat from the cast included). It has no cast time since patch 0.4.5.0.
 - **Fated Strike:** the cleave hits are logged as Fated Strike too; each is 2.874 / 7.39 x sqrt(3/N) of the hit on the
   target.
 - **Attack:** a 1.5s swing shortened by Haste (1.27-1.30s apart at about 15% Haste).
@@ -58,7 +58,6 @@ unless noted. Only the two Y4wpb2f3gc8LqJDX fights (22 September 2026) are from 
 
 - Gunde's direct hits come out 3-8% above the logs by median (Fated Strike matches); Rend, Exsanguinate and Slaughter
   have the same gap. The gap differs between two fights of one character on one day, so its cause depends on the fight.
-- Bloodbound Spirit's hits come out 15-17% below the logs in the fights from before patch 0.4.5.0.
 - A sim decides crits by expected value, so every Heart Splitter at more than 50% crit chance explodes through
   Oathshatter, and none below. Sim targets have 100,000,000 health: Bleeding Hearts' crit chance above 80% health holds
   all fight, and Darkening Hearts' at 30% health or less never does.

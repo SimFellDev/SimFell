@@ -6,8 +6,10 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// of the damage dealt. For the next 20 seconds your Heart Splitter and Grim Carve deal 25% increased damage." Grants
 /// Spirit of Heroism. Damage falls off as sqrt(1/N) beyond 1 enemy (game data). Combat logs (Y4wpb2f3gc8LqJDX fight 25,
 /// 5 casts): instant (patch 0.4.5.0, 16 September 2026; the game data still has a 1s cast); 5 pulses, 0.035s after the
-/// cast and then every 1.5s, not hasted. Every pulse keeps the damage of the cast: with the Strength at each pulse,
-/// the engine comes out 2% above the log at 0 stacks of Rising Spirit and 30% above at 3 (fight 25).
+/// cast and then every 1.5s, not hasted. Every pulse keeps the damage of the first: with the Strength at each pulse,
+/// the engine comes out 2% above the log at 0 stacks of Rising Spirit and 30% above at 3 (fight 25). The first pulse
+/// has the +20% Main Stat Drakheim's Absolution grants on the Spirit ability (gpfHLmTBrqcd3Zn4 fight 37,
+/// n7zxK8harZT2wjDB fight 9: all 5 pulses 1.15-1.19x the engine's without it).
 /// </summary>
 public class BloodboundSpirit : GundeAbility
 {
@@ -57,12 +59,17 @@ public class BloodboundSpirit : GundeAbility
         hero.ActivateSpiritOfHeroism(ctx);
         hero.Auras.Apply(Buff, ctx.CurrentTime);
         var rend = BeginRend(ctx);
-        // Every pulse keeps the damage, crit chance and crit power of the cast.
-        var now = ctx.CurrentTime;
-        var cast = new SimulationContext.HitNumbers(BaseDamage(ctx, null), hero.CritChance(now) + CritChanceBonus, CritMultiplierAt(now));
+        // Every pulse keeps the damage, crit chance and crit power of the first, which comes after the buffs the cast
+        // grants as it completes (Drakheim's Absolution).
+        SimulationContext.HitNumbers? first = null;
         for (int i = 0; i < Pulses; i++)
         {
-            ctx.Schedule(SimTime.FromSeconds(FirstPulseSeconds + i * PulseIntervalSeconds), c => Pulse(c, target, rend, cast), Name);
+            ctx.Schedule(SimTime.FromSeconds(FirstPulseSeconds + i * PulseIntervalSeconds), c =>
+            {
+                var now = c.CurrentTime;
+                first ??= new SimulationContext.HitNumbers(BaseDamage(c, null), hero.CritChance(now) + CritChanceBonus, CritMultiplierAt(now));
+                Pulse(c, target, rend, first.Value);
+            }, Name);
         }
     }
 
