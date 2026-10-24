@@ -472,9 +472,12 @@ public sealed class ReplayDriver
             }
         }
 
+        // One entry per log ID, as the log keeps it: a buff two players give (Inspired Allegiance) is two engine auras,
+        // one per source, with the same log ID.
         var engineState = _hero.Auras.Active(_ctx.CurrentTime)
             .Where(a => _logAuras!.IsTracked(a.LogId))
-            .ToDictionary(a => a.LogId, a => a.Stacks);
+            .GroupBy(a => a.LogId)
+            .ToDictionary(g => g.Key, g => g.Max(a => a.Stacks));
 
         // Each aura matches if the log shows the engine's stacks at some moment within the tolerance (server-frame timing).
         double tol = _options.AuraToleranceSeconds;
