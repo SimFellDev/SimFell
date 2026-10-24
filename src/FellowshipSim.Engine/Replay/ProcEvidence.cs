@@ -98,7 +98,7 @@ public static class ProcEvidence
         new(Schism.HammerStormProcKey, Schism.HammerStormBuff.LogId),
         new(KillEmAll.ProcKey, KillEmAll.Buff.LogId),
         new(ExecutionersGrin.ProcKey, ExecutionersGrin.Buff.LogId),
-        // Them Bones takes Skull Crusher past 100% crit chance: its hits are grievous crits, which nothing else gives it.
+        // Them Bones takes Skull Crusher past 100% crit chance: its hits are grievous crits. Nothing else gives it grievous crits.
         new(ThemBones.ProcKey, SkullCrusher.AbilityId, DelaySeconds: 0.1, HitType: ReplayScriptBuilder.HitTypeGrievousCrit),
         // A free Chain Lightning's first hit comes 0.30s after the proc.
         new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
