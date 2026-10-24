@@ -27,75 +27,99 @@
     <Message Kind="State.BuildStatus.Kind">@State.BuildStatus.Text</Message>
 </Card>
 
-<div class="hero-grid">
-    <Card Title="Hero">
-        <div class="hero-select" @onkeydown="OnHeroKeyDown">
-            <button type="button" class="hero-current @(_heroMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_heroMenuOpen ? "true" : "false")"
-                    @onclick="() => _heroMenuOpen = !_heroMenuOpen">
-                @if (BuildCatalog.PortraitUrl(Build.Hero) is { } portrait)
-                {
-                    <img src="@portrait" alt="" loading="lazy" />
-                }
-                <span class="hero-name">
-                    <strong>@Build.Hero</strong>
-                    <span class="meta">Change hero</span>
-                </span>
-                <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-            </button>
-            @if (_heroMenuOpen)
-            {
-                <div class="hero-backdrop" @onclick="() => _heroMenuOpen = false"></div>
-                <div class="hero-menu" role="listbox" aria-label="Hero">
-                    <span class="group">In the engine</span>
-                    @foreach (string hero in BuildCatalog.GameHeroes.Where(IsSupported))
+<div class="editor">
+    <aside class="sidebar" aria-label="Hero and character sheet">
+        <Card Title="Hero">
+                <div class="hero-select" @onkeydown="OnHeroKeyDown">
+                    <button type="button" class="hero-current @(_heroMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_heroMenuOpen ? "true" : "false")"
+                            @onclick="() => _heroMenuOpen = !_heroMenuOpen">
+                        @if (BuildCatalog.PortraitUrl(Build.Hero) is { } portrait)
+                        {
+                            <img src="@portrait" alt="" loading="lazy" />
+                        }
+                        <span class="hero-name">
+                            <strong>@Build.Hero</strong>
+                            <span class="meta">Change hero</span>
+                        </span>
+                        <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+                    @if (_heroMenuOpen)
                     {
-                        bool picked = hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
-                        <button @key="hero" type="button" role="option" class="hero-option @(picked ? "picked" : "")" aria-selected="@(picked ? "true" : "false")"
-                                @onclick="() => PickHeroFromMenu(hero)">
-                            <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
-                            <span class="option-name">@hero</span>
-                            @if (picked)
+                        <div class="hero-backdrop" @onclick="() => _heroMenuOpen = false"></div>
+                        <div class="hero-menu" role="listbox" aria-label="Hero">
+                            <span class="group">In the engine</span>
+                            @foreach (string hero in BuildCatalog.GameHeroes.Where(IsSupported))
                             {
-                                <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                                bool picked = hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
+                                <button @key="hero" type="button" role="option" class="hero-option @(picked ? "picked" : "")" aria-selected="@(picked ? "true" : "false")"
+                                        @onclick="() => PickHeroFromMenu(hero)">
+                                    <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
+                                    <span class="option-name">@hero</span>
+                                    @if (picked)
+                                    {
+                                        <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                                    }
+                                </button>
                             }
-                        </button>
-                    }
-                    <span class="group">Not in the engine yet</span>
-                    @foreach (string hero in BuildCatalog.GameHeroes.Where(h => !IsSupported(h)))
-                    {
-                        <button @key="hero" type="button" role="option" class="hero-option" aria-selected="false" disabled>
-                            <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
-                            <span class="option-name">@hero</span>
-                        </button>
+                            <span class="group">Not in the engine yet</span>
+                            @foreach (string hero in BuildCatalog.GameHeroes.Where(h => !IsSupported(h)))
+                            {
+                                <button @key="hero" type="button" role="option" class="hero-option" aria-selected="false" disabled>
+                                    <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
+                                    <span class="option-name">@hero</span>
+                                </button>
+                            }
+                        </div>
                     }
                 </div>
-            }
-        </div>
-        <h3 class="section">Stats</h3>
-        <div class="stats two">
-            <label>
-                Main stat
-                <input type="number" min="0" step="1" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Build.PrimaryStat = Math.Max(0, v))" />
-            </label>
-            <label>
-                Stamina
-                <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
-            </label>
-            <label>
-                Armor
-                <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
-            </label>
-            @foreach (var stat in Enum.GetValues<RatedStat>())
-            {
-                <label @key="stat" title="@SheetNote(stat)">
-                    <span>@stat rating · <span class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</span></span>
-                    <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+            <h3 class="section">Character sheet</h3>
+            <div class="sheet">
+                <span class="sheet-label">Main stat</span>
+                <strong>@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</strong>
+                @foreach (var stat in Enum.GetValues<RatedStat>())
+                {
+                    <span class="sheet-label" title="@SheetNote(stat)">@StatName(stat)</span>
+                    <strong class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</strong>
+                }
+            </div>
+            <h3 class="section">Ratings</h3>
+            <div class="ratings">
+                <label>
+                    Main stat
+                    <input type="number" min="0" step="1" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Build.PrimaryStat = Math.Max(0, v))" />
                 </label>
-            }
-        </div>
-    </Card>
+                <label>
+                    Stamina
+                    <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
+                </label>
+                <label>
+                    Armor
+                    <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
+                </label>
+                @foreach (var stat in Enum.GetValues<RatedStat>())
+                {
+                    <label @key="stat" title="@SheetNote(stat)">
+                        @StatName(stat)
+                        <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+                    </label>
+                }
+            </div>
+            <h3 class="section">Gem power</h3>
+            <div class="gem-totals">
+                @foreach (var color in BuildCatalog.GemColors)
+                {
+                    double power = Editor.Gem(color);
+                    <span @key="color" class="gem-total @(power > 0 ? "taken" : "")">
+                        <GameIcon Url="@BuildCatalog.GemIconUrl(color)" Size="20" />
+                        @color
+                        <strong>@power.ToString("N0", CultureInfo.CurrentCulture)</strong>
+                    </span>
+                }
+            </div>
+        </Card>
+    </aside>
 
-    <div class="talents">
+    <div class="editor-main">
         <Card Title="Talents">
             <div class="points">
                 <span class="meta">AVAILABLE <strong>@Editor.PointsLeft</strong> / @FellowshipSim.Core.Domain.Hero.TalentPoints</span>
@@ -125,158 +149,158 @@
                 }
             </div>
         </Card>
-    </div>
-</div>
 
-<Card Title="Stat enchants">
-    <p class="hint">Each adds its rating to both of its stats. A build from a log already counts its enchants in the stats above.</p>
-    <div class="enchants">
-        @foreach (var e in Catalog.StatEnchants)
-        {
-            double rating = Editor.StatEnchantRating(e.Enchant.Id);
-            <div @key="e.Enchant.Id" class="enchant @(rating > 0 ? "taken" : "")">
-                <GameIcon Url="@e.IconUrl" Size="34" />
-                <span class="enchant-name">
-                    @e.Name
-                    <span class="enchant-stats">@e.StatsText</span>
-                </span>
-                <span class="stepper">
-                    <button type="button" class="icon-button" aria-label="@($"Lower {e.Name}")" disabled="@(rating <= 0)"
-                            @onclick="() => Set(() => Editor.SetStatEnchantRating(e.Enchant, rating - 1))">−</button>
-                    <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="rating" @bind:set="v => Set(() => Editor.SetStatEnchantRating(e.Enchant, v))" />
-                    <button type="button" class="icon-button" aria-label="@($"Raise {e.Name}")"
-                            @onclick="() => Set(() => Editor.SetStatEnchantRating(e.Enchant, rating + 1))">+</button>
-                </span>
-            </div>
-        }
-    </div>
-</Card>
-
-<Card Title="Gear">
-    <div class="stats">
-        <label>
-            Weapon
-            <select @bind:get="Editor.Weapon?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Weapon = Id(v))">
-                <option value="">None</option>
-                @foreach (var w in Catalog.Weapons)
-                {
-                    <option @key="w.Id" value="@w.Id">@w.Name</option>
-                }
-            </select>
-        </label>
-        <label>
-            Legendary
-            <select @bind:get="Editor.Legendary?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Legendary = Id(v))">
-                <option value="">None</option>
-                @foreach (var l in Catalog.Legendaries)
-                {
-                    <option @key="l.Id" value="@l.Id">@l.Name@(l.Modeled ? "" : " (not modeled)")</option>
-                }
-            </select>
-        </label>
-    </div>
-    <h3 class="section">Relics <span class="meta">· @Editor.RelicCount of @BuildEditor.RelicSlots worn</span></h3>
-    <div class="chips">
-        @foreach (var r in Catalog.Relics)
-        {
-            bool worn = Editor.HasRelic(r.ItemId);
-            bool full = !worn && Editor.RelicCount >= BuildEditor.RelicSlots;
-            <button @key="r.ItemId" type="button" class="chip @(worn ? "picked" : "")" aria-pressed="@worn" disabled="@full"
-                    title="@(full ? $"Take off one of the {BuildEditor.RelicSlots} first" : r.Name)" @onclick="() => Set(() => Editor.ToggleRelic(r.ItemId))">
-                <GameIcon Url="@r.IconUrl" Size="24" />
-                @r.PassiveName
-            </button>
-        }
-    </div>
-    <h3 class="section">Gems <span class="meta">· @Build.SocketedGemIds.Count of @GemItem.Sockets sockets filled</span></h3>
-    <div class="sockets">
-        @for (int i = 0; i < GemItem.Sockets; i++)
-        {
-            int socket = i;
-            var gem = Editor.Socket(socket);
-            if (gem == null)
-            {
-                <span @key="socket" class="socket empty">Empty socket</span>
-            }
-            else
-            {
-                <button @key="socket" type="button" class="socket filled" title="Take out the @gem.Name" @onclick="() => Set(() => Editor.SetSocket(socket, null))">
-                    <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="30" />
-                    <span class="socket-name">@gem.Name <span class="meta">@gem.Power</span></span>
-                    <span class="socket-remove" aria-hidden="true">×</span>
-                </button>
-            }
-        }
-    </div>
-    <div class="gem-rows">
-        @foreach (var color in BuildCatalog.GemColors)
-        {
-            int bonuses = Editor.GearBonuses(color);
-            bool socketsFull = Build.SocketedGemIds.Count >= GemItem.Sockets;
-            <div @key="color" class="gem-row @(Editor.Gem(color) > 0 ? "taken" : "")">
-                <span class="gem-name">
-                    @color
-                    <span class="gem-power">@Editor.Gem(color).ToString("N0", CultureInfo.CurrentCulture) power</span>
-                </span>
-                <span class="gem-picks">
-                    @foreach (var g in GemItem.All.Where(g => g.Color == color))
+        <div class="pair">
+            <Card Title="Stat enchants">
+                <p class="hint">Each adds its rating to both of its stats. A build from a log already counts its enchants in its character sheet.</p>
+                <div class="enchants">
+                    @foreach (var e in Catalog.StatEnchants)
                     {
-                        int count = Editor.SocketedCount(g.Id);
-                        <button @key="g.Id" type="button" class="gem-pick @(count > 0 ? "picked" : "")" disabled="@socketsFull"
-                                title="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
-                                @onclick="() => Set(() => Editor.AddGem(g.Id))">
-                            <GameIcon Url="@BuildCatalog.GemIconUrl(g)" Size="30" />
-                            <span class="gem-pick-power">@g.Power</span>
-                            @if (count > 0)
+                        double rating = Editor.StatEnchantRating(e.Enchant.Id);
+                        <div @key="e.Enchant.Id" class="enchant @(rating > 0 ? "taken" : "")">
+                            <GameIcon Url="@e.IconUrl" Size="34" />
+                            <span class="enchant-name">
+                                @e.Name
+                                <span class="enchant-stats">@e.StatsText</span>
+                            </span>
+                            <span class="stepper">
+                                <button type="button" class="icon-button" aria-label="@($"Lower {e.Name}")" disabled="@(rating <= 0)"
+                                        @onclick="() => Set(() => Editor.SetStatEnchantRating(e.Enchant, rating - 1))">−</button>
+                                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="rating" @bind:set="v => Set(() => Editor.SetStatEnchantRating(e.Enchant, v))" />
+                                <button type="button" class="icon-button" aria-label="@($"Raise {e.Name}")"
+                                        @onclick="() => Set(() => Editor.SetStatEnchantRating(e.Enchant, rating + 1))">+</button>
+                            </span>
+                        </div>
+                    }
+                </div>
+            </Card>
+            <Card Title="Gear">
+                <div class="stats">
+                    <label>
+                        Weapon
+                        <select @bind:get="Editor.Weapon?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Weapon = Id(v))">
+                            <option value="">None</option>
+                            @foreach (var w in Catalog.Weapons)
                             {
-                                <span class="gem-count">×@count</span>
+                                <option @key="w.Id" value="@w.Id">@w.Name</option>
                             }
+                        </select>
+                    </label>
+                    <label>
+                        Legendary
+                        <select @bind:get="Editor.Legendary?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Legendary = Id(v))">
+                            <option value="">None</option>
+                            @foreach (var l in Catalog.Legendaries)
+                            {
+                                <option @key="l.Id" value="@l.Id">@l.Name@(l.Modeled ? "" : " (not modeled)")</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+                <h3 class="section">Relics <span class="meta">· @Editor.RelicCount of @BuildEditor.RelicSlots worn</span></h3>
+                <div class="chips">
+                    @foreach (var r in Catalog.Relics)
+                    {
+                        bool worn = Editor.HasRelic(r.ItemId);
+                        bool full = !worn && Editor.RelicCount >= BuildEditor.RelicSlots;
+                        <button @key="r.ItemId" type="button" class="chip @(worn ? "picked" : "")" aria-pressed="@worn" disabled="@full"
+                                title="@(full ? $"Take off one of the {BuildEditor.RelicSlots} first" : r.Name)" @onclick="() => Set(() => Editor.ToggleRelic(r.ItemId))">
+                            <GameIcon Url="@r.IconUrl" Size="24" />
+                            @r.PassiveName
                         </button>
                     }
-                </span>
-                <span class="gear-bonus">
-                    <span class="meta">Gear +@GemItem.GearBonusPower</span>
-                    <span class="stepper">
-                        <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
-                                @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
-                        <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
-                        <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")"
-                                @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
-                    </span>
-                </span>
-            </div>
-        }
-    </div>
-</Card>
-
-<div class="pair">
-    <Card Title="Aspects">
-        <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
-    </Card>
-    <Card Title="Sigils">
-        <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
-    </Card>
-</div>
-
-<div class="pair">
-    <Card Title="Glyphs">
-        <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))" />
-    </Card>
-    <Card Title="Protective enchants">
-        <p class="hint">@Editor.ProtectiveEnchantCount of @ProtectiveEnchant.MaxPerBuild taken.</p>
-        <div class="chips">
-            @foreach (var p in Catalog.ProtectiveEnchants)
-            {
-                bool taken = Editor.AugmentationRank(p.Id) > 0;
-                bool full = !taken && Editor.ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild;
-                <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
-                        title="@(full ? $"Take off one of the {ProtectiveEnchant.MaxPerBuild} first" : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
-                    <GameIcon Url="@p.IconUrl" Size="24" />
-                    @p.Name
-                </button>
-            }
+                </div>
+                <h3 class="section">Gems <span class="meta">· @Build.SocketedGemIds.Count of @GemItem.Sockets sockets filled; the steppers count the gear's +@GemItem.GearBonusPower bonuses</span></h3>
+                <div class="sockets">
+                    @for (int i = 0; i < GemItem.Sockets; i++)
+                    {
+                        int socket = i;
+                        var gem = Editor.Socket(socket);
+                        if (gem == null)
+                        {
+                            <span @key="socket" class="socket empty">Empty socket</span>
+                        }
+                        else
+                        {
+                            <button @key="socket" type="button" class="socket filled" title="Take out the @gem.Name" @onclick="() => Set(() => Editor.SetSocket(socket, null))">
+                                <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="26" />
+                                <span class="socket-name">@gem.Name <span class="meta">@gem.Power</span></span>
+                                <span class="socket-remove" aria-hidden="true">×</span>
+                            </button>
+                        }
+                    }
+                </div>
+                <div class="gem-rows">
+                    @foreach (var color in BuildCatalog.GemColors)
+                    {
+                        int bonuses = Editor.GearBonuses(color);
+                        bool socketsFull = Build.SocketedGemIds.Count >= GemItem.Sockets;
+                        <div @key="color" class="gem-row @(Editor.Gem(color) > 0 ? "taken" : "")">
+                            <span class="gem-name">
+                                @color
+                                <span class="gem-power">@Editor.Gem(color).ToString("N0", CultureInfo.CurrentCulture) power</span>
+                            </span>
+                            <span class="gem-picks">
+                                @foreach (var g in GemItem.All.Where(g => g.Color == color))
+                                {
+                                    int count = Editor.SocketedCount(g.Id);
+                                    <button @key="g.Id" type="button" class="gem-pick @(count > 0 ? "picked" : "")" disabled="@socketsFull"
+                                            title="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
+                                            @onclick="() => Set(() => Editor.AddGem(g.Id))">
+                                        <GameIcon Url="@BuildCatalog.GemIconUrl(g)" Size="26" />
+                                        <span class="gem-pick-power">@g.Power</span>
+                                        @if (count > 0)
+                                        {
+                                            <span class="gem-count">×@count</span>
+                                        }
+                                    </button>
+                                }
+                            </span>
+                            <span class="gear-bonus">
+                                            <span class="stepper">
+                                    <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
+                                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
+                                    <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
+                                    <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")"
+                                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
+                                </span>
+                            </span>
+                        </div>
+                    }
+                </div>
+            </Card>
         </div>
-    </Card>
+
+        <div class="pair">
+            <Card Title="Aspects">
+                <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
+            </Card>
+            <Card Title="Sigils">
+                <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
+            </Card>
+        </div>
+
+        <div class="pair">
+            <Card Title="Glyphs">
+                <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))" />
+            </Card>
+            <Card Title="Protective enchants">
+                <p class="hint">@Editor.ProtectiveEnchantCount of @ProtectiveEnchant.MaxPerBuild taken.</p>
+                <div class="chips">
+                    @foreach (var p in Catalog.ProtectiveEnchants)
+                    {
+                        bool taken = Editor.AugmentationRank(p.Id) > 0;
+                        bool full = !taken && Editor.ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild;
+                        <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
+                                title="@(full ? $"Take off one of the {ProtectiveEnchant.MaxPerBuild} first" : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
+                            <GameIcon Url="@p.IconUrl" Size="24" />
+                            @p.Name
+                        </button>
+                    }
+                </div>
+            </Card>
+        </div>
+    </div>
 </div>
 
 @code {
@@ -363,6 +387,8 @@
     }
 
     // The rating's percentage is the log's character sheet until the rating changes.
+    private static string StatName(RatedStat stat) => stat == RatedStat.Crit ? "Critical strike" : stat.ToString();
+
     private string? SheetNote(RatedStat stat) => Editor.PercentFromLog(stat) ? "From the log's character sheet until you change the rating" : null;
 
     // A copy of the build, not saved yet, named after it.

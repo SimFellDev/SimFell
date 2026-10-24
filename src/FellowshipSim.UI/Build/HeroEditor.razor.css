@@ -11,21 +11,125 @@
 }
 
 /* Hero and stats beside the talents, which take two of the three columns. */
-.hero-grid {
+/* The hero and its character sheet in a sidebar pinned below the Sim tabs; everything else scrolls beside it. */
+.editor {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 16px;
+  align-items: start;
   margin: 16px 0;
 }
 
-.hero-grid ::deep .card {
-  margin: 0;
-  height: 100%;
+.sidebar {
+  position: sticky;
+  /* Below the Sim page's pinned tab bar. */
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
 }
 
-.talents {
-  grid-column: span 2;
+.sidebar ::deep .card {
+  margin: 0;
+  border-color: var(--accent);
+}
+
+.editor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
+}
+
+.editor-main ::deep .card,
+.editor-main .pair {
+  margin: 0;
+}
+
+/* The character sheet: each stat and its percentage. */
+.sheet {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+}
+
+.sheet > * {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet > :nth-last-child(-n + 2) {
+  border-bottom: none;
+}
+
+.sheet-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sheet strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sheet .percent {
+  color: var(--heading);
+}
+
+/* The ratings typed in: a label and its number on one line. */
+.ratings {
+  display: grid;
+  gap: 6px;
+}
+
+.ratings label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ratings input {
+  width: 96px;
+  text-align: right;
+}
+
+.gem-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.gem-total {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gem-total strong {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gem-total.taken,
+.gem-total.taken strong {
+  color: var(--text);
+}
+
+@media (max-width: 1000px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+  }
 }
 
 /* Traits beside blessings. */
@@ -330,7 +434,7 @@
 /* The four sockets: a filled one shows its gem and takes it out when clicked. */
 .sockets {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -339,8 +443,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
-  padding: 6px 10px;
+  min-height: 42px;
+  padding: 4px 8px;
   background: var(--input);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -380,15 +484,17 @@
 /* A row per colour: its gem power, its four gems (click to socket one), and its gear bonuses. */
 .gem-rows {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 8px;
 }
 
 .gem-row {
   display: grid;
-  grid-template-columns: minmax(110px, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name bonus" "picks picks";
   align-items: center;
-  gap: 8px 16px;
-  padding: 8px 12px;
+  gap: 6px 8px;
+  padding: 8px 10px;
   background: var(--input);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -399,6 +505,7 @@
 }
 
 .gem-name {
+  grid-area: name;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -417,8 +524,9 @@
 }
 
 .gem-picks {
+  grid-area: picks;
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 .gem-pick {
@@ -426,8 +534,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
+  gap: 1px;
+  padding: 3px 4px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -461,6 +569,7 @@
 }
 
 .gear-bonus {
+  grid-area: bonus;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -482,11 +591,6 @@
   margin: 0;
 }
 
-@media (max-width: 720px) {
-  .gem-row {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* Stat enchants as tiles, like Aspects and Sigils (RankedChoices): icon, name over its stats, and the rating. */
 .enchants {
@@ -558,14 +662,9 @@
   font-size: 10px;
 }
 
-@media (max-width: 1000px) {
-  .hero-grid,
+@media (max-width: 1200px) {
   .pair {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .talents {
-    grid-column: auto;
   }
 }
 
