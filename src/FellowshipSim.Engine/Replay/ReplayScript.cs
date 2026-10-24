@@ -143,6 +143,10 @@ public class LogDamage
     /// The hit's damage before absorbs and the block: what the engine's hit compares with, since the engine has no blocks.
     /// </summary>
     public double UnblockedAmount => TotalAmount + Blocked;
+
+    /// <summary>The amount a hit check compares, for display: the unblocked amount, with the blocked part when there is one.</summary>
+    public string ComparedAmountText() =>
+        Blocked > 0 ? $"{UnblockedAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ({Blocked.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} blocked)" : TotalAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 public class LogAura

@@ -184,7 +184,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         if (!_options.UnverifiedDamageIds.Contains(landed.AbilityId) && !pair.WithinSpread(_options))
         {
             Report(ctx, IssueCategory.Damage,
-                $"{landed.AbilityName} on {target} at {match.Time:F3}: log {match.TotalAmount:F0}{(match.Crit ? " (crit)" : "")} vs engine {pair.EngineAmount:F0} " +
+                $"{landed.AbilityName} on {target} at {match.Time:F3}: log {match.ComparedAmountText()}{(match.Crit ? " (crit)" : "")} vs engine {pair.EngineAmount:F0} " +
                 $"(ratio {pair.Ratio:F3}, allowed {1 - _options.DamageSpread:F2}-{(1 + _options.DamageSpread) * (1 + _options.UnexplainedHighMargin):F3})",
                 $"damage {(pair.Ratio > 1 ? "too low" : "too high")}: {landed.AbilityName} ({landed.AbilityId})");
         }

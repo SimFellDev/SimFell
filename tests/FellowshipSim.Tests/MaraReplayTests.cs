@@ -53,7 +53,7 @@ public class MaraReplayTests(ITestOutputHelper output)
             var log = logById.GetValueOrDefault(id) ?? [];
             var engine = engineById.GetValueOrDefault(id) ?? [];
             var matched = engine.Where(h => h.Log != null).ToList();
-            double ratio = matched.Sum(h => h.EngineAmount) > 0 ? matched.Sum(h => h.Log!.TotalAmount) / matched.Sum(h => h.EngineAmount) : 0;
+            double ratio = matched.Sum(h => h.EngineAmount) > 0 ? matched.Sum(h => h.Log!.UnblockedAmount) / matched.Sum(h => h.EngineAmount) : 0;
             string name = (engine.FirstOrDefault()?.AbilityName ?? log.FirstOrDefault()?.AbilityName ?? "?").PadRight(20)[..20];
             output.WriteLine($"{id,-9} {name}  {log.Count,8}  {matched.Count,7}  {engine.Count - matched.Count,11}  {log.Sum(h => h.TotalAmount),11:N0}  {engine.Sum(h => h.EngineAmount),11:N0}  " +
                              $"{matched.Count(h => h.WithinSpread(options)),9}  {ratio,6:F3}");
@@ -92,14 +92,14 @@ public class MaraReplayTests(ITestOutputHelper output)
             var all = result.AllHits.Where(h => h.Log != null && h.EngineAmount > 0 && h.Log.Overkill <= 0).ToList();
             foreach (var g in all.GroupBy(h => (int)(h.EngineTime / 60)).OrderBy(g => g.Key))
             {
-                output.WriteLine($"minute {g.Key}: {g.Count()} hits, ratio {g.Sum(h => h.Log!.TotalAmount) / g.Sum(h => h.EngineAmount):F3}");
+                output.WriteLine($"minute {g.Key}: {g.Count()} hits, ratio {g.Sum(h => h.Log!.UnblockedAmount) / g.Sum(h => h.EngineAmount):F3}");
             }
             // For each damage ID asked for: the log/engine ratio of matched hits with and without each aura of the hero,
             // and by the number of enemies.
             foreach (int id in ids.Split(',').Select(int.Parse))
             {
                 var matched = result.AllHits.Where(h => h.AbilityId == id && h.Log != null && h.EngineAmount > 0 && h.Log.Overkill <= 0).ToList();
-                double Ratio(IEnumerable<HitPair> hits) => hits.Sum(h => h.Log!.TotalAmount) / Math.Max(1e-9, hits.Sum(h => h.EngineAmount));
+                double Ratio(IEnumerable<HitPair> hits) => hits.Sum(h => h.Log!.UnblockedAmount) / Math.Max(1e-9, hits.Sum(h => h.EngineAmount));
                 output.WriteLine($"breakdown {id}: {matched.Count} hits, ratio {Ratio(matched):F3} (crit {Ratio(matched.Where(h => h.Crit)):F3}, normal {Ratio(matched.Where(h => !h.Crit)):F3})");
                 foreach (var g in matched.Where(h => h.Crit).GroupBy(h => h.CritChance >= 1.0))
                 {
@@ -131,6 +131,6 @@ public class MaraReplayTests(ITestOutputHelper output)
         var inv = System.Globalization.CultureInfo.InvariantCulture;
         File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3}",
             h.EngineTime, h.AbilityId, h.Target == null ? "" : $"{h.Target.Id}.{h.Target.Instance}", h.EngineAmount, h.Crit ? 1 : 0,
-            h.Log == null ? "" : h.Log.TotalAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction)));
+            h.Log == null ? "" : h.Log.UnblockedAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction)));
     }
 }
