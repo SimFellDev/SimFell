@@ -21,7 +21,7 @@ public class SkitteringBlades : MaraAbility
         UnusableInStealth = true;
     }
 
-    /// <summary>For the Stealth Skittering Blades, which is built on Skittering Blades.</summary>
+    /// <summary>For the Stealth Skittering Blades: it is built on Skittering Blades.</summary>
     protected SkitteringBlades(Mara owner, int id, string name) : base(owner, id, name, AbilityCategory.Basic)
     {
         BaseCoefficient = Coefficient;

@@ -39,7 +39,7 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 
 ## Resources
 
-- **Energy:** 200 at most, full at the start. It regenerates at 15 per second raised by Haste (17.3 per second with no
+- **Energy:** 200 at most, full at the start. It regenerates at about 15 per second raised by Haste (17.3 per second with no
   buff at 13% Haste), times 1.2 with Predator's Rush and 1.2 with Maiden of Death.
 - **Spirit Refund:** a finisher's refund gives back its Combo Points and its Energy (fight 19 @ 25.691: 6 Combo Points
   and 40 Energy), and 1 Spirit Point.

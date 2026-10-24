@@ -25,7 +25,7 @@ public class Backstab : MaraAbility
         UnusableInStealth = true;
     }
 
-    /// <summary>For the Stealth Backstab, which is built on Backstab.</summary>
+    /// <summary>For the Stealth Backstab: it is built on Backstab.</summary>
     protected Backstab(Mara owner, int id, string name) : base(owner, id, name, AbilityCategory.Basic)
     {
         BaseCoefficient = Coefficient;

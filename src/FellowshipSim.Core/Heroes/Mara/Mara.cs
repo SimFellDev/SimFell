@@ -4,8 +4,8 @@ using FellowshipSim.Core.Heroes.Mara.Talents;
 namespace FellowshipSim.Core.Heroes.Mara;
 
 /// <summary>
-/// Mara, the Hungering Blade. Her generators build Combo Points, which her finishers spend; every ability but Widow's Bite
-/// costs Energy, which regenerates. Backstab, Widow's Bite and Skittering Blades used from Stealth (Brooding Shadows)
+/// Mara, the Hungering Blade. Her generators build Combo Points, and her finishers spend them. Every ability but Widow's Bite
+/// costs Energy, and Energy regenerates. Backstab, Widow's Bite and Skittering Blades used from Stealth (Brooding Shadows)
 /// apply a poison. Abilities live in Abilities/, talents in Talents/.
 /// </summary>
 public sealed class Mara : Hero
@@ -18,8 +18,8 @@ public sealed class Mara : Hero
 
     /// <summary>
     /// Energy regenerated per second before haste and buffs. The game data has no value. Combat logs (Fc8v6yWxD14GQMnV
-    /// fight 19, 13% Haste): 17.3 per second with no buff, 21.5 with Predator's Rush, 32 with Predator's Rush, Maiden of
-    /// Death and Spirit of Heroism, which is 15 per second raised by Haste.
+    /// fight 19, 13% Haste): a median of 17.3 per second with no buff, 15.3 before Haste. The median holds a few Venomous
+    /// Delight gains, so the engine takes 15. UNVERIFIED to better than 0.5 per second.
     /// </summary>
     public const double EnergyPerSecond = 15.0;
 
@@ -130,7 +130,7 @@ public sealed class Mara : Hero
 
     private MatriarchMacabre? _matriarch;
 
-    /// <summary>Matriarch Macabre, whose shadowy clones repeat Queen's Fang and Arachnid Assault.</summary>
+    /// <summary>Matriarch Macabre: its shadowy clones repeat Queen's Fang and Arachnid Assault.</summary>
     public MatriarchMacabre Matriarch => _matriarch!;
 
     /// <summary>Hemorrhaging Strike's bleed.</summary>

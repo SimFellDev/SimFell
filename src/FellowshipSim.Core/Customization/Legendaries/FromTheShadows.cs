@@ -30,8 +30,10 @@ public class FromTheShadows : Legendary
     {
         if (hero is not Mara mara || mara.GetAbility<QueensFang>() is not { } queensFang) return;
         mara.Hemorrhage.TickRateBonuses.Add(_ => TickRateBonus);
-        mara.Hemorrhage.Ticked += (ctx, target) =>
+        // Every hit on an enemy with the bleed rolls, the clone's own Queen's Fang too.
+        hero.OnDamageDealt += (in hit) =>
         {
+            if (hit.Amount <= 0 || hit.Target is not { } target || hit.SimContext is not { } ctx || !mara.Hemorrhage.IsOn(target, ctx)) return;
             if (ctx.Outcomes.RollProc(ProcKey, Chance, ctx, target)) queensFang.CloneStrike(ctx, target, CloneComboPoints, ClonePower);
         };
     }

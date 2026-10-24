@@ -32,13 +32,12 @@ public class ArachnidAssault : Finisher
         Mara.Matriarch.Imitate(ctx, ctx.ActiveEnemies.Count, (c, power) =>
         {
             var enemies = EnemiesAround(c, target).ToArray();
-            falloff = 1.0;
             for (int i = 0; i < enemies.Length; i++)
             {
                 var enemy = enemies[i];
                 c.Schedule(SimTime.FromSeconds(i * PeriodicEffect.ServerFrameSeconds), cc =>
                 {
-                    if (!enemy.IsSleeping) StrikeOne(cc, enemy, multiplier * castDamage * power * falloff, castCrit);
+                    if (!enemy.IsSleeping) StrikeOne(cc, enemy, multiplier * castDamage * power, castCrit);
                 }, Name);
             }
         });
