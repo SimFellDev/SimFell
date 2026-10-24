@@ -103,3 +103,8 @@ and for the web app `visitors/` and `keys/` (the visitor cookie keys).
 - Combat log IDs are game IDs plus an offset: effects + 1,000,000, talents + 2,000,000, traits + 3,000,000
   (`Domain/LogIds.cs`). Logs match blessings by name.
 - Each hero's `Heroes/<Hero>/NOTES.md` lists the mechanics the combat logs showed for that hero.
+- The engine models one game patch, `GamePatch.Current` (`FellowshipSim.Logs/GamePatch.cs`): the day it went live and
+  its combat-log format version (the report's `logVersion`). A log from an earlier day or with a lower `logVersion` is
+  flagged as old patch on import and in the reviews, and still runs. When a patch changes a mechanic, the engine takes
+  the new one and drops the old: no code, values or name conversions for earlier patches. A new patch moves
+  `GamePatch.Current`.
