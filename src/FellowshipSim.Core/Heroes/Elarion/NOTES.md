@@ -39,8 +39,10 @@ Vault) unless noted. Game values are from game data build 26136736.
   of a tick left as the channel ends fires one more arrow of full damage (fight 23 @ 81.335: 22 arrows on the target
   in a 2.5s channel at 73% Haste).
 - **Starfall Volley:** the arrows land on each enemy at its own moments, 0.5-0.8s apart at the median for one enemy, the
-  first 0.2-0.4s after the cast. The engine hits every enemy as the volley is cast and every hasted second after: it
-  has 13-20% more hits than the logs (enemies outside the volley's area).
+  first 0.2-0.4s after the cast, the last by the volley's end. The engine releases arrows on every enemy as the volley
+  is cast and every hasted second after, none in its last 0.3s. One release's arrows land over most of a period, so a
+  replay takes each enemy's arrow from the log (the first free one up to 1.5s after the release); enemies with no
+  arrow are outside the volley's area.
 - **Multishot:** the arrows of one cast land over up to 0.1s.
 - **Shoot:** shots at least 1.1s apart, most 1.3-1.8s, never while casting or channeling.
 
@@ -61,22 +63,24 @@ Vault) unless noted. Game values are from game data build 26136736.
   procs per minute).
 - **Focused Expanse:** the charge comes as Focused Shot's cast completes, before the arrow lands.
 - **Fervent Supremacy:** the cast applies Skystrider's Supremacy at 4 stacks; each Multishot takes one.
-- **Final Crescendo:** the first and second Highwind Arrows add a stack; the third uses both.
+- **Final Crescendo:** the first and second Highwind Arrows add a stack; the third uses both and strikes 9 enemies at
+  most, the target and 8 ricochets (fight 4: 8 casts with 9 hits, none with more).
 - **Impending Heartseeker:** Starstriker's Ascent's buff from a barrage's own Spirit Refund is left for the next barrage
   (fight 23 @ 15.192). Its arrows rise from about 1.05 to 2.8 times a plain arrow over 18 arrows.
 - **Skylit Grace:** effect 2316 is not in the logs; the engine's aura is internal.
-- **Resurgent Winds:** Lunarlight Mark always grants it.
+- **Resurgent Winds:** Lunarlight Mark always grants it; the log names Lunarlight Mark (1310) as that gain's cause, and
+  a replay takes no such gain as proof of the 5% proc (fight 4: 15 Mark gains and 9 others).
 
 ## Replay matches
 
 | Fight | Hits matched | Damage of log |
 |---|---|---|
-| fXyzwGcQkTrLD34R fight 4 | 3637/3734 | 103.9% |
-| pWmcV42K39GHTLQX fight 23 | 30704/31837 | 97.0% |
+| fXyzwGcQkTrLD34R fight 4 | 3617/3734 | 100.1% |
+| pWmcV42K39GHTLQX fight 23 | 30504/31837 | 95.3% |
 
-Fight 4 runs high on Starfall Volley's hits on enemies outside its area. Fight 23 runs low on 412 salvos the engine
-does not trigger, most from hits the engine lands at other moments (Amethyst Splinters, Heartseeker Barrage,
-Starfall Volley).
+Fight 23 runs low on 466 Starfall Volley arrows (an enemy takes up to 2-3 arrows in a hasted second, the engine 1) and
+435 salvos the engine does not trigger, most from hits the engine lands at other moments (Amethyst Splinters,
+Heartseeker Barrage, Starfall Volley).
 
 ## Not yet checked against a log
 

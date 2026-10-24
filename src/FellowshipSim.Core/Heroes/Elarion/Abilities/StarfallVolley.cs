@@ -6,7 +6,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// duration." 30 Focus, cooldown 40s; damage falls off as sqrt(12/N) beyond 12 enemies (targetCountFalloff 12).
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 44 volleys): the arrows land on each enemy at its
 /// own moments, 0.5-0.8s apart at the median for one enemy, the first 0.2-0.4s after the cast, and each hit deals the
-/// same damage on every enemy. UNVERIFIED: a hit on every enemy as the volley is cast and every hasted second after.
+/// same damage on every enemy. UNVERIFIED: an arrow on every enemy as the volley is cast and every hasted second after
+/// (an enemy takes up to 2-3 arrows in some hasted seconds).
 /// </summary>
 public class StarfallVolley : ElarionAbility
 {
@@ -19,6 +20,15 @@ public class StarfallVolley : ElarionAbility
     public const double DurationSeconds = 8.0;
     public const double PeriodSeconds = 1.0;
     public const double TargetThreshold = 12;
+    /// <summary>Combat logs: an arrow lands 0.2-0.4s after it is released; the engine releases none in the last 0.3s.</summary>
+    public const double FallSeconds = 0.3;
+
+    /// <summary>
+    /// The choice of each enemy a release strikes: certain in a sim; a replay takes the enemies the log shows an arrow
+    /// landing on before the next release. The arrows of one release land over most of a period, so they form no
+    /// multi-target hit a replay could take whole.
+    /// </summary>
+    public const string ArrowProcKey = "starfall_volley_arrow";
 
     /// <summary>Seconds added to every volley (Astronomer's Hail).</summary>
     public double ExtraDurationSeconds { get; set; }
@@ -74,11 +84,18 @@ public class StarfallVolley : ElarionAbility
 
     private void Pelt(SimulationContext ctx, Volley volley)
     {
+        // Arrows that could not land before the volley ends are not released.
+        if (ctx.CurrentTime > volley.End - SimTime.FromSeconds(FallSeconds)) return;
         var enemies = ctx.ActiveEnemies;
-        double falloff = enemies.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / enemies.Count) : 1.0;
+        var struck = new List<EnemyTarget>(enemies.Count);
         for (int i = 0; i < enemies.Count; i++)
         {
-            var enemy = enemies[i];
+            if (ctx.Outcomes.RollProc(ArrowProcKey, 1.0, ctx, enemies[i])) struck.Add(enemies[i]);
+        }
+        double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
+        for (int i = 0; i < struck.Count; i++)
+        {
+            var enemy = struck[i];
             DealDamage(ctx, enemy, damageMultiplier: falloff * (enemy == volley.Target ? MainTargetMultiplier : 1.0));
         }
         volley.Timer = HastedTimer.Start(ctx, Owner, PeriodSeconds, c => Pelt(c, volley), Name);
