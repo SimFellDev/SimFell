@@ -65,6 +65,7 @@ public class MaraReplayTests(ITestOutputHelper output)
         }
         output.WriteLine("");
         foreach (var unmodeled in result.UnmodeledAbilities) output.WriteLine($"unmodeled ability {unmodeled.Key}: {unmodeled.Value}");
+        foreach (var untracked in result.UntrackedLogAuras.OrderByDescending(kv => kv.Value).Take(25)) output.WriteLine($"untracked log aura {untracked.Key}: {untracked.Value} steps");
         foreach (var unmodeled in result.UnmodeledCustomizations) output.WriteLine($"unmodeled {unmodeled}");
         foreach (var proc in result.ProcStats) output.WriteLine($"proc {proc.Key}: {proc.Procs}/{proc.Rolls} (expected {proc.ExpectedProcs:F1})");
         if (Environment.GetEnvironmentVariable("MARA_STEPS") is { } range)

@@ -93,8 +93,11 @@ public sealed class Mara : Hero
         CausticPoison = new CausticPoison(this);
         PoisonDamageIds.UnionWith([SeethingPoison.DamageLogId, VolatilePoison.DamageLogId, LogIds.Effect(VolatilePoison.EruptionEffectId),
             CausticPoison.DamageLogId]);
+        // The poisons are not abilities of Mara's: their auras are listed here.
         Register(Hemorrhage.Debuff);
         Register(SeethingPoison.Debuff);
+        Register(SeethingPoison.PredatorsRush);
+        Register(VolatilePoison.Debuff);
 
         Abilities.Add(new Attack(this));
         Abilities.Add(new Backstab(this));
