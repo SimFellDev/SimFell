@@ -150,9 +150,12 @@ public abstract class Hero : Actor
     public const double SpiritOfHeroismSeconds = 20.0;
     public const double SpiritOfHeroismHaste = 0.3;
 
-    /// <summary>Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds.</summary>
+    /// <summary>
+    /// Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds. Combat logs: it stays through the
+    /// hero's death (4 deaths, none removed it).
+    /// </summary>
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
-        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste));
+        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
 
     /// <summary>A hit of the hero landed. Handlers run in the order they subscribed, with those of <see cref="OnDamageDealtBy"/> and <see cref="Ability.Hit"/>.</summary>
     public event DamageDealtHandler? OnDamageDealt

@@ -14,7 +14,8 @@ public class SeizedOpportunity : Sigil
     public const double DurationSeconds = 12.0;
     public static readonly double[] CritRatingByRank = [21, 39, 57, 75];
 
-    public static readonly AuraDef Counter = AuraDef.Effect("Seized Opportunity", CounterEffectId, maxStacks: CritsNeeded);
+    // Combat logs: the counter and the buff stay through the hero's death (18 deaths, none removed it).
+    public static readonly AuraDef Counter = AuraDef.Effect("Seized Opportunity", CounterEffectId, maxStacks: CritsNeeded) with { KeepsOnDeath = true };
 
     public override int Id => SigilId;
     public override string Name => SigilName;
@@ -22,7 +23,7 @@ public class SeizedOpportunity : Sigil
     public override void Bind(Hero hero)
     {
         var buff = hero.Register(AuraDef.Effect("Seized Opportunity", BuffEffectId, DurationSeconds,
-            modifiers: StatModifier.Add(StatType.CritRating, ForRank(CritRatingByRank))));
+            modifiers: StatModifier.Add(StatType.CritRating, ForRank(CritRatingByRank))) with { KeepsOnDeath = true });
         hero.OnDamageDealt += (in dmg) =>
         {
             if (!dmg.IsCrit || hero.Auras.HasAura(buff, dmg.Timestamp)) return;

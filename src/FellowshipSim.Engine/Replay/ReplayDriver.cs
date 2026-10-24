@@ -431,8 +431,8 @@ public sealed class ReplayDriver
     }
 
     /// <summary>
-    /// The player dies: the cast or channel ends and the hero loses every aura but its passive and situational ones (the
-    /// log removes them all). Damage over time on enemies goes on.
+    /// The player dies: the cast or channel ends and the hero loses every aura but its passive and situational ones and
+    /// those that keep on death (<see cref="AuraDef.KeepsOnDeath"/>). Damage over time on enemies goes on.
     /// </summary>
     private void Die()
     {
@@ -441,7 +441,7 @@ public sealed class ReplayDriver
         var now = _ctx.CurrentTime;
         foreach (var aura in _hero.Auras.Active(now).ToList())
         {
-            if (aura.LogId <= 0 || _hero.PassiveAuras.Contains(aura.Def) || _hero.SituationalAuras.Contains(aura.Def)) continue;
+            if (aura.LogId <= 0 || aura.Def.KeepsOnDeath || _hero.PassiveAuras.Contains(aura.Def) || _hero.SituationalAuras.Contains(aura.Def)) continue;
             _hero.Auras.Remove(aura.Def, now);
         }
     }

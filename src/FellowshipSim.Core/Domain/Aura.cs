@@ -27,6 +27,11 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// <summary>When true, a re-application adds its stacks and leaves the time left as it is.</summary>
     public bool ReapplyKeepsExpiry { get; init; }
 
+    /// <summary>
+    /// When true, the aura stays when the hero dies. Combat logs remove every other aura of the hero at its death.
+    /// </summary>
+    public bool KeepsOnDeath { get; init; }
+
     public string Key { get; private init; } = KeyOf(Name, LogId, 0);
 
     // Speed: StatMask is built once. Setting Modifiers rebuilds it.

@@ -15,7 +15,8 @@ public class AssassinsGuile : Talent
     public const double BuffSeconds = 5.0;
     public const double FinisherDamage = 1.4;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds);
+    // Combat logs: the buff stays through the hero's death (1 death).
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds) with { KeepsOnDeath = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;
