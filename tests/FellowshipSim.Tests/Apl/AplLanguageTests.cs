@@ -134,9 +134,21 @@ public class AplLanguageTests
         Assert.Null(DefaultActionLists.Read("Rime", "No such list"));
     }
 
-    private static (Hero Hero, SimulationContext Ctx) Fight(IEnumerable<int> talents)
+    [Theory]
+    [InlineData("Gunde")]
+    [InlineData("Ardeos")]
+    [InlineData("Tariq")]
+    [InlineData("Mara")]
+    public void Each_Heros_Default_List_Binds_And_Casts(string heroName)
     {
-        var hero = HeroImporter.Import(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, Talents = talents.ToList() });
+        Assert.Equal([DefaultActionLists.DefaultName], DefaultActionLists.Names(heroName));
+        var (hero, ctx) = Fight([], heroName);
+        Assert.True(AplParser.ParseScript(DefaultActionLists.Read(heroName, DefaultActionLists.DefaultName)!).TryAct(hero, ctx), heroName);
+    }
+
+    private static (Hero Hero, SimulationContext Ctx) Fight(IEnumerable<int> talents, string heroName = "Rime")
+    {
+        var hero = HeroImporter.Import(new CharacterBuild { Hero = heroName, PrimaryStat = 1000, Talents = talents.ToList() });
         var ctx = new SimulationContext(hero);
         hero.ResetForIteration();
         hero.BeginFight(ctx);
