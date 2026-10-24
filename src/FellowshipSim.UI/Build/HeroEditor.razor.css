@@ -138,6 +138,27 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin: 16px 0;
+  /* Each card is as tall as its content: no empty space under the shorter one. */
+  align-items: start;
+}
+
+/* Two columns of cards stacked in each: weapon, legendary and stat enchants; relics and gems. */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.column ::deep .card {
+  margin: 0;
 }
 
 .pair ::deep .card {
@@ -433,30 +454,25 @@
 
 /* The four sockets: a filled one shows its gem and takes it out when clicked. */
 .sockets {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .socket {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 4px 8px;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
   background: var(--input);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  text-align: left;
+  border-radius: 10px;
 }
 
 .socket.empty {
-  justify-content: center;
   border-style: dashed;
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .socket.filled {
@@ -464,27 +480,14 @@
   background: var(--selected);
 }
 
-.socket-name {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-.socket-remove {
-  color: var(--muted);
-  font-size: 18px;
-}
-
-.socket.filled:hover .socket-remove {
-  color: var(--bad);
+.socket.filled:hover {
+  border-color: var(--bad);
 }
 
 /* A row per colour: its gem power, its four gems (click to socket one), and its gear bonuses. */
 .gem-rows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -663,7 +666,8 @@
 }
 
 @media (max-width: 1200px) {
-  .pair {
+  .pair,
+  .columns {
     grid-template-columns: minmax(0, 1fr);
   }
 }

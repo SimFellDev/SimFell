@@ -36,7 +36,9 @@ public sealed class BuildCatalog
         Legendaries = Catalog.GearTypes(hero).Where(t => typeof(Legendary).IsAssignableFrom(t) && !t.IsAbstract)
             .Select(t => (Legendary)Activator.CreateInstance(t)!)
             .Where(l => l.ItemIds.Count > 0)
-            .Select(l => new BuildOption(l.ItemIds[0], l.Name, GameIcons.LegendaryPowers.GetValueOrDefault(l.LegendaryPowerId), l.IsModeled))
+            // The power's icon, else the hero's legendary item's.
+            .Select(l => new BuildOption(l.ItemIds[0], l.Name,
+                GameIcons.LegendaryPowers.GetValueOrDefault(l.LegendaryPowerId) ?? GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{l.ItemIds[0]}"), l.IsModeled))
             .OrderBy(o => o.Name).ToList();
         Relics = Catalog.AllRelicPassives
             .SelectMany(r => r.Items.Select(i => new RelicOption(i.Id, i.Name, r.Name)))

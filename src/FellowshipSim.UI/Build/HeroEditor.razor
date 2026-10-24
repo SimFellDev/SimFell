@@ -150,9 +150,39 @@
             </div>
         </Card>
 
-        <div class="pair">
-            <Card Title="Stat enchants">
-                <p class="hint">Each adds its rating to both of its stats. A build from a log already counts its enchants in its character sheet.</p>
+        <div class="columns">
+            <div class="column">
+                <Card Title="@("Weapon & legendary")">
+                    <h3 class="section">Weapon</h3>
+                    <div class="chips">
+                        @foreach (var w in Catalog.Weapons)
+                        {
+                            bool picked = Editor.Weapon == w.Id;
+                            <button @key="w.Id" type="button" class="chip @(picked ? "picked" : "")" aria-pressed="@picked"
+                                    @onclick="() => Set(() => Editor.Weapon = picked ? null : w.Id)">
+                                <GameIcon Url="@w.IconUrl" Size="24" />
+                                @w.Name
+                            </button>
+                        }
+                    </div>
+                    <h3 class="section">Legendary</h3>
+                    <div class="chips">
+                        @foreach (var l in Catalog.Legendaries)
+                        {
+                            bool picked = Editor.Legendary == l.Id;
+                            <button @key="l.Id" type="button" class="chip @(picked ? "picked" : "")" aria-pressed="@picked"
+                                    title="@(l.Modeled ? null : "Not modeled yet")" @onclick="() => Set(() => Editor.Legendary = picked ? null : l.Id)">
+                                <GameIcon Url="@l.IconUrl" Size="24" />
+                                @l.Name
+                                @if (!l.Modeled)
+                                {
+                                    <span class="badge">not modeled</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </Card>
+                <Card Title="Stat enchants">
                 <div class="enchants">
                     @foreach (var e in Catalog.StatEnchants)
                     {
@@ -173,31 +203,11 @@
                         </div>
                     }
                 </div>
-            </Card>
-            <Card Title="Gear">
-                <div class="stats">
-                    <label>
-                        Weapon
-                        <select @bind:get="Editor.Weapon?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Weapon = Id(v))">
-                            <option value="">None</option>
-                            @foreach (var w in Catalog.Weapons)
-                            {
-                                <option @key="w.Id" value="@w.Id">@w.Name</option>
-                            }
-                        </select>
-                    </label>
-                    <label>
-                        Legendary
-                        <select @bind:get="Editor.Legendary?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Legendary = Id(v))">
-                            <option value="">None</option>
-                            @foreach (var l in Catalog.Legendaries)
-                            {
-                                <option @key="l.Id" value="@l.Id">@l.Name@(l.Modeled ? "" : " (not modeled)")</option>
-                            }
-                        </select>
-                    </label>
-                </div>
-                <h3 class="section">Relics <span class="meta">· @Editor.RelicCount of @BuildEditor.RelicSlots worn</span></h3>
+                </Card>
+            </div>
+            <div class="column">
+                <Card Title="Relics">
+                    <p class="hint">@Editor.RelicCount of @BuildEditor.RelicSlots worn.</p>
                 <div class="chips">
                     @foreach (var r in Catalog.Relics)
                     {
@@ -210,26 +220,27 @@
                         </button>
                     }
                 </div>
-                <h3 class="section">Gems <span class="meta">· @Build.SocketedGemIds.Count of @GemItem.Sockets sockets filled; the steppers count the gear's +@GemItem.GearBonusPower bonuses</span></h3>
-                <div class="sockets">
-                    @for (int i = 0; i < GemItem.Sockets; i++)
-                    {
-                        int socket = i;
-                        var gem = Editor.Socket(socket);
-                        if (gem == null)
+                </Card>
+                <Card Title="Gems">
+                    <p class="hint">@Build.SocketedGemIds.Count of @GemItem.Sockets sockets filled. Steppers: the gear's +@GemItem.GearBonusPower bonuses.</p>
+                    <div class="sockets">
+                        @for (int i = 0; i < GemItem.Sockets; i++)
                         {
-                            <span @key="socket" class="socket empty">Empty socket</span>
+                            int socket = i;
+                            var gem = Editor.Socket(socket);
+                            if (gem == null)
+                            {
+                                <span @key="socket" class="socket empty" title="Empty socket"></span>
+                            }
+                            else
+                            {
+                                <button @key="socket" type="button" class="socket filled" title="@($"Take out the {gem.Name}")" aria-label="@($"Take out the {gem.Name}")"
+                                        @onclick="() => Set(() => Editor.SetSocket(socket, null))">
+                                    <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="32" />
+                                </button>
+                            }
                         }
-                        else
-                        {
-                            <button @key="socket" type="button" class="socket filled" title="Take out the @gem.Name" @onclick="() => Set(() => Editor.SetSocket(socket, null))">
-                                <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="26" />
-                                <span class="socket-name">@gem.Name <span class="meta">@gem.Power</span></span>
-                                <span class="socket-remove" aria-hidden="true">×</span>
-                            </button>
-                        }
-                    }
-                </div>
+                    </div>
                 <div class="gem-rows">
                     @foreach (var color in BuildCatalog.GemColors)
                     {
@@ -268,7 +279,8 @@
                         </div>
                     }
                 </div>
-            </Card>
+                </Card>
+            </div>
         </div>
 
         <div class="pair">

@@ -64,6 +64,18 @@ lines.AddRange(rows.Where(r => Text(r, "$type") == "hero" && !string.IsNullOrEmp
     .OrderBy(r => Text(r, "name"), StringComparer.Ordinal)
     .Select(r => $"        [{Cs(Text(r, "name")!)}] = {Cs(Text(r, "portrait")!)},"));
 lines.Add("    };");
+lines.Add("");
+
+// A legendary item has a record (and an icon) per hero; some legendary powers have no icon of their own.
+lines.Add("    /// <summary>Icons of the legendary items, by hero and item ID (\"Rime:5899\").</summary>");
+lines.Add("    public static IReadOnlyDictionary<string, string> LegendaryItems { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)");
+lines.Add("    {");
+lines.AddRange(rows.Where(r => Text(r, "$type") == "item" && Text(r, "hero") is { Length: > 0 } && (Text(r, "icon") ?? "").EndsWith("-legendary", StringComparison.Ordinal))
+    .Select(r => (Key: $"{Text(r, "hero")}:{Int(r, "id")}", Icon: Text(r, "icon")!))
+    .DistinctBy(x => x.Key)
+    .OrderBy(x => x.Key, StringComparer.Ordinal)
+    .Select(x => $"        [{Cs(x.Key)}] = {Cs(x.Icon)},"));
+lines.Add("    };");
 lines.Add("}");
 lines.Add("");
 
