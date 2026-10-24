@@ -5,33 +5,28 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// <summary>
 /// Talent 153: "Each tick of Searing Blaze &amp; Engulfing Flames has a 10% chance to have +100% critical strike chance.
 /// The chance for Spontaneous Combustion to trigger is increased by +1% for every 5% critical strike chance you have."
-/// Ability 1255 has 4% in its text; the talent's 10% is used. UNVERIFIED: Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa
-/// fight 31 have this talent, but a replay has no proof of its procs and takes each roll as not procced.
+/// A tick it empowers is a grievous crit, which a replay takes as the proof of the proc (one proc for each effect).
+/// Combat logs (Fc8v6yWxD14GQMnV fight 19, YC861NTRgLbmw4Qa fight 31): 10.9% and 10.8% of the ticks are grievous, with crit
+/// ratings of 106 and 153. The model uses a 10% chance with no crit term.
 /// </summary>
 public class SpontaneousCombustion : Talent
 {
     public const int TalentId = 153;
     public const string TalentName = "Spontaneous Combustion";
-    public const double BaseChance = 0.10;
-    /// <summary>+1% chance for every 5% critical strike chance.</summary>
-    public const double ChancePerCritStep = 0.01;
-    public const double CritStep = 0.05;
+    public const double Chance = 0.10;
     public const double CritChance = 1.0;
-    public const string ProcKey = "spontaneous_combustion";
+    public const string SearingBlazeProcKey = "spontaneous_combustion_searing_blaze";
+    public const string EngulfingFlamesProcKey = "spontaneous_combustion_engulfing_flames";
 
     public override string Name => TalentName;
     public override int Id => TalentId;
 
     public override void Bind(Hero hero)
     {
-        DamageOverTime?[] dots = [hero.GetAbility<SearingBlaze>()?.Dot, hero.GetAbility<EngulfingFlames>()?.Dot];
-        foreach (var dot in dots.OfType<DamageOverTime>())
-        {
-            dot.TickCritChanceBonuses.Add((ctx, instance) =>
-            {
-                double chance = BaseChance + ChancePerCritStep * Math.Floor(hero.CritChance(ctx.CurrentTime) / CritStep + 1e-9);
-                return ctx.Outcomes.RollProc(ProcKey, chance, ctx, instance.Target) ? CritChance : 0.0;
-            });
-        }
+        Empower(hero.GetAbility<SearingBlaze>()?.Dot, SearingBlazeProcKey);
+        Empower(hero.GetAbility<EngulfingFlames>()?.Dot, EngulfingFlamesProcKey);
     }
+
+    private static void Empower(DamageOverTime? dot, string procKey) =>
+        dot?.TickCritChanceBonuses.Add((ctx, instance) => ctx.Outcomes.RollProc(procKey, Chance, ctx, instance.Target) ? CritChance : 0.0);
 }

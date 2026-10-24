@@ -86,6 +86,12 @@ public static class ProcEvidence
         // An enemy Pyromania chose gains Engulfing Flames at the cast.
         new(Pyromania.TargetProcKey, LogIds.Effect(EngulfingFlamesDot.EffectId), StackJump: 1),
         new(ReignOfFire.ProcKey, ReignOfFire.Buff.LogId),
+        // Spontaneous Combustion takes the tick past 100% crit chance: the tick is a grievous crit, within 0.35s of the
+        // engine's tick (the engine's ticks drift from the log's as haste changes).
+        new(SpontaneousCombustion.SearingBlazeProcKey, LogIds.Effect(SearingBlazeDot.EffectId), DelaySeconds: 0.35, MinDelaySeconds: -0.35,
+            HitType: ReplayScriptBuilder.HitTypeGrievousCrit),
+        new(SpontaneousCombustion.EngulfingFlamesProcKey, LogIds.Effect(EngulfingFlamesDot.EffectId), DelaySeconds: 0.35, MinDelaySeconds: -0.35,
+            HitType: ReplayScriptBuilder.HitTypeGrievousCrit),
 
         // Tariq
         new(Schism.SkullCrusherProcKey, Schism.SkullCrusherBuff.LogId),
