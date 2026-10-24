@@ -24,11 +24,11 @@ public class QueensFang : Finisher
         double castDamage = CastDamageMultiplier, castCrit = CurrentCast?.CritChance ?? 0.0;
         Mara.Matriarch.Imitate(ctx, 1, (c, power) =>
         {
-            if (!target.IsSleeping) DealDamage(c, target, damageMultiplier: multiplier * castDamage * power, extraCritChance: castCrit);
+            if (!target.IsSleeping) DealDamage(c, target, damageMultiplier: multiplier * castDamage * power, overrideName: MatriarchMacabre.CloneHitName(Name), extraCritChance: castCrit);
         });
     }
 
     /// <summary>A Queen's Fang struck by a shadowy clone of From the Shadows, with its own Combo Points.</summary>
     public void CloneStrike(SimulationContext ctx, EnemyTarget target, int points, double power) =>
-        DealDamage(ctx, target, damageMultiplier: ComboPointMultiplier(points) * power);
+        DealDamage(ctx, target, damageMultiplier: ComboPointMultiplier(points) * power, overrideName: MatriarchMacabre.CloneHitName(Name));
 }

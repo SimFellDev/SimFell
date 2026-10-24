@@ -37,6 +37,7 @@ public class Hemotoxin : Talent
         var poison = new Poison(mara);
         var burst = new Burst(mara);
         mara.PoisonDamageIds.UnionWith([poison.DamageLogId, burst.DamageLogId]);
+        mara.Register(poison.Debuff);
 
         void Roll(SimulationContext ctx, EnemyTarget target)
         {

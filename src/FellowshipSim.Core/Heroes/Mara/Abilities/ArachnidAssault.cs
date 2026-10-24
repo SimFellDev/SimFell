@@ -43,7 +43,7 @@ public class ArachnidAssault : Finisher
 
     /// <summary>One hit of a clone's sweep, on <paramref name="enemy"/> alone (a replay strikes the log's next enemy).</summary>
     private void StrikeOne(SimulationContext ctx, EnemyTarget enemy, double damageMultiplier, double critChance) =>
-        DealAoeDamage(ctx, [enemy], damageMultiplier: damageMultiplier, extraCritChance: critChance);
+        DealAoeDamage(ctx, [enemy], damageMultiplier: damageMultiplier, overrideName: MatriarchMacabre.CloneHitName(Name), extraCritChance: critChance);
 
     private static IReadOnlyList<EnemyTarget> EnemiesAround(SimulationContext ctx, EnemyTarget? target) =>
         ctx.ActiveEnemies.Count == 0 && target is { IsSleeping: false } ? [target] : ctx.ActiveEnemies;

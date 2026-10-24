@@ -91,6 +91,8 @@ public sealed class Mara : Hero
         CausticPoison = new CausticPoison(this);
         PoisonDamageIds.UnionWith([SeethingPoison.DamageLogId, VolatilePoison.DamageLogId, LogIds.Effect(VolatilePoison.EruptionEffectId),
             CausticPoison.DamageLogId]);
+        Register(Hemorrhage.Debuff);
+        Register(SeethingPoison.Debuff);
 
         Abilities.Add(new Attack(this));
         Abilities.Add(new Backstab(this));

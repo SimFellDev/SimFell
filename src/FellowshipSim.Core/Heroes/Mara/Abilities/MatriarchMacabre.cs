@@ -22,6 +22,12 @@ public class MatriarchMacabre : MaraAbility
     public static readonly AuraDef Buff = AuraDef.Effect("Matriarch Macabre", BuffEffectId, BuffSeconds,
         modifiers: StatModifier.More(StatType.DamageScale, BuffDamage));
 
+    /// <summary>
+    /// The name of a shadowy clone's hits of <paramref name="abilityName"/>: the log ID is the ability's, the name tells
+    /// the clone's damage apart.
+    /// </summary>
+    public static string CloneHitName(string abilityName) => abilityName + " (shadowy clone)";
+
     public MatriarchMacabre(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
     {
         IgnoresGcd = true;
