@@ -58,6 +58,18 @@ Them Bones is proven by its grievous Skull Crusher hits (log hit type 22): 35, 6
 expected. Tariq dies twice in fight 30 (@ 117.0 and 403.1) and the log removes his buffs; the replay
 keeps them, Schism stacks included.
 
+## Game data against the logs
+
+- **Sledgehammer:** the talent says 10%, its ability 2061 says 30%. The logs have 10% (587 hits).
+- **Face Breaker's splash:** ability 2241 says 25% of a crit's damage (Left Hand Path's text names +40% crit chance
+  instead). The logs have 2241 at 50% of every Face Breaker hit, crit or not, without Left Hand Path: it is Face
+  Breaker's own splash. Left Hand Path itself is in no log.
+- **Skull Crusher's 1.2:** its placeholders carry `Talent.IncreasedDamageScaler 1.2`, with no talent naming it. With
+  Them Bones proven, Skull Crusher matches the logs within 3% without it (0.98, 0.98 and 1.01), so the engine leaves it
+  out.
+- **Hammer Storm's 35% per spin:** the spins deal 1.00, 1.37 and 1.88 times the first (fight 4 @ 23.36): each
+  multiplies the one before (1.35 and 1.82), where an added 35% would give 1.35 and 1.70.
+
 ## Not yet checked against a log
 
 Left Hand Path, Blood & Thunder, The Motherload, Thunderstruck, Pneuma, Kill Em All, Ace of Spades, Killing in the Name
