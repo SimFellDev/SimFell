@@ -6,7 +6,8 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// of the damage dealt. For the next 20 seconds your Heart Splitter and Grim Carve deal 25% increased damage." Grants
 /// Spirit of Heroism. Damage falls off as sqrt(1/N) beyond 1 enemy (game data). Combat logs (Y4wpb2f3gc8LqJDX fight 25,
 /// 5 casts): instant (patch 0.4.5.0, 16 September 2026; the game data still has a 1s cast); 5 pulses, 0.035s after the
-/// cast and then every 1.5s, not hasted.
+/// cast and then every 1.5s, not hasted. Every pulse keeps the damage of the cast: with the Strength at each pulse,
+/// the engine comes out 2% above the log at 0 stacks of Rising Spirit and 30% above at 3 (fight 25).
 /// </summary>
 public class BloodboundSpirit : GundeAbility
 {
@@ -56,10 +57,29 @@ public class BloodboundSpirit : GundeAbility
         hero.ActivateSpiritOfHeroism(ctx);
         hero.Auras.Apply(Buff, ctx.CurrentTime);
         var rend = BeginRend(ctx);
+        // Every pulse keeps the damage, crit chance and crit power of the cast.
+        var now = ctx.CurrentTime;
+        var cast = new SimulationContext.HitNumbers(BaseDamage(ctx, null), hero.CritChance(now) + CritChanceBonus, CritMultiplierAt(now));
         for (int i = 0; i < Pulses; i++)
         {
-            ctx.Schedule(SimTime.FromSeconds(FirstPulseSeconds + i * PulseIntervalSeconds),
-                c => RendingPulse(c, rend, AreaTargets(c, target)), Name);
+            ctx.Schedule(SimTime.FromSeconds(FirstPulseSeconds + i * PulseIntervalSeconds), c => Pulse(c, target, rend, cast), Name);
+        }
+    }
+
+    private void Pulse(SimulationContext ctx, EnemyTarget target, RendCast rend, SimulationContext.HitNumbers cast)
+    {
+        var targets = AreaTargets(ctx, target);
+        if (targets.Count == 0) return;
+        double falloff = targets.Count > AoeTargetThreshold ? Math.Sqrt(AoeTargetThreshold / targets.Count) : 1.0;
+        var now = ctx.CurrentTime;
+        foreach (var enemy in targets)
+        {
+            var hit = cast with
+            {
+                BaseDamage = cast.BaseDamage * falloff * Owner.DamageMultiplierAgainst(enemy, now),
+                CritChance = cast.CritChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now),
+            };
+            ctx.ApplyDamage(Owner, enemy, DamageLogId, Name, canCrit: true, _ => hit, onLanded: (c, dealt) => rend.Landed(c, enemy, dealt), snapshot: true);
         }
     }
 }

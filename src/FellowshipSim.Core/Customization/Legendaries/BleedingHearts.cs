@@ -35,7 +35,7 @@ public class BleedingHearts : Legendary
             if (!ctx.Outcomes.RollProc(ProcKey, ExtraStrikeChance, ctx, target)) return;
             ctx.Schedule(SimTime.FromSeconds(ExtraStrikeDelaySeconds), c =>
             {
-                if (target is { IsSleeping: false }) heartSplitter.Strike(c, target, rend);
+                if (target is { IsSleeping: false }) heartSplitter.Strike(c, target, rend, extra: true);
             }, Name);
         };
     }

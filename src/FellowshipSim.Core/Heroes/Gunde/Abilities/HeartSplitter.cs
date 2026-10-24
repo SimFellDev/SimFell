@@ -50,9 +50,13 @@ public class HeartSplitter : GundeAbility
         Cast?.Invoke(ctx, target, rend);
     }
 
-    /// <summary>One strike at <paramref name="target"/>: the hit, its Rend, then Exsanguinate.</summary>
-    public void Strike(SimulationContext ctx, EnemyTarget target, RendCast rend) =>
-        RendingPulse(ctx, rend, Single(target), extraCritChance: CritChanceAgainst,
+    /// <summary>
+    /// One strike at <paramref name="target"/>: the hit, its Rend, then Exsanguinate. An <paramref name="extra"/> strike
+    /// (Bleeding Hearts) has no share of the cast's damage multiplier (Crimson Strikes): combat logs (Y4wpb2f3gc8LqJDX
+    /// fight 25, 6 casts with both strikes crit) put it at 0.78-0.91 of the cast's strike, 0.84 on average.
+    /// </summary>
+    public void Strike(SimulationContext ctx, EnemyTarget target, RendCast rend, bool extra = false) =>
+        RendingPulse(ctx, rend, Single(target), damageMultiplier: extra ? 1.0 / rend.DamageMultiplier : 1.0, extraCritChance: CritChanceAgainst,
             onLanded: (c, enemy, dealt) => { if (dealt > 0.0) Exsanguinate(c, enemy, _lastHitCrit); });
 
     private double CritChanceAgainst(EnemyTarget target)

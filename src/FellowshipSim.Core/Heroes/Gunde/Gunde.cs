@@ -60,11 +60,13 @@ public sealed class Gunde : Hero
     /// <summary>Shares of a hit's damage added to its Rend while they hold (Reign in Blood, Frenzied Reign).</summary>
     public List<Func<SimTime, double>> RendShareBonuses { get; } = new();
 
-    /// <summary>
-    /// Multipliers on the hits of one rending pulse (a cast's hits, or one spin of Grim Carve), read and used up as the
-    /// pulse goes off (Crimson Strikes).
-    /// </summary>
-    public List<Func<SimulationContext, GundeAbility, double>> RendPulseMultipliers { get; } = new();
+    /// <summary>Multipliers on every hit of a cast that applies Rend, read and used up as the cast resolves (Crimson Strikes).</summary>
+    public List<Func<SimulationContext, GundeAbility, double>> RendCastMultipliers { get; } = new();
+
+    /// <summary>A pulse of hits that applies Rend went off (a cast's hits, or one spin of Grim Carve).</summary>
+    public event Action<SimulationContext, GundeAbility>? RendPulse;
+
+    internal void RaiseRendPulse(SimulationContext ctx, GundeAbility ability) => RendPulse?.Invoke(ctx, ability);
 
     /// <summary>A Blood Feather was picked up: Owed in Blood gained a stack, or refreshed at its maximum (Slayer's Grin, Raven's Precision).</summary>
     public event Action<SimulationContext>? FeatherCollected;

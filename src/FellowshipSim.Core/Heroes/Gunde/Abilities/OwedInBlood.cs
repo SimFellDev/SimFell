@@ -9,7 +9,7 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// 45s); it takes no global cooldown (Gunde guide corpus).
 /// Each stack becomes a Rend stack: a Strength of Rend still to deal. Combat logs (Y4wpb2f3gc8LqJDX fights 14 and 25, 41
 /// casts): casts of up to 15 stacks add exactly as many Rend stacks; larger ones add 0.6-1.1 per stack (150 -> 127, 94 -> 81,
-/// 55 -> 35), 0.87 on average.
+/// 55 -> 35). The 18 larger casts add 1319 Rend stacks for 1505: the first 15 stacks one each, then 0.85 per stack.
 /// </summary>
 public class OwedInBlood : GundeAbility
 {
@@ -19,6 +19,9 @@ public class OwedInBlood : GundeAbility
     public const int BuffEffectId = 3245;
     public const double BuffSeconds = 90.0;
     public const int MaxStacks = 150;
+    /// <summary>Stacks that each add one Rend stack; every stack beyond adds <see cref="LargeCastRendPerStack"/>.</summary>
+    public const int ExactStacks = 15;
+    public const double LargeCastRendPerStack = 0.85;
 
     /// <summary>"Holding on to Rend damage." A stack per Blood Feather picked up.</summary>
     public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, BuffSeconds, MaxStacks);
@@ -68,7 +71,8 @@ public class OwedInBlood : GundeAbility
         _removed = default;
         if (stacks == 0 || target is not { IsSleeping: false }) return;
         // A Rend stack is a Strength of Rend still to deal (Deep Rend included).
-        Gunde.Rend.Apply(ctx, target, stacks * Gunde.PrimaryAttribute(now) / Gunde.Rend.TickRate);
+        double rendStacks = Math.Min(stacks, ExactStacks) + LargeCastRendPerStack * Math.Max(0, stacks - ExactStacks);
+        Gunde.Rend.Apply(ctx, target, rendStacks * Gunde.PrimaryAttribute(now) / Gunde.Rend.TickRate);
         Spent?.Invoke(ctx, target, stacks);
     }
 }

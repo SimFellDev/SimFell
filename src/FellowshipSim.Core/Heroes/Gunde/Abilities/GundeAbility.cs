@@ -41,7 +41,12 @@ public abstract class GundeAbility : Ability
             share += Gunde.SerratedEdgeShare;
             Gunde.Auras.Remove(BloodArc.SerratedEdge, now);
         }
-        return new RendCast(Gunde, share);
+        double multiplier = 1.0;
+        if (TakesRendEmpowerments)
+        {
+            foreach (var empower in Gunde.RendCastMultipliers) multiplier *= empower(ctx, this);
+        }
+        return new RendCast(Gunde, share, multiplier);
     }
 
     /// <summary>
@@ -52,11 +57,7 @@ public abstract class GundeAbility : Ability
         Func<EnemyTarget, double>? extraCritChance = null, Action<SimulationContext, EnemyTarget, double>? onLanded = null)
     {
         if (targets.Count == 0) return;
-        double multiplier = damageMultiplier;
-        if (TakesRendEmpowerments)
-        {
-            foreach (var pulse in Gunde.RendPulseMultipliers) multiplier *= pulse(ctx, this);
-        }
+        double multiplier = damageMultiplier * rend.DamageMultiplier;
         if (AoeTargetThreshold > 0 && targets.Count > AoeTargetThreshold) multiplier *= Math.Sqrt(AoeTargetThreshold / targets.Count);
         for (int i = 0; i < targets.Count; i++)
         {
@@ -69,6 +70,7 @@ public abstract class GundeAbility : Ability
                 });
         }
         Pulsed?.Invoke(ctx);
+        if (TakesRendEmpowerments) Gunde.RaiseRendPulse(ctx, this);
     }
 
     /// <summary>The enemies an area pulse around <paramref name="target"/> strikes.</summary>
@@ -83,14 +85,16 @@ public abstract class GundeAbility : Ability
 }
 
 /// <summary>
-/// The Rend of one cast: the share of its hits' damage that becomes Rend. Its first landed hit rolls the cast's Spirit
-/// Refund (<see cref="Gunde.RendCastLanded"/>).
+/// The Rend of one cast: the share of its hits' damage that becomes Rend, and the multiplier the cast took on all its
+/// hits (Crimson Strikes). Its first landed hit rolls the cast's Spirit Refund (<see cref="Gunde.RendCastLanded"/>).
 /// </summary>
-public sealed class RendCast(Gunde gunde, double share)
+public sealed class RendCast(Gunde gunde, double share, double damageMultiplier = 1.0)
 {
     private bool _landed;
 
     public double Share { get; } = share;
+
+    public double DamageMultiplier { get; } = damageMultiplier;
 
     public void Landed(SimulationContext ctx, EnemyTarget target, double dealt)
     {
