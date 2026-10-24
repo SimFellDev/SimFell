@@ -22,8 +22,8 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 - **Leap Smash:** +40% crit chance of its own (placeholder constant `Talent.IncreasedCriticalChance.AddedCrit`). It
   crits 72-86% of the time against 35-44% for Face Breaker.
 - **Them Bones:** grievous Skull Crusher crits come with the thunder bolt as well as the physical hit.
-- **Wild Swing:** never crits. Enemies dodge 27 of its 388 hits (3-10% a fight; log hit type 0, no damage), and no
-  other Tariq hit.
+- **Wild Swing:** never crits. Enemies avoid 27 of its 388 hits (3-10% a fight; 22 misses, log hit type 0, and 5
+  dodges, type 7; no damage), and no other Tariq hit.
 
 ## Timing
 
@@ -45,7 +45,8 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 
 - **Fury** is logged as resource type 2, a share of a maximum that follows Strength. The replay reads it as a share of
   100. Tariq loses none of it between pulls.
-- **Bloodline** and **Ride the Lightning** generate Fury on hasted ticks. Ride the Lightning's Fury comes in Raging
+- **Bloodline** and **Ride the Lightning** generate Fury on hasted ticks, Bloodline in combat alone (1p7AXmHfwV9CYMxR
+  fight 30: no Fury between pulls). Ride the Lightning's Fury comes in Raging
   Tempest too (fight 31 @ 199.7: about 2.2 Fury a second, with Thunder Call gone).
 - **Executioner's Grin** rolls on every cast, the weapon's too (fight 4 @ 66.7: Fated Strike).
 
@@ -58,8 +59,8 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 | YC861NTRgLbmw4Qa fight 31 | 13529/13698 | 101.6% |
 
 Them Bones is proven by its grievous Skull Crusher hits (log hit type 22): 35, 65 and 96 procs against 33, 71 and 101
-expected. Wild Swing's dodges are proven by its hits of type 0: 8, 7 and 3 against 9, 8 and 10 expected (hits of type
-7, no damage either, are not counted).
+expected. Wild Swing's misses and dodges are proven by its hits of types 0 and 7: 11, 8 and 4 against 9, 8 and 10
+expected.
 
 ## Game data against the logs
 

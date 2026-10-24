@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// <summary>
 /// Talent 76: "You generate 1 Fury every 1 second and your movement speed is increased by 20%. You no longer lose Fury
 /// while out of combat." Effect 2424 (every 1s: 1% of maximum Fury). Combat logs (fXyzwGcQkTrLD34R fight 4): the seconds
-/// are hasted, and Tariq loses no Fury between pulls.
+/// are hasted, and the Fury comes in combat alone (1p7AXmHfwV9CYMxR fight 30: none between pulls, and none lost).
 /// </summary>
 public class Bloodline : Talent
 {

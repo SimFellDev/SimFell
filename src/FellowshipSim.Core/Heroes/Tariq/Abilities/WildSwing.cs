@@ -19,11 +19,11 @@ public class WildSwing : TariqAbility
     public const double TargetThreshold = 5;
     /// <summary>
     /// "Enemies have an increased chance to Dodge Wild Swing" (placeholder constant Tariq.DodgeChanceIncreaseForMeleeAttacks
-    /// 0.03 names no total). Combat logs (3 Tariq fights): 27 of 388 Wild Swing hits dodged (3-10% a fight), and no other
-    /// Tariq hit. UNVERIFIED estimate: the share of all three.
+    /// 0.03 names no total). Combat logs (3 Tariq fights): 27 of 388 Wild Swing hits avoided (3-10% a fight; 22 misses, 5
+    /// dodges), and no other Tariq hit. UNVERIFIED estimate: the share of all three, misses and dodges as one.
     /// </summary>
-    public const double DodgeChance = 0.07;
-    public const string DodgeProcKey = "wild_swing_dodged";
+    public const double AvoidChance = 0.07;
+    public const string AvoidedProcKey = "wild_swing_avoided";
 
     public WildSwing(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
     {
@@ -42,9 +42,9 @@ public class WildSwing : TariqAbility
         double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
         for (int i = 0; i < struck.Count; i++)
         {
-            // A dodged swing is a hit of no damage.
-            bool dodged = ctx.Outcomes.RollProc(DodgeProcKey, DodgeChance, ctx, struck[i]);
-            DealDamage(ctx, struck[i], dodged ? 0.0 : recklessness * falloff, canCrit: false);
+            // A swing the enemy avoids is a hit of no damage.
+            bool avoided = ctx.Outcomes.RollProc(AvoidedProcKey, AvoidChance, ctx, struck[i]);
+            DealDamage(ctx, struck[i], avoided ? 0.0 : recklessness * falloff, canCrit: false);
         }
     }
 
