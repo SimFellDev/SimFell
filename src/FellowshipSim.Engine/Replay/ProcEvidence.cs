@@ -40,12 +40,14 @@ public static class ProcEvidence
     /// <paramref name="StackLossLogId"/>, a hit is proof only when that debuff on the hit's enemy loses a stack in the
     /// same server frame (<paramref name="StackLoss"/> true) or does not (false). With <paramref name="ReservesHit"/>, the
     /// proc deals that hit itself on its enemy alone: the engine's next hit with the ID on the enemy matches the proof, and
-    /// hits on other enemies in the same server frame are proof of other procs.
+    /// hits on other enemies in the same server frame are proof of other procs. With
+    /// <paramref name="NotCausedByAbilityId"/>, an aura gain the log names that ability as the cause of is no proof (it is
+    /// that ability's own grant).
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
         double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
-        bool ReservesHit = false);
+        bool ReservesHit = false, int NotCausedByAbilityId = 0);
 
     public static readonly Evidence[] All =
     [
@@ -137,8 +139,11 @@ public static class ProcEvidence
         new(Elarion.RefundMarkTargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
         new(CelestialShot.ImpetusProcKey, CelestialShot.Impetus.LogId),
         new(FocusedExpanse.ProcKey, FocusedExpanse.Buff.LogId),
-        new(ResurgentWinds.ProcKey, ResurgentWinds.Buff.LogId),
+        // Lunarlight Mark's own grant (the log names 1310 as its cause) is no proof of the 5% proc.
+        new(ResurgentWinds.ProcKey, ResurgentWinds.Buff.LogId, NotCausedByAbilityId: LunarlightMark.AbilityId),
         new(StarstrikersAscent.ProcKey, ImpendingHeartseeker.Buff.LogId),
+        // A Starfall Volley arrow on the enemy: the first free one landing up to 1.5s after the release.
+        new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
         // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
         new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
     ];

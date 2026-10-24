@@ -227,7 +227,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             : evidence.StackJump > 0
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
-            ? ClaimAuraEvidence(evidence.LogId, now)
+            ? ClaimAuraEvidence(evidence.LogId, now, evidence.NotCausedByAbilityId)
             : ClaimDamageEvidence(evidence, now, target);
         if (procced)
         {
@@ -309,13 +309,14 @@ public sealed class LogOutcomeSource : IOutcomeSource
         return gain.Added >= jump;
     }
 
-    private bool ClaimAuraEvidence(int logId, double now)
+    private bool ClaimAuraEvidence(int logId, double now, int notCausedBy = 0)
     {
         foreach (var ev in _playerAuraEvents)
         {
             if (ev.Time < now - _options.ProcEarlySeconds) continue;
             if (ev.Time > now + _options.ProcAuraWindowSeconds) break;
             if (ev.AbilityId != logId || !ev.IsGain || _claimedAuraEvidence.Contains(ev)) continue;
+            if (notCausedBy != 0 && ev.ExtraAbilityId == notCausedBy) continue;
             _claimedAuraEvidence.Add(ev);
             return true;
         }

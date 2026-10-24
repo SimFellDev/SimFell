@@ -74,7 +74,7 @@ public class ReplayOptions
     /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over up to 0.1s, and
     /// casts come a global cooldown apart.
     /// </summary>
-    public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [1318] = 0.2 };
+    public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [Core.Heroes.Elarion.Abilities.Multishot.AbilityId] = 0.2 };
 
     /// <summary>The window of one multi-target hit with damage ID <paramref name="logId"/>.</summary>
     public double GroupSecondsOf(int logId) => HitGroupSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitGroupSeconds;
