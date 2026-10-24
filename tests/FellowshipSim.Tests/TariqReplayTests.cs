@@ -30,13 +30,13 @@ public class TariqReplayTests(ITestOutputHelper output)
                     File.WriteAllText(characterFile, System.Text.Json.JsonSerializer.Serialize(script.Character,
                         new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 }
-                // TARIQ_PROFILE writes it as a .simc profile, less the traits and blessings the catalog does not have
+                // TARIQ_PROFILE writes it as a .simc profile, less the augmentations and glyphs the catalog does not have
                 // (data/profiles/Tariq comes from fight 4's).
                 if (Environment.GetEnvironmentVariable("TARIQ_PROFILE") is { } profileFile)
                 {
                     var build = script.Character!;
-                    build.Traits = build.Traits.Where(t => FellowshipSim.Core.Catalog.CreateTrait(t.Id, t.Rank) != null).ToList();
-                    build.Blessings = build.Blessings.Where(b => FellowshipSim.Core.Catalog.CreateBlessing(b.Id, b.Rank) != null).ToList();
+                    build.Augmentations = build.Augmentations.Where(t => FellowshipSim.Core.Catalog.CreateAugmentation(t.Id, t.Rank) != null).ToList();
+                    build.Glyphs = build.Glyphs.Where(b => FellowshipSim.Core.Catalog.CreateGlyph(b.Id, b.Rank) != null).ToList();
                     File.WriteAllText(profileFile, new FellowshipSim.Core.Import.SimcProfile(build, "").Format());
                 }
                 var options = new ReplayOptions { StopOnFirstFailure = false };

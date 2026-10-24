@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Customization.Aspects;
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Sigils;
 using FellowshipSim.Core.Heroes.Ardeos.Abilities;
