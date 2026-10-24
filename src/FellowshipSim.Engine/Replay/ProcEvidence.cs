@@ -125,8 +125,8 @@ public static class ProcEvidence
         new(FromTheShadows.ProcKey, QueensFang.AbilityId, DelaySeconds: 0.5),
 
         // Elarion
-        // The salvo is logged within 2ms of the hit that called it down; the mark loses a stack with it, but for a salvo
-        // a Starfall Volley arrow called down with Lunarlight Affinity.
+        // The salvo is logged within 2ms of the hit that triggered it; the mark loses a stack with it, but for a salvo
+        // a Starfall Volley arrow triggered with Lunarlight Affinity.
         new(LunarlightSalvo.ProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
             ReservesHit: true),
         new(LunarlightSalvo.KeptMarkProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
