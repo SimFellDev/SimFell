@@ -1,6 +1,6 @@
 # Ardeos: what the logs showed
 
-These are Ardeos's mechanics as the combat logs show them, where the tooltips leave them open. Each point is also a
+These are Ardeos's mechanics as the combat logs show them, in the places the tooltips leave open. Each point is also a
 comment next to the code it shapes.
 
 The logs are 5 Ardeos fights (yMAZVJL9hTpFjqbC fight 7 on 2026-09-05; 1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma
@@ -46,6 +46,10 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
 ## Fire Frogs
 
 - A cast's first attack lands 1.7-1.9s after it. A lone frog attacks every 40 server frames (fight 7 @ 248.99-253.90s).
+- On a single enemy the Fire Frogs effect fits the log: in fight 7, the replay matches 51 of the 52 ticks on the final
+  boss at 0.97 of the logged damage. On many enemies the engine's frogs pick other enemies and times than the logged
+  frogs. The effect on each enemy then holds a different share of the hits (single ticks up to half the logged damage),
+  while the totals stay within 0.93-1.10 of the log.
 - A Pyrophibian Frenzy frog makes its first attack 1.2-1.3s after the tick that spawned it. That delay comes twice as
   often as any other among 92 frogs attacking alone (fights 7 and 19).
 

@@ -4,7 +4,7 @@ using FellowshipSim.Core.Heroes.Ardeos.Talents;
 namespace FellowshipSim.Core.Heroes.Ardeos;
 
 /// <summary>
-/// Ardeos, the Pyromancer. His abilities generate Cinders; every 100 Cinders are a Burning Ember, which Detonate spends.
+/// Ardeos, the Pyromancer. His abilities generate Cinders; every 100 Cinders are a Burning Ember. Detonate spends them.
 /// His fire damage over time effects run on <see cref="Dots"/>. Abilities are in Abilities/, talents in Talents/.
 /// </summary>
 public sealed class Ardeos : Hero
