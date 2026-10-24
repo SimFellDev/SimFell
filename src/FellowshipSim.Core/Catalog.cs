@@ -28,6 +28,9 @@ public static partial class Catalog
     public static Weapon? CreateWeapon(int weaponAbilityId) => NewWeapon(weaponAbilityId);
     public static RelicPassive? CreateRelicPassive(int id) => NewRelicPassive(id);
 
+    /// <summary>The passive the relic item <paramref name="itemId"/> grants, or null for an item that is no relic.</summary>
+    public static RelicPassive? RelicPassiveOfItem(int itemId) => AllRelicPassives.FirstOrDefault(r => r.ItemIds.Contains(itemId));
+
     /// <summary>
     /// A glyph's game ID from its name (0 if unknown). Combat logs give glyphs per-item IDs, so they are matched by name.
     /// </summary>

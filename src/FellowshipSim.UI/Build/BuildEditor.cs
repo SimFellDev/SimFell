@@ -89,19 +89,24 @@ public sealed class BuildEditor(CharacterBuild build)
         }
     }
 
-    /// <summary>Relics a build wears (combat logs from build 0.5.0 on: every hero wears two, each with its passive).</summary>
-    public const int RelicSlots = 2;
-
-    /// <summary>The passive ID of the relic in <paramref name="slot"/> (0 or 1), or null for no relic there.</summary>
-    public int? RelicPassive(int slot) => slot < Build.RelicPassiveIds.Count ? Build.RelicPassiveIds[slot] : null;
-
-    /// <summary>Puts the relic passive <paramref name="id"/> in <paramref name="slot"/>, or empties the slot for null.</summary>
-    public void SetRelicPassive(int slot, int? id)
+    /// <summary>The passive ID of the relic in slot 1, or null for no relic. The slot keeps the passive's relic item.</summary>
+    public int? Relic1
     {
-        var slots = Enumerable.Range(0, RelicSlots).Select(RelicPassive).ToArray();
-        slots[slot] = id;
-        Build.RelicPassiveIds = slots.OfType<int>().ToList();
+        get => PassiveOf(Build.Relic1ItemId);
+        set => Build.Relic1ItemId = ItemOf(value);
     }
+
+    /// <summary>The passive ID of the relic in slot 2, or null for no relic.</summary>
+    public int? Relic2
+    {
+        get => PassiveOf(Build.Relic2ItemId);
+        set => Build.Relic2ItemId = ItemOf(value);
+    }
+
+    private static int? PassiveOf(int itemId) => CoreCatalog.RelicPassiveOfItem(itemId)?.Id;
+
+    private static int ItemOf(int? relicPassiveId) =>
+        relicPassiveId is { } id ? CoreCatalog.CreateRelicPassive(id)?.ItemIds[0] ?? 0 : 0;
 
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
 
@@ -154,10 +159,15 @@ public sealed class BuildEditor(CharacterBuild build)
             build.Glyphs.Remove(g);
             removed.Add($"glyph {g.Name ?? g.Id.ToString()}");
         }
-        foreach (int id in build.RelicPassiveIds.Where(id => CoreCatalog.CreateRelicPassive(id) == null).ToList())
+        if (build.Relic1ItemId != 0 && CoreCatalog.RelicPassiveOfItem(build.Relic1ItemId) == null)
         {
-            build.RelicPassiveIds.Remove(id);
-            removed.Add($"relic passive {id}");
+            removed.Add($"relic item {build.Relic1ItemId}");
+            build.Relic1ItemId = 0;
+        }
+        if (build.Relic2ItemId != 0 && CoreCatalog.RelicPassiveOfItem(build.Relic2ItemId) == null)
+        {
+            removed.Add($"relic item {build.Relic2ItemId}");
+            build.Relic2ItemId = 0;
         }
         foreach (int id in build.LegendaryItemIds.Where(id => CoreCatalog.CreateLegendary(build.Hero, id) == null).ToList())
         {

@@ -68,8 +68,8 @@ public sealed class BuildEditorTests : IDisposable
         editor.SetRating(RatedStat.Haste, 300);
         editor.Weapon = catalog.Weapons[0].Id;
         editor.Legendary = catalog.Legendaries.First(l => l.Modeled).Id;
-        editor.SetRelicPassive(0, catalog.RelicPassives[0].Id);
-        editor.SetRelicPassive(1, catalog.RelicPassives[1].Id);
+        editor.Relic1 = catalog.RelicPassives[0].Id;
+        editor.Relic2 = catalog.RelicPassives[1].Id;
         editor.SetGem(GemColor.Sapphire, 1500);
         editor.SetAugmentationRank(catalog.Augmentations[0], 9);
         editor.SetGlyphRank(catalog.Glyphs[0], 2);
@@ -80,8 +80,8 @@ public sealed class BuildEditorTests : IDisposable
         Assert.Equal(editor.Percent(RatedStat.Haste), back.Percent(RatedStat.Haste), 4);
         Assert.Equal(editor.Weapon, back.Weapon);
         Assert.Equal(editor.Legendary, back.Legendary);
-        Assert.Equal(editor.RelicPassive(0), back.RelicPassive(0));
-        Assert.Equal(editor.RelicPassive(1), back.RelicPassive(1));
+        Assert.Equal(editor.Relic1, back.Relic1);
+        Assert.Equal(editor.Relic2, back.Relic2);
         Assert.Equal(1500, back.Gem(GemColor.Sapphire));
         Assert.Equal(catalog.Augmentations[0].MaxRank, back.AugmentationRank(catalog.Augmentations[0].Id));
         Assert.Equal(2, back.GlyphRank(catalog.Glyphs[0].Id));

@@ -77,7 +77,12 @@ public static class CharacterReader
         {
             if (item == null) continue;
             int itemId = (int)Num(item["id"]);
-            if (relicPassives.FirstOrDefault(r => r.ItemIds.Contains(itemId)) is { } relicPassive) build.RelicPassiveIds.Add(relicPassive.Id);
+            if (relicPassives.Any(r => r.ItemIds.Contains(itemId)))
+            {
+                // Relic slots fill in gear order.
+                if (build.Relic1ItemId == 0) build.Relic1ItemId = itemId;
+                else build.Relic2ItemId = itemId;
+            }
             foreach (var t in item["traits"]?.AsArray() ?? [])
             {
                 AddRank(augmentations, (int)Num(t?["id"]) - LogIds.AugmentationOffset, (int)Num(t?["rank"], 1), Str(t?["name"]));

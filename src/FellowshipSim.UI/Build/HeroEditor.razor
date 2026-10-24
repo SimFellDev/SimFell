@@ -148,20 +148,26 @@
                 }
             </select>
         </label>
-        @for (int slot = 0; slot < BuildEditor.RelicSlots; slot++)
-        {
-            int relicSlot = slot;
-            <label @key="relicSlot">
-                Relic passive @(relicSlot + 1)
-                <select @bind:get="Editor.RelicPassive(relicSlot)?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.SetRelicPassive(relicSlot, Id(v)))">
-                    <option value="">None</option>
-                    @foreach (var r in Catalog.RelicPassives)
-                    {
-                        <option @key="r.Id" value="@r.Id">@r.Name</option>
-                    }
-                </select>
-            </label>
-        }
+        <label>
+            Relic 1
+            <select @bind:get="Editor.Relic1?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic1 = Id(v))">
+                <option value="">None</option>
+                @foreach (var r in Catalog.RelicPassives)
+                {
+                    <option @key="r.Id" value="@r.Id">@r.Name</option>
+                }
+            </select>
+        </label>
+        <label>
+            Relic 2
+            <select @bind:get="Editor.Relic2?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic2 = Id(v))">
+                <option value="">None</option>
+                @foreach (var r in Catalog.RelicPassives)
+                {
+                    <option @key="r.Id" value="@r.Id">@r.Name</option>
+                }
+            </select>
+        </label>
     </div>
     <h3 class="section">Gem powers</h3>
     <div class="gems">

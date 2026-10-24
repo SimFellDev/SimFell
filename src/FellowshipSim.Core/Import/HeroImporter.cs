@@ -1,15 +1,30 @@
 using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Customization.Legendaries;
+using FellowshipSim.Core.Customization.RelicPassives;
 
 namespace FellowshipSim.Core.Import;
 
 /// <summary>
-/// Turns a <see cref="CharacterBuild"/> into a hero ready to simulate: its stats, then its talents, relic passive, gems,
+/// Turns a <see cref="CharacterBuild"/> into a hero ready to simulate: its stats, then its talents, relic passives, gems,
 /// glyphs, weapon, augmentations and legendary, each found in the <see cref="Catalog"/> by game ID. Anything the engine
 /// does not model is listed in <see cref="Hero.UnmodeledFeatures"/>.
 /// </summary>
 public static class HeroImporter
 {
+    /// <summary>The bound passive of the relic item <paramref name="itemId"/>, or null for no relic or one the catalog lacks.</summary>
+    private static RelicPassive? BindRelic(Hero hero, int itemId)
+    {
+        if (itemId == 0) return null;
+        var relicPassive = Catalog.RelicPassiveOfItem(itemId);
+        if (relicPassive == null)
+        {
+            hero.UnmodeledFeatures.Add($"Relic item {itemId}");
+            return null;
+        }
+        relicPassive.Bind(hero);
+        return relicPassive;
+    }
+
     public static Hero Import(CharacterBuild build)
     {
         var hero = Catalog.CreateHero(build.Hero);
@@ -49,16 +64,8 @@ public static class HeroImporter
         }
 
         // The relic passives before gems: Covetous Greed raises every gem colour's power (already in a sheet's gem power).
-        foreach (int relicPassiveId in build.RelicPassiveIds)
-        {
-            var relicPassive = Catalog.CreateRelicPassive(relicPassiveId);
-            if (relicPassive == null) hero.UnmodeledFeatures.Add($"Relic passive {relicPassiveId}");
-            else
-            {
-                hero.RelicPassives.Add(relicPassive);
-                relicPassive.Bind(hero);
-            }
-        }
+        hero.Relic1 = BindRelic(hero, build.Relic1ItemId);
+        hero.Relic2 = BindRelic(hero, build.Relic2ItemId);
 
         foreach (var (color, power) in build.GemPower)
         {

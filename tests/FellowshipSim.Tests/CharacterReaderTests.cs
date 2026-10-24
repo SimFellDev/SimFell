@@ -21,13 +21,15 @@ public class CharacterReaderTests
         """;
 
     [Fact]
-    public void Each_Relic_Gives_Its_Passive()
+    public void The_Relics_Fill_Their_Slots_In_Gear_Order()
     {
         var build = CharacterReader.FromCombatantInfo(JsonNode.Parse(Combatant)!.AsObject(), "player", "Rime");
-        Assert.Equal([AccursedTrophy.RelicPassiveId, UndyingHeart.RelicPassiveId], build.RelicPassiveIds);
+        Assert.Equal(AccursedTrophy.OrbItemId, build.Relic1ItemId);
+        Assert.Equal(UndyingHeart.OrbItemId, build.Relic2ItemId);
 
         var hero = HeroImporter.Import(build);
-        Assert.Collection(hero.RelicPassives, r => Assert.IsType<AccursedTrophy>(r), r => Assert.IsType<UndyingHeart>(r));
+        Assert.IsType<AccursedTrophy>(hero.Relic1);
+        Assert.IsType<UndyingHeart>(hero.Relic2);
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Relic"));
     }
 
@@ -36,8 +38,9 @@ public class CharacterReaderTests
     {
         var build = CharacterReader.FromCombatantInfo(JsonNode.Parse(Combatant)!.AsObject(), "player", "Rime");
         string text = new SimcProfile(build, "").Format();
-        Assert.Contains("relic=accursed_trophy", text);
-        Assert.Contains("relic=undying_heart", text);
-        Assert.Equal(build.RelicPassiveIds, SimcProfile.Parse(text).Build.RelicPassiveIds);
+        Assert.Contains("relic1=accursed_trophy,id=5926", text);
+        Assert.Contains("relic2=undying_heart,id=5924", text);
+        var read = SimcProfile.Parse(text).Build;
+        Assert.Equal((build.Relic1ItemId, build.Relic2ItemId), (read.Relic1ItemId, read.Relic2ItemId));
     }
 }

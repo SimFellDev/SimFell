@@ -125,10 +125,8 @@
     "Ruby": 750,
     "Diamond": 125
   },
-  "RelicPassiveIds": [
-    777,
-    780
-  ],
+  "Relic1ItemId": 5926,
+  "Relic2ItemId": 5921,
   "LegendaryItemIds": [
     5898
   ],

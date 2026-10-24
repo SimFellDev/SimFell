@@ -24,8 +24,8 @@ namespace FellowshipSim.Core.Import;
 /// protective_enchant=the_oak:1
 /// glyphs=the_monarch:1/...
 /// gems=sapphire:1500/...
-/// relic=accursed_trophy
-/// relic=undying_heart
+/// relic1=accursed_trophy,id=5926
+/// relic2=undying_heart,id=5924
 /// legendary=frostwyrms_spite,id=5899
 /// weapon=ashas_chronoshift_spire
 /// actions+=/frost_bolt
@@ -123,9 +123,8 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     build.GemPower[colors[0]] = power;
                 }
                 break;
-            case "relic":
-                build.RelicPassiveIds.Add(IdOf(value, Catalog.AllRelicPassives.Select(r => (r.Name, r.Id)), "relic passive"));
-                break;
+            case "relic1": build.Relic1ItemId = RelicItemId(value); break;
+            case "relic2": build.Relic2ItemId = RelicItemId(value); break;
             case "legendary":
             {
                 var options = Options(value);
@@ -183,11 +182,8 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         {
             s.AppendLine($"gems={string.Join('/', build.GemPower.Select(g => $"{AplNames.Slug(g.Key.ToString())}:{Text(g.Value)}"))}");
         }
-        foreach (int relicPassiveId in build.RelicPassiveIds)
-        {
-            var relicPassive = Catalog.CreateRelicPassive(relicPassiveId) ?? throw new InvalidOperationException($"Relic passive {relicPassiveId} is not in the catalog");
-            s.AppendLine($"relic={AplNames.Slug(relicPassive.Name)}");
-        }
+        RelicLine(s, "relic1", build.Relic1ItemId);
+        RelicLine(s, "relic2", build.Relic2ItemId);
         foreach (int itemId in build.LegendaryItemIds)
         {
             var legendary = Catalog.CreateLegendary(build.Hero, itemId) ?? throw new InvalidOperationException($"Legendary item {itemId} is not in the catalog");
@@ -227,6 +223,23 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         int at = entry.IndexOfAny([':', '=']);
         if (at <= 0) throw new FormatException($"expected name:value in '{entry}'");
         return (entry[..at].Trim(), Number(entry[(at + 1)..]));
+    }
+
+    /// <summary>The item ID of a "passive,id=item id" relic slot, checked against the passive the item grants.</summary>
+    private static int RelicItemId(string value)
+    {
+        var options = Options(value);
+        int itemId = (int)Number(options.GetValueOrDefault("id") ?? throw new FormatException("a relic is <passive>,id=<item id>"));
+        var relicPassive = Catalog.RelicPassiveOfItem(itemId) ?? throw new FormatException($"no relic item {itemId}");
+        if (AplNames.Slug(relicPassive.Name) != options[""]) throw new FormatException($"item {itemId} grants {AplNames.Slug(relicPassive.Name)}");
+        return itemId;
+    }
+
+    private static void RelicLine(StringBuilder s, string key, int itemId)
+    {
+        if (itemId == 0) return;
+        var relicPassive = Catalog.RelicPassiveOfItem(itemId) ?? throw new InvalidOperationException($"Relic item {itemId} is not in the catalog");
+        s.AppendLine($"{key}={AplNames.Slug(relicPassive.Name)},id={itemId}");
     }
 
     /// <summary>"name,key=value,...": the name under the empty key.</summary>
