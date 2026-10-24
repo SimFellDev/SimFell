@@ -112,8 +112,8 @@
                             <tr @key="a.Name">
                                 <td class="name"><GameIcon Url="@BuildCatalog.IconUrl(a.Id, a.Name)" Size="22" /><span>@a.Name</span></td>
                                 <td>
-                                    <span class="amount">@N(a.Damage)</span>
-                                    <span class="share"><span class="bar"><b style="width: @Width(share / abilities.Max(x => x.Damage / total))"></b></span>@Percent(share)</span>
+                                    @* As FellowshipLogs shows it: share, bar, damage. *@
+                                    <span class="amount"><span class="pct">@Percent(share)</span><span class="bar"><b style="width: @Width(share / abilities.Max(x => x.Damage / total))"></b></span><span class="value">@N(a.Damage)</span></span>
                                 </td>
                                 <td>@(a.Casts > 0 ? a.Casts.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
                                 <td>@(a.Casts > 0 ? N(a.Damage / a.Casts) : "–")</td>

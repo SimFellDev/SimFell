@@ -234,9 +234,27 @@
   font-weight: 700;
 }
 
-/* An ability's amount over its share of the damage. */
+/* An ability's amount as FellowshipLogs shows it, on one line: its share, a bar, then its damage. */
 .amount {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.amount .pct {
+  min-width: 44px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.amount .bar {
+  width: 110px;
+}
+
+.amount .value {
+  min-width: 80px;
+  text-align: right;
 }
 
 .share {
