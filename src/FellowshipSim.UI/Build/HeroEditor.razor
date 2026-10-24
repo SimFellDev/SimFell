@@ -181,9 +181,14 @@
     <div class="enchants">
         @foreach (var e in Catalog.StatEnchants)
         {
-            <label @key="e.Enchant.Id" class="enchant">
-                <span class="enchant-name">@e.Name <span class="meta">@e.StatsText</span></span>
-                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="Editor.StatEnchantRating(e.Enchant.Id)" @bind:set="v => Set(() => Editor.SetStatEnchantRating(e.Enchant, v))" />
+            double rating = Editor.StatEnchantRating(e.Enchant.Id);
+            <label @key="e.Enchant.Id" class="enchant @(rating > 0 ? "taken" : "")">
+                <GameIcon Url="@e.IconUrl" Size="34" />
+                <span class="enchant-name">
+                    @e.Name
+                    <span class="enchant-stats">@e.StatsText</span>
+                </span>
+                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="rating" @bind:set="v => Set(() => Editor.SetStatEnchantRating(e.Enchant, v))" />
             </label>
         }
     </div>

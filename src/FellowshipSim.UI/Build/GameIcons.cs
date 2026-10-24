@@ -304,6 +304,17 @@ public static class GameIcons
         [1561] = "T_Nhance_RPG_Icons_FrostRain",
     };
 
+    /// <summary>Icons of the datamine's enchant records, by ID.</summary>
+    public static IReadOnlyDictionary<int, string> StatEnchants { get; } = new Dictionary<int, string>
+    {
+        [65] = "T_Nhance_RPG_Gold_16",
+        [66] = "Bowguy_HasteBuff",
+        [67] = "T_Nhance_RPG_Icons_EvilSouls",
+        [68] = "T_Nhance_RPG_Icons_NatureVision_Purple",
+        [69] = "T_Nhance_RPG_BloodCombat_22",
+        [70] = "T_Nhance_RPG_Icons_Poison",
+    };
+
     /// <summary>The highest rank of each aspect, sigil and protective-enchant, by ID.</summary>
     public static IReadOnlyDictionary<int, int> AugmentationMaxRanks { get; } = new Dictionary<int, int>
     {

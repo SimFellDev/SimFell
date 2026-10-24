@@ -1,7 +1,7 @@
 // Writes src/FellowshipSim.UI/Build/GameIcons.cs from a Codex datamine export (entities.jsonl).
 //
-// The UI shows each talent, augmentation (aspect, sigil and protective enchant), glyph, legendary, weapon ability, gem and
-// hero with its game icon from the Codex CDN.
+// The UI shows each talent, augmentation (aspect, sigil and protective enchant), glyph, legendary, weapon ability, stat
+// enchant, gem and hero with its game icon from the Codex CDN.
 // Run it again after a new datamine:
 //
 //     dotnet run tools/generate-game-icons.cs [path/to/entities.jsonl]
@@ -40,6 +40,7 @@ lines.AddRange(ById("Augmentations", augmentations));
 lines.AddRange(ById("Glyphs", ["glyph"]));
 lines.AddRange(ById("LegendaryPowers", ["legendary-power"]));
 lines.AddRange(ById("WeaponAbilities", ["ability"], r => Text(r, "category") == "Weapon"));
+lines.AddRange(ById("StatEnchants", ["enchant"]));
 lines.AddRange(MaxRanks("AugmentationMaxRanks", augmentations));
 lines.AddRange(MaxRanks("GlyphMaxRanks", ["glyph"]));
 
@@ -77,7 +78,8 @@ IEnumerable<string> ById(string name, string[] kinds, Func<JsonObject, bool>? wh
     $"    /// <summary>Icons of the datamine's {Kinds(kinds)} records, by ID.</summary>",
     $"    public static IReadOnlyDictionary<int, string> {name} {{ get; }} = new Dictionary<int, string>",
     "    {",
-    .. Of(kinds).Where(where ?? (_ => true)).Select(r => $"        [{Int(r, "id")}] = {Cs(Text(r, "icon")!)},"),
+    // A stat enchant has a record per main stat under one ID, with one icon.
+    .. Of(kinds).Where(where ?? (_ => true)).DistinctBy(r => Int(r, "id")).Select(r => $"        [{Int(r, "id")}] = {Cs(Text(r, "icon")!)},"),
     "    };",
     "",
 ];
