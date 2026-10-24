@@ -46,11 +46,23 @@ public class DeadlyScheme : Talent
         hero.OnCastResolving += cast =>
         {
             if (cast.Ability is not (QueensFang or ArachnidAssault) || !hero.Auras.HasAura(Active, cast.Time)) return;
+            _changing = true;
             hero.Auras.Remove(Active, cast.Time);
+            _changing = false;
             cast.CritChance += CritChance;
             Show(hero, cast.Time);
         };
+        // The stacks counted go when something else takes the buffs off (combat logs, fight 19 @ 473.015: Mara's death
+        // removes them, and the count starts again after she is back). Deadly Scheme: Active running out keeps them.
+        hero.Auras.OnRemoved += (aura, at) =>
+        {
+            if (_changing) return;
+            if (aura.Def.Key == Stacks.Key || (aura.Def.Key == Active.Key && at < aura.ExpiresAt)) _energy = 0;
+        };
     }
+
+    /// <summary>The talent itself is changing the buffs.</summary>
+    private bool _changing;
 
     /// <summary>Shows the stacks counted; at 40 they activate Deadly Scheme and the rest carry over.</summary>
     private void Show(Hero hero, SimTime now)
@@ -59,7 +71,9 @@ public class DeadlyScheme : Talent
         if (stacks >= StacksToActivate)
         {
             _energy -= StacksToActivate * EnergyPerStack;
+            _changing = true;
             hero.Auras.Remove(Stacks, now);
+            _changing = false;
             hero.Auras.Apply(Active, now);
             return;
         }
