@@ -244,10 +244,7 @@
                         int bonuses = Editor.GearBonuses(color);
                         bool socketsFull = Build.SocketedGemIds.Count >= GemItem.Sockets;
                         <div @key="color" class="gem-row @(Editor.Gem(color) > 0 ? "taken" : "")">
-                            <span class="gem-name">
-                                @color
-                                <span class="gem-power">@Editor.Gem(color).ToString("N0", CultureInfo.CurrentCulture) power</span>
-                            </span>
+                            <span class="gem-name">@color</span>
                             <span class="gem-picks">
                                 @foreach (var g in GemItem.All.Where(g => g.Color == color))
                                 {
