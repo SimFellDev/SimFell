@@ -31,6 +31,10 @@ public class HammerStorm : TariqAbility
     public const string LightningName = "Thunder Call: Hammer Storm";
 
     private int _spins;
+    private int _channel;
+    private bool _stopped;
+    private SimTime _castTime;
+    private double _spinPeriod;
     private double _castMultiplier = 1.0;
     private double _castCritChance;
 
@@ -39,8 +43,8 @@ public class HammerStorm : TariqAbility
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
         SetChannel(ChannelSeconds, SpinPeriodSeconds);
-        // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, then every hasted
-        // half second, 3 spins in all.
+        // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, 3 spins in all (see
+        // OnChannelTick).
         ChannelTicksOnStart = true;
         AoeTargetThreshold = TargetThreshold;
     }
@@ -55,11 +59,38 @@ public class HammerStorm : TariqAbility
         _castMultiplier = FocusedWrath.Spend(Tariq, FuryCost, ctx) * CastDamageMultiplier;
         _castCritChance = CurrentCast?.CritChance ?? 0.0;
         _spins = 0;
+        _channel++;
+        _stopped = false;
+        _castTime = ctx.CurrentTime;
+        _spinPeriod = SpinPeriodSeconds / (1.0 + Owner.GetHaste(ctx.CurrentTime));
     }
 
+    /// <summary>
+    /// The channel's first tick is the first spin; the others come every hasted half second from the cast, not from that
+    /// tick (combat logs, fXyzwGcQkTrLD34R fight 4 @ 23.36: spins 0.033, 0.402 and 0.801s after the cast at 29% haste,
+    /// each on the server frame after the cast + 0.388s per spin).
+    /// </summary>
     public override void OnChannelTick(SimulationContext ctx, EnemyTarget target, double fraction)
     {
-        if (_spins >= MaxSpins) return;
+        if (_spins > 0) return;
+        Spin(ctx, target);
+        int channel = _channel;
+        for (int k = 1; k < MaxSpins; k++)
+        {
+            ctx.ScheduleAt(_castTime + SimTime.FromSeconds(k * _spinPeriod), c =>
+            {
+                if (channel == _channel && !_stopped) Spin(c, target);
+            }, Name);
+        }
+    }
+
+    public override void OnChannelEnd(SimulationContext ctx, EnemyTarget target, bool clipped)
+    {
+        if (clipped) _stopped = true;
+    }
+
+    private void Spin(SimulationContext ctx, EnemyTarget target)
+    {
         double ramp = Math.Pow(SpinRamp, _spins++);
         double multiplier = _castMultiplier * ramp;
         var area = WildSwing.AreaAround(ctx, target);

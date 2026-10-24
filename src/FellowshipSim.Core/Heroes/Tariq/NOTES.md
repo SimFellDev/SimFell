@@ -10,8 +10,9 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
   physical hits are. Heavy Strike is three effects: 1776 on the target, 2755 on the other enemies, 1779 for the
   lightning on all of them. Face Breaker's splash is 2241, Sledgehammer 2061, Chain Lightning 1774, Raging Currents
   1767, Raging Tempest's leap 1231 and Leap Smash 1225.
-- **Hammer Storm:** 3 spins, the first one server frame after the cast and then every hasted half second. Each spin
-  deals 1.35 times the one before. Every enemy's physical hit comes first, then every enemy's lightning.
+- **Hammer Storm:** 3 spins, the first one server frame after the cast, the others every hasted half second from the
+  cast itself (on the server frame after it), not from the first spin. Each spin deals 1.35 times the one before.
+  Every enemy's physical hit comes first, then every enemy's lightning.
 - **Face Breaker's splash:** exactly 50% of the hit dealt to the target, crit included. It never crits and loses damage
   as sqrt(12/N) beyond 12 enemies.
 - **Sledgehammer:** exactly 10% of the physical Skull Crusher hit dealt (the talent's text; ability 2061 says 30%). It
@@ -21,7 +22,8 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 - **Leap Smash:** +40% crit chance of its own (placeholder constant `Talent.IncreasedCriticalChance.AddedCrit`). It
   crits 72-86% of the time against 35-44% for Face Breaker.
 - **Them Bones:** grievous Skull Crusher crits come with the thunder bolt as well as the physical hit.
-- **Wild Swing:** never crits.
+- **Wild Swing:** never crits. Enemies dodge 27 of its 388 hits (3-10% a fight; log hit type 0, no damage), and no
+  other Tariq hit.
 
 ## Timing
 
@@ -43,20 +45,21 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 
 - **Fury** is logged as resource type 2, a share of a maximum that follows Strength. The replay reads it as a share of
   100. Tariq loses none of it between pulls.
-- **Bloodline** and **Ride the Lightning** generate Fury on hasted ticks.
+- **Bloodline** and **Ride the Lightning** generate Fury on hasted ticks. Ride the Lightning's Fury comes in Raging
+  Tempest too (fight 31 @ 199.7: about 2.2 Fury a second, with Thunder Call gone).
 - **Executioner's Grin** rolls on every cast, the weapon's too (fight 4 @ 66.7: Fated Strike).
 
 ## Replay matches
 
 | Fight | Hits matched | Damage of log |
 |---|---|---|
-| fXyzwGcQkTrLD34R fight 4 | 5464/5676 | 102.8% |
-| 1p7AXmHfwV9CYMxR fight 30 | 6164/6438 | 100.7% |
-| YC861NTRgLbmw4Qa fight 31 | 13507/13698 | 98.0% |
+| fXyzwGcQkTrLD34R fight 4 | 5473/5676 | 103.0% |
+| 1p7AXmHfwV9CYMxR fight 30 | 6186/6438 | 101.1% |
+| YC861NTRgLbmw4Qa fight 31 | 13529/13698 | 101.6% |
 
 Them Bones is proven by its grievous Skull Crusher hits (log hit type 22): 35, 65 and 96 procs against 33, 71 and 101
-expected. Tariq dies twice in fight 30 (@ 117.0 and 403.1) and the log removes his buffs; the replay
-keeps them, Schism stacks included.
+expected. Wild Swing's dodges are proven by its hits of type 0: 8, 7 and 3 against 9, 8 and 10 expected (hits of type
+7, no damage either, are not counted).
 
 ## Game data against the logs
 
@@ -68,7 +71,7 @@ keeps them, Schism stacks included.
   Them Bones proven, Skull Crusher matches the logs within 3% without it (0.98, 0.98 and 1.01), so the engine leaves it
   out.
 - **Hammer Storm's 35% per spin:** the spins deal 1.00, 1.37 and 1.88 times the first (fight 4 @ 23.36): each
-  multiplies the one before (1.35 and 1.82), where an added 35% would give 1.35 and 1.70.
+  multiplies the one before (1.35 and 1.82). An added 35% per spin would give 1.35 and 1.70.
 
 ## Not yet checked against a log
 

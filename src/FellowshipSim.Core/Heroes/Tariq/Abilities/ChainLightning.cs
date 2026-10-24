@@ -95,7 +95,7 @@ public class ChainLightning : TariqAbility
 
     /// <summary>
     /// The enemy the arc hits next: the target first, then one it has not hit yet, else any but the last (with one enemy
-    /// it comes back to it, by way of Tariq). A replay follows the log.
+    /// the arc hits it again, from Tariq). A replay follows the log.
     /// </summary>
     private EnemyTarget? NextTarget(SimulationContext ctx, EnemyTarget target, bool first, EnemyTarget? last, HashSet<EnemyTarget> hitSoFar)
     {
