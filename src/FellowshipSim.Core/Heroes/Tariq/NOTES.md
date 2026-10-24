@@ -74,6 +74,21 @@ expected.
 - **Hammer Storm's 35% per spin:** the spins deal 1.00, 1.37 and 1.88 times the first (fight 4 @ 23.36): each
   multiplies the one before (1.35 and 1.82). An added 35% per spin would give 1.35 and 1.70.
 
+## Known gaps
+
+- **Spirit Points from damage** (the shared formula: damage / max health x the creature's points) run high. Spirit
+  regeneration matches the log (+1 every 3.0s).
+  - Each Spirit gain in the log, set against the hit of the same moment, is 0.3-0.8 of the formula's, creature by
+    creature, in fights 4 and 30.
+  - Emissary of the Shadow Lord (game data: 400 points) gives 367 Spirit Points in fight 30 by the formula and about 6
+    in the log.
+  - Over a whole fight (the log's gains less regeneration and Spirit Refunds), damage gives 0.6 of the formula's in
+    fight 4 and 1.24 in fight 30 (Emissary left out). No one factor fits both.
+- **Fury** runs about 4 high in fights 4 and 31: it grows about 0.15 a second inside Thunder Call. Ride the Lightning
+  capped at 30 Fury a cast, or unhasted, runs 4-10 low instead.
+- **Hammer Storm** deals 1-4% more than the log beyond the other abilities' share in fights 4 and 31, at 9-12 enemies
+  in fight 4 above all, the same on every spin.
+
 ## Not yet checked against a log
 
 Left Hand Path, Blood & Thunder, The Motherload, Thunderstruck, Pneuma, Kill Em All, Ace of Spades, Killing in the Name
