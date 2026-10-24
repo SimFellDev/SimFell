@@ -405,8 +405,14 @@
 }
 
 /* A number typed in, without the browser's up and down arrows. */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .enchant input {
-  width: 80px;
+  width: 56px;
   padding: 6px 8px;
   background: var(--surface);
   text-align: right;
