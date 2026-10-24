@@ -1,0 +1,131 @@
+{
+  "Name": "ruru",
+  "Hero": "Elarion",
+  "PrimaryStat": 303,
+  "Stamina": 532,
+  "MaxHealth": 32231,
+  "Armor": 675,
+  "CritRating": 90,
+  "HasteRating": 165,
+  "ExpertiseRating": 139,
+  "SpiritRating": 246,
+  "SheetPercents": {
+    "crit": 0.1931,
+    "haste": 0.2527,
+    "expertise": 0.2161,
+    "spirit": 0.3581
+  },
+  "Talents": [
+    124,
+    203,
+    136,
+    164,
+    130,
+    201,
+    200,
+    128,
+    681
+  ],
+  "Augmentations": [
+    {
+      "Id": 31,
+      "Rank": 4,
+      "Name": "Amethyst Splinters"
+    },
+    {
+      "Id": 47,
+      "Rank": 3,
+      "Name": "Visions of Grandeur"
+    },
+    {
+      "Id": 69,
+      "Rank": 4,
+      "Name": "Ursa\u0027s Might / Wolf\u0027s Guille / Vampire\u0027s Cunning"
+    },
+    {
+      "Id": 34,
+      "Rank": 1,
+      "Name": "Emerald Judgement"
+    },
+    {
+      "Id": 70,
+      "Rank": 4,
+      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+    },
+    {
+      "Id": 42,
+      "Rank": 1,
+      "Name": "Hunter\u0027s Focus"
+    },
+    {
+      "Id": 68,
+      "Rank": 4,
+      "Name": "Gryphon\u0027s Might / Phoenix\u0027s Guille / Sphinx\u0027s Cunning"
+    },
+    {
+      "Id": 67,
+      "Rank": 4,
+      "Name": "Revenant\u0027s Might / Wraith\u0027s Guille / Banshee\u0027s Cunning"
+    },
+    {
+      "Id": 39,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 5,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 54,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 63,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 52,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Glyphs": [
+    {
+      "Id": 706,
+      "Rank": 3,
+      "Name": "The Mystic"
+    },
+    {
+      "Id": 709,
+      "Rank": 4,
+      "Name": "The Philosopher"
+    },
+    {
+      "Id": 705,
+      "Rank": 1,
+      "Name": "The Monarch"
+    },
+    {
+      "Id": 700,
+      "Rank": 2,
+      "Name": "The Trickster"
+    }
+  ],
+  "GemPower": {
+    "Sapphire": 1500,
+    "Emerald": 687,
+    "Ruby": 125,
+    "Diamond": 625,
+    "Topaz": 562
+  },
+  "Relic1ItemId": 5921,
+  "Relic2ItemId": 5926,
+  "LegendaryItemIds": [
+    5898
+  ],
+  "WeaponAbilityId": 1558
+}

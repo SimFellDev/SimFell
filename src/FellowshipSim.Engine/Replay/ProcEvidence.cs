@@ -4,6 +4,9 @@ using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Sigils;
 using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 using FellowshipSim.Core.Heroes.Ardeos.Talents;
+using FellowshipSim.Core.Heroes.Elarion;
+using FellowshipSim.Core.Heroes.Elarion.Abilities;
+using FellowshipSim.Core.Heroes.Elarion.Talents;
 using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
@@ -33,11 +36,18 @@ public static class ProcEvidence
     /// no proof of another. With <paramref name="Resource"/>, the proof is instead that resource jumping by
     /// <paramref name="ResourceGain"/> between two of the log's readings around the roll, beyond what
     /// <paramref name="ResourceRegenPerSecond"/> regenerates between them. With <paramref name="HitTypes"/>, only a hit of
-    /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%).
+    /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%). With
+    /// <paramref name="StackLossLogId"/>, a hit is proof only when that debuff on the hit's enemy loses a stack in the
+    /// same server frame (<paramref name="StackLoss"/> true) or does not (false). With <paramref name="ReservesHit"/>, the
+    /// proc deals that hit itself on its enemy alone: the engine's next hit with the ID on the enemy matches the proof, and
+    /// hits on other enemies in the same server frame are proof of other procs. With
+    /// <paramref name="NotCausedByAbilityId"/>, an aura gain the log names that ability as the cause of is no proof (it is
+    /// that ability's own grant).
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
-        double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null);
+        double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
+        bool ReservesHit = false, int NotCausedByAbilityId = 0);
 
     public static readonly Evidence[] All =
     [
@@ -115,6 +125,27 @@ public static class ProcEvidence
         new(CorrosiveSpill.ProcKey, LogIds.Effect(CorrosiveSpill.DamageEffectId), DelaySeconds: 1.6, MinDelaySeconds: 0.8),
         new(SeethingBurst.ProcKey, LogIds.Effect(SeethingBurst.DamageEffectId)),
         new(FromTheShadows.ProcKey, QueensFang.AbilityId, DelaySeconds: 0.5),
+
+        // Elarion
+        // The salvo is logged within 2ms of the hit that triggered it; the mark loses a stack with it, but for a salvo
+        // a Starfall Volley arrow triggered with Lunarlight Affinity.
+        new(LunarlightSalvo.ProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
+            ReservesHit: true),
+        new(LunarlightSalvo.KeptMarkProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
+            StackLoss: false, ReservesHit: true),
+        new(LunarlightSalvo.EruptProcKey, LogIds.Effect(LunarlightSalvo.EruptEffectId), DelaySeconds: 0.1, MinDelaySeconds: -0.01),
+        // An enemy Lunarlight Mark or a Spirit Refund chose gains stacks of Lunarlight Mark at once.
+        new(LunarlightMark.TargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
+        new(Elarion.RefundMarkTargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
+        new(CelestialShot.ImpetusProcKey, CelestialShot.Impetus.LogId),
+        new(FocusedExpanse.ProcKey, FocusedExpanse.Buff.LogId),
+        // Lunarlight Mark's own grant (the log names 1310 as its cause) is no proof of the 5% proc.
+        new(ResurgentWinds.ProcKey, ResurgentWinds.Buff.LogId, NotCausedByAbilityId: LunarlightMark.AbilityId),
+        new(StarstrikersAscent.ProcKey, ImpendingHeartseeker.Buff.LogId),
+        // A Starfall Volley arrow on the enemy: the first free one landing up to 1.5s after the release.
+        new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
+        // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
+        new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);

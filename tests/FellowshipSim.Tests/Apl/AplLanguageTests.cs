@@ -139,6 +139,7 @@ public class AplLanguageTests
     [InlineData("Ardeos")]
     [InlineData("Tariq")]
     [InlineData("Mara")]
+    [InlineData("Elarion")]
     public void Each_Heros_Default_List_Binds_And_Casts(string heroName)
     {
         Assert.Equal([DefaultActionLists.DefaultName], DefaultActionLists.Names(heroName));

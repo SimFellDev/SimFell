@@ -276,6 +276,7 @@ public static class ReplayScriptBuilder
                     ["t"] = Rel(Num(e["timestamp"])), ["type"] = type, ["ability_id"] = gid, ["ability_name"] = AbilityName(gid),
                     ["source"] = Unit(src, Instance(e, "source")), ["target"] = Unit(tgt, Instance(e, "target")),
                     ["stack"] = e["stack"]?.DeepClone(), ["duration_ms"] = e["duration"]?.DeepClone(),
+                    ["extra_ability_id"] = e["extraAbilityGameID"]?.DeepClone(),
                 };
                 if (tgt == playerId && src == playerId) obsAuras.Add(rec);
                 // Buffs from others on the player, and debuffs from others on enemies: engine inputs.
