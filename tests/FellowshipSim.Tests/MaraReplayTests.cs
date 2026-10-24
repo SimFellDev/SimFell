@@ -24,6 +24,10 @@ public class MaraReplayTests(ITestOutputHelper output)
                 if (Environment.GetEnvironmentVariable("MARA_CHARACTER_FOLDER") is { } characterFolder)
                 {
                     File.WriteAllText(Path.Combine(characterFolder, $"character_{reportCode}_{fightId}.json"), System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                    // A profile names traits the engine has: the others are left out.
+                    var build = System.Text.Json.JsonSerializer.Deserialize<FellowshipSim.Core.Import.CharacterBuild>(System.Text.Json.JsonSerializer.Serialize(script.Character))!;
+                    build.Traits = build.Traits.Where(t => FellowshipSim.Core.Catalog.CreateTrait(t.Id, t.Rank) != null).ToList();
+                    File.WriteAllText(Path.Combine(characterFolder, $"profile_{reportCode}_{fightId}.simc"), new FellowshipSim.Core.Import.SimcProfile(build, "").Format());
                 }
                 var hero = ReplayDriver.CreateHero(script);
                 var options = new ReplayOptions { StopOnFirstFailure = false };
@@ -73,6 +77,13 @@ public class MaraReplayTests(ITestOutputHelper output)
                                  string.Join(" ", step.Resources.Select(r => $"{r.Resource}={r.Engine:F1}/{r.Log:F1}")));
                 foreach (var issue in step.Issues) output.WriteLine($"    {issue.Message}");
             }
+        }
+        // How far the engine's resources are from the log's before the steps, below the maximum.
+        foreach (var g in result.Steps.SelectMany(s => s.Resources).Where(r => r.Resource != "Spirit" && r.Log < 195).GroupBy(r => r.Resource))
+        {
+            var diffs = g.Select(r => r.Engine - r.Log).OrderBy(d => d).ToList();
+            output.WriteLine($"{g.Key}: {diffs.Count} readings, engine - log median {diffs[diffs.Count / 2]:F2}, p10 {diffs[diffs.Count / 10]:F2}, " +
+                             $"p90 {diffs[diffs.Count * 9 / 10]:F2}, within tolerance {g.Count(r => r.Matches) * 100.0 / diffs.Count:F1}%");
         }
         if (Environment.GetEnvironmentVariable("MARA_BREAKDOWN") is { } ids)
         {
