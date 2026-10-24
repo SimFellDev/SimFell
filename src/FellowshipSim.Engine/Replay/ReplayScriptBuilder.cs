@@ -8,8 +8,8 @@ namespace FellowshipSim.Engine.Replay;
 /// hero-agnostic replay script for one player:
 /// <list type="bullet">
 /// <item><c>commands</c>: what the engine is told to do, in time order (begin_cast, complete_cast, cancel_cast, cast,
-/// stop_channel, enemy_arise, enemy_demise, enemy_health, and external_aura: buffs and debuffs other actors put on the
-/// player or on enemies, which the engine cannot produce itself).</item>
+/// stop_channel, enemy_arise, enemy_demise, enemy_health, player_death, player_revive, and external_aura: buffs and
+/// debuffs other actors put on the player or on enemies, which the engine cannot produce itself).</item>
 /// <item><c>observations</c>: what actually happened, used only to check the engine (the player's damage to enemies,
 /// the player's own auras, resource snapshots, channel markers).</item>
 /// </list>
@@ -42,7 +42,7 @@ public static class ReplayScriptBuilder
     private static readonly Dictionary<string, int> KindOrder = new()
     {
         ["enemy_arise"] = 0, ["enemy_health"] = 1, ["external_aura"] = 1, ["cancel_cast"] = 2, ["stop_channel"] = 3,
-        ["begin_cast"] = 4, ["complete_cast"] = 4, ["cast"] = 4, ["enemy_demise"] = 9,
+        ["begin_cast"] = 4, ["complete_cast"] = 4, ["cast"] = 4, ["player_revive"] = 1, ["player_death"] = 8, ["enemy_demise"] = 9,
     };
 
     /// <summary>The players of a raw fight (actor ID, name, hero).</summary>
@@ -153,6 +153,30 @@ public static class ReplayScriptBuilder
                 ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "enemy_health", ["enemy"] = Unit(key.Item1, key.Item2),
                 ["hp"] = hp, ["max_hp"] = maxNode.DeepClone(),
             });
+        }
+
+        // ---- Player deaths -------------------------------------------------------------------
+        // A dead player's events log their health below 0 as an unsigned 32-bit number (above their maximum). Many returns
+        // log no resurrect event (a release, or a wipe): the player is back at their first event with health in range.
+        bool Alive(JsonNode e, string prefix) => e[$"{prefix}Resources"] is { } r && r["hitPoints"] is { } hpNode
+            && r["maxHitPoints"] is { } maxNode && Num(hpNode) > 0 && Num(hpNode) <= Num(maxNode);
+        bool dead = false;
+        foreach (var e in events)
+        {
+            string type = Str(e["type"]);
+            bool onPlayer = Int(e["targetID"]) == playerId, byPlayer = Int(e["sourceID"]) == playerId;
+            if (!dead)
+            {
+                if (type != "death" || !onPlayer) continue;
+                dead = true;
+                commands.Add(new JsonObject { ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "player_death" });
+                continue;
+            }
+            if ((type == "resurrect" && onPlayer) || (byPlayer && Alive(e, "source")) || (onPlayer && Alive(e, "target")))
+            {
+                dead = false;
+                commands.Add(new JsonObject { ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "player_revive" });
+            }
         }
 
         // ---- Player actions ------------------------------------------------------------------

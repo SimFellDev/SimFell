@@ -196,6 +196,14 @@ public sealed class ReplayDriver
                 ApplyExternalAura(cmd, result);
                 break;
 
+            case CommandKind.PlayerDeath:
+                Die();
+                break;
+
+            case CommandKind.PlayerRevive:
+                Revive(cmd.Time);
+                break;
+
             case CommandKind.Cast:
             case CommandKind.BeginCast:
                 StartCast(cmd, step!, cancelFor, result);
@@ -399,18 +407,54 @@ public sealed class ReplayDriver
     {
         foreach (var logged in LogResources.All.Where(l => l.StartsFromLog && _hero.ResourceDefs.Contains(l.Resource)))
         {
-            var first = _script.Observations.Resources
-                .Where(r => r.Resources.ContainsKey(logged.LogResourceType.ToString()))
-                .OrderBy(r => r.Time).FirstOrDefault();
-            if (first == null) continue;
-            // Set at the moment of the reading, so what the engine gains before it (regeneration) does not count twice.
-            double value = logged.EngineAmount(first.Resources[logged.LogResourceType.ToString()]);
-            var resource = logged.Resource;
-            _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(0.0, first.Time - 0.001)), c =>
-            {
-                var state = _hero.Resources.Get(resource);
-                state.Current = Math.Min(state.Max, value);
-            }, $"{resource.Name} from the log");
+            SetFromFirstReading(logged, 0.0);
+        }
+    }
+
+    /// <summary>
+    /// Sets the resource to the log's first reading at or after <paramref name="from"/>, at the moment of the reading, so
+    /// what the engine gains before it (regeneration) does not count twice.
+    /// </summary>
+    private void SetFromFirstReading(LogResources.LogResource logged, double from)
+    {
+        var first = _script.Observations.Resources
+            .Where(r => r.Time >= from && r.Resources.ContainsKey(logged.LogResourceType.ToString()))
+            .OrderBy(r => r.Time).FirstOrDefault();
+        if (first == null) return;
+        double value = logged.EngineAmount(first.Resources[logged.LogResourceType.ToString()]);
+        var resource = logged.Resource;
+        _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(from, first.Time - 0.001)), c =>
+        {
+            var state = _hero.Resources.Get(resource);
+            state.Current = Math.Min(state.Max, value);
+        }, $"{resource.Name} from the log");
+    }
+
+    /// <summary>
+    /// The player dies: the cast or channel ends and the hero loses every aura but its passive and situational ones (the
+    /// log removes them all). Damage over time on enemies goes on.
+    /// </summary>
+    private void Die()
+    {
+        if (_hero.CurrentCast != null) _ctx.CancelCast(_hero);
+        if (_hero.CurrentChannel != null) _ctx.StopChannel(_hero);
+        var now = _ctx.CurrentTime;
+        foreach (var aura in _hero.Auras.Active(now).ToList())
+        {
+            if (aura.LogId <= 0 || _hero.PassiveAuras.Contains(aura.Def) || _hero.SituationalAuras.Contains(aura.Def)) continue;
+            _hero.Auras.Remove(aura.Def, now);
+        }
+    }
+
+    /// <summary>
+    /// The player is back: every resource the log reports takes the log's first reading after it (the log shows 75% of
+    /// the Spirit Points at death, and other resources refilled or emptied).
+    /// </summary>
+    private void Revive(double time)
+    {
+        foreach (var logged in LogResources.All.Where(l => _hero.ResourceDefs.Contains(l.Resource)))
+        {
+            SetFromFirstReading(logged, time);
         }
     }
 

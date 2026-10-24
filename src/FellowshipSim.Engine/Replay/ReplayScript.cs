@@ -73,6 +73,8 @@ public static class CommandKind
     public const string CompleteCast = "complete_cast";
     public const string CancelCast = "cancel_cast";
     public const string StopChannel = "stop_channel";
+    public const string PlayerDeath = "player_death";
+    public const string PlayerRevive = "player_revive";
 }
 
 public class ReplayCommand
