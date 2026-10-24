@@ -67,7 +67,8 @@ public sealed class BuildEditorTests : IDisposable
         editor.SetRating(RatedStat.Haste, 300);
         editor.Weapon = catalog.Weapons[0].Id;
         editor.Legendary = catalog.Legendaries.First(l => l.Modeled).Id;
-        editor.RelicPassive = catalog.RelicPassives[0].Id;
+        editor.ToggleRelicPassive(catalog.RelicPassives[0].Id);
+        editor.ToggleRelicPassive(catalog.RelicPassives[1].Id);
         editor.SetGem(GemColor.Sapphire, 1500);
         editor.SetAugmentationRank(catalog.Aspects[0], 9);
         editor.SetGlyphRank(catalog.Glyphs[0], 2);
@@ -78,11 +79,29 @@ public sealed class BuildEditorTests : IDisposable
         Assert.Equal(editor.Percent(RatedStat.Haste), back.Percent(RatedStat.Haste), 4);
         Assert.Equal(editor.Weapon, back.Weapon);
         Assert.Equal(editor.Legendary, back.Legendary);
-        Assert.Equal(editor.RelicPassive, back.RelicPassive);
+        Assert.Equal(editor.Build.RelicPassiveIds, back.Build.RelicPassiveIds);
         Assert.Equal(1500, back.Gem(GemColor.Sapphire));
         Assert.Equal(catalog.Aspects[0].MaxRank, back.AugmentationRank(catalog.Aspects[0].Id));
         Assert.Equal(2, back.GlyphRank(catalog.Glyphs[0].Id));
         Assert.Equal("actions=frost_bolt", read.ActionList.Trim());
+    }
+
+    [Fact]
+    public void A_Build_Equips_At_Most_Two_Relics_And_Keeps_Both_In_Its_Profile()
+    {
+        var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
+        var relics = editor.Catalog.RelicPassives;
+        Assert.True(editor.ToggleRelicPassive(relics[0].Id));
+        Assert.True(editor.ToggleRelicPassive(relics[1].Id));
+        Assert.False(editor.ToggleRelicPassive(relics[2].Id));
+        Assert.Equal([relics[0].Id, relics[1].Id], editor.Build.RelicPassiveIds);
+
+        var read = SimcProfile.Parse(new SimcProfile(editor.Build, "").Format()).Build;
+        Assert.Equal(editor.Build.RelicPassiveIds, read.RelicPassiveIds);
+        Assert.Equal(2, HeroImporter.Import(read).RelicPassives.Count);
+
+        Assert.True(editor.ToggleRelicPassive(relics[0].Id));
+        Assert.Equal([relics[1].Id], editor.Build.RelicPassiveIds);
     }
 
     [Fact]

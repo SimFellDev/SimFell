@@ -6,6 +6,9 @@ namespace FellowshipSim.Core.Customization.RelicPassives;
 /// </summary>
 public abstract class RelicPassive
 {
+    /// <summary>Relics a hero can equip at once (per the user: "Heroes can actually equip two relics").</summary>
+    public const int MaxPerBuild = 2;
+
     /// <summary>The relic passive's game ID.</summary>
     public abstract int Id { get; }
     public abstract string Name { get; }

@@ -2,6 +2,7 @@
 @using FellowshipSim.Core.Customization.Gems
 @using FellowshipSim.Core.Import
 @using FellowshipSim.Core.Customization.ProtectiveEnchants
+@using FellowshipSim.Core.Customization.RelicPassives
 @inject ISimEngine Engine
 @inject ProfileStore Profiles
 @inject Visitor Visitor
@@ -149,16 +150,18 @@
                 }
             </select>
         </label>
-        <label>
-            Relic passive
-            <select @bind:get="Editor.RelicPassive?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.RelicPassive = Id(v))">
-                <option value="">None</option>
-                @foreach (var r in Catalog.RelicPassives)
-                {
-                    <option @key="r.Id" value="@r.Id">@r.Name</option>
-                }
-            </select>
-        </label>
+    </div>
+    <h3 class="section">Relic passives <span class="meta">· @Build.RelicPassiveIds.Count of @RelicPassive.MaxPerBuild equipped</span></h3>
+    <div class="chips">
+        @foreach (var r in Catalog.RelicPassives)
+        {
+            bool on = Editor.HasRelicPassive(r.Id);
+            bool full = !on && Build.RelicPassiveIds.Count >= RelicPassive.MaxPerBuild;
+            <button @key="r.Id" type="button" class="chip @(on ? "picked" : "")" aria-pressed="@on" disabled="@full"
+                    title="@(full ? $"Take off one of the {RelicPassive.MaxPerBuild} first" : null)" @onclick="() => Set(() => Editor.ToggleRelicPassive(r.Id))">
+                @r.Name
+            </button>
+        }
     </div>
     <h3 class="section">Gem powers</h3>
     <div class="gems">

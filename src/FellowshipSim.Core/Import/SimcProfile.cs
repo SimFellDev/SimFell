@@ -26,6 +26,7 @@ namespace FellowshipSim.Core.Import;
 /// glyphs=the_monarch:1/...
 /// gems=sapphire:1500/...
 /// relic=accursed_trophy
+/// relic=covetous_greed
 /// legendary=frostwyrms_spite,id=5899
 /// weapon=ashas_chronoshift_spire
 /// actions+=/frost_bolt
@@ -136,7 +137,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                 }
                 break;
             case "relic":
-                build.RelicPassiveId = IdOf(value, Catalog.AllRelicPassives.Select(r => (r.Name, r.Id)), "relic passive");
+                build.RelicPassiveIds.Add(IdOf(value, Catalog.AllRelicPassives.Select(r => (r.Name, r.Id)), "relic passive"));
                 break;
             case "legendary":
             {
@@ -200,9 +201,9 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         {
             s.AppendLine($"stat_enchants={string.Join('/', build.StatEnchants.Select(e => $"{(StatEnchant.Find(e.Id) ?? throw new InvalidOperationException($"Stat enchant {e.Id} is not known")).Key}:{Text(e.Rank)}"))}");
         }
-        if (build.RelicPassiveId != 0)
+        foreach (int relicPassiveId in build.RelicPassiveIds)
         {
-            var relicPassive = Catalog.CreateRelicPassive(build.RelicPassiveId) ?? throw new InvalidOperationException($"Relic passive {build.RelicPassiveId} is not in the catalog");
+            var relicPassive = Catalog.CreateRelicPassive(relicPassiveId) ?? throw new InvalidOperationException($"Relic passive {relicPassiveId} is not in the catalog");
             s.AppendLine($"relic={AplNames.Slug(relicPassive.Name)}");
         }
         foreach (int itemId in build.LegendaryItemIds)

@@ -56,17 +56,19 @@ public static class HeroImporter
             hero.UnmodeledFeatures.Add($"Stat enchant {entry.Name ?? entry.Id.ToString()}");
         }
 
-        // The relic passive before gems: Covetous Greed raises every gem colour's power (already in a sheet's gem power).
-        if (build.RelicPassiveId != 0)
+        // Relic passives before gems: Covetous Greed raises every gem colour's power (already in a sheet's gem power).
+        foreach (int relicPassiveId in build.RelicPassiveIds)
         {
-            var relicPassive = Catalog.CreateRelicPassive(build.RelicPassiveId);
-            if (relicPassive == null) hero.UnmodeledFeatures.Add($"Relic passive {build.RelicPassiveId}");
-            else
+            var relicPassive = Catalog.CreateRelicPassive(relicPassiveId);
+            if (relicPassive == null)
             {
-                hero.RelicPassive = relicPassive;
-                relicPassive.Bind(hero);
+                hero.UnmodeledFeatures.Add($"Relic passive {relicPassiveId}");
+                continue;
             }
+            hero.RelicPassives.Add(relicPassive);
+            relicPassive.Bind(hero);
         }
+        double gemPowerMultiplier = hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
 
         foreach (var (color, power) in build.GemPower)
         {
@@ -79,7 +81,7 @@ public static class HeroImporter
                 GemColor.Sapphire => new Sapphire(),
                 _ => new Diamond(),
             };
-            gem.Power = hero.Stats.UsesSheetValues ? power : power * (hero.RelicPassive?.GemPowerMultiplier ?? 1.0);
+            gem.Power = hero.Stats.UsesSheetValues ? power : power * gemPowerMultiplier;
             hero.Gems.Add(gem);
             gem.Bind(hero);
             hero.UnmodeledFeatures.AddRange(gem.UnmodeledNodes.Select(n => $"Gem node: {n}"));

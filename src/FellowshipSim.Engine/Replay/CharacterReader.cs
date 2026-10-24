@@ -79,7 +79,7 @@ public static class CharacterReader
         {
             if (item == null) continue;
             int itemId = (int)Num(item["id"]);
-            if (relicPassives.FirstOrDefault(r => r.ItemIds.Contains(itemId)) is { } relicPassive) build.RelicPassiveId = relicPassive.Id;
+            if (relicPassives.FirstOrDefault(r => r.ItemIds.Contains(itemId)) is { } relicPassive) build.RelicPassiveIds.Add(relicPassive.Id);
             foreach (var t in item["traits"]?.AsArray() ?? [])
             {
                 int id = (int)Num(t?["id"]) - LogIds.AugmentationOffset;

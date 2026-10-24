@@ -17,7 +17,7 @@ public static class ModeledAuras
         if (hero.EquippedWeapon != null) owners.Add(hero.EquippedWeapon);
         owners.AddRange(hero.Augmentations);
         owners.AddRange(hero.Legendaries);
-        if (hero.RelicPassive != null) owners.Add(hero.RelicPassive);
+        owners.AddRange(hero.RelicPassives);
         var declared = AuraDef.DeclaredOn(owners.Select(o => o.GetType()));
         // Passive auras are left out: they are on all fight in the engine and logs do not report them as buffs.
         return declared.Concat(hero.RuntimeAuras)

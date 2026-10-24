@@ -95,7 +95,7 @@
     "Amethyst": 625,
     "Emerald": 625
   },
-  "RelicPassiveId": 777,
+  "RelicPassiveIds": [ 777 ],
   "LegendaryItemIds": [
     5898
   ],

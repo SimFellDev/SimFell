@@ -1,5 +1,6 @@
 using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Customization.ProtectiveEnchants;
+using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
@@ -132,11 +133,18 @@ public sealed class BuildEditor(CharacterBuild build)
         }
     }
 
-    /// <summary>The relic's passive ID, or null for no relic passive.</summary>
-    public int? RelicPassive
+    public bool HasRelicPassive(int id) => Build.RelicPassiveIds.Contains(id);
+
+    /// <summary>
+    /// Equips the relic passive, or takes it off when equipped. Equipping one more than
+    /// <see cref="RelicPassive.MaxPerBuild"/> is refused: false.
+    /// </summary>
+    public bool ToggleRelicPassive(int id)
     {
-        get => Build.RelicPassiveId == 0 ? null : Build.RelicPassiveId;
-        set => Build.RelicPassiveId = value ?? 0;
+        if (Build.RelicPassiveIds.Remove(id)) return true;
+        if (Build.RelicPassiveIds.Count >= RelicPassive.MaxPerBuild) return false;
+        Build.RelicPassiveIds.Add(id);
+        return true;
     }
 
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
@@ -209,10 +217,10 @@ public sealed class BuildEditor(CharacterBuild build)
             build.Glyphs.Remove(g);
             removed.Add($"glyph {g.Name ?? g.Id.ToString()}");
         }
-        if (build.RelicPassiveId != 0 && CoreCatalog.CreateRelicPassive(build.RelicPassiveId) == null)
+        foreach (int id in build.RelicPassiveIds.Where(id => CoreCatalog.CreateRelicPassive(id) == null).ToList())
         {
-            removed.Add($"relic passive {build.RelicPassiveId}");
-            build.RelicPassiveId = 0;
+            build.RelicPassiveIds.Remove(id);
+            removed.Add($"relic passive {id}");
         }
         foreach (int id in build.LegendaryItemIds.Where(id => CoreCatalog.CreateLegendary(build.Hero, id) == null).ToList())
         {
