@@ -1,21 +1,51 @@
 @page "/replay"
 @inject LogReplayState State
-@* Log Replay: import a logged fight and replay it, or read the reviews of the fights replayed so far. *@
+@inject NavigationManager Navigation
+@* Log Replay: import a logged fight and replay it, or read the reviews of the fights replayed so far, each in this tab. *@
 
 <PageTitle>Log Replay - FellowshipSim</PageTitle>
 
 <nav class="subtabs" aria-label="Log Replay">
-    <button type="button" class="subtab @(State.Tab == LogReplayTab.Import ? "selected" : "")" aria-current="@(State.Tab == LogReplayTab.Import ? "page" : null)"
-            @onclick="() => State.Tab = LogReplayTab.Import">Import a fight</button>
-    <button type="button" class="subtab @(State.Tab == LogReplayTab.Reviews ? "selected" : "")" aria-current="@(State.Tab == LogReplayTab.Reviews ? "page" : null)"
-            @onclick="() => State.Tab = LogReplayTab.Reviews">Reviews</button>
+    <button type="button" class="subtab @(Shown == LogReplayTab.Import ? "selected" : "")" aria-current="@(Shown == LogReplayTab.Import ? "page" : null)"
+            @onclick="() => ShowTab(LogReplayTab.Import)">Import a fight</button>
+    <button type="button" class="subtab @(Shown == LogReplayTab.Reviews ? "selected" : "")" aria-current="@(Shown == LogReplayTab.Reviews ? "page" : null)"
+            @onclick="() => ShowTab(LogReplayTab.Reviews)">Reviews</button>
 </nav>
 
-@if (State.Tab == LogReplayTab.Import)
+@if (!string.IsNullOrEmpty(Review))
+{
+    <div class="review-bar">
+        <button type="button" class="secondary-button" @onclick="() => ShowTab(LogReplayTab.Reviews)">‹ Back to reviews</button>
+    </div>
+    <ReviewFrame @key="Review" HtmlFile="@Review" />
+}
+else if (State.Tab == LogReplayTab.Import)
 {
     <Import />
 }
 else
 {
     <Reviews />
+}
+
+@code {
+    /// <summary>File name of the review page shown in the Reviews tab, or null for the tab's list.</summary>
+    [SupplyParameterFromQuery(Name = "review")] public string? Review { get; set; }
+
+    /// <summary>Address of this page showing the review page <paramref name="htmlFile"/>.</summary>
+    public static string Href(string htmlFile) => $"replay?review={Uri.EscapeDataString(htmlFile)}";
+
+    private LogReplayTab Shown => string.IsNullOrEmpty(Review) ? State.Tab : LogReplayTab.Reviews;
+
+    // A review shows in the Reviews tab, so the list is there after it.
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Review)) State.Tab = LogReplayTab.Reviews;
+    }
+
+    private void ShowTab(LogReplayTab tab)
+    {
+        State.Tab = tab;
+        if (!string.IsNullOrEmpty(Review)) Navigation.NavigateTo("replay");
+    }
 }

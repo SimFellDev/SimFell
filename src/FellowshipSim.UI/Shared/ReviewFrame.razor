@@ -1,10 +1,48 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 @inject IReviewPages ReviewPages
+@inject IJSRuntime JS
 @*
     A review page from the reviews folder, in an iframe: the desktop app's review address is unreachable from the system
-    browser, and a top-level link would replace the app page.
+    browser, and a top-level link would replace the app page. A page from the app's own origin grows the frame to its
+    full height, so the app page's scroll bar scrolls it.
 *@
-<iframe class="page" src="@ReviewPages.Url(HtmlFile)" title="Replay review"></iframe>
+<iframe @ref="_frame" class="page" src="@ReviewPages.Url(HtmlFile)" title="Replay review"></iframe>
 
 @code {
+    private ElementReference _frame;
+    private IJSObjectReference? _module, _fit;
+
     [Parameter, EditorRequired] public string HtmlFile { get; set; } = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/review/reviewFrame.js");
+            _fit = await _module.InvokeAsync<IJSObjectReference>("fit", _frame);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page closed before the module loaded.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_fit != null)
+            {
+                await _fit.InvokeVoidAsync("dispose");
+                await _fit.DisposeAsync();
+            }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, and the frame with it.
+        }
+    }
 }

@@ -7,3 +7,11 @@
   border-radius: 10px;
   background: var(--surface);
 }
+
+/* Grown to its page's height (by reviewFrame.js): the page reads as part of the app page. */
+.page.fitted {
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
