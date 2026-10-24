@@ -42,6 +42,8 @@ public sealed class ReplayDriver
         if (!FreeDice) _logAuras = new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
         hero.Auras.OnRemoved += (aura, at) => { if (aura.LogId > 0) _engineRemoved[aura.LogId] = (at, aura.Stacks); };
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability.Id, now.TotalSeconds);
+        // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
+        _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
     }
 
     public SimulationContext Context => _ctx;

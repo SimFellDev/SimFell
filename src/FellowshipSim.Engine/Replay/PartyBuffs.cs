@@ -3,9 +3,10 @@ using FellowshipSim.Core.Customization.Sigils;
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// Buffs other players put on the replayed player that change the player's damage. In a replay, a logged buff from
-/// another player is applied with the effect listed here (one instance per giver; the log decides when it ends). Logged
-/// buffs not listed here are reported as unmodeled in the review: add them here when they matter.
+/// Buffs other players put on the replayed player that change the player's damage, and auras on enemies that change the
+/// damage the enemy takes. In a replay, a logged aura from another actor is applied with the effect listed here (one
+/// instance per giver; the log decides when it ends). Logged buffs on the player not listed here are reported as
+/// unmodeled in the review: add them here when they matter.
 /// </summary>
 public static class PartyBuffs
 {
@@ -17,6 +18,10 @@ public static class PartyBuffs
 
     public const int ImbuedBloodEffectId = 55;
     public const int ShadowsDefeatEffectId = 2221;
+    public const int AnomalousInstabilityEffectId = 2711;
+    public const int GreedsEmbraceEffectId = 649;
+    public const int BloodFrenzyEffectId = 192;
+    public const int BloodScentEffectId = 3045;
 
     public static readonly PartyBuff[] All =
     [
@@ -31,6 +36,26 @@ public static class PartyBuffs
         // Shadow's Defeat: 20% more damage and 20% increased Haste for 60 seconds.
         new(AuraDef.Effect("Shadow's Defeat", ShadowsDefeatEffectId, 60,
             modifiers: [StatModifier.More(StatType.DamageScale, 1.2), StatModifier.Increased(StatType.Haste, 1.2)])),
+
+        // Enemy auras: only their damage taken is listed.
+        // Anomalous Instability (Anomalous Orb affix): "Taking 400% damage." Logs: hits on targets with it are 3.8 to 3.9
+        // times the engine's (Fc8v6yWxD14GQMnV fight 19, pWmcV42K39GHTLQX fight 23).
+        new(AuraDef.Effect("Anomalous Instability", AnomalousInstabilityEffectId,
+            modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 4.0))),
+
+        // Greed's Embrace (Greedspawned Demon): "Damage taken reduced by 80%." Logs: 0.2 to 0.25 of the engine's hits
+        // (pWmcV42K39GHTLQX fight 23).
+        new(AuraDef.Effect("Greed's Embrace", GreedsEmbraceEffectId,
+            modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 0.2))),
+
+        // Blood Frenzy (Raging Pillager): effect modifier IncomingDamageMultiplier 1.03 increased per stack. UNVERIFIED.
+        new(AuraDef.Effect("Blood Frenzy", BloodFrenzyEffectId, maxStacks: 100,
+            modifiers: StatModifier.Increased(StatType.IncomingDamageMultiplier, 1.03))),
+
+        // Blood Scent (Stalking Grim): effect modifier IncomingDamageMultiplier 1.1 increased per stack. Logs: 1.5 at 5
+        // stacks and 1.7 at 7 (dBgbn8wD1RxL7Kma fight 9).
+        new(AuraDef.Effect("Blood Scent", BloodScentEffectId, maxStacks: 100,
+            modifiers: StatModifier.Increased(StatType.IncomingDamageMultiplier, 1.1))),
     ];
 
     public static PartyBuff? Find(int logId) => All.FirstOrDefault(b => b.Aura.LogId == logId);
