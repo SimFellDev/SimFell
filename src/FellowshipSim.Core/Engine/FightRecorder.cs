@@ -70,6 +70,7 @@ internal sealed class FightRecorder
             _lastSource = _tally.Source(hit.AbilityName);
         }
         var source = _lastSource!;
+        if (source.Id == 0) source.Id = hit.AbilityId;
         source.Damage += hit.Amount;
         source.Hits++;
         source.Crits += hit.CritChance >= 0 ? hit.CritChance : hit.IsCrit ? 1.0 : 0.0;
@@ -122,6 +123,7 @@ internal sealed class FightRecorder
         }
         var key = (owner, aura.Key);
         var tally = _tally.Aura(aura.Name, onTarget);
+        if (tally.LogId == 0) tally.LogId = aura.LogId;
         tally.MaxStacks = Math.Max(tally.MaxStacks, aura.Stacks);
         tally.StackCap = Math.Max(tally.StackCap, aura.MaxStacks);
         tally.Applications++;
@@ -172,9 +174,12 @@ internal sealed class FightRecorder
         /// <summary>Crits counted by each hit's chance to crit.</summary>
         public double Damage, Crits;
         public long Casts, Hits;
+        /// <summary>The damage log ID of the first hit.</summary>
+        public int Id;
 
         public void Add(SourceTally other)
         {
+            if (Id == 0) Id = other.Id;
             Damage += other.Damage;
             Casts += other.Casts;
             Hits += other.Hits;
@@ -187,10 +192,11 @@ internal sealed class FightRecorder
     {
         public double UpSeconds, StackSeconds, AtMaxSeconds, GapSeconds;
         public long Applications, Refreshes, Gaps;
-        public int MaxStacks, StackCap;
+        public int MaxStacks, StackCap, LogId;
 
         public void Add(AuraTally other)
         {
+            if (LogId == 0) LogId = other.LogId;
             UpSeconds += other.UpSeconds;
             StackSeconds += other.StackSeconds;
             AtMaxSeconds += other.AtMaxSeconds;
@@ -265,15 +271,16 @@ internal sealed class FightRecorder
                 var t = s.Value;
                 double fights = Math.Max(1, Fights);
                 return new AbilityReport(s.Key, t.Damage / fights, t.Damage / fights / seconds, t.Casts / fights, t.Hits / fights,
-                    t.Hits > 0 ? t.Crits / t.Hits : 0, t.Hits > 0 ? t.Damage / t.Hits : 0);
+                    t.Hits > 0 ? t.Crits / t.Hits : 0, t.Hits > 0 ? t.Damage / t.Hits : 0, t.Id);
             })
             .ToList();
 
         /// <summary>
         /// Each buff and debuff, buffs first, longest up first. An aura up the whole of every fight from its single
-        /// application (a passive) is left out.
+        /// application (a passive) is left out, and so is an engine-internal one (no log ID, such as a marker on a target).
         /// </summary>
         public List<BuffReport> Buffs(double seconds, int targets) => Auras
+            .Where(a => a.Value.LogId != 0)
             .Select(a =>
             {
                 var (name, onTarget) = a.Key;
@@ -282,7 +289,7 @@ internal sealed class FightRecorder
                 double span = fights * seconds * (onTarget ? Math.Max(1, targets) : 1);
                 return new BuffReport(name, onTarget, t.UpSeconds / span, t.Applications / fights, t.Refreshes / fights,
                     t.Applications > 0 ? t.UpSeconds / t.Applications : 0, t.UpSeconds > 0 ? t.StackSeconds / t.UpSeconds : 0,
-                    t.MaxStacks, t.StackCap > 1 ? t.AtMaxSeconds / span : 0, t.Gaps > 0 ? t.GapSeconds / t.Gaps : 0);
+                    t.MaxStacks, t.StackCap > 1 ? t.AtMaxSeconds / span : 0, t.Gaps > 0 ? t.GapSeconds / t.Gaps : 0, t.LogId);
             })
             .Where(b => !(b.Uptime >= 0.999 && b.Applications <= 1.0 && b.Refreshes == 0))
             .OrderBy(b => b.OnTarget)

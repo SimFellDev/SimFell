@@ -4,7 +4,8 @@ namespace FellowshipSim.Core.Engine;
 /// One source of damage over a sim's fights: <see cref="Damage"/>, <see cref="Casts"/> and <see cref="Hits"/> are means
 /// per fight. <see cref="Casts"/> counts the casts of an ability of that name (0 for procs and other hits no cast of their
 /// own starts). A sim deals each hit's expected damage and rolls no crit, so <see cref="CritChance"/> is its hits' mean
-/// chance to crit and <see cref="AverageHit"/> its damage per hit, crits included.
+/// chance to crit and <see cref="AverageHit"/> its damage per hit, crits included. <see cref="Id"/> is the damage log ID of
+/// its first hit (an ability's ID, or an effect's + 1,000,000).
 /// </summary>
 public sealed record AbilityReport(
     string Name,
@@ -13,4 +14,5 @@ public sealed record AbilityReport(
     double Casts,
     double Hits,
     double CritChance,
-    double AverageHit);
+    double AverageHit,
+    int Id = 0);

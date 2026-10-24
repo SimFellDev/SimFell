@@ -49,6 +49,22 @@ lines.AddRange(OfKinds(["ability"]).Where(r => Text(r, "category") == "Weapon").
 lines.Add("    };");
 lines.Add("");
 lines.AddRange(ById("StatEnchants", ["enchant"]));
+// Every ability and effect, for a sim report's damage sources and auras (found by the ID a hit or aura carries).
+lines.AddRange(ById("Abilities", ["ability"]));
+lines.AddRange(ById("Effects", ["effect"]));
+// By name, for a damage source or aura whose own record has no icon: the first record of that name with one, abilities
+// first, then effects, talents and gear.
+string[] byNameKinds = ["ability", "effect", "talent", "aspect", "sigil", "protective-enchant", "glyph", "weapon-power", "legendary-power"];
+lines.Add("    /// <summary>Icons by name, from the first ability, effect, talent or gear record of that name with one.</summary>");
+lines.Add("    public static IReadOnlyDictionary<string, string> Names { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)");
+lines.Add("    {");
+lines.AddRange(byNameKinds.SelectMany(kind => Of([kind]))
+    .Where(r => !string.IsNullOrWhiteSpace(Text(r, "name")))
+    .DistinctBy(r => Text(r, "name")!.ToLowerInvariant())
+    .OrderBy(r => Text(r, "name"), StringComparer.Ordinal)
+    .Select(r => $"        [{Cs(Text(r, "name")!)}] = {Cs(Text(r, "icon")!)},"));
+lines.Add("    };");
+lines.Add("");
 // Each gem of each size ("Splendid Amethyst"), and the relic items (an item record per hero, one icon per item).
 lines.AddRange(ById("GemItems", ["gem"]));
 lines.AddRange(ById("RelicItems", ["item"], r => Text(r, "slot") == "Relic"));

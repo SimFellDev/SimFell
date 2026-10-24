@@ -5,7 +5,8 @@ namespace FellowshipSim.Core.Engine;
 /// <see cref="AtMaxStacks"/> are shares of the fight (a debuff's, per target); <see cref="Applications"/> (each time it
 /// starts) and <see cref="Refreshes"/> (each time it is applied again while up) are means per fight;
 /// <see cref="AverageDuration"/> is how long each lasts, <see cref="AverageStacks"/> its stacks while up, and
-/// <see cref="AverageGap"/> the time from one ending to the next starting, all in seconds.
+/// <see cref="AverageGap"/> the time from one ending to the next starting, all in seconds. <see cref="LogId"/> is the
+/// aura's log ID (an effect's + 1,000,000; 0 for an engine-internal aura).
 /// </summary>
 public sealed record BuffReport(
     string Name,
@@ -17,4 +18,5 @@ public sealed record BuffReport(
     double AverageStacks,
     int MaxStacks,
     double AtMaxStacks,
-    double AverageGap);
+    double AverageGap,
+    int LogId = 0);

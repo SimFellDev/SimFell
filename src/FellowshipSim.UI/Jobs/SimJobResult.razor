@@ -1,5 +1,6 @@
 @using System.Globalization
 @using FellowshipSim.Core.Engine
+@using FellowshipSim.UI.Build
 @* A done sim's report: its DPS, damage over time, each damage source, and each buff and debuff. *@
 <div class="report">
     <div class="tiles">
@@ -91,17 +92,17 @@
             @if (Result.Abilities is { Count: > 0 } abilities)
             {
                 double total = abilities.Sum(a => a.Damage);
-                <table class="table">
+                <table class="report-table">
                     <thead>
                         <tr>
                             <th>Ability</th>
-                            <th class="num">Damage</th>
-                            <th class="num">Share</th>
-                            <th class="num">DPS</th>
-                            <th class="num">Casts</th>
-                            <th class="num">Hits</th>
-                            <th class="num" title="The hits' mean chance to crit (a sim deals each hit's expected damage)">Crit</th>
-                            <th class="num" title="Damage per hit, crits included">Avg hit</th>
+                            <th>Amount</th>
+                            <th>Casts</th>
+                            <th title="Damage per cast">Avg cast</th>
+                            <th>Hits</th>
+                            <th title="Damage per hit, crits included">Avg hit</th>
+                            <th title="The hits' mean chance to crit (a sim deals each hit's expected damage)">Crit %</th>
+                            <th>DPS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,25 +110,28 @@
                         {
                             double share = total > 0 ? a.Damage / total : 0;
                             <tr @key="a.Name">
-                                <td>@a.Name</td>
-                                <td class="num">@N(a.Damage)</td>
-                                <td class="num"><span class="share">@Percent(share)<span class="bar"><b style="width: @Width(share / abilities.Max(x => x.Damage / total))"></b></span></span></td>
-                                <td class="num">@N(a.Dps)</td>
-                                <td class="num">@(a.Casts > 0 ? a.Casts.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
-                                <td class="num">@a.Hits.ToString("N1", CultureInfo.CurrentCulture)</td>
-                                <td class="num">@Percent(a.CritChance)</td>
-                                <td class="num">@N(a.AverageHit)</td>
+                                <td class="name"><GameIcon Url="@BuildCatalog.IconUrl(a.Id, a.Name)" Size="22" /><span>@a.Name</span></td>
+                                <td>
+                                    <span class="amount">@N(a.Damage)</span>
+                                    <span class="share"><span class="bar"><b style="width: @Width(share / abilities.Max(x => x.Damage / total))"></b></span>@Percent(share)</span>
+                                </td>
+                                <td>@(a.Casts > 0 ? a.Casts.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
+                                <td>@(a.Casts > 0 ? N(a.Damage / a.Casts) : "–")</td>
+                                <td>@a.Hits.ToString("N1", CultureInfo.CurrentCulture)</td>
+                                <td>@N(a.AverageHit)</td>
+                                <td>@Percent(a.CritChance)</td>
+                                <td>@N(a.Dps)</td>
                             </tr>
                         }
                         <tr class="total">
-                            <td>Total</td>
-                            <td class="num">@N(total)</td>
-                            <td class="num">100%</td>
-                            <td class="num">@N(Result.MeanDps)</td>
+                            <td class="name">Total</td>
+                            <td><span class="amount">@N(total)</span></td>
                             <td></td>
                             <td></td>
                             <td></td>
                             <td></td>
+                            <td></td>
+                            <td>@N(Result.MeanDps)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -136,14 +140,14 @@
             else
             {
                 @* A sim saved before the report: its DPS per ability alone. *@
-                <table class="table">
+                <table class="report-table">
                     <thead>
-                        <tr><th>Ability</th><th class="num">DPS</th></tr>
+                        <tr><th>Ability</th><th>DPS</th></tr>
                     </thead>
                     <tbody>
                         @foreach (var (ability, dps) in Result.AbilityDps.OrderByDescending(a => a.Value))
                         {
-                            <tr @key="ability"><td>@ability</td><td class="num">@N(dps)</td></tr>
+                            <tr @key="ability"><td class="name"><GameIcon Url="@BuildCatalog.IconUrl(0, ability)" Size="22" /><span>@ability</span></td><td>@N(dps)</td></tr>
                         }
                     </tbody>
                 </table>
@@ -156,18 +160,18 @@
         <section class="card">
             <h3>Buffs and debuffs</h3>
             <div class="table-wrap">
-                <table class="table">
+                <table class="report-table">
                     <thead>
                         <tr>
                             <th>Buff</th>
-                            <th class="num">Uptime</th>
-                            <th class="num" title="Times it starts, per fight">Applications</th>
-                            <th class="num" title="Times it is applied again while up, per fight">Refreshes</th>
-                            <th class="num">Avg duration</th>
-                            <th class="num">Avg stacks</th>
-                            <th class="num">Max stacks</th>
-                            <th class="num">At max stacks</th>
-                            <th class="num" title="Time from one ending to the next starting">Avg gap</th>
+                            <th>Uptime</th>
+                            <th title="Times it starts, per fight">Applications</th>
+                            <th title="Times it is applied again while up, per fight">Refreshes</th>
+                            <th>Avg duration</th>
+                            <th>Avg stacks</th>
+                            <th>Max stacks</th>
+                            <th>At max stacks</th>
+                            <th title="Time from one ending to the next starting">Avg gap</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -175,24 +179,28 @@
                         {
                             bool stacks = b.MaxStacks > 1;
                             <tr @key="(b.Name, b.OnTarget)">
-                                <td>@b.Name @if (b.OnTarget)
-                                {
-                                    <span class="meta">debuff</span>
-                                }</td>
-                                <td class="num"><span class="share">@Percent(b.Uptime)<span class="bar"><b style="width: @Width(b.Uptime)"></b></span></span></td>
-                                <td class="num">@b.Applications.ToString("N1", CultureInfo.CurrentCulture)</td>
-                                <td class="num">@b.Refreshes.ToString("N1", CultureInfo.CurrentCulture)</td>
-                                <td class="num">@Seconds(b.AverageDuration)</td>
-                                <td class="num">@(stacks ? b.AverageStacks.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
-                                <td class="num">@(stacks ? b.MaxStacks.ToString(CultureInfo.CurrentCulture) : "–")</td>
-                                <td class="num">@(stacks && b.AtMaxStacks > 0 ? Percent(b.AtMaxStacks) : "–")</td>
-                                <td class="num">@(b.AverageGap > 0 ? Seconds(b.AverageGap) : "–")</td>
+                                <td class="name">
+                                    <GameIcon Url="@BuildCatalog.IconUrl(b.LogId, b.Name)" Size="22" />
+                                    <span>@b.Name</span>
+                                    @if (b.OnTarget)
+                                    {
+                                        <span class="meta">debuff</span>
+                                    }
+                                </td>
+                                <td><span class="share">@Percent(b.Uptime)<span class="bar"><b style="width: @Width(b.Uptime)"></b></span></span></td>
+                                <td>@b.Applications.ToString("N1", CultureInfo.CurrentCulture)</td>
+                                <td>@b.Refreshes.ToString("N1", CultureInfo.CurrentCulture)</td>
+                                <td>@Seconds(b.AverageDuration)</td>
+                                <td>@(stacks ? b.AverageStacks.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
+                                <td>@(stacks ? b.MaxStacks.ToString(CultureInfo.CurrentCulture) : "–")</td>
+                                <td>@(stacks && b.AtMaxStacks > 0 ? Percent(b.AtMaxStacks) : "–")</td>
+                                <td>@(b.AverageGap > 0 ? Seconds(b.AverageGap) : "–")</td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
-            <p class="hint">Per fight, averaged over the fights. A debuff's uptime is per target. Buffs up for the whole fight from the start (passives) are left out.</p>
+            <p class="hint">Per fight, averaged over the fights. A debuff's uptime is per target. Buffs up for the whole fight from the start (passives) and the engine's own markers are left out.</p>
         </section>
     }
 </div>

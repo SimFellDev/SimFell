@@ -92,6 +92,24 @@ public sealed class BuildCatalog
     /// <summary>The icon's image of gem colour <paramref name="color"/>, or null.</summary>
     public static string? GemIconUrl(GemColor color) => GameIcons.Gems.TryGetValue(color.ToString(), out var icon) ? GameIcons.Url(icon) : null;
 
+    /// <summary>
+    /// The icon's image of a damage source or aura with log ID <paramref name="logId"/> (an ability's ID, or an effect's,
+    /// talent's or augmentation's plus its offset): its own record's icon, else the first record of its name with one.
+    /// </summary>
+    public static string? IconUrl(int logId, string name)
+    {
+        string? icon = logId switch
+        {
+            >= LogIds.AugmentationOffset => GameIcons.Augmentations.GetValueOrDefault(logId - LogIds.AugmentationOffset),
+            >= LogIds.TalentOffset => GameIcons.Talents.GetValueOrDefault(logId - LogIds.TalentOffset),
+            >= LogIds.EffectOffset => GameIcons.Effects.GetValueOrDefault(logId - LogIds.EffectOffset),
+            > 0 => GameIcons.Abilities.GetValueOrDefault(logId),
+            _ => null,
+        };
+        icon ??= GameIcons.Names.GetValueOrDefault(name);
+        return icon == null ? null : GameIcons.Url(icon);
+    }
+
     /// <summary>The icon's image of gem <paramref name="gem"/> (its colour and size), or null.</summary>
     public static string? GemIconUrl(GemItem gem) => GameIcons.GemItems.TryGetValue(gem.Id, out var icon) ? GameIcons.Url(icon) : null;
 
