@@ -110,7 +110,7 @@ public class DecisionTimingTests
         public static readonly ResourceDef Focus = new("Focus", Max: 10);
         public static readonly AuraDef Mark = AuraDef.Internal("Mark", 5.555);
 
-        public override string MainStat => "Intellect";
+        public override MainStat MainStat => MainStat.Intellect;
 
         public static Tester Create()
         {

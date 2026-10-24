@@ -48,7 +48,7 @@ public sealed class Rime : Hero
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
     /// <summary>Datamine hero 17: mainStat Intellect.</summary>
-    public override string MainStat => "Intellect";
+    public override MainStat MainStat => MainStat.Intellect;
 
     public int WinterOrbs
     {

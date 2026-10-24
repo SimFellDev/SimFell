@@ -1,3 +1,5 @@
+using FellowshipSim.Core.Domain;
+
 namespace FellowshipSim.Core.Customization.StatEnchants;
 
 /// <summary>
@@ -25,11 +27,11 @@ public sealed record StatEnchant(int Id, string StrengthName, string AgilityName
     /// <summary>The stat enchant with game ID <paramref name="id"/>, or null.</summary>
     public static StatEnchant? Find(int id) => All.FirstOrDefault(e => e.Id == id);
 
-    /// <summary>The name on an item of main stat <paramref name="mainStat"/> ("Intellect").</summary>
-    public string NameFor(string mainStat) => mainStat switch
+    /// <summary>The name on an item of main stat <paramref name="mainStat"/>.</summary>
+    public string NameFor(MainStat mainStat) => mainStat switch
     {
-        "Strength" => StrengthName,
-        "Agility" => AgilityName,
+        MainStat.Strength => StrengthName,
+        MainStat.Agility => AgilityName,
         _ => IntellectName,
     };
 

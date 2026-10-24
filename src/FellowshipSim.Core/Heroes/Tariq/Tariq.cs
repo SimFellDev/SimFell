@@ -36,7 +36,7 @@ public sealed class Tariq : Hero
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
     /// <summary>Datamine hero 10: mainStat Strength.</summary>
-    public override string MainStat => "Strength";
+    public override MainStat MainStat => MainStat.Strength;
 
     /// <summary>Extra crit chance on Tariq's lightning damage (Crack the Sky).</summary>
     public double LightningCritChance { get; internal set; }

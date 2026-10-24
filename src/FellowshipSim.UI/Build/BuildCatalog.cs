@@ -48,7 +48,7 @@ public sealed class BuildCatalog
         Aspects = OfKind<Aspect>();
         Sigils = OfKind<Sigil>();
         ProtectiveEnchants = OfKind<ProtectiveEnchant>();
-        string mainStat = Catalog.CreateHero(hero).MainStat;
+        var mainStat = Catalog.CreateHero(hero).MainStat;
         StatEnchants = StatEnchant.All
             .Select(e => new StatEnchantOption(e, e.NameFor(mainStat)))
             .ToList();

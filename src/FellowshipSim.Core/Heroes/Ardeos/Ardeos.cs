@@ -35,7 +35,7 @@ public sealed class Ardeos : Hero
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
     /// <summary>Datamine hero 7: mainStat Intellect.</summary>
-    public override string MainStat => "Intellect";
+    public override MainStat MainStat => MainStat.Intellect;
 
     /// <summary>Every fire damage over time effect of Ardeos's abilities on enemies.</summary>
     public DotTracker Dots { get; }
