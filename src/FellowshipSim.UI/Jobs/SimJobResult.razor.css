@@ -264,16 +264,15 @@
   text-align: right;
 }
 
-/* A buff's timeline: thin bars where it was up, across the column. */
+/* A buff's timeline: thin bars where it was up, across the column. It has no width of its own (its 1000-wide view box
+   would otherwise make it 1000px wide and the table with it): it takes what the column leaves. The bars take its colour. */
 .amount .spans {
-  flex: 1;
+  flex: 1 1 0;
+  width: 0;
   min-width: 120px;
   height: 8px;
   display: block;
-}
-
-.amount .spans path {
-  fill: var(--heading);
+  color: var(--heading);
 }
 
 .share {

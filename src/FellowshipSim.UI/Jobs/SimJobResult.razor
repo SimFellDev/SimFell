@@ -184,13 +184,13 @@
                 <tr>
                     <th>@kind</th>
                     <th class="amount-cell">Uptime</th>
-                    <th title="Times it starts, per fight">Applications</th>
-                    <th title="Times it is applied again while up, per fight">Refreshes</th>
-                    <th>Avg duration</th>
-                    <th>Avg stacks</th>
-                    <th>Max stacks</th>
-                    <th>At max stacks</th>
-                    <th title="Time from one ending to the next starting">Avg gap</th>
+                    <th title="Applications: times it starts, per fight">Apps</th>
+                    <th title="Refreshes: times it is applied again while up, per fight">Refr.</th>
+                    <th title="Average duration">Dur.</th>
+                    <th title="Average stacks while up">Stacks</th>
+                    <th title="Most stacks">Max</th>
+                    <th title="Share of the fight at the most stacks">At max</th>
+                    <th title="Average gap: time from one ending to the next starting">Gap</th>
                 </tr>
             </thead>
             <tbody>
@@ -204,7 +204,7 @@
                             <span class="amount">
                                 <span class="pct">@Percent(b.Uptime)</span>
                                 <svg class="spans" viewBox="0 0 1000 8" preserveAspectRatio="none" role="img" aria-label="@($"When {b.Name} was up in a typical fight")">
-                                    <path d="@SpanPath(b.Spans)" />
+                                    <path d="@SpanPath(b.Spans)" fill="currentColor" />
                                 </svg>
                             </span>
                         </td>
