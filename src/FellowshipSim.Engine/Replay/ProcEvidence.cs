@@ -37,7 +37,7 @@ public static class ProcEvidence
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
-        double ResourceRegenPerSecond = 0.0, int HitType = 0);
+        double ResourceRegenPerSecond = 0.0, int? HitType = null);
 
     public static readonly Evidence[] All =
     [
@@ -100,6 +100,7 @@ public static class ProcEvidence
         new(ExecutionersGrin.ProcKey, ExecutionersGrin.Buff.LogId),
         // Them Bones takes Skull Crusher past 100% crit chance: its hits are grievous crits. Nothing else gives it grievous crits.
         new(ThemBones.ProcKey, SkullCrusher.AbilityId, DelaySeconds: 0.1, HitType: ReplayScriptBuilder.HitTypeGrievousCrit),
+        new(WildSwing.DodgeProcKey, WildSwing.AbilityId, DelaySeconds: 0.05, HitType: ReplayScriptBuilder.HitTypeDodge),
         // A free Chain Lightning's first hit comes 0.30s after the proc.
         new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
         new(AceOfSpades.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),

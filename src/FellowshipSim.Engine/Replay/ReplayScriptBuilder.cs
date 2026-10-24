@@ -17,7 +17,11 @@ namespace FellowshipSim.Engine.Replay;
 /// </summary>
 public static class ReplayScriptBuilder
 {
-    /// <summary>Combat log hit types: 1 a normal hit, 2 a critical strike, 22 a grievous critical strike (crit chance beyond 100%).</summary>
+    /// <summary>
+    /// Combat log hit types: 0 a dodge (no damage), 1 a normal hit, 2 a critical strike, 22 a grievous critical strike (crit
+    /// chance beyond 100%).
+    /// </summary>
+    public const int HitTypeDodge = 0;
     public const int HitTypeCrit = 2;
     public const int HitTypeGrievousCrit = 22;
 

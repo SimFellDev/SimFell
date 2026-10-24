@@ -317,10 +317,11 @@ public sealed class LogOutcomeSource : IOutcomeSource
     private bool ClaimDamageEvidence(ProcEvidence.Evidence evidence, double now, EnemyTarget? target)
     {
         // Hits an engine hit already accounts for (matched, or a group claimed for its targets) are not evidence of a proc.
-        bool Free(LogDamage h) => !_claimedDamageEvidence.Contains(h) && !_hits.IsAccountedFor(h);
+        // A hit type proves a proc of the hit itself: its group is claimed before the roll (a dodged Wild Swing).
+        bool Free(LogDamage h) => !_claimedDamageEvidence.Contains(h) && (evidence.HitType != null || !_hits.IsAccountedFor(h));
         int logId = evidence.LogId;
         var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
-            h => Free(h) && (evidence.HitType == 0 || h.HitType == evidence.HitType)
+            h => Free(h) && (evidence.HitType == null || h.HitType == evidence.HitType)
                  && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
         if (hit == null) return false;
         // The whole multi-target group is one proc.
