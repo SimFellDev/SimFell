@@ -49,4 +49,29 @@ public class Sapphire : Gem
                 return true;
         }
     }
+
+    protected override void BindLater(Hero hero, GemNode node, SimTime now)
+    {
+        if (node.Slot != 1) return;
+        hero.AddMaxSpiritPoints(node.Value("SpiritPointsBonus"));
+        hero.SpiritOfHeroismAuras.Add(hero.Register(node.Grants!));
+    }
+
+    /// <summary>Spirit of Heroism gives the active rank's Ancestral Surge, and the maximum Spirit Points follow the rank.</summary>
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
+    {
+        var old = before.FirstOrDefault(n => n.Slot == 1);
+        var next = NodeInSlot(1);
+        if (old == null || next == null || old == next) return;
+        int i = hero.SpiritOfHeroismAuras.IndexOf(old.Grants!);
+        if (i >= 0) hero.SpiritOfHeroismAuras[i] = hero.Register(next.Grants!);
+        hero.AddMaxSpiritPoints(next.Value("SpiritPointsBonus") - old.Value("SpiritPointsBonus"));
+    }
+
+    protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
+    {
+        2 => [StatModifier.Add(StatType.SpiritRating, node.Value("SpiritBonus"))],
+        4 => [StatModifier.Add(StatType.Spirit, node.Value("SpiritBonus"))],
+        _ => [],
+    };
 }

@@ -171,6 +171,11 @@ public class LogResourceSnapshot
     [JsonPropertyName("t")] public double Time { get; set; }
     [JsonPropertyName("event")] public string Event { get; set; } = string.Empty;
     [JsonPropertyName("ability_id")] public int? AbilityId { get; set; }
+    /// <summary>
+    /// The event is the activation of an ability (a cast event the log marks activation: an instant cast, or the cast
+    /// logged with a begincast), not a cast-time ability's completion.
+    /// </summary>
+    [JsonPropertyName("activation")] public bool Activation { get; set; }
     [JsonPropertyName("resources")] public Dictionary<string, LogResourceValue> Resources { get; set; } = new();
 }
 

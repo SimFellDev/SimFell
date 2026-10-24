@@ -129,6 +129,19 @@ public abstract class Hero : Actor
     /// </summary>
     public HashSet<AuraDef> RuntimeAuras { get; } = new();
 
+    /// <summary>
+    /// Damage IDs whose hits are the ticks of a damage over time (game effects tagged EffectType.Dot): a tick is no
+    /// application of an effect (Kindling rolls on applications).
+    /// </summary>
+    public HashSet<int> DotDamageIds { get; } = new();
+
+    /// <summary>
+    /// The last tick of a damage over time whose execution ended an ability of the hero, with the tick's damage ID. Every
+    /// ability end flushes the server's ability queue (UCRGameplayAbility::EndAbility 0x1450DACD0 calling 0x1452D7370,
+    /// build 26162532), so a cast the queue held activates inside that tick.
+    /// </summary>
+    public (int DamageLogId, HastedTimer Timer)? QueueFlushingTick { get; set; }
+
     /// <summary>Extra crit chance against a specific target (e.g. bonuses vs. healthy enemies).</summary>
     public List<Func<EnemyTarget, SimTime, double>> TargetCritChanceBonuses { get; } = new();
 
@@ -216,6 +229,8 @@ public abstract class Hero : Actor
     /// Not raised for Spirit Refunds, which give back what was spent.
     /// </summary>
     public event Action<ResourceDef, double, EnemyTarget?, SimulationContext>? OnResourceGained;
+    /// <summary>A Spirit Refund gave back the resource spent (a moment after the spend).</summary>
+    public event Action<ResourceDef, double, SimulationContext>? OnResourceRefunded;
     /// <summary>Spirit of Heroism started / ended.</summary>
     public event Action<SimulationContext>? SpiritOfHeroismStarted;
     public event Action<SimulationContext>? SpiritOfHeroismEnded;
@@ -226,6 +241,16 @@ public abstract class Hero : Actor
     public event Action<ResourceDef?, double, SimulationContext>? OnSpiritRefund;
     /// <summary>A cast is about to resolve (also free casts from procs): talents add to it here (see <see cref="CastBonus"/>).</summary>
     public event Action<CastBonus>? OnCastResolving;
+
+    /// <summary>An enemy in combat was defeated (not one that left combat alive), as it is removed.</summary>
+    public event Action<SimulationContext, EnemyTarget>? OnEnemyDefeated;
+
+    internal void TriggerEnemyDefeated(SimulationContext ctx, EnemyTarget enemy) => OnEnemyDefeated?.Invoke(ctx, enemy);
+
+    /// <summary>The hero applied a harmful effect that deals no damage of its own to an enemy (a debuff such as Bursting Ice's).</summary>
+    public event Action<SimulationContext, EnemyTarget>? OnHarmfulEffectApplied;
+
+    public void TriggerHarmfulEffectApplied(SimulationContext ctx, EnemyTarget enemy) => OnHarmfulEffectApplied?.Invoke(ctx, enemy);
 
     /// <summary>The cast in progress, if any (abilities with a cast time between begin and completion).</summary>
     public ActiveCast? CurrentCast { get; internal set; }
@@ -346,7 +371,11 @@ public abstract class Hero : Actor
         if (amount <= 0 || ctx == null || resource != SpiritRefundResource) return;
         if (!TriggerSpiritRefund(resource, amount, ctx)) return;
         // The resource comes back a moment after the spend.
-        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c => AddToResource(resource, amount, c, null, isGain: false), "Spirit Refund");
+        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c =>
+        {
+            AddToResource(resource, amount, c, null, isGain: false);
+            OnResourceRefunded?.Invoke(resource, amount, c);
+        }, "Spirit Refund");
     }
 
     /// <summary>
@@ -511,13 +540,19 @@ public abstract class Hero : Actor
     /// <summary>Damage multiplier of a critical hit.</summary>
     public double CritMultiplier(SimTime now) => Auras.Fold(StatType.CritMultiplier, StatBlock.BaseCritMultiplier, now);
 
-    /// <summary>Total haste at <paramref name="now"/>: rating haste (with rating buffs) plus haste from auras.</summary>
+    /// <summary>
+    /// Total haste at <paramref name="now"/>: rating haste (with rating buffs) plus haste from auras. The game's Haste
+    /// attribute is 1 + haste (hero baseAttributes Haste 1), so a multiplying haste modifier scales 1 + haste. Combat logs
+    /// (4Ln6PQZCRzc7Wpta fight 77, Shadow's Defeat "Haste Multiplicitive 1.2"): Freezing Torrent ticks under it come every
+    /// 0.4 or 0.2857 seconds over 1.2 x (1 + haste) (726.190: 0.2565s at 28.6% haste; 709.624: 0.1902s at 24.4%; 379.487:
+    /// 0.1534s with Spirit of Heroism).
+    /// </summary>
     public double GetHaste(SimTime now) =>
         IsCurrent(ref _haste, StatType.HasteRating, StatType.Haste, now)
             ? _haste.Value
             : _haste.Value = Math.Max(0.0,
-                StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now))
-                + Auras.Fold(StatType.Haste, 0.0, now));
+                Auras.Fold(StatType.Haste,
+                    1.0 + StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now)), now) - 1.0);
 
     public double Expertise(SimTime now) =>
         IsCurrent(ref _expertise, StatType.ExpertiseRating, StatType.Expertise, now)
@@ -651,8 +686,10 @@ public abstract class Hero : Actor
     protected void ResetCombatState()
     {
         Resources.Reset();
+        foreach (var gem in Gems) gem.ResetLive();
         Auras.ClearAll();
         Auras.ClearTimers();
+        QueueFlushingTick = null;
         Cooldowns.Clear();
         CooldownsVersion++;
         GlobalCooldownEndTime = SimTime.Zero;

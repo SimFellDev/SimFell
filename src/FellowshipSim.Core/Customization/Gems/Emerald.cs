@@ -36,13 +36,7 @@ public class Emerald : Gem
         switch (node.Slot)
         {
             case 1: // First Strike: Expertise for 15s when dealing damage to an enemy for the first time.
-                FirstStrike = hero.Register(node.Grants!);
-                hero.OnDamageDealt += (in dmg) =>
-                {
-                    if (dmg.Target == null || dmg.Target.Auras.HasAura(FirstStrikeTriggered, dmg.Timestamp)) return;
-                    dmg.Target.Auras.Apply(FirstStrikeTriggered, dmg.Timestamp);
-                    hero.Auras.Apply(FirstStrike, dmg.Timestamp);
-                };
+                BindFirstStrike(hero, node);
                 return true;
             case 2: // Vanguard's Resolve: flat Stamina/Expertise rating (in the sheet ratings).
                 return true;
@@ -56,4 +50,30 @@ public class Emerald : Gem
                 return true;
         }
     }
+
+    private void BindFirstStrike(Hero hero, GemNode node)
+    {
+        FirstStrike = hero.Register(node.Grants!);
+        hero.OnDamageDealt += (in dmg) =>
+        {
+            if (FirstStrike is not { } strike || dmg.Target == null || dmg.Target.Auras.HasAura(FirstStrikeTriggered, dmg.Timestamp)) return;
+            dmg.Target.Auras.Apply(FirstStrikeTriggered, dmg.Timestamp);
+            hero.Auras.Apply(strike, dmg.Timestamp);
+        };
+    }
+
+    protected override void BindLater(Hero hero, GemNode node, SimTime now)
+    {
+        if (node.Slot == 1) BindFirstStrike(hero, node);
+    }
+
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now) =>
+        FirstStrike = NodeInSlot(1)?.Grants is { } strike ? hero.Register(strike) : null;
+
+    protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
+    {
+        2 => [StatModifier.Add(StatType.ExpertiseRating, node.Value("ExpertiseBonus"))],
+        4 => [StatModifier.Add(StatType.Expertise, node.Value("ExpertiseBonus"))],
+        _ => [],
+    };
 }

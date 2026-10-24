@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.CommonAbilities;
 using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Customization.RelicPassives;
@@ -49,6 +50,7 @@ public static class HeroImporter
         }
 
         hero.Initialize();
+        hero.Abilities.AddRange(CommonAbilities.For(hero));
         foreach (var ability in hero.Abilities.ToList()) ability.Connect();
 
         foreach (int talentId in build.Talents)
@@ -69,15 +71,7 @@ public static class HeroImporter
 
         foreach (var (color, power) in build.GemPower)
         {
-            Gem gem = color switch
-            {
-                GemColor.Emerald => new Emerald(),
-                GemColor.Ruby => new Ruby(),
-                GemColor.Amethyst => new Amethyst(),
-                GemColor.Topaz => new Topaz(),
-                GemColor.Sapphire => new Sapphire(),
-                _ => new Diamond(),
-            };
+            var gem = Gem.Create(color);
             gem.Power = hero.Stats.UsesSheetValues ? power : power * hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
             hero.Gems.Add(gem);
             gem.Bind(hero);
@@ -127,7 +121,10 @@ public static class HeroImporter
                 legendary.Bind(hero);
             }
             hero.PassiveAuras.Add(LegendaryStats.StrandOfEternity);
-            if (!hero.Stats.UsesSheetValues) hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
+            // A logged Main Stat already includes Mote of Creation. It adds to the same sum as Rising Spirit, so it comes out
+            // of the sheet and applies as its aura.
+            if (hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat /= 1.0 + LegendaryStats.MoteOfCreationPrimaryStat;
+            hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
         }
 
         return hero;

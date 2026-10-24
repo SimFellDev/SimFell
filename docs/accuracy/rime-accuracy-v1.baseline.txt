@@ -1,0 +1,91 @@
+Rime accuracy 'baseline', patch 0.5.0.0: 15 fights
+  hits matched                          91.2%
+  exact replay damage / log             92.4%
+  free dice mean / log                  95.5%
+  mean log percentile in free dice      77.6%
+
+fight                              player            hits matched  exact/log  dice/log  log pct  clean steps  forced
+4Ln6PQZCRzc7Wpta#77 Stormwatch     Slick                    92.0%      87.1%     95.5%      96%      7/527        21
+4Ln6PQZCRzc7Wpta#78 Wraithtide Vau Slick                    94.5%      91.6%     98.9%      66%     28/1125       19
+AY1m6jPKTZyx4vz2#9 Godfall Quarry  Splite                   80.5%      84.2%     79.3%     100%     10/402         5
+D1fBhVPkwYKXWbpr#1 Cithrel's Fall  Wobra                    95.3%      96.7%     99.4%      59%     59/987       123
+GWChJ8P7tn6fHgV3#20 Godfall Quarry Xaxina                   96.2%      94.1%     94.7%      95%     24/597         7
+GWChJ8P7tn6fHgV3#22 Empyrean Sands Xaxina                   94.7%      93.8%     97.1%      76%     14/586         7
+jHDC613ZzbTYR8wW#18 Silken Hollow  Loreuxe                  92.5%      94.2%     99.8%      51%      7/295        16
+N18KtgP3rvpYGm24#27 Urrak Markets  Zya                      92.3%      97.5%     98.4%      67%     13/272        32
+NhBnFXmy3bJg9Cav#32 Crown of the W inmy                     81.9%      89.3%     93.9%      99%      8/497        39
+NhBnFXmy3bJg9Cav#33 Wraithtide Vau inmy                     82.9%      88.2%     93.5%      99%      7/1013       75
+Rzg1nQNHpm2fhYtB#23 Noor, The Betr sww                      93.9%      89.9%     87.2%     100%      7/904        76
+Rzg1nQNHpm2fhYtB#24 Xurath, Fist o sww                      95.2%      99.2%     94.8%      91%     11/469        30
+XNpG3AYWM8rq2zwx#19 Empyrean Sands watts                    97.8%      99.6%    101.4%      29%     11/324         4
+XNpG3AYWM8rq2zwx#20 Scryer's Peak  watts                    97.4%      94.3%     99.5%      65%     32/409         7
+ZPTw4tmBJnK7hCb1#4 Vexira, Mother  Wobra                    95.1%      94.8%     98.0%      71%      6/423        15
+
+id        ability               log hits  matched  engine-only  log dmg        exact/log  dice/log  normal (n)       crit (n)
+2227      Ice Comet                20120    19174            0    129,028,116      95.0%     98.6%  1.000 (9130)     1.018 (10044)
+1001396   Bursting Ice             68700    59676            0     36,440,249      86.0%     90.7%  1.007 (30808)    0.979 (28868)
+1033      Frost Swallows           29940    26542         1647     24,333,351      91.4%     94.7%  1.026 (14286)    1.027 (12256)
+1003193   The Vehement's Disda      1808     1345            0     24,074,640      72.3%     71.7%  1.023 (1345)     -
+1002300   Coalescing Frost          2807     2686            0     21,516,895      87.2%    101.2%  1.123 (1418)     1.126 (1268)
+1027      Freezing Torrent          7502     7284          125     21,069,229      99.6%     96.1%  1.012 (2341)     0.989 (4943)
+1000101   Amethyst Splinter        31577    30456          369     20,011,294      90.4%     99.6%  1.161 (30456)    -
+1002265   Frostwyrm's Spite         1824     1818            0     18,969,199      99.4%     99.6%  1.003 (953)      1.006 (865)
+2224      Rising Talons             5935     5764            0     18,241,675      98.2%     94.3%  1.015 (2653)     1.006 (3111)
+1028      Glacial Blast              768      768            6     12,314,420      96.3%     97.5%  1.017 (367)      1.052 (401)
+1020      Cold Snap                 1469     1469            0     10,402,387      97.2%     95.9%  1.028 (790)      1.027 (679)
+2223      Talon Strike               548      531            4      6,394,790      81.8%     85.0%  1.236 (272)      1.174 (259)
+1001365   Frost Swallows            6888     6526          207      5,974,479      95.4%     99.7%  1.026 (3429)     1.020 (3097)
+1558      Chronoshift               1335     1307            0      5,874,229      97.7%    103.7%  1.004 (632)      1.007 (675)
+2023      Glacial Assault           1311     1311            0      4,118,657     103.6%    129.8%  1.016 (1311)     -
+155       Voidbringer's Touch         30       20           10      2,620,314      99.6%    102.3%  -                0.964 (20)
+1000093   Emerald Judgement          313      308            0      2,469,700      97.1%     79.4%  1.013 (163)      1.006 (145)
+1029      Frost Bolt                1236     1236           12      2,115,625      99.4%    101.2%  1.008 (705)      1.017 (531)
+1561      Icicles of An'zhyr         652      652            0      1,630,356      91.1%     95.2%  1.092 (367)      1.096 (285)
+1002347   Sapphire Aurastone D       714      714            0      1,390,405      93.9%     97.2%  1.046 (714)      -
+1000104   Kindling                  1660      905          892      1,355,222      87.8%     48.5%  1.267 (443)      1.253 (462)
+1002286   Curse of An'zhyr          2400     2271           67        996,198      90.7%     97.7%  1.085 (1324)     1.085 (947)
+
+most common issues over all fights:
+ 12690 [Damage] damage too high: Bursting Ice (1001396): Bursting Ice on 55.2 at 21.157: log 479 (crit) vs engine 606 (ratio 0.791, allowed 0.90-1.100)
+  9051 [Hits] missing engine hit: Bursting Ice (1001396): Log hit Bursting Ice (1001396) on 47.2 at 124.761 for 273 was never produced by the engine
+  7571 [Damage] damage too low: Bursting Ice (1001396): Bursting Ice on 45.1 at 28.604: log 244 vs engine 197 (ratio 1.236, allowed 0.90-1.100)
+  4586 [Resources] Spirit too high: Pre-cast Spirit: engine 19.72 vs log 16.22
+  4098 [Damage] damage too low: Frost Swallows (1033): Frost Swallows on 45.1 at 28.137: log 1548 (crit) vs engine 1319 (ratio 1.174, allowed 0.90-1.100)
+  3407 [Hits] missing engine hit: Frost Swallows (1033): Log hit Frost Swallows (1033) on 44.1 at 123.725 for 720 (crit) was never produced by the engine
+  2980 [Resources] Anima too high: Pre-cast Anima: engine 8 vs log 5
+  2739 [Damage] damage too low: Ice Comet (2227): Ice Comet on 45.1 at 29.140: log 12050 (crit) vs engine 9538 (ratio 1.263, allowed 0.90-1.100)
+  2520 [Resources] Anima too low: Pre-cast Anima: engine 2 vs log 8
+  2270 [Damage] damage too high: Frost Swallows (1033): Frost Swallows on 46.2 at 23.628: log 419 vs engine 471 (ratio 0.889, allowed 0.90-1.100)
+  2243 [Damage] damage too high: Ice Comet (2227): Ice Comet on 36.2 at 23.963: log 7046 (crit) vs engine 7948 (ratio 0.887, allowed 0.90-1.100)
+  1647 [Hits] extra engine hit: Frost Swallows (1033): Engine hit Frost Swallows (1033) on 36.1 has no matching log hit
+  1266 [Resources] Winter Orbs too low: Pre-cast Winter Orbs: engine 1 vs log 2
+  1240 [Auras] Harrowing Ice (1002839) wrong stacks: Pre-cast Harrowing Ice (1002839): engine 13 stacks vs log 18
+  1167 [Damage] damage too high: Freezing Torrent (1027): Freezing Torrent on 45.1 at 33.650: log 3767 (crit) vs engine 4272 (ratio 0.882, allowed 0.90-1.100)
+  1165 [Damage] damage too low: Coalescing Frost (1002300): Coalescing Frost on 45.1 at 26.635: log 13476 (crit) vs engine 8857 (ratio 1.521, allowed 0.90-1.100)
+  1121 [Hits] missing engine hit: Amethyst Splinter (1000101): Log hit Amethyst Splinter (1000101) on 37.1 at 48.997 for 135 was never produced by the engine
+   962 [Damage] damage too low: Curse of An'zhyr (1002286): Curse of An'zhyr on 10.1 at 29.793: log 590 (crit) vs engine 520 (ratio 1.134, allowed 0.90-1.100)
+   952 [Hits] missing engine hit: Ice Comet (2227): Log hit Ice Comet (2227) on 65.1 at 154.827 for 5446 (crit) was never produced by the engine
+   903 [Resources] Winter Orbs too high: Pre-cast Winter Orbs: engine 2 vs log 1
+   892 [Hits] extra engine hit: Kindling (1000104): Engine hit Kindling (1000104) on 45.1 has no matching log hit
+   835 [Damage] damage too low: Frost Swallows (1001365): Frost Swallows on 52.1 at 247.953: log 1021 (crit) vs engine 915 (ratio 1.116, allowed 0.90-1.100)
+   822 [Damage] damage too low: Freezing Torrent (1027): Freezing Torrent on 36.1 at 90.817: log 809 vs engine 722 (ratio 1.120, allowed 0.90-1.100)
+   818 [Resources] Spirit too low: Pre-cast Spirit: engine 75.58 vs log 78.47
+   755 [Hits] missing engine hit: Kindling (1000104): Log hit Kindling (1000104) on 45.1 at 21.732 for 672 (crit) was never produced by the engine
+   726 [Auras] Hidden Power (1002164) wrong stacks: Pre-cast Hidden Power (1002164): engine 1 stacks vs log 2
+   663 [Damage] damage too low: Rising Talons (2224): Rising Talons on 78.2 at 27.828: log 1572 vs engine 1423 (ratio 1.105, allowed 0.90-1.100)
+   648 [Auras] The Vehement (1003194) wrong stacks: Pre-cast The Vehement (1003194): engine 2 stacks vs log 1
+   619 [Auras] Seized Opportunity (1002111) wrong stacks: Pre-cast Seized Opportunity (1002111): engine 14 stacks vs log 13
+   550 [Damage] damage too high: Frost Swallows (1001365): Frost Swallows on 36.2 at 23.264: log 978 (crit) vs engine 1099 (ratio 0.890, allowed 0.90-1.100)
+   517 [Damage] damage too low: Kindling (1000104): Kindling on 55.2 at 43.313: log 912 (crit) vs engine 707 (ratio 1.290, allowed 0.90-1.100)
+   492 [Damage] damage too high: Rising Talons (2224): Rising Talons on 77.5 at 32.137: log 889 vs engine 1008 (ratio 0.882, allowed 0.90-1.100)
+   463 [Hits] missing engine hit: The Vehement's Disdain (1003193): Log hit The Vehement's Disdain (1003193) on 55.4 at 133.980 for 8131 was never produced by the engine
+   448 [Auras] The Wayfarer (1003184) missing in engine: Pre-cast The Wayfarer (1003184): engine 0 stacks vs log 1
+   424 [Auras] Frostwyrm's Spite (1002264) wrong stacks: Pre-cast Frostwyrm's Spite (1002264): engine 17 stacks vs log 16
+   414 [Auras] The Wayfarer (1003184) extra in engine: Pre-cast The Wayfarer (1003184): engine 1 stacks vs log 0
+   382 [Auras] Seized Opportunity (1002111) extra in engine: Pre-cast Seized Opportunity (1002111): engine 18 stacks vs log 0
+   380 [Auras] Seized Opportunity (1002110) missing in engine: Pre-cast Seized Opportunity (1002110): engine 0 stacks vs log 1
+   370 [Auras] Hidden Power (1002164) missing in engine: Pre-cast Hidden Power (1002164): engine 0 stacks vs log 1
+   369 [Hits] extra engine hit: Amethyst Splinter (1000101): Engine hit Amethyst Splinter (1000101) on 37.4 has no matching log hit
+
+unmodeled abilities: Ice Dash (194), Brain Freeze (158), Frost Ward (110), Frigid Winds (61), Mount Indomitable Chicken (28), Mount Brum the Winter Warmth (15), Mount Inflatable Shark (15), Chickenize! (10), Mount Nightveil Widow (10), Major Dispel (9), Revive (8), Mount Spirit of Akari (6), Mount Vilesoul Raptor (5), Relic Teleport (4), Anchor (3), Mount Aurellian Swiftpaw (3), Mount Cheesers (3), Making Camp (2), Major Invisibility (2)
+unmodeled customizations: Augmentation: 66 (rank 1), Augmentation: 67 (rank 1), Augmentation: 69 (rank 1), Augmentation: 70 (rank 1), Augmentation: Behemoth's Might  / Jotunn's Guille / Titan's Cunning (rank 4), Augmentation: Gryphon's Might / Phoenix's Guille / Sphinx's Cunning (rank 4), Augmentation: Manticore's Might / Basilisk's Guille / Spider's Cunning (rank 4), Augmentation: Revenant's Might / Wraith's Guille / Banshee's Cunning (rank 4), Augmentation: Sun's Might / Star's Guille / Moon's Cunning  (rank 4), Augmentation: Ursa's Might / Wolf's Guille / Vampire's Cunning (rank 4), Gem node: Harmonious Soul, Gem node: Harmonious Soul - II, Legendary item 5900

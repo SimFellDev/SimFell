@@ -34,6 +34,8 @@ public sealed class PendingHit
     internal double TickFraction { get; set; }
     internal HitRequest Released { get; set; }
     internal HitOutcome Outcome { get; set; }
+    /// <summary>The period timer whose tick released this hit of its own damage, when the hit lands later.</summary>
+    internal HastedTimer? Tick { get; set; }
 
     internal void Begin(Hero source, EnemyTarget? target, int abilityId, string abilityName, bool canCrit, bool? forcedCrit,
         Action<SimulationContext, double>? onLanded, bool snapshot)
@@ -69,9 +71,12 @@ public sealed class PendingHit
             // Damage, crit chance and crit power are read now; what talents added to the cast is kept.
             var now = ctx.CurrentTime;
             var owner = ability.Owner;
+            double hitCrit = 0.0;
+            var bonuses = ability.HitCritChanceBonuses;
+            for (int i = 0; i < bonuses.Count; i++) hitCrit += bonuses[i](ctx);
             return new SimulationContext.HitNumbers(
                 ability.BaseDamage(ctx, Target, DamageMultiplier),
-                owner.CritChanceAgainst(Target, now) + ability.CritChanceBonus + ExtraCritChance + CastCritChance,
+                owner.CritChanceAgainst(Target, now) + ability.CritChanceBonus + ExtraCritChance + CastCritChance + hitCrit,
                 ability.CritMultiplierAt(now));
         }
         return _compute != null ? _compute(ctx) : _fixed;
@@ -89,5 +94,6 @@ public sealed class PendingHit
         _fixed = default;
         Released = default;
         Outcome = default;
+        Tick = null;
     }
 }

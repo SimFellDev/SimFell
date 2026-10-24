@@ -42,12 +42,13 @@ public static class ProcEvidence
     /// proc deals that hit itself on its enemy alone: the engine's next hit with the ID on the enemy matches the proof, and
     /// hits on other enemies in the same server frame are proof of other procs. With
     /// <paramref name="NotCausedByAbilityId"/>, an aura gain the log names that ability as the cause of is no proof (it is
-    /// that ability's own grant).
+    /// that ability's own grant). With <paramref name="EnemyDebuffApplied"/>, the proof is instead that debuff of the
+    /// player's applied or refreshed on the proc's enemy.
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
         double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
-        bool ReservesHit = false, int NotCausedByAbilityId = 0);
+        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false);
 
     public static readonly Evidence[] All =
     [
@@ -60,7 +61,10 @@ public static class ProcEvidence
         new(HiddenPower.ProcKey, HiddenPower.Stack.LogId),
         new(InspiredAllegiance.ProcKey, InspiredAllegiance.Buff.LogId),
         // Damage over time: the first tick comes one (hasted) period after the proc.
-        new(Kindling.ProcKey, LogIds.Effect(Kindling.DamageEffectId), DelaySeconds: 1.6),
+        // A proc applies or refreshes the burn on its enemy, after the triggering effect's visual delay (Rime's logs: 78 of
+        // 242 applications in the millisecond of a hit on the enemy, 141 within 0.4s of one).
+        new(Kindling.ProcKey, LogIds.Effect(Kindling.DamageEffectId), DelaySeconds: 0.45, MinDelaySeconds: -PeriodicEffect.ServerFrameSeconds,
+            EnemyDebuffApplied: true),
         new(DiamondStrike.ProcKey, LogIds.Effect(DiamondStrike.DamageEffectId), DelaySeconds: 1.0),
         new(RubyStorm.ProcKey, LogIds.Effect(RubyStorm.DamageEffectId), DelaySeconds: 1.0),
 
@@ -78,8 +82,9 @@ public static class ProcEvidence
         // Avalanche rolls as a comet strikes; its comets strike 5 and 10 server frames later.
         new(Avalanche.ProcKey, IceComet.DamageId, DelaySeconds: 0.25, MinDelaySeconds: 0.1),
         new(Avalanche.SecondProcKey, IceComet.DamageId, DelaySeconds: 0.42, MinDelaySeconds: 0.1),
-        // Cold Shower's comet falls first (0.30s + 1.0s/(1 + haste)).
-        new(ColdShower.ProcKey, IceComet.DamageId, DelaySeconds: 1.35, MinDelaySeconds: 0.5),
+        // Cold Shower's comet strikes 10 server frames after the tick that rolled it (logged within a frame of that).
+        new(ColdShower.ProcKey, IceComet.DamageId, DelaySeconds: ColdShower.ImpactDelaySeconds + PeriodicEffect.ServerFrameSeconds,
+            MinDelaySeconds: ColdShower.ImpactDelaySeconds - PeriodicEffect.ServerFrameSeconds),
         new(FrostweaversWrath.ProcKey, FrostweaversWrath.Buff.LogId),
         new(SoulfrostTorrent.ProcKey, SoulfrostTorrent.Buff.LogId),
         // A Freezing Torrent crit adding 2 stacks of Coalescing Frost at once instead of 1.

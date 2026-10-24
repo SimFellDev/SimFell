@@ -42,6 +42,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             int stacks = 0;
             var list = new List<(LogAura Event, int Added)>();
             var losses = new List<double>();
+            _enemyDebuffApplications[group.Key] = group.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time).ToList();
             foreach (var a in group.OrderBy(a => a.Time))
             {
                 int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
@@ -60,6 +61,24 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     private readonly Dictionary<UnitRef, double> _demise = new();
     private readonly Dictionary<(int LogId, UnitRef Target), List<(LogAura Event, int Added)>> _enemyStackGains = new();
+    // The player's debuffs on enemies, applied or refreshed (for enemy-debuff evidence).
+    private readonly Dictionary<(int LogId, UnitRef Target), List<LogAura>> _enemyDebuffApplications = new();
+    private readonly HashSet<LogAura> _claimedDebuffApplications = new();
+
+    /// <summary>Proof of a proc that applies a debuff: the log applies or refreshes it on the proc's enemy in the window.</summary>
+    private bool ClaimEnemyDebuffEvidence(ProcEvidence.Evidence evidence, double now, EnemyTarget? target)
+    {
+        if (target == null || !_enemyDebuffApplications.TryGetValue((evidence.LogId, new UnitRef(target.Id, target.InstanceId)), out var applied)) return false;
+        double from = now + evidence.MinDelaySeconds - _options.SameTickSeconds, to = now + evidence.DelaySeconds + _options.SameTickSeconds;
+        foreach (var a in applied)
+        {
+            if (a.Time < from || _claimedDebuffApplications.Contains(a)) continue;
+            if (a.Time > to) break;
+            _claimedDebuffApplications.Add(a);
+            return true;
+        }
+        return false;
+    }
     // When the player's debuffs on enemies lost stacks (for stack-loss evidence).
     private readonly Dictionary<(int LogId, UnitRef Target), List<double>> _enemyStackLosses = new();
 
@@ -127,8 +146,9 @@ public sealed class LogOutcomeSource : IOutcomeSource
         var match = target == null ? null : _hits.Match(hit.AbilityId, target, now, _options);
         if (match != null) _hits.RecordTravel(hit.AbilityId, match.Time - now);
 
-        if (match == null && _options.MissHitsOnDyingTargets && target != null && _demise.TryGetValue(target, out var died)
-            && died >= now - _options.SameTickSeconds && died <= now + _hits.LongestTravelSeconds(hit.AbilityId, _options) + PeriodicEffect.ServerFrameSeconds)
+        if (match == null && target != null && (_options.UnmatchedHitsMissIds.Contains(hit.AbilityId)
+            || (_options.MissHitsOnDyingTargets && _demise.TryGetValue(target, out var died)
+                && died >= now - _options.SameTickSeconds && died <= now + _hits.LongestTravelSeconds(hit.AbilityId, _options) + PeriodicEffect.ServerFrameSeconds)))
         {
             // The target dies in the log before this hit could land (the log has no hit for it, and its flight can be as
             // long as the longest seen; Frost Bolt's varies with distance, 0.03-1.9s): it hits nothing (no damage, no
@@ -224,6 +244,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         double now = ctx.CurrentTime.TotalSeconds;
         bool procced = evidence.Resource != null
             ? ClaimResourceEvidence(evidence, now)
+            : evidence.EnemyDebuffApplied
+            ? ClaimEnemyDebuffEvidence(evidence, now, target)
             : evidence.StackJump > 0
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
@@ -306,7 +328,20 @@ public sealed class LogOutcomeSource : IOutcomeSource
             .FirstOrDefault();
         if (gain.Event == null) return false;
         _claimedStackEvidence.Add(gain.Event);
-        return gain.Added >= jump;
+        int added = gain.Added;
+        if (added < jump)
+        {
+            // A new debuff given several stacks at once is logged as its application (1 stack) and its stack count in the
+            // same millisecond (combat logs: all 220 Coalescing Frost applications with 2 stacks in the 15 Rime fights of
+            // docs/accuracy/rime-accuracy-v1.md, each on a Freezing Torrent crit).
+            foreach (var g in gains)
+            {
+                if (g.Event.Time != gain.Event.Time || _claimedStackEvidence.Contains(g.Event)) continue;
+                _claimedStackEvidence.Add(g.Event);
+                added += g.Added;
+            }
+        }
+        return added >= jump;
     }
 
     private bool ClaimAuraEvidence(int logId, double now, int notCausedBy = 0)
@@ -406,6 +441,8 @@ public sealed class HitLedger
             while (queue.Count > 0)
             {
                 var reserved = queue.Dequeue();
+                // A reservation the engine never used is stale once the hit is behind the window.
+                if (reserved.Time < engineTime - options.HitEarlySeconds) continue;
                 if (_matched.Add(reserved)) return reserved;
             }
         }
