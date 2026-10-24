@@ -31,6 +31,19 @@ public class BurstingIce : RimeAbility
         modifiers: StatModifier.More(StatType.DamageScale, WintersEmbraceDamage));
 
     private int _activeDebuffs;
+    private double _bonusDurationSeconds;
+    private AuraDef _debuff = Debuff;
+
+    /// <summary>Seconds added to the debuff and its pulses (Skandi's Decree).</summary>
+    public double BonusDurationSeconds
+    {
+        get => _bonusDurationSeconds;
+        set
+        {
+            _bonusDurationSeconds = value;
+            _debuff = value == 0 ? Debuff : Debuff with { Duration = SimTime.FromSeconds(DurationSeconds + value) };
+        }
+    }
 
     /// <summary>Multipliers on each pulse's damage, read as the pulse goes off (Harrowing Ice).</summary>
     public List<Func<SimulationContext, double>> PulseDamageMultipliers { get; } = new();
@@ -82,9 +95,9 @@ public class BurstingIce : RimeAbility
 
         _activeDebuffs++;
         hero.Auras.Apply(WintersEmbrace, ctx.CurrentTime);
-        target?.Auras.Apply(Debuff, ctx.CurrentTime);
+        target?.Auras.Apply(_debuff, ctx.CurrentTime);
 
-        PeriodicEffect.BeginHasted(ctx, hero, Name, DurationSeconds, PulsePeriodSeconds, tickOnStart: false, partialFinalTick: true,
+        PeriodicEffect.BeginHasted(ctx, hero, Name, DurationSeconds + _bonusDurationSeconds, PulsePeriodSeconds, tickOnStart: false, partialFinalTick: true,
             // Combat logs (10 Rime logs, 526 debuffs): the final pulse deals the fraction of a pulse period left when the
             // debuff runs out (leftover 0.4 -> 0.43x, 0.5 -> 0.52x, 0.8 -> 0.78x, 0.9 -> 0.88x of a full pulse).
             onTick: (c, fraction) => DealPulse(c, target, fraction),

@@ -30,8 +30,10 @@ public sealed class BuildCatalog
                 ? new BuildOption(talent.Id, talent.Name, GameIcons.Talents.GetValueOrDefault(talent.Id))
                 : new BuildOption(slot.TalentId, $"Talent {slot.TalentId}", GameIcons.Talents.GetValueOrDefault(slot.TalentId), Modeled: false)))
             .ToList();
+        // The hero's own weapons (four each in the game).
         Weapons = Catalog.AllWeapons
-            .Select(w => new BuildOption(w.WeaponAbilityId, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.WeaponAbilityId)))
+            .Where(w => !GameIcons.WeaponHeroes.TryGetValue(w.WeaponAbilityId, out var heroes) || heroes.Contains(hero, StringComparer.OrdinalIgnoreCase))
+            .Select(w =>new BuildOption(w.WeaponAbilityId, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.WeaponAbilityId)))
             .OrderBy(o => o.Name).ToList();
         Legendaries = Catalog.GearTypes(hero).Where(t => typeof(Legendary).IsAssignableFrom(t) && !t.IsAbstract)
             .Select(t => (Legendary)Activator.CreateInstance(t)!)

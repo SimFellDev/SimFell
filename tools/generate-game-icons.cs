@@ -40,6 +40,14 @@ lines.AddRange(ById("Augmentations", augmentations));
 lines.AddRange(ById("Glyphs", ["glyph"]));
 lines.AddRange(ById("LegendaryPowers", ["legendary-power"]));
 lines.AddRange(ById("WeaponAbilities", ["ability"], r => Text(r, "category") == "Weapon"));
+// Each weapon has a version per hero, and each hero four weapons: the heroes a weapon ability is for.
+lines.Add("    /// <summary>The heroes each weapon ability's weapon is for, by ability ID.</summary>");
+lines.Add("    public static IReadOnlyDictionary<int, string[]> WeaponHeroes { get; } = new Dictionary<int, string[]>");
+lines.Add("    {");
+lines.AddRange(OfKinds(["ability"]).Where(r => Text(r, "category") == "Weapon").DistinctBy(r => Int(r, "id"))
+    .Select(r => $"        [{Int(r, "id")}] = [{string.Join(", ", (r["heroes"]?.AsArray() ?? []).Select(h => Cs(h!.GetValue<string>())))}],"));
+lines.Add("    };");
+lines.Add("");
 lines.AddRange(ById("StatEnchants", ["enchant"]));
 // Each gem of each size ("Splendid Amethyst"), and the relic items (an item record per hero, one icon per item).
 lines.AddRange(ById("GemItems", ["gem"]));

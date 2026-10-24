@@ -91,9 +91,18 @@
   font-size: 12px;
 }
 
+/* A number typed in, without the browser's up and down arrows. */
 .ratings input {
   width: 96px;
   text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.ratings input::-webkit-outer-spin-button,
+.ratings input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .gem-totals {
@@ -142,27 +151,14 @@
   align-items: start;
 }
 
-/* Two columns of cards stacked in each: weapon, legendary and stat enchants; relics and gems. */
-.columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
+/* Stat enchants beside gems: one height, the cards filling it. */
+.pair.even {
+  align-items: stretch;
 }
 
-.column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
-.column ::deep .card {
-  margin: 0;
-}
-
-.pair ::deep .card {
-  margin: 0;
+.pair.even ::deep .card {
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .hero-select {
@@ -666,8 +662,7 @@
 }
 
 @media (max-width: 1200px) {
-  .pair,
-  .columns {
+  .pair {
     grid-template-columns: minmax(0, 1fr);
   }
 }

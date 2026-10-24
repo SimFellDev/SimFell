@@ -21,8 +21,10 @@ public sealed class BuildEditorTests : IDisposable
         var catalog = BuildCatalog.For("rime");
         Assert.Equal(18, catalog.Talents.Count);
         Assert.All(catalog.Talents, t => Assert.True(t.Talent.Modeled && t.Talent.Icon != null, t.Talent.Name));
-        Assert.Equal(Catalog.AllWeapons.Count(), catalog.Weapons.Count);
+        // Rime's four weapons alone, by their abilities: Voidbringer's Touch, Nature's Fury, Chronoshift, Icicles of An'zhyr.
+        Assert.Equal([155, 161, 1558, 1561], catalog.Weapons.Select(w => w.Id).Order());
         Assert.Contains(catalog.Legendaries, l => l.Name == "Frostwyrm's Spite");
+        Assert.Contains(catalog.Legendaries, l => l.Name == "Skandi's Decree" && l.Modeled);
         Assert.Contains(catalog.Relics, r => r.Name == AccursedTrophy.OrbItemName && r.PassiveName == AccursedTrophy.RelicPassiveName);
         Assert.All(catalog.Glyphs, g => Assert.Equal(4, g.MaxRank));
         Assert.NotNull(BuildCatalog.PortraitUrl("Rime"));

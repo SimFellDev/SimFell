@@ -304,6 +304,23 @@ public static class GameIcons
         [1561] = "T_Nhance_RPG_Icons_FrostRain",
     };
 
+    /// <summary>The heroes each weapon ability's weapon is for, by ability ID.</summary>
+    public static IReadOnlyDictionary<int, string[]> WeaponHeroes { get; } = new Dictionary<int, string[]>
+    {
+        [152] = ["Helena", "Meiko", "Xavian"],
+        [155] = ["Ardeos", "Elarion", "Gunde", "Mara", "Rime", "Tariq"],
+        [156] = ["Aeona", "Sylvie", "Vigour"],
+        [157] = ["Gunde", "Mara", "Tariq"],
+        [159] = ["Helena", "Meiko", "Xavian"],
+        [160] = ["Gunde", "Helena", "Mara", "Meiko", "Tariq", "Xavian"],
+        [161] = ["Aeona", "Ardeos", "Elarion", "Rime", "Sylvie", "Vigour"],
+        [162] = ["Aeona", "Helena", "Meiko", "Sylvie", "Vigour", "Xavian"],
+        [164] = ["Aeona", "Sylvie", "Vigour"],
+        [1558] = ["Ardeos", "Elarion", "Rime"],
+        [1559] = ["Gunde", "Mara", "Tariq"],
+        [1561] = ["Ardeos", "Elarion", "Rime"],
+    };
+
     /// <summary>Icons of the datamine's enchant records, by ID.</summary>
     public static IReadOnlyDictionary<int, string> StatEnchants { get; } = new Dictionary<int, string>
     {
