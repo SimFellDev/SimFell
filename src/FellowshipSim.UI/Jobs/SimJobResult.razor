@@ -96,7 +96,7 @@
                     <thead>
                         <tr>
                             <th>Ability</th>
-                            <th>Amount</th>
+                            <th class="amount-cell">Amount</th>
                             <th>Casts</th>
                             <th title="Damage per cast">Avg cast</th>
                             <th>Hits</th>
@@ -111,7 +111,7 @@
                             double share = total > 0 ? a.Damage / total : 0;
                             <tr @key="a.Name">
                                 <td class="name"><GameIcon Url="@BuildCatalog.IconUrl(a.Id, a.Name)" Size="22" /><span>@a.Name</span></td>
-                                <td>
+                                <td class="amount-cell">
                                     @* As FellowshipLogs shows it: share, bar, damage. *@
                                     <span class="amount"><span class="pct">@Percent(share)</span><span class="bar"><b style="width: @Width(share / abilities.Max(x => x.Damage / total))"></b></span><span class="value">@N(a.Damage)</span></span>
                                 </td>
@@ -125,7 +125,7 @@
                         }
                         <tr class="total">
                             <td class="name">Total</td>
-                            <td><span class="amount">@N(total)</span></td>
+                            <td class="amount-cell"><span class="amount">@N(total)</span></td>
                             <td></td>
                             <td></td>
                             <td></td>

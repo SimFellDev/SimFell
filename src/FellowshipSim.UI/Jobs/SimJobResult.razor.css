@@ -234,9 +234,14 @@
   font-weight: 700;
 }
 
-/* An ability's amount as FellowshipLogs shows it, on one line: its share, a bar, then its damage. */
+/* An ability's amount as FellowshipLogs shows it, on one line: its share, a bar, then its damage. The column takes the
+   table's spare width and the bar fills it. */
+.report-table .amount-cell {
+  width: 100%;
+}
+
 .amount {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
@@ -249,7 +254,9 @@
 }
 
 .amount .bar {
-  width: 110px;
+  flex: 1;
+  min-width: 80px;
+  width: auto;
 }
 
 .amount .value {
