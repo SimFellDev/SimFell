@@ -29,7 +29,7 @@
 
 @if (Job is { Status: SimJobStatus.Done, Result: ReviewSummary review })
 {
-    <ReviewFrame HtmlFile="@review.HtmlFile" />
+    <ReviewView HtmlFile="@review.HtmlFile" />
 }
 
 @code {

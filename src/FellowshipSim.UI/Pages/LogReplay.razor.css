@@ -30,7 +30,3 @@
   border-bottom-color: var(--heading);
 }
 
-/* Above a review: the way back to the list. */
-.review-bar {
-  margin: 12px 0;
-}

@@ -14,10 +14,11 @@
 
 @if (!string.IsNullOrEmpty(Review))
 {
-    <div class="review-bar">
-        <button type="button" class="secondary-button" @onclick="() => ShowTab(LogReplayTab.Reviews)">‹ Back to reviews</button>
-    </div>
-    <ReviewFrame @key="Review" HtmlFile="@Review" />
+    <ReviewView HtmlFile="@Review">
+        <Leading>
+            <button type="button" class="secondary-button" @onclick="() => ShowTab(LogReplayTab.Reviews)">‹ Back to reviews</button>
+        </Leading>
+    </ReviewView>
 }
 else if (State.Tab == LogReplayTab.Import)
 {

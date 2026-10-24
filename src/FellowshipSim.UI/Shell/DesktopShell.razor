@@ -73,7 +73,7 @@
                         <SavedSimView Sim="sim" />
                         break;
                     case { Kind: DesktopTabKind.Review, ReviewFile: { } file }:
-                        <ReviewFrame HtmlFile="@file" />
+                        <ReviewView @key="file" HtmlFile="@file" />
                         break;
                 }
             </div>
