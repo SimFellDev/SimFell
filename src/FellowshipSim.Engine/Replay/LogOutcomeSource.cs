@@ -499,10 +499,10 @@ public sealed class HitLedger
             List<LogDamage>? current = null;
             foreach (var h in list)
             {
-                if (current == null || h.Time - current[0].Time > options.HitGroupSeconds || current.Any(x => x.Target == h.Target))
+                if (current == null || h.Time - current[0].Time > options.GroupSecondsOf(logId) || current.Any(x => x.Target == h.Target))
                 {
                     // A repeated target opens a new group only if no later open group can take it.
-                    current = groups.Count > 0 && h.Time - groups[^1][0].Time <= options.HitGroupSeconds
+                    current = groups.Count > 0 && h.Time - groups[^1][0].Time <= options.GroupSecondsOf(logId)
                               && current != null && current != groups[^1] && !groups[^1].Any(x => x.Target == h.Target)
                         ? groups[^1]
                         : null;
@@ -563,7 +563,7 @@ public sealed class HitLedger
         var ratios = new List<double>();
         foreach (var h in group)
         {
-            var prev = list.LastOrDefault(p => p.Time < group[0].Time - options.HitGroupSeconds && p.Time > h.Time - 3.0
+            var prev = list.LastOrDefault(p => p.Time < group[0].Time - options.GroupSecondsOf(group[0].AbilityId) && p.Time > h.Time - 3.0
                                                && p.Target == h.Target && p.Crit == h.Crit && p.TotalAmount > 0);
             if (prev != null) ratios.Add(h.TotalAmount / prev.TotalAmount);
         }

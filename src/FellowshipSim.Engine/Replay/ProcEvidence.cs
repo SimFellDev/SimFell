@@ -4,6 +4,9 @@ using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Sigils;
 using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 using FellowshipSim.Core.Heroes.Ardeos.Talents;
+using FellowshipSim.Core.Heroes.Elarion;
+using FellowshipSim.Core.Heroes.Elarion.Abilities;
+using FellowshipSim.Core.Heroes.Elarion.Talents;
 using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
@@ -115,6 +118,20 @@ public static class ProcEvidence
         new(CorrosiveSpill.ProcKey, LogIds.Effect(CorrosiveSpill.DamageEffectId), DelaySeconds: 1.6, MinDelaySeconds: 0.8),
         new(SeethingBurst.ProcKey, LogIds.Effect(SeethingBurst.DamageEffectId)),
         new(FromTheShadows.ProcKey, QueensFang.AbilityId, DelaySeconds: 0.5),
+
+        // Elarion
+        // The salvo is logged in the server frame of the hit that called it down, often a millisecond before it.
+        new(LunarlightSalvo.ProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), DelaySeconds: 0.01, MinDelaySeconds: -0.01),
+        new(LunarlightSalvo.EruptProcKey, LogIds.Effect(LunarlightSalvo.EruptEffectId), DelaySeconds: 0.1, MinDelaySeconds: -0.01),
+        // An enemy Lunarlight Mark or a Spirit Refund chose gains stacks of Lunarlight Mark at once.
+        new(LunarlightMark.TargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
+        new(Elarion.RefundMarkTargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
+        new(CelestialShot.ImpetusProcKey, CelestialShot.Impetus.LogId),
+        new(FocusedExpanse.ProcKey, FocusedExpanse.Buff.LogId),
+        new(ResurgentWinds.ProcKey, ResurgentWinds.Buff.LogId),
+        new(StarstrikersAscent.ProcKey, ImpendingHeartseeker.Buff.LogId),
+        // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
+        new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);

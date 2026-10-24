@@ -68,6 +68,15 @@ public class ReplayOptions
     /// land at least a server frame (33ms) apart.
     /// </remarks>
     public double HitGroupSeconds { get; set; } = 0.010;
+
+    /// <summary>
+    /// Damage IDs whose multi-target hits land over a longer window than <see cref="HitGroupSeconds"/>, with that window.
+    /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over up to 70ms.
+    /// </summary>
+    public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [1318] = 0.1 };
+
+    /// <summary>The window of one multi-target hit with damage ID <paramref name="logId"/>.</summary>
+    public double GroupSecondsOf(int logId) => HitGroupSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitGroupSeconds;
     /// <summary>A log hit still unmatched this long after it landed is reported as missing from the engine.</summary>
     public double SettleSeconds { get; set; } = 2.1;
 
