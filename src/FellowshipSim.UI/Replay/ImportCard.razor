@@ -37,7 +37,6 @@
                 @foreach (var f in linked != null && !State.ShowAllFights ? [linked] : fights)
                 {
                     bool selected = f.Id == report.SelectedFightId;
-                    bool hasLinkedPlayer = selected && f.Players.Any(p => p.Id == report.SelectedPlayerId);
                     <div @key="f.Id" class="fight @(selected ? "selected" : "")">
                         <div class="fight-head">
                             <span class="fight-name">@f.Name</span>
@@ -49,13 +48,13 @@
                             @foreach (var p in f.Players)
                             {
                                 bool highlight = selected && p.Id == report.SelectedPlayerId;
-                                // With the link's player picked out, the others are the lesser buttons.
-                                string? kind = !p.Supported ? "unsupported" : hasLinkedPlayer && !highlight ? "secondary-button" : null;
+                                string kind = !p.Supported ? "player unsupported" : highlight ? "player linked" : "player";
                                 <button @key="p.Id" type="button" class="@kind"
                                         disabled="@(!p.Supported || Busy)"
                                         title="@(p.Supported ? $"{Action} {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
                                         @onclick="() => OnPick(report, f, p)">
-                                    @p.Name <span class="meta">@p.Hero</span>
+                                    <span class="player-name">@p.Name</span>
+                                    <span class="player-hero">@p.Hero</span>
                                 </button>
                             }
                         </div>
