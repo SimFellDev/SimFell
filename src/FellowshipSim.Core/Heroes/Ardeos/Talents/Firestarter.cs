@@ -18,10 +18,10 @@ public class Firestarter : Talent
 
     public override void Bind(Hero hero)
     {
-        foreach (var dot in ((Ardeos)hero).AllDots)
+        ((Ardeos)hero).ForEveryDot(dot =>
         {
             dot.CritChanceBonus += CritChance;
             dot.TicksCanCrit = true;
-        }
+        });
     }
 }

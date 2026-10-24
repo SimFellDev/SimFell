@@ -28,7 +28,7 @@ public class PyrophibianFrenzy : Talent
         var ardeos = (Ardeos)hero;
         var frogs = ardeos.GetAbility<FireFrogs>();
         if (frogs == null) return;
-        foreach (var dot in ardeos.AllDots)
+        ardeos.ForEveryDot(dot =>
         {
             dot.Hit += (in DamageContext hit) =>
             {
@@ -36,6 +36,6 @@ public class PyrophibianFrenzy : Talent
                 // The frog leaps at any enemy, so the proof is a frog attack on any of them.
                 if (ctx.Outcomes.RollProc(ProcKey, hit.IsCrit ? CritChance : Chance, ctx)) frogs.Spawn(ctx, 1, FirstAttackSeconds);
             };
-        }
+        });
     }
 }

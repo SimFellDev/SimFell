@@ -40,6 +40,25 @@ public sealed class Ardeos : Hero
     /// <summary>Every kind of damage over time effect the hero has (each registers itself).</summary>
     public List<DamageOverTime> AllDots { get; } = new();
 
+    private readonly List<Action<DamageOverTime>> _everyDot = new();
+
+    /// <summary>
+    /// Runs <paramref name="action"/> on every kind of damage over time effect: those the hero has now and those a later
+    /// talent or legendary adds (Crackling Inferno's and Explosivo's burns), whatever the order they bind in.
+    /// </summary>
+    public void ForEveryDot(Action<DamageOverTime> action)
+    {
+        _everyDot.Add(action);
+        foreach (var dot in AllDots.ToList()) action(dot);
+    }
+
+    /// <summary>A new kind of damage over time effect registers itself.</summary>
+    internal void AddDot(DamageOverTime dot)
+    {
+        AllDots.Add(dot);
+        foreach (var action in _everyDot) action(dot);
+    }
+
     public Ardeos() => Dots = new DotTracker(this);
 
     /// <summary>Whole Burning Embers held.</summary>

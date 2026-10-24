@@ -6,8 +6,6 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes 3 hits, about 0.3s apart,
 /// each the damage its effects deal per second at the cast (the hits that land later keep it); the hits crit on their
 /// own; the effects keep ticking. On many enemies the hits queue up and land up to several seconds late.
-/// The hits are multiplied by the class tuning once more, a factor fitted to the logs: replays of the five logged fights
-/// deal 0.94-1.05 of the logged Detonate damage with it, and 0.86-0.95 without it.
 /// </summary>
 public class Detonate : ArdeosAbility
 {
@@ -58,7 +56,7 @@ public class Detonate : ArdeosAbility
         {
             double perSecond = 0.0;
             foreach (var dot in dots.On(enemy)) perSecond += dot.Effect.DamagePerSecond(ctx, dot);
-            double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier * Owner.ClassDamageTuning;
+            double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier;
             if (damage <= 0) continue;
             double critChance = Owner.CritChanceAgainst(enemy, now) + CritChanceBonus + (CurrentCast?.CritChance ?? 0.0);
             double critMultiplier = CritMultiplierAt(now);
