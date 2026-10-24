@@ -28,7 +28,7 @@ dotnet test -c Release
 # one test class or method
 dotnet test tests/FellowshipSim.Tests -c Release --filter "FullyQualifiedName~AplParserTests"
 
-# one hero's current-patch fights from FellowshipLogs into data/fights
+# one hero's current-patch fights from FellowshipLogs into data/fights (credentials from the environment or the simfell user secrets)
 dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 
 # one hero's accuracy over those fights, saved as data/accuracy/<Hero>/<label>.txt (docs/REPLAY_ACCURACY.md)
@@ -83,7 +83,7 @@ or the desktop app).
   `wwwroot/shell` scrolls the desktop result tabs.
 - **FellowshipSim.Service** is the web app: a Blazor Web App (Interactive Server) hosting FellowshipSim.UI. Its
   `RemoteSimEngine` calls the engine server. It serves a review's files at `/reviews` to the visitor who ran it alone.
-  Its FellowshipLogs credentials come from the host's environment (or `data/settings.json`).
+  Its FellowshipLogs credentials come from the host's environment, the `simfell` user secrets in development, or `data/settings.json`.
 - **FellowshipSim.Desktop** is a .NET MAUI Blazor Hybrid app (`net10.0-windows10.0.19041.0`, `net10.0-maccatalyst`)
   hosting FellowshipSim.UI, with `LocalSimEngine` in-process and the data folder in local application data. Review
   pages come from a WebView2 virtual host on Windows and a URL scheme handler on Mac Catalyst.

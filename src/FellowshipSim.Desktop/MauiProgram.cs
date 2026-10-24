@@ -1,6 +1,7 @@
 using FellowshipSim.Engine;
 using FellowshipSim.UI;
 using FellowshipSim.UI.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace FellowshipSim.Desktop;
 
@@ -19,6 +20,8 @@ public static class MauiProgram
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
+        builder.Configuration.AddUserSecrets(typeof(MauiProgram).Assembly);
+        builder.Configuration.AddEnvironmentVariables();
 
         builder.Services.AddSimFellUI(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FellowshipSim"))
             .AddSimFellDesktopShell();

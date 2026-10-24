@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FellowshipSim.Logs;
+using Microsoft.Extensions.Configuration;
 
 namespace FellowshipSim.UI.Services;
 
@@ -7,12 +8,16 @@ namespace FellowshipSim.UI.Services;
 public sealed record LogsCredentials(string ClientId, string ClientSecret);
 
 /// <summary>
-/// Where the FellowshipLogs API credentials come from: the environment variables FELLOWSHIPLOGS_CLIENT_ID and
-/// FELLOWSHIPLOGS_CLIENT_SECRET if set, otherwise <c>settings.json</c> in the data folder (saved from the desktop app's
-/// Setup page; the data folder is never committed).
+/// Where the FellowshipLogs API credentials come from: the configuration keys FELLOWSHIPLOGS_CLIENT_ID and
+/// FELLOWSHIPLOGS_CLIENT_SECRET if set (environment variables, or the <c>simfell</c> user secrets in development),
+/// otherwise <c>settings.json</c> in the data folder (saved from the desktop app's Setup page; the data folder is never
+/// committed).
 /// </summary>
-public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory httpClients)
+public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory httpClients, IConfiguration configuration)
 {
+    public const string ClientIdKey = "FELLOWSHIPLOGS_CLIENT_ID";
+    public const string ClientSecretKey = "FELLOWSHIPLOGS_CLIENT_SECRET";
+
     /// <summary>Name of the <see cref="HttpClient"/> of FellowshipLogs requests.</summary>
     public const string HttpClientName = "fellowshiplogs";
 
@@ -22,8 +27,8 @@ public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory 
     {
         get
         {
-            string? id = Environment.GetEnvironmentVariable("FELLOWSHIPLOGS_CLIENT_ID");
-            string? secret = Environment.GetEnvironmentVariable("FELLOWSHIPLOGS_CLIENT_SECRET");
+            string? id = configuration[ClientIdKey];
+            string? secret = configuration[ClientSecretKey];
             if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(secret)) return new LogsCredentials(id, secret);
             if (!File.Exists(SettingsPath)) return null;
             var saved = JsonSerializer.Deserialize<LogsCredentials>(File.ReadAllText(SettingsPath));

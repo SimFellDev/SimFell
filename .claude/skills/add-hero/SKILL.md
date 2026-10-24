@@ -37,7 +37,7 @@ dotnet run tools/fetch-fights.cs -- --hero <Hero> --count 15
 
 A fight is the hero's when `fight.friendlyPlayers` has a player whose `master_data.actors[].subType` is the hero. Fewer
 than six of the hero's fights of the current patch stops the skill with the tool's last lines. The tool needs the
-FellowshipLogs credentials the app uses; with none set, the session asks the user for them.
+FellowshipLogs credentials, `FELLOWSHIPLOGS_CLIENT_ID` and `FELLOWSHIPLOGS_CLIENT_SECRET`, from the environment or the `simfell` user secrets; with none set, the session asks the user for them.
 
 ## 4. Pattern hero
 

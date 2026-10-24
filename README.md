@@ -51,7 +51,14 @@ $env:FELLOWSHIPLOGS_CLIENT_ID = "..."; $env:FELLOWSHIPLOGS_CLIENT_SECRET = "..."
 export FELLOWSHIPLOGS_CLIENT_ID=... FELLOWSHIPLOGS_CLIENT_SECRET=...
 ```
 
-Without them, the app reads `data/settings.json`. **Setup** shows whether API access is set up.
+In development, the web app, the desktop app and `tools/fetch-fights.cs` also read them from the `simfell` user secrets:
+
+```
+dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID ... --id simfell
+dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_SECRET ... --id simfell
+```
+
+Without either, the app reads `data/settings.json`. **Setup** shows whether API access is set up.
 
 To download and replay a fight:
 

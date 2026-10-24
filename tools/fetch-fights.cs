@@ -7,13 +7,17 @@
 //
 //     dotnet run tools/fetch-fights.cs -- --hero Rime [--count 12] [--max-per-player 2] [--pages 10]
 //
-// Credentials are those of the app: FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET, otherwise data/settings.json
-// of this checkout, otherwise data/settings.json of the main checkout (for a worktree).
+// Credentials are FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET, from the environment or the simfell user
+// secrets (dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID <id> --id simfell).
 #:project ../src/FellowshipSim.Logs/FellowshipSim.Logs.csproj
-using System.Diagnostics;
+#:package Microsoft.Extensions.Configuration.EnvironmentVariables@10.0.13
+#:package Microsoft.Extensions.Configuration.UserSecrets@10.0.13
+#:property PublishAot=false
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FellowshipSim.Logs;
+using Microsoft.Extensions.Configuration;
 
 string root = Path.GetDirectoryName((string)AppContext.GetData("EntryPointFileDirectoryPath")!)!;
 string? hero = null;
@@ -36,11 +40,11 @@ if (hero == null)
     return 1;
 }
 
-var credentials = Credentials(root);
+var credentials = Credentials();
 if (credentials == null)
 {
-    Console.Error.WriteLine("No FellowshipLogs credentials: set FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET, " +
-                            "or save them in data/settings.json through the desktop app.");
+    Console.Error.WriteLine("No FellowshipLogs credentials: set FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET " +
+                            "in the environment or with dotnet user-secrets set <key> <value> --id simfell.");
     return 1;
 }
 
@@ -140,36 +144,16 @@ async Task WaitForPointsAsync()
 static bool Throttled(FellowshipLogsException e) =>
     e.Message.Contains("returned 429") || System.Text.RegularExpressions.Regex.IsMatch(e.Message, @"returned 5\d\d");
 
-static (string Id, string Secret)? Credentials(string root)
+static (string Id, string Secret)? Credentials()
 {
-    string? id = Environment.GetEnvironmentVariable("FELLOWSHIPLOGS_CLIENT_ID");
-    string? secret = Environment.GetEnvironmentVariable("FELLOWSHIPLOGS_CLIENT_SECRET");
-    if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(secret)) return (id, secret);
-    foreach (string folder in new[] { root, MainCheckout(root) }.OfType<string>().Distinct())
-    {
-        string path = Path.Combine(folder, "data", "settings.json");
-        if (!File.Exists(path)) continue;
-        var saved = JsonNode.Parse(File.ReadAllText(path));
-        if ((string?)saved?["ClientId"] is { Length: > 0 } savedId && (string?)saved["ClientSecret"] is { Length: > 0 } savedSecret)
-        {
-            return (savedId, savedSecret);
-        }
-    }
-    return null;
+    var configuration = new ConfigurationBuilder()
+        .AddUserSecrets(Assembly.GetEntryAssembly()!)
+        .AddEnvironmentVariables()
+        .Build();
+    string? id = configuration["FELLOWSHIPLOGS_CLIENT_ID"];
+    string? secret = configuration["FELLOWSHIPLOGS_CLIENT_SECRET"];
+    return !string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(secret) ? (id, secret) : null;
 }
-
-static string? MainCheckout(string root)
-{
-    var git = Process.Start(new ProcessStartInfo("git", "rev-parse --path-format=absolute --git-common-dir")
-    {
-        WorkingDirectory = root,
-        RedirectStandardOutput = true,
-    })!;
-    string commonDir = git.StandardOutput.ReadToEnd().Trim();
-    git.WaitForExit();
-    return git.ExitCode == 0 ? Path.GetDirectoryName(commonDir) : null;
-}
-
 /// <summary>One encounter's ranking list of the hero, read a page at a time from rank 1.</summary>
 sealed class RankingQueue(int encounterId, string name)
 {

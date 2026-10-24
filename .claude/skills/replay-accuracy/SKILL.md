@@ -47,7 +47,7 @@ The tool spreads the fights over the zone's encounters. Fights of the current pa
 can be copied.
 
 Fewer than six usable fights is too few to tell a pattern from one fight's events: the session stops and reports the
-tool's last lines to the user. The tool needs the FellowshipLogs credentials the app uses; with none set, the session
+tool's last lines to the user. The tool needs the FellowshipLogs credentials, `FELLOWSHIPLOGS_CLIENT_ID` and `FELLOWSHIPLOGS_CLIENT_SECRET`, from the environment or the `simfell` user secrets; with none set, the session
 stops and asks the user for them. FellowshipLogs allows about 18,000 points an hour for one API client, shared by every
 session, so a session downloads its fights once, here.
 

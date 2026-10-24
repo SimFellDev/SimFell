@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- Every project and tools/*.cs reads the one user-secrets store "simfell" in development. -->
+  <PropertyGroup>
+    <UserSecretsId>simfell</UserSecretsId>
+  </PropertyGroup>
+
+</Project>
