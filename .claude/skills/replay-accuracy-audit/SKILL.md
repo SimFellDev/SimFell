@@ -6,7 +6,8 @@ argument-hint: <hero>-accuracy-v<N>
 
 # Spec audit of a replay accuracy branch
 
-The argument is a branch, `<hero>-accuracy-v<N>`, with its SimFell worktree at `G:/source/SimFell.<branch>`.
+The argument is a branch, `<hero>-accuracy-v<N>`, with its SimFell worktree at `G:/source/SimFell.<branch>`. The
+session runs on Opus 5.5 at medium effort; the auditor runs on Opus 5.5 at high effort, by its definition.
 
 1. **The spec as written.** The commit that added `docs/accuracy/<branch>.md`:
 

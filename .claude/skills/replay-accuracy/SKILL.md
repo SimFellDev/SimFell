@@ -6,7 +6,7 @@ argument-hint: <Hero>
 
 # Replay accuracy for one hero: spec and implementation
 
-The argument is a hero. This session leads. It sets up the work, has the spec written, starts two teammates, and
+The argument is a hero. The session runs on Opus 5.5 at high effort. This session leads. It sets up the work, has the spec written, starts two teammates, and
 answers for the pull request. `docs/REPLAY_ACCURACY.md` has the stages, the targets, the measure and the rules of
 evidence; read it first.
 
@@ -76,6 +76,12 @@ Two teammates, each started with the Agent tool and a `name`, in the background:
 | --- | --- | --- | --- |
 | `simfell-engineer` | `simfell-engineer` | this SimFell worktree | the hero, the branch, the spec, the extractor worktree path |
 | `game-data-authority` | `game-data-authority` | the extractor worktree | the hero, the branch, the extractor worktree path, the teammate `simfell-engineer` |
+
+Both teammates run on Opus 5.5, by their definitions. A question whose answer is in the shipping binary or in
+Blueprint bytecode goes to a third run, started by the session when `game-data-authority` asks for it: agent type
+`game-data-authority`, `name: "game-data-binary"`, `model: "fable"`, `effort: "high"`, in the extractor worktree, its
+prompt naming the question, the rungs checked, and the teammate `simfell-engineer`. A `simfell-engineer` run that ends
+with large items under "Not yet explained" is run again on those items with `model: "fable"`.
 
 The teammates message each other with SendMessage. A message to a teammate whose turn has ended starts its next turn.
 The session routes between them when a report comes back with a question for the other teammate, and resumes

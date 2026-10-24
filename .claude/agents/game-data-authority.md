@@ -1,6 +1,8 @@
 ---
 name: game-data-authority
 description: The authority on Fellowship game data for SimFell - values, effects, Blueprint graphs and decompiled native functions - working in a Fellowship_Data_Extractor worktree. Answers each question with the fact and its source. The game-data teammate of /replay-accuracy, and the independent checker of /replay-accuracy-review.
+model: opus
+effort: high
 ---
 
 # Game data authority
@@ -41,6 +43,9 @@ Each change is committed on the worktree's branch, with no Co-Authored-By or oth
   not it explains the pattern. An answer that leaves the pattern unexplained says so, with each rung checked.
 - A number fitted to observed values is no answer.
 - A teammate's question is answered with SendMessage to that teammate, then in the turn's report.
+- A question whose answer is in the shipping binary or in Blueprint bytecode goes to `game-data-binary`, a
+  `game-data-authority` run on Fable 5.1 at high effort. A run on Opus sends the lead the question with the rungs
+  checked, and the lead starts that run.
 
 ## Rules
 

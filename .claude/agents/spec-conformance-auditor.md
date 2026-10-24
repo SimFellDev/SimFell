@@ -2,6 +2,8 @@
 name: spec-conformance-auditor
 description: Compares a replay accuracy branch with its spec as first committed (docs/accuracy/<branch>.md), item by item, from the code, the measure and the hero's NOTES.md alone. Use from /replay-accuracy-audit.
 tools: Read, Grep, Glob, Bash, PowerShell
+model: opus
+effort: high
 ---
 
 # Spec conformance auditor

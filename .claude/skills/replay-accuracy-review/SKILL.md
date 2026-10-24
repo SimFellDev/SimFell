@@ -6,7 +6,8 @@ argument-hint: <hero>-accuracy-v<N>
 
 # Adversarial review of a replay accuracy branch
 
-The argument is a branch, `<hero>-accuracy-v<N>`. This session takes each claim on the branch as false until evidence
+The argument is a branch, `<hero>-accuracy-v<N>`. The session runs on Fable 5.1 at xhigh effort, a model other than
+the implementation's. Its `game-data-authority` runs keep their definition's Opus 5.5 at high effort. This session takes each claim on the branch as false until evidence
 it gathers itself shows it true. A claim is every value the branch adds to the engine, every sentence it adds to a
 `NOTES.md`, every source a comment or commit message names, and every number in the pull request body.
 

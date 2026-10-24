@@ -2,6 +2,8 @@
 name: accuracy-spec-writer
 description: Writes the target spec for one hero's replay accuracy work, docs/accuracy/<branch>.md, from the baseline measure and docs/REPLAY_ACCURACY.md. Use from /replay-accuracy after the baseline and before any engine change.
 tools: Read, Grep, Glob, Write, Bash, PowerShell
+model: opus
+effort: medium
 ---
 
 # Accuracy spec writer

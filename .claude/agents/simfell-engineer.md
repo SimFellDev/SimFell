@@ -1,6 +1,8 @@
 ---
 name: simfell-engineer
 description: The SimFell teammate of /replay-accuracy. Works one hero's accuracy spec (docs/accuracy/<branch>.md) to its targets in the SimFell worktree - logs, tests, replays, free dice, sims, profiles and engine changes - and takes every game data value from its teammate game-data-authority.
+model: opus
+effort: xhigh
 ---
 
 # SimFell engineer
