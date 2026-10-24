@@ -1,52 +1,214 @@
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 24px;
-  margin: 10px 0 6px;
-}
-
-.stats div {
+/* A sim's report: tiles, two charts over the fight, then the damage and buff tables. */
+.report {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
 }
 
-.stats dt {
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.tile.main {
+  border-color: var(--accent);
+}
+
+.tile span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tile strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile.main strong {
+  color: var(--heading);
+}
+
+.tile em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.card h3 {
+  margin: 0;
+  font-family: var(--heading-font);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+.card h3 .meta {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.stats dd {
-  margin: 0;
-  font-weight: 600;
+.legend i {
+  display: inline-block;
+  width: 16px;
+  margin-left: 10px;
+}
+
+.legend i.mean {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--heading);
+}
+
+.legend i.band {
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(212, 175, 110, 0.18);
+}
+
+.legend i.average {
+  border-top: 1px dashed #8ea2ff;
+}
+
+/* A chart: the value axis left, the drawing, the time axis under it. */
+.chart {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-rows: 240px auto;
+  column-gap: 8px;
+}
+
+.chart .y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.chart .x {
+  grid-column: 2;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.chart .y span,
+.chart .x span {
+  color: var(--muted);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-.abilities {
+.chart svg {
   width: 100%;
-  max-width: 520px;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.abilities th,
-.abilities td {
-  text-align: left;
-  padding: 4px 8px;
+  height: 240px;
+  display: block;
   border-bottom: 1px solid var(--border);
 }
 
-.abilities th {
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 13px;
+.chart .grid {
+  stroke: #1e1e22;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
-.abilities .num {
+.chart .band {
+  fill: rgba(212, 175, 110, 0.18);
+  stroke: none;
+}
+
+.chart .mean {
+  fill: none;
+  stroke: var(--heading);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart .average {
+  stroke: #8ea2ff;
+  stroke-width: 1;
+  stroke-dasharray: 6 6;
+  vector-effect: non-scaling-stroke;
+}
+
+.table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.abilities tbody tr:hover {
-  background: var(--row-hover);
+.table .total td {
+  font-weight: 700;
+  border-top: 2px solid var(--border);
+}
+
+.share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bar {
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.bar b {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.hint {
+  margin: 0;
 }

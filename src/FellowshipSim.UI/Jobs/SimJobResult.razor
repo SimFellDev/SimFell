@@ -1,31 +1,274 @@
-@* A done sim's DPS, and its DPS per ability, highest first. *@
+@using System.Globalization
+@using FellowshipSim.Core.Engine
+@* A done sim's report: its DPS, damage over time, each damage source, and each buff and debuff. *@
+<div class="report">
+    <div class="tiles">
+        <div class="tile main">
+            <span>Mean DPS</span>
+            <strong>@N(Result.MeanDps)</strong>
+            <em>±@MarginText at 95% confidence</em>
+        </div>
+        <div class="tile">
+            <span>Range</span>
+            <strong>@N(Result.MinDps) – @N(Result.MaxDps)</strong>
+            <em>lowest and highest fight</em>
+        </div>
+        <div class="tile">
+            <span>Std dev</span>
+            <strong>@N(Result.StandardDeviation)</strong>
+            <em>@Percent(Result.MeanDps > 0 ? Result.StandardDeviation / Result.MeanDps : 0) of the mean</em>
+        </div>
+        <div class="tile">
+            <span>Mean damage</span>
+            <strong>@N(Result.MeanDps * Result.DurationSeconds)</strong>
+            <em>per fight</em>
+        </div>
+        <div class="tile">
+            <span>Fights</span>
+            <strong>@N(Result.Iterations)</strong>
+            <em>@Result.DurationSeconds.ToString("0.##", CultureInfo.CurrentCulture) s each</em>
+        </div>
+    </div>
 
-<dl class="stats">
-    <div><dt>Mean DPS</dt><dd>@Result.MeanDps.ToString("N0")</dd></div>
-    <div><dt>Min</dt><dd>@Result.MinDps.ToString("N0")</dd></div>
-    <div><dt>Max</dt><dd>@Result.MaxDps.ToString("N0")</dd></div>
-    <div><dt>Std dev</dt><dd>@Result.StandardDeviation.ToString("N0")</dd></div>
-    <div><dt>Iterations</dt><dd>@Result.Iterations.ToString("N0")</dd></div>
-    <div><dt>Duration</dt><dd>@Result.DurationSeconds.ToString("0.##") s</dd></div>
-</dl>
-<table class="abilities">
-    <thead>
-        <tr>
-            <th>Ability</th>
-            <th class="num">DPS</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var (ability, dps) in Result.AbilityDps.OrderByDescending(a => a.Value))
-        {
-            <tr @key="ability">
-                <td>@ability</td>
-                <td class="num">@dps.ToString("N0")</td>
-            </tr>
-        }
-    </tbody>
-</table>
+    @if (Result.Timeline is { Damage.Count: > 1 } timeline)
+    {
+        <section class="card">
+            <div class="card-head">
+                <h3>Damage done over time</h3>
+                <span class="legend"><i class="mean"></i>Mean <i class="band"></i>5–95% of fights</span>
+            </div>
+            <div class="chart">
+                <div class="y">@foreach (var tick in Ticks(Max(timeline.DamageHigh, timeline.Damage)).Reverse())
+                {
+                    <span>@tick</span>
+                }</div>
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="Damage done over the fight: the mean of every fight and the 5 to 95 percent band">
+                    @for (int g = 1; g < 4; g++)
+                    {
+                        <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
+                    }
+                    <path d="@Band(timeline.DamageLow, timeline.DamageHigh, Max(timeline.DamageHigh, timeline.Damage))" class="band" />
+                    <path d="@Line(timeline.Damage, Max(timeline.DamageHigh, timeline.Damage))" class="mean" />
+                </svg>
+                <div class="x">@foreach (var label in TimeLabels(timeline.Damage.Count))
+                {
+                    <span>@label</span>
+                }</div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-head">
+                <h3>DPS over time <span class="meta">(@timeline.RollingSeconds.ToString("0", CultureInfo.CurrentCulture) s rolling average)</span></h3>
+                <span class="legend"><i class="mean"></i>Mean <i class="band"></i>5–95% of fights <i class="average"></i>Mean DPS</span>
+            </div>
+            <div class="chart">
+                @{ double dpsMax = Max(timeline.DpsHigh, timeline.Dps); }
+                <div class="y">@foreach (var tick in Ticks(dpsMax).Reverse())
+                {
+                    <span>@tick</span>
+                }</div>
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="DPS over the fight, as a rolling average: the mean of every fight and the 5 to 95 percent band">
+                    @for (int g = 1; g < 4; g++)
+                    {
+                        <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
+                    }
+                    <path d="@Band(timeline.DpsLow, timeline.DpsHigh, dpsMax)" class="band" />
+                    <line x1="0" x2="1000" y1="@Y(Result.MeanDps, Nice(dpsMax))" y2="@Y(Result.MeanDps, Nice(dpsMax))" class="average" />
+                    <path d="@Line(timeline.Dps, dpsMax)" class="mean" />
+                </svg>
+                <div class="x">@foreach (var label in TimeLabels(timeline.Dps.Count))
+                {
+                    <span>@label</span>
+                }</div>
+            </div>
+        </section>
+    }
+
+    <section class="card">
+        <h3>Damage by ability</h3>
+        <div class="table-wrap">
+            @if (Result.Abilities is { Count: > 0 } abilities)
+            {
+                double total = abilities.Sum(a => a.Damage);
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Ability</th>
+                            <th class="num">Damage</th>
+                            <th class="num">Share</th>
+                            <th class="num">DPS</th>
+                            <th class="num">Casts</th>
+                            <th class="num">Hits</th>
+                            <th class="num" title="The hits' mean chance to crit (a sim deals each hit's expected damage)">Crit</th>
+                            <th class="num" title="Damage per hit, crits included">Avg hit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in abilities)
+                        {
+                            double share = total > 0 ? a.Damage / total : 0;
+                            <tr @key="a.Name">
+                                <td>@a.Name</td>
+                                <td class="num">@N(a.Damage)</td>
+                                <td class="num"><span class="share">@Percent(share)<span class="bar"><b style="width: @Width(share / abilities.Max(x => x.Damage / total))"></b></span></span></td>
+                                <td class="num">@N(a.Dps)</td>
+                                <td class="num">@(a.Casts > 0 ? a.Casts.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
+                                <td class="num">@a.Hits.ToString("N1", CultureInfo.CurrentCulture)</td>
+                                <td class="num">@Percent(a.CritChance)</td>
+                                <td class="num">@N(a.AverageHit)</td>
+                            </tr>
+                        }
+                        <tr class="total">
+                            <td>Total</td>
+                            <td class="num">@N(total)</td>
+                            <td class="num">100%</td>
+                            <td class="num">@N(Result.MeanDps)</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="hint">Each value is the mean over the fights. Casts show "–" for damage no cast of its own starts (procs, legendary and glyph hits).</p>
+            }
+            else
+            {
+                @* A sim saved before the report: its DPS per ability alone. *@
+                <table class="table">
+                    <thead>
+                        <tr><th>Ability</th><th class="num">DPS</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (ability, dps) in Result.AbilityDps.OrderByDescending(a => a.Value))
+                        {
+                            <tr @key="ability"><td>@ability</td><td class="num">@N(dps)</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </section>
+
+    @if (Result.Buffs is { Count: > 0 } buffs)
+    {
+        <section class="card">
+            <h3>Buffs and debuffs</h3>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Buff</th>
+                            <th class="num">Uptime</th>
+                            <th class="num" title="Times it starts, per fight">Applications</th>
+                            <th class="num" title="Times it is applied again while up, per fight">Refreshes</th>
+                            <th class="num">Avg duration</th>
+                            <th class="num">Avg stacks</th>
+                            <th class="num">Max stacks</th>
+                            <th class="num">At max stacks</th>
+                            <th class="num" title="Time from one ending to the next starting">Avg gap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in buffs)
+                        {
+                            bool stacks = b.MaxStacks > 1;
+                            <tr @key="(b.Name, b.OnTarget)">
+                                <td>@b.Name @if (b.OnTarget)
+                                {
+                                    <span class="meta">debuff</span>
+                                }</td>
+                                <td class="num"><span class="share">@Percent(b.Uptime)<span class="bar"><b style="width: @Width(b.Uptime)"></b></span></span></td>
+                                <td class="num">@b.Applications.ToString("N1", CultureInfo.CurrentCulture)</td>
+                                <td class="num">@b.Refreshes.ToString("N1", CultureInfo.CurrentCulture)</td>
+                                <td class="num">@Seconds(b.AverageDuration)</td>
+                                <td class="num">@(stacks ? b.AverageStacks.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
+                                <td class="num">@(stacks ? b.MaxStacks.ToString(CultureInfo.CurrentCulture) : "–")</td>
+                                <td class="num">@(stacks && b.AtMaxStacks > 0 ? Percent(b.AtMaxStacks) : "–")</td>
+                                <td class="num">@(b.AverageGap > 0 ? Seconds(b.AverageGap) : "–")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="hint">Per fight, averaged over the fights. A debuff's uptime is per target. Buffs up for the whole fight from the start (passives) are left out.</p>
+        </section>
+    }
+</div>
 
 @code {
     [Parameter, EditorRequired] public SimResult Result { get; set; } = null!;
+
+    private const double Height = 240;
+
+    private static string N(double value) => Math.Round(value, MidpointRounding.AwayFromZero).ToString("N0", CultureInfo.CurrentCulture);
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("0.0", CultureInfo.CurrentCulture) + "%";
+
+    private static string Seconds(double seconds) => seconds.ToString("0.0", CultureInfo.CurrentCulture) + " s";
+
+    private static string Width(double fraction) => Math.Clamp(fraction * 100, 0, 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    /// <summary>The 95% confidence margin of the mean DPS, as a share of it.</summary>
+    private string MarginText => Result.MeanDps > 0 && Result.Iterations > 0
+        ? (1.96 * Result.StandardDeviation / Math.Sqrt(Result.Iterations) / Result.MeanDps * 100).ToString("0.00", CultureInfo.CurrentCulture) + "%"
+        : "–";
+
+    private static double Max(IReadOnlyList<double> a, IReadOnlyList<double> b) => Math.Max(a.Count > 0 ? a.Max() : 0, b.Count > 0 ? b.Max() : 0);
+
+    /// <summary>A round axis top at or above <paramref name="max"/>: 1, 2, 2.5 or 5 times a power of ten, times 4 ticks.</summary>
+    private static double Nice(double max)
+    {
+        if (max <= 0) return 1;
+        double step = max / 4;
+        double power = Math.Pow(10, Math.Floor(Math.Log10(step)));
+        double unit = new[] { 1, 2, 2.5, 5, 10 }.Select(m => m * power).First(s => s >= step);
+        return unit * 4;
+    }
+
+    private static IEnumerable<string> Ticks(double max)
+    {
+        double top = Nice(max);
+        for (int i = 0; i <= 4; i++) yield return Short(top * i / 4);
+    }
+
+    private static string Short(double value) => value switch
+    {
+        >= 1e6 => (value / 1e6).ToString("0.#", CultureInfo.CurrentCulture) + "M",
+        >= 1e3 => (value / 1e3).ToString("0.#", CultureInfo.CurrentCulture) + "k",
+        _ => value.ToString("0", CultureInfo.CurrentCulture),
+    };
+
+    private static string Y(double value, double top) => (Height - value / top * Height).ToString("0.#", CultureInfo.InvariantCulture);
+
+    private static string X(int index, int count) => (count <= 1 ? 0 : index * 1000.0 / (count - 1)).ToString("0.#", CultureInfo.InvariantCulture);
+
+    private static string Line(IReadOnlyList<double> values, double max)
+    {
+        double top = Nice(max);
+        var d = new System.Text.StringBuilder();
+        for (int i = 0; i < values.Count; i++) d.Append(i == 0 ? 'M' : 'L').Append(X(i, values.Count)).Append(' ').Append(Y(values[i], top)).Append(' ');
+        return d.ToString();
+    }
+
+    private static string Band(IReadOnlyList<double> low, IReadOnlyList<double> high, double max)
+    {
+        double top = Nice(max);
+        var d = new System.Text.StringBuilder(Line(high, max));
+        for (int i = low.Count - 1; i >= 0; i--) d.Append('L').Append(X(i, low.Count)).Append(' ').Append(Y(low[i], top)).Append(' ');
+        return d.Append('Z').ToString();
+    }
+
+    /// <summary>Time labels along the fight: at most about ten, on round minutes or half minutes.</summary>
+    private static IEnumerable<string> TimeLabels(int seconds)
+    {
+        int step = new[] { 15, 30, 60, 120, 300, 600 }.FirstOrDefault(s => seconds / s <= 10, 600);
+        int labels = Math.Max(1, (seconds - 1) / step);
+        for (int i = 0; i <= labels; i++)
+        {
+            int t = Math.Min(seconds, i * step);
+            yield return $"{t / 60}:{t % 60:00}";
+        }
+    }
 }

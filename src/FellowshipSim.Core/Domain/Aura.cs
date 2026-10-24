@@ -208,6 +208,9 @@ public class AuraContainer
     /// <summary>Raised when an aura is removed or expires.</summary>
     public event Action<Aura, SimTime>? OnRemoved;
 
+    /// <summary>Raised when an aura loses stacks but stays (aura, stacks before, time).</summary>
+    public event Action<Aura, int, SimTime>? OnStacksLost;
+
     public IReadOnlyDictionary<string, long> UptimeMs => _uptimeMs;
 
     /// <summary>
@@ -324,8 +327,10 @@ public class AuraContainer
         {
             if (aura.Stacks > count)
             {
+                int before = aura.Stacks;
                 aura.Stacks -= count;
                 StatsChanged(aura.Def.StatMask);
+                OnStacksLost?.Invoke(aura, before, now);
             }
             else Remove(key, now);
         }

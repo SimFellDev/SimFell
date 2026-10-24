@@ -16,6 +16,12 @@ public class MonteCarloResult
     public IReadOnlyList<double> IterationDamage { get; init; } = [];
     public int Iterations { get; init; }
     public double DurationSeconds { get; init; }
+    /// <summary>Damage over the fight: the mean of every fight and the 5-95% band of a sample.</summary>
+    public SimTimeline? Timeline { get; init; }
+    /// <summary>Each source of damage, most first, as means per fight.</summary>
+    public IReadOnlyList<AbilityReport> Abilities { get; init; } = [];
+    /// <summary>Each buff on the hero and debuff on the targets, as means per fight.</summary>
+    public IReadOnlyList<BuffReport> Buffs { get; init; } = [];
 }
 
 /// <summary>
@@ -68,6 +74,7 @@ public class MonteCarloSimulator
         CancellationToken cancellationToken = default)
     {
         double totalSeconds = Math.Max(1.0, duration.TotalSeconds);
+        int seconds = (int)Math.Ceiling(totalSeconds);
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
         var total = new Totals();
         var options = new ParallelOptions
@@ -81,7 +88,7 @@ public class MonteCarloSimulator
             () => (Worker: _idle.TryTake(out var worker) ? worker : NewWorker(), Totals: new Totals()),
             (i, _, local) =>
             {
-                double damage = Fight(local.Worker, duration, targetCount, firstSeed + i, local.Totals.AbilityDamage);
+                double damage = Fight(local.Worker, duration, targetCount, firstSeed + i, i, seconds, local.Totals);
                 local.Totals.Add(damage / totalSeconds);
                 if (fightDamage != null) fightDamage[i] = damage;
                 reporter?.FightDone(local.Totals);
@@ -110,23 +117,30 @@ public class MonteCarloSimulator
             AbilityDpsBreakdown = abilityDps,
             IterationDamage = fightDamage ?? [],
             Iterations = iterations,
-            DurationSeconds = totalSeconds
+            DurationSeconds = totalSeconds,
+            Timeline = total.Report.Timeline(),
+            Abilities = total.Report.Abilities(totalSeconds),
+            Buffs = total.Report.Buffs(totalSeconds, targetCount),
         };
     }
 
     private Worker NewWorker()
     {
         var hero = _newHero();
-        return new Worker(hero, _actions.Bind(hero));
+        return new Worker(hero, _actions.Bind(hero), new FightRecorder(hero));
     }
 
-    /// <summary>One fight on the worker's hero; returns its total damage and adds each ability's damage to <paramref name="abilityDamage"/>.</summary>
-    private static double Fight(Worker worker, SimTime duration, int targetCount, int seed, Dictionary<string, double> abilityDamage)
+    /// <summary>
+    /// Fight <paramref name="fight"/> of the run on the worker's hero; returns its total damage and adds each ability's
+    /// damage and the fight's report to <paramref name="totals"/>.
+    /// </summary>
+    private static double Fight(Worker worker, SimTime duration, int targetCount, int seed, int fight, int seconds, Totals totals)
     {
         var hero = worker.Hero;
         var ctx = new SimulationContext(hero);
         ctx.Rng.Seed(seed);
         hero.ResetForIteration();
+        worker.Recorder.Begin(fight, seconds, totals.Report);
         hero.BeginFight(ctx);
 
         // Populate enemies
@@ -135,6 +149,7 @@ public class MonteCarloSimulator
             ctx.AddEnemy(100 + i, i, $"Training Mob {i}", maxHealth: 100_000_000);
         }
         ctx.Player.CurrentTarget = ctx.AllEnemies.First();
+        worker.Recorder.WatchTargets(ctx);
 
         // Main loop: whenever the hero is free to act, run the first ready APL action, then let the
         // event queue carry time forward to the next decision point.
@@ -152,11 +167,12 @@ public class MonteCarloSimulator
         }
 
         hero.Auras.FinalizeUptimes(duration);
+        worker.Recorder.End(duration);
 
         foreach (var (ability, dmg) in ctx.AbilityDamage)
         {
-            abilityDamage.TryGetValue(ability, out double cur);
-            abilityDamage[ability] = cur + dmg;
+            totals.AbilityDamage.TryGetValue(ability, out double cur);
+            totals.AbilityDamage[ability] = cur + dmg;
         }
         return ctx.TotalDamage;
     }
@@ -175,7 +191,7 @@ public class MonteCarloSimulator
     /// <summary>The most fights a thread runs between two progress reports.</summary>
     public const int MaxProgressBatch = 1000;
 
-    private sealed record Worker(Hero Hero, AplProgram Program);
+    private sealed record Worker(Hero Hero, AplProgram Program, FightRecorder Recorder);
 
     /// <summary>
     /// Completed fights of a run, sent to the progress callback per batch of a thread's fights. A fight costs one
@@ -217,6 +233,8 @@ public class MonteCarloSimulator
         public double Min = double.PositiveInfinity;
         public double Max = double.NegativeInfinity;
         public readonly Dictionary<string, double> AbilityDamage = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>The fights' report: damage over time, sources and auras.</summary>
+        public readonly FightRecorder.Tally Report = new();
 
         public void Add(double dps)
         {
@@ -244,6 +262,7 @@ public class MonteCarloSimulator
                 AbilityDamage.TryGetValue(ability, out double cur);
                 AbilityDamage[ability] = cur + damage;
             }
+            Report.Merge(other.Report);
         }
     }
 }

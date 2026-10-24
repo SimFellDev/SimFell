@@ -423,7 +423,8 @@ public class SimulationContext
         dealt = Outcomes.Land(landed, outcome, this);
         CurrentHit = outer;
 
-        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit);
+        double critChance = landed.ForcedCrit is { } forced ? (forced ? 1.0 : 0.0) : landed.CanCrit ? landed.CritChance : 0.0;
+        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance);
         Outcomes.HitFinished(this);
         onLanded?.Invoke(this, dealt);
         ReturnHit(hit);
@@ -435,10 +436,10 @@ public class SimulationContext
     /// this way.
     /// </summary>
     public void DealLoggedHit(Hero source, EnemyTarget target, int abilityId, string abilityName, double amount, bool isCrit) =>
-        Deal(source, target, abilityId, abilityName, amount, isCrit);
+        Deal(source, target, abilityId, abilityName, amount, isCrit, isCrit ? 1.0 : 0.0);
 
     /// <summary>Adds <paramref name="dealt"/> to the totals and the target's health loss, then raises <see cref="Hero.OnDamageDealt"/>.</summary>
-    private void Deal(Hero source, EnemyTarget? target, int abilityId, string abilityName, double dealt, bool isCrit)
+    private void Deal(Hero source, EnemyTarget? target, int abilityId, string abilityName, double dealt, bool isCrit, double critChance)
     {
         TotalDamage += dealt;
         if (!_damageSlotByInstance.TryGetValue(abilityName, out int slot)) slot = DamageSlot(abilityName);
@@ -447,7 +448,7 @@ public class SimulationContext
         {
             target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
         }
-        source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this));
+        source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this, critChance));
     }
 
     private void ReturnHit(PendingHit hit)
