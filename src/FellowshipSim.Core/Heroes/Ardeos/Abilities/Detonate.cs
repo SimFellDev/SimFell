@@ -6,9 +6,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes 3 hits, about 0.3s apart,
 /// each the damage its effects deal per second at the cast (the hits that land later keep it); the hits crit on their
 /// own; the effects keep ticking. On many enemies the hits queue up and land up to several seconds late.
-/// The hits take the class tuning once more: replays of the two logged builds without Pyrophibian Frenzy
-/// (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9) come to 1.08 and 1.02 of the logged Detonate damage with it,
-/// 1.18 and 1.12 without.
+/// The hits are multiplied by the class tuning once more, a factor fitted to the logs: replays of the five logged fights
+/// deal 0.94-1.05 of the logged Detonate damage with it, and 0.86-0.95 without it.
 /// </summary>
 public class Detonate : ArdeosAbility
 {
@@ -23,7 +22,18 @@ public class Detonate : ArdeosAbility
     /// <summary>Buffs that make the next Detonate free, a stack each (Apocalyptic Surge).</summary>
     public List<AuraDef> FreeCastBuffs { get; } = new();
 
-    public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power) { }
+    /// <summary>
+    /// Combat logs (5 fights, 896 Detonates in a row): they come 0.96-0.97s apart at every haste from 0.2 to 1.3, while
+    /// the other instants take the hero's 1.5s global cooldown, hasted. Detonate's global cooldown is 29 server frames, not
+    /// hasted.
+    /// </summary>
+    public const double GlobalCooldown = 29.0 / 30.0;
+
+    public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    {
+        GlobalCooldownSeconds = GlobalCooldown;
+        GlobalCooldownScalesWithHaste = false;
+    }
 
     private AuraDef? FreeCastBuff(SimTime now) => FreeCastBuffs.FirstOrDefault(b => Owner.Auras.HasAura(b, now));
 

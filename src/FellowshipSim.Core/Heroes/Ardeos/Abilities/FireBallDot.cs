@@ -7,7 +7,7 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// "Each tick of Fireball has a 50% chance to generate 2 Cinders": combat logs fit every tick generating them, scaled by
 /// the target falloff of the Fire Ball that applied it (deltas of 1.17-1.43 Cinders, 2 x sqrt(5/N), in
 /// yMAZVJL9hTpFjqbC fight 7). Replays of the five logged fights refuse the fewest Detonates for want of Cinders with every
-/// tick generating them (84-272 forced casts), more with half of them (87-292) or none (88-310).
+/// tick generating them (13-136 forced casts), more with half of them (20-165) or none (24-184).
 /// </summary>
 public sealed class FireBallDot : DamageOverTime
 {
