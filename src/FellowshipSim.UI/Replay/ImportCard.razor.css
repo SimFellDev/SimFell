@@ -1,3 +1,11 @@
+.linked-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 10px;
+}
+
 .fights {
   display: flex;
   flex-direction: column;

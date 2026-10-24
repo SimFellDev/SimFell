@@ -13,6 +13,9 @@ public sealed class ImportPageState
 
     public Report? Report { get; set; }
 
+    /// <summary>True to list every fight of a report whose link names one; false lists that fight alone.</summary>
+    public bool ShowAllFights { get; set; }
+
     public MessageState Status { get; set; } = MessageState.None;
 
     /// <summary>The review started from the page; its player buttons are disabled while it runs.</summary>
