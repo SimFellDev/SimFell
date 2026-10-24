@@ -72,12 +72,11 @@ public static class CharacterReader
         // IDs in logs, so they are matched to the game's glyphs by name.
         var augmentations = new List<(int Id, int Rank, string? Name)>();
         var glyphs = new List<(int Id, int Rank, string? Name)>();
-        var relicPassives = Catalog.AllRelicPassives.ToList();
         foreach (var item in combatant["gear"]?.AsArray() ?? [])
         {
             if (item == null) continue;
             int itemId = (int)Num(item["id"]);
-            if (relicPassives.Any(r => r.ItemIds.Contains(itemId)))
+            if (Catalog.RelicItemOf(itemId) != null)
             {
                 // Relic slots fill in gear order.
                 if (build.Relic1ItemId == 0) build.Relic1ItemId = itemId;

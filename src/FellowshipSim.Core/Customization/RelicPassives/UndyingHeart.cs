@@ -12,6 +12,7 @@ public class UndyingHeart : RelicPassive
     public const int RelicPassiveId = 779;
     public const string RelicPassiveName = "Undying Heart";
     public const int OrbItemId = 5924;
+    public const string OrbItemName = "Orb of Gathering Storms";
     public const int EffectId = 3270;
     public const double ProcsPerMinute = 0.8;
     public const double DurationSeconds = 20.0;
@@ -23,7 +24,7 @@ public class UndyingHeart : RelicPassive
 
     public override int Id => RelicPassiveId;
     public override string Name => RelicPassiveName;
-    public override IReadOnlyList<int> ItemIds => [OrbItemId];
+    public override IReadOnlyList<RelicItem> Items => [new(OrbItemId, OrbItemName)];
 
     public override void Bind(Hero hero)
     {

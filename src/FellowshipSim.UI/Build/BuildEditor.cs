@@ -89,24 +89,19 @@ public sealed class BuildEditor(CharacterBuild build)
         }
     }
 
-    /// <summary>The passive ID of the relic in slot 1, or null for no relic. The slot keeps the passive's relic item.</summary>
+    /// <summary>The item ID of the relic in slot 1, or null for no relic.</summary>
     public int? Relic1
     {
-        get => PassiveOf(Build.Relic1ItemId);
-        set => Build.Relic1ItemId = ItemOf(value);
+        get => Build.Relic1ItemId == 0 ? null : Build.Relic1ItemId;
+        set => Build.Relic1ItemId = value ?? 0;
     }
 
-    /// <summary>The passive ID of the relic in slot 2, or null for no relic.</summary>
+    /// <summary>The item ID of the relic in slot 2, or null for no relic.</summary>
     public int? Relic2
     {
-        get => PassiveOf(Build.Relic2ItemId);
-        set => Build.Relic2ItemId = ItemOf(value);
+        get => Build.Relic2ItemId == 0 ? null : Build.Relic2ItemId;
+        set => Build.Relic2ItemId = value ?? 0;
     }
-
-    private static int? PassiveOf(int itemId) => CoreCatalog.RelicPassiveOfItem(itemId)?.Id;
-
-    private static int ItemOf(int? relicPassiveId) =>
-        relicPassiveId is { } id ? CoreCatalog.CreateRelicPassive(id)?.ItemIds[0] ?? 0 : 0;
 
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
 

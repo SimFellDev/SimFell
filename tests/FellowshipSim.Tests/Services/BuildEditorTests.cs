@@ -1,5 +1,6 @@
 using FellowshipSim.Core;
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Rime.Talents;
@@ -22,7 +23,7 @@ public sealed class BuildEditorTests : IDisposable
         Assert.All(catalog.Talents, t => Assert.True(t.Talent.Modeled && t.Talent.Icon != null, t.Talent.Name));
         Assert.Equal(Catalog.AllWeapons.Count(), catalog.Weapons.Count);
         Assert.Contains(catalog.Legendaries, l => l.Name == "Frostwyrm's Spite");
-        Assert.Contains(catalog.RelicPassives, r => r.Name == "Accursed Trophy");
+        Assert.Contains(catalog.Relics, r => r.Name == AccursedTrophy.OrbItemName && r.PassiveName == AccursedTrophy.RelicPassiveName);
         Assert.All(catalog.Glyphs, g => Assert.Equal(4, g.MaxRank));
         Assert.NotNull(BuildCatalog.PortraitUrl("Rime"));
     }
@@ -68,8 +69,8 @@ public sealed class BuildEditorTests : IDisposable
         editor.SetRating(RatedStat.Haste, 300);
         editor.Weapon = catalog.Weapons[0].Id;
         editor.Legendary = catalog.Legendaries.First(l => l.Modeled).Id;
-        editor.Relic1 = catalog.RelicPassives[0].Id;
-        editor.Relic2 = catalog.RelicPassives[1].Id;
+        editor.Relic1 = catalog.Relics[0].ItemId;
+        editor.Relic2 = catalog.Relics[1].ItemId;
         editor.SetGem(GemColor.Sapphire, 1500);
         editor.SetAugmentationRank(catalog.Augmentations[0], 9);
         editor.SetGlyphRank(catalog.Glyphs[0], 2);

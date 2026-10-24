@@ -152,9 +152,9 @@
             Relic 1
             <select @bind:get="Editor.Relic1?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic1 = Id(v))">
                 <option value="">None</option>
-                @foreach (var r in Catalog.RelicPassives)
+                @foreach (var r in Catalog.Relics)
                 {
-                    <option @key="r.Id" value="@r.Id">@r.Name</option>
+                    <option @key="r.ItemId" value="@r.ItemId">@r.Name (@r.PassiveName)</option>
                 }
             </select>
         </label>
@@ -162,9 +162,9 @@
             Relic 2
             <select @bind:get="Editor.Relic2?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic2 = Id(v))">
                 <option value="">None</option>
-                @foreach (var r in Catalog.RelicPassives)
+                @foreach (var r in Catalog.Relics)
                 {
-                    <option @key="r.Id" value="@r.Id">@r.Name</option>
+                    <option @key="r.ItemId" value="@r.ItemId">@r.Name (@r.PassiveName)</option>
                 }
             </select>
         </label>

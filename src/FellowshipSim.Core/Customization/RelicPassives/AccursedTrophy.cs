@@ -9,6 +9,7 @@ public class AccursedTrophy : RelicPassive
     public const int RelicPassiveId = 777;
     public const string RelicPassiveName = "Accursed Trophy";
     public const int OrbItemId = 5926;
+    public const string OrbItemName = "Orb of Inner Seas";
     public const int EffectId = 3269;
     public const double DurationSeconds = 20.0;
     public const double PrimaryStatBonus = 1.2;
@@ -18,7 +19,7 @@ public class AccursedTrophy : RelicPassive
 
     public override int Id => RelicPassiveId;
     public override string Name => RelicPassiveName;
-    public override IReadOnlyList<int> ItemIds => [OrbItemId];
+    public override IReadOnlyList<RelicItem> Items => [new(OrbItemId, OrbItemName)];
 
     public override void Bind(Hero hero)
     {

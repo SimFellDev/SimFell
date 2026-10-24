@@ -10,8 +10,8 @@ public abstract class RelicPassive
     public abstract int Id { get; }
     public abstract string Name { get; }
 
-    /// <summary>The relic items that grant it (combat logs list the relic by its item ID).</summary>
-    public abstract IReadOnlyList<int> ItemIds { get; }
+    /// <summary>The relic items that grant it.</summary>
+    public abstract IReadOnlyList<RelicItem> Items { get; }
 
     /// <summary>
     /// Multiplier on every gem colour's power (Covetous Greed). A character sheet's gem power already includes it, so it

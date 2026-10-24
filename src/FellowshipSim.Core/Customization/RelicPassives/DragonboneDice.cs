@@ -11,6 +11,7 @@ public class DragonboneDice : RelicPassive
     public const int RelicPassiveId = 778;
     public const string RelicPassiveName = "Dragonbone Dice";
     public const int OrbItemId = 5925;
+    public const string OrbItemName = "Orb of Awakened Gaze";
     public const int BuffEffectId = 3268;
     public const double BuffSeconds = 14.0;
     public const double MainStatMultiplier = 1.18;
@@ -22,7 +23,7 @@ public class DragonboneDice : RelicPassive
 
     public override int Id => RelicPassiveId;
     public override string Name => RelicPassiveName;
-    public override IReadOnlyList<int> ItemIds => [OrbItemId];
+    public override IReadOnlyList<RelicItem> Items => [new(OrbItemId, OrbItemName)];
 
     public override void Bind(Hero hero)
     {
