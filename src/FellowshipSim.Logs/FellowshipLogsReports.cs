@@ -52,6 +52,46 @@ public static class FellowshipLogsReports
         }
         """;
 
+    private const string FightTimesQuery = """
+        query($code: String!, $fightIDs: [Int]!) {
+          reportData { report(code: $code) { fights(fightIDs: $fightIDs) { startTime endTime } } }
+        }
+        """;
+
+    private const string CombatantInfoQuery = """
+        query($code: String!, $fightIDs: [Int]!, $sourceID: Int!, $startTime: Float!, $endTime: Float!) {
+          reportData {
+            report(code: $code) {
+              events(fightIDs: $fightIDs, dataType: CombatantInfo, sourceID: $sourceID, startTime: $startTime, endTime: $endTime, limit: 10) {
+                data
+              }
+            }
+          }
+        }
+        """;
+
+    /// <summary>
+    /// The <c>combatantinfo</c> event of player <paramref name="playerId"/> in one fight (stats, talents and gear), or null
+    /// when the fight has none for the player: one small query instead of the fight's every event.
+    /// </summary>
+    public static async Task<JsonObject?> GetCombatantInfoAsync(this FellowshipLogsClient client, string reportCode, int fightId,
+        int playerId, CancellationToken ct = default)
+    {
+        var fight = (await client.QueryAsync(FightTimesQuery, new { code = reportCode, fightIDs = new[] { fightId } }, ct))
+            ["reportData"]?["report"]?["fights"]?.AsArray().FirstOrDefault()
+            ?? throw new FellowshipLogsException($"Fight {fightId} is not in report '{reportCode}'.");
+        var data = (await client.QueryAsync(CombatantInfoQuery, new
+        {
+            code = reportCode,
+            fightIDs = new[] { fightId },
+            sourceID = playerId,
+            startTime = fight["startTime"]!.GetValue<double>(),
+            endTime = fight["endTime"]!.GetValue<double>(),
+        }, ct))["reportData"]?["report"]?["events"]?["data"]?.AsArray();
+        return data?.FirstOrDefault(e => e?["type"]?.GetValue<string>() == "combatantinfo" && e["sourceID"]?.GetValue<int>() == playerId)
+            ?.DeepClone().AsObject();
+    }
+
     public static async Task<ReportSummary> GetSummaryAsync(this FellowshipLogsClient client, string reportCode, CancellationToken ct = default)
     {
         var data = await client.QueryAsync(SummaryQuery, new { code = reportCode }, ct);
