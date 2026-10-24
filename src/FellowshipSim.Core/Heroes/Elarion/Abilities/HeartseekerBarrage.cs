@@ -37,6 +37,9 @@ public class HeartseekerBarrage : ElarionAbility
         FocusCost = Cost;
         SetCooldown(CooldownSeconds);
         SetChannel(ChannelSeconds, TickPeriodSeconds);
+        // Combat logs (pWmcV42K39GHTLQX fight 23 @ 81.335): a 2.5s channel at 73% Haste looses 22 arrows on its target, all
+        // of full damage: the part of a tick left at the end looses one more arrow.
+        ChannelPartialFinalTick = true;
     }
 
     /// <summary>Fusillade: the channel lasts longer.</summary>
@@ -63,7 +66,7 @@ public class HeartseekerBarrage : ElarionAbility
     {
         if (target is not { IsSleeping: false }) return;
         _arrow++;
-        double multiplier = _cast.Damage * fraction * (_impending ? 1.0 + ImpendingDamagePerArrow * _arrow : 1.0);
+        double multiplier = _cast.Damage * (_impending ? 1.0 + ImpendingDamagePerArrow * _arrow : 1.0);
         double crit = _cast.Crit + ArrowCritChance;
         DealDamage(ctx, target, damageMultiplier: multiplier, extraCritChance: crit, onLanded: (c, _) => ArrowLanded?.Invoke(c));
         if (RicochetMultiplier <= 0) return;

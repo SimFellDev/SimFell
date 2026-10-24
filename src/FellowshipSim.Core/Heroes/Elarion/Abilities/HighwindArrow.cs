@@ -22,8 +22,6 @@ public class HighwindArrow : ElarionAbility
     public const int Charges = 3;
     public const int BaseRicochets = 2;
     public const double RicochetMultiplier = 0.5;
-    /// <summary>The ricochet leaves as the hit before it lands; its flight is the shortest logged, 2 server frames.</summary>
-    public const double RicochetFlightSeconds = 2 * PeriodicEffect.ServerFrameSeconds;
 
     /// <summary>Talent 126 Resurgent Winds: the buffed Highwind Arrow "deals 50% more damage".</summary>
     public const double ResurgentWindsMultiplier = 1.5;
@@ -96,7 +94,8 @@ public class HighwindArrow : ElarionAbility
                 RicochetsMissed?.Invoke(c, 0);
                 return;
             }
-            c.Schedule(SimTime.FromSeconds(RicochetFlightSeconds), cc => Ricochet(cc, left), "Highwind Arrow ricochet");
+            // The ricochet leaves as the hit before it lands; a replay takes its flight from the log.
+            Ricochet(c, left);
         }
 
         if (target != null) DealDamage(ctx, target, damageMultiplier: multiplier, onLanded: (c, _) => After(c, ricochets));
