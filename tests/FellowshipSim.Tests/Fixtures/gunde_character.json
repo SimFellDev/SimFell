@@ -26,7 +26,7 @@
     768,
     757
   ],
-  "Traits": [
+  "Augmentations": [
     {
       "Id": 34,
       "Rank": 1,
@@ -78,7 +78,7 @@
       "Name": null
     }
   ],
-  "Blessings": [
+  "Glyphs": [
     {
       "Id": 703,
       "Rank": 4,
@@ -106,16 +106,6 @@
     "Emerald": 1500,
     "Ruby": 125
   },
-  "SetBonusIds": [
-    681,
-    687,
-    681,
-    5638,
-    5638,
-    687,
-    1771,
-    1771
-  ],
   "LegendaryItemIds": [
     5220
   ],

@@ -24,9 +24,9 @@ public class MaraReplayTests(ITestOutputHelper output)
                 if (Environment.GetEnvironmentVariable("MARA_CHARACTER_FOLDER") is { } characterFolder)
                 {
                     File.WriteAllText(Path.Combine(characterFolder, $"character_{reportCode}_{fightId}.json"), System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-                    // A profile names traits the engine has: the others are left out.
+                    // A profile names the augmentations the engine has: the others are left out.
                     var build = System.Text.Json.JsonSerializer.Deserialize<FellowshipSim.Core.Import.CharacterBuild>(System.Text.Json.JsonSerializer.Serialize(script.Character))!;
-                    build.Traits = build.Traits.Where(t => FellowshipSim.Core.Catalog.CreateTrait(t.Id, t.Rank) != null).ToList();
+                    build.Augmentations = build.Augmentations.Where(t => FellowshipSim.Core.Catalog.CreateAugmentation(t.Id, t.Rank) != null).ToList();
                     File.WriteAllText(Path.Combine(characterFolder, $"profile_{reportCode}_{fightId}.simc"), new FellowshipSim.Core.Import.SimcProfile(build, "").Format());
                 }
                 var hero = ReplayDriver.CreateHero(script);

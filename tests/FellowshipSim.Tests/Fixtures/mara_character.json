@@ -24,7 +24,7 @@
     112,
     10000
   ],
-  "Traits": [
+  "Augmentations": [
     {
       "Id": 51,
       "Rank": 3,
@@ -101,7 +101,7 @@
       "Name": null
     }
   ],
-  "Blessings": [
+  "Glyphs": [
     {
       "Id": 709,
       "Rank": 2,
@@ -125,11 +125,7 @@
     "Ruby": 750,
     "Diamond": 125
   },
-  "SetBonusIds": [],
-  "RelicItemIds": [
-    5926,
-    5921
-  ],
+  "RelicPassiveId": 777,
   "LegendaryItemIds": [
     5898
   ],

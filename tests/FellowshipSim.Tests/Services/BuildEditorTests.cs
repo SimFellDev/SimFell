@@ -1,3 +1,4 @@
+using FellowshipSim.Core;
 using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
@@ -19,7 +20,7 @@ public sealed class BuildEditorTests : IDisposable
         var catalog = BuildCatalog.For("rime");
         Assert.Equal(18, catalog.Talents.Count);
         Assert.All(catalog.Talents, t => Assert.True(t.Talent.Modeled && t.Talent.Icon != null, t.Talent.Name));
-        Assert.Equal(3, catalog.Weapons.Count);
+        Assert.Equal(Catalog.AllWeapons.Count(), catalog.Weapons.Count);
         Assert.Contains(catalog.Legendaries, l => l.Name == "Frostwyrm's Spite");
         Assert.Contains(catalog.RelicPassives, r => r.Name == "Accursed Trophy");
         Assert.All(catalog.Glyphs, g => Assert.Equal(4, g.MaxRank));
