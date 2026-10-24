@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Heroes.Ardeos;
+using FellowshipSim.Core.Heroes.Elarion;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Rime;
 using FellowshipSim.Core.Heroes.Tariq;
@@ -44,5 +45,8 @@ public static class LogResources
         // Tariq: Fury as resource type 2, a share of a maximum that follows Strength. Compared within 2 (Bloodline and Ride
         // the Lightning tick between readings).
         new(Tariq.Fury, 2, Tolerance: 2.0, StartsFromLog: true, ShareOfMaximum: true),
+        // Elarion: Focus as resource type 2, in hundredths; it carries over between pulls. Focus regenerates between the
+        // engine's ticks, so it is compared within 3.
+        new(Elarion.Focus, 2, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
     ];
 }

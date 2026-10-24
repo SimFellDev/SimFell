@@ -41,13 +41,16 @@ public sealed class LogOutcomeSource : IOutcomeSource
         {
             int stacks = 0;
             var list = new List<(LogAura Event, int Added)>();
+            var losses = new List<double>();
             foreach (var a in group.OrderBy(a => a.Time))
             {
                 int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
                 if (a.IsGain && now > stacks) list.Add((a, now - stacks));
+                if (a.IsLoss && now < stacks) losses.Add(a.Time);
                 stacks = now;
             }
             _enemyStackGains[group.Key] = list;
+            _enemyStackLosses[group.Key] = losses;
         }
         foreach (var c in script.Commands.Where(c => c.Kind == CommandKind.EnemyDemise && c.Enemy != null))
         {
@@ -57,6 +60,12 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     private readonly Dictionary<UnitRef, double> _demise = new();
     private readonly Dictionary<(int LogId, UnitRef Target), List<(LogAura Event, int Added)>> _enemyStackGains = new();
+    // When the player's debuffs on enemies lost stacks (for stack-loss evidence).
+    private readonly Dictionary<(int LogId, UnitRef Target), List<double>> _enemyStackLosses = new();
+
+    /// <summary>True when the player's debuff <paramref name="logId"/> on <paramref name="target"/> lost a stack in the server frame of <paramref name="time"/>.</summary>
+    private bool LostStackAt(int logId, UnitRef target, double time) =>
+        _enemyStackLosses.TryGetValue((logId, target), out var losses) && losses.Any(t => Math.Abs(t - time) <= _options.SameTickSeconds);
     private readonly HashSet<LogAura> _claimedStackEvidence = new();
     private const double StackEvidenceWindowSeconds = 0.1;
 
@@ -218,7 +227,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             : evidence.StackJump > 0
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
-            ? ClaimAuraEvidence(evidence.LogId, now)
+            ? ClaimAuraEvidence(evidence.LogId, now, evidence.NotCausedByAbilityId)
             : ClaimDamageEvidence(evidence, now, target);
         if (procced)
         {
@@ -300,13 +309,14 @@ public sealed class LogOutcomeSource : IOutcomeSource
         return gain.Added >= jump;
     }
 
-    private bool ClaimAuraEvidence(int logId, double now)
+    private bool ClaimAuraEvidence(int logId, double now, int notCausedBy = 0)
     {
         foreach (var ev in _playerAuraEvents)
         {
             if (ev.Time < now - _options.ProcEarlySeconds) continue;
             if (ev.Time > now + _options.ProcAuraWindowSeconds) break;
             if (ev.AbilityId != logId || !ev.IsGain || _claimedAuraEvidence.Contains(ev)) continue;
+            if (notCausedBy != 0 && ev.ExtraAbilityId == notCausedBy) continue;
             _claimedAuraEvidence.Add(ev);
             return true;
         }
@@ -322,8 +332,17 @@ public sealed class LogOutcomeSource : IOutcomeSource
         int logId = evidence.LogId;
         var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
             h => Free(h) && (evidence.HitTypes == null || (h.HitType is { } type && evidence.HitTypes.Contains(type)))
-                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
+                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId))
+                 && (evidence.StackLossLogId == 0 || LostStackAt(evidence.StackLossLogId, h.Target, h.Time) == evidence.StackLoss));
         if (hit == null) return false;
+        if (evidence.ReservesHit)
+        {
+            // The proc's own hit on its enemy takes the proof, not an earlier log hit still free; the hits on other
+            // enemies in the same server frame are other procs.
+            _hits.ReserveForMatch(hit);
+            _claimedDamageEvidence.Add(hit);
+            return true;
+        }
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
         // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks): each the first free
@@ -409,6 +428,9 @@ public sealed class HitLedger
     public bool IsAccountedFor(LogDamage hit) => _matched.Contains(hit) || _claimedGroupHits.Contains(hit);
     private readonly HashSet<LogDamage> _targetChoices = new();
     private readonly Dictionary<(int LogId, UnitRef Unit), Queue<LogDamage>> _reserved = new();
+
+    /// <summary>The next engine hit with the ID of <paramref name="h"/> on its target matches <paramref name="h"/>.</summary>
+    public void ReserveForMatch(LogDamage h) => Reserve(h);
 
     private void Reserve(LogDamage h)
     {
@@ -499,10 +521,10 @@ public sealed class HitLedger
             List<LogDamage>? current = null;
             foreach (var h in list)
             {
-                if (current == null || h.Time - current[0].Time > options.HitGroupSeconds || current.Any(x => x.Target == h.Target))
+                if (current == null || h.Time - current[0].Time > options.GroupSecondsOf(logId) || current.Any(x => x.Target == h.Target))
                 {
                     // A repeated target opens a new group only if no later open group can take it.
-                    current = groups.Count > 0 && h.Time - groups[^1][0].Time <= options.HitGroupSeconds
+                    current = groups.Count > 0 && h.Time - groups[^1][0].Time <= options.GroupSecondsOf(logId)
                               && current != null && current != groups[^1] && !groups[^1].Any(x => x.Target == h.Target)
                         ? groups[^1]
                         : null;
@@ -563,7 +585,7 @@ public sealed class HitLedger
         var ratios = new List<double>();
         foreach (var h in group)
         {
-            var prev = list.LastOrDefault(p => p.Time < group[0].Time - options.HitGroupSeconds && p.Time > h.Time - 3.0
+            var prev = list.LastOrDefault(p => p.Time < group[0].Time - options.GroupSecondsOf(group[0].AbilityId) && p.Time > h.Time - 3.0
                                                && p.Target == h.Target && p.Crit == h.Crit && p.TotalAmount > 0);
             if (prev != null) ratios.Add(h.TotalAmount / prev.TotalAmount);
         }

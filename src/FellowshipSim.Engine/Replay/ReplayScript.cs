@@ -159,6 +159,8 @@ public class LogAura
     [JsonPropertyName("target")] public UnitRef Target { get; set; } = new(0, 1);
     [JsonPropertyName("stack")] public int? Stack { get; set; }
     [JsonPropertyName("duration_ms")] public double? DurationMs { get; set; }
+    /// <summary>The ability the log names as the aura's cause (its extraAbilityGameID), if any.</summary>
+    [JsonPropertyName("extra_ability_id")] public int? ExtraAbilityId { get; set; }
 
     public bool IsGain => Type is "applybuff" or "applybuffstack" or "applydebuff" or "applydebuffstack" or "refreshbuff" or "refreshdebuff";
     public bool IsLoss => Type is "removebuff" or "removebuffstack" or "removedebuff" or "removedebuffstack";
