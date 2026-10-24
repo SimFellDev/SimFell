@@ -25,6 +25,8 @@ namespace FellowshipSim.Core.Import;
 /// protective_enchant=the_oak:1
 /// glyphs=the_monarch:1/...
 /// gems=sapphire:1500/...
+/// gem_sockets=splendid_amethyst/large_emerald/...
+/// gear_gem_bonuses=sapphire:6/amethyst:5/...
 /// relic1=orb_of_inner_seas,id=5926
 /// relic2=orb_of_gathering_storms,id=5924
 /// legendary=frostwyrms_spite,id=5899
@@ -129,6 +131,20 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     build.GemPower[colors[0]] = power;
                 }
                 break;
+            case "gem_sockets":
+                foreach (string name in List(value))
+                {
+                    build.SocketedGemIds.Add((GemItem.All.FirstOrDefault(g => AplNames.Slug(g.Name) == name) ?? throw new FormatException($"no gem '{name}'")).Id);
+                }
+                break;
+            case "gear_gem_bonuses":
+                foreach (var (name, count) in Ranked(value))
+                {
+                    var colors = Enum.GetValues<GemColor>().Where(c => AplNames.Slug(c.ToString()) == name).ToList();
+                    if (colors.Count == 0) throw new FormatException($"no gem colour '{name}'");
+                    build.GearGemBonuses[colors[0]] = count;
+                }
+                break;
             case "stat_enchants":
                 foreach (var (name, rating) in Ranked(value))
                 {
@@ -195,6 +211,14 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         if (build.GemPower.Count > 0)
         {
             s.AppendLine($"gems={string.Join('/', build.GemPower.Select(g => $"{AplNames.Slug(g.Key.ToString())}:{Text(g.Value)}"))}");
+        }
+        if (build.SocketedGemIds.Count > 0)
+        {
+            s.AppendLine($"gem_sockets={string.Join('/', build.SocketedGemIds.Select(id => AplNames.Slug((GemItem.Find(id) ?? throw new InvalidOperationException($"Gem {id} is not known")).Name)))}");
+        }
+        if (build.GearGemBonuses.Count > 0)
+        {
+            s.AppendLine($"gear_gem_bonuses={string.Join('/', build.GearGemBonuses.Select(g => $"{AplNames.Slug(g.Key.ToString())}:{g.Value}"))}");
         }
         if (build.StatEnchants.Count > 0)
         {

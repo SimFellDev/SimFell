@@ -40,7 +40,15 @@ public class CharacterBuild
     /// <summary>Aspects, sigils and protective enchants.</summary>
     public List<BuildEntry> Augmentations { get; set; } = new();
     public List<BuildEntry> Glyphs { get; set; } = new();
+    /// <summary>Each colour's gem power as the character sheet shows it (the relics' multiplier included).</summary>
     public Dictionary<GemColor, double> GemPower { get; set; } = new();
+    /// <summary>
+    /// Where the gem power comes from, when known: the gem IDs in the gear's sockets (up to
+    /// <see cref="Customization.Gems.GemItem.Sockets"/>) and the gear's bonuses per colour
+    /// (<see cref="Customization.Gems.GemItem.GearBonusPower"/> each).
+    /// </summary>
+    public List<int> SocketedGemIds { get; set; } = new();
+    public Dictionary<GemColor, int> GearGemBonuses { get; set; } = new();
     /// <summary>
     /// Stat enchants: the enchant's ID (65 to 70) and the rating it adds to each of its two stats, summed over the items
     /// that have it. The ratings above are without them; a character sheet's percentages include them.

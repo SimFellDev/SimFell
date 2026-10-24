@@ -195,15 +195,48 @@
             </select>
         </label>
     </div>
-    <h3 class="section">Gem powers</h3>
+    <h3 class="section">Gem sockets <span class="meta">· @Build.SocketedGemIds.Count of @GemItem.Sockets filled</span></h3>
+    <div class="sockets">
+        @for (int i = 0; i < GemItem.Sockets; i++)
+        {
+            int socket = i;
+            var gem = Editor.Socket(socket);
+            <label @key="socket" class="socket @(gem != null ? "filled" : "")">
+                <GameIcon Url="@(gem == null ? null : BuildCatalog.GemIconUrl(gem.Color))" Size="28" />
+                <select aria-label="@($"Socket {socket + 1}")" @bind:get="gem?.Id.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.SetSocket(socket, Id(v)))">
+                    <option value="">Empty socket</option>
+                    @foreach (var color in BuildCatalog.GemColors)
+                    {
+                        <optgroup @key="color" label="@color.ToString()">
+                            @foreach (var g in GemItem.All.Where(g => g.Color == color))
+                            {
+                                <option @key="g.Id" value="@g.Id">@g.Name (@g.Power)</option>
+                            }
+                        </optgroup>
+                    }
+                </select>
+            </label>
+        }
+    </div>
+    <h3 class="section">Gem power <span class="meta">· gear bonuses of +@GemItem.GearBonusPower each, plus the sockets; Covetous Greed adds 25%</span></h3>
     <div class="gems">
         @foreach (var color in BuildCatalog.GemColors)
         {
-            <label @key="color" class="gem">
+            int bonuses = Editor.GearBonuses(color);
+            <div @key="color" class="gem @(Editor.Gem(color) > 0 ? "taken" : "")">
                 <GameIcon Url="@BuildCatalog.GemIconUrl(color)" Size="28" />
-                <span class="gem-name">@color</span>
-                <input type="number" min="0" step="25" @bind:get="Editor.Gem(color)" @bind:set="v => Set(() => Editor.SetGem(color, v))" />
-            </label>
+                <span class="gem-name">
+                    @color
+                    <span class="gem-power">@Editor.Gem(color).ToString("N0", CultureInfo.CurrentCulture) power</span>
+                </span>
+                <span class="stepper" title="Gear bonuses of +@GemItem.GearBonusPower @color">
+                    <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
+                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
+                    <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
+                    <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")"
+                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
+                </span>
+            </div>
         }
     </div>
 </Card>

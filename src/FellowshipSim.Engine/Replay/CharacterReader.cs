@@ -99,6 +99,12 @@ public static class CharacterReader
                 if (i < 0) glyphs.Add((Catalog.GlyphIdByName(name), (int)Num(b?["level"], 1), name));
                 else glyphs[i] = (glyphs[i].Id, glyphs[i].Rank + (int)Num(b?["level"], 1), name);
             }
+            // The gem in the item's socket, and the item's gem power bonuses (each names its colour).
+            if (GemItem.Find((int)Num(item["gem"]?["id"])) is { } gem) build.SocketedGemIds.Add(gem.Id);
+            foreach (var bonus in item["gemPowers"]?.AsArray() ?? [])
+            {
+                if (Enum.TryParse(Str(bonus?["name"]), out GemColor color)) build.GearGemBonuses[color] = build.GearGemBonuses.GetValueOrDefault(color) + 1;
+            }
             if (Num(item["quality"]) >= 6) build.LegendaryItemIds.Add(itemId);
         }
 

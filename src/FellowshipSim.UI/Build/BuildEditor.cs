@@ -170,22 +170,68 @@ public sealed class BuildEditor(CharacterBuild build)
     public int? Relic1
     {
         get => Build.Relic1ItemId == 0 ? null : Build.Relic1ItemId;
-        set => Build.Relic1ItemId = value ?? 0;
+        set
+        {
+            Build.Relic1ItemId = value ?? 0;
+            RecountGemPower();
+        }
     }
 
     /// <summary>The item ID of the relic in slot 2, or null for no relic.</summary>
     public int? Relic2
     {
         get => Build.Relic2ItemId == 0 ? null : Build.Relic2ItemId;
-        set => Build.Relic2ItemId = value ?? 0;
+        set
+        {
+            Build.Relic2ItemId = value ?? 0;
+            RecountGemPower();
+        }
     }
 
+    /// <summary>A colour's gem power as the character sheet shows it.</summary>
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
 
     public void SetGem(GemColor color, double power)
     {
         if (power > 0) Build.GemPower[color] = power;
         else Build.GemPower.Remove(color);
+    }
+
+    /// <summary>The gem in socket <paramref name="socket"/> (0 to <see cref="GemItem.Sockets"/> - 1), or null when empty.</summary>
+    public GemItem? Socket(int socket) => socket < Build.SocketedGemIds.Count ? GemItem.Find(Build.SocketedGemIds[socket]) : null;
+
+    /// <summary>Puts gem <paramref name="gemId"/> in socket <paramref name="socket"/>, or empties it for null.</summary>
+    public void SetSocket(int socket, int? gemId)
+    {
+        var sockets = Enumerable.Range(0, GemItem.Sockets).Select(i => Socket(i)?.Id).ToArray();
+        sockets[socket] = gemId is { } id && GemItem.Find(id) != null ? id : null;
+        Build.SocketedGemIds = sockets.OfType<int>().ToList();
+        RecountGemPower(always: true);
+    }
+
+    /// <summary>The gear's gem power bonuses of <paramref name="color"/> (<see cref="GemItem.GearBonusPower"/> each).</summary>
+    public int GearBonuses(GemColor color) => Build.GearGemBonuses.GetValueOrDefault(color);
+
+    public void SetGearBonuses(GemColor color, int count)
+    {
+        if (count > 0) Build.GearGemBonuses[color] = count;
+        else Build.GearGemBonuses.Remove(color);
+        RecountGemPower(always: true);
+    }
+
+    /// <summary>True when the build says where its gem power comes from (sockets or gear bonuses).</summary>
+    public bool HasGemSources => Build.SocketedGemIds.Count > 0 || Build.GearGemBonuses.Count > 0;
+
+    /// <summary>
+    /// Works out each colour's gem power from the sockets and gear bonuses, times the relics' multiplier (Covetous Greed).
+    /// A relic change on a build that does not say where its gem power comes from keeps the totals it has.
+    /// </summary>
+    private void RecountGemPower(bool always = false)
+    {
+        if (!always && !HasGemSources) return;
+        double multiplier = new[] { Build.Relic1ItemId, Build.Relic2ItemId }
+            .Select(CoreCatalog.RelicPassiveOfItem).OfType<RelicPassive>().Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
+        Build.GemPower = GemItem.PowerByColor(Build.SocketedGemIds, Build.GearGemBonuses, multiplier);
     }
 
     public int AugmentationRank(int id) => Build.Augmentations.FirstOrDefault(a => a.Id == id)?.Rank ?? 0;
