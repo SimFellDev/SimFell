@@ -62,9 +62,15 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
 - **Great Balls of Fire:** replays deal 1.02 and 1.08 of the logged Fire Ball hits, and 1.04 and 1.13 of the logged
   effect. Without the extra 10%, the effect would deal 0.69 and 0.75.
 
+## Spontaneous Combustion (fights 19 and 31)
+
+- A tick it empowers is a grievous crit. 10.9% and 10.8% of the Searing Blaze and Engulfing Flames ticks are grievous,
+  with crit ratings of 106 and 153. The model uses 10% with no crit term.
+- A replay proves only part of the procs (308 and 158 of 474 and 271 expected on Engulfing Flames): the engine's ticks
+  drift from the log's by more than the 0.35s the proof allows.
+
 ## Not yet checked against a log
 
-Backdraft, Flare Up, Agonizing Blaze, Firestarter, Crash and Burn, Crackling Inferno, Intensifying Inferno and
-Spontaneous Combustion use their tooltips and the game data. Each is marked `UNVERIFIED` in its file, as are Cascading
-Inferno's crit and Cinders and Reign of Fire's Fire Ball charge. Fights 19 and 31 have Spontaneous Combustion, but a
-replay has no proof of its procs and takes each roll as not procced.
+Backdraft, Flare Up, Agonizing Blaze, Firestarter, Crash and Burn, Crackling Inferno and Intensifying Inferno use their
+tooltips and the game data. Each is marked `UNVERIFIED` in its file, as are Cascading Inferno's crit and Cinders and Reign
+of Fire's Fire Ball charge.
