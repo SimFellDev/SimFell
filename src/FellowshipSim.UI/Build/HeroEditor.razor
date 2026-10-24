@@ -174,67 +174,75 @@
                 }
             </select>
         </label>
-        <label>
-            Relic 1
-            <select @bind:get="Editor.Relic1?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic1 = Id(v))">
-                <option value="">None</option>
-                @foreach (var r in Catalog.Relics)
-                {
-                    <option @key="r.ItemId" value="@r.ItemId">@r.Name (@r.PassiveName)</option>
-                }
-            </select>
-        </label>
-        <label>
-            Relic 2
-            <select @bind:get="Editor.Relic2?.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.Relic2 = Id(v))">
-                <option value="">None</option>
-                @foreach (var r in Catalog.Relics)
-                {
-                    <option @key="r.ItemId" value="@r.ItemId">@r.Name (@r.PassiveName)</option>
-                }
-            </select>
-        </label>
     </div>
-    <h3 class="section">Gem sockets <span class="meta">· @Build.SocketedGemIds.Count of @GemItem.Sockets filled</span></h3>
+    <h3 class="section">Relics <span class="meta">· @Editor.RelicCount of @BuildEditor.RelicSlots worn</span></h3>
+    <div class="chips">
+        @foreach (var r in Catalog.Relics)
+        {
+            bool worn = Editor.HasRelic(r.ItemId);
+            bool full = !worn && Editor.RelicCount >= BuildEditor.RelicSlots;
+            <button @key="r.ItemId" type="button" class="chip @(worn ? "picked" : "")" aria-pressed="@worn" disabled="@full"
+                    title="@(full ? $"Take off one of the {BuildEditor.RelicSlots} first" : r.Name)" @onclick="() => Set(() => Editor.ToggleRelic(r.ItemId))">
+                <GameIcon Url="@r.IconUrl" Size="24" />
+                @r.PassiveName
+            </button>
+        }
+    </div>
+    <h3 class="section">Gems <span class="meta">· @Build.SocketedGemIds.Count of @GemItem.Sockets sockets filled</span></h3>
     <div class="sockets">
         @for (int i = 0; i < GemItem.Sockets; i++)
         {
             int socket = i;
             var gem = Editor.Socket(socket);
-            <label @key="socket" class="socket @(gem != null ? "filled" : "")">
-                <GameIcon Url="@(gem == null ? null : BuildCatalog.GemIconUrl(gem.Color))" Size="28" />
-                <select aria-label="@($"Socket {socket + 1}")" @bind:get="gem?.Id.ToString() ?? string.Empty" @bind:set="v => Set(() => Editor.SetSocket(socket, Id(v)))">
-                    <option value="">Empty socket</option>
-                    @foreach (var color in BuildCatalog.GemColors)
-                    {
-                        <optgroup @key="color" label="@color.ToString()">
-                            @foreach (var g in GemItem.All.Where(g => g.Color == color))
-                            {
-                                <option @key="g.Id" value="@g.Id">@g.Name (@g.Power)</option>
-                            }
-                        </optgroup>
-                    }
-                </select>
-            </label>
+            if (gem == null)
+            {
+                <span @key="socket" class="socket empty">Empty socket</span>
+            }
+            else
+            {
+                <button @key="socket" type="button" class="socket filled" title="Take out the @gem.Name" @onclick="() => Set(() => Editor.SetSocket(socket, null))">
+                    <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="30" />
+                    <span class="socket-name">@gem.Name <span class="meta">@gem.Power</span></span>
+                    <span class="socket-remove" aria-hidden="true">×</span>
+                </button>
+            }
         }
     </div>
-    <h3 class="section">Gem power <span class="meta">· gear bonuses of +@GemItem.GearBonusPower each, plus the sockets; Covetous Greed adds 25%</span></h3>
-    <div class="gems">
+    <div class="gem-rows">
         @foreach (var color in BuildCatalog.GemColors)
         {
             int bonuses = Editor.GearBonuses(color);
-            <div @key="color" class="gem @(Editor.Gem(color) > 0 ? "taken" : "")">
-                <GameIcon Url="@BuildCatalog.GemIconUrl(color)" Size="28" />
+            bool socketsFull = Build.SocketedGemIds.Count >= GemItem.Sockets;
+            <div @key="color" class="gem-row @(Editor.Gem(color) > 0 ? "taken" : "")">
                 <span class="gem-name">
                     @color
                     <span class="gem-power">@Editor.Gem(color).ToString("N0", CultureInfo.CurrentCulture) power</span>
                 </span>
-                <span class="stepper" title="Gear bonuses of +@GemItem.GearBonusPower @color">
-                    <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
-                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
-                    <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
-                    <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")"
-                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
+                <span class="gem-picks">
+                    @foreach (var g in GemItem.All.Where(g => g.Color == color))
+                    {
+                        int count = Editor.SocketedCount(g.Id);
+                        <button @key="g.Id" type="button" class="gem-pick @(count > 0 ? "picked" : "")" disabled="@socketsFull"
+                                title="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
+                                @onclick="() => Set(() => Editor.AddGem(g.Id))">
+                            <GameIcon Url="@BuildCatalog.GemIconUrl(g)" Size="30" />
+                            <span class="gem-pick-power">@g.Power</span>
+                            @if (count > 0)
+                            {
+                                <span class="gem-count">×@count</span>
+                            }
+                        </button>
+                    }
+                </span>
+                <span class="gear-bonus">
+                    <span class="meta">Gear +@GemItem.GearBonusPower</span>
+                    <span class="stepper">
+                        <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
+                                @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
+                        <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
+                        <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")"
+                                @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
+                    </span>
                 </span>
             </div>
         }

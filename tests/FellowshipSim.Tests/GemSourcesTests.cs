@@ -83,6 +83,32 @@ public class GemSourcesTests
     }
 
     [Fact]
+    public void A_Picked_Gem_Fills_The_Next_Socket_Until_All_Four_Are_Filled()
+    {
+        var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
+        for (int i = 0; i < GemItem.Sockets; i++) Assert.True(editor.AddGem(24));
+        Assert.False(editor.AddGem(46));
+        Assert.Equal(GemItem.Sockets, editor.SocketedCount(24));
+        Assert.Equal(GemItem.Sockets * GemItem.SplendidPower, editor.Gem(GemColor.Amethyst));
+    }
+
+    [Fact]
+    public void Relics_Fill_The_Empty_Slot_And_Two_Is_The_Most()
+    {
+        var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
+        var relics = editor.Catalog.Relics;
+        Assert.True(editor.ToggleRelic(relics[0].ItemId));
+        Assert.True(editor.ToggleRelic(relics[1].ItemId));
+        Assert.False(editor.ToggleRelic(relics[2].ItemId));
+        Assert.Equal((relics[0].ItemId, relics[1].ItemId), (editor.Relic1, editor.Relic2));
+
+        Assert.True(editor.ToggleRelic(relics[0].ItemId));
+        Assert.Null(editor.Relic1);
+        Assert.True(editor.ToggleRelic(relics[2].ItemId));
+        Assert.Equal(relics[2].ItemId, editor.Relic1);
+    }
+
+    [Fact]
     public void A_Profile_Keeps_The_Sockets_And_Gear_Bonuses()
     {
         var build = Read();

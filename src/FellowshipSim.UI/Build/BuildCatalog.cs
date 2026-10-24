@@ -88,6 +88,9 @@ public sealed class BuildCatalog
     /// <summary>The icon's image of gem colour <paramref name="color"/>, or null.</summary>
     public static string? GemIconUrl(GemColor color) => GameIcons.Gems.TryGetValue(color.ToString(), out var icon) ? GameIcons.Url(icon) : null;
 
+    /// <summary>The icon's image of gem <paramref name="gem"/> (its colour and size), or null.</summary>
+    public static string? GemIconUrl(GemItem gem) => GameIcons.GemItems.TryGetValue(gem.Id, out var icon) ? GameIcons.Url(icon) : null;
+
     /// <summary>Every hero of the game (the datamine's), by name; <see cref="Catalog.Heroes"/> are the ones the engine has.</summary>
     public static IReadOnlyList<string> GameHeroes { get; } = GameIcons.Heroes.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
 

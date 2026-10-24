@@ -1,7 +1,7 @@
 // Writes src/FellowshipSim.UI/Build/GameIcons.cs from a Codex datamine export (entities.jsonl).
 //
 // The UI shows each talent, augmentation (aspect, sigil and protective enchant), glyph, legendary, weapon ability, stat
-// enchant, gem and hero with its game icon from the Codex CDN.
+// enchant, gem (each colour, and each gem of each size), relic item and hero with its game icon from the Codex CDN.
 // Run it again after a new datamine:
 //
 //     dotnet run tools/generate-game-icons.cs [path/to/entities.jsonl]
@@ -41,6 +41,9 @@ lines.AddRange(ById("Glyphs", ["glyph"]));
 lines.AddRange(ById("LegendaryPowers", ["legendary-power"]));
 lines.AddRange(ById("WeaponAbilities", ["ability"], r => Text(r, "category") == "Weapon"));
 lines.AddRange(ById("StatEnchants", ["enchant"]));
+// Each gem of each size ("Splendid Amethyst"), and the relic items (an item record per hero, one icon per item).
+lines.AddRange(ById("GemItems", ["gem"]));
+lines.AddRange(ById("RelicItems", ["item"], r => Text(r, "slot") == "Relic"));
 lines.AddRange(MaxRanks("AugmentationMaxRanks", augmentations));
 lines.AddRange(MaxRanks("GlyphMaxRanks", ["glyph"]));
 

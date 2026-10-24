@@ -327,76 +327,147 @@
   border-color: var(--accent);
 }
 
-.gems {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
-}
-
-/* The four sockets: a gem picker each, its colour's icon once filled. */
+/* The four sockets: a filled one shows its gem and takes it out when clicked. */
 .sockets {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
 .socket {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 48px;
   padding: 6px 10px;
   background: var(--input);
   border: 1px solid var(--border);
   border-radius: 8px;
+  color: var(--text);
+  text-align: left;
 }
 
-.socket.filled {
-  border-color: var(--accent);
-}
-
-.socket select {
-  flex: 1;
-  min-width: 0;
-}
-
-/* A colour's gem power, and its gear bonuses with a stepper; gold once the colour has any. */
-.gem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  background: var(--input);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+.socket.empty {
+  justify-content: center;
+  border-style: dashed;
   color: var(--muted);
   font-size: 12px;
 }
 
-.gem.taken {
+.socket.filled {
   border-color: var(--accent);
-  color: var(--text);
+  background: var(--selected);
 }
 
-.gem-name {
+.socket-name {
   flex: 1;
   display: flex;
   flex-direction: column;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.socket-remove {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.socket.filled:hover .socket-remove {
+  color: var(--bad);
+}
+
+/* A row per colour: its gem power, its four gems (click to socket one), and its gear bonuses. */
+.gem-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.gem-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.gem-row.taken {
+  border-color: var(--accent);
+}
+
+.gem-name {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  font-weight: 600;
 }
 
 .gem-power {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.gem-row.taken .gem-power {
+  color: var(--heading);
+}
+
+.gem-picks {
+  display: flex;
+  gap: 6px;
+}
+
+.gem-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.gem-pick:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.gem-pick.picked {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.gem-pick-power {
   color: var(--muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
-.gem.taken .gem-power {
-  color: var(--heading);
+.gem-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gear-bonus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* A number typed in, without the browser's up and down arrows. */
-.gem input {
+.gear-bonus input {
   width: 44px;
   padding: 6px 8px;
   background: var(--surface);
@@ -405,10 +476,16 @@
   -moz-appearance: textfield;
 }
 
-.gem input::-webkit-outer-spin-button,
-.gem input::-webkit-inner-spin-button {
+.gear-bonus input::-webkit-outer-spin-button,
+.gear-bonus input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+@media (max-width: 720px) {
+  .gem-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Stat enchants as tiles, like Aspects and Sigils (RankedChoices): icon, name over its stats, and the rating. */

@@ -2,7 +2,7 @@
 @inject ReportLookup Reports
 @inject ImportPageState State
 
-<Card Title="Import a fight">
+<Card Title="@Title">
     <form class="row" @onsubmit="LoadAsync">
         <input placeholder="FellowshipLogs report link or code" autocomplete="off" required @bind="State.Link" />
         <button type="submit">Load report</button>
@@ -72,6 +72,9 @@
 
 @code {
     /// <summary>True while a replay runs: the player buttons are disabled.</summary>
+    /// <summary>The card's title: what the import is for.</summary>
+    [Parameter] public string Title { get; set; } = "Import a fight";
+
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback OnEditSettings { get; set; }

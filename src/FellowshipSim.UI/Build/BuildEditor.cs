@@ -188,6 +188,38 @@ public sealed class BuildEditor(CharacterBuild build)
         }
     }
 
+    /// <summary>Relics a build wears: <see cref="Relic1"/> and <see cref="Relic2"/>.</summary>
+    public const int RelicSlots = 2;
+
+    public int RelicCount => (Build.Relic1ItemId != 0 ? 1 : 0) + (Build.Relic2ItemId != 0 ? 1 : 0);
+
+    public bool HasRelic(int itemId) => itemId != 0 && (Build.Relic1ItemId == itemId || Build.Relic2ItemId == itemId);
+
+    /// <summary>
+    /// Wears relic item <paramref name="itemId"/> in the first empty slot, or takes it off when worn. With both slots
+    /// full, a new relic is refused: false.
+    /// </summary>
+    public bool ToggleRelic(int itemId)
+    {
+        if (Build.Relic1ItemId == itemId) Relic1 = null;
+        else if (Build.Relic2ItemId == itemId) Relic2 = null;
+        else if (Build.Relic1ItemId == 0) Relic1 = itemId;
+        else if (Build.Relic2ItemId == 0) Relic2 = itemId;
+        else return false;
+        return true;
+    }
+
+    /// <summary>Puts gem <paramref name="gemId"/> in the next empty socket. With every socket filled it is refused: false.</summary>
+    public bool AddGem(int gemId)
+    {
+        if (Build.SocketedGemIds.Count >= GemItem.Sockets) return false;
+        SetSocket(Build.SocketedGemIds.Count, gemId);
+        return true;
+    }
+
+    /// <summary>How many of gem <paramref name="gemId"/> are socketed.</summary>
+    public int SocketedCount(int gemId) => Build.SocketedGemIds.Count(id => id == gemId);
+
     /// <summary>A colour's gem power as the character sheet shows it.</summary>
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
 

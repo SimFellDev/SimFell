@@ -315,6 +315,63 @@ public static class GameIcons
         [70] = "T_Nhance_RPG_Icons_Poison",
     };
 
+    /// <summary>Icons of the datamine's gem records, by ID.</summary>
+    public static IReadOnlyDictionary<int, string> GemItems { get; } = new Dictionary<int, string>
+    {
+        [22] = "T_Icons_Gems_Amethyst1",
+        [23] = "T_Icons_Gems_Amethyst2",
+        [24] = "T_Icons_Gems_Amethyst3",
+        [25] = "T_Icons_Gems_Amethyst4",
+        [27] = "T_Icons_Gems_Diamond1",
+        [28] = "T_Icons_Gems_Diamond2",
+        [29] = "T_Icons_Gems_Diamond3",
+        [30] = "T_Icons_Gems_Diamond4",
+        [32] = "T_Icons_Gems_Emerald1",
+        [33] = "T_Icons_Gems_Emerald2",
+        [34] = "T_Icons_Gems_Emerald3",
+        [35] = "T_Icons_Gems_Emerald4",
+        [38] = "T_Icons_Gems_Ruby1",
+        [39] = "T_Icons_Gems_Ruby2",
+        [40] = "T_Icons_Gems_Ruby3",
+        [41] = "T_Icons_Gems_Ruby4",
+        [43] = "T_Icons_Gems_Sapphire1",
+        [44] = "T_Icons_Gems_Sapphire2",
+        [45] = "T_Icons_Gems_Sapphire3",
+        [46] = "T_Icons_Gems_Sapphire4",
+        [48] = "T_Icons_Gems_Topaz1",
+        [49] = "T_Icons_Gems_Topaz2",
+        [50] = "T_Icons_Gems_Topaz3",
+        [51] = "T_Icons_Gems_Topaz4",
+    };
+
+    /// <summary>Icons of the datamine's item records, by ID.</summary>
+    public static IReadOnlyDictionary<int, string> RelicItems { get; } = new Dictionary<int, string>
+    {
+        [2913] = "Tex_rune_12_b",
+        [2914] = "Tex_artifact_10_b",
+        [2916] = "Tex_rune_12_b",
+        [2917] = "Tex_artifact_10_b",
+        [2919] = "Tex_rune_12_b",
+        [2920] = "Tex_artifact_10_b",
+        [2925] = "Tex_TrophyIcons_37_b",
+        [2926] = "Tex_TrophyIcons_41_b",
+        [2928] = "Tex_TrophyIcons_37_b",
+        [2929] = "Tex_TrophyIcons_41_b",
+        [2931] = "Tex_TrophyIcons_37_b",
+        [2932] = "Tex_TrophyIcons_41_b",
+        [2937] = "Tex_shard_b_05",
+        [2938] = "Tex_TrophyIcons_41_b",
+        [2940] = "Tex_shard_b_05",
+        [2941] = "Tex_TrophyIcons_41_b",
+        [2943] = "Tex_shard_b_05",
+        [2944] = "Tex_TrophyIcons_41_b",
+        [5919] = "Tex_orb_09_b",
+        [5921] = "Tex_elementl_earth__b_01",
+        [5924] = "Tex_element_air__b_01",
+        [5925] = "Tex_eye_b_01",
+        [5926] = "Tex_element_water__b_01",
+    };
+
     /// <summary>The highest rank of each aspect, sigil and protective-enchant, by ID.</summary>
     public static IReadOnlyDictionary<int, int> AugmentationMaxRanks { get; } = new Dictionary<int, int>
     {
