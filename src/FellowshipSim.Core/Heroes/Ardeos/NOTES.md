@@ -45,11 +45,14 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
 
 ## Fire Frogs
 
-- A cast's first attack lands 1.7-1.9s after it. A lone frog attacks every 40 server frames (fight 7 @ 248.99-253.90s).
-- On a single enemy the Fire Frogs effect fits the log: in fight 7, the replay matches 51 of the 52 ticks on the final
-  boss at 0.97 of the logged damage. On many enemies the engine's frogs pick other enemies and times than the logged
-  frogs. The effect on each enemy then holds a different share of the hits (single ticks up to half the logged damage),
-  while the totals stay within 0.93-1.10 of the log.
+- A cast's frogs make their first attacks 1.7-2.6s after it. A lone frog attacks every 20 server frames (fight 7, final
+  boss 32.1 @ 683.0s: 5.64, 6.31, 6.98 and 7.65s after the cast).
+- On the fight 7 final boss, the only enemy @ 570-715s, the replay makes 257 frog attacks against the log's 268, at 0.96
+  of the logged damage. Its Fire Frogs effect matches 51 of the 52 ticks, at 0.95 of the logged damage.
+- Frog Squad's 20% applies to the effect as well as to the hits. Without it the effect deals 0.81-0.83 of the logged
+  damage in the three fights with the talent; with it, 0.97-1.00.
+- On many enemies the engine's frogs pick other enemies and times than the logged frogs, so the effect on each enemy
+  holds a different share of the hits. The replay's totals stay within 0.97-1.14 of the log.
 - A Pyrophibian Frenzy frog makes its first attack 1.2-1.3s after the tick that spawned it. That delay comes twice as
   often as any other among 92 frogs attacking alone (fights 7 and 19).
 

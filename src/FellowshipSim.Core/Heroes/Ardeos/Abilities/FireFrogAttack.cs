@@ -13,6 +13,9 @@ public sealed class FireFrogAttack : Ability
 
     public FireFrogsDot Dot { get; }
 
+    /// <summary>Share of each hit added to its damage over time (Frog Squad raises it).</summary>
+    public double DotFraction { get; set; } = DotFractionOfHit;
+
     public FireFrogAttack(Ardeos owner) : base(owner, LogIds.Effect(DamageEffectId), AttackName)
     {
         BaseCoefficient = Coefficient;
@@ -21,7 +24,7 @@ public sealed class FireFrogAttack : Ability
         {
             if (hit.Target != null && hit.SimContext != null && hit.Amount > 0)
             {
-                owner.Dots.Apply(hit.SimContext, Dot, hit.Target, pool: hit.Amount * DotFractionOfHit);
+                owner.Dots.Apply(hit.SimContext, Dot, hit.Target, pool: hit.Amount * DotFraction);
             }
         };
     }

@@ -13,12 +13,13 @@ public class FireFrogs : ArdeosAbility
     public const int BaseFrogs = 5;
     public const int BaseAttacksPerFrog = 3;
     /// <summary>
-    /// Combat logs (yMAZVJL9hTpFjqbC fight 7): a cast's first attack lands 1.7-1.9s after it; a lone frog attacks every
-    /// 40 server frames (Pyrophibian Frenzy frogs @ 248.99-253.90s: hits every 0.668s alternating between two enemies).
+    /// Combat logs (yMAZVJL9hTpFjqbC fight 7, final boss 32.1 @ 570-715s, the only enemy): a lone frog attacks every 20
+    /// server frames (5.64, 6.31, 6.98, 7.65s after the cast @ 683.0s); a cast's frogs make their first attacks 1.7-2.6s
+    /// after it and their last about 4.5-5.3s after it.
     /// </summary>
     public const double FirstAttackSeconds = 1.7;
-    public const double FrogStaggerSeconds = 0.1;
-    public const double AttackIntervalSeconds = 40.0 / 30.0;
+    public const double FrogStaggerSeconds = 0.15;
+    public const double AttackIntervalSeconds = 20.0 / 30.0;
 
     /// <summary>The proc of each frog a cast conjures (always procs).</summary>
     public const string ConjuredProcKey = "fire_frogs_conjured";

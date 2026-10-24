@@ -77,11 +77,11 @@ public static class ProcEvidence
 
         // Ardeos
         // Pyrophibian Frenzy's frog makes its first attack 1.2-1.3s after the tick that spawned it, then 3 more (Frog
-        // Squad, in every logged build with the talent) 40 server frames apart.
+        // Squad, in every logged build with the talent) 20 server frames apart.
         new(PyrophibianFrenzy.ProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 1.35, MinDelaySeconds: 1.15,
             FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
-        // A Fire Frogs cast's frogs make their first attacks 1.7-2.3s after it: their attacks are no proof of the talent's.
-        new(FireFrogs.ConjuredProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 2.4, MinDelaySeconds: 1.5,
+        // A Fire Frogs cast's frogs make their first attacks 1.7-2.6s after it: their attacks are no proof of the talent's.
+        new(FireFrogs.ConjuredProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 2.8, MinDelaySeconds: 1.5,
             FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
         // An enemy Pyromania chose gains Engulfing Flames at the cast.
         new(Pyromania.TargetProcKey, LogIds.Effect(EngulfingFlamesDot.EffectId), StackJump: 1),
