@@ -36,11 +36,16 @@ public static class ProcEvidence
     /// no proof of another. With <paramref name="Resource"/>, the proof is instead that resource jumping by
     /// <paramref name="ResourceGain"/> between two of the log's readings around the roll, beyond what
     /// <paramref name="ResourceRegenPerSecond"/> regenerates between them. With <paramref name="HitTypes"/>, only a hit of
-    /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%).
+    /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%). With
+    /// <paramref name="StackLossLogId"/>, a hit is proof only when that debuff on the hit's enemy loses a stack in the
+    /// same server frame (<paramref name="StackLoss"/> true) or does not (false). With <paramref name="ReservesHit"/>, the
+    /// proc deals that hit itself on its enemy alone: the engine's next hit with the ID on the enemy matches the proof, and
+    /// hits on other enemies in the same server frame are proof of other procs.
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
-        double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null);
+        double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
+        bool ReservesHit = false);
 
     public static readonly Evidence[] All =
     [
@@ -120,8 +125,12 @@ public static class ProcEvidence
         new(FromTheShadows.ProcKey, QueensFang.AbilityId, DelaySeconds: 0.5),
 
         // Elarion
-        // The salvo is logged in the server frame of the hit that called it down, often a millisecond before it.
-        new(LunarlightSalvo.ProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), DelaySeconds: 0.01, MinDelaySeconds: -0.01),
+        // The salvo is logged within 2ms of the hit that called it down; the mark loses a stack with it, but for a salvo
+        // a Starfall Volley arrow called down with Lunarlight Affinity.
+        new(LunarlightSalvo.ProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
+            ReservesHit: true),
+        new(LunarlightSalvo.KeptMarkProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
+            StackLoss: false, ReservesHit: true),
         new(LunarlightSalvo.EruptProcKey, LogIds.Effect(LunarlightSalvo.EruptEffectId), DelaySeconds: 0.1, MinDelaySeconds: -0.01),
         // An enemy Lunarlight Mark or a Spirit Refund chose gains stacks of Lunarlight Mark at once.
         new(LunarlightMark.TargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
