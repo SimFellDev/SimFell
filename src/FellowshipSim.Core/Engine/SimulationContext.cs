@@ -201,7 +201,7 @@ public class SimulationContext
             }
             StopChannel(hero);
             double gcd = ability.GlobalCooldownSeconds ?? hero.GlobalCooldownSeconds;
-            if (hero.GlobalCooldownScalesWithHaste) gcd /= 1.0 + hero.GetHaste(CurrentTime);
+            if (ability.GlobalCooldownScalesWithHaste ?? hero.GlobalCooldownScalesWithHaste) gcd /= 1.0 + hero.GetHaste(CurrentTime);
             hero.GlobalCooldownEndTime = CurrentTime + SimTime.FromSeconds(gcd);
         }
 

@@ -41,6 +41,9 @@ public abstract class Ability
     /// </summary>
     public double? GlobalCooldownSeconds { get; protected set; }
 
+    /// <summary>Whether haste shortens the global cooldown this ability starts, when it differs from the hero's. Null for the hero's.</summary>
+    public bool? GlobalCooldownScalesWithHaste { get; protected set; }
+
     /// <summary>The ID combat logs use for this ability's damage (the ability ID unless it deals damage through an effect).</summary>
     public int DamageLogId { get; protected set; }
 
