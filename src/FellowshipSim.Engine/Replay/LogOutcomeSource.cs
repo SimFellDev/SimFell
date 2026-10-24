@@ -320,7 +320,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         bool Free(LogDamage h) => !_claimedDamageEvidence.Contains(h) && !_hits.IsAccountedFor(h);
         int logId = evidence.LogId;
         var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
-            h => Free(h) && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
+            h => Free(h) && (evidence.HitType == 0 || h.HitType == evidence.HitType)
+                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
         if (hit == null) return false;
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);

@@ -127,6 +127,8 @@ public class LogDamage
     [JsonPropertyName("absorbed")] public double Absorbed { get; set; }
     [JsonPropertyName("overkill")] public double Overkill { get; set; }
     [JsonPropertyName("crit")] public bool Crit { get; set; }
+    /// <summary>The log's hit type (<see cref="ReplayScriptBuilder.HitTypeCrit"/>, <see cref="ReplayScriptBuilder.HitTypeGrievousCrit"/>).</summary>
+    [JsonPropertyName("hit_type")] public int? HitType { get; set; }
     [JsonPropertyName("tick")] public bool Tick { get; set; }
 
     /// <summary>Damage the hit dealt before absorbs.</summary>

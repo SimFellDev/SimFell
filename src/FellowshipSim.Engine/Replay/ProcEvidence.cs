@@ -32,11 +32,12 @@ public static class ProcEvidence
     /// hits with the ID, every <paramref name="FollowingSpacingSeconds"/> after the first: they belong to that proc and are
     /// no proof of another. With <paramref name="Resource"/>, the proof is instead that resource jumping by
     /// <paramref name="ResourceGain"/> between two of the log's readings around the roll, beyond what
-    /// <paramref name="ResourceRegenPerSecond"/> regenerates between them.
+    /// <paramref name="ResourceRegenPerSecond"/> regenerates between them. With <paramref name="HitType"/>, only a hit of
+    /// that log hit type is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%).
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
-        double ResourceRegenPerSecond = 0.0);
+        double ResourceRegenPerSecond = 0.0, int HitType = 0);
 
     public static readonly Evidence[] All =
     [
@@ -91,6 +92,8 @@ public static class ProcEvidence
         new(Schism.HammerStormProcKey, Schism.HammerStormBuff.LogId),
         new(KillEmAll.ProcKey, KillEmAll.Buff.LogId),
         new(ExecutionersGrin.ProcKey, ExecutionersGrin.Buff.LogId),
+        // Them Bones takes Skull Crusher past 100% crit chance: its hits are grievous crits, which nothing else gives it.
+        new(ThemBones.ProcKey, SkullCrusher.AbilityId, DelaySeconds: 0.1, HitType: ReplayScriptBuilder.HitTypeGrievousCrit),
         // A free Chain Lightning's first hit lands 0.30s after the proc.
         new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
         new(AceOfSpades.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
