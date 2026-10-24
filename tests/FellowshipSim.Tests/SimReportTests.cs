@@ -1,6 +1,7 @@
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Rime.Abilities;
+using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
@@ -46,6 +47,39 @@ public class SimReportTests
         Assert.InRange(bolt.CritChance, 0.05, 1.0);
         Assert.Equal(bolt.Damage / bolt.Hits, bolt.AverageHit, 6);
         Assert.Equal(bolt.Damage / Seconds, bolt.Dps, 6);
+    }
+
+    [Fact]
+    public void The_Cast_Sequence_Is_One_Fights_Casts_In_Order()
+    {
+        var result = Run();
+        var casts = result.Casts;
+        Assert.NotEmpty(casts);
+        for (int i = 1; i < casts.Count; i++) Assert.True(casts[i].Time >= casts[i - 1].Time);
+        Assert.InRange(casts[^1].Time, 0, Seconds);
+        Assert.Contains(casts, c => c.Name == "Frost Bolt" && c.Id > 0);
+        Assert.Contains(casts, c => c.Name == BurstingIce.Debuff.Name || c.Name == "Bursting Ice");
+        // One fight's casts: about as many as a fight's mean.
+        double meanCasts = result.Abilities.Sum(a => a.Casts);
+        Assert.InRange(casts.Count, meanCasts * 0.8, meanCasts * 1.2 + 2);
+    }
+
+    [Fact]
+    public void Spirit_Climbs_Each_Second_Up_To_Its_Most()
+    {
+        var result = new MonteCarloSimulator(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, CritRating = 400 },
+                AplParser.ParseScript("actions=bursting_ice\nactions+=/frost_bolt"))
+            .Run(SimTime.FromSeconds(Seconds), Fights, degreeOfParallelism: 2, fight: new FightOptions(StartingSpirit: 40));
+        var spirit = result.Spirit!;
+        Assert.Equal(100, spirit.Max);
+        Assert.Equal(Seconds, spirit.Mean.Count);
+        Assert.Equal(Seconds, spirit.Typical.Count);
+        // It starts at the starting Spirit, and with nothing spending it, never falls and never passes the most.
+        Assert.Equal(40, spirit.Typical[0]);
+        for (int s = 1; s < Seconds; s++) Assert.True(spirit.Typical[s] >= spirit.Typical[s - 1]);
+        Assert.All(spirit.Mean, v => Assert.InRange(v, 40, 100));
+        // At least 1 every 3 seconds of regeneration.
+        Assert.True(spirit.Mean[^1] >= 40 + (Seconds - 3) / Hero.SpiritPointRegenSeconds);
     }
 
     [Fact]

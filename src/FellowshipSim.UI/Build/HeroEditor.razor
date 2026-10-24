@@ -7,6 +7,7 @@
 @inject ProfileStore Profiles
 @inject Visitor Visitor
 @inject SimPageState State
+@implements IDisposable
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
 <Card>
@@ -321,6 +322,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // A build loaded from a sim's result swaps State.Editor while this editor shows: its parameters stay the same, so
+        // it redraws on the state's word.
+        State.Changed += OnStateChanged;
         try
         {
             _heroes = await Engine.GetHeroesAsync();
@@ -331,6 +335,10 @@
             State.BuildStatus = MessageState.Error(e.Message);
         }
     }
+
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnStateChanged;
 
     private static string EnchantLabel(StatEnchantOption e) => $"{e.Name} rating";
 

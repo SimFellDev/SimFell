@@ -1,0 +1,112 @@
+@inject SimPageState State
+@* Finder on the Modes tab: its switch, then the finders, each a set of variations of the current build. *@
+<Card>
+    <div class="head">
+        <label class="switch">
+            <input type="checkbox" checked="@On" @onchange="Toggle" />
+            <span class="switch-title">Finder</span>
+        </label>
+        @if (!On)
+        {
+            <span class="meta">Off · turn on to try changes to your build (turns Compare off)</span>
+        }
+    </div>
+    <div class="body @(On ? "" : "off")" inert="@(!On)">
+        <p class="hint">Each run is your current build with one change, against the build as it is.</p>
+        <div class="finders" role="radiogroup" aria-label="Finder">
+            @foreach (var kind in Enum.GetValues<FinderKind>())
+            {
+                bool selected = On && kind == State.Finder;
+                <label @key="kind" class="finder @(selected ? "on" : "")">
+                    <input type="radio" name="finder" checked="@selected" @onchange="() => Pick(kind)" />
+                    <strong>@Title(kind)</strong>
+                    <span class="meta">@Describe(kind)</span>
+                    @if (Choices(kind) is { Count: > 0 } choices)
+                    {
+                        var ranks = kind == State.Finder ? State.FinderRanks : FinderRanks.NextRank;
+                        <span class="pick">
+                            @foreach (var (choice, label) in choices)
+                            {
+                                <button @key="choice" type="button" class="@(ranks == choice ? "on" : "")" @onclick="() => PickRanks(kind, choice)">@label</button>
+                            }
+                        </span>
+                    }
+                    <span class="runs">@CompareCard.Runs(Count(kind))</span>
+                </label>
+            }
+        </div>
+    </div>
+</Card>
+
+@code {
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private bool On => State.Extra == SimExtra.Finder;
+
+    /// <summary>The finder's choices of how far it goes, with their labels; none for a finder without.</summary>
+    public static IReadOnlyList<(FinderRanks Ranks, string Label)> Choices(FinderKind kind) => kind switch
+    {
+        FinderKind.Aspects or FinderKind.Sigils or FinderKind.Glyphs => [(FinderRanks.NextRank, "+1 rank"), (FinderRanks.MaxRank, "Max rank")],
+        FinderKind.Gems => [(FinderRanks.NextRank, "Next node"), (FinderRanks.EveryRank, "Every node")],
+        _ => [],
+    };
+
+    public static string Title(FinderKind kind) => kind switch
+    {
+        FinderKind.Talents => "Next talent",
+        _ => kind.ToString(),
+    };
+
+    /// <summary>What the finder tries, as a heading for its results.</summary>
+    public static string Heading(FinderKind kind, FinderRanks ranks) => kind switch
+    {
+        FinderKind.Aspects or FinderKind.Sigils or FinderKind.Glyphs =>
+            $"Each {kind.ToString().ToLowerInvariant().TrimEnd('s')} {(ranks == FinderRanks.MaxRank ? "at max rank" : "one rank higher")}",
+        FinderKind.Relics => "Every pair of relics",
+        FinderKind.Gems => ranks == FinderRanks.EveryRank ? "Each gem colour at each node above it" : "Each gem colour at its next node",
+        _ => "Each talent that fits the points left",
+    };
+
+    private string Describe(FinderKind kind) => kind switch
+    {
+        FinderKind.Aspects => "Each aspect one rank higher, or at max rank.",
+        FinderKind.Sigils => "Each sigil one rank higher, or at max rank.",
+        FinderKind.Glyphs => "Each glyph one rank higher, or at max rank.",
+        FinderKind.Relics => "Every pair of relics.",
+        FinderKind.Gems => "Each colour with the gem power to reach its next node, or each node above it as a run of its own.",
+        _ => $"Each talent that fits your free points ({State.Editor.PointsLeft} left).",
+    };
+
+    // The runs a finder makes: its variations and the build as it is.
+    private int Count(FinderKind kind)
+    {
+        try
+        {
+            return BuildFinders.Count(State.Build, kind, kind == State.Finder ? State.FinderRanks : FinderRanks.NextRank) + 1;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
+
+    private async Task Toggle(ChangeEventArgs e)
+    {
+        State.Extra = e.Value is true ? SimExtra.Finder : SimExtra.None;
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task Pick(FinderKind kind)
+    {
+        if (kind != State.Finder) State.FinderRanks = FinderRanks.NextRank;
+        State.Finder = kind;
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task PickRanks(FinderKind kind, FinderRanks ranks)
+    {
+        State.Finder = kind;
+        State.FinderRanks = ranks;
+        return OnChanged.InvokeAsync();
+    }
+}

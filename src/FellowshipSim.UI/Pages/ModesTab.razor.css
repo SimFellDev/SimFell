@@ -1,0 +1,90 @@
+/* The fight's two kinds side by side, the picked one gold. */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input);
+  cursor: pointer;
+}
+
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice strong {
+  font-size: 15px;
+}
+
+.choice.on {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 24px 40px;
+  margin-top: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field input {
+  width: 120px;
+  height: 36px;
+  font-size: 14px;
+  text-align: right;
+  /* Typed in, no spin arrows. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.field input.short {
+  width: 90px;
+}
+
+.toggle-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-block .switch span {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.hint {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

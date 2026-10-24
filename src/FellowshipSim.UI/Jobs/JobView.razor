@@ -22,7 +22,14 @@
             <p class="field-error">@Job.Error</p>
             break;
         case { Status: SimJobStatus.Done, Result: SavedSim sim }:
-            <SimJobResult Result="sim.Result" />
+            if (sim.Runs is { Count: > 0 } runs)
+            {
+                <RunsResult Runs="runs" Heading="@(sim.RunsHeading ?? "Runs")" />
+            }
+            else
+            {
+                <SimJobResult Result="sim.Result" />
+            }
             break;
     }
 </Card>

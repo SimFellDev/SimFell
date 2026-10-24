@@ -10,6 +10,8 @@
 @inject CharacterImport Characters
 @inject IAppViews Views
 @inject SimResultLibrary Results
+@inject ProfileStore Profiles
+@implements IDisposable
 
 <PageTitle>Sim - FellowshipSim</PageTitle>
 
@@ -29,7 +31,7 @@
     </nav>
     <div class="run">
         <span class="summary">@Summary()</span>
-        <button type="button" class="run-button" @onclick="Start">Run sim</button>
+        <button type="button" class="run-button" disabled="@(State.Extra == SimExtra.Compare && State.CompareRows.Count == 0)" @onclick="StartAsync">Run sim</button>
     </div>
 </div>
 <Message Kind="State.Status.Kind">@State.Status.Text</Message>
@@ -55,33 +57,7 @@
             break;
 
         case SimTab.Modes:
-            <Card Title="Fight">
-                <div class="modes" role="radiogroup" aria-label="Fight">
-                    <label class="mode @(State.Mode == SimMode.SingleTarget ? "selected" : "")">
-                        <input type="radio" name="mode" checked="@(State.Mode == SimMode.SingleTarget)" @onchange="() => State.Mode = SimMode.SingleTarget" />
-                        <strong>Single target</strong>
-                        <span class="meta">One target for the whole fight.</span>
-                    </label>
-                    <label class="mode @(State.Mode == SimMode.Aoe ? "selected" : "")">
-                        <input type="radio" name="mode" checked="@(State.Mode == SimMode.Aoe)" @onchange="() => State.Mode = SimMode.Aoe" />
-                        <strong>AoE</strong>
-                        <span class="meta">Several targets for the whole fight.</span>
-                    </label>
-                </div>
-                <div class="settings">
-                    <label>
-                        Duration (seconds)
-                        <input type="number" min="1" step="any" @bind="State.DurationSeconds" />
-                    </label>
-                    @if (State.Mode == SimMode.Aoe)
-                    {
-                        <label>
-                            Targets
-                            <input type="number" min="2" step="1" @bind="State.AoeTargets" />
-                        </label>
-                    }
-                </div>
-            </Card>
+            <ModesTab Heroes="_heroes" Lists="_lists" OnChanged="StateHasChanged" />
             break;
 
         case SimTab.Advanced:
@@ -101,7 +77,7 @@
                 <div class="settings">
                     <label>
                         APL
-                        <select class="apl" @bind:get="State.ActionListValue" @bind:set="PickActionListAsync">
+                        <select class="apl" disabled="@(State.Extra == SimExtra.Compare)" @bind:get="State.ActionListValue" @bind:set="PickActionListAsync">
                             @if (State.ActionListValue.Length == 0)
                             {
                                 <option value="">@State.ActionListName</option>
@@ -113,6 +89,10 @@
                         </select>
                     </label>
                 </div>
+                @if (State.Extra == SimExtra.Compare)
+                {
+                    <p class="hint">Compare is on: each of its runs picks its own action list on the Modes tab.</p>
+                }
                 <p class="hint">Make or change a list in the <button type="button" class="link-button" @onclick="() => Views.ShowPage(AppPage.AplEditor)">APL Editor</button>; save it there and it shows here.</p>
             </Card>
             <Card Title="Profile">
@@ -133,13 +113,16 @@
 
     private SavedActionLists _savedLists = null!;
     private IReadOnlyList<ActionListEntry> _lists = [];
+    private IReadOnlyList<string> _heroes = [];
 
     protected override async Task OnInitializedAsync()
     {
+        State.Changed += OnStateChanged;
         _savedLists = new SavedActionLists(Store, Engine, Visitor);
         try
         {
             _lists = await _savedLists.ListAsync();
+            _heroes = await Engine.GetHeroesAsync();
         }
         catch (Exception e)
         {
@@ -147,8 +130,13 @@
         }
     }
 
-    // A list in the picker: where it is kept, its hero and its name.
-    private static string ListValue(ActionListEntry list) => $"{(list.BuiltIn ? "builtin" : list.Shared ? "shared" : "own")}/{list.Hero}/{list.Name}";
+    // The desktop app keeps this page alive in its tab: a build loaded from a result tab shows at once.
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    /// <summary>A list in a picker: where it is kept, its hero and its name.</summary>
+    internal static string ListValue(ActionListEntry list) => $"{(list.BuiltIn ? "builtin" : list.Shared ? "shared" : "own")}/{list.Hero}/{list.Name}";
 
     private async Task PickActionListAsync(string value)
     {
@@ -182,10 +170,33 @@
         _ => "4. Advanced & APL",
     };
 
-    private string Summary() => string.Format(CultureInfo.CurrentCulture, "{0} ({1}) · {2} · {3} s · {4:N0} fights · {5} APL",
-        State.Build.Name, State.Build.Hero,
-        State.Mode == SimMode.SingleTarget ? "single target" : $"{State.AoeTargets} targets",
-        State.DurationSeconds, State.Iterations, ActionListName());
+    private string Summary() => State.Extra switch
+    {
+        SimExtra.Compare => string.Format(CultureInfo.CurrentCulture, "{0} · Compare · {1} × {2:N0} fights",
+            Capital(TargetsText()), CompareCard.Runs(State.CompareRows.Count), State.Iterations),
+        SimExtra.Finder => string.Format(CultureInfo.CurrentCulture, "{0} · {1} finder · {2} × {3:N0} fights",
+            Capital(TargetsText()), FinderCard.Title(State.Finder), CompareCard.Runs(FinderRuns()), State.Iterations),
+        _ => string.Format(CultureInfo.CurrentCulture, "{0} ({1}) · {2} · {3} s · {4:N0} fights · {5} APL",
+            State.Build.Name, State.Build.Hero, TargetsText(), State.DurationSeconds, State.Iterations, ActionListName()),
+    };
+
+    private int FinderRuns()
+    {
+        try
+        {
+            return BuildFinders.Count(State.Build, State.Finder, State.FinderRanks) + 1;
+        }
+        catch (Exception)
+        {
+            return 1;
+        }
+    }
+
+    private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    private string TargetsText() => State.Mode == SimMode.SingleTarget ? "single target" : $"{State.AoeTargets} targets";
+
+    private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
 
     private string ProfilePreview()
     {
@@ -265,13 +276,134 @@
         State.Tab = SimTab.Hero;
     }
 
-    private void Start()
+    // The fights every run of a sim has.
+    private SimSettings Settings() => new(State.Iterations, State.DurationSeconds, State.Targets,
+        DegreeOfParallelism: Math.Clamp(State.Threads, 1, MaxThreads),
+        LengthVariance: State.VaryLength ? State.LengthVariancePercent / 100 : 0,
+        HealthFollowsTime: true,
+        StartingSpirit: State.StartWithSpirit ? State.StartingSpirit : 0);
+
+    private async Task StartAsync()
     {
         if (State.Iterations < 1 || State.DurationSeconds <= 0 || State.Targets < 1)
         {
             State.Status = MessageState.Error("Iterations and targets are at least 1, and the duration is above 0 seconds.");
             return;
         }
+        try
+        {
+            switch (State.Extra)
+            {
+                case SimExtra.Compare:
+                    await StartCompareAsync();
+                    break;
+                case SimExtra.Finder:
+                    StartFinder();
+                    break;
+                default:
+                    Start();
+                    break;
+            }
+        }
+        catch (Exception e) when (e is FormatException or InvalidOperationException or IOException)
+        {
+            State.Status = MessageState.Error(e.Message);
+        }
+    }
+
+    /// <summary>One run of a compare or finder sim, before it runs.</summary>
+    private sealed record PlannedRun(string Label, string Detail, string Hero, string ListName, string ListValue, string ProfileText);
+
+    // A run of <paramref name="build"/> with the action list <paramref name="listText"/>; throws for a profile that does not read.
+    private static PlannedRun Plan(string label, string detail, CharacterBuild build, string listName, string listValue, string listText)
+    {
+        string text = new SimcProfile(build, listText).Format();
+        if (SimcProfile.Parse(text).ActionList.Trim().Length == 0)
+        {
+            throw new InvalidOperationException($"{label}: its action list is empty.");
+        }
+        return new PlannedRun(label, detail, build.Hero, listName, listValue, text);
+    }
+
+    private async Task StartCompareAsync()
+    {
+        if (State.CompareRows.Count == 0)
+        {
+            State.Status = MessageState.Error("Compare has no runs: add one on the Modes tab.");
+            return;
+        }
+        var runs = new List<PlannedRun>();
+        foreach (var row in State.CompareRows)
+        {
+            CharacterBuild build;
+            if (row.Saved is { } saved)
+            {
+                string text = await Profiles.ReadAsync(Visitor, saved) ?? throw new InvalidOperationException($"The saved build {saved.Name} is gone.");
+                build = SimcProfile.Parse(text).Build;
+            }
+            else
+            {
+                build = BuildFinders.Copy(State.Build);
+            }
+            var list = _lists.FirstOrDefault(l => ListValue(l) == row.ListValue);
+            string listName = list?.Name ?? DefaultActionLists.DefaultName;
+            string listText = list == null
+                ? DefaultActionLists.Read(build.Hero, DefaultActionLists.DefaultName) ?? ""
+                : (await _savedLists.ReadAsync(list)).Text;
+            runs.Add(Plan(row.Saved?.Name ?? $"{build.Name} (current)", listName, build, listName, row.ListValue, listText));
+        }
+        Enqueue($"Compare: {CompareCard.Runs(runs.Count)}, {TargetsText()}, {N(State.DurationSeconds)} s", "Builds and action lists", runs);
+    }
+
+    private void StartFinder()
+    {
+        var variants = BuildFinders.Variants(State.Build, State.Finder, State.FinderRanks);
+        if (variants.Count == 0)
+        {
+            State.Status = MessageState.Error($"The {FinderCard.Title(State.Finder)} finder has nothing to try for this build.");
+            return;
+        }
+        string listText = ActionListText();
+        var runs = new List<PlannedRun> { Plan("Current build", State.Build.Name, State.Build, ActionListName(), State.ActionListValue, listText) };
+        runs.AddRange(variants.Select(v => Plan(v.Label, v.Detail, v.Build, ActionListName(), State.ActionListValue, listText)));
+        Enqueue($"{FinderCard.Title(State.Finder)} finder: {State.Build.Name} ({State.Build.Hero}), {CompareCard.Runs(runs.Count)}, {TargetsText()}",
+            FinderCard.Heading(State.Finder, State.FinderRanks), runs);
+    }
+
+    // Queues the runs as one job: each run's sim in turn, saved together with the first as the baseline.
+    private void Enqueue(string title, string heading, IReadOnlyList<PlannedRun> runs)
+    {
+        var settings = Settings();
+        var first = SimcProfile.Parse(runs[0].ProfileText);
+        // The job outlives this page's circuit, so the work captures the engine, the results library and values alone.
+        var (engine, results, visitor) = (Engine, Results, Jobs.Visitor);
+        var job = Jobs.Enqueue(SimJobKind.Sim, title, async c =>
+        {
+            var done = new List<SimRun>();
+            for (int i = 0; i < runs.Count; i++)
+            {
+                var run = runs[i];
+                var progress = new RunProgress(c, i, runs.Count, run.Label);
+                var result = await engine.SimulateAsync(SimcProfile.Parse(run.ProfileText), settings, progress, c.CancellationToken);
+                done.Add(new SimRun(run.Label, run.Detail, run.Hero, run.ListName, run.ListValue, run.ProfileText, result));
+            }
+            var saved = new SavedSim(c.Job.Id, title, done[0].Hero, first.Build.Name, done[0].Profile, settings.TargetCount, done[0].Result,
+                DateTime.UtcNow, done, heading);
+            await results.SaveAsync(visitor, saved, CancellationToken.None);
+            return saved;
+        }, first);
+        State.Status = MessageState.Ok($"Queued: {title}.");
+        Views.ShowJob(job);
+    }
+
+    /// <summary>A run's progress as its share of the whole job, with which run it is.</summary>
+    private sealed class RunProgress(SimJobContext job, int run, int runs, string label) : IProgress<SimProgress>
+    {
+        public void Report(SimProgress value) => job.Report((run + value.Fraction) / runs, $"Run {run + 1} of {runs}: {label}");
+    }
+
+    private void Start()
+    {
         string profileText;
         SimcProfile profile;
         try
@@ -289,7 +421,7 @@
             State.Status = MessageState.Error("The action list is empty: pick one on the Advanced tab.");
             return;
         }
-        var settings = new SimSettings(State.Iterations, State.DurationSeconds, State.Targets, DegreeOfParallelism: Math.Clamp(State.Threads, 1, MaxThreads));
+        var settings = Settings();
         string title = string.Format(CultureInfo.CurrentCulture, "{0} ({1}): {2:N0} iterations, {3} s, {4} {5}",
             profile.Build.Name, profile.Build.Hero, State.Iterations, State.DurationSeconds, State.Targets, State.Targets == 1 ? "target" : "targets");
         // The job outlives this page's circuit, so the work captures the engine, the results library and values alone.

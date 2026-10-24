@@ -1,0 +1,94 @@
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+/* Greyed out and not clickable while the other mode, or none, is on. */
+.body.off {
+  opacity: 0.45;
+}
+
+.hint {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+.finders {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.finder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input);
+  color: var(--text);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.finder input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.finder strong {
+  font-size: 14px;
+}
+
+.finder.on {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pick button {
+  min-height: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.pick button.on {
+  border-color: var(--accent);
+  background: var(--selected);
+  color: var(--text);
+}
+
+.runs {
+  margin-top: auto;
+  color: var(--heading);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .finders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .finders {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

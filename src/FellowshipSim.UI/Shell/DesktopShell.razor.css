@@ -7,9 +7,10 @@
   overflow: hidden;
 }
 
+/* Above every page's own layers (sticky bars at 10, menus at 20 and 21): the results sidebar and the open list live in it. */
 .bar {
   position: relative;
-  z-index: 10;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 8px;

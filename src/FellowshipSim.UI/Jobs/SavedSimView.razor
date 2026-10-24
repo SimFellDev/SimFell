@@ -6,7 +6,14 @@
         <h2 class="title">@Sim.Title</h2>
         <span class="meta">@Sim.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</span>
     </div>
-    <SimJobResult Result="Sim.Result" />
+    @if (Sim.Runs is { Count: > 0 } runs)
+    {
+        <RunsResult Runs="runs" Heading="@(Sim.RunsHeading ?? "Runs")" />
+    }
+    else
+    {
+        <SimJobResult Result="Sim.Result" />
+    }
 </Card>
 
 @code {

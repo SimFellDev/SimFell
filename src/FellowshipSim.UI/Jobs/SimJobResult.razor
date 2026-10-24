@@ -9,6 +9,14 @@
             <strong>@N(Result.MeanDps)</strong>
             <em>±@MarginText at 95% confidence</em>
         </div>
+        @if (Result.PrimaryTargetDps is { } primary && primary < Result.MeanDps * 0.999)
+        {
+            <div class="tile">
+                <span>Main target DPS</span>
+                <strong>@N(primary)</strong>
+                <em>@Percent(Result.MeanDps > 0 ? primary / Result.MeanDps : 0) of the damage, to the first target</em>
+            </div>
+        }
         <div class="tile">
             <span>Range</span>
             <strong>@N(Result.MinDps) – @N(Result.MaxDps)</strong>
@@ -86,6 +94,37 @@
         </section>
     }
 
+    @if (Result.Spirit is { Mean.Count: > 1, Max: > 0 } spirit)
+    {
+        <section class="card">
+            <div class="card-head">
+                <h3>Spirit over time</h3>
+                <span class="legend"><i class="mean"></i>Typical fight <i class="spirit-mean"></i>Mean of every fight <i class="average"></i>Most (@N(spirit.Max))</span>
+            </div>
+            <div class="chart">
+                @{ double spiritTop = SpiritTop(spirit.Max); }
+                <div class="y">@for (int i = 4; i >= 0; i--)
+                {
+                    <span>@N(spiritTop * i / 4)</span>
+                }</div>
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="Spirit Points over the fight: one typical fight and the mean of every fight">
+                    @for (int g = 1; g < 4; g++)
+                    {
+                        <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
+                    }
+                    <line x1="0" x2="1000" y1="@Y(spirit.Max, spiritTop)" y2="@Y(spirit.Max, spiritTop)" class="average" />
+                    <path d="@Line(spirit.Mean, spiritTop, nice: false)" class="spirit-mean" />
+                    <path d="@Steps(spirit.Typical, spirit.Mean.Count, spiritTop)" class="mean" />
+                </svg>
+                <div class="x">@foreach (var label in TimeLabels(spirit.Mean.Count))
+                {
+                    <span>@label</span>
+                }</div>
+            </div>
+            <p class="hint">Spirit Points at the start of each second. The gold line is the fight nearest the mean damage (of the first 100): it climbs with the regeneration and Spirit Refunds and drops at each Spirit ability. The mean is over the fights still going at that second.</p>
+        </section>
+    }
+
     <section class="card">
         <h3>Damage by ability</h3>
         <div class="table-wrap">
@@ -155,6 +194,39 @@
         </div>
     </section>
 
+    @if (Result.Casts is { Count: > 0 } casts)
+    {
+        var windows = casts.GroupBy(c => (int)(c.Time / CastWindowSeconds)).ToList();
+        <section class="card">
+            <div class="card-head">
+                <h3>Cast sequence</h3>
+                <span class="legend">One typical fight · @N(casts.Count) casts</span>
+            </div>
+            <div class="casts">
+                @foreach (var window in _allCasts ? windows : windows.Take(ShownCastWindows))
+                {
+                    <div @key="window.Key" class="cast-row">
+                        <span class="cast-time">@Clock(window.Key * CastWindowSeconds)</span>
+                        <ol class="cast-list">
+                            @foreach (var cast in window)
+                            {
+                                <li title="@($"{cast.Name} at {Clock(cast.Time, tenths: true)}")">
+                                    <GameIcon Url="@BuildCatalog.IconUrl(cast.Id, cast.Name)" Size="30" />
+                                    <span>@cast.Time.ToString("0.0", CultureInfo.CurrentCulture)</span>
+                                </li>
+                            }
+                        </ol>
+                    </div>
+                }
+            </div>
+            @if (windows.Count > ShownCastWindows)
+            {
+                <button type="button" class="link-button" @onclick="() => _allCasts = !_allCasts">@(_allCasts ? "Show the first minute" : $"Show the whole fight ({N(casts.Count)} casts)")</button>
+            }
+            <p class="hint">The fight nearest the mean damage, of the first 100; each cast at the time it finished, in seconds. Hover an icon for its name.</p>
+        </section>
+    }
+
     @if (Result.Buffs?.Where(b => !b.OnTarget).ToList() is { Count: > 0 } buffs)
     {
         <section class="card">
@@ -176,6 +248,17 @@
 
 @code {
     [Parameter, EditorRequired] public SimResult Result { get; set; } = null!;
+
+    /// <summary>The cast sequence's rows: the casts of each 30 seconds.</summary>
+    private const int CastWindowSeconds = 30;
+
+    /// <summary>Rows shown until the whole fight is asked for: the first minute.</summary>
+    private const int ShownCastWindows = 2;
+
+    private bool _allCasts;
+
+    private static string Clock(double seconds, bool tenths = false) =>
+        $"{(int)seconds / 60}:{(tenths ? (seconds % 60).ToString("00.0", CultureInfo.CurrentCulture) : ((int)seconds % 60).ToString("00", CultureInfo.CurrentCulture))}";
 
     /// <summary>The table of buffs or debuffs: uptime, applications, refreshes, duration, stacks and gaps.</summary>
     private RenderFragment AuraTable(IReadOnlyList<BuffReport> auras, string kind) =>
@@ -278,12 +361,31 @@
 
     private static string X(int index, int count) => (count <= 1 ? 0 : index * 1000.0 / (count - 1)).ToString("0.#", CultureInfo.InvariantCulture);
 
-    private static string Line(IReadOnlyList<double> values, double max)
+    private static string Line(IReadOnlyList<double> values, double max, bool nice = true)
     {
-        double top = Nice(max);
+        double top = nice ? Nice(max) : max;
         var d = new System.Text.StringBuilder();
         for (int i = 0; i < values.Count; i++) d.Append(i == 0 ? 'M' : 'L').Append(X(i, values.Count)).Append(' ').Append(Y(values[i], top)).Append(' ');
         return d.ToString();
+    }
+
+    /// <summary>The Spirit chart's top: the most Spirit Points rounded up to 40, so its quarters fall on round numbers.</summary>
+    private static double SpiritTop(double max) => Math.Max(40, Math.Ceiling(max / 40) * 40);
+
+    /// <summary>
+    /// A line that holds each second's value until the next (a resource's level), along a chart of
+    /// <paramref name="seconds"/> seconds topped at <paramref name="top"/>.
+    /// </summary>
+    private static string Steps(IReadOnlyList<double> values, int seconds, double top)
+    {
+        if (values.Count == 0 || seconds < 2) return "";
+        var d = new System.Text.StringBuilder();
+        for (int i = 0; i < values.Count; i++)
+        {
+            string x = X(i, seconds), y = Y(Math.Min(values[i], top), top);
+            d.Append(i == 0 ? "M" : "H").Append(x).Append(i == 0 ? " " : "V").Append(y).Append(' ');
+        }
+        return d.Append('H').Append(X(Math.Min(values.Count, seconds - 1), seconds)).ToString();
     }
 
     private static string Band(IReadOnlyList<double> low, IReadOnlyList<double> high, double max)

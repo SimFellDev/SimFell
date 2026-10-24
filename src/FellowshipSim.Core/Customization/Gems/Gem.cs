@@ -45,6 +45,9 @@ public abstract class Gem
     /// <summary>Every node of this colour's tree.</summary>
     protected abstract IReadOnlyList<GemNode> NodeTable { get; }
 
+    /// <summary>Every node of this colour's tree, as <see cref="NodeTable"/>.</summary>
+    public IReadOnlyList<GemNode> Tree => NodeTable;
+
     /// <summary>The nodes unlocked at <see cref="Power"/> (a rank II node replaces the rank I node of its slot).</summary>
     public IReadOnlyList<GemNode> Nodes { get; private set; } = Array.Empty<GemNode>();
 

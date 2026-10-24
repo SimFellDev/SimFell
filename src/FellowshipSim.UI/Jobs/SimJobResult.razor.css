@@ -111,6 +111,12 @@
   background: rgba(212, 175, 110, 0.18);
 }
 
+.legend i.spirit-mean {
+  height: 2px;
+  border-radius: 1px;
+  background: #8ea2ff;
+}
+
 .legend i.average {
   border-top: 1px dashed #8ea2ff;
 }
@@ -167,6 +173,14 @@
   fill: none;
   stroke: var(--heading);
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart .spirit-mean {
+  fill: none;
+  stroke: #8ea2ff;
+  stroke-width: 1.5;
+  opacity: 0.8;
   vector-effect: non-scaling-stroke;
 }
 
@@ -307,4 +321,55 @@
 
 .hint {
   margin: 0;
+}
+
+/* The cast sequence: a row per 30 seconds, its start time, then each cast's icon with its time under it. */
+.casts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cast-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #1e1e22;
+}
+
+.cast-time {
+  padding-top: 7px;
+  color: var(--heading);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cast-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cast-list li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 36px;
+}
+
+.cast-list ::deep .icon {
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.cast-list span {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }

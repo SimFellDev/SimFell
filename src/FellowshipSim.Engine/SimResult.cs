@@ -4,8 +4,8 @@ namespace FellowshipSim.Engine;
 
 /// <summary>
 /// A Monte Carlo sim's DPS: mean, lowest and highest fight, standard deviation, and each ability's mean DPS; with its
-/// damage over time, each damage source's casts, hits and crits, and each buff's and debuff's uptime. A result saved
-/// before those were recorded has them null.
+/// damage over time, each damage source's casts, hits and crits, each buff's and debuff's uptime, one typical fight's
+/// casts in order, and Spirit Points over the fight. A result saved before those were recorded has them null.
 /// </summary>
 public sealed record SimResult(
     double MeanDps,
@@ -17,9 +17,12 @@ public sealed record SimResult(
     double DurationSeconds,
     SimTimeline? Timeline = null,
     IReadOnlyList<AbilityReport>? Abilities = null,
-    IReadOnlyList<BuffReport>? Buffs = null)
+    IReadOnlyList<BuffReport>? Buffs = null,
+    double? PrimaryTargetDps = null,
+    IReadOnlyList<CastReport>? Casts = null,
+    SpiritTimeline? Spirit = null)
 {
     public static SimResult From(MonteCarloResult result) => new(result.MeanDps, result.MinDps, result.MaxDps,
         result.StandardDeviation, result.AbilityDpsBreakdown, result.Iterations, result.DurationSeconds,
-        result.Timeline, result.Abilities, result.Buffs);
+        result.Timeline, result.Abilities, result.Buffs, result.PrimaryTargetDps, result.Casts, result.Spirit);
 }

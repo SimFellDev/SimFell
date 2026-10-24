@@ -24,13 +24,38 @@ internal sealed class FightRecorder
     private readonly Dictionary<(AuraContainer Owner, string Key), SimTime> _lastEnd = new();
     /// <summary>This fight's aura spans (start and end seconds in turn), by name and side; null for a fight not sampled.</summary>
     private Dictionary<(string Name, bool OnTarget), List<double>>? _spans;
+    /// <summary>This fight's casts in order; null for a fight not sampled.</summary>
+    private List<CastReport>? _casts;
+    private readonly Hero _hero;
+    /// <summary>This fight's Spirit Points at the start of each second, filled up to <see cref="_spiritFilled"/>.</summary>
+    private double[] _spirit = [];
+    private int _spiritFilled;
+    private double _lastSpirit;
+    private double _spiritMax;
 
     public FightRecorder(Hero hero)
     {
-        hero.OnDamageDealt += OnHit;
-        hero.OnCastCompleted += (ability, _, _) =>
+        _hero = hero;
+        hero.OnResourceGained += (resource, _, _, ctx) =>
         {
-            if (_tally != null) _tally.Source(ability.Name).Casts++;
+            if (resource == Hero.SpiritPoints) SpiritChanged(ctx.CurrentTime);
+        };
+        hero.OnResourceSpent += (resource, _, now) =>
+        {
+            if (resource == Hero.SpiritPoints) SpiritChanged(now);
+        };
+        hero.OnDamageDealt += OnHit;
+        hero.OnCastCompleted += (ability, _, now) =>
+        {
+            if (_tally == null) return;
+            _tally.Source(ability.Name).Casts++;
+            _casts?.Add(new CastReport(now.TotalSeconds, ability.Name, ability.Id));
+            // A Spirit ability takes its Spirit Points from the pool with no event of its own.
+            if (_hero.ResourceAmount(Hero.SpiritPoints) != _lastSpirit) SpiritChanged(now);
+        };
+        hero.SpiritOfHeroismStarted += ctx =>
+        {
+            if (_hero.ResourceAmount(Hero.SpiritPoints) != _lastSpirit) SpiritChanged(ctx.CurrentTime);
         };
         Watch(hero.Auras, onTarget: false);
     }
@@ -46,13 +71,39 @@ internal sealed class FightRecorder
         _active.Clear();
         _lastEnd.Clear();
         _spans = fight < SpanFights ? new() : null;
+        _casts = fight < SpanFights ? new() : null;
+        if (_spirit.Length == seconds) Array.Clear(_spirit);
+        else _spirit = new double[seconds];
+        _spiritFilled = 0;
+        _lastSpirit = _hero.ResourceAmount(Hero.SpiritPoints);
+        _spiritMax = _hero.Resources.Get(Hero.SpiritPoints).Max;
+    }
+
+    /// <summary>
+    /// Spirit changed at <paramref name="now"/>: each second that started before then had the amount before the change (a
+    /// second starting at that moment has the new one).
+    /// </summary>
+    private void SpiritChanged(SimTime now)
+    {
+        if (_tally == null) return;
+        FillSpirit(Math.Min(_spirit.Length, (int)Math.Ceiling(now.TotalSeconds)));
+        _lastSpirit = _hero.ResourceAmount(Hero.SpiritPoints);
+    }
+
+    private void FillSpirit(int upTo)
+    {
+        for (; _spiritFilled < upTo; _spiritFilled++) _spirit[_spiritFilled] = _lastSpirit;
     }
 
     /// <summary>Listens to the debuffs on the fight's targets.</summary>
     public void WatchTargets(SimulationContext ctx)
     {
         foreach (var enemy in ctx.AllEnemies) Watch(enemy.Auras, onTarget: true);
+        _primary = ctx.AllEnemies.FirstOrDefault();
     }
+
+    /// <summary>The fight's first target, whose damage is also added up on its own.</summary>
+    private EnemyTarget? _primary;
 
     /// <summary>Ends the fight at <paramref name="duration"/>: the auras still up count until then (or their expiry).</summary>
     public void End(SimTime duration)
@@ -60,7 +111,10 @@ internal sealed class FightRecorder
         var tally = _tally!;
         foreach (var state in _active.Values) Close(state, Earlier(state.Aura.ExpiresAt, duration));
         _active.Clear();
-        tally.AddFight(_fight, _damage, _spans);
+        int seconds = Math.Min(_spirit.Length, (int)Math.Ceiling(duration.TotalSeconds));
+        FillSpirit(seconds);
+        tally.AddSpirit(_spirit, seconds, _spiritMax);
+        tally.AddFight(_fight, _damage, _spans, _casts, _spans != null ? _spirit[..seconds] : null);
         _tally = null;
     }
 
@@ -69,6 +123,7 @@ internal sealed class FightRecorder
         if (_tally == null) return;
         int second = Math.Clamp((int)hit.Timestamp.TotalSeconds, 0, _damage.Length - 1);
         _damage[second] += hit.Amount;
+        if (ReferenceEquals(hit.Target, _primary)) _tally.PrimaryDamage += hit.Amount;
         if (!ReferenceEquals(hit.AbilityName, _lastName))
         {
             _lastName = hit.AbilityName;
@@ -227,9 +282,42 @@ internal sealed class FightRecorder
         public double[] DamageSum = [];
         public readonly List<(int Fight, float[] Damage)> Band = [];
         /// <summary>The sampled fights' total damage and aura spans.</summary>
-        public readonly List<(int Fight, double Damage, Dictionary<(string Name, bool OnTarget), List<double>> Spans)> Samples = [];
+        public readonly List<(int Fight, double Damage, Dictionary<(string Name, bool OnTarget), List<double>> Spans, List<CastReport> Casts, double[] Spirit)> Samples = [];
+        /// <summary>Spirit Points at the start of each second, added up over the fights still going then, and their count.</summary>
+        public double[] SpiritSum = [];
+        public int[] SpiritFights = [];
+        public double SpiritMax;
+
+        /// <summary>Adds a fight's Spirit Points for its first <paramref name="seconds"/> seconds.</summary>
+        public void AddSpirit(double[] spirit, int seconds, double max)
+        {
+            Grow(spirit.Length);
+            for (int i = 0; i < seconds; i++)
+            {
+                SpiritSum[i] += spirit[i];
+                SpiritFights[i]++;
+            }
+            SpiritMax = Math.Max(SpiritMax, max);
+        }
+
+        private void Grow(int seconds)
+        {
+            if (SpiritSum.Length >= seconds) return;
+            Array.Resize(ref SpiritSum, seconds);
+            Array.Resize(ref SpiritFights, seconds);
+        }
+
+        /// <summary>The run's Spirit Points over the fight: the mean, and the typical fight's.</summary>
+        public SpiritTimeline Spirit()
+        {
+            int seconds = SpiritFights.Count(n => n > 0);
+            var mean = Enumerable.Range(0, seconds).Select(i => SpiritSum[i] / SpiritFights[i]).ToList();
+            return new SpiritTimeline(mean, Typical()?.Spirit ?? [], SpiritMax);
+        }
         public readonly Dictionary<string, SourceTally> Sources = new(StringComparer.Ordinal);
         public readonly Dictionary<(string Name, bool OnTarget), AuraTally> Auras = new();
+        /// <summary>The damage to each fight's first target, added up.</summary>
+        public double PrimaryDamage;
 
         public SourceTally Source(string name)
         {
@@ -243,10 +331,11 @@ internal sealed class FightRecorder
             return aura;
         }
 
-        public void AddFight(int fight, double[] damage, Dictionary<(string Name, bool OnTarget), List<double>>? spans)
+        public void AddFight(int fight, double[] damage, Dictionary<(string Name, bool OnTarget), List<double>>? spans, List<CastReport>? casts,
+            double[]? spirit)
         {
             Fights++;
-            if (spans != null) Samples.Add((fight, damage.Sum(), spans));
+            if (spans != null) Samples.Add((fight, damage.Sum(), spans, casts ?? [], spirit ?? []));
             if (DamageSum.Length != damage.Length) DamageSum = new double[damage.Length];
             for (int i = 0; i < damage.Length; i++) DamageSum[i] += damage[i];
             if (fight < BandFights) Band.Add((fight, Array.ConvertAll(damage, d => (float)d)));
@@ -256,10 +345,18 @@ internal sealed class FightRecorder
         {
             if (other.Fights == 0) return;
             Fights += other.Fights;
+            PrimaryDamage += other.PrimaryDamage;
             if (DamageSum.Length == 0) DamageSum = new double[other.DamageSum.Length];
             for (int i = 0; i < other.DamageSum.Length; i++) DamageSum[i] += other.DamageSum[i];
             Band.AddRange(other.Band);
             Samples.AddRange(other.Samples);
+            Grow(other.SpiritSum.Length);
+            for (int i = 0; i < other.SpiritSum.Length; i++)
+            {
+                SpiritSum[i] += other.SpiritSum[i];
+                SpiritFights[i] += other.SpiritFights[i];
+            }
+            SpiritMax = Math.Max(SpiritMax, other.SpiritMax);
             foreach (var (name, source) in other.Sources) Source(name).Add(source);
             foreach (var ((name, onTarget), aura) in other.Auras) Aura(name, onTarget).Add(aura);
         }
@@ -296,9 +393,7 @@ internal sealed class FightRecorder
         /// </summary>
         public List<BuffReport> Buffs(double seconds, int targets)
         {
-            // The typical fight: the sampled one whose damage is nearest the mean (the first such by seed).
-            double mean = Fights == 0 ? 0 : DamageSum.Sum() / Fights;
-            var typical = Samples.OrderBy(s => Math.Abs(s.Damage - mean)).ThenBy(s => s.Fight).Select(s => s.Spans).FirstOrDefault();
+            var typical = Typical()?.Spans;
             return Auras
             .Where(a => a.Value.LogId != 0)
             .Select(a =>
@@ -316,6 +411,17 @@ internal sealed class FightRecorder
             .OrderBy(b => b.OnTarget)
             .ThenByDescending(b => b.Uptime)
             .ToList();
+        }
+
+        /// <summary>The typical fight's casts, in order.</summary>
+        public List<CastReport> Casts() => Typical()?.Casts ?? [];
+
+        /// <summary>The typical fight: the sampled one whose damage is nearest the mean (the first such by seed).</summary>
+        private (int Fight, double Damage, Dictionary<(string Name, bool OnTarget), List<double>> Spans, List<CastReport> Casts, double[] Spirit)? Typical()
+        {
+            if (Samples.Count == 0) return null;
+            double mean = Fights == 0 ? 0 : DamageSum.Sum() / Fights;
+            return Samples.OrderBy(s => Math.Abs(s.Damage - mean)).ThenBy(s => s.Fight).First();
         }
 
         /// <summary>Spans (start and end in turn) merged where they overlap or touch, in time order: a debuff on several targets.</summary>
