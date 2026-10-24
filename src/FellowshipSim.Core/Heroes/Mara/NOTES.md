@@ -18,7 +18,8 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   124.8%.
 - **Caustic Poison:** every hit is a grievous crit (its +100% crit chance on top of Mara's).
 - **Vexira's Venom:** a tick deals a third of the venom held; the shadowy clones' crits add none.
-- **Backstab and auto attacks** from the front can be blocked (hit type 4: the logged amount is what the block left).
+- **Blocked hits** (hit type 4; 40 in fight 19, Queen's Fang and auto attacks): the logged amount is what the block
+  left, so a replay compares the engine's hit with the amount plus the blocked part.
 
 ## Timing
 
