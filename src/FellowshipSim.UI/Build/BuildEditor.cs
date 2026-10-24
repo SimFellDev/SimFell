@@ -69,11 +69,44 @@ public sealed class BuildEditor(CharacterBuild build)
 
     /// <summary>
     /// The stat's character-sheet percentage (a fraction): the log's when the build came from one, otherwise its rating's
-    /// with the stat enchants' rating.
+    /// with the stat enchants' rating; then the gem nodes' bonus to it, as the sim adds it.
     /// </summary>
     public double Percent(RatedStat stat) =>
-        Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet
-            : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat) + Build.EnchantRating(RatingType(stat)));
+        (Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet
+            : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat) + Build.EnchantRating(RatingType(stat))))
+        + GemBonus(stat);
+
+    private string? _gemBonusesFor;
+    private StatBlock? _gemBonuses;
+
+    /// <summary>
+    /// The percentage the build's gems add to <paramref name="stat"/>: its gems bound to a hero as <see cref="HeroImporter"/>
+    /// binds them. The gem power is the character sheet's (Covetous Greed included), as a sim's profile reads it. Worked
+    /// out again only when the gems change.
+    /// </summary>
+    private double GemBonus(RatedStat stat)
+    {
+        string key = $"{Build.Hero}|{string.Join(",", Build.GemPower.OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Value}"))}";
+        if (key != _gemBonusesFor)
+        {
+            var hero = CoreCatalog.CreateHero(Build.Hero);
+            foreach (var (color, power) in Build.GemPower)
+            {
+                var gem = FellowshipSim.Core.Customization.Gems.Gem.Create(color);
+                gem.Power = power;
+                gem.Bind(hero);
+            }
+            _gemBonuses = hero.Stats;
+            _gemBonusesFor = key;
+        }
+        return stat switch
+        {
+            RatedStat.Crit => _gemBonuses!.BonusCritChance,
+            RatedStat.Haste => _gemBonuses!.BonusHaste,
+            RatedStat.Expertise => _gemBonuses!.BonusExpertise,
+            _ => _gemBonuses!.BonusSpirit,
+        };
+    }
 
     private static StatType RatingType(RatedStat stat) => stat switch
     {

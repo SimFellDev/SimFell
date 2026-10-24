@@ -61,6 +61,21 @@ public sealed class BuildEditorTests : IDisposable
     }
 
     [Fact]
+    public void Gem_Nodes_Add_Their_Bonus_To_The_Sheet_Percentage_As_The_Sim_Does()
+    {
+        var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
+        double crit = editor.Percent(RatedStat.Crit);
+
+        editor.SetGem(GemColor.Amethyst, 300);
+        Assert.Equal(crit + 0.02, editor.Percent(RatedStat.Crit), 6);
+        editor.SetGem(GemColor.Amethyst, 1250);
+        Assert.Equal(crit + 0.06, editor.Percent(RatedStat.Crit), 6);
+        // The sim reads the build through its profile.
+        var simmed = HeroImporter.Import(SimcProfile.Parse(new SimcProfile(editor.Build, "").Format()).Build);
+        Assert.Equal(simmed.Stats.CritPercent, editor.Percent(RatedStat.Crit), 4);
+    }
+
+    [Fact]
     public void A_Build_Made_In_The_Editor_Writes_And_Reads_Back_As_A_Profile()
     {
         var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));

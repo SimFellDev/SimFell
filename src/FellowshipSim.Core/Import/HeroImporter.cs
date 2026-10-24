@@ -77,15 +77,7 @@ public static class HeroImporter
 
         foreach (var (color, power) in build.GemPower)
         {
-            Gem gem = color switch
-            {
-                GemColor.Emerald => new Emerald(),
-                GemColor.Ruby => new Ruby(),
-                GemColor.Amethyst => new Amethyst(),
-                GemColor.Topaz => new Topaz(),
-                GemColor.Sapphire => new Sapphire(),
-                _ => new Diamond(),
-            };
+            var gem = Gem.Create(color);
             gem.Power = hero.Stats.UsesSheetValues ? power : power * hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
             hero.Gems.Add(gem);
             gem.Bind(hero);

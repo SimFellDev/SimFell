@@ -31,6 +31,17 @@ public abstract class Gem
     public abstract GemColor Color { get; }
     public double Power { get; set; }
 
+    /// <summary>The tree of gem colour <paramref name="color"/>.</summary>
+    public static Gem Create(GemColor color) => color switch
+    {
+        GemColor.Emerald => new Emerald(),
+        GemColor.Ruby => new Ruby(),
+        GemColor.Amethyst => new Amethyst(),
+        GemColor.Topaz => new Topaz(),
+        GemColor.Sapphire => new Sapphire(),
+        _ => new Diamond(),
+    };
+
     /// <summary>Every node of this colour's tree.</summary>
     protected abstract IReadOnlyList<GemNode> NodeTable { get; }
 
