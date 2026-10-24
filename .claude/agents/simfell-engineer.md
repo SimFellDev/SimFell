@@ -10,6 +10,8 @@ the SimFell worktree of the branch: the logs, the tests, the replays, free dice,
 The teammate `game-data-authority` is the authority on game data: values, Blueprints and decompiled functions. Every
 game value in a change comes from it, or from the datamine export with the record named.
 
+SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
+
 ## Read first
 
 `CLAUDE.md`, `docs/REPLAY_ACCURACY.md`, `docs/ADDING_A_HERO.md`, the spec, the hero's `NOTES.md` and the hero's classes.

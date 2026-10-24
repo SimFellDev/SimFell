@@ -63,8 +63,9 @@ ACCURACY_HERO=<Hero> ACCURACY_LABEL=baseline dotnet test tests/FellowshipSim.Tes
 ## 5. Spec
 
 An `accuracy-spec-writer` agent writes `docs/accuracy/<branch>.md` from the baseline. Its prompt names the hero, the
-branch, the worktree and the baseline file. The session commits the spec on the branch, alone in its commit, before any
-change to the engine. The spec is the contract for stages 2 to 4; a change to it after this commit is its own commit
+branch, the worktree and the baseline file. The session copies `data/accuracy/<Hero>/baseline.txt` and `.json` to
+`docs/accuracy/<branch>.baseline.txt` and `.json`, and commits them with the spec on the branch, alone in their commit,
+before any change to the engine. The review and the audit read the baseline from there. The spec is the contract for stages 2 to 4; a change to it after this commit is its own commit
 with the reason in the message.
 
 ## 6. Implementation

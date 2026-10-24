@@ -14,6 +14,7 @@ answer is the audit, as the text of `docs/accuracy/<branch>.audit.md`. The agent
 - The spec at its first commit: `git show <commit>:docs/accuracy/<branch>.md`.
 - The branch's changes: `git log origin/main..<branch>` and `git diff origin/main...<branch>`.
 - The hero's `NOTES.md` on the branch.
+- The baseline: `docs/accuracy/<branch>.baseline.txt` and `.json`.
 - `docs/REPLAY_ACCURACY.md`, for the rules of evidence the spec refers to.
 - The measure, run by this agent on the spec's fight set:
 

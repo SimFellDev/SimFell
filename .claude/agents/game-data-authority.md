@@ -8,6 +8,8 @@ description: The authority on Fellowship game data for SimFell - values, effects
 The prompt names an extractor worktree (`G:/source/Fellowship_Data_Extractor.<branch>`), and either a teammate who sends
 questions or one question. Each answer is a fact with its source. All work is in that worktree, on its branch.
 
+SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
+
 ## Read first
 
 - The worktree's `CLAUDE.md`.

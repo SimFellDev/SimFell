@@ -16,7 +16,7 @@ worktree. The agent changes no other file.
 - The baseline `.txt` and `.json`.
 - `src/FellowshipSim.Core/Heroes/<Hero>/NOTES.md` and the hero's classes, for what is modeled and what is marked
   `UNVERIFIED`.
-- `~/.claude/output-grammar.md`: every sentence of the spec follows it.
+- `~/.claude/output-grammer.md`: every sentence of the spec follows it.
 
 ## The spec
 
@@ -25,17 +25,18 @@ done. Its sections, in this order:
 
 1. **Fights.** The fight set the work is measured on: every fight of the baseline, as report code, fight ID, encounter
    and player. The final measure runs on this set.
-2. **Headline targets.** Each target of `docs/REPLAY_ACCURACY.md` with its baseline value beside it.
+2. **Headline targets.** Each target of `docs/REPLAY_ACCURACY.md`.
 3. **Items.** One numbered item per subject off its target in the baseline, in the order of work of
    `docs/REPLAY_ACCURACY.md`, each ranked within its group by `log damage x |1 - ratio|`:
    - every unmodeled ability and customization in the baseline: the engine models it from its game data;
    - every damage ID over 1% of the log's damage with a calibration, hit count or engine-only count off target: its
-     target values, with its baseline values;
+     target values;
    - every resource and aura among the baseline's most common issues: the engine's value agrees with the log's within
-     the tolerance `ReplayOptions` gives, with the baseline count of disagreements.
+     the tolerance `ReplayOptions` gives.
 
-   Each item has an ID (`A1`, `A2`, ...), the subject with its log ID, the target, and the baseline numbers. An item
-   names no cause and no fix.
+   Each item has an ID (`A1`, `A2`, ...), the subject with its log ID, and the target. An item names no cause, no fix and
+   no baseline value: the baseline numbers are in `docs/accuracy/<branch>.baseline.txt` and `.json`, committed with the
+   spec.
 4. **Evidence.** Each item is met by a change whose every value names its source, by the rules of evidence in
    `docs/REPLAY_ACCURACY.md`, or it is listed in the hero's `NOTES.md` under "Not yet explained" with its final numbers
    and every source checked. A constant chosen to make a number match meets no item.
