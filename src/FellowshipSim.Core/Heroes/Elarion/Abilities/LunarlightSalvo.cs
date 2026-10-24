@@ -22,6 +22,8 @@ public sealed class LunarlightSalvo : Ability
     public const double Chance = 0.25;
     public const double CritChance = 0.50;
     public const string ProcKey = "lunarlight_salvo";
+    /// <summary>A salvo that leaves the stack of Lunarlight Mark (Lunarlight Affinity: Starfall Volley's).</summary>
+    public const string KeptMarkProcKey = "lunarlight_salvo_kept_mark";
 
     public const int EruptEffectId = 2832;
     public const string EruptName = "Lunarlight Salvo: Erupt";
@@ -64,8 +66,9 @@ public sealed class LunarlightSalvo : Ability
         if (!enemy.Auras.HasAura(LunarlightMark.Debuff, now)) return;
         double chance = hit.IsCrit ? CritChance : Chance;
         foreach (var m in ChanceMultipliers) chance *= m(hit.AbilityId);
-        if (!ctx.Outcomes.RollProc(ProcKey, Math.Min(1.0, chance), ctx, enemy)) return;
-        if (!KeepsMarkFor.Contains(hit.AbilityId)) enemy.Auras.ConsumeStack(LunarlightMark.Debuff, now);
+        bool keepsMark = KeepsMarkFor.Contains(hit.AbilityId);
+        if (!ctx.Outcomes.RollProc(keepsMark ? KeptMarkProcKey : ProcKey, Math.Min(1.0, chance), ctx, enemy)) return;
+        if (!keepsMark) enemy.Auras.ConsumeStack(LunarlightMark.Debuff, now);
         DealDamage(ctx, enemy);
         if (hit.AbilityId == HeartseekerBarrage.AbilityId && ctx.Outcomes.RollProc(EruptProcKey, EruptChance, ctx))
         {

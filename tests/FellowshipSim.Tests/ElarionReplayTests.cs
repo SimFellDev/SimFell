@@ -26,6 +26,14 @@ public class ElarionReplayTests(ITestOutputHelper output)
                     File.WriteAllText(characterFile, System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 }
                 var hero = ReplayDriver.CreateHero(script);
+                var trace = new List<string>();
+                if (Environment.GetEnvironmentVariable("ELARION_TRACE") != null)
+                {
+                    // Each hit with the Lunarlight Mark stacks its enemy holds once the hit's salvo (if any) took its stack.
+                    hero.OnDamageDealt += (in Core.Domain.DamageContext hit) => trace.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                        "{0:F3},{1},{2}.{3},{4}", hit.Timestamp.TotalSeconds, hit.AbilityId, hit.Target?.Id, hit.Target?.InstanceId,
+                        hit.Target?.Auras.GetStacks(Core.Heroes.Elarion.Abilities.LunarlightMark.Debuff, hit.Timestamp)));
+                }
                 var options = new ReplayOptions { StopOnFirstFailure = false };
                 var result = new ReplayDriver(hero, script, options).Run();
                 var (engineDamage, logDamage) = ReplayReportWriter.DamageTotals(result);
@@ -33,6 +41,10 @@ public class ElarionReplayTests(ITestOutputHelper output)
                                  $"damage {engineDamage / logDamage:P1} of log, {result.PassedSteps}/{result.Steps.Count} clean steps, " +
                                  $"{result.ForcedCasts.Count} forced casts");
                 Report(result, options);
+                if (trace.Count > 0 && Environment.GetEnvironmentVariable("ELARION_HITS_FOLDER") is { } traceFolder)
+                {
+                    File.WriteAllLines(Path.Combine(traceFolder, $"trace_{reportCode}_{fightId}.csv"), trace);
+                }
                 Assert.True(result.MatchedLogHits > 0);
             }
         }
@@ -72,6 +84,9 @@ public class ElarionReplayTests(ITestOutputHelper output)
         if (folder == null) return;
         string dump = Path.Combine(folder, $"hits_{result.ReportCode}_{result.FightId}.csv");
         var inv = System.Globalization.CultureInfo.InvariantCulture;
+        File.WriteAllLines(Path.Combine(folder, $"steps_{result.ReportCode}_{result.FightId}.csv"), result.Steps.Select(s => string.Format(inv,
+            "{0:F3},{1},{2:F3},{3}", s.Time, s.AbilityName, s.EngineHaste,
+            string.Join(";", s.Resources.Select(r => string.Format(inv, "{0}={1:F1}/{2:F1}", r.Resource, r.Engine, r.Log))))));
         File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3}",
             h.EngineTime, h.AbilityId, h.Target == null ? "" : $"{h.Target.Id}.{h.Target.Instance}", h.EngineAmount, h.Crit ? 1 : 0,
             h.Log == null ? "" : h.Log.TotalAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction)));
