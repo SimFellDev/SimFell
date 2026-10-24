@@ -29,7 +29,7 @@ dotnet test -c Release
 dotnet test tests/FellowshipSim.Tests -c Release --filter "FullyQualifiedName~AplParserTests"
 
 # one hero's current-patch fights from FellowshipLogs into data/fights
-dotnet run tools/fetch-fights.cs -- --hero Rime --count 12
+dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 
 # one hero's accuracy over those fights, saved as data/accuracy/<Hero>/<label>.txt (docs/REPLAY_ACCURACY.md)
 ACCURACY_HERO=Rime ACCURACY_LABEL=baseline dotnet test tests/FellowshipSim.Tests -c Release --filter HeroAccuracyTests

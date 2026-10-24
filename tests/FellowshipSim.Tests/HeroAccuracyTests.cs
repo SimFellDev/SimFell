@@ -12,7 +12,8 @@ namespace FellowshipSim.Tests;
 /// the calibration per damage ID, and the most common issues. ACCURACY_HERO names the hero; without it the test does
 /// nothing. The result is saved as data/accuracy/&lt;Hero&gt;/&lt;label&gt;.txt and .json, the label from ACCURACY_LABEL
 /// (default: the time). With a saved baseline.json beside it, the headline numbers print next to the baseline's.
-/// ACCURACY_FREEDICE_ITERATIONS sets the free-dice runs per fight (default 100, 0 for none).
+/// ACCURACY_FREEDICE_ITERATIONS sets the free-dice runs per fight (default 100, 0 for none), on ACCURACY_THREADS threads
+/// (default 8).
 /// Run with: ACCURACY_HERO=Rime ACCURACY_LABEL=baseline dotnet test -c Release --filter HeroAccuracyTests
 /// </summary>
 public class HeroAccuracyTests(ITestOutputHelper output)
@@ -46,6 +47,7 @@ public class HeroAccuracyTests(ITestOutputHelper output)
         }
         string label = Environment.GetEnvironmentVariable("ACCURACY_LABEL") ?? DateTime.Now.ToString("yyyyMMdd-HHmmss");
         int iterations = int.TryParse(Environment.GetEnvironmentVariable("ACCURACY_FREEDICE_ITERATIONS"), out int n) ? n : 100;
+        int threads = int.TryParse(Environment.GetEnvironmentVariable("ACCURACY_THREADS"), out int t) ? t : 8;
         var library = new ReplayLibrary(Path.Combine(TestPaths.RepositoryRoot, "data"));
 
         var fights = new List<FightAccuracy>();
@@ -61,7 +63,7 @@ public class HeroAccuracyTests(ITestOutputHelper output)
 
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false }).Run();
                 var (exactDamage, logDamage) = ReplayReportWriter.DamageTotals(result);
-                var dice = iterations > 0 ? FreeDiceReplay.Run(script, iterations) : null;
+                var dice = iterations > 0 ? FreeDiceReplay.Run(script, iterations, maxThreads: threads) : null;
                 if (dice != null) freeDice.Add(dice);
                 results.Add(result);
                 fights.Add(new FightAccuracy(reportCode, fightId, script.FightName, script.FightDate, result.PlayerName,

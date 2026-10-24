@@ -109,19 +109,36 @@ async Task<string?> Reject(JsonNode run)
     if (!reports.TryGetValue(code, out var report))
     {
         try { report = reports[code] = await client.GetSummaryAsync(code); }
-        catch (FellowshipLogsException) { return "report unavailable"; }
+        catch (FellowshipLogsException e) when (!Throttled(e)) { return "report unavailable"; }
     }
     if (!patch.Covers(DateTimeOffset.FromUnixTimeMilliseconds(report.StartTime).UtcDateTime, report.LogVersion)) return "older log format";
     var fight = report.Fights.FirstOrDefault(f => f.Id == fightId);
     if (fight == null || !fight.Players.Any(p => p.Hero.Equals(spec.Name, StringComparison.OrdinalIgnoreCase))) return "hero not in the fight";
 
+    await WaitForPointsAsync();
     try { await library.GetRawFightFileAsync(client, code, fightId.Value); }
-    catch (FellowshipLogsException) { return "download failed"; }
+    catch (FellowshipLogsException e) when (!Throttled(e)) { return "download failed"; }
     string encounter = queues.First(q => q.Holds(run)).Name;
     taken.Add((encounter, player, code, fightId.Value));
     Console.WriteLine($"  {encounter}: {player} {code} fight {fightId} ({fight.Name}, {fight.DurationSeconds / 60:F0} min)");
     return null;
 }
+
+// A fight's events cost FellowshipLogs points. Below this many left in the hour, the download waits for the reset.
+async Task WaitForPointsAsync()
+{
+    const int Reserve = 600;
+    var rate = (await client.QueryAsync("{ rateLimitData { limitPerHour pointsSpentThisHour pointsResetIn } }"))["rateLimitData"]!;
+    double left = (double)rate["limitPerHour"]! - (double)rate["pointsSpentThisHour"]!;
+    if (left >= Reserve) return;
+    int wait = (int)rate["pointsResetIn"]! + 5;
+    Console.WriteLine($"  {left:F0} FellowshipLogs points left this hour; waiting {wait}s for the reset.");
+    await Task.Delay(TimeSpan.FromSeconds(wait));
+}
+
+// A refusal for the rate limit or a server error stops the run; it says nothing about the report.
+static bool Throttled(FellowshipLogsException e) =>
+    e.Message.Contains("returned 429") || System.Text.RegularExpressions.Regex.IsMatch(e.Message, @"returned 5\d\d");
 
 static (string Id, string Secret)? Credentials(string root)
 {

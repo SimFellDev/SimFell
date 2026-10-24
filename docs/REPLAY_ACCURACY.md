@@ -1,7 +1,17 @@
 # Replay accuracy
 
 The engine reproduces each hero's damage in the combat logs of the patch it models (`GamePatch.Current`). This page
-states the targets, the measure and the rules of evidence. `/replay-accuracy <Hero>` runs the work for one hero.
+states the targets, the measure and the rules of evidence. Four stages make one hero more accurate, each in its own
+context:
+
+| Stage | Run by | Output |
+| --- | --- | --- |
+| 1. Spec | `/replay-accuracy <Hero>`: the worktrees, the fights, the baseline, then the `accuracy-spec-writer` agent | `docs/accuracy/<branch>.md` |
+| 2. Implementation | the same session: teammates `simfell-engineer` (SimFell worktree) and `game-data-authority` (extractor worktree) | commits and a pull request |
+| 3. Adversarial review | `/replay-accuracy-review <branch>` in a new session | `docs/accuracy/<branch>.review.md` |
+| 4. Spec audit | `/replay-accuracy-audit <branch>` in a new session: the `spec-conformance-auditor` agent | `docs/accuracy/<branch>.audit.md` |
+
+`<branch>` is `<hero>-accuracy-v<N>`, the name of both worktrees.
 
 ## The measure
 
@@ -18,7 +28,7 @@ headline number next to the baseline's.
 `tools/fetch-fights.cs` downloads the fights:
 
 ```
-dotnet run tools/fetch-fights.cs -- --hero Rime --count 12
+dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 ```
 
 It reads the hero's ranking lists in the latest zone from rank 1 down, one encounter after another. A run counts when it
@@ -75,9 +85,12 @@ A mechanic is established by:
    The game data gives the mechanic. A log confirms it.
 2. **A pattern in the logs.** A mechanic read from logs holds in at least two fights and over every occurrence in them.
    One event is an example, never a proof.
-3. **No fitting.** A constant that makes the numbers match, with no source in the game data and no log pattern for its
-   value, is a fitted constant. A fitted constant has `UNVERIFIED` in its comment and its own line in the hero's
-   `NOTES.md`.
+3. **A source for every value.** Every constant, multiplier, period, chance and cap in the engine names its source:
+   a game data record, an asset property, a Blueprint function, a binary address, or a log pattern with its fights.
+   A difference with no such source stays in the measure as a difference. It has a line in the hero's `NOTES.md` under
+   "Not yet explained", with its numbers and every source checked. The engine has no constant chosen to make a number
+   match: Abilities whose log damage is 1.4 times the engine's keep their engine damage until a source gives the
+   1.4.
 
 ## Where a change belongs
 
