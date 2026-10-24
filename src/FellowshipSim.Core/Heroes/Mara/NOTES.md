@@ -11,8 +11,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Target falloff** (damage per target beyond T targets is sqrt(T/N)): Arachnid Assault 8, Skittering Blades 8,
   Sahril's Wrath 1.
 - **Shadowy clones** (Matriarch Macabre, Macabre Stratagem): each clone repeats the attack at 50% of the cast's damage,
-  with every bonus the cast had (Malevolence, Feed the Queen, Deadly Scheme's crit). Their hits are logged under the
-  attack's own ID (clone/cast ratio 0.500 on 620 Arachnid Assault hits).
+  with the cast's bonuses (Malevolence, Assassin's Guile, Deadly Scheme's crit) but not Feed the Queen (clone Queen's
+  Fangs came in 0.71x the engine's with it). A clone's Arachnid Assault hits each enemy as a single-target strike, with
+  no target falloff (clone hits 1.17x the engine's with the falloff). Their hits are logged under the attack's own ID.
 - **Volatile Poison:** each tick deals the 31.2% of Agility the tooltip gives for the whole poison; the eruption deals
   124.8%.
 - **Caustic Poison:** every hit is a grievous crit (its +100% crit chance on top of Mara's).

@@ -27,13 +27,14 @@ public class FeedTheQueen : Talent
         {
             blades.Hit += (in hit) => hero.Auras.Apply(Buff, hit.Timestamp);
         }
-        hero.OnCastResolving += cast =>
+        // Combat logs (3 fights, 441 clone hits): the shadowy clones' Queen's Fangs deal 0.71x what the cast's bonuses give
+        // them, the Feed the Queen bonus of 3 to 4 stacks; the clones have every other bonus.
+        hero.GetAbility<QueensFang>()?.OwnHitMultipliers.Add(ctx =>
         {
-            if (cast.Ability is not QueensFang) return;
-            int stacks = hero.Auras.GetStacks(Buff, cast.Time);
-            if (stacks == 0) return;
-            hero.Auras.Remove(Buff, cast.Time);
-            cast.DamageMultiplier *= 1.0 + DamagePerStack * stacks;
-        };
+            int stacks = hero.Auras.GetStacks(Buff, ctx.CurrentTime);
+            if (stacks == 0) return 1.0;
+            hero.Auras.Remove(Buff, ctx.CurrentTime);
+            return 1.0 + DamagePerStack * stacks;
+        });
     }
 }

@@ -105,6 +105,8 @@ public class MaraReplayTests(ITestOutputHelper output)
                 {
                     output.WriteLine($"  crits with engine crit chance {(g.Key ? ">= 100%" : "< 100%")}: {g.Count()} {Ratio(g):F3}");
                 }
+                foreach (var g in matched.GroupBy(h => h.AbilityName)) output.WriteLine($"  as {g.Key}: {g.Count()} {Ratio(g):F3}");
+                foreach (var g in matched.Where(h => h.AbilityName.EndsWith("(shadowy clone)")).GroupBy(h => h.Context?.AuraLogIds.Contains(1002245) == true)) output.WriteLine($"  clone with Assassin's Guile {g.Key}: {g.Count()} {Ratio(g):F3}");
                 foreach (var aura in matched.SelectMany(h => h.Context?.AuraLogIds ?? []).Distinct().OrderBy(a => a))
                 {
                     var with = matched.Where(h => h.Context!.AuraLogIds.Contains(aura)).ToList();

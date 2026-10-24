@@ -17,10 +17,17 @@ public class QueensFang : Finisher
         EnergyCost = Cost;
     }
 
+    /// <summary>
+    /// Multipliers on the cast's own hit and not its clones', read and used up as the cast strikes (Feed the Queen).
+    /// </summary>
+    public List<Func<SimulationContext, double>> OwnHitMultipliers { get; } = new();
+
     protected override void Strike(SimulationContext ctx, EnemyTarget target, int points)
     {
         double multiplier = ComboPointMultiplier(points);
-        DealDamage(ctx, target, damageMultiplier: multiplier);
+        double own = 1.0;
+        foreach (var m in OwnHitMultipliers) own *= m(ctx);
+        DealDamage(ctx, target, damageMultiplier: multiplier * own);
         double castDamage = CastDamageMultiplier, castCrit = CurrentCast?.CritChance ?? 0.0;
         Mara.Matriarch.Imitate(ctx, 1, (c, power) =>
         {
