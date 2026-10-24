@@ -264,6 +264,18 @@
   text-align: right;
 }
 
+/* A buff's timeline: thin bars where it was up, across the column. */
+.amount .spans {
+  flex: 1;
+  min-width: 120px;
+  height: 8px;
+  display: block;
+}
+
+.amount .spans path {
+  fill: var(--heading);
+}
+
 .share {
   display: inline-flex;
   align-items: center;

@@ -11,6 +11,8 @@ internal sealed class FightRecorder
     public const int BandFights = 1000;
     /// <summary>The window of the DPS timeline's rolling average.</summary>
     public const double RollingSeconds = 10.0;
+    /// <summary>The fights (the run's first, by seed) whose aura spans are kept, for one typical fight's timeline.</summary>
+    public const int SpanFights = 100;
 
     private Tally? _tally;
     private int _fight;
@@ -20,6 +22,8 @@ internal sealed class FightRecorder
     private SourceTally? _lastSource;
     private readonly Dictionary<Aura, AuraState> _active = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<(AuraContainer Owner, string Key), SimTime> _lastEnd = new();
+    /// <summary>This fight's aura spans (start and end seconds in turn), by name and side; null for a fight not sampled.</summary>
+    private Dictionary<(string Name, bool OnTarget), List<double>>? _spans;
 
     public FightRecorder(Hero hero)
     {
@@ -41,6 +45,7 @@ internal sealed class FightRecorder
         else _damage = new double[seconds];
         _active.Clear();
         _lastEnd.Clear();
+        _spans = fight < SpanFights ? new() : null;
     }
 
     /// <summary>Listens to the debuffs on the fight's targets.</summary>
@@ -55,7 +60,7 @@ internal sealed class FightRecorder
         var tally = _tally!;
         foreach (var state in _active.Values) Close(state, Earlier(state.Aura.ExpiresAt, duration));
         _active.Clear();
-        tally.AddFight(_fight, _damage);
+        tally.AddFight(_fight, _damage, _spans);
         _tally = null;
     }
 
@@ -132,7 +137,7 @@ internal sealed class FightRecorder
             tally.Gaps++;
             tally.GapSeconds += (now - lastEnd).TotalSeconds;
         }
-        _active[aura] = new AuraState(owner, aura, tally) { Start = now, Changed = now, Stacks = aura.Stacks };
+        _active[aura] = new AuraState(owner, onTarget, aura, tally) { Start = now, Changed = now, Stacks = aura.Stacks };
     }
 
     private static void Restack(AuraState state, Aura aura, SimTime now)
@@ -141,10 +146,15 @@ internal sealed class FightRecorder
         state.Stacks = aura.Stacks;
     }
 
-    private static void Close(AuraState state, SimTime end)
+    private void Close(AuraState state, SimTime end)
     {
         Advance(state, end);
         state.Tally.UpSeconds += (end - state.Start).TotalSeconds;
+        if (_spans == null) return;
+        var key = (state.Aura.Name, state.OnTarget);
+        if (!_spans.TryGetValue(key, out var spans)) _spans[key] = spans = [];
+        spans.Add(state.Start.TotalSeconds);
+        spans.Add(end.TotalSeconds);
     }
 
     /// <summary>Adds the stacks held since the last change, up to <paramref name="now"/>.</summary>
@@ -158,9 +168,10 @@ internal sealed class FightRecorder
 
     private static SimTime Earlier(SimTime a, SimTime b) => a < b ? a : b;
 
-    private sealed class AuraState(AuraContainer owner, Aura aura, AuraTally tally)
+    private sealed class AuraState(AuraContainer owner, bool onTarget, Aura aura, AuraTally tally)
     {
         public AuraContainer Owner { get; } = owner;
+        public bool OnTarget { get; } = onTarget;
         public Aura Aura { get; set; } = aura;
         public AuraTally Tally { get; } = tally;
         public SimTime Start;
@@ -215,6 +226,8 @@ internal sealed class FightRecorder
         public int Fights;
         public double[] DamageSum = [];
         public readonly List<(int Fight, float[] Damage)> Band = [];
+        /// <summary>The sampled fights' total damage and aura spans.</summary>
+        public readonly List<(int Fight, double Damage, Dictionary<(string Name, bool OnTarget), List<double>> Spans)> Samples = [];
         public readonly Dictionary<string, SourceTally> Sources = new(StringComparer.Ordinal);
         public readonly Dictionary<(string Name, bool OnTarget), AuraTally> Auras = new();
 
@@ -230,9 +243,10 @@ internal sealed class FightRecorder
             return aura;
         }
 
-        public void AddFight(int fight, double[] damage)
+        public void AddFight(int fight, double[] damage, Dictionary<(string Name, bool OnTarget), List<double>>? spans)
         {
             Fights++;
+            if (spans != null) Samples.Add((fight, damage.Sum(), spans));
             if (DamageSum.Length != damage.Length) DamageSum = new double[damage.Length];
             for (int i = 0; i < damage.Length; i++) DamageSum[i] += damage[i];
             if (fight < BandFights) Band.Add((fight, Array.ConvertAll(damage, d => (float)d)));
@@ -245,6 +259,7 @@ internal sealed class FightRecorder
             if (DamageSum.Length == 0) DamageSum = new double[other.DamageSum.Length];
             for (int i = 0; i < other.DamageSum.Length; i++) DamageSum[i] += other.DamageSum[i];
             Band.AddRange(other.Band);
+            Samples.AddRange(other.Samples);
             foreach (var (name, source) in other.Sources) Source(name).Add(source);
             foreach (var ((name, onTarget), aura) in other.Auras) Aura(name, onTarget).Add(aura);
         }
@@ -279,7 +294,12 @@ internal sealed class FightRecorder
         /// Each buff and debuff, buffs first, longest up first. An aura up the whole of every fight from its single
         /// application (a passive) is left out, and so is an engine-internal one (no log ID, such as a marker on a target).
         /// </summary>
-        public List<BuffReport> Buffs(double seconds, int targets) => Auras
+        public List<BuffReport> Buffs(double seconds, int targets)
+        {
+            // The typical fight: the sampled one whose damage is nearest the mean (the first such by seed).
+            double mean = Fights == 0 ? 0 : DamageSum.Sum() / Fights;
+            var typical = Samples.OrderBy(s => Math.Abs(s.Damage - mean)).ThenBy(s => s.Fight).Select(s => s.Spans).FirstOrDefault();
+            return Auras
             .Where(a => a.Value.LogId != 0)
             .Select(a =>
             {
@@ -289,12 +309,31 @@ internal sealed class FightRecorder
                 double span = fights * seconds * (onTarget ? Math.Max(1, targets) : 1);
                 return new BuffReport(name, onTarget, t.UpSeconds / span, t.Applications / fights, t.Refreshes / fights,
                     t.Applications > 0 ? t.UpSeconds / t.Applications : 0, t.UpSeconds > 0 ? t.StackSeconds / t.UpSeconds : 0,
-                    t.MaxStacks, t.StackCap > 1 ? t.AtMaxSeconds / span : 0, t.Gaps > 0 ? t.GapSeconds / t.Gaps : 0, t.LogId);
+                    t.MaxStacks, t.StackCap > 1 ? t.AtMaxSeconds / span : 0, t.Gaps > 0 ? t.GapSeconds / t.Gaps : 0, t.LogId,
+                    typical != null && typical.TryGetValue(a.Key, out var spans) ? Union(spans) : []);
             })
             .Where(b => !(b.Uptime >= 0.999 && b.Applications <= 1.0 && b.Refreshes == 0))
             .OrderBy(b => b.OnTarget)
             .ThenByDescending(b => b.Uptime)
             .ToList();
+        }
+
+        /// <summary>Spans (start and end in turn) merged where they overlap or touch, in time order: a debuff on several targets.</summary>
+        private static List<double> Union(List<double> spans)
+        {
+            var ordered = Enumerable.Range(0, spans.Count / 2).Select(i => (Start: spans[2 * i], End: spans[2 * i + 1])).OrderBy(s => s.Start);
+            var merged = new List<double>();
+            foreach (var (start, end) in ordered)
+            {
+                if (merged.Count > 0 && start <= merged[^1]) merged[^1] = Math.Max(merged[^1], end);
+                else
+                {
+                    merged.Add(start);
+                    merged.Add(end);
+                }
+            }
+            return merged;
+        }
 
         private static double[] Cumulative(double[] perSecond)
         {

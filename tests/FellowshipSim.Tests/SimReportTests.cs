@@ -60,6 +60,13 @@ public class SimReportTests
         Assert.InRange(debuff.AverageDuration, 2.5, 3.5);
         Assert.InRange(embrace.Uptime, 0.2, 0.45);
         Assert.True(debuff.AverageGap > 5);
+        // The typical fight's timeline: ordered spans inside the fight, covering about its uptime.
+        var spans = debuff.Spans!;
+        Assert.True(spans.Count >= 2 && spans.Count % 2 == 0);
+        for (int i = 1; i < spans.Count; i++) Assert.True(spans[i] >= spans[i - 1]);
+        Assert.InRange(spans[^1], 0, Seconds);
+        double covered = Enumerable.Range(0, spans.Count / 2).Sum(i => spans[2 * i + 1] - spans[2 * i]);
+        Assert.InRange(covered / Seconds, debuff.Uptime - 0.1, debuff.Uptime + 0.1);
         // Buffs come first.
         Assert.True(result.Buffs.TakeWhile(b => !b.OnTarget).Count() + result.Buffs.SkipWhile(b => !b.OnTarget).Count() == result.Buffs.Count);
         Assert.DoesNotContain(result.Buffs.SkipWhile(b => !b.OnTarget), b => !b.OnTarget);
