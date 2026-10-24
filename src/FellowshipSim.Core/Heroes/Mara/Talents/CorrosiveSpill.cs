@@ -34,7 +34,7 @@ public class CorrosiveSpill : Talent
             {
                 if (!ctx.Outcomes.RollProc(ProcKey, ChancePerComboPoint, ctx)) continue;
                 PeriodicEffect.BeginHasted(ctx, mara, TalentName, SpillSeconds, TickSeconds, tickOnStart: false, partialFinalTick: false,
-                    onTick: (c, _) => spill.DealAoeDamage(c, c.ActiveEnemies));
+                    onTick: (c, _) => spill.DealAoeDamage(c, c.ActiveEnemies), damageLogId: spill.DamageLogId);
             }
         };
     }

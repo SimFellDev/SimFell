@@ -46,7 +46,7 @@ public class TariqReplayTests(ITestOutputHelper output)
                                  $"damage {engineDamage / logDamage:P1} of log, {result.PassedSteps}/{result.Steps.Count} clean steps, " +
                                  $"{result.ForcedCasts.Count} forced casts");
                 Report(result, options);
-                Assert.True(result.MatchedLogHits > 0);
+                ExactReplayAssertions.Hold(result);
             }
         }
     }
@@ -60,11 +60,11 @@ public class TariqReplayTests(ITestOutputHelper output)
         {
             var log = logById.GetValueOrDefault(id) ?? [];
             var engine = engineById.GetValueOrDefault(id) ?? [];
-            var matched = engine.Where(h => h.Log != null).ToList();
+            var matched = engine.Where(h => h.Log != null && h.LandedTime.HasValue).ToList();
             double ratio = matched.Sum(h => h.EngineAmount) > 0 ? matched.Sum(h => h.Log!.TotalAmount) / matched.Sum(h => h.EngineAmount) : 0;
             string name = (engine.FirstOrDefault()?.AbilityName ?? log.FirstOrDefault()?.AbilityName ?? "?").PadRight(20)[..20];
             output.WriteLine($"{id,-9} {name}  {log.Count,8}  {matched.Count,7}  {engine.Count - matched.Count,11}  {log.Sum(h => h.TotalAmount),11:N0}  {engine.Sum(h => h.EngineAmount),11:N0}  " +
-                             $"{matched.Count(h => h.WithinSpread(options)),9}  {ratio,6:F3}");
+                             $"{matched.Count(h => h.WithinRange),9}  {ratio,6:F3}");
         }
         foreach (var group in result.Steps.SelectMany(s => s.Issues).GroupBy(i => (i.Category, i.Subject)).OrderByDescending(g => g.Count()).Take(30))
         {
@@ -101,7 +101,7 @@ public class TariqReplayTests(ITestOutputHelper output)
         File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3},{8},{9:F3}",
             h.EngineTime, h.AbilityId, h.Target == null ? "" : $"{h.Target.Id}.{h.Target.Instance}", h.EngineAmount, h.Crit ? 1 : 0,
             h.Log == null ? "" : h.Log.TotalAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction,
-            h.Context == null ? "" : string.Join(" ", h.Context.AuraLogIds.Select(id => id.ToString(inv)).Concat(h.Context.InternalAuras.Select(n => n.Replace(' ', '_')))),
+            h.State == null ? "" : string.Join(" ", h.State.Hero.Auras.Select(a => a.LogId > 0 ? a.LogId.ToString(inv) : a.Name.Replace(" ", "_"))),
             h.TargetHealthFraction)));
     }
 }

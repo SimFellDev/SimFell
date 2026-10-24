@@ -112,8 +112,8 @@ public class HeroAccuracyTests(ITestOutputHelper output)
                 var normal = engineHits.Where(h => h.Ratio.HasValue && !h.Crit).Select(h => h.Ratio!.Value).ToList();
                 var crit = engineHits.Where(h => h.Ratio.HasValue && h.Crit).Select(h => h.Ratio!.Value).ToList();
                 string name = engineHits.FirstOrDefault()?.AbilityName ?? logHits.FirstOrDefault()?.AbilityName ?? diceRows.FirstOrDefault()?.Name ?? "?";
-                return new AbilityAccuracy(id, name, logHits.Count, engineHits.Count(h => h.Log != null), engineHits.Count(h => h.Log == null),
-                    logHits.Sum(h => h.TotalAmount), engineHits.Where(h => h.LandedTime.HasValue).Sum(h => h.EngineAmount),
+                return new AbilityAccuracy(id, name, logHits.Count, engineHits.Count(h => h.Log != null && h.LandedTime.HasValue), engineHits.Count(h => h.Log == null),
+                    logHits.Sum(h => h.UnblockedAmount), engineHits.Sum(h => h.EngineAmount),
                     normal.Count, normal.Count == 0 ? 0 : normal.Average(), crit.Count, crit.Count == 0 ? 0 : crit.Average(),
                     diceRows.Sum(a => a.LogDamage), diceRows.Sum(a => a.EngineMean));
             })

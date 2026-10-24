@@ -66,6 +66,6 @@ public class RagingTempest : TariqAbility
         // Combat logs (fight 4 @ 263.6): strikes every hasted second from the cast (0.635s apart at 57% haste), until the
         // buff ends.
         PeriodicEffect.BeginHasted(ctx, hero, RagingCurrents.AbilityName, BuffSeconds, RagingCurrents.PeriodSeconds,
-            tickOnStart: false, partialFinalTick: false, onTick: (c, _) => _currents.Strike(c));
+            tickOnStart: false, partialFinalTick: false, onTick: (c, _) => _currents.Strike(c), damageLogId: _currents.DamageLogId);
     }
 }

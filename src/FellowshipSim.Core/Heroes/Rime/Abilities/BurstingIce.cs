@@ -91,7 +91,8 @@ public class BurstingIce : RimeAbility
             onEnd: (c, _) =>
             {
                 if (--_activeDebuffs == 0) hero.Auras.Remove(WintersEmbrace, c.CurrentTime);
-            });
+            },
+            damageLogId: DamageLogId);
     }
 
     public void ResetState() => _activeDebuffs = 0;

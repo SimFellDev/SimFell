@@ -5,11 +5,10 @@ namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
 /// Replays a combat log through the engine using only engine commands (cast, cancel, stop channel,
-/// enemy arise/demise, external auras) and verifies each player action step against the log:
-///   1. hits: every engine hit matches a log hit and every log hit is produced by the engine,
-///   2. state: resources and tracked auras before each action match the log,
-///   3. damage: every matched hit is within the game's damage spread of the engine's average roll.
-/// With <see cref="ReplayOptions.StopOnFirstFailure"/> the replay halts at the first failing step.
+/// enemy arise/demise, external auras). In an exact replay every outcome and every damage amount comes from the log
+/// (<see cref="LogOutcomeSource"/>), and <see cref="ReplayVerifier"/> compares each logged value with the engine's range
+/// for it: hits, damage, casts, cooldowns, periodic ticks, and the resources and tracked auras before each action.
+/// With <see cref="ReplayOptions.StopOnFirstFailure"/> the replay halts at the first step with an issue.
 /// </summary>
 public sealed class ReplayDriver
 {
@@ -19,10 +18,7 @@ public sealed class ReplayDriver
     private readonly SimulationContext _ctx;
     private readonly HitLedger _ledger;
     private readonly LogOutcomeSource _oracle;
-    /// <summary>The log's aura states, for the state checks (free dice makes none).</summary>
-    private readonly LogAuraTimeline? _logAuras;
-    /// <summary>When the engine last removed each aura (by log ID) and its stacks then.</summary>
-    private readonly Dictionary<int, (SimTime Time, int Stacks)> _engineRemoved = new();
+    private readonly ReplayVerifier _verifier;
     private readonly Dictionary<int, string> _externalAurasOnPlayer = new();
     private readonly HashSet<ReplayCommand> _handledCommands = new();
     private (int AbilityId, double Time)? _lastCompletedCast;
@@ -35,12 +31,13 @@ public sealed class ReplayDriver
         _ctx = new SimulationContext(hero) { GlobalCooldownToleranceSeconds = _options.GlobalCooldownToleranceSeconds };
         // Free dice matches no log hits.
         _ledger = new HitLedger(_options.FreeDiceSeed.HasValue ? [] : script.Observations.Damage);
-        _oracle = new LogOutcomeSource(script, _options, _ledger);
+        // The log's aura states, for the state checks (free dice makes none).
+        var logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
+        _verifier = new ReplayVerifier(script, _options, hero, logAuras);
+        _oracle = new LogOutcomeSource(script, _options, _ledger, _verifier);
         _ctx.Outcomes = _options.FreeDiceSeed is { } seed
             ? new FreeDiceOutcomeSource(script, new SimulationRng(seed))
             : _oracle;
-        if (!FreeDice) _logAuras = new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
-        hero.Auras.OnRemoved += (aura, at) => { if (aura.LogId > 0) _engineRemoved[aura.LogId] = (at, aura.Stacks); };
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability.Id, now.TotalSeconds);
         // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
         _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
@@ -99,6 +96,7 @@ public sealed class ReplayDriver
 
         var cancelFor = order.CastEnds;
         ReplayStep? step = null;
+        if (!FreeDice) DealUnmatchedLogHits(result);
 
         foreach (var cmd in commands)
         {
@@ -109,33 +107,39 @@ public sealed class ReplayDriver
             if (cmd.IsPlayerAction)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!FreeDice) Settle(cmd.Time);
                 if (Halt(result)) break;
                 if (_options.MaxSteps.HasValue && result.Steps.Count >= _options.MaxSteps.Value) break;
 
                 step = BeginStep(cmd, result.Steps.Count + 1);
                 result.Steps.Add(step);
-                _oracle.CurrentStep = step;
-                if (!FreeDice) CheckState(step, cmd);
+                _verifier.CurrentStep = step;
+                if (!FreeDice)
+                {
+                    _verifier.CheckState(_ctx, step, cmd);
+                    SyncToLog(step);
+                }
             }
 
             Execute(cmd, step, cancelFor, result);
 
-            if (KeepsIssues && _oracle.PendingIssues.Any(i => i.Category == IssueCategory.Casts) && Halt(result)) break;
+            if (KeepsIssues && _verifier.PendingIssues.Any(i => i.Category is IssueCategory.Casts or IssueCategory.GlobalCooldown or IssueCategory.Cooldown)
+                && Halt(result)) break;
         }
 
         if (result.HaltedAt == null)
         {
             _ctx.RunUntil(SimTime.FromSeconds(_script.DurationSeconds + _options.SettleSeconds));
-            if (!FreeDice) Settle(double.MaxValue);
             Halt(result);
         }
 
-        result.EngineTotalDamage = _ctx.TotalDamage;
+        result.EngineTotalDamage = FreeDice ? _ctx.TotalDamage : _verifier.AllHits.Sum(h => h.EngineAmount);
+        result.DamageDealt = _ctx.TotalDamage;
+        result.MissedHits = _oracle.MissedHits;
         result.LogHits = _ledger.TotalHits;
         result.MatchedLogHits = _ledger.MatchedHits;
         result.ProcStats.AddRange(_oracle.ProcStats.Values.OrderBy(p => p.Key));
-        result.AllHits.AddRange(_oracle.AllHits);
+        result.AllHits.AddRange(_verifier.AllHits);
+        result.Issues.AddRange(_verifier.Issues);
         result.UnmodeledCustomizations.AddRange(_hero.UnmodeledFeatures);
         foreach (var s in result.Steps)
         {
@@ -225,9 +229,36 @@ public sealed class ReplayDriver
                 }
                 else
                 {
-                    if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
+                    if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
                 }
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Each log hit no engine hit has matched by <see cref="ReplayOptions.HitEarlySeconds"/> after it landed (the end of
+    /// the window in which a later engine release can match it) is dealt by the replay, with the log's damage ID, target,
+    /// amount and crit.
+    /// </summary>
+    private void DealUnmatchedLogHits(ReplayResult result)
+    {
+        foreach (var log in _ledger.All)
+        {
+            _ctx.ScheduleAt(SimTime.FromSeconds(log.Time + _options.HitEarlySeconds), c =>
+            {
+                if (_ledger.IsMatched(log)) return;
+                _ledger.MarkDealt(log);
+                var enemy = c.FindEnemy(log.Target.Id, log.Target.Instance);
+                if (enemy == null)
+                {
+                    // An enemy the log has no arrival for: it joins asleep, so it is never one of the enemies in combat.
+                    enemy = c.GetOrSpawnEnemy(log.Target.Id, log.Target.Instance);
+                    enemy.Demise(c);
+                }
+                _verifier.LogHitWithoutEngineHit(c, log, enemy);
+                result.LoggedHitsDealt++;
+                c.DealLoggedHit(_hero, enemy, log.AbilityId, log.AbilityName, log.UnblockedAmount, log.Crit);
+            }, log.AbilityName);
         }
     }
 
@@ -246,75 +277,95 @@ public sealed class ReplayDriver
         if (target != null) _hero.CurrentTarget = target;
         else if (_hero.CurrentTarget is null or { IsSleeping: true }) _hero.CurrentTarget = _ctx.ActiveEnemies.FirstOrDefault()!;
 
+        cancelFor.TryGetValue(cmd, out var end);
+
         // A cast still in progress in the engine when the player acts again finished in the game.
         if (_hero.CurrentCast != null && !ability.IgnoresGcd)
         {
-            string still = $"Engine is still casting {_hero.CurrentCast.Ability.Name} (ends {_hero.CurrentCast.EndTime}) when the log casts {cmd.AbilityName}";
-            if (!_options.ForceCasts)
-            {
-                if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, still, $"still casting: {_hero.CurrentCast.Ability.Name}");
-                return;
-            }
-            Force(step, result, cmd, still);
+            var still = KeepsIssues ? _verifier.StillCasting(_ctx, ability) : null;
+            if (still != null) _verifier.Report(still);
+            if (!_options.ForceCasts) return;
+            Force(step, result, cmd, $"Engine is still casting {_hero.CurrentCast.Ability.Name} (ends {_hero.CurrentCast.EndTime}) when the log casts {cmd.AbilityName}");
             _ctx.CompleteCast(_hero);
         }
 
-        var attempt = _ctx.BeginCast(_hero, ability, target);
-        // A begin_cast the log never completes, refused because the ability is not ready, is a press that did nothing
-        // (e.g. pressing Chronoshift again as its channel ends).
-        if (!attempt.Succeeded && cmd.Kind == CommandKind.BeginCast && cancelFor.TryGetValue(cmd, out var never)
-            && never.Kind == CommandKind.CancelCast && attempt.Reason?.Contains("cooldown") == true)
-        {
-            _handledCommands.Add(never);
-            step.Note = $"Press while not ready ({attempt.Reason}); the log never completed it";
-            return;
-        }
-        if (!attempt.Succeeded && _options.ForceCasts)
-        {
-            Force(step, result, cmd, $"Engine would refuse {cmd.AbilityName}: {attempt.Reason}");
-            attempt = _ctx.BeginCast(_hero, ability, target, force: true);
-        }
+        if ((KeepsIssues ? CheckedCast(cmd, ability, target, end, step, result) : UncheckedCast(cmd, ability, target, end, step, result))
+            is not { } attempt) return;
         if (!attempt.Succeeded)
         {
-            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
+            if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
             return;
         }
 
+        double engineCast = attempt.CastTime.TotalSeconds;
+        // The logged duration: to the complete_cast, or to the cancel_cast of a cast the log never completed.
+        double? logCast = end == null ? null : end.Time - cmd.Time;
         if (cmd.Kind == CommandKind.BeginCast && attempt.Status == CastStatus.Resolved)
         {
-            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log shows a cast time for {cmd.AbilityName}, but the engine resolved it instantly", $"engine instant: {cmd.AbilityName}");
+            if (KeepsIssues) _verifier.CheckInstantOrCast(_ctx, ability, 0.0, logCast, cmd.Kind);
         }
         else if (cmd.Kind == CommandKind.Cast && attempt.Status == CastStatus.Casting)
         {
-            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log cast {cmd.AbilityName} instantly, but the engine expects a {attempt.CastTime} cast", $"engine has cast time: {cmd.AbilityName}");
+            if (KeepsIssues) _verifier.CheckInstantOrCast(_ctx, ability, engineCast, 0.0, cmd.Kind);
             _ctx.CompleteCast(_hero);
         }
 
-        if (attempt.Status != CastStatus.Casting || !cancelFor.TryGetValue(cmd, out var end)) return;
+        if (attempt.Status != CastStatus.Casting || end == null) return;
         var cast = _hero.CurrentCast!;
         if (end.Kind == CommandKind.CancelCast)
         {
-            // The log never says when a cast was cancelled; it happened before the cast would have completed.
+            // The cast is cancelled at the log's cancel_cast time, and never completes on its own.
             _handledCommands.Add(end);
-            var at = SimTime.FromSeconds(end.Time);
-            if (at >= cast.EndTime) at = SimTime.FromMilliseconds(cast.EndTime.Milliseconds - 1);
-            _ctx.ScheduleAt(at, c => { if (_hero.CurrentCast == cast) c.CancelCast(_hero); }, cmd.AbilityName);
+            _ctx.SetCastCompletion(_hero, SimTime.Infinite);
+            _ctx.ScheduleAt(SimTime.FromSeconds(end.Time), c => { if (_hero.CurrentCast == cast) c.CancelCast(_hero); }, cmd.AbilityName);
             return;
         }
 
-        // The cast completes when the log says (player latency); a cast time that differs more than the tolerance is reported.
-        double engineCast = (cast.EndTime - cast.StartTime).TotalSeconds;
-        double logCast = end.Time - cmd.Time;
-        if (Math.Abs(engineCast - logCast) > _options.CastTimeToleranceSeconds)
-        {
-            if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts,
-                $"{cmd.AbilityName} cast takes {engineCast:F3}s in the engine and {logCast:F3}s in the log",
-                $"cast time: {cmd.AbilityName}");
-        }
+        // The cast completes at the log's complete_cast time (player latency).
+        if (KeepsIssues) _verifier.CheckCastTime(_ctx, ability, engineCast, logCast!.Value);
         _ctx.SetCastCompletion(_hero, SimTime.FromSeconds(end.Time));
     }
 
-    /// <summary>Records a cast the engine would not have allowed but makes anyway to follow the log (not a step failure).</summary>
+    /// <summary>
+    /// Casts <paramref name="ability"/> after the verifier reports each reason the engine refuses it, forced when there is
+    /// one. Null when the cast is not made.
+    /// </summary>
+    private CastAttempt? CheckedCast(ReplayCommand cmd, Ability ability, EnemyTarget? target, ReplayCommand? end, ReplayStep step, ReplayResult result)
+    {
+        var refusals = _verifier.CastRefusals(_ctx, ability);
+        // A begin_cast the log never completes, refused because the ability is not ready, is a press that did nothing
+        // (e.g. pressing Chronoshift again as its channel ends).
+        if (refusals.Count > 0 && cmd.Kind == CommandKind.BeginCast && end?.Kind == CommandKind.CancelCast
+            && refusals.All(r => r.Category is IssueCategory.GlobalCooldown or IssueCategory.Cooldown))
+        {
+            _handledCommands.Add(end);
+            step.Note = $"Press while not ready ({string.Join("; ", refusals.Select(r => r.Message))}); the log never completed it";
+            return null;
+        }
+        if (refusals.Count == 0) return _ctx.BeginCast(_hero, ability, target);
+        foreach (var refusal in refusals) _verifier.Report(refusal);
+        if (!_options.ForceCasts) return null;
+        Force(step, result, cmd, $"Engine would refuse {cmd.AbilityName}: {string.Join("; ", refusals.Select(r => r.Message))}");
+        return _ctx.BeginCast(_hero, ability, target, force: true);
+    }
+
+    /// <summary>Casts <paramref name="ability"/> with no checks (free dice), forced when the engine refuses it. Null when the cast is not made.</summary>
+    private CastAttempt? UncheckedCast(ReplayCommand cmd, Ability ability, EnemyTarget? target, ReplayCommand? end, ReplayStep step, ReplayResult result)
+    {
+        var attempt = _ctx.BeginCast(_hero, ability, target);
+        if (attempt.Succeeded) return attempt;
+        if (cmd.Kind == CommandKind.BeginCast && end?.Kind == CommandKind.CancelCast && attempt.Reason?.Contains("cooldown") == true)
+        {
+            _handledCommands.Add(end);
+            step.Note = $"Press while not ready ({attempt.Reason}); the log never completed it";
+            return null;
+        }
+        if (!_options.ForceCasts) return null;
+        Force(step, result, cmd, $"Engine would refuse {cmd.AbilityName}: {attempt.Reason}");
+        return _ctx.BeginCast(_hero, ability, target, force: true);
+    }
+
+    /// <summary>Records a cast the engine would not have allowed but makes anyway to follow the log.</summary>
     private static void Force(ReplayStep? step, ReplayResult result, ReplayCommand cmd, string why)
     {
         result.ForcedCasts.Add($"{cmd.Time:F3}s {why}");
@@ -328,12 +379,6 @@ public sealed class ReplayDriver
         var current = _hero.CurrentCast;
         if (current != null && current.Ability.Id == cmd.AbilityId)
         {
-            double late = current.EndTime.TotalSeconds - cmd.Time;
-            if (late > _options.CastTimeToleranceSeconds)
-            {
-                if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts,
-                    $"{cmd.AbilityName} cast takes {current.EndTime.TotalSeconds - current.StartTime.TotalSeconds:F3}s in the engine; the log completed it {late:F3}s sooner", $"cast too slow: {cmd.AbilityName}");
-            }
             _ctx.CompleteCast(_hero);
             return;
         }
@@ -343,7 +388,7 @@ public sealed class ReplayDriver
             return; // completed by the engine at the log's completion time
         }
 
-        if (KeepsIssues) _oracle.Report(_ctx, IssueCategory.Casts, $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
+        if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
     }
 
     /// <summary>
@@ -503,89 +548,54 @@ public sealed class ReplayDriver
         ExternalAurasOnPlayer = FreeDice ? [] : _externalAurasOnPlayer.Values.Distinct().OrderBy(n => n).ToList(),
     };
 
-    /// <summary>Tier 2: resources and tracked auras before the action match the log.</summary>
-    private void CheckState(ReplayStep step, ReplayCommand cmd)
+    private Dictionary<int, AuraDef>? _modeledAuras;
+    private HashSet<int>? _sharedAuraIds;
+
+    /// <summary>
+    /// The engine takes the log's state wherever the pre-cast check found it different: each resource takes the log's
+    /// reading, and each tracked aura the log's stacks (gained, changed or removed). The step's note lists each change.
+    /// </summary>
+    private void SyncToLog(ReplayStep step)
     {
-        var snapshot = _script.Observations.Resources.FirstOrDefault(r =>
-            Math.Abs(r.Time - cmd.Time) <= _options.ResourceSnapshotWindowSeconds && r.AbilityId == cmd.AbilityId);
-        if (snapshot != null)
+        var now = _ctx.CurrentTime;
+        var changes = new List<string>();
+        foreach (var check in step.Resources.Where(c => !c.Matches))
         {
-            // Each of the hero's resources that combat logs report (LogResources).
-            foreach (var logged in LogResources.All.Where(l => _hero.ResourceDefs.Contains(l.Resource)))
-            {
-                var resource = logged.Resource;
-                if (!snapshot.Resources.TryGetValue(logged.LogResourceType.ToString(), out var value)) continue;
-                var check = new ResourceCheck(resource.Name, _hero.ResourceAmount(resource), logged.EngineAmount(value), logged.Tolerance);
-                step.Resources.Add(check);
-                if (!check.Matches)
-                {
-                    _oracle.Report(_ctx, IssueCategory.Resources, $"Pre-cast {check.Resource}: engine {check.Engine:0.##} vs log {check.Log:0.##}", $"{check.Resource} {(check.Engine > check.Log ? "too high" : "too low")}");
-                }
-            }
+            var resource = _hero.ResourceDefs.FirstOrDefault(r => r.Name == check.Resource);
+            if (resource == null) continue;
+            var state = _hero.Resources.Get(resource);
+            state.Current = Math.Clamp(check.Log, 0.0, state.Max);
+            changes.Add($"{check.Resource} {check.Engine:0.##} -> {state.Current:0.##}");
         }
-
-        // The log shows one state per aura ID; the engine can have two auras with one ID (the hero's own Inspired Allegiance
-        // and another player's).
-        var engineState = _hero.Auras.Active(_ctx.CurrentTime)
-            .Where(a => _logAuras!.IsTracked(a.LogId))
-            .GroupBy(a => a.LogId)
-            .ToDictionary(g => g.Key, g => g.Max(a => a.Stacks));
-
-        // Each aura matches if the log shows the engine's stacks at some moment within the tolerance (server-frame timing).
-        double tol = _options.AuraToleranceSeconds;
-        var shown = _logAuras!.TrackedStateAt(cmd.Time - 0.001);
-        var window = _logAuras!.ChangeTimesBetween(cmd.Time - tol, cmd.Time + tol)
-            .Prepend(cmd.Time - tol)
-            .Select(t => _logAuras!.TrackedStateAt(t)).ToList();
-        foreach (var id in engineState.Keys.Union(shown.Keys).OrderBy(id => _logAuras!.NameOf(id)))
+        _modeledAuras ??= ModeledAuras.Defs(_hero);
+        // The log's state of an aura ID it shows from several sources on the player merges them (another player's Inspired
+        // Allegiance and the hero's own), so it says nothing certain about the hero's own aura.
+        _sharedAuraIds ??= _script.Observations.Auras
+            .Where(a => a.Target.Id == _script.Player.Id)
+            .GroupBy(a => a.AbilityId)
+            .Where(g => g.Select(a => a.Source.Id).Distinct().Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet();
+        foreach (var check in step.Auras.Where(c => !c.Matches))
         {
-            int engine = engineState.GetValueOrDefault(id);
-            // An aura the engine removed within the tolerance still counts (the game ends auras on its next server frame).
-            if (engine == 0 && _engineRemoved.TryGetValue(id, out var removed)
-                && (_ctx.CurrentTime - removed.Time).TotalSeconds <= tol && shown.GetValueOrDefault(id) == removed.Stacks)
-            {
-                engine = removed.Stacks;
-            }
-            int log = window.Any(w => w.GetValueOrDefault(id) == engine) ? engine : shown.GetValueOrDefault(id);
-            var check = new AuraCheck(_logAuras!.NameOf(id), engine, log);
-            step.Auras.Add(check);
-            if (!check.Matches)
-            {
-                string how = engine == 0 ? "missing in engine" : log == 0 ? "extra in engine" : "wrong stacks";
-                _oracle.Report(_ctx, IssueCategory.Auras, $"Pre-cast {check.Aura}: engine {engine} stacks vs log {log}", $"{check.Aura} {how}");
-            }
+            if (_sharedAuraIds.Contains(check.LogId) || !_modeledAuras.TryGetValue(check.LogId, out var def)) continue;
+            if (check.LogStacks == 0) _hero.Auras.Remove(def, now);
+            else _hero.Auras.Apply(def, now, setStacks: check.LogStacks);
+            changes.Add($"{check.Aura} {check.EngineStacks} -> {check.LogStacks} stacks");
         }
-
-        step.UntrackedLogAuras = _logAuras!.UntrackedActiveAt(cmd.Time - 0.001);
-        step.EngineHaste = _hero.GetHaste(_ctx.CurrentTime);
-        step.HasteSources = _hero.Auras.Active(_ctx.CurrentTime)
-            .SelectMany(a => a.Modifiers.Where(m => m.Type is StatType.Haste or StatType.HasteRating)
-                .Select(m => $"{a.Name} x{a.Stacks}: {m.Type} {m.Op} {m.Value:0.####}"))
-            .ToList();
-    }
-
-    /// <summary>Tier 1, other direction: log hits and log procs old enough that the engine should have produced them by now.</summary>
-    private void Settle(double now)
-    {
-        double before = now == double.MaxValue ? double.MaxValue : now - _options.SettleSeconds;
-        foreach (var missing in _ledger.UnmatchedBefore(before))
-        {
-            _oracle.Report(_ctx, IssueCategory.Hits,
-                $"Log hit {missing.AbilityName} ({missing.AbilityId}) on {missing.Target} at {missing.Time:F3} for {missing.TotalAmount:F0}{(missing.Crit ? " (crit)" : "")} was never produced by the engine",
-                $"missing engine hit: {missing.AbilityName} ({missing.AbilityId})");
-        }
+        if (changes.Count > 0) step.Note = (step.Note == null ? "" : step.Note + "; ") + "Synced to the log: " + string.Join(", ", changes);
     }
 
     private bool Halt(ReplayResult result)
     {
-        if (_oracle.PendingIssues.Count == 0 || !_options.StopOnFirstFailure)
+        if (_verifier.PendingIssues.Count == 0 || !_options.StopOnFirstFailure)
         {
-            _oracle.PendingIssues.Clear();
+            _verifier.PendingIssues.Clear();
             return false;
         }
-        int firstStep = _oracle.PendingIssues.Min(i => i.Step);
+        int firstStep = _verifier.PendingIssues.Min(i => i.Step);
         result.HaltedAt = result.Steps.FirstOrDefault(s => s.Index == firstStep) ?? result.Steps.LastOrDefault();
-        result.HaltIssues.AddRange(_oracle.PendingIssues);
+        result.HaltIssues.AddRange(_verifier.PendingIssues);
         return true;
     }
 

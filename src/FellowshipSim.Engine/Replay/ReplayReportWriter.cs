@@ -37,16 +37,22 @@ public static class ReplayReportWriter
             }
         }
         foreach (var i in r.HaltIssues) sb.AppendLine($"  {i}");
-        sb.AppendLine($"  log hits matched: {r.MatchedLogHits}/{r.LogHits}");
+        sb.AppendLine($"  log hits matched: {r.MatchedLogHits}/{r.LogHits}; dealt by the replay: {r.LoggedHitsDealt}");
         sb.AppendLine("  open item: Amethyst Splinter (1000101) damage not checked yet (hits still must match)");
         return sb.ToString();
     }
 
     public static void Write(ReplayResult r, string path, string? navigation = null) => File.WriteAllText(path, Render(r, navigation));
 
-    /// <summary>Engine and log damage totals of a replay (engine: hits that landed).</summary>
+    /// <summary>
+    /// Engine and log damage totals of a replay: <see cref="ReplayResult.EngineTotalDamage"/> and the log hits' damage
+    /// before absorbs and blocks (what the replay deals).
+    /// </summary>
     public static (double Engine, double Log) DamageTotals(ReplayResult r) =>
-        (r.AllHits.Where(h => h.LandedTime.HasValue).Sum(h => h.EngineAmount), r.LogDamage.Sum(d => d.TotalAmount));
+        (r.EngineTotalDamage, r.LogDamage.Sum(d => d.UnblockedAmount));
+
+    /// <summary>True for an engine hit; false for a log hit no engine hit matched.</summary>
+    private static bool IsEngineHit(HitPair h) => h.Log == null || h.LandedTime.HasValue;
 
     /// <summary>An index page linking the review page of every replayed fight, with headline numbers.</summary>
     public static string RenderIndex(IReadOnlyList<(ReplayResult Result, string File)> fights)
@@ -122,6 +128,7 @@ details{margin:8px 0}summary{cursor:pointer;font-weight:600}ul{margin:6px 0;padd
 .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:4px}.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
 td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:600;border-top:2px solid var(--line)}
 .fightnav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}.fightnav a{font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;color:var(--text);text-decoration:none;background:var(--panel)}
+button.state{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--accent);cursor:pointer}tr.state-row td{white-space:normal;background:var(--bg)}
 .fightnav a.cur{background:var(--accent);border-color:var(--accent);color:var(--panel)}a{color:var(--accent)}
 </style></head><body><main>
 """);
@@ -136,7 +143,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         {
             sb.Append($"<div class=\"panel halt\"><strong>Halted at step {r.HaltedAt.Index} of {r.TotalSteps}</strong> — {E(r.HaltedAt.AbilityName)} at {r.HaltedAt.Time:F3}s. ");
             sb.Append($"{r.Steps.Count(s => s.Index < r.HaltedAt.Index)} steps passed before it.<ul>");
-            foreach (var i in r.HaltIssues) sb.Append($"<li><span class=\"tag bad\">{i.Category}</span>step {i.Step} @ {i.Time:F3}s — {E(i.Message)}</li>");
+            foreach (var i in r.HaltIssues) sb.Append($"<li><span class=\"tag bad\">{i.Category}</span>step {i.Step} @ {i.Time:F3}s — {E(i.Message)}{E(RangeText(i))}</li>");
             sb.Append("</ul></div>");
         }
         else
@@ -154,6 +161,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         }
         sb.Append("<div class=\"panel\"><span class=\"tag\">Open item</span>Amethyst Splinter (1000101) damage is not checked yet; its hits must still match.</div>");
         RenderDamageOverview(sb, r);
+        DisagreementsSection.Render(sb, r.Issues.Count > 0 ? r.Issues : r.Steps.SelectMany(s => s.Issues).ToList());
 
         // Every step with issues, collapsed (the halted step open); the "All steps" table links to them.
         var failing = r.Steps.Where(s => !s.Passed).ToList();
@@ -169,7 +177,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         sb.Append("<h2>All steps</h2><div class=\"panel scroll\"><table><thead><tr><th class=\"num\">#</th><th class=\"num\">Time</th><th>Action</th><th>Ability</th><th class=\"num\">Enemies</th><th class=\"num\">Hits</th><th class=\"num\">Log dmg / engine</th><th>State</th><th>Result</th></tr></thead><tbody>");
         foreach (var s in r.Steps)
         {
-            var matched = s.Hits.Where(h => h.Log != null).ToList();
+            var matched = s.Hits.Where(h => h.Log != null && h.LandedTime.HasValue).ToList();
             double engineSum = matched.Sum(h => h.EngineAmount), logSum = matched.Sum(h => h.Log!.UnblockedAmount);
             bool stateOk = s.Resources.All(c => c.Matches) && s.Auras.All(a => a.Matches);
             string cls = !s.Passed ? "fail" : !s.Modeled ? "skip" : "";
@@ -203,9 +211,9 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
     /// <summary>Damage over time and DPS charts (engine vs log), then a per-ability breakdown.</summary>
     private static void RenderDamageOverview(StringBuilder sb, ReplayResult r)
     {
-        var engineHits = r.AllHits.Where(h => h.LandedTime.HasValue).ToList();
+        var engineHits = r.AllHits.Where(IsEngineHit).ToList();
         double duration = Math.Max(r.DurationSeconds,
-            Math.Max(r.LogDamage.Select(d => d.Time).DefaultIfEmpty(0).Max(), engineHits.Select(h => h.LandedTime!.Value).DefaultIfEmpty(0).Max()));
+            Math.Max(r.LogDamage.Select(d => d.Time).DefaultIfEmpty(0).Max(), engineHits.Select(h => h.LandedTime ?? h.EngineTime).DefaultIfEmpty(0).Max()));
         if (duration <= 0) return;
         int bins = (int)Math.Ceiling(duration);
 
@@ -215,8 +223,8 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
             foreach (var (t, a) in hits) b[Math.Clamp((int)t, 0, bins - 1)] += a;
             return b;
         }
-        var logBins = Bin(r.LogDamage.Select(d => (d.Time, d.TotalAmount)));
-        var engBins = Bin(engineHits.Select(h => (h.LandedTime!.Value, h.EngineAmount)));
+        var logBins = Bin(r.LogDamage.Select(d => (d.Time, d.UnblockedAmount)));
+        var engBins = Bin(engineHits.Select(h => (h.LandedTime ?? h.EngineTime, h.EngineAmount)));
 
         double[] Cumulative(double[] b)
         {
@@ -242,7 +250,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         double logTotal = logBins.Sum(), engTotal = engBins.Sum();
         sb.Append("<h2>Damage overview</h2>");
         sb.Append($"<div class=\"grid\"><div class=\"panel\"><div class=\"muted\">Log damage</div><strong>{logTotal:N0}</strong> · {logTotal / duration:N0} DPS</div>");
-        sb.Append($"<div class=\"panel\"><div class=\"muted\">Engine damage (matched and unmatched hits)</div><strong>{engTotal:N0}</strong> · {engTotal / duration:N0} DPS</div>");
+        sb.Append($"<div class=\"panel\"><div class=\"muted\">Engine damage (average rolls of every engine hit)</div><strong>{engTotal:N0}</strong> · {engTotal / duration:N0} DPS</div>");
         sb.Append($"<div class=\"panel\"><div class=\"muted\">Engine vs log</div><strong>{(logTotal > 0 ? engTotal / logTotal - 1 : 0):+0.0%;-0.0%;0.0%}</strong> over {duration:F0}s</div></div>");
 
         sb.Append("<div class=\"panel\"><div class=\"legend\"><span><i style=\"background:var(--log)\"></i>Log</span><span><i style=\"background:var(--engine)\"></i>Engine</span></div>");
@@ -293,7 +301,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
             var eh = engineHits.Where(h => h.AbilityId == id).ToList();
             string name = lh.FirstOrDefault()?.AbilityName ?? eh.First().AbilityName;
             return (Id: id, Name: name,
-                LogDmg: lh.Sum(d => d.TotalAmount), EngDmg: eh.Sum(h => h.EngineAmount),
+                LogDmg: lh.Sum(d => d.UnblockedAmount), EngDmg: eh.Sum(h => h.EngineAmount),
                 LogHits: lh.Count, EngHits: eh.Count,
                 LogCrits: lh.Count(d => d.Crit), EngCrits: eh.Count(h => h.Crit),
                 LogCasts: r.LogCasts.GetValueOrDefault(name), EngCasts: r.EngineCasts.GetValueOrDefault(name));
@@ -326,7 +334,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         sb.Append($"<td class=\"num\">{logTotal / duration:N0}</td><td class=\"num\">{engTotal / duration:N0}</td><td class=\"num\">{rows.Sum(x => x.LogHits):N0}</td><td class=\"num\">{rows.Sum(x => x.EngHits):N0}</td>");
         sb.Append($"<td class=\"num\">{Pct(rows.Sum(x => x.LogCrits), rows.Sum(x => x.LogHits))}</td><td class=\"num\">{Pct(rows.Sum(x => x.EngCrits), rows.Sum(x => x.EngHits))}</td><td></td><td></td><td></td><td></td></tr>");
         sb.Append("</tbody></table></div>");
-        sb.Append("<div class=\"muted\">Engine crits follow the log for matched hits (the replay takes crits from the log); engine damage is before the ±10% spread.</div>");
+        sb.Append("<div class=\"muted\">Engine crits follow the log for matched hits (the replay takes crits from the log); engine damage is the average roll, before the ±10% spread. Log damage is before absorbs and blocks.</div>");
     }
 
     private static void RenderStepDetail(StringBuilder sb, ReplayStep s, bool open)
@@ -337,7 +345,7 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
         if (s.Issues.Count > 0)
         {
             sb.Append("<ul>");
-            foreach (var i in s.Issues) sb.Append($"<li><span class=\"tag bad\">{i.Category}</span>@ {i.Time:F3}s — {E(i.Message)}</li>");
+            foreach (var i in s.Issues) sb.Append($"<li><span class=\"tag bad\">{i.Category}</span>@ {i.Time:F3}s — {E(i.Message)}{E(RangeText(i))}</li>");
             sb.Append("</ul>");
         }
 
@@ -363,17 +371,26 @@ td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:
 
         if (s.Hits.Count > 0)
         {
-            sb.Append("<div class=\"scroll\"><table><thead><tr><th class=num>Engine t</th><th class=num>Log t</th><th>Ability</th><th>Target</th><th>Crit</th><th class=num>Engine</th><th class=num>Log</th><th class=num>Ratio</th></tr></thead><tbody>");
+            sb.Append("<div class=\"scroll\"><table><thead><tr><th class=num>Engine t</th><th class=num>Log t</th><th>Ability</th><th>Target</th><th>Crit</th><th class=num>Engine avg</th><th class=num>Expected low</th><th class=num>Expected high</th><th class=num>Log</th><th class=num>Deviation</th></tr></thead><tbody>");
             foreach (var h in s.Hits)
             {
-                bool bad = h.Log == null || h.Ratio is < 0.9 or > 1.1;
+                bool bad = !h.WithinRange;
                 sb.Append($"<tr class=\"{(bad ? "fail" : "")}\"><td class=num>{h.EngineTime:F3}</td><td class=num>{(h.Log != null ? h.Log.Time.ToString("F3") : "—")}</td><td>{E(h.AbilityName)}</td><td>{E(h.Target?.ToString() ?? "")}</td>");
-                sb.Append($"<td>{(h.Log == null ? $"({h.CritChance:P0})" : h.Crit ? "crit" : "")}</td><td class=num>{h.EngineAmount:F0}</td><td class=num>{(h.Log != null ? E(h.Log.ComparedAmountText()) : "missing")}</td><td class=num>{(h.Ratio.HasValue ? h.Ratio.Value.ToString("F3") : "—")}</td></tr>");
+                sb.Append($"<td>{(h.Log == null ? $"({h.CritChance:P0})" : h.Crit ? "crit" : "")}</td><td class=num>{h.EngineAmount:F0}</td><td class=num>{h.ExpectedLow:F0}</td><td class=num>{h.ExpectedHigh:F0}</td>");
+                sb.Append($"<td class=num>{(h.Log != null ? E(h.Log.ComparedAmountText()) : "none")}</td><td class=num>{(h.Deviation == 0 ? "—" : h.Deviation.ToString("+0;-0"))}</td></tr>");
             }
             sb.Append("</tbody></table></div>");
         }
         sb.Append("</details>");
     }
+
+    /// <summary>The expected range, observed value and deviation of an issue with a numeric check, for a line of text.</summary>
+    private static string RangeText(ReplayIssue i) =>
+        i.Expected is { } e
+            ? $" (expected {e}, observed {(i.Observed is { } o ? ExpectedRange.Format(o, e.Unit) : "none")}{(i.Deviation is { } d ? $", deviation {DeviationText(d, e.Unit)}" : "")})"
+            : "";
+
+    private static string DeviationText(double deviation, string unit) => (deviation > 0 ? "+" : "") + ExpectedRange.Format(deviation, unit);
 
     private static void RenderCounts(StringBuilder sb, string title, Dictionary<string, int> counts, string unit)
     {

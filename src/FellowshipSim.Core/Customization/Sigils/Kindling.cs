@@ -32,7 +32,8 @@ public class Kindling : Sigil
             if (burning.TryGetValue(target, out var old) && old.IsActive) old.Stop(ctx);
             burning[target] = PeriodicEffect.BeginHasted(ctx, hero, SigilName, DurationSeconds, TickSeconds,
                 tickOnStart: false, partialFinalTick: false,
-                onTick: (c, fraction) => { if (!target.IsSleeping) dot.DealDamage(c, target, damageMultiplier: fraction); });
+                onTick: (c, fraction) => { if (!target.IsSleeping) dot.DealDamage(c, target, damageMultiplier: fraction); },
+                damageLogId: dot.DamageLogId, target: target);
         }
 
         // Speed: the handler captures nothing per hit; the burn's closure is made only when it ignites.

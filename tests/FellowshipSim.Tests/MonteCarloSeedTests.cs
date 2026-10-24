@@ -55,6 +55,27 @@ public class MonteCarloSeedTests
         }
     }
 
+    /// <summary>Totals of fights 1-4 of each hero's default action list, captured at commit 8fecd72.</summary>
+    [Theory]
+    [InlineData("Rime", 120, 3, new[] { 3065348.164364021, 2844345.624924346, 2586790.2809684295, 2826773.541334825 })]
+    [InlineData("Rime", 300, 1, new[] { 7872715.6917813085, 8752259.817411212, 8604763.571995698, 8861947.45083851 })]
+    [InlineData("Ardeos", 120, 3, new[] { 1847837.1115456694, 2054980.736083649, 1936607.7508904785, 1953843.794033505 })]
+    [InlineData("Ardeos", 300, 1, new[] { 3623429.388401441, 3545005.846612877, 3385237.950039354, 3227405.2486445424 })]
+    [InlineData("Gunde", 120, 3, new[] { 3411873.057643108, 3676642.4235181487, 3663297.493065301, 3894994.09916709 })]
+    [InlineData("Gunde", 300, 1, new[] { 6052496.876257931, 6029016.467322267, 5538107.514025447, 6347232.759195004 })]
+    [InlineData("Mara", 120, 3, new[] { 1633623.2702913966, 1141078.5666773887, 1392297.1570090842, 1461812.038685851 })]
+    [InlineData("Mara", 300, 1, new[] { 3786242.7066847594, 3396084.100169657, 3398590.5212257053, 3391223.1314318073 })]
+    [InlineData("Tariq", 120, 3, new[] { 1453563.3278640977, 1552281.144037157, 1504112.8646380526, 1522586.9304606495 })]
+    [InlineData("Tariq", 300, 1, new[] { 2582605.552998744, 2626938.8995864824, 2760472.34265179, 3129809.457215084 })]
+    public void Each_Seed_Gives_The_Totals_Of_Commit_8fecd72(string hero, int seconds, int targets, double[] totals)
+    {
+        var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"{hero.ToLowerInvariant()}_character.json")))!;
+        var result = new MonteCarloSimulator(build, AplParser.ParseScript(DefaultActionLists.Read(hero, DefaultActionLists.DefaultName)!))
+            .Run(SimTime.FromSeconds(seconds), totals.Length, targets, firstSeed: 1, degreeOfParallelism: 1, keepFightDamage: true);
+        Assert.Equal(totals, result.IterationDamage);
+    }
+
     private static MonteCarloResult Run(string apl, int iterations, int firstSeed, int seconds = 120, int targets = 3)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

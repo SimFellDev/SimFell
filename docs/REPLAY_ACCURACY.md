@@ -85,7 +85,7 @@ A mechanic is established by:
 | --- | --- |
 | A game value or mechanic | the hero's classes in `FellowshipSim.Core/Heroes/<Hero>`, with the value's source in its comment |
 | How the log shows a resource, proc, party buff or past tuning | `FellowshipSim.Engine/Replay` (`LogResources`, `ProcEvidence`, `PartyBuffs`, `ClassTuningHistory`) |
-| How the replay pairs log events with engine events | `FellowshipSim.Engine/Replay` (`ReplayDriver`, `LogOutcomeSource`, `ReplayOptions`) |
+| How the replay pairs log events with engine events, and compares them | `FellowshipSim.Engine/Replay` (`ReplayDriver`, `LogOutcomeSource`, `ReplayVerifier`, `ReplayOptions`) |
 | What the logs showed, with the fights | `Heroes/<Hero>/NOTES.md` |
 | A value the datamine export lacks | a reader in `Fellowship_Data_Extractor`, and the export re-run |
 

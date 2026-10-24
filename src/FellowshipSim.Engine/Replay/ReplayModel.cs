@@ -80,6 +80,8 @@ public class ReplayOptions
     /// <summary>Aura state may differ from the log by event ordering within this window.</summary>
     public double AuraToleranceSeconds { get; set; } = 0.1;
     public double ResourceSnapshotWindowSeconds { get; set; } = 0.002;
+    /// <summary>A periodic tick may fire this far from the engine's predicted tick time.</summary>
+    public double TickTimeToleranceSeconds { get; set; } = PeriodicEffect.ServerFrameSeconds;
 }
 
 public enum IssueCategory
@@ -89,13 +91,74 @@ public enum IssueCategory
     Damage,
     Resources,
     Auras,
-    Procs
+    Procs,
+    GlobalCooldown,
+    Cooldown,
+    Ticks
+}
+
+/// <summary>The range the engine computes for a logged value. <see cref="Low"/> or <see cref="High"/> is infinite for a one-sided range.</summary>
+/// <param name="Unit">The values' unit: "s", "damage", "crit", "stacks", "ticks", "procs" or a resource's name.</param>
+public sealed record ExpectedRange(double Low, double High, string Unit)
+{
+    public bool Contains(double value) => value >= Low && value <= High;
+
+    /// <summary>The bound <paramref name="value"/> is outside, or the nearer bound for a value inside.</summary>
+    public double NearerBound(double value) =>
+        value < Low ? Low : value > High ? High : (value - Low <= High - value ? Low : High);
+
+    public override string ToString() =>
+        double.IsNegativeInfinity(Low) && double.IsPositiveInfinity(High) ? "any"
+        : double.IsPositiveInfinity(High) ? $"{Format(Low, Unit)} or more"
+        : double.IsNegativeInfinity(Low) ? $"{Format(High, Unit)} or less"
+        : Low == High ? Format(Low, Unit)
+        : $"{Format(Low, Unit)} to {Format(High, Unit)}";
+
+    /// <summary>A value in <paramref name="unit"/>: seconds to the millisecond, everything else to two decimals.</summary>
+    public static string Format(double value, string unit) =>
+        unit == "s"
+            ? value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) + "s"
+            : value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + (unit is "damage" ? "" : " " + unit);
 }
 
 /// <param name="Subject">What the issue is about (ability or aura name), for grouping.</param>
 public sealed record ReplayIssue(double Time, int Step, IssueCategory Category, string Message, string? Subject = null)
 {
-    public override string ToString() => $"[{Category}] step {Step} @ {Time:F3}s: {Message}";
+    /// <summary>The range the engine computes; null for a check with no numeric range.</summary>
+    public ExpectedRange? Expected { get; init; }
+    /// <summary>The log's value.</summary>
+    public double? Observed { get; init; }
+    /// <summary>The engine's state at the check.</summary>
+    public EngineState? State { get; init; }
+
+    /// <summary><see cref="Observed"/> minus the bound it is outside (0 inside the range); null with no <see cref="Expected"/>.</summary>
+    public double? Deviation => Expected is { } e && Observed is { } o
+        ? o < e.Low ? o - e.Low : o > e.High ? o - e.High : 0.0
+        : null;
+
+    /// <summary><see cref="Deviation"/> over the nearer bound; null when that bound is 0 or infinite.</summary>
+    public double? RelativeDeviation
+    {
+        get
+        {
+            if (Deviation is not { } deviation || Observed is not { } o) return null;
+            double bound = Expected!.NearerBound(o);
+            return bound == 0 || double.IsInfinity(bound) ? null : deviation / Math.Abs(bound);
+        }
+    }
+
+    public override string ToString()
+    {
+        string text = $"[{Category}] step {Step} @ {Time:F3}s: {Message}";
+        if (Expected is { } e)
+        {
+            text += $" (expected {e}, observed {(Observed is { } o ? ExpectedRange.Format(o, e.Unit) : "none")}";
+            if (Deviation is { } d) text += $", deviation {(d > 0 ? "+" : "")}{ExpectedRange.Format(d, e.Unit)}";
+            if (RelativeDeviation is { } r) text += $" ({r:+0.0%;-0.0%;0.0%})";
+            text += ")";
+        }
+        return text;
+    }
 }
 
 public sealed class ReplayStep
@@ -129,15 +192,24 @@ public sealed record ResourceCheck(string Resource, double Engine, double Log, d
     public bool Matches => Math.Abs(Engine - Log) <= Tolerance + 1e-9;
 }
 
-public sealed record AuraCheck(string Aura, int EngineStacks, int LogStacks)
+/// <param name="LogId">The aura's log ID (0 when unknown).</param>
+public sealed record AuraCheck(string Aura, int EngineStacks, int LogStacks, int LogId = 0)
 {
     public bool Matches => EngineStacks == LogStacks;
 }
 
 public sealed class ReplayResult
 {
-    /// <summary>All damage the engine dealt.</summary>
+    /// <summary>
+    /// The engine's damage: the sum of <see cref="HitPair.EngineAmount"/> in an exact replay, the damage dealt in free dice.
+    /// </summary>
     public double EngineTotalDamage { get; set; }
+    /// <summary>The damage the replay dealt (<see cref="SimulationContext.TotalDamage"/>): the log total in an exact replay.</summary>
+    public double DamageDealt { get; set; }
+    /// <summary>Log hits no engine hit matched, dealt by the replay (<see cref="SimulationContext.DealLoggedHit"/>).</summary>
+    public int LoggedHitsDealt { get; set; }
+    /// <summary>Engine hits on a target that dies in the log before they could land (no damage, no issue).</summary>
+    public int MissedHits { get; set; }
 
     public string ReportCode { get; init; } = string.Empty;
     public int FightId { get; init; }
@@ -149,6 +221,8 @@ public sealed class ReplayResult
     public List<ReplayStep> Steps { get; } = new();
     public ReplayStep? HaltedAt { get; set; }
     public List<ReplayIssue> HaltIssues { get; } = new();
+    /// <summary>Every issue the verifier reported, in the order reported (those before the first step too).</summary>
+    public List<ReplayIssue> Issues { get; } = new();
     public Dictionary<string, int> UnmodeledAbilities { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> UntrackedLogAuras { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> UnmodeledExternalAuras { get; } = new(StringComparer.OrdinalIgnoreCase);

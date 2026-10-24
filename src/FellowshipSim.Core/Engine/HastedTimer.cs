@@ -42,6 +42,9 @@ public sealed class HastedTimer
 
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>When the timer fires at the current haste.</summary>
+    public SimTime DueTime => _event?.Time ?? _ctx.CurrentTime;
+
     /// <summary>Hasted progress made so far, in base seconds.</summary>
     public double ElapsedBaseSeconds =>
         _baseSeconds - (_remainingBase - (_ctx.CurrentTime - _lastUpdate).TotalSeconds * (1.0 + _haste));

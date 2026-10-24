@@ -48,7 +48,8 @@ or the desktop app).
 
 - **FellowshipSim.Core** is the simulation and has no reference to logs or replays. `Engine/SimulationKernel` is the
   event queue; `SimulationContext` is the state for one run; `MonteCarloSimulator` runs iterations. Every random
-  outcome (crit, proc, spread, travel time) goes through `IOutcomeSource`. `RandomOutcomeSource` rolls dice;
+  outcome (crit, proc, spread, travel time), each hit's damage (`Land`) and each periodic tick's time with a damage log ID
+  (`TickAt`) go through `IOutcomeSource`. `RandomOutcomeSource` rolls dice;
   `LogOutcomeSource` (exact replay) and `FreeDiceOutcomeSource` (free dice) in FellowshipSim.Engine are the other two.
   `Import/SimcProfile` reads and writes `.simc` profiles.
 - **Catalog** (`Core/Catalog.cs`) finds heroes, talents, traits, blessings, sets, legendaries and weapons by reflection
