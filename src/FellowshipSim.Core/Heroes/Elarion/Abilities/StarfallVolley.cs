@@ -1,0 +1,96 @@
+namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
+
+/// <summary>
+/// Ability 126: "Fire a volley of celestial arrows into the sky that pelt the area around target enemy for 8 seconds,
+/// dealing magic damage every 1 seconds to the target and any nearby enemies. Starfall Volley follows the target for its
+/// duration." 30 Focus, cooldown 40s; damage falls off as sqrt(12/N) beyond 12 enemies (targetCountFalloff 12).
+/// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 44 volleys): the arrows land on each enemy at its
+/// own moments, 0.5-0.8s apart at the median for one enemy, the first 0.2-0.4s after the cast, and each hit deals the
+/// same damage on every enemy. UNVERIFIED: a hit on every enemy as the volley is cast and every hasted second after.
+/// </summary>
+public class StarfallVolley : ElarionAbility
+{
+    public const int AbilityId = 126;
+    public const string AbilityName = "Starfall Volley";
+    /// <summary>Placeholder StarfallDmg: 100% of Agility per hit.</summary>
+    public const double Coefficient = 1.0;
+    public const double Cost = 30.0;
+    public const double CooldownSeconds = 40.0;
+    public const double DurationSeconds = 8.0;
+    public const double PeriodSeconds = 1.0;
+    public const double TargetThreshold = 12;
+
+    /// <summary>Seconds added to every volley (Astronomer's Hail).</summary>
+    public double ExtraDurationSeconds { get; set; }
+
+    /// <summary>Multiplier on the hits on the volley's own target (Astronomer's Hail).</summary>
+    public double MainTargetMultiplier { get; set; } = 1.0;
+
+    /// <summary>A first volley began falling (true) or the last one ended (false) (Skylit Grace).</summary>
+    public event Action<SimulationContext, bool>? ActiveChanged;
+
+    private readonly List<Volley> _volleys = new();
+
+    public StarfallVolley(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    {
+        BaseCoefficient = Coefficient;
+        FocusCost = Cost;
+        SetCooldown(CooldownSeconds);
+        AoeTargetThreshold = TargetThreshold;
+    }
+
+    /// <summary>A volley is falling now.</summary>
+    public bool IsActive => _volleys.Count > 0;
+
+    /// <summary>Adds <paramref name="seconds"/> to every volley falling now (Astronomer's Hail).</summary>
+    public void Extend(SimulationContext ctx, double seconds)
+    {
+        foreach (var volley in _volleys)
+        {
+            volley.End += SimTime.FromSeconds(seconds);
+            volley.Ending?.Cancel();
+            ScheduleEnd(ctx, volley);
+        }
+    }
+
+    public override void Execute(SimulationContext ctx, EnemyTarget target)
+    {
+        TriggerCooldown(ctx);
+        Pay(ctx, CostAt(ctx.CurrentTime));
+        var volley = new Volley(target, ctx.CurrentTime + SimTime.FromSeconds(DurationSeconds + ExtraDurationSeconds));
+        _volleys.Add(volley);
+        if (_volleys.Count == 1) ActiveChanged?.Invoke(ctx, true);
+        ScheduleEnd(ctx, volley);
+        Pelt(ctx, volley);
+    }
+
+    private void ScheduleEnd(SimulationContext ctx, Volley volley) =>
+        volley.Ending = ctx.ScheduleAt(volley.End, c =>
+        {
+            volley.Timer?.Cancel();
+            _volleys.Remove(volley);
+            if (_volleys.Count == 0) ActiveChanged?.Invoke(c, false);
+        }, Name);
+
+    private void Pelt(SimulationContext ctx, Volley volley)
+    {
+        var enemies = ctx.ActiveEnemies;
+        double falloff = enemies.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / enemies.Count) : 1.0;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            var enemy = enemies[i];
+            DealDamage(ctx, enemy, damageMultiplier: falloff * (enemy == volley.Target ? MainTargetMultiplier : 1.0));
+        }
+        volley.Timer = HastedTimer.Start(ctx, Owner, PeriodSeconds, c => Pelt(c, volley), Name);
+    }
+
+    public override void ResetState() => _volleys.Clear();
+
+    private sealed class Volley(EnemyTarget target, SimTime end)
+    {
+        public EnemyTarget Target { get; } = target;
+        public SimTime End { get; set; } = end;
+        public HastedTimer? Timer { get; set; }
+        public ScheduledEvent? Ending { get; set; }
+    }
+}
