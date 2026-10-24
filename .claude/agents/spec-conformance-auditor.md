@@ -8,8 +8,11 @@ effort: high
 
 # Spec conformance auditor
 
-The prompt names a SimFell worktree, its branch, the commit that added the spec, and each later commit touching it. The
-answer is the audit, as the text of `docs/accuracy/<branch>.audit.md`. The agent changes no file.
+The prompt names a hero, a SimFell worktree, its branch, the commit that added the spec, and each later commit touching
+it. The answer is the audit, as the text of `docs/accuracy/<branch>.audit.md`. The agent changes no file.
+
+The audit covers the hero the prompt names alone: its players in the spec's fights, its `NOTES.md` and the branch's
+changes.
 
 ## Inputs
 

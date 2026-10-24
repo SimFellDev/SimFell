@@ -13,6 +13,14 @@ it gathers itself shows it true. A claim is every value the branch adds to the e
 
 The session changes no engine, replay or test code. Its output is `docs/accuracy/<branch>.review.md`.
 
+## The one hero
+
+`<hero>` is the first part of the branch name, and `<Hero>` is that hero's folder in `src/FellowshipSim.Core/Heroes`.
+The review covers `<Hero>` alone: `<Hero>`'s players in the spec's fights, `<Hero>`'s `NOTES.md`, and the branch's
+changes as they act on `<Hero>`. Every prompt for an agent of the review names `<Hero>` and states this. A change in
+`FellowshipSim.Engine/Replay` reaches every hero's replay; `dotnet test -c Release` passing is its one check outside
+`<Hero>`.
+
 ## Setup
 
 1. The SimFell worktree is `G:/source/SimFell.<branch>`. Its `data/fights` has the spec's fights. The session works
@@ -34,8 +42,8 @@ each:
 
 - Its subject's log/engine ratio in `docs/accuracy/<branch>.baseline.json`: a value equal to that ratio, to its inverse,
   or to a product of either with a known multiplier, is a fitted constant until the next step shows a source.
-- A fresh `game-data-authority` agent, started in the review's extractor worktree, gets the subject and the question, with no
-  value and no claimed source: "What is the coefficient of X in the game data, and where is it?" Its answer is compared
+- A fresh `game-data-authority` agent, started in the review's extractor worktree, gets `<Hero>` as the one hero, the
+  subject and the question, with no value and no claimed source: "What is the coefficient of X in the game data, and where is it?" Its answer is compared
   with the diff's value. The agent sees neither.
 - A source named as a log pattern is recounted by this session from `data/fights`, over every fight the comment or
   `NOTES.md` names.
@@ -53,7 +61,7 @@ by counting every occurrence in them. A claim the counts contradict, or one with
 
 Each change in `FellowshipSim.Engine/Replay` is read for its effect on the measure: a widened tolerance in
 `ReplayOptions`, an ID added to `UnverifiedDamageIds`, a fight or event left out, a pairing rule that matches more log
-hits to fewer engine hits. A change whose evidence is absent or does not hold for every hero is a finding of kind
+hits to fewer engine hits. A change whose evidence is absent or does not hold over `<Hero>`'s fights is a finding of kind
 **masking**.
 
 ### 4. Logic
@@ -70,9 +78,8 @@ The session runs the measure on the spec's fight set:
 ACCURACY_HERO=<Hero> ACCURACY_LABEL=review ACCURACY_FREEDICE_ITERATIONS=100 dotnet test tests/FellowshipSim.Tests -c Release --filter HeroAccuracyTests
 ```
 
-and `dotnet test -c Release`. A number in the pull request body that the measure does not reproduce, a failing test, or
-another hero's matched hits or damage ratio falling from `main`'s, is a finding of kind **wrong number** or
-**regression**.
+and `dotnet test -c Release`. A number in the pull request body that the measure does not reproduce is a finding of
+kind **wrong number**, and a failing test one of kind **regression**.
 
 ## Review file
 

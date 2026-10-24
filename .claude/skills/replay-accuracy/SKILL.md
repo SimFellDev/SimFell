@@ -13,7 +13,17 @@ evidence; read it first.
 ## 1. Check the hero
 
 The heroes are the folders of `src/FellowshipSim.Core/Heroes`. An argument with no folder stops the skill with that
-list. `<hero>` below is the hero's name in lower case.
+list. `<Hero>` below is the argument, and `<hero>` is its name in lower case.
+
+## The one hero
+
+The work covers `<Hero>` alone: `<Hero>`'s players in the fights, `<Hero>`'s classes and `NOTES.md`, and the game data
+of `<Hero>`'s abilities, effects, items and the shared systems they use. Every prompt and message the session writes
+names `<Hero>` and states this. Every agent started for the work passes it on in each prompt and message it writes.
+
+The session reads each report and message for numbers, fights, data or changes of any other hero, and sends the
+teammate back to `<Hero>` with the scope restated. A change in `FellowshipSim.Engine/Replay` reaches every hero's
+replay; `dotnet test -c Release` passing is its one check outside `<Hero>`.
 
 ## 2. Worktrees
 
@@ -62,8 +72,8 @@ ACCURACY_HERO=<Hero> ACCURACY_LABEL=baseline dotnet test tests/FellowshipSim.Tes
 
 ## 5. Spec
 
-An `accuracy-spec-writer` agent writes `docs/accuracy/<branch>.md` from the baseline. Its prompt names the hero, the
-branch, the worktree and the baseline file. The session copies `data/accuracy/<Hero>/baseline.txt` and `.json` to
+An `accuracy-spec-writer` agent writes `docs/accuracy/<branch>.md` from the baseline. Its prompt names `<Hero>` as the
+one hero of the work, the branch, the worktree and the baseline file. The session copies `data/accuracy/<Hero>/baseline.txt` and `.json` to
 `docs/accuracy/<branch>.baseline.txt` and `.json`, and commits them with the spec on the branch, alone in their commit,
 before any change to the engine. The review and the audit read the baseline from there. The spec is the contract for stages 2 to 4; a change to it after this commit is its own commit
 with the reason in the message.
@@ -74,13 +84,13 @@ Two teammates, each started with the Agent tool and a `name`, in the background:
 
 | Name | Agent type | Works in | Prompt names |
 | --- | --- | --- | --- |
-| `simfell-engineer` | `simfell-engineer` | this SimFell worktree | the hero, the branch, the spec, the extractor worktree path |
-| `game-data-authority` | `game-data-authority` | the extractor worktree | the hero, the branch, the extractor worktree path, the teammate `simfell-engineer` |
+| `simfell-engineer` | `simfell-engineer` | this SimFell worktree | `<Hero>` as the one hero, the branch, the spec, the extractor worktree path |
+| `game-data-authority` | `game-data-authority` | the extractor worktree | `<Hero>` as the one hero, the branch, the extractor worktree path, the teammate `simfell-engineer` |
 
 Both teammates run on Opus 5.5, by their definitions. A question whose answer is in the shipping binary or in
 Blueprint bytecode goes to a third run, started by the session when `game-data-authority` asks for it: agent type
 `game-data-authority`, `name: "game-data-binary"`, `model: "fable"`, `effort: "high"`, in the extractor worktree, its
-prompt naming the question, the rungs checked, and the teammate `simfell-engineer`. A `simfell-engineer` run that ends
+prompt naming `<Hero>` as the one hero, the question, the rungs checked, and the teammate `simfell-engineer`. A `simfell-engineer` run that ends
 with large items under "Not yet explained" is run again on those items with `model: "fable"`.
 
 The teammates message each other with SendMessage. A message to a teammate whose turn has ended starts its next turn.
@@ -95,12 +105,14 @@ name, goes back to `simfell-engineer` before anything else.
 
 1. `simfell-engineer` runs the measure with `ACCURACY_LABEL=final` and `ACCURACY_FREEDICE_ITERATIONS=100`.
 2. The session rebases the branch onto `origin/main`, pushes it, and opens a pull request on `Seriousnes/SimFell`. Its
-   body has the baseline and final headline numbers, each finding with its source, and the "Not yet explained" lines.
+   body has `<Hero>`'s baseline and final headline numbers, each finding with its source, and the "Not yet explained"
+   lines.
 3. An extractor worktree with commits gets its own pull request on its repository, and the SimFell pull request links
    it. An extractor worktree with no commits is removed:
    `wt -C G:/source/Fellowship_Data_Extractor remove <branch>`.
 4. The session reports the pull request links and the final numbers to the user, with the next two stages:
-   `/replay-accuracy-review <branch>`, then `/replay-accuracy-audit <branch>`, each in a new session.
+   `/replay-accuracy-review <branch>`, then `/replay-accuracy-audit <branch>`, each in a new session. The branch name
+   carries `<hero>` to both.
 
 ## Rules
 

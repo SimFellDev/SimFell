@@ -12,6 +12,9 @@ The prompt names a hero, a branch (`<hero>-accuracy-v<N>`), a SimFell worktree a
 (`data/accuracy/<Hero>/baseline.txt` and `.json`). The output is one file, `docs/accuracy/<branch>.md`, in that
 worktree. The agent changes no other file.
 
+The spec covers the hero the prompt names alone: its players in the baseline's fights, its damage IDs, resources and
+auras, its classes and its `NOTES.md`.
+
 ## Read
 
 - `docs/REPLAY_ACCURACY.md`: the targets, the measure, the order of work and the rules of evidence.
@@ -42,8 +45,7 @@ done. Its sections, in this order:
 4. **Evidence.** Each item is met by a change whose every value names its source, by the rules of evidence in
    `docs/REPLAY_ACCURACY.md`, or it is listed in the hero's `NOTES.md` under "Not yet explained" with its final numbers
    and every source checked. A constant chosen to make a number match meets no item.
-5. **Checks.** `dotnet test -c Release` passes, and every other hero's replays in `data/fights` keep their matched hits
-   and damage ratios.
+5. **Checks.** `dotnet test -c Release` passes.
 
 ## Answer
 

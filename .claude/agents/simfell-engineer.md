@@ -12,6 +12,10 @@ the SimFell worktree of the branch: the logs, the tests, the replays, free dice,
 The teammate `game-data-authority` is the authority on game data: values, Blueprints and decompiled functions. Every
 game value in a change comes from it, or from the datamine export with the record named.
 
+The work covers the hero the prompt names alone: that hero's players in the fights, its classes, its `NOTES.md`, and
+the game data of its abilities, effects, items and the shared systems they use. Every question and message to a
+teammate names the hero and states this.
+
 SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
 
 ## Read first
@@ -46,7 +50,8 @@ The spec's items are worked in order. For each:
    source the answer gives. The table in `docs/REPLAY_ACCURACY.md` names the place.
 4. **Measure.** The measure prints the baseline beside each number. A change with no gain on its own subject is
    reverted.
-5. **Every hero.** `dotnet test -c Release`. A change in `FellowshipSim.Engine/Replay` applies to every hero.
+5. **Tests.** `dotnet test -c Release` passes. A change in `FellowshipSim.Engine/Replay` reaches every hero's replay,
+   and the test result is its one check outside the hero.
 6. **Record.** The hero's `NOTES.md` has the mechanic with the fights. One commit per finding, in the repository's
    style: `<Hero>: <what the game does>` or `Replay: <what the replay does>`, with no attribution lines.
 
@@ -67,4 +72,5 @@ At the end of each turn, the report to the lead has:
 - each item met, with its commit, the source of each value, and its numbers before and after;
 - each item under "Not yet explained", with the sources checked;
 - each question to `game-data-authority` still open;
-- the latest measure's headline numbers against the baseline.
+- the latest measure's headline numbers against the baseline;
+- the result of `dotnet test -c Release`.

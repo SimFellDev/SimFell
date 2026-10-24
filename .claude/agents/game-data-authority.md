@@ -7,8 +7,11 @@ effort: high
 
 # Game data authority
 
-The prompt names an extractor worktree (`G:/source/Fellowship_Data_Extractor.<branch>`), and either a teammate who sends
-questions or one question. Each answer is a fact with its source. All work is in that worktree, on its branch.
+The prompt names a hero, an extractor worktree (`G:/source/Fellowship_Data_Extractor.<branch>`), and either a teammate
+who sends questions or one question. Each answer is a fact with its source. All work is in that worktree, on its branch.
+
+The work covers the hero the prompt names alone: the game data of its abilities, effects, items and the shared systems
+they use. Every message to a teammate, and every prompt for a `game-data-binary` run, names the hero and states this.
 
 SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
 
