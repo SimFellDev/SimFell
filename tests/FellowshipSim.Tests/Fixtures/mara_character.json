@@ -1,0 +1,137 @@
+{
+  "Name": "Culex",
+  "Hero": "Mara",
+  "PrimaryStat": 307,
+  "Stamina": 461,
+  "MaxHealth": 29052,
+  "Armor": 610,
+  "CritRating": 233,
+  "HasteRating": 82,
+  "ExpertiseRating": 114,
+  "SpiritRating": 268,
+  "SheetPercents": {
+    "crit": 0.3912,
+    "haste": 0.1306,
+    "expertise": 0.1795,
+    "spirit": 0.3868
+  },
+  "Talents": [
+    586,
+    422,
+    121,
+    443,
+    110,
+    112,
+    10000
+  ],
+  "Traits": [
+    {
+      "Id": 51,
+      "Rank": 3,
+      "Name": "Martial Initiative"
+    },
+    {
+      "Id": 47,
+      "Rank": 4,
+      "Name": "Visions of Grandeur"
+    },
+    {
+      "Id": 69,
+      "Rank": 4,
+      "Name": "Ursa\u0027s Might / Wolf\u0027s Guille / Vampire\u0027s Cunning"
+    },
+    {
+      "Id": 67,
+      "Rank": 4,
+      "Name": "Revenant\u0027s Might / Wraith\u0027s Guille / Banshee\u0027s Cunning"
+    },
+    {
+      "Id": 5,
+      "Rank": 1,
+      "Name": "Vengeful Soul"
+    },
+    {
+      "Id": 1,
+      "Rank": 1,
+      "Name": "Hidden Power"
+    },
+    {
+      "Id": 66,
+      "Rank": 4,
+      "Name": "Sun\u0027s Might / Star\u0027s Guille / Moon\u0027s Cunning "
+    },
+    {
+      "Id": 65,
+      "Rank": 4,
+      "Name": "Behemoth\u0027s Might  / Jotunn\u0027s Guille / Titan\u0027s Cunning"
+    },
+    {
+      "Id": 70,
+      "Rank": 4,
+      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+    },
+    {
+      "Id": 39,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 4,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 34,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 54,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 53,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 55,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Blessings": [
+    {
+      "Id": 709,
+      "Rank": 2,
+      "Name": "The Philosopher"
+    },
+    {
+      "Id": 706,
+      "Rank": 2,
+      "Name": "The Mystic"
+    },
+    {
+      "Id": 704,
+      "Rank": 1,
+      "Name": "The Subduer"
+    }
+  ],
+  "GemPower": {
+    "Sapphire": 1000,
+    "Amethyst": 937,
+    "Emerald": 812,
+    "Ruby": 750,
+    "Diamond": 125
+  },
+  "SetBonusIds": [],
+  "RelicItemIds": [
+    5926,
+    5921
+  ],
+  "LegendaryItemIds": [
+    5898
+  ],
+  "WeaponAbilityId": 157
+}
