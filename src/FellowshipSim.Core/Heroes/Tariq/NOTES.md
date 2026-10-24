@@ -50,13 +50,12 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 
 | Fight | Hits matched | Damage of log |
 |---|---|---|
-| fXyzwGcQkTrLD34R fight 4 | 5464/5676 | 95.8% |
-| 1p7AXmHfwV9CYMxR fight 30 | 6164/6438 | 91.6% |
-| YC861NTRgLbmw4Qa fight 31 | 13507/13698 | 90.0% |
+| fXyzwGcQkTrLD34R fight 4 | 5464/5676 | 102.8% |
+| 1p7AXmHfwV9CYMxR fight 30 | 6164/6438 | 100.7% |
+| YC861NTRgLbmw4Qa fight 31 | 13507/13698 | 98.0% |
 
-In fights 30 and 31 the set bonus Drakheim's Absolution (effect 3269, +20% Strength for 20s from the Spirit ability) is
-in the log, and the new logs' gear has no set data to import it from: every hit in a Raging Tempest window reads about
-1.2 times the engine's. Tariq dies twice in fight 30 (@ 117.0 and 403.1) and the log removes his buffs; the replay
+Them Bones is proven by its grievous Skull Crusher hits (log hit type 22): 35, 65 and 96 procs against 33, 71 and 101
+expected. Tariq dies twice in fight 30 (@ 117.0 and 403.1) and the log removes his buffs; the replay
 keeps them, Schism stacks included.
 
 ## Not yet checked against a log
