@@ -9,7 +9,7 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 4,984 salvos): a salvo comes with the hit that
 /// triggered it, on the same enemy and in the same server frame, from 23-34% of the hits that do not crit and 46-57% of
 /// the crits on a marked enemy; from Starfall Volley, Multishot, Highwind Arrow, Heartseeker Barrage, Celestial Shot,
-/// Focused Shot, Chronoshift and the traits' hits (Amethyst Splinters, Emerald Judgement, Inspired Allegiance), but not
+/// Focused Shot, Chronoshift and the augmentations' hits (Amethyst Splinters, Emerald Judgement, Ruby Storm), but not
 /// from Shoot (5 of 603 hits on a marked enemy, the same frame as another hit).
 /// </summary>
 public sealed class LunarlightSalvo : Ability
