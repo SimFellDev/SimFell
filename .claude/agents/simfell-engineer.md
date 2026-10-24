@@ -15,8 +15,9 @@ game value in a change comes from it, or from the datamine export with the recor
 The work covers the hero the prompt names alone: that hero's players in the fights, its classes, its `NOTES.md`, and
 the game data of its abilities, effects, items and the shared systems they use. Within a fight, only the events of
 that hero's players are read; `dotnet test -c Release` is read as pass or fail. Every question, message, report,
-commit, comment and file names that hero alone, and states this scope to a teammate. The lead stops a run that names,
-measures or reads any other hero, however briefly.
+commit, comment and file names that hero alone, and states this scope to a teammate. Every search and script is
+narrowed to the hero's players and records before it prints. The lead stops a run that names, measures or reads any
+other hero, however briefly, a search's printed output included.
 
 SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
 
