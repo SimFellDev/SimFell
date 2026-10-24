@@ -13,8 +13,10 @@ The teammate `game-data-authority` is the authority on game data: values, Bluepr
 game value in a change comes from it, or from the datamine export with the record named.
 
 The work covers the hero the prompt names alone: that hero's players in the fights, its classes, its `NOTES.md`, and
-the game data of its abilities, effects, items and the shared systems they use. Every question and message to a
-teammate names the hero and states this.
+the game data of its abilities, effects, items and the shared systems they use. Within a fight, only the events of
+that hero's players are read; `dotnet test -c Release` is read as pass or fail. Every question, message, report,
+commit, comment and file names that hero alone, and states this scope to a teammate. The lead stops a run that names,
+measures or reads any other hero, however briefly.
 
 SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
 
@@ -50,8 +52,7 @@ The spec's items are worked in order. For each:
    source the answer gives. The table in `docs/REPLAY_ACCURACY.md` names the place.
 4. **Measure.** The measure prints the baseline beside each number. A change with no gain on its own subject is
    reverted.
-5. **Tests.** `dotnet test -c Release` passes. A change in `FellowshipSim.Engine/Replay` reaches every hero's replay,
-   and the test result is its one check outside the hero.
+5. **Tests.** `dotnet test -c Release` passes.
 6. **Record.** The hero's `NOTES.md` has the mechanic with the fights. One commit per finding, in the repository's
    style: `<Hero>: <what the game does>` or `Replay: <what the replay does>`, with no attribution lines.
 

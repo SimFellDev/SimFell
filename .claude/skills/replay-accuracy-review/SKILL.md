@@ -17,9 +17,10 @@ The session changes no engine, replay or test code. Its output is `docs/accuracy
 
 `<hero>` is the first part of the branch name, and `<Hero>` is that hero's folder in `src/FellowshipSim.Core/Heroes`.
 The review covers `<Hero>` alone: `<Hero>`'s players in the spec's fights, `<Hero>`'s `NOTES.md`, and the branch's
-changes as they act on `<Hero>`. Every prompt for an agent of the review names `<Hero>` and states this. A change in
-`FellowshipSim.Engine/Replay` reaches every hero's replay; `dotnet test -c Release` passing is its one check outside
-`<Hero>`.
+changes as they act on `<Hero>`. Within a fight, only the events of `<Hero>`'s players are read; `dotnet test -c
+Release` is read as pass or fail. Every prompt for an agent of the review names `<Hero>` and states this. An agent
+whose answer names or reads any other hero, however briefly, is stopped, and a new run asks its question again. Text
+on the branch that names any other hero is a finding of kind **contamination**, and the review fails.
 
 ## Setup
 

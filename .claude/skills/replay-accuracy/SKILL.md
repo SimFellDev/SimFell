@@ -21,9 +21,20 @@ The work covers `<Hero>` alone: `<Hero>`'s players in the fights, `<Hero>`'s cla
 of `<Hero>`'s abilities, effects, items and the shared systems they use. Every prompt and message the session writes
 names `<Hero>` and states this. Every agent started for the work passes it on in each prompt and message it writes.
 
-The session reads each report and message for numbers, fights, data or changes of any other hero, and sends the
-teammate back to `<Hero>` with the scope restated. A change in `FellowshipSim.Engine/Replay` reaches every hero's
-replay; `dotnet test -c Release` passing is its one check outside `<Hero>`.
+Within a fight, only the events of `<Hero>`'s players are read. `dotnet test -c Release` passing is the check of a
+change in shared code, read as pass or fail.
+
+The session reads every report, message, commit, comment and file of the work. One that names, measures or reads a
+hero other than `<Hero>`, however briefly, ends that agent's run at once:
+
+1. The session stops the agent (TaskStop).
+2. The session removes the text from the branch: a commit message by `git filter-branch --msg-filter`, a file by a new
+   commit. Generic code changes stay.
+3. The session writes a handoff file in its scratchpad, about `<Hero>` alone: the spec, the commits, the items met and
+   open, and the answers so far.
+4. A new run of the same agent type takes over from the handoff file, its prompt stating this section.
+
+The session's own messages and prompts follow the same rule.
 
 ## 2. Worktrees
 

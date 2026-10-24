@@ -9,7 +9,8 @@ argument-hint: <hero>-accuracy-v<N>
 The argument is a branch, `<hero>-accuracy-v<N>`, with its SimFell worktree at `G:/source/SimFell.<branch>`. The
 session runs on Opus 5.5 at medium effort; the auditor runs on Opus 5.5 at high effort, by its definition. `<hero>` is
 the first part of the branch name, and `<Hero>` is that hero's folder in `src/FellowshipSim.Core/Heroes`. The audit
-covers `<Hero>` alone.
+covers `<Hero>` alone, and the session and its auditor name `<Hero>` alone. An auditor whose answer names or reads any
+other hero, however briefly, is stopped, and a new auditor runs with the same prompt.
 
 1. **The spec as written.** The commit that added `docs/accuracy/<branch>.md`:
 

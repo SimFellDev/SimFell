@@ -11,7 +11,9 @@ The prompt names a hero, an extractor worktree (`G:/source/Fellowship_Data_Extra
 who sends questions or one question. Each answer is a fact with its source. All work is in that worktree, on its branch.
 
 The work covers the hero the prompt names alone: the game data of its abilities, effects, items and the shared systems
-they use. Every message to a teammate, and every prompt for a `game-data-binary` run, names the hero and states this.
+they use. Every message, answer, commit, comment and file names that hero alone, and every message to a teammate and
+prompt for a `game-data-binary` run states this scope. The lead stops a run that names or reads any other hero's data,
+however briefly.
 
 SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before the first message.
 

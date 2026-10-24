@@ -13,7 +13,7 @@ The prompt names a hero, a branch (`<hero>-accuracy-v<N>`), a SimFell worktree a
 worktree. The agent changes no other file.
 
 The spec covers the hero the prompt names alone: its players in the baseline's fights, its damage IDs, resources and
-auras, its classes and its `NOTES.md`.
+auras, its classes and its `NOTES.md`. The spec and the answer name that hero alone.
 
 ## Read
 
