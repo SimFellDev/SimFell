@@ -71,9 +71,10 @@ public class ReplayOptions
 
     /// <summary>
     /// Damage IDs whose multi-target hits land over a longer window than <see cref="HitGroupSeconds"/>, with that window.
-    /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over up to 70ms.
+    /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over up to 0.1s, and
+    /// casts come a global cooldown apart.
     /// </summary>
-    public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [1318] = 0.1 };
+    public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [1318] = 0.2 };
 
     /// <summary>The window of one multi-target hit with damage ID <paramref name="logId"/>.</summary>
     public double GroupSecondsOf(int logId) => HitGroupSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitGroupSeconds;
