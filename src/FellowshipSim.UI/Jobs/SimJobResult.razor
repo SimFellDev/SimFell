@@ -155,58 +155,62 @@
         </div>
     </section>
 
-    @if (Result.Buffs is { Count: > 0 } buffs)
+    @if (Result.Buffs?.Where(b => !b.OnTarget).ToList() is { Count: > 0 } buffs)
     {
         <section class="card">
-            <h3>Buffs and debuffs</h3>
-            <div class="table-wrap">
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Buff</th>
-                            <th>Uptime</th>
-                            <th title="Times it starts, per fight">Applications</th>
-                            <th title="Times it is applied again while up, per fight">Refreshes</th>
-                            <th>Avg duration</th>
-                            <th>Avg stacks</th>
-                            <th>Max stacks</th>
-                            <th>At max stacks</th>
-                            <th title="Time from one ending to the next starting">Avg gap</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var b in buffs)
-                        {
-                            bool stacks = b.MaxStacks > 1;
-                            <tr @key="(b.Name, b.OnTarget)">
-                                <td class="name">
-                                    <GameIcon Url="@BuildCatalog.IconUrl(b.LogId, b.Name)" Size="22" />
-                                    <span>@b.Name</span>
-                                    @if (b.OnTarget)
-                                    {
-                                        <span class="meta">debuff</span>
-                                    }
-                                </td>
-                                <td><span class="share">@Percent(b.Uptime)<span class="bar"><b style="width: @Width(b.Uptime)"></b></span></span></td>
-                                <td>@b.Applications.ToString("N1", CultureInfo.CurrentCulture)</td>
-                                <td>@b.Refreshes.ToString("N1", CultureInfo.CurrentCulture)</td>
-                                <td>@Seconds(b.AverageDuration)</td>
-                                <td>@(stacks ? b.AverageStacks.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
-                                <td>@(stacks ? b.MaxStacks.ToString(CultureInfo.CurrentCulture) : "–")</td>
-                                <td>@(stacks && b.AtMaxStacks > 0 ? Percent(b.AtMaxStacks) : "–")</td>
-                                <td>@(b.AverageGap > 0 ? Seconds(b.AverageGap) : "–")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            <p class="hint">Per fight, averaged over the fights. A debuff's uptime is per target. Buffs up for the whole fight from the start (passives) and the engine's own markers are left out.</p>
+            <h3>Buffs</h3>
+            <div class="table-wrap">@AuraTable(buffs, "Buff")</div>
+            <p class="hint">On the hero, per fight, averaged over the fights. Buffs up for the whole fight from the start (passives) are left out.</p>
+        </section>
+    }
+
+    @if (Result.Buffs?.Where(b => b.OnTarget).ToList() is { Count: > 0 } debuffs)
+    {
+        <section class="card">
+            <h3>Debuffs</h3>
+            <div class="table-wrap">@AuraTable(debuffs, "Debuff")</div>
+            <p class="hint">On the targets, per fight, averaged over the fights; uptime is per target. The engine's own markers are left out.</p>
         </section>
     }
 </div>
 
 @code {
     [Parameter, EditorRequired] public SimResult Result { get; set; } = null!;
+
+    /// <summary>The table of buffs or debuffs: uptime, applications, refreshes, duration, stacks and gaps.</summary>
+    private RenderFragment AuraTable(IReadOnlyList<BuffReport> auras, string kind) =>
+        @<table class="report-table">
+            <thead>
+                <tr>
+                    <th>@kind</th>
+                    <th>Uptime</th>
+                    <th title="Times it starts, per fight">Applications</th>
+                    <th title="Times it is applied again while up, per fight">Refreshes</th>
+                    <th>Avg duration</th>
+                    <th>Avg stacks</th>
+                    <th>Max stacks</th>
+                    <th>At max stacks</th>
+                    <th title="Time from one ending to the next starting">Avg gap</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in auras)
+                {
+                    bool stacks = b.MaxStacks > 1;
+                    <tr @key="b.Name">
+                        <td class="name"><GameIcon Url="@BuildCatalog.IconUrl(b.LogId, b.Name)" Size="22" /><span>@b.Name</span></td>
+                        <td><span class="share">@Percent(b.Uptime)<span class="bar"><b style="width: @Width(b.Uptime)"></b></span></span></td>
+                        <td>@b.Applications.ToString("N1", CultureInfo.CurrentCulture)</td>
+                        <td>@b.Refreshes.ToString("N1", CultureInfo.CurrentCulture)</td>
+                        <td>@Seconds(b.AverageDuration)</td>
+                        <td>@(stacks ? b.AverageStacks.ToString("N1", CultureInfo.CurrentCulture) : "–")</td>
+                        <td>@(stacks ? b.MaxStacks.ToString(CultureInfo.CurrentCulture) : "–")</td>
+                        <td>@(stacks && b.AtMaxStacks > 0 ? Percent(b.AtMaxStacks) : "–")</td>
+                        <td>@(b.AverageGap > 0 ? Seconds(b.AverageGap) : "–")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>;
 
     private const double Height = 240;
 
