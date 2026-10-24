@@ -41,10 +41,20 @@ public class CharacterBuild
     public List<BuildEntry> Augmentations { get; set; } = new();
     public List<BuildEntry> Glyphs { get; set; } = new();
     public Dictionary<GemColor, double> GemPower { get; set; } = new();
+    /// <summary>
+    /// Stat enchants: the enchant's ID (65 to 70) and the rating it adds to each of its two stats, summed over the items
+    /// that have it. The ratings above are without them; a character sheet's percentages include them.
+    /// </summary>
+    public List<BuildEntry> StatEnchants { get; set; } = new();
     /// <summary>The relic's passive ID (e.g. 777 for Accursed Trophy); 0 for none.</summary>
     public int RelicPassiveId { get; set; }
     /// <summary>Item IDs of the legendary items worn.</summary>
     public List<int> LegendaryItemIds { get; set; } = new();
     /// <summary>The weapon's ability ID (the weapon tree's ability, e.g. 1558 for Asha's Chronoshift Spire).</summary>
     public int WeaponAbilityId { get; set; }
+
+    /// <summary>The rating the stat enchants add to <paramref name="rating"/> (<see cref="StatType.CritRating"/> ...).</summary>
+    public double EnchantRating(StatType rating) =>
+        StatEnchants.Sum(e => Customization.StatEnchants.StatEnchant.Find(e.Id) is { } enchant
+                              && (enchant.FirstRating == rating || enchant.SecondRating == rating) ? e.Rank : 0);
 }

@@ -1,6 +1,11 @@
 using System.Collections.Concurrent;
 using FellowshipSim.Core;
+using FellowshipSim.Core.Customization.Aspects;
+using FellowshipSim.Core.Customization.Augmentations;
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.ProtectiveEnchants;
+using FellowshipSim.Core.Customization.Sigils;
+using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Domain;
 
@@ -36,9 +41,17 @@ public sealed class BuildCatalog
         RelicPassives = Catalog.AllRelicPassives
             .Select(r => new BuildOption(r.Id, r.Name, null))
             .OrderBy(o => o.Name).ToList();
-        Augmentations = Catalog.AllAugmentations
+        var augmentations = Catalog.AllAugmentations.ToList();
+        List<BuildOption> OfKind<T>() => augmentations.OfType<T>().Cast<Augmentation>()
             .Select(t => new BuildOption(t.Id, t.Name, GameIcons.Augmentations.GetValueOrDefault(t.Id), MaxRank: GameIcons.AugmentationMaxRanks.GetValueOrDefault(t.Id, DefaultMaxRank)))
             .OrderBy(o => o.Name).ToList();
+        Aspects = OfKind<Aspect>();
+        Sigils = OfKind<Sigil>();
+        ProtectiveEnchants = OfKind<ProtectiveEnchant>();
+        string mainStat = Catalog.CreateHero(hero).MainStat;
+        StatEnchants = StatEnchant.All
+            .Select(e => new StatEnchantOption(e, e.NameFor(mainStat)))
+            .ToList();
         Glyphs = Catalog.AllGlyphs
             .Select(b => new BuildOption(b.Id, b.Name, GameIcons.Glyphs.GetValueOrDefault(b.Id), MaxRank: GameIcons.GlyphMaxRanks.GetValueOrDefault(b.Id, DefaultMaxRank)))
             .OrderBy(o => o.Name).ToList();
@@ -58,7 +71,15 @@ public sealed class BuildCatalog
 
     public IReadOnlyList<BuildOption> RelicPassives { get; }
 
-    public IReadOnlyList<BuildOption> Augmentations { get; }
+    public IReadOnlyList<BuildOption> Aspects { get; }
+
+    public IReadOnlyList<BuildOption> Sigils { get; }
+
+    /// <summary>Protective enchants: one rank each, up to <see cref="ProtectiveEnchant.MaxPerBuild"/> in a build.</summary>
+    public IReadOnlyList<BuildOption> ProtectiveEnchants { get; }
+
+    /// <summary>The stat enchants, named for the hero's main stat ("Chimera's Cunning" for an Intellect hero).</summary>
+    public IReadOnlyList<StatEnchantOption> StatEnchants { get; }
 
     public IReadOnlyList<BuildOption> Glyphs { get; }
 

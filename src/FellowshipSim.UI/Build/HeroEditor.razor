@@ -1,6 +1,7 @@
 @using System.Globalization
 @using FellowshipSim.Core.Customization.Gems
 @using FellowshipSim.Core.Import
+@using FellowshipSim.Core.Customization.ProtectiveEnchants
 @inject ISimEngine Engine
 @inject ProfileStore Profiles
 @inject Visitor Visitor
@@ -172,12 +173,46 @@
     </div>
 </Card>
 
+<Card Title="Stat enchants">
+    <p class="hint">Each adds its rating to both of its stats. A build from a log already counts its enchants in the stats above.</p>
+    <div class="enchants">
+        @foreach (var e in Catalog.StatEnchants)
+        {
+            <label @key="e.Enchant.Id" class="enchant">
+                <span class="enchant-name">@e.Name <span class="meta">@e.StatsText</span></span>
+                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="Editor.StatEnchantRating(e.Enchant.Id)" @bind:set="v => Set(() => Editor.SetStatEnchantRating(e.Enchant, v))" />
+            </label>
+        }
+    </div>
+</Card>
+
 <div class="pair">
-    <Card Title="Augmentations">
-        <RankedChoices Options="Catalog.Augmentations" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
+    <Card Title="Aspects">
+        <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
     </Card>
+    <Card Title="Sigils">
+        <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
+    </Card>
+</div>
+
+<div class="pair">
     <Card Title="Glyphs">
         <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))" />
+    </Card>
+    <Card Title="Protective enchants">
+        <p class="hint">@Editor.ProtectiveEnchantCount of @ProtectiveEnchant.MaxPerBuild taken.</p>
+        <div class="chips">
+            @foreach (var p in Catalog.ProtectiveEnchants)
+            {
+                bool taken = Editor.AugmentationRank(p.Id) > 0;
+                bool full = !taken && Editor.ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild;
+                <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
+                        title="@(full ? $"Take off one of the {ProtectiveEnchant.MaxPerBuild} first" : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
+                    <GameIcon Url="@p.IconUrl" Size="24" />
+                    @p.Name
+                </button>
+            }
+        </div>
     </Card>
 </div>
 
@@ -204,6 +239,8 @@
             State.BuildStatus = MessageState.Error(e.Message);
         }
     }
+
+    private static string EnchantLabel(StatEnchantOption e) => $"{e.Name} rating";
 
     private static string TalentTitle(TalentOption t) => $"{t.Slot.Code}: {t.Talent.Name}" + (t.Talent.Modeled ? "" : " (not modeled)");
 

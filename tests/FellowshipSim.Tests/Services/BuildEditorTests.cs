@@ -69,7 +69,7 @@ public sealed class BuildEditorTests : IDisposable
         editor.Legendary = catalog.Legendaries.First(l => l.Modeled).Id;
         editor.RelicPassive = catalog.RelicPassives[0].Id;
         editor.SetGem(GemColor.Sapphire, 1500);
-        editor.SetAugmentationRank(catalog.Augmentations[0], 9);
+        editor.SetAugmentationRank(catalog.Aspects[0], 9);
         editor.SetGlyphRank(catalog.Glyphs[0], 2);
 
         var read = SimcProfile.Parse(new SimcProfile(editor.Build, "actions=frost_bolt").Format());
@@ -80,7 +80,7 @@ public sealed class BuildEditorTests : IDisposable
         Assert.Equal(editor.Legendary, back.Legendary);
         Assert.Equal(editor.RelicPassive, back.RelicPassive);
         Assert.Equal(1500, back.Gem(GemColor.Sapphire));
-        Assert.Equal(catalog.Augmentations[0].MaxRank, back.AugmentationRank(catalog.Augmentations[0].Id));
+        Assert.Equal(catalog.Aspects[0].MaxRank, back.AugmentationRank(catalog.Aspects[0].Id));
         Assert.Equal(2, back.GlyphRank(catalog.Glyphs[0].Id));
         Assert.Equal("actions=frost_bolt", read.ActionList.Trim());
     }

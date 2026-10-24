@@ -4,6 +4,7 @@ using FellowshipSim.Core.APL;
 using FellowshipSim.Core.Customization.Aspects;
 using FellowshipSim.Core.Customization.Augmentations;
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Customization.ProtectiveEnchants;
 using FellowshipSim.Core.Customization.Sigils;
 
@@ -74,6 +75,11 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             }
         }
         if (hero == null) throw new FormatException("The profile has no hero line.");
+        // The ratings read from the percentages count the stat enchants; a build's ratings are without them.
+        build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
+        build.HasteRating = Math.Max(0, build.HasteRating - build.EnchantRating(StatType.HasteRating));
+        build.ExpertiseRating = Math.Max(0, build.ExpertiseRating - build.EnchantRating(StatType.ExpertiseRating));
+        build.SpiritRating = Math.Max(0, build.SpiritRating - build.EnchantRating(StatType.SpiritRating));
         return new SimcProfile(build, actions.ToString());
     }
 
@@ -122,6 +128,13 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     build.GemPower[colors[0]] = power;
                 }
                 break;
+            case "stat_enchants":
+                foreach (var (name, rating) in Ranked(value))
+                {
+                    var enchant = StatEnchant.All.FirstOrDefault(e => e.Key == name) ?? throw new FormatException($"no stat enchant '{name}'");
+                    build.StatEnchants.Add(new BuildEntry(enchant.Id, rating));
+                }
+                break;
             case "relic":
                 build.RelicPassiveId = IdOf(value, Catalog.AllRelicPassives.Select(r => (r.Name, r.Id)), "relic passive");
                 break;
@@ -152,13 +165,14 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         s.AppendLine($"primary_stat={Text(build.PrimaryStat)}");
         if (build.Stamina > 0) s.AppendLine($"stamina={Text(build.Stamina)}");
         if (build.Armor > 0) s.AppendLine($"armor={Text(build.Armor)}");
-        // The log's character sheet when there is one, otherwise the percentages of the ratings.
-        double Sheet(string stat, double baseValue, double rating) =>
-            build.SheetPercents.TryGetValue(stat, out double sheet) ? sheet : baseValue + StatDiminishingReturns.FromRating(rating);
-        s.AppendLine($"crit={PercentText(Sheet("crit", StatBlock.BaseCritChance, build.CritRating))}");
-        s.AppendLine($"haste={PercentText(Sheet("haste", 0, build.HasteRating))}");
-        s.AppendLine($"expertise={PercentText(Sheet("expertise", 0, build.ExpertiseRating))}");
-        s.AppendLine($"spirit={PercentText(Sheet("spirit", StatBlock.BaseSpirit, build.SpiritRating))}");
+        // The log's character sheet when there is one, otherwise the percentages of the ratings with the stat enchants'.
+        double Sheet(string stat, double baseValue, double rating, StatType ratingType) =>
+            build.SheetPercents.TryGetValue(stat, out double sheet) ? sheet
+                : baseValue + StatDiminishingReturns.FromRating(rating + build.EnchantRating(ratingType));
+        s.AppendLine($"crit={PercentText(Sheet("crit", StatBlock.BaseCritChance, build.CritRating, StatType.CritRating))}");
+        s.AppendLine($"haste={PercentText(Sheet("haste", 0, build.HasteRating, StatType.HasteRating))}");
+        s.AppendLine($"expertise={PercentText(Sheet("expertise", 0, build.ExpertiseRating, StatType.ExpertiseRating))}");
+        s.AppendLine($"spirit={PercentText(Sheet("spirit", StatBlock.BaseSpirit, build.SpiritRating, StatType.SpiritRating))}");
         if (build.Talents.Count > 0)
         {
             s.AppendLine($"talents={string.Join('/', build.Talents.Select(id => AplNames.Slug(Catalog.CreateTalent(id)?.Name ?? throw new InvalidOperationException($"Talent {id} is not modeled"))))}");
@@ -181,6 +195,10 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         if (build.GemPower.Count > 0)
         {
             s.AppendLine($"gems={string.Join('/', build.GemPower.Select(g => $"{AplNames.Slug(g.Key.ToString())}:{Text(g.Value)}"))}");
+        }
+        if (build.StatEnchants.Count > 0)
+        {
+            s.AppendLine($"stat_enchants={string.Join('/', build.StatEnchants.Select(e => $"{(StatEnchant.Find(e.Id) ?? throw new InvalidOperationException($"Stat enchant {e.Id} is not known")).Key}:{Text(e.Rank)}"))}");
         }
         if (build.RelicPassiveId != 0)
         {

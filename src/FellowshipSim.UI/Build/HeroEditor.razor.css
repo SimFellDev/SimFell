@@ -365,6 +365,45 @@
   margin: 0;
 }
 
+.enchants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 12px;
+}
+
+.enchant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.enchant-name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A number typed in, without the browser's up and down arrows. */
+.enchant input {
+  width: 80px;
+  padding: 6px 8px;
+  background: var(--surface);
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.enchant input::-webkit-outer-spin-button,
+.enchant input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .badge {
   display: inline-block;
   padding: 0 6px;

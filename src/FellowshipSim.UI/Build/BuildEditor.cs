@@ -1,4 +1,6 @@
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.ProtectiveEnchants;
+using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using CoreCatalog = FellowshipSim.Core.Catalog;
@@ -64,9 +66,50 @@ public sealed class BuildEditor(CharacterBuild build)
         Build.SheetPercents.Remove(Key(stat));
     }
 
-    /// <summary>The stat's character-sheet percentage (a fraction): the log's when the build came from one, otherwise its rating's.</summary>
+    /// <summary>
+    /// The stat's character-sheet percentage (a fraction): the log's when the build came from one, otherwise its rating's
+    /// with the stat enchants' rating.
+    /// </summary>
     public double Percent(RatedStat stat) =>
-        Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat));
+        Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet
+            : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat) + Build.EnchantRating(RatingType(stat)));
+
+    private static StatType RatingType(RatedStat stat) => stat switch
+    {
+        RatedStat.Crit => StatType.CritRating,
+        RatedStat.Haste => StatType.HasteRating,
+        RatedStat.Expertise => StatType.ExpertiseRating,
+        _ => StatType.SpiritRating,
+    };
+
+    private static RatedStat StatOf(StatType rating) => rating switch
+    {
+        StatType.CritRating => RatedStat.Crit,
+        StatType.HasteRating => RatedStat.Haste,
+        StatType.ExpertiseRating => RatedStat.Expertise,
+        _ => RatedStat.Spirit,
+    };
+
+    /// <summary>The rating the build's stat enchant <paramref name="id"/> adds to each of its stats; 0 when it has none.</summary>
+    public double StatEnchantRating(int id) => Build.StatEnchants.FirstOrDefault(e => e.Id == id)?.Rank ?? 0;
+
+    /// <summary>
+    /// Sets the rating a stat enchant adds. Its two stats leave the log's character sheet (which counted the old enchant)
+    /// for their ratings, which are without enchants, plus the enchants.
+    /// </summary>
+    public void SetStatEnchantRating(StatEnchant enchant, double rating)
+    {
+        int value = (int)Math.Max(0, Math.Round(rating));
+        Build.SheetPercents.Remove(Key(StatOf(enchant.FirstRating)));
+        Build.SheetPercents.Remove(Key(StatOf(enchant.SecondRating)));
+        int at = Build.StatEnchants.FindIndex(e => e.Id == enchant.Id);
+        if (value == 0)
+        {
+            if (at >= 0) Build.StatEnchants.RemoveAt(at);
+        }
+        else if (at >= 0) Build.StatEnchants[at] = Build.StatEnchants[at] with { Rank = value };
+        else Build.StatEnchants.Add(new BuildEntry(enchant.Id, value));
+    }
 
     /// <summary>True when <see cref="Percent"/> is the log's character sheet, which counts gem nodes too.</summary>
     public bool PercentFromLog(RatedStat stat) => Build.SheetPercents.ContainsKey(Key(stat));
@@ -107,6 +150,25 @@ public sealed class BuildEditor(CharacterBuild build)
     public int AugmentationRank(int id) => Build.Augmentations.FirstOrDefault(a => a.Id == id)?.Rank ?? 0;
 
     public void SetAugmentationRank(BuildOption augmentation, int rank) => SetRank(Build.Augmentations, augmentation, rank);
+
+    /// <summary>Protective enchants the build has, of the catalog's <see cref="BuildCatalog.ProtectiveEnchants"/>.</summary>
+    public int ProtectiveEnchantCount => Catalog.ProtectiveEnchants.Count(p => AugmentationRank(p.Id) > 0);
+
+    /// <summary>
+    /// Takes the protective enchant, or drops it when taken. Taking one more than <see cref="ProtectiveEnchant.MaxPerBuild"/>
+    /// is refused: false.
+    /// </summary>
+    public bool ToggleProtectiveEnchant(BuildOption enchant)
+    {
+        if (AugmentationRank(enchant.Id) > 0)
+        {
+            SetAugmentationRank(enchant, 0);
+            return true;
+        }
+        if (ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild) return false;
+        SetAugmentationRank(enchant, 1);
+        return true;
+    }
 
     public int GlyphRank(int id) => Build.Glyphs.FirstOrDefault(g => g.Id == id)?.Rank ?? 0;
 
