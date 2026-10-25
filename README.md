@@ -16,7 +16,8 @@ SimFell runs in three ways. They share the same engine:
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - The [Aspire CLI](https://aspire.dev), to run the web app
 - The .NET MAUI workload (`dotnet workload install maui`), to build the desktop app
-- A FellowshipLogs API client ID and secret (from your FellowshipLogs account), to download fights
+- A FellowshipLogs API client ID and secret, to download fights: sign in to FellowshipLogs, create a client on
+  [API clients](https://www.fellowshiplogs.com/api/clients/), and copy its client ID and secret
 
 ## Build
 
