@@ -18,8 +18,9 @@ public class ConstantExpression : IAplExpression
 /// <summary>
 /// A value read from the hero or the fight, written as a path: a name in <see cref="Named"/>, a resource ("winter_orbs",
 /// or "resource.winter_orbs") or the room left in one ("spirit.deficit"), "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" with
-/// a scope and property in <see cref="Scopes"/>, "&lt;scope&gt;.&lt;name&gt;" with a scope in <see cref="BuildScopes"/>
-/// (1 when the build has it), or "variable.&lt;name&gt;".
+/// a scope and property in <see cref="Scopes"/> ("dot" is "debuff"), "&lt;scope&gt;.&lt;name&gt;" with a scope in
+/// <see cref="BuildScopes"/> (1 when the build has it), "active_dot.&lt;name&gt;" (the enemies in combat with that debuff),
+/// or "variable.&lt;name&gt;".
 /// </summary>
 public class PropertyExpression : IAplExpression
 {
@@ -27,6 +28,9 @@ public class PropertyExpression : IAplExpression
     public const string DeficitSuffix = ".deficit";
     public const string BuffScope = "buff";
     public const string DebuffScope = "debuff";
+    /// <summary>SimulationCraft's name for a damage over time effect: the same as <see cref="DebuffScope"/>.</summary>
+    public const string DotScope = "dot";
+    public const string ActiveDotScope = "active_dot";
     public const string CooldownScope = "cooldown";
     public const string ActionScope = "action";
     public const string TalentScope = "talent";
@@ -62,22 +66,24 @@ public class PropertyExpression : IAplExpression
     /// <summary>The hasted global cooldown, as <see cref="SimulationContext.BeginCast"/> sets it.</summary>
     public static double Gcd(Hero hero, SimTime now) => hero.GlobalCooldownSeconds / (1.0 + hero.GetHaste(now));
 
-    /// <summary>Properties of an aura on the hero (buff) or on the current target (debuff); the aura is null when it is not up.</summary>
-    private static readonly Dictionary<string, Func<Aura?, SimTime, double>> AuraProperties = new()
+    /// <summary>Properties of an aura on the hero (buff) or an effect on the current target (debuff); null when it is not up.</summary>
+    private static readonly Dictionary<string, Func<TargetEffect?, SimTime, double>> AuraProperties = new()
     {
         ["up"] = (aura, _) => aura != null ? 1.0 : 0.0,
+        // SimulationCraft's word for a damage over time effect that is up.
+        ["ticking"] = (aura, _) => aura != null ? 1.0 : 0.0,
         ["down"] = (aura, _) => aura == null ? 1.0 : 0.0,
         ["stack"] = (aura, _) => aura?.Stacks ?? 0,
         // SimulationCraft's react is the stacks the player has seen; the sim reacts at once.
         ["react"] = (aura, _) => aura?.Stacks ?? 0,
-        ["at_max_stacks"] = (aura, _) => aura != null && aura.Stacks >= aura.MaxStacks ? 1.0 : 0.0,
-        ["remains"] = (aura, now) => aura == null ? 0.0 : aura.ExpiresAt == SimTime.Infinite ? double.MaxValue : (aura.ExpiresAt - now).TotalSeconds,
+        ["at_max_stacks"] = (aura, _) => aura is { } a && a.Stacks >= a.MaxStacks ? 1.0 : 0.0,
+        ["remains"] = (aura, now) => aura is not { } a ? 0.0 : a.ExpiresAt == SimTime.Infinite ? double.MaxValue : (a.ExpiresAt - now).TotalSeconds,
         ["refreshable"] = (aura, now) => IsRefreshable(aura, now) ? 1.0 : 0.0,
     };
 
     /// <summary>True when <paramref name="aura"/> is down or in the last <see cref="RefreshableFraction"/> of its duration.</summary>
-    public static bool IsRefreshable(Aura? aura, SimTime now) =>
-        aura == null || (aura.ExpiresAt != SimTime.Infinite && (aura.ExpiresAt - now).TotalSeconds < RefreshableFraction * aura.Duration.TotalSeconds);
+    public static bool IsRefreshable(TargetEffect? aura, SimTime now) =>
+        aura is not { } a || (a.ExpiresAt != SimTime.Infinite && (a.ExpiresAt - now).TotalSeconds < RefreshableFraction * a.Duration.TotalSeconds);
 
     /// <summary>Properties of an ability's cooldown, by the ability's name.</summary>
     private static readonly Dictionary<string, Func<Hero, Ability?, string, SimTime, double>> CooldownProperties = new()
@@ -90,6 +96,9 @@ public class PropertyExpression : IAplExpression
         ["duration"] = (_, ability, _, _) => ability?.Cooldown.TotalSeconds ?? 0.0,
         ["full_recharge_time"] = (hero, ability, name, now) =>
             hero.Cooldowns.TryGetValue(name, out var state) ? FullRechargeTime(state, ability, now) : 0.0,
+        ["charges_fractional"] = (hero, ability, name, now) =>
+            // The charges held and the part of the next one recharged so far (2.25: two, and a quarter of the third).
+            hero.Cooldowns.TryGetValue(name, out var state) ? state.ChargesAt(now) + state.RechargedPart(now, now) : ability?.MaxCharges ?? 1,
     };
 
     /// <summary>
@@ -116,6 +125,7 @@ public class PropertyExpression : IAplExpression
         {
             [BuffScope] = AuraProperties.Keys,
             [DebuffScope] = AuraProperties.Keys,
+            [DotScope] = AuraProperties.Keys,
             [CooldownScope] = CooldownProperties.Keys,
             [ActionScope] = ActionProperties.Keys,
         };
@@ -153,11 +163,15 @@ public class PropertyExpression : IAplExpression
     {
         PropertyPath = propertyPath.Trim().ToLowerInvariant();
         var parts = PropertyPath.Split('.');
-        if (parts.Length >= 3 && Scopes.ContainsKey(parts[0]))
+        if (parts.Length >= 3 && parts[0] == DotScope)
+        {
+            (Scope, Name, Property) = (DebuffScope, parts[1], parts[2]);
+        }
+        else if (parts.Length >= 3 && Scopes.ContainsKey(parts[0]))
         {
             (Scope, Name, Property) = (parts[0], parts[1], parts[2]);
         }
-        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] == VariableScope))
+        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope))
         {
             (Scope, Name) = (parts[0], parts[1]);
         }
@@ -197,11 +211,14 @@ public class PropertyExpression : IAplExpression
         switch (Scope)
         {
             case BuffScope:
-                return AuraProperty(Property!)(AuraLookup.Find(hero.Auras, Name!, now), now);
+                return AuraProperty(Property!)(AuraLookup.Find(hero.Auras, Name!, now) is { } aura ? TargetEffect.Of(aura) : null, now);
 
             case DebuffScope:
                 var target = ctx.Player.CurrentTarget;
-                return AuraProperty(Property!)(target == null ? null : AuraLookup.Find(target.Auras, Name!, now), now);
+                return AuraProperty(Property!)(target == null ? null : AuraLookup.On(hero, target, Name!, now), now);
+
+            case ActiveDotScope:
+                return ctx.ActiveEnemies.Count(enemy => AuraLookup.On(hero, enemy, Name!, now) != null);
 
             case CooldownScope:
                 // Cooldowns are kept under the ability's own name ("Cold Snap"), not its action-list name.
@@ -234,12 +251,12 @@ public class PropertyExpression : IAplExpression
     public static string? OfAction(string path, string ability) => path switch
     {
         "refreshable" or "ticking" => $"{DebuffScope}.{ability}.{(path == "ticking" ? "up" : path)}",
-        "full_recharge_time" or "charges" => $"{CooldownScope}.{ability}.{path}",
+        "full_recharge_time" or "charges" or "charges_fractional" => $"{CooldownScope}.{ability}.{path}",
         "execute_time" or "cast_time" => $"{ActionScope}.{ability}.execute_time",
         _ => null,
     };
 
-    private static Func<Aura?, SimTime, double> AuraProperty(string property) =>
+    private static Func<TargetEffect?, SimTime, double> AuraProperty(string property) =>
         AuraProperties.GetValueOrDefault(property) ?? AuraProperties["up"];
 
     public override string ToString() => PropertyPath;
@@ -349,4 +366,13 @@ internal static class AuraLookup
 {
     /// <summary>An active aura whose name, as an APL slug ("glacial_assault"), matches <paramref name="slug"/>.</summary>
     public static Aura? Find(AuraContainer auras, string slug, SimTime now) => auras.FindActive(slug, now);
+
+    /// <summary>
+    /// The effect <paramref name="slug"/> <paramref name="hero"/> keeps on <paramref name="enemy"/>
+    /// (<see cref="ITargetEffects"/>: its own expiry, where the enemy's debuff that shows it has none), or else the aura of
+    /// that name on it; null when neither is on it.
+    /// </summary>
+    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now) =>
+        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now) is { } effect ? effect
+        : enemy.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
 }

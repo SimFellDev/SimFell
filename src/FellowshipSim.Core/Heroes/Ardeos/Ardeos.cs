@@ -7,7 +7,7 @@ namespace FellowshipSim.Core.Heroes.Ardeos;
 /// Ardeos, the Pyromancer. His abilities generate Cinders; every 100 Cinders are a Burning Ember. Detonate spends them.
 /// His fire damage over time effects run on <see cref="Dots"/>. Abilities are in Abilities/, talents in Talents/.
 /// </summary>
-public sealed class Ardeos : Hero
+public sealed class Ardeos : Hero, ITargetEffects
 {
     /// <summary>"For every 100 Cinder you generate, you gain 1 Burning Ember, shown in the UI ... as four orbs."</summary>
     public const double CindersPerBurningEmber = 100.0;
@@ -63,6 +63,36 @@ public sealed class Ardeos : Hero
     }
 
     public Ardeos() => Dots = new DotTracker(this);
+
+    public IEnumerable<string> TargetEffectNames => AllDots.Select(d => d.Name);
+
+    // Each kind's action-list name, worked out once.
+    private readonly Dictionary<DamageOverTime, string> _dotSlugs = new();
+
+    /// <summary>
+    /// A damage over time effect on <paramref name="target"/>, as one: running until its last copy runs out, with the
+    /// stacks of every copy (Engulfing Flames runs as copies side by side).
+    /// </summary>
+    public TargetEffect? FindOn(EnemyTarget target, string slug, SimTime now)
+    {
+        var on = Dots.On(target);
+        DamageOverTime? effect = null;
+        var expiresAt = SimTime.Zero;
+        int stacks = 0;
+        for (int i = 0; i < on.Count; i++)
+        {
+            var dot = on[i];
+            if (!dot.IsActive || dot.ExpiresAt <= now) continue;
+            if (!_dotSlugs.TryGetValue(dot.Effect, out var dotSlug)) _dotSlugs[dot.Effect] = dotSlug = APL.AplNames.Slug(dot.Effect.Name);
+            if (dotSlug != slug) continue;
+            effect = dot.Effect;
+            stacks += dot.Stacks;
+            if (dot.ExpiresAt > expiresAt) expiresAt = dot.ExpiresAt;
+        }
+        if (effect == null) return null;
+        int maxStacks = effect.Stacking == DotStacking.Concurrent ? int.MaxValue : effect.MaxStacks;
+        return new TargetEffect(expiresAt, stacks, maxStacks, SimTime.FromSeconds(effect.Duration));
+    }
 
     /// <summary>Whole Burning Embers held.</summary>
     public int BurningEmbers => (int)Math.Floor(ResourceAmount(Cinders) / CindersPerBurningEmber + 1e-9);

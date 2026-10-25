@@ -24,7 +24,7 @@ actions.main+=/highwind_arrow,target_if=max:target.health,if=legendary.shimmer&d
 actions.main+=/heartseeker_barrage,target_if=max:debuff.lunarlight_mark.stack,if=buff.impending_heartseeker.up|debuff.lunarlight_mark.up&(talent.fusillade|!legendary.astronomers_hail)&(active_enemies<8|talent.piercing_seekers)|talent.fervent_supremacy&active_enemies=1|buff.event_horizon.up
 actions.main+=/chronoshift
 actions.main+=/multishot,if=(buff.skystriders_supremacy.up|buff.focused_expanse.up)&active_enemies<=2
-actions.main+=/highwind_arrow,target_if=max:target.health,if=charges>=2&(!buff.skystriders_supremacy.up|talent.fervent_supremacy|talent.resurgent_winds)
+actions.main+=/highwind_arrow,target_if=max:target.health,if=charges_fractional>=2&(!buff.skystriders_supremacy.up|talent.fervent_supremacy|talent.resurgent_winds)
 actions.main+=/skystriders_supremacy,if=!buff.skystriders_supremacy.up&!talent.fervent_supremacy
 actions.main+=/celestial_shot,target_if=max:target.health,if=buff.celestial_impetus.react&talent.impending_heartseeker&!buff.impending_heartseeker.up
 actions.main+=/highwind_arrow,target_if=max:target.health,if=active_enemies>=2&!legendary.shimmer

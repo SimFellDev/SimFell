@@ -87,6 +87,8 @@ public abstract class BoundExpression
                 var ability = AplNames.FindAbility(hero, p.Name!);
                 var read = PropertyExpression.ActionProperty(p.Property!);
                 return new BoundNamed(hero, (_, ctx) => read(ability, ctx.CurrentTime));
+            case PropertyExpression.ActiveDotScope:
+                return new BoundActiveDot(hero, p.Name!);
             case PropertyExpression.VariableScope:
                 return variables != null ? new BoundVariable(variables.Slot(p.Name!)) : new BoundConstant(0.0);
             case { } scope when PropertyExpression.BuildScopes.TryGetValue(scope, out var has):
@@ -366,9 +368,9 @@ internal sealed class BoundVariable(BoundVariableSlot slot) : BoundEventValue
 }
 
 /// <summary>
-/// A property of an aura on the hero (buff) or on the current target (debuff). The aura is found by its action-list name
-/// among the active auras, as <see cref="PropertyExpression"/> finds it: several definitions can share a name (copies with
-/// another duration or source).
+/// A property of an aura on the hero (buff) or of an effect on the current target (debuff: an aura, or an effect the hero
+/// keeps, <see cref="ITargetEffects"/>). It is found by its action-list name, as <see cref="PropertyExpression"/> finds it:
+/// several definitions can share a name (copies with another duration or source).
 /// </summary>
 internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.AuraProperty property) : BoundNumeric
 {
@@ -391,21 +393,21 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         return Read(Find(ctx, now), now);
     }
 
-    private Aura? Find(SimulationContext ctx, SimTime now)
+    private TargetEffect? Find(SimulationContext ctx, SimTime now)
     {
-        if (!debuff) return hero.Auras.FindActive(slug, now);
+        if (!debuff) return hero.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
         var target = ctx.Player.CurrentTarget;
-        return target == null ? null : target.Auras.FindActive(slug, now);
+        return target == null ? null : AuraLookup.On(hero, target, slug, now);
     }
 
-    private double Read(Aura? aura, SimTime now) => property switch
+    private double Read(TargetEffect? aura, SimTime now) => property switch
     {
         AuraProperty.Up => aura != null ? 1.0 : 0.0,
         AuraProperty.Down => aura == null ? 1.0 : 0.0,
         AuraProperty.Stack => aura?.Stacks ?? 0,
-        AuraProperty.AtMaxStacks => aura != null && aura.Stacks >= aura.MaxStacks ? 1.0 : 0.0,
+        AuraProperty.AtMaxStacks => aura is { } a && a.Stacks >= a.MaxStacks ? 1.0 : 0.0,
         AuraProperty.Refreshable => PropertyExpression.IsRefreshable(aura, now) ? 1.0 : 0.0,
-        _ => aura == null ? 0.0 : aura.ExpiresAt == SimTime.Infinite ? double.MaxValue : (aura.ExpiresAt - now).TotalSeconds,
+        _ => aura is not { } r ? 0.0 : r.ExpiresAt == SimTime.Infinite ? double.MaxValue : (r.ExpiresAt - now).TotalSeconds,
     };
 
     // The aura found now runs out at its expiry; another aura of the name appears only in an event. A refreshable read
@@ -434,7 +436,38 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
     internal override double NumericAt(SimulationContext ctx, SimTime time)
     {
         var aura = Find(ctx, ctx.CurrentTime);
-        return Read(aura != null && time >= aura.ExpiresAt ? null : aura, time);
+        return Read(aura is { } a && time >= a.ExpiresAt ? null : aura, time);
+    }
+}
+
+/// <summary>
+/// The enemies in combat with a debuff (<c>active_dot.&lt;name&gt;</c>): an aura on them, or an effect the hero keeps on
+/// them (<see cref="ITargetEffects"/>). It falls when one runs out, and rises only in an event.
+/// </summary>
+internal sealed class BoundActiveDot(Hero hero, string slug) : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => NumericAt(ctx, ctx.CurrentTime);
+
+    internal override SimTime Until(SimulationContext ctx)
+    {
+        var now = ctx.CurrentTime;
+        var first = SimTime.Infinite;
+        foreach (var enemy in ctx.ActiveEnemies)
+        {
+            if (AuraLookup.On(hero, enemy, slug, now) is { } effect && effect.ExpiresAt < first) first = effect.ExpiresAt;
+        }
+        return first;
+    }
+
+    internal override double NumericAt(SimulationContext ctx, SimTime time)
+    {
+        var now = ctx.CurrentTime;
+        int count = 0;
+        foreach (var enemy in ctx.ActiveEnemies)
+        {
+            if (AuraLookup.On(hero, enemy, slug, now) is { } effect && time < effect.ExpiresAt) count++;
+        }
+        return count;
     }
 }
 
@@ -444,7 +477,7 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
 /// </summary>
 internal sealed class BoundCooldown : BoundNumeric
 {
-    private enum CooldownProperty { Ready, Remains, Charges, Duration, FullRechargeTime }
+    private enum CooldownProperty { Ready, Remains, Charges, ChargesFractional, Duration, FullRechargeTime }
 
     private readonly Hero _hero;
     private readonly Ability? _ability;
@@ -462,6 +495,7 @@ internal sealed class BoundCooldown : BoundNumeric
         {
             "remains" => CooldownProperty.Remains,
             "charges" => CooldownProperty.Charges,
+            "charges_fractional" => CooldownProperty.ChargesFractional,
             "duration" => CooldownProperty.Duration,
             "full_recharge_time" => CooldownProperty.FullRechargeTime,
             _ => CooldownProperty.Ready,
@@ -483,7 +517,8 @@ internal sealed class BoundCooldown : BoundNumeric
     internal override SimTime Until(SimulationContext ctx) =>
         State() is { } state && state.ChargesAt(ctx.CurrentTime) < state.MaxCharges ? state.NextChargeAt : SimTime.Infinite;
 
-    // A remaining time falls a second per second while the charge it waits for recharges.
+    // A remaining time falls a second per second while the charge it waits for recharges; the fractional charges rise by
+    // the part of a cooldown that passes.
     private bool Falls(SimulationContext ctx) => State() is { } state && state.NextChargeAt > ctx.CurrentTime && _property switch
     {
         CooldownProperty.Remains => state.ChargesAt(ctx.CurrentTime) == 0,
@@ -491,10 +526,15 @@ internal sealed class BoundCooldown : BoundNumeric
         _ => false,
     };
 
-    internal override bool IsLevel(SimulationContext ctx) => !Falls(ctx);
+    private bool Rises(SimulationContext ctx) => _property == CooldownProperty.ChargesFractional && State() is { } state
+        && state.RechargePerSecond(ctx.CurrentTime) > 0.0;
+
+    internal override bool IsLevel(SimulationContext ctx) => !Falls(ctx) && !Rises(ctx);
 
     internal override TimeCurve Curve(SimulationContext ctx) =>
-        Falls(ctx) ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001) : TimeCurve.Constant(EvaluateNumeric(ctx));
+        Falls(ctx) ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001)
+        : Rises(ctx) ? TimeCurve.Line(EvaluateNumeric(ctx), 0.001 * State()!.RechargePerSecond(ctx.CurrentTime))
+        : TimeCurve.Constant(EvaluateNumeric(ctx));
 
     internal override double NumericAt(SimulationContext ctx, SimTime time)
     {
@@ -505,6 +545,7 @@ internal sealed class BoundCooldown : BoundNumeric
             CooldownProperty.Ready => state == null || state.ChargesAt(now) > 0 ? 1.0 : 0.0,
             CooldownProperty.Remains => state != null && state.ChargesAt(now) == 0 ? Math.Max(0.0, (state.NextChargeAt - time).TotalSeconds) : 0.0,
             CooldownProperty.Duration => _ability?.Cooldown.TotalSeconds ?? 0.0,
+            CooldownProperty.ChargesFractional => state != null ? state.ChargesAt(now) + state.RechargedPart(now, time) : _ability?.MaxCharges ?? 1,
             CooldownProperty.FullRechargeTime => state != null && state.ChargesAt(now) < state.MaxCharges
                 ? Math.Max(0.0, (state.NextChargeAt - time).TotalSeconds) + (state.MaxCharges - state.ChargesAt(now) - 1) * (_ability?.Cooldown.TotalSeconds ?? 0.0)
                 : 0.0,

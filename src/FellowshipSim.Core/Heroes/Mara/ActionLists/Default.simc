@@ -1,7 +1,7 @@
 # Mara's default action list: FellowSimc's SimC list (apl/mara/mara.simc) in SimFell's names. In Brooding Shadows,
 # Backstab and Skittering Blades are their Stealth casts. Malevolence's Queen's Fang buff (it raises Arachnid Assault)
-# is malevolence_arachnid_assault, and its Arachnid Assault buff malevolence_queens_fang. A count of enemies with a
-# poison (active_dot) reads the target's own.
+# is malevolence_arachnid_assault, and its Arachnid Assault buff malevolence_queens_fang. Hemorrhaging Strike's bleed
+# is dot.hemorrhage.
 # Left out: pooling Energy, Spirit and Energy regeneration, the energy estimate and bleed count variables, Matriarch's
 # Spirit cycle check, the clone proc, the Fated Strike buff, and Earthbreaker (a weapon the engine does not have).
 actions.precombat=snapshot_stats
@@ -17,19 +17,19 @@ actions.aoe+=/macabre_stratagem,if=buff.maiden_of_death.up&(buff.deadly_scheme.u
 actions.aoe+=/sahrils_wrath,if=!buff.sundering_wrath.up&(buff.matriarch_macabre.up|spirit.deficit>=70|fight_remains<=20)
 actions.aoe+=/fated_strike,if=cooldown.brooding_shadows.full_recharge_time>=gcd.max*2&(cooldown.maiden_of_death.full_recharge_time>=gcd.max*2|talent.sinners_pride)|weapon_trait.visions_of_grandeur
 actions.aoe+=/voidbringers_touch,target_if=max:target.health,if=cooldown.maiden_of_death.remains<=6|buff.matriarch_macabre.up|buff.maiden_of_death.up|!weapon_trait.brave_machinations&buff.deadly_scheme.up
-actions.aoe+=/brooding_shadows,if=combo_points=0&!buff.brooding_shadows.up&(!debuff.volatile_poison.up&(buff.deadly_scheme.up|cooldown.brooding_shadows.full_recharge_time<=6|!talent.assassins_guile)|!debuff.seething_poison.up)
-actions.aoe+=/stealth_skittering_blades,if=buff.brooding_shadows.up&!debuff.volatile_poison.up&cooldown.brooding_shadows.up
+actions.aoe+=/brooding_shadows,if=combo_points=0&!buff.brooding_shadows.up&(active_dot.volatile_poison=0&(buff.deadly_scheme.up|cooldown.brooding_shadows.full_recharge_time<=6|!talent.assassins_guile)|active_dot.seething_poison=0)
+actions.aoe+=/stealth_skittering_blades,if=buff.brooding_shadows.up&active_dot.volatile_poison=0&cooldown.brooding_shadows.up
 actions.aoe+=/widows_bite,target_if=max:debuff.seething_poison.remains,if=buff.brooding_shadows.up&debuff.seething_poison.refreshable
 actions.aoe+=/stealth_skittering_blades,if=buff.brooding_shadows.up
 actions.aoe+=/final_stratagem,if=(cooldown.maiden_of_death.remains>=30|talent.sinners_pride)&combo_points<=2|fight_remains<=20
 actions.aoe+=/queens_fang,target_if=max:target.health,if=combo_points>=1&talent.malevolence&!buff.malevolence_arachnid_assault.up&!buff.deadly_scheme.up
 actions.aoe+=/hemorrhaging_strike,target_if=min:debuff.hemotoxin.remains-100*debuff.hemotoxin.up,if=talent.hemotoxin&combo_points>=6&debuff.hemotoxin.up&!buff.deadly_scheme.up&(buff.maiden_of_death.up|debuff.hemotoxin.at_max_stacks|debuff.hemotoxin.remains<=4)
-actions.aoe+=/hemorrhaging_strike,target_if=min:debuff.hemorrhage.remains,if=debuff.hemorrhage.refreshable&(cooldown.maiden_of_death.remains>=10+10*talent.sinners_pride|buff.maiden_of_death.up|active_enemies<=3|!talent.gushing_blood)&(active_enemies<=5|talent.gushing_blood&buff.maiden_of_death.up)
+actions.aoe+=/hemorrhaging_strike,target_if=min:dot.hemorrhage.remains,if=dot.hemorrhage.refreshable&(cooldown.maiden_of_death.remains>=10+10*talent.sinners_pride|buff.maiden_of_death.up|active_enemies<=3|!talent.gushing_blood)&(active_enemies<=5|talent.gushing_blood&buff.maiden_of_death.up)
 actions.aoe+=/arachnid_assault,if=combo_points>=4&(buff.deadly_scheme.up|buff.malevolence_arachnid_assault.at_max_stacks)
 actions.aoe+=/queens_fang,target_if=max:target.health,if=combo_points>=1&talent.malevolence
 actions.aoe+=/arachnid_assault,if=combo_points>=4
 actions.aoe+=/backstab,if=combo_points=4&energy.deficit>=120
-actions.aoe+=/widows_bite,target_if=min:debuff.hemorrhage.remains-100*(target.time_to_die>=15)-100*(target.time_to_die>=24),if=combo_points<=2&energy.deficit>=(100+talent.venomous_delight*20)|talent.hemotoxin&combo_points<=3&(energy.deficit>=60|full_recharge_time<=gcd.max*3)
+actions.aoe+=/widows_bite,target_if=min:dot.hemorrhage.remains-100*(target.time_to_die>=15)-100*(target.time_to_die>=24),if=combo_points<=2&energy.deficit>=(100+talent.venomous_delight*20)|talent.hemotoxin&combo_points<=3&(energy.deficit>=60|full_recharge_time<=gcd.max*3)
 actions.aoe+=/backstab,target_if=max:debuff.seething_poison.remains,if=talent.hemotoxin&buff.maiden_of_death.up&talent.gushing_blood
 actions.aoe+=/skittering_blades,if=combo_points<4
 
@@ -38,7 +38,7 @@ actions.st=fated_strike,if=(!cooldown.brooding_shadows.up&!cooldown.maiden_of_de
 actions.st+=/sahrils_wrath,if=(buff.maiden_of_death.up|weapon_trait.visions_of_grandeur&spirit>=94)&!buff.brooding_shadows.up
 actions.st+=/voidbringers_touch,target_if=max:target.health,if=(cooldown.maiden_of_death.remains<=6&buff.deadly_scheme.up|buff.matriarch_macabre.up|buff.maiden_of_death.up|weapon_trait.visions_of_grandeur)&!buff.brooding_shadows.up
 actions.st+=/matriarch_macabre,if=combo_points>=4&(buff.maiden_of_death.remains>=8|cooldown.maiden_of_death.remains<=gcd.max|talent.sinners_pride&cooldown.maiden_of_death.remains<=20)&!buff.matriarch_macabre.up&(!weapon_trait.visions_of_grandeur|weapon.fated_strike&cooldown.fated_strike.remains>=7.5*weapon_trait.visions_of_grandeur|!weapon.fated_strike|spirit.deficit<=10)&!buff.brooding_shadows.up
-actions.st+=/brooding_shadows,if=combo_points<2&!buff.brooding_shadows.up&((buff.deadly_scheme.up|cooldown.brooding_shadows.full_recharge_time<=6|!talent.assassins_guile)&buff.assassins_guile.remains<1|!debuff.seething_poison.up)
+actions.st+=/brooding_shadows,if=combo_points<2&!buff.brooding_shadows.up&((buff.deadly_scheme.up|cooldown.brooding_shadows.full_recharge_time<=6|!talent.assassins_guile)&buff.assassins_guile.remains<1|active_dot.seething_poison=0)
 actions.st+=/widows_bite,if=buff.brooding_shadows.up&debuff.seething_poison.refreshable
 actions.st+=/maiden_of_death,if=(debuff.seething_poison.up&combo_points<4&!buff.brooding_shadows.up|talent.sinners_pride|fight_remains<=20)&!buff.maiden_of_death.up
 actions.st+=/macabre_stratagem,if=buff.maiden_of_death.up&combo_points>=5&(buff.deadly_scheme.up|buff.malevolence_queens_fang.stack=2|!talent.deadly_scheme&!talent.malevolence)
@@ -46,7 +46,7 @@ actions.st+=/final_stratagem,if=!cooldown.brooding_shadows.up&cooldown.maiden_of
 actions.st+=/stealth_skittering_blades,if=buff.brooding_shadows.up&active_enemies>=4
 actions.st+=/stealth_backstab,if=buff.brooding_shadows.up&combo_points=0&active_enemies<4
 actions.st+=/hemorrhaging_strike,target_if=max:debuff.hemotoxin.remains,if=combo_points>=5&debuff.hemotoxin.up&!buff.deadly_scheme.up&(buff.maiden_of_death.up|debuff.hemotoxin.at_max_stacks|debuff.hemotoxin.remains<=4)
-actions.st+=/hemorrhaging_strike,target_if=max:debuff.hemorrhage.refreshable*1000+target.time_to_die,if=combo_points>=5&debuff.hemorrhage.refreshable&target.time_to_die>=18
+actions.st+=/hemorrhaging_strike,target_if=max:dot.hemorrhage.refreshable*1000+target.time_to_die,if=combo_points>=5&dot.hemorrhage.refreshable&target.time_to_die>=18
 actions.st+=/arachnid_assault,if=combo_points>=1&talent.malevolence&!buff.malevolence_queens_fang.up&!buff.deadly_scheme.up
 actions.st+=/queens_fang,if=combo_points>=5&(buff.deadly_scheme.up|buff.malevolence_queens_fang.at_max_stacks)
 actions.st+=/arachnid_assault,if=combo_points>=1&talent.malevolence&!buff.deadly_scheme.up&!buff.malevolence_queens_fang.at_max_stacks
