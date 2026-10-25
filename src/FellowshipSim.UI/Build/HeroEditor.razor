@@ -86,7 +86,7 @@
             <h3 class="section">Stats</h3>
             @* Gear: the stats typed in, as the gear gives them. Total: with what the game adds (the base main stat, the stat enchants). *@
             <div class="ratings">
-                <div class="group">
+                <div class="stat-group">
                     <span>Primary</span>
                     <span class="rating">
                         <span class="column" title="The stats the gear gives">Gear</span>
@@ -107,7 +107,7 @@
                         <span class="total" title="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the gear's")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
                 </label>
-                <div class="group">
+                <div class="stat-group">
                     <span>Secondary</span>
                 </div>
                 @foreach (var stat in BuildEditor.InGameOrder)

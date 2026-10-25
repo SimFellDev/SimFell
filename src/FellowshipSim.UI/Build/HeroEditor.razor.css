@@ -99,8 +99,8 @@
   -moz-appearance: textfield;
 }
 
-/* Primary and Secondary, with the Gear and Total column names over the first group. */
-.ratings .group {
+/* Primary and Secondary, with the Gear and Total column names over the first group, right-aligned as the numbers. */
+.ratings .stat-group {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -113,19 +113,22 @@
   color: var(--heading);
 }
 
-.ratings .group:first-child {
+.ratings .stat-group:first-child {
   margin-top: 0;
 }
 
-.ratings .group .column,
-.ratings .group .total {
-  font-size: 11px;
+.ratings .stat-group .column,
+.ratings .stat-group .total {
   font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--muted);
 }
 
-.ratings .group .column {
+/* The input's 10px padding and 1px border, so the name ends where its numbers do. */
+.ratings .stat-group .column {
+  box-sizing: border-box;
   width: 96px;
+  padding-right: 11px;
   text-align: right;
 }
 
@@ -137,7 +140,7 @@
 }
 
 .ratings .total {
-  min-width: 44px;
+  width: 48px;
   text-align: right;
   color: var(--heading);
   font-variant-numeric: tabular-nums;
