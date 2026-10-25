@@ -74,6 +74,10 @@ public static class CharacterReader
         var augmentations = new List<(int Id, int Rank, string? Name)>();
         var glyphs = new List<(int Id, int Rank, string? Name)>();
         var statEnchants = new List<(int Id, int Rank, string? Name)>();
+        // How many slots each stat enchant fills: on an item one per 6 rating, rounded up (6 is one, 10 and 12 are two;
+        // combat logs: with it every non-legendary item holds exactly 3 slots, and 40 of 46 players of patch 0.5.0.0 fill
+        // the 44), and one per weapon tree point.
+        var statEnchantCounts = new Dictionary<int, int>();
         foreach (var item in combatant["gear"]?.AsArray() ?? [])
         {
             if (item == null) continue;
@@ -89,7 +93,11 @@ public static class CharacterReader
                 int id = (int)Num(t?["id"]) - LogIds.AugmentationOffset;
                 int rank = (int)Num(t?["rank"], 1);
                 // A stat enchant's rank is its rating, added to the item's other enchants of the same ID.
-                if (StatEnchant.Find(id) != null) AddRank(statEnchants, id, rank, Str(t?["name"]));
+                if (StatEnchant.Find(id) != null)
+                {
+                    AddRank(statEnchants, id, rank, Str(t?["name"]));
+                    statEnchantCounts[id] = statEnchantCounts.GetValueOrDefault(id) + (int)Math.Ceiling(rank / StatEnchantSlotRating);
+                }
                 else AddRank(augmentations, id, rank, Str(t?["name"]));
             }
             foreach (var b in item["blessings"]?.AsArray() ?? [])
@@ -115,7 +123,11 @@ public static class CharacterReader
             int points = (int)Num(t?["points"]);
             if (points <= 0) continue;
             // The weapon tree has a node per stat enchant (65 to 70); each point adds 1 to that enchant (per the user).
-            if (id >= LogIds.AugmentationOffset && StatEnchant.Find(id - LogIds.AugmentationOffset) != null) AddRank(statEnchants, id - LogIds.AugmentationOffset, points, null);
+            if (id >= LogIds.AugmentationOffset && StatEnchant.Find(id - LogIds.AugmentationOffset) != null)
+            {
+                AddRank(statEnchants, id - LogIds.AugmentationOffset, points, null);
+                statEnchantCounts[id - LogIds.AugmentationOffset] = statEnchantCounts.GetValueOrDefault(id - LogIds.AugmentationOffset) + points;
+            }
             else if (id >= LogIds.AugmentationOffset) AddRank(augmentations, id - LogIds.AugmentationOffset, points, null, cap: true);
             else if (build.WeaponAbilityId == 0) build.WeaponAbilityId = id;
         }
@@ -123,6 +135,7 @@ public static class CharacterReader
         build.Augmentations.AddRange(augmentations.Select(t => new BuildEntry(t.Id, Math.Min(MaxAugmentationRank, t.Rank), t.Name)));
         build.Glyphs.AddRange(glyphs.Select(b => new BuildEntry(b.Id, b.Rank, b.Name)));
         build.StatEnchants.AddRange(statEnchants.Select(e => new BuildEntry(e.Id, e.Rank, e.Name)));
+        foreach (var (id, count) in statEnchantCounts) build.StatEnchantCounts[id] = count;
         // A build's ratings are without its stat enchants. UNVERIFIED: the logged ratings are taken to count the enchants
         // (they are the gear's totals); no log has confirmed it.
         build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
@@ -137,6 +150,9 @@ public static class CharacterReader
     }
 
     /// <summary>Adds ranks to an entry (or a new entry at the end); tree points cap the total at the maximum rank.</summary>
+    /// <summary>The rating of one stat enchant slot on an item (combat logs: 6 at the current item level).</summary>
+    private const double StatEnchantSlotRating = 6.0;
+
     private static void AddRank(List<(int Id, int Rank, string? Name)> list, int id, int rank, string? name, bool cap = false)
     {
         if (id <= 0) return;

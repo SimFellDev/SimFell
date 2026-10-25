@@ -152,6 +152,13 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     build.StatEnchants.Add(new BuildEntry(enchant.Id, rating));
                 }
                 break;
+            case "stat_enchant_counts":
+                foreach (var (name, count) in Ranked(value))
+                {
+                    var enchant = StatEnchant.All.FirstOrDefault(e => e.Key == name) ?? throw new FormatException($"no stat enchant '{name}'");
+                    build.StatEnchantCounts[enchant.Id] = count;
+                }
+                break;
             case "relic1": build.Relic1ItemId = RelicItemId(value); break;
             case "relic2": build.Relic2ItemId = RelicItemId(value); break;
             case "legendary":
@@ -223,6 +230,10 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         if (build.StatEnchants.Count > 0)
         {
             s.AppendLine($"stat_enchants={string.Join('/', build.StatEnchants.Select(e => $"{(StatEnchant.Find(e.Id) ?? throw new InvalidOperationException($"Stat enchant {e.Id} is not known")).Key}:{Text(e.Rank)}"))}");
+        }
+        if (build.StatEnchantCounts.Count > 0)
+        {
+            s.AppendLine($"stat_enchant_counts={string.Join('/', build.StatEnchantCounts.Select(e => $"{(StatEnchant.Find(e.Key) ?? throw new InvalidOperationException($"Stat enchant {e.Key} is not known")).Key}:{e.Value}"))}");
         }
         RelicLine(s, "relic1", build.Relic1ItemId);
         RelicLine(s, "relic2", build.Relic2ItemId);

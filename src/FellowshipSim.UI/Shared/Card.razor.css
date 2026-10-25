@@ -16,6 +16,30 @@
   color: var(--heading);
 }
 
+/* The title with a count on its right. */
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.head .title {
+  margin: 0;
+}
+
+.count {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.count.over {
+  color: var(--bad);
+}
+
 @media (max-width: 600px) {
   .card {
     padding: 14px 16px;

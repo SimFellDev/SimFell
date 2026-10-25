@@ -54,6 +54,12 @@ public class CharacterBuild
     /// that have it. The ratings above are without them; a character sheet's percentages include them.
     /// </summary>
     public List<BuildEntry> StatEnchants { get; set; } = new();
+    /// <summary>
+    /// How many slots each stat enchant fills, by ID, when it is known (a log: on each item that has it, one per 6 rating
+    /// rounded up, so a 10 or 12 is two; plus the weapon tree's points in it). A stat enchant not here counts as its
+    /// rating over 6.
+    /// </summary>
+    public Dictionary<int, int> StatEnchantCounts { get; set; } = new();
     /// <summary>Item ID of the relic in slot 1 (e.g. 5926, Orb of Inner Seas, for Accursed Trophy); 0 for none.</summary>
     public int Relic1ItemId { get; set; }
     /// <summary>Item ID of the relic in slot 2; 0 for none.</summary>

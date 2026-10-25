@@ -105,6 +105,11 @@
                     </label>
                 }
             </div>
+            <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit ? "over" : "")"
+                 title="@($"Slots filled: stat enchants, gem power bonuses, and aspect, sigil and glyph ranks (protective enchants not counted){(Editor.HasWeapon ? "; the weapon adds 5" : "")}")">
+                <span>Slots</span>
+                <strong>@Editor.UsedTotal / @Editor.TotalLimit</strong>
+            </div>
             <h3 class="section">Gem power</h3>
             <div class="gem-totals">
                 @foreach (var color in BuildCatalog.GemColors)
@@ -123,7 +128,7 @@
     <div class="editor-main">
         <Card Title="Talents">
             <div class="points">
-                <span class="meta">AVAILABLE <strong>@Editor.PointsLeft</strong> / @FellowshipSim.Core.Domain.Hero.TalentPoints</span>
+                <span class="count" title="Talent points spent">@(FellowshipSim.Core.Domain.Hero.TalentPoints - Editor.PointsLeft) / @FellowshipSim.Core.Domain.Hero.TalentPoints</span>
                 <button type="button" class="secondary-button small" @onclick="ClearTalents">Clear all</button>
             </div>
             <div class="tree">
@@ -180,7 +185,7 @@
                         </button>
                     }
                 </div>
-            <h3 class="section">Relics <span class="meta">· @Editor.RelicCount of @BuildEditor.RelicSlots worn</span></h3>
+            <h3 class="section counted">Relics <span class="count" title="Relics worn">@Editor.RelicCount / @BuildEditor.RelicSlots</span></h3>
                 <div class="chips">
                     @foreach (var r in Catalog.Relics)
                     {
@@ -196,31 +201,31 @@
         </Card>
 
         <div class="pair even">
-            <Card Title="Stat enchants">
-                <p class="hint">@Catalog.StatEnchants.Count(e => Editor.StatEnchantRating(e.Enchant.Id) > 0) taken.</p>
+            <Card Title="Stat enchants" Count="@SlotCount(EnchantSlot.StatEnchants)" CountTitle="@SlotTitle(EnchantSlot.StatEnchants)" Over="@SlotOver(EnchantSlot.StatEnchants)">
                 <div class="enchants">
                     @foreach (var e in Catalog.StatEnchants)
                     {
                         double rating = Editor.StatEnchantRating(e.Enchant.Id);
+                        int count = Editor.StatEnchantCount(e.Enchant.Id);
+                        bool full = Editor.Room(EnchantSlot.StatEnchants) <= 0;
                         <div @key="e.Enchant.Id" class="enchant @(rating > 0 ? "taken" : "")">
                             <GameIcon Url="@e.IconUrl" Size="34" />
                             <span class="enchant-name">
                                 @e.Name
-                                <span class="enchant-stats">@e.StatsText</span>
+                                <span class="enchant-stats">@e.StatsText@(rating > 0 ? $" · {rating.ToString("0.#", CultureInfo.CurrentCulture)} rating" : "")</span>
                             </span>
                             <span class="stepper">
-                                <button type="button" class="icon-button" aria-label="@($"Lower {e.Name}")" disabled="@(rating <= 0)"
-                                        @onclick="() => Set(() => Editor.SetStatEnchantRating(e.Enchant, rating - 1))">−</button>
-                                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="rating" @bind:set="v => Set(() => Editor.SetStatEnchantRating(e.Enchant, v))" />
-                                <button type="button" class="icon-button" aria-label="@($"Raise {e.Name}")"
-                                        @onclick="() => Set(() => Editor.SetStatEnchantRating(e.Enchant, rating + 1))">+</button>
+                                <button type="button" class="icon-button" aria-label="@($"One fewer {e.Name}")" disabled="@(count <= 0)"
+                                        @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count - 1))">−</button>
+                                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="count" @bind:set="v => Set(() => Editor.SetStatEnchantCount(e.Enchant, v))" />
+                                <button type="button" class="icon-button" aria-label="@($"One more {e.Name}")" disabled="@full" title="@(full ? FullText(EnchantSlot.StatEnchants) : null)"
+                                        @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count + 1))">+</button>
                             </span>
                         </div>
                     }
                 </div>
             </Card>
-            <Card Title="Gems">
-                <p class="hint">@Build.SocketedGemIds.Count of @GemItem.Sockets sockets filled.</p>
+            <Card Title="Gems" Count="@SlotCount(EnchantSlot.Gems)" CountTitle="@SlotTitle(EnchantSlot.Gems)" Over="@SlotOver(EnchantSlot.Gems)">
                     <div class="sockets">
                         @for (int i = 0; i < GemItem.Sockets; i++)
                         {
@@ -267,7 +272,8 @@
                                     <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
                                             @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
                                     <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
-                                    <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")"
+                                    <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")" disabled="@(Editor.Room(EnchantSlot.Gems) <= 0)"
+                                            title="@(Editor.Room(EnchantSlot.Gems) <= 0 ? FullText(EnchantSlot.Gems) : null)"
                                             @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
                                 </span>
                             </span>
@@ -278,27 +284,29 @@
         </div>
 
         <div class="pair">
-            <Card Title="Aspects">
-                <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
+            <Card Title="Aspects" Count="@SlotCount(EnchantSlot.Aspects)" CountTitle="@SlotTitle(EnchantSlot.Aspects)" Over="@SlotOver(EnchantSlot.Aspects)">
+                <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
+                               Room="Editor.Room(EnchantSlot.Aspects)" FullText="@FullText(EnchantSlot.Aspects)" />
             </Card>
-            <Card Title="Sigils">
-                <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))" />
+            <Card Title="Sigils" Count="@SlotCount(EnchantSlot.Sigils)" CountTitle="@SlotTitle(EnchantSlot.Sigils)" Over="@SlotOver(EnchantSlot.Sigils)">
+                <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
+                               Room="Editor.Room(EnchantSlot.Sigils)" FullText="@FullText(EnchantSlot.Sigils)" />
             </Card>
         </div>
 
         <div class="pair">
-            <Card Title="Glyphs">
-                <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))" />
+            <Card Title="Glyphs" Count="@SlotCount(EnchantSlot.Glyphs)" CountTitle="@SlotTitle(EnchantSlot.Glyphs)" Over="@SlotOver(EnchantSlot.Glyphs)">
+                <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))"
+                               Room="Editor.Room(EnchantSlot.Glyphs)" FullText="@FullText(EnchantSlot.Glyphs)" />
             </Card>
-            <Card Title="Protective enchants">
-                <p class="hint">@Editor.ProtectiveEnchantCount of @ProtectiveEnchant.MaxPerBuild taken.</p>
+            <Card Title="Protective enchants" Count="@SlotCount(EnchantSlot.Protective)" CountTitle="@SlotTitle(EnchantSlot.Protective)" Over="@SlotOver(EnchantSlot.Protective)">
                 <div class="chips">
                     @foreach (var p in Catalog.ProtectiveEnchants)
                     {
                         bool taken = Editor.AugmentationRank(p.Id) > 0;
-                        bool full = !taken && Editor.ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild;
+                        bool full = !taken && Editor.Room(EnchantSlot.Protective) <= 0;
                         <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
-                                title="@(full ? $"Take off one of the {ProtectiveEnchant.MaxPerBuild} first" : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
+                                title="@(full ? FullText(EnchantSlot.Protective) : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
                             <GameIcon Url="@p.IconUrl" Size="24" />
                             @p.Name
                         </button>
@@ -340,7 +348,20 @@
 
     public void Dispose() => State.Changed -= OnStateChanged;
 
-    private static string EnchantLabel(StatEnchantOption e) => $"{e.Name} rating";
+    private static string EnchantLabel(StatEnchantOption e) => $"{e.Name} count";
+
+    // A card's count against its limit ("4 / 12"), what it counts, and whether it is over.
+    private string SlotCount(EnchantSlot slot) => $"{Editor.Used(slot)} / {Editor.Limit(slot)}";
+
+    private string SlotTitle(EnchantSlot slot) => $"{EnchantSlots.Name(slot)} worn, of {Editor.Limit(slot)}" +
+        (Editor.HasWeapon && Editor.Limit(slot) != EnchantSlots.Limit(slot, weapon: false) ? " (the weapon adds some)" : "");
+
+    private bool SlotOver(EnchantSlot slot) => Editor.Used(slot) > Editor.Limit(slot);
+
+    // Why a + is off: this kind is at its limit, or all enchants are.
+    private string FullText(EnchantSlot slot) => Editor.Used(slot) >= Editor.Limit(slot)
+        ? $"At the limit of {Editor.Limit(slot)} {EnchantSlots.Name(slot)}"
+        : $"At the limit of {Editor.TotalLimit} slots in all";
 
     private static string TalentTitle(TalentOption t) => $"{t.Slot.Code}: {t.Talent.Name}" + (t.Talent.Modeled ? "" : " (not modeled)");
 

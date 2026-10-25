@@ -134,6 +134,8 @@ public sealed class BuildEditor(CharacterBuild build)
     public void SetStatEnchantRating(StatEnchant enchant, double rating)
     {
         int value = (int)Math.Max(0, Math.Round(rating));
+        // A rating set by hand leaves the log's count of the enchant: it counts as its rating over 6.
+        Build.StatEnchantCounts.Remove(enchant.Id);
         Build.SheetPercents.Remove(Key(StatOf(enchant.FirstRating)));
         Build.SheetPercents.Remove(Key(StatOf(enchant.SecondRating)));
         int at = Build.StatEnchants.FindIndex(e => e.Id == enchant.Id);
@@ -193,6 +195,67 @@ public sealed class BuildEditor(CharacterBuild build)
 
     public int RelicCount => (Build.Relic1ItemId != 0 ? 1 : 0) + (Build.Relic2ItemId != 0 ? 1 : 0);
 
+    /// <summary>True when the build wears a weapon, which adds slots (<see cref="EnchantSlots"/>).</summary>
+    public bool HasWeapon => Build.WeaponAbilityId != 0;
+
+    /// <summary>The enchants of <paramref name="slot"/> the build wears: ranks of aspects, sigils and glyphs, stat enchants, gem power bonuses, protective enchants.</summary>
+    public int Used(EnchantSlot slot) => slot switch
+    {
+        EnchantSlot.StatEnchants => Build.StatEnchants.Sum(e => StatEnchantCount(e.Id)),
+        EnchantSlot.Gems => Build.GearGemBonuses.Values.Sum(),
+        EnchantSlot.Aspects => Catalog.Aspects.Sum(o => AugmentationRank(o.Id)),
+        EnchantSlot.Sigils => Catalog.Sigils.Sum(o => AugmentationRank(o.Id)),
+        EnchantSlot.Glyphs => Catalog.Glyphs.Sum(o => GlyphRank(o.Id)),
+        _ => ProtectiveEnchantCount,
+    };
+
+    /// <summary>The limit of <paramref name="slot"/> for this build (a weapon raises some).</summary>
+    public int Limit(EnchantSlot slot) => EnchantSlots.Limit(slot, HasWeapon);
+
+    /// <summary>Enchants the build wears in all, toward <see cref="TotalLimit"/>: every kind but the protective enchants.</summary>
+    public int UsedTotal => Enum.GetValues<EnchantSlot>().Where(s => s != EnchantSlot.Protective).Sum(Used);
+
+    /// <summary>Enchants the build can wear in all.</summary>
+    public int TotalLimit => EnchantSlots.TotalLimit(HasWeapon);
+
+    /// <summary>How many more of <paramref name="slot"/> the build can take: its own limit and the total's.</summary>
+    public int Room(EnchantSlot slot) => Math.Max(0, slot == EnchantSlot.Protective
+        ? Limit(slot) - Used(slot)
+        : Math.Min(Limit(slot) - Used(slot), TotalLimit - UsedTotal));
+
+    /// <summary>Stat enchants that give <paramref name="rating"/> (<see cref="EnchantSlots.RatingPerStatEnchant"/> each, rounded up).</summary>
+    public static int StatEnchantsFor(double rating) => (int)Math.Ceiling(rating / EnchantSlots.RatingPerStatEnchant - 1e-9);
+
+    /// <summary>
+    /// How many of stat enchant <paramref name="id"/> the build wears: as a log counted them, otherwise its rating over 6.
+    /// </summary>
+    public int StatEnchantCount(int id) =>
+        Build.StatEnchantCounts.TryGetValue(id, out int count) && StatEnchantRating(id) > 0 ? count : StatEnchantsFor(StatEnchantRating(id));
+
+    /// <summary>
+    /// Wears <paramref name="count"/> of a stat enchant (<see cref="EnchantSlots.RatingPerStatEnchant"/> rating each), as
+    /// many as there is room for. The same count keeps the rating it has (a log's exact rating).
+    /// </summary>
+    public void SetStatEnchantCount(StatEnchant enchant, int count)
+    {
+        int now = StatEnchantCount(enchant.Id);
+        count = Math.Clamp(count, 0, now + Room(EnchantSlot.StatEnchants));
+        if (count == now) return;
+        SetStatEnchantRating(enchant, count * EnchantSlots.RatingPerStatEnchant);
+        if (count > 0) Build.StatEnchantCounts[enchant.Id] = count;
+    }
+
+    // The slot an augmentation or glyph fills.
+    private EnchantSlot SlotOf(BuildOption option) =>
+        Catalog.Aspects.Any(o => o.Id == option.Id) ? EnchantSlot.Aspects
+        : Catalog.Sigils.Any(o => o.Id == option.Id) ? EnchantSlot.Sigils
+        : Catalog.Glyphs.Any(o => o.Id == option.Id) ? EnchantSlot.Glyphs
+        : EnchantSlot.Protective;
+
+    // A rank raised no further than the room its slot has.
+    private int Allowed(BuildOption option, int current, int rank) =>
+        rank <= current ? rank : Math.Min(rank, current + Room(SlotOf(option)));
+
     public bool HasRelic(int itemId) => itemId != 0 && (Build.Relic1ItemId == itemId || Build.Relic2ItemId == itemId);
 
     /// <summary>
@@ -244,8 +307,11 @@ public sealed class BuildEditor(CharacterBuild build)
     /// <summary>The gear's gem power bonuses of <paramref name="color"/> (<see cref="GemItem.GearBonusPower"/> each).</summary>
     public int GearBonuses(GemColor color) => Build.GearGemBonuses.GetValueOrDefault(color);
 
+    /// <summary>Sets the gear's gem power bonuses of a colour, raised no further than the gems' room.</summary>
     public void SetGearBonuses(GemColor color, int count)
     {
+        int current = GearBonuses(color);
+        if (count > current) count = Math.Min(count, current + Room(EnchantSlot.Gems));
         if (count > 0) Build.GearGemBonuses[color] = count;
         else Build.GearGemBonuses.Remove(color);
         RecountGemPower(always: true);
@@ -268,7 +334,9 @@ public sealed class BuildEditor(CharacterBuild build)
 
     public int AugmentationRank(int id) => Build.Augmentations.FirstOrDefault(a => a.Id == id)?.Rank ?? 0;
 
-    public void SetAugmentationRank(BuildOption augmentation, int rank) => SetRank(Build.Augmentations, augmentation, rank);
+    /// <summary>Sets an augmentation's rank, raised no further than its slot's room.</summary>
+    public void SetAugmentationRank(BuildOption augmentation, int rank) =>
+        SetRank(Build.Augmentations, augmentation, Allowed(augmentation, AugmentationRank(augmentation.Id), rank));
 
     /// <summary>Protective enchants the build has, of the catalog's <see cref="BuildCatalog.ProtectiveEnchants"/>.</summary>
     public int ProtectiveEnchantCount => Catalog.ProtectiveEnchants.Count(p => AugmentationRank(p.Id) > 0);
@@ -284,14 +352,15 @@ public sealed class BuildEditor(CharacterBuild build)
             SetAugmentationRank(enchant, 0);
             return true;
         }
-        if (ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild) return false;
+        if (Room(EnchantSlot.Protective) == 0) return false;
         SetAugmentationRank(enchant, 1);
         return true;
     }
 
     public int GlyphRank(int id) => Build.Glyphs.FirstOrDefault(g => g.Id == id)?.Rank ?? 0;
 
-    public void SetGlyphRank(BuildOption glyph, int rank) => SetRank(Build.Glyphs, glyph, rank);
+    /// <summary>Sets a glyph's rank, raised no further than the glyphs' room.</summary>
+    public void SetGlyphRank(BuildOption glyph, int rank) => SetRank(Build.Glyphs, glyph, Allowed(glyph, GlyphRank(glyph.Id), rank));
 
     private static void SetRank(List<BuildEntry> entries, BuildOption option, int rank)
     {
