@@ -73,7 +73,9 @@ public class SimEngineContractTests
     [Fact]
     public async Task A_Sim_Request_From_Json_Has_The_Result_Of_The_Request()
     {
-        var request = new SimRequest(SimcProfile.Parse(Profile), new SimSettings(Iterations: 20, DurationSeconds: 60, TargetCount: 2, DegreeOfParallelism: 2));
+        // One thread: with several, the threads' totals merge in the order the threads finish, and the mean and standard
+        // deviation differ in their last digits from run to run.
+        var request = new SimRequest(SimcProfile.Parse(Profile), new SimSettings(Iterations: 20, DurationSeconds: 60, TargetCount: 2, DegreeOfParallelism: 1));
         var sent = JsonSerializer.Deserialize<SimRequest>(JsonSerializer.Serialize(request, Web), Web)!;
         var progress = new Collected();
 

@@ -13,6 +13,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
@@ -22,8 +23,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\FellowshipSim.Cli\FellowshipSim.Cli.csproj" />
     <ProjectReference Include="..\..\src\FellowshipSim.Core\FellowshipSim.Core.csproj" />
     <ProjectReference Include="..\..\src\FellowshipSim.Engine\FellowshipSim.Engine.csproj" />
+    <!-- RemoteSimEngineTests: the Service's engine client against the engine server's endpoints. -->
+    <ProjectReference Include="..\..\src\FellowshipSim.EngineServer\FellowshipSim.EngineServer.csproj" />
+    <ProjectReference Include="..\..\src\FellowshipSim.Service\FellowshipSim.Service.csproj" />
+    <ProjectReference Include="..\..\src\FellowshipSim.UI\FellowshipSim.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

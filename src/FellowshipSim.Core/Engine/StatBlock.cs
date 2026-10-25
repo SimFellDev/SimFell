@@ -171,7 +171,7 @@ public class StatBlock
     public double ExpertiseRating { get; set { field = value; Version++; } }
     public double SpiritRating { get; set { field = value; Version++; } }
 
-    /// <summary>Permanent percent bonuses beyond ratings (gem nodes, set bonuses), added on top of the base percentages.</summary>
+    /// <summary>Permanent percent bonuses beyond ratings (gem nodes), added on top of the base percentages.</summary>
     public double BonusCritChance { get; set { field = value; Version++; } }
     public double BonusHaste { get; set { field = value; Version++; } }
     public double BonusExpertise { get; set { field = value; Version++; } }
@@ -184,8 +184,8 @@ public class StatBlock
     public double? SheetSpirit { get; set { field = value; Version++; } }
 
     /// <summary>
-    /// True when the stats come from a log. Its primary stat already includes always-on primary stat bonuses (gem nodes,
-    /// set bonuses), so those apply only when this is false; percentage bonuses always apply (the log has only ratings).
+    /// True when the stats come from a log. Its primary stat already includes always-on primary stat bonuses (gem nodes),
+    /// so those apply only when this is false; percentage bonuses always apply (the log has only ratings).
     /// </summary>
     public bool UsesSheetValues => SheetCritChance.HasValue;
 

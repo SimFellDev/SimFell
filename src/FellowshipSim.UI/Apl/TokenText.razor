@@ -1,0 +1,20 @@
+@using FellowshipSim.Core.APL
+@* Text in the colour of its token kind, marked when a parse error is in it. *@
+<span class="@ClassName">@Text</span>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    [Parameter] public AplTokenKind? Kind { get; set; }
+
+    [Parameter] public bool Error { get; set; }
+
+    private string? ClassName
+    {
+        get
+        {
+            string? kind = Kind?.ToString().ToLowerInvariant();
+            return Error ? (kind == null ? "error" : $"{kind} error") : kind;
+        }
+    }
+}

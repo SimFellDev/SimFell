@@ -1,7 +1,7 @@
 # Adding a hero (and talents, gear and buffs)
 
-This guide is for adding content to the engine by hand: a new hero, abilities, talents, traits, blessings, sets,
-legendaries, weapons and buffs from other players. Rime (`src/FellowshipSim.Core/Heroes/Rime`) is the complete example
+This guide is for adding content to the engine by hand: a new hero, abilities, talents, aspects, sigils, protective
+enchants, glyphs, relic passives, legendaries, weapons and buffs from other players. Rime (`src/FellowshipSim.Core/Heroes/Rime`) is the complete example
 to copy from.
 
 ## How the engine is organised
@@ -11,10 +11,11 @@ src/FellowshipSim.Core/
   Domain/         Hero, Ability, Aura, resources, talents: the base classes everything builds on
   Engine/         the simulation: time, events, damage, periodic effects, procs, cooldowns
   Heroes/<Hero>/  one folder per hero: <Hero>.cs, Abilities/ (one file each), Talents/ (one file each)
-  Customization/  gear shared by all heroes: Traits/, Blessings/, Gems/, Sets/, Legendaries/, Weapons/, WeaponAbilities/
+  Customization/  gear shared by all heroes: Aspects/, Sigils/, ProtectiveEnchants/ (all Augmentations/), Glyphs/, Gems/,
+                  RelicPassives/, Legendaries/, Weapons/, WeaponAbilities/
   Import/         CharacterBuild (a build by game IDs) and HeroImporter (build -> hero)
   Catalog.cs      finds every class above by its ID: nothing to register by hand. The IDs (Id, WeaponAbilityId,
-                  SetBonusIds, ItemIds, HeroName) are constants or lists of constants, read at build time
+                  ItemIds, HeroName) are constants or lists of constants, read at build time
 
 src/FellowshipSim.Engine/
   Replay/         replaying combat logs and the review page, with everything only a replay needs (see section 5)
@@ -35,14 +36,14 @@ Three rules hold everywhere:
 
 ## Where game values come from
 
-- **The game data (datamine):** the Codex SDK exports `entities.jsonl` with every ability, effect, talent, trait,
-  blessing, gem node and set: cooldowns, cast times, coefficients, effect durations, stacks and stat modifiers. Use it as
+- **The game data (datamine):** the Codex SDK exports `entities.jsonl` with every ability, effect, talent, aspect,
+  sigil, protective enchant, glyph, gem ability and relic passive: cooldowns, cast times, coefficients, effect durations, stacks and stat modifiers. Use it as
   the reference when writing constants, and compare against it when the game is patched.
 - **Combat logs:** what really happens (timings, procs, partial ticks). The replay review shows where the engine and a
   log disagree.
 
 **IDs in combat logs** are game IDs plus an offset: abilities as-is, effects (auras and effect damage) + 1,000,000,
-talents + 2,000,000, traits + 3,000,000 (see `Domain/LogIds.cs`). Blessings are the exception: logs give them per-item
+talents + 2,000,000, augmentations + 3,000,000 (see `Domain/LogIds.cs`). Glyphs are the exception: logs give them per-item
 IDs, so they are matched by name.
 
 ## 1. The hero class
@@ -122,7 +123,7 @@ What the base class gives you:
 | One hit | `DealDamage(ctx, target, damageMultiplier, canCrit, ..., onLanded, extraCritChance)` |
 | Hits on every enemy, with sqrt(T/N) falloff beyond T targets | `AoeTargetThreshold = T`, then `DealAoeDamage(ctx, ctx.ActiveEnemies)` |
 | Damage logged under an effect ID | `DamageLogId = LogIds.Effect(effectId)` |
-| A hasted damage-over-time or pulsing effect | `PeriodicEffect.BeginHasted(...)` (handles haste changes and the partial final tick) |
+| A hasted damage-over-time or pulsing effect | `PeriodicEffect.BeginHasted(...)` (handles haste changes and the partial final tick), with `damageLogId` and, for an effect on one enemy, `target`: an exact replay fires each tick at its log tick |
 | A buff | `public static readonly AuraDef Buff = AuraDef.Effect(name, effectId, seconds, maxStacks, modifiers)`, then `Owner.Auras.Apply(Buff, ctx.CurrentTime)` (an aura built at runtime, e.g. from a rank, is passed to `hero.Register(aura)` so it is listed too) |
 | Spending or gaining a resource | `Owner.SpendResource(resource, amount, ctx)`, `Owner.GainResource(resource, amount, ctx.CurrentTime)` |
 | A chance to proc | `ctx.Outcomes.RollProc(ProcKey, chance, ctx)` with a `public const string ProcKey` naming the proc |
@@ -202,20 +203,17 @@ All found by the catalog through their ID constants; add the file and it is used
 
 | Content | Folder | Identified by |
 |---|---|---|
-| Trait | `Customization/Traits` | `TraitId` (`Id`); per-rank values as `public static readonly double[] XByRank` read with `ForRank(...)` |
-| Blessing | `Customization/Blessings` | `BlessingId` and its name (logs match blessings by name) |
+| Aspect, sigil, protective enchant | `Customization/Aspects`, `Sigils`, `ProtectiveEnchants` | `AspectId`, `SigilId` or `ProtectiveEnchantId` (`Id`); per-rank values as `public static readonly double[] XByRank` read with `ForRank(...)` |
+| Glyph | `Customization/Glyphs` | `GlyphId` and its name (logs match glyphs by name) |
 | Gem colour | `Customization/Gems` | its `AllNodes` table (node ID, slot, required power, values) |
-| Set bonus | `Customization/Sets` | `SetBonusIds` (one per main-stat variant of the set) |
+| Relic passive | `Customization/RelicPassives` | `RelicPassiveId` (`Id`) |
 | Legendary | `Customization/Legendaries` | `HeroName` and the `ItemIds` that grant it |
 | Weapon | `Customization/Weapons` (+ its ability in `WeaponAbilities`) | `WeaponAbilityId` |
-| Buff from another player | `FellowshipSim.Engine/Replay/PartyBuffs.cs` | the buff's effect ID (optionally scaled by the giver's trait rank) |
+| Buff from another player | `FellowshipSim.Engine/Replay/PartyBuffs.cs` | the buff's effect ID (optionally scaled by the giver's sigil rank) |
 
 Percentage bonuses to crit, haste, expertise or spirit go in `hero.Stats.Bonus*` (they apply in replays too: logs only give
 ratings). Flat or percentage Main Stat bonuses apply only when `!hero.Stats.UsesSheetValues`, since a logged Main Stat
-already includes them. A trait with no effect on damage derives from `NoDamageTrait`.
-
-Something not modeled yet should still get a class (e.g. `UnmodeledTrait`) with its ID, name and tooltip text: the
-review then names it as unmodeled instead of an unknown ID.
+already includes them. A protective enchant derives from `ProtectiveEnchant`, which has no effect on damage.
 
 ## 5. Checking against combat logs
 
@@ -238,3 +236,6 @@ has).
 3. Fix the biggest differences first; a whole ability off by a constant factor usually means a missing talent, buff or
    multiplier, while scattered single hits are usually timing.
 4. `dotnet test` replays every downloaded fight (`data/fights`) and checks each talent of Rime's tree in a normal sim.
+
+`docs/REPLAY_ACCURACY.md` has the accuracy targets and the measure over many fights; `/replay-accuracy <Hero>` runs that
+work for one hero in its own worktree.

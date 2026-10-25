@@ -1,9 +1,0 @@
-@use "design-system" as design;
-
-.Hint {
-  @include design.hint;
-}
-
-.Form {
-  @include design.row;
-}

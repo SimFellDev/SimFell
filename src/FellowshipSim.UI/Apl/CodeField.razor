@@ -1,0 +1,223 @@
+@using System.Globalization
+@using FellowshipSim.Core.APL
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@*
+    A multi-line code input with its text coloured underneath, and the completion list under its caret. Typing a name, a
+    '.' or Ctrl+Space opens the list; the arrow keys pick, Enter or Tab writes the pick in place of the part at the caret,
+    and Escape closes it. A pick with parts after it is written with its '.', and the list opens on those parts.
+    The textarea's value belongs to codeField.js: the component sends it a new value and receives each edit.
+*@
+<div>
+    <div @ref="_field" class="code-field @(Check?.Error != null ? "invalid" : null)" hidden="@Hidden">
+        <pre @ref="_highlight" class="highlight" aria-hidden="true" data-shown="@Text">@if (_checked.Result is { } latest && latest.Text == Text)
+            {
+                <Highlight Text="@Text" Check="latest.Check" />
+            }
+            else
+            {
+                @Text
+            }</pre>
+        <pre @ref="_measure" aria-hidden="true" style="visibility: hidden"></pre>
+        <textarea @ref="_input" rows="1" spellcheck="false" autocomplete="off" placeholder="@Placeholder"></textarea>
+        <ul @ref="_list" class="completions" role="listbox" hidden="@(_completion == null)" style="@ListStyle">
+            @if (_completion is { } completion)
+            {
+                for (int i = 0; i < completion.Items.Count; i++)
+                {
+                    var item = completion.Items[i];
+                    bool selected = i == completion.Selected;
+                    <li @key="item.Text" role="option" aria-selected="@(selected ? "true" : "false")" class="@(selected ? "selected" : null)"
+                        @onmousedown="() => Accept(item, _caretAt)" @onmousedown:preventDefault>
+                        <TokenText Text="@(item.Text + (item.HasMore ? "." : ""))" Kind="item.Node.Kind" />
+                        @if (item.Node.Detail.Length > 0)
+                        {
+                            <span class="completion-detail">@item.Node.Detail</span>
+                        }
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+    <div>
+        @if (Check?.Error is { } error)
+        {
+            <p class="field-error">@error</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Text))
+        {
+            foreach (string problem in ActionListModel.ProblemsOf(Check))
+            {
+                <p @key="problem" class="field-warning">@problem</p>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AplVocabulary Vocabulary { get; set; } = null!;
+
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "";
+
+    [Parameter] public EventCallback<string> OnChange { get; set; }
+
+    /// <summary>Hides the input; its messages still show.</summary>
+    [Parameter] public bool Hidden { get; set; }
+
+    private ElementReference _field, _highlight, _measure, _input, _list;
+    private IJSObjectReference? _module, _handle;
+    private DotNetObjectReference<CodeField>? _self;
+    private DebouncedCheck _checked = null!;
+    /// <summary>The textarea's text, as codeField.js last reported or was sent it.</summary>
+    private string _domText = "";
+    private bool _push;
+    private CompletionList? _completion;
+    /// <summary>The caret when the completion list opened. Every key and click that moves the caret closes the list.</summary>
+    private int _caretAt;
+
+    private string Text => Value ?? "";
+
+    private AplExpressionCheck? Check => string.IsNullOrWhiteSpace(Text) ? null : _checked.Result?.Check;
+
+    private string? ListStyle => _completion is { } c
+        ? string.Create(CultureInfo.InvariantCulture, $"left: {c.Left}px; top: {c.Top}px")
+        : null;
+
+    protected override void OnInitialized()
+    {
+        _checked = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(150), change => InvokeAsync(() =>
+        {
+            change();
+            StateHasChanged();
+        }));
+        _domText = Text;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _checked.Set(Vocabulary.Hero, Text);
+        if (Text != _domText)
+        {
+            _domText = Text;
+            _push = _handle != null;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/apl/codeField.js");
+            _handle = await _module.InvokeAsync<IJSObjectReference>("attach", _field, _input, _list, _measure, _highlight, _self, _domText);
+        }
+        else if (_push && _handle != null)
+        {
+            _push = false;
+            await _handle.InvokeAsync<CaretPlace>("setValue", _domText, null);
+        }
+    }
+
+    [JSInvokable]
+    public async Task Input(string value, bool edit, CaretPlace caret)
+    {
+        _domText = value;
+        await OnChange.InvokeAsync(value);
+        _completion = edit ? CodeEdits.Open(Vocabulary, value, caret, false) : null;
+        if (_completion != null) _caretAt = caret.At;
+        StateHasChanged();
+    }
+
+    /// <summary>A key of the completion list: "Open" (Ctrl+Space), the arrow keys, Enter, Tab, Escape, Home and End.</summary>
+    [JSInvokable]
+    public async Task Key(string key, CaretPlace caret)
+    {
+        if (key == "Open")
+        {
+            _completion = CodeEdits.Open(Vocabulary, _domText, caret, true);
+            if (_completion != null) _caretAt = caret.At;
+        }
+        else if (_completion is { } completion)
+        {
+            switch (key)
+            {
+                case "ArrowDown":
+                case "ArrowUp":
+                    int count = completion.Items.Count;
+                    _completion = completion with { Selected = (completion.Selected + (key == "ArrowDown" ? 1 : count - 1)) % count };
+                    break;
+                case "Enter":
+                case "Tab":
+                    await Accept(completion.Items[completion.Selected], caret.At);
+                    return;
+                default:
+                    _completion = null;
+                    break;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async Task Accept(Completion item, int at)
+    {
+        var (text, caret) = CodeEdits.Accept(_domText, at, item);
+        _completion = null;
+        _domText = text;
+        await OnChange.InvokeAsync(text);
+        if (_handle != null)
+        {
+            var place = await _handle.InvokeAsync<CaretPlace>("setValue", text, caret);
+            if (item.HasMore)
+            {
+                _completion = CodeEdits.Open(Vocabulary, text, place, false);
+                if (_completion != null) _caretAt = place.At;
+            }
+        }
+        StateHasChanged();
+    }
+
+    // The editor writes 'and', 'or' and 'not': on leaving the field, '&', '|' and '!' become their words.
+    [JSInvokable]
+    public async Task Blur()
+    {
+        _completion = null;
+        StateHasChanged();
+        string text = _domText;
+        var check = await Editor.Checks.Get(Vocabulary.Hero, text);
+        if (_domText != text || check?.InWords is not { } inWords || inWords == text) return;
+        _domText = inWords;
+        await OnChange.InvokeAsync(inWords);
+        if (_handle != null) await _handle.InvokeAsync<CaretPlace>("setValue", inWords, null);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void Click()
+    {
+        _completion = null;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _checked.Dispose();
+        try
+        {
+            if (_handle != null)
+            {
+                await _handle.InvokeVoidAsync("dispose");
+                await _handle.DisposeAsync();
+            }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone, and the listeners with it.
+        }
+        _self?.Dispose();
+    }
+}

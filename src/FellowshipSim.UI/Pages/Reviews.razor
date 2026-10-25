@@ -1,0 +1,50 @@
+@page "/reviews"
+@using FellowshipSim.Logs
+@implements IDisposable
+@inject VisitorReviews VisitorReviews
+@inject VisitorJobs Jobs
+
+<PageTitle>Reviews - FellowshipSim</PageTitle>
+
+<SectionContent SectionName="@MainLayout.SubtitleSection">
+    Each replayed fight and how closely the engine matched its log
+</SectionContent>
+
+<ReviewsCard Reviews="_reviews" />
+
+@code {
+    private IReadOnlyList<ReviewSummary> _reviews = [];
+    private readonly HashSet<string> _doneReviews = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Jobs.Changed += OnChanged;
+        await LoadReviews();
+    }
+
+    // A review that finishes adds a row.
+    private void OnChanged(SimJob job)
+    {
+        if (job is not { Kind: SimJobKind.Review, Status: SimJobStatus.Done }) return;
+        _ = InvokeAsync(async () =>
+        {
+            if (!_doneReviews.Add(job.Id)) return;
+            await LoadReviews();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadReviews()
+    {
+        try
+        {
+            _reviews = await VisitorReviews.ListAsync(Jobs.Visitor);
+        }
+        catch (Exception)
+        {
+            // The list keeps its rows; the next finished review reads the folder again.
+        }
+    }
+
+    public void Dispose() => Jobs.Changed -= OnChanged;
+}

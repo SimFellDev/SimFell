@@ -1,0 +1,135 @@
+@using FellowshipSim.Logs
+@inject ReportLookup Reports
+@inject ImportPageState State
+
+<Card Title="@Title">
+    <form class="row" @onsubmit="LoadAsync">
+        <input placeholder="FellowshipLogs report link or code" autocomplete="off" required @bind="State.Link" />
+        <button type="submit">Load report</button>
+        <button type="button" class="secondary-button" @onclick="OnEditSettings">API settings</button>
+    </form>
+    <Message Kind="State.Status.Kind">@State.Status.Text</Message>
+    <div>
+        @if (State.Report is { } report)
+        {
+            @if (!report.CurrentPatch)
+            {
+                <Message Kind="MessageKind.Warning">@OldPatchWarning(report)</Message>
+            }
+            var fights = report.Fights.Where(f => f.Players.Count > 0).ToList();
+            var linked = fights.FirstOrDefault(f => f.Id == report.SelectedFightId);
+            @if (linked != null)
+            {
+                <div class="linked-bar">
+                    @if (State.ShowAllFights)
+                    {
+                        <span class="meta">All @fights.Count fights; the link's is outlined.</span>
+                        <button type="button" class="link-button" @onclick="() => State.ShowAllFights = false">Show only fight @linked.Id</button>
+                    }
+                    else
+                    {
+                        <span class="meta">The fight from the link.</span>
+                        <button type="button" class="link-button" @onclick="() => State.ShowAllFights = true">Show all @fights.Count fights</button>
+                    }
+                </div>
+            }
+            <div class="fights">
+                @foreach (var f in linked != null && !State.ShowAllFights ? [linked] : fights)
+                {
+                    bool selected = f.Id == State.Picked?.FightId;
+                    <div @key="f.Id" class="fight @(selected ? "selected" : "")">
+                        <div class="fight-head">
+                            <span class="fight-name">@f.Name</span>
+                            <span class="meta">
+                                Fight @f.Id · @FormatDuration(f.DurationSeconds) · @(f.Kill ? "kill" : "wipe/ongoing")@(f.Downloaded ? " · downloaded" : "")
+                            </span>
+                        </div>
+                        <div class="players">
+                            @foreach (var p in f.Players)
+                            {
+                                bool picked = selected && p.Id == State.Picked?.PlayerId;
+                                string kind = !p.Supported ? "player unsupported" : picked ? "player picked" : "player";
+                                <button @key="p.Id" type="button" class="@kind" aria-pressed="@picked"
+                                        disabled="@(!p.Supported || Busy)"
+                                        title="@(p.Supported ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
+                                        @onclick="() => State.Picked = (f.Id, p.Id)">
+                                    <span class="player-name">@p.Name</span>
+                                    <span class="player-hero">@p.Hero</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            var pick = PickedIn(report);
+            <div class="import-bar">
+                <span class="meta">@(pick is { } chosen ? $"{chosen.Player.Name} ({chosen.Player.Hero}) in {chosen.Fight.Name}, fight {chosen.Fight.Id}" : "Pick a player above.")</span>
+                <button type="button" class="import-button" disabled="@(pick == null || Busy)" @onclick="() => OnPick(report, pick!.Value.Fight, pick!.Value.Player)">Import</button>
+            </div>
+        }
+    </div>
+</Card>
+
+@code {
+    /// <summary>True while a replay runs: the player buttons are disabled.</summary>
+    /// <summary>The card's title: what the import is for.</summary>
+    [Parameter] public string Title { get; set; } = "Import a fight";
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback OnEditSettings { get; set; }
+
+    [Parameter] public EventCallback<ReviewTarget> OnReplay { get; set; }
+
+    /// <summary>Called with the player picked, instead of <see cref="OnReplay"/>, when set.</summary>
+    [Parameter] public EventCallback<PickedPlayer> OnPlayer { get; set; }
+
+    /// <summary>The line after a report loads, saying what to pick.</summary>
+    [Parameter] public string PickHint { get; set; } = "Pick a player, then Import to replay their fight.";
+
+    // The picked fight and player of the report shown, when both are in it and the player's hero is supported.
+    private (ReportFight Fight, FightPlayer Player)? PickedIn(Report report)
+    {
+        if (State.Picked is not { } picked || report.Fights.FirstOrDefault(f => f.Id == picked.FightId) is not { } fight) return null;
+        return fight.Players.FirstOrDefault(p => p.Id == picked.PlayerId && p.Supported) is { } player ? (fight, player) : null;
+    }
+
+    private Task OnPick(Report report, ReportFight fight, FightPlayer player) =>
+        OnPlayer.HasDelegate
+            ? OnPlayer.InvokeAsync(new PickedPlayer(report.Code, fight, player, report.CurrentPatch))
+            : OnReplay.InvokeAsync(new ReviewTarget(report.Code, fight.Id, player.Id));
+
+    private static string OldPatchWarning(Report report) =>
+        $"This log is from before patch {GamePatch.Current.Name} (logged {report.StartTime.ToLocalTime():d}). The engine models " +
+        $"{GamePatch.Current.Name}, so a replay or a build from this log may not match: talents, traits and blessings changed.";
+
+    private static string FormatDuration(double seconds)
+    {
+        int m = (int)Math.Floor(seconds / 60);
+        int s = (int)Math.Round(seconds % 60, MidpointRounding.AwayFromZero);
+        return $"{m}:{s:00}";
+    }
+
+    private async Task LoadAsync()
+    {
+        State.Status = new MessageState("Loading report...");
+        State.Report = null;
+        State.ShowAllFights = false;
+        State.Picked = null;
+        try
+        {
+            var loaded = await Reports.FindAsync(State.Link);
+            var linkedFight = loaded.Fights.FirstOrDefault(f => f.Id == loaded.SelectedFightId && f.Players.Count > 0);
+            State.Status = new MessageState(linkedFight != null
+                ? $"{loaded.Title} ({loaded.Code}): {linkedFight.Name}, fight {linkedFight.Id}. {PickHint}"
+                : $"{loaded.Title} ({loaded.Code}): {loaded.Fights.Count} fights. {PickHint}");
+            State.Report = loaded;
+            // The link's fight and player start picked.
+            if (loaded.SelectedFightId is { } linkFight && loaded.SelectedPlayerId is { } linkPlayer) State.Picked = (linkFight, linkPlayer);
+        }
+        catch (Exception e)
+        {
+            State.Status = new MessageState(e.Message, MessageKind.Error);
+        }
+    }
+}

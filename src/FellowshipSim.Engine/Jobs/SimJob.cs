@@ -6,8 +6,9 @@ namespace FellowshipSim.Engine.Jobs;
 /// </summary>
 public sealed class SimJob
 {
-    internal SimJob(SimJobKind kind, string title, object? input, Func<SimJobContext, Task<object?>> work)
+    internal SimJob(string owner, SimJobKind kind, string title, object? input, Func<SimJobContext, Task<object?>> work)
     {
+        Owner = owner;
         Kind = kind;
         Title = title;
         Input = input;
@@ -15,6 +16,8 @@ public sealed class SimJob
     }
 
     public string Id { get; } = Guid.NewGuid().ToString("N");
+    /// <summary>The one owner who lists, reads, cancels and removes the job, such as a web visitor's ID.</summary>
+    public string Owner { get; }
     public SimJobKind Kind { get; }
     public string Title { get; }
     /// <summary>The job's subject as the code that enqueued it gave it, such as a review's fight and player.</summary>

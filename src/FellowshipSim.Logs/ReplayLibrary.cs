@@ -65,6 +65,9 @@ public sealed class ReplayLibrary
 
     private string RawFightPath(string reportCode, int fightId) => Path.Combine(FightsDirectory, $"{reportCode}_fight{fightId}.raw.json");
 
+    /// <summary>True when the fight's raw events are already downloaded.</summary>
+    public bool HasRawFight(string reportCode, int fightId) => File.Exists(RawFightPath(reportCode, fightId));
+
     /// <summary>The fight's raw events, downloaded from FellowshipLogs the first time and read from disk after that.</summary>
     public async Task<JsonObject> GetRawFightAsync(FellowshipLogsClient? client, string reportCode, int fightId,
         IProgress<string>? progress = null, CancellationToken ct = default)
@@ -109,6 +112,14 @@ public sealed class ReplayLibrary
             .Select(s => s! with { FreeDice = LoadFreeDice(s.Id) })
             .OrderByDescending(s => s!.CreatedAt)
             .ToList()!;
+
+    /// <summary>The review <paramref name="id"/>, or null when its summary or page is not in the reviews folder.</summary>
+    public ReviewSummary? GetReview(string id)
+    {
+        string path = Path.Combine(ReviewsDirectory, $"{Path.GetFileName(id)}.summary.json");
+        if (!File.Exists(path) || JsonSerializer.Deserialize<ReviewSummary>(File.ReadAllText(path)) is not { } summary) return null;
+        return File.Exists(Path.Combine(ReviewsDirectory, summary.HtmlFile)) ? summary with { FreeDice = LoadFreeDice(summary.Id) } : null;
+    }
 
     private FreeDiceSummary? LoadFreeDice(string id)
     {

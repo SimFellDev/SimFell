@@ -1,0 +1,19 @@
+@using FellowshipSim.Core.APL
+@* The text with each token coloured by its kind. The character at a parse error is marked. *@
+@foreach (var segment in HighlightSegment.Of(Text, Check))
+{
+    if (segment.Kind == null && !segment.Error)
+    {
+        @segment.Text
+    }
+    else
+    {
+        <TokenText Text="@segment.Text" Kind="segment.Kind" Error="segment.Error" />
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    [Parameter] public AplExpressionCheck? Check { get; set; }
+}

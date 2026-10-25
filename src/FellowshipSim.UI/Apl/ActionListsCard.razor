@@ -1,0 +1,353 @@
+@using FellowshipSim.Core.APL
+@implements IAsyncDisposable
+@inject ISimEngine Engine
+@inject ActionListStore Store
+@inject Visitor Visitor
+@inject IJSRuntime JS
+@inject ActionListsState State
+@* Visual action-list editor: one section per action list, each with its actions in priority order. *@
+<Card>
+    <div @ref="_root">
+        @if (State.Editor.Vocabulary is not { } v)
+        {
+            <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>
+        }
+        else
+        {
+            <CascadingValue Value="State.Editor" IsFixed="true">
+                <p class="hint">
+                    Each time the hero can act, they cast the first action from the top of the default list with a ready ability and
+                    a true condition. Run action list and Call action list run the actions of another list.
+                </p>
+                <div class="row toolbar">
+                    <label class="field">
+                        Hero
+                        <select @bind:get="v.Hero" @bind:set="SelectHero">
+                            @foreach (string hero in State.Heroes)
+                            {
+                                <option @key="hero">@hero</option>
+                            }
+                        </select>
+                    </label>
+                    <input @ref="_nameInput" aria-label="Action list name" placeholder="Action list name" autocomplete="off" @bind="State.Name" />
+                    <select aria-label="Saved action lists" @bind:get="State.SelectedSaved" @bind:set="PickSaved">
+                        <option value="">Load list...</option>
+                        @foreach (var saved in State.Saved)
+                        {
+                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name (@saved.Hero@(saved.BuiltIn ? ", built in" : saved.Shared ? ", shared" : ""))</option>
+                        }
+                    </select>
+                    <button type="button" class="secondary-button" @onclick="Save">Save</button>
+                    <button type="button" class="secondary-button" @onclick="New">New</button>
+                    <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
+                    <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" title="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
+                </div>
+                <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>
+                <div>
+                    @foreach (var list in State.Editor.Lists)
+                    {
+                        <ListSection @key="list.Name" Vocabulary="v" Lists="State.Editor.Lists" List="list" Open="State.Editor.Open" DragFrom="State.Editor.DragFrom" />
+                    }
+                </div>
+                <div class="row add-list">
+                    <input @ref="_newListInput" placeholder="New action list name (aoe)" spellcheck="false" autocomplete="off" @bind="State.NewList" />
+                    <button type="button" class="secondary-button" @onclick="AddList">Add action list</button>
+                </div>
+                <details @key="State.TextKey" class="text" open="@State.TextOpen">
+                    <summary>Action list text</summary>
+                    <textarea spellcheck="false" rows="10" @bind="State.Text"></textarea>
+                    <div class="row">
+                        <button type="button" class="secondary-button" @onclick="LoadText">Load this text into the editor</button>
+                    </div>
+                    <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>
+                </details>
+            </CascadingValue>
+        }
+    </div>
+</Card>
+
+@code {
+    private SavedActionLists _savedLists = null!;
+    private ElementReference _root, _nameInput, _newListInput;
+    private IJSObjectReference? _module, _drag;
+    // The lists and vocabulary the action-list text is written for, and the write waiting for its delay.
+    private IReadOnlyList<ActionList>? _writtenLists;
+    private AplVocabulary? _writtenVocabulary;
+    private CancellationTokenSource? _write;
+
+    private const string SharedValue = "shared";
+    private const string BuiltInValue = "builtin";
+
+    private static string SavedValue(ActionListEntry saved) => $"{(saved.BuiltIn ? BuiltInValue : saved.Shared ? SharedValue : "own")}/{saved.Hero}/{saved.Name}";
+
+    protected override void OnInitialized()
+    {
+        _savedLists = new SavedActionLists(Store, Engine, Visitor);
+        State.Editor.Changed += EditorChanged;
+        State.Editor.ConditionModePicked += StoreConditionMode;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The state keeps the editor's lists from an earlier visit to the page; their text is written again in case the
+        // visit ended inside the write's delay.
+        if (State.Loaded)
+        {
+            WriteText();
+            return;
+        }
+        try
+        {
+            State.Heroes = await Engine.GetHeroesAsync();
+            var v = await VocabularyOf(State.Heroes[0]);
+            State.Saved = await _savedLists.ListAsync();
+            State.Editor.Load(v, []);
+            State.Loaded = true;
+            // The editor starts on the hero's built-in default list.
+            string defaultList = SavedValue(new ActionListEntry(v.Hero, DefaultActionLists.DefaultName, BuiltIn: true));
+            if (State.Saved.Any(s => SavedValue(s) == defaultList)) await PickSaved(defaultList);
+        }
+        catch (Exception e)
+        {
+            State.Editor.SetStatus(MessageState.Error(e.Message));
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/apl/actionListsCard.js");
+            State.Editor.ConditionMode = await _module.InvokeAsync<string>("readConditionMode");
+            _drag = await _module.InvokeAsync<IJSObjectReference>("attachDrag", _root);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page closed before the module loaded.
+        }
+    }
+
+    private void EditorChanged()
+    {
+        WriteText();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async void StoreConditionMode(string mode)
+    {
+        try
+        {
+            if (_module != null) await _module.InvokeVoidAsync("writeConditionMode", mode);
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The choice lasts until the page reloads.
+        }
+    }
+
+    private async Task<AplVocabulary> VocabularyOf(string hero) =>
+        await Engine.GetVocabularyAsync(hero) ?? throw new KeyNotFoundException($"No hero named {hero}.");
+
+    private void Fail(Exception e) => State.Editor.SetStatus(MessageState.Error(e.Message));
+
+    // The action-list text follows every change to the actions, 250 ms after the last one.
+    private void WriteText()
+    {
+        if (State.Editor.Vocabulary is not { } v) return;
+        var lists = State.Editor.Lists;
+        if (ReferenceEquals(lists, _writtenLists) && ReferenceEquals(v, _writtenVocabulary)) return;
+        _writtenLists = lists;
+        _writtenVocabulary = v;
+        _write?.Cancel();
+        _write = new CancellationTokenSource();
+        _ = Write(v, lists, _write.Token);
+    }
+
+    private async Task Write(AplVocabulary v, IReadOnlyList<ActionList> lists, CancellationToken ct)
+    {
+        MessageState? status = null;
+        string? text = null;
+        try
+        {
+            await Task.Delay(250, ct);
+            var result = await Engine.WriteActionListAsync(ActionListModel.DocumentActions(lists), ct);
+            if (result.Text != null) text = result.Text;
+            else status = MessageState.Error(ActionListModel.ErrorText(v, lists, result.Errors));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception e)
+        {
+            status = MessageState.Error(e.Message);
+        }
+        await InvokeAsync(() =>
+        {
+            if (ct.IsCancellationRequested) return;
+            if (text != null)
+            {
+                State.Text = text;
+                State.TextStatus = MessageState.None;
+            }
+            else
+            {
+                State.TextStatus = status!;
+            }
+            StateHasChanged();
+        });
+    }
+
+    private async Task SelectHero(string hero)
+    {
+        try
+        {
+            State.Editor.SetVocabulary(await VocabularyOf(hero));
+        }
+        catch (Exception e)
+        {
+            Fail(e);
+        }
+    }
+
+    private async Task LoadSavedLists(string selected = "")
+    {
+        State.Saved = await _savedLists.ListAsync();
+        State.SelectedSaved = selected;
+    }
+
+    private async Task AddList()
+    {
+        if (State.Editor.AddList(State.NewList.Trim())) State.NewList = "";
+        else await _newListInput.FocusAsync();
+    }
+
+    private async Task LoadText()
+    {
+        try
+        {
+            var result = await Engine.ParseActionListAsync(State.Text);
+            State.Editor.Load(State.Editor.Vocabulary!, result.Actions);
+            State.Editor.SetStatus(MessageState.Ok($"Loaded {result.Actions.Count} actions."));
+        }
+        catch (Exception e)
+        {
+            State.TextStatus = MessageState.Error(e.Message);
+        }
+    }
+
+    private async Task PickSaved(string value)
+    {
+        State.SelectedSaved = value;
+        State.Editor.SetStatus(MessageState.None);
+        if (value.Length == 0)
+        {
+            State.Name = "";
+            State.Editor.Load(State.Editor.Vocabulary!, []);
+            return;
+        }
+        string[] parts = value.Split('/');
+        string hero = parts.Length > 1 ? parts[1] : "", savedName = parts.Length > 2 ? parts[2] : "";
+        try
+        {
+            var list = await _savedLists.ReadAsync(new ActionListEntry(hero, savedName, Shared: parts[0] == SharedValue, BuiltIn: parts[0] == BuiltInValue));
+            var heroVocabulary = await VocabularyOf(hero);
+            State.Editor.SetVocabulary(heroVocabulary);
+            State.Name = savedName;
+            if (list.Error != null)
+            {
+                State.Text = list.Text;
+                State.TextOpen = true;
+                State.TextKey++;
+                State.Editor.SetStatus(MessageState.Error($"The saved text does not parse: {list.Error}"));
+                return;
+            }
+            State.Editor.Load(heroVocabulary, list.Actions ?? []);
+        }
+        catch (Exception e)
+        {
+            Fail(e);
+        }
+    }
+
+    // The saved list picked, when it is one of the visitor's own.
+    private ActionListEntry? PickedOwnList =>
+        State.Saved.FirstOrDefault(s => SavedValue(s) == State.SelectedSaved) is { Shared: false, BuiltIn: false } own ? own : null;
+
+    private bool CanDelete => PickedOwnList != null;
+
+    private Task New() => PickSaved("");
+
+    // A copy of the lists, not saved yet: Save keeps it under its new name.
+    private void Duplicate()
+    {
+        State.Name = State.Name.Length > 0 ? $"{State.Name} copy" : "copy";
+        State.SelectedSaved = "";
+        State.Editor.SetStatus(MessageState.Ok($"Copied to {State.Name}; save it to keep it."));
+    }
+
+    private async Task Delete()
+    {
+        if (PickedOwnList is not { } list) return;
+        try
+        {
+            await _savedLists.DeleteAsync(list);
+            await LoadSavedLists();
+            State.Editor.SetStatus(MessageState.Ok($"Deleted {list.Name}. The editor keeps its actions until you change them."));
+        }
+        catch (Exception e)
+        {
+            Fail(e);
+        }
+    }
+
+    private async Task Save()
+    {
+        var v = State.Editor.Vocabulary!;
+        string listName = State.Name.Trim();
+        if (listName.Length == 0)
+        {
+            State.Editor.SetStatus(MessageState.Error("Name the action list first."));
+            await _nameInput.FocusAsync();
+            return;
+        }
+        var lists = State.Editor.Lists;
+        try
+        {
+            var saved = await _savedLists.SaveAsync(v.Hero, listName, ActionListModel.DocumentActions(lists));
+            State.Editor.SetStatus(MessageState.Ok(Visitor.OwnsDataFolder
+                ? $"Saved to {Store.PathOf(saved.Hero, saved.Name)}."
+                : $"Saved {saved.Name} to your action lists."));
+            await LoadSavedLists(SavedValue(saved));
+        }
+        catch (ActionListNotSavedException e)
+        {
+            State.Editor.SetStatus(MessageState.Error($"{e.Message} {ActionListModel.ErrorText(v, lists, e.Errors)}".Trim()));
+        }
+        catch (Exception e)
+        {
+            Fail(e);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        State.Editor.Changed -= EditorChanged;
+        State.Editor.ConditionModePicked -= StoreConditionMode;
+        _write?.Cancel();
+        try
+        {
+            if (_drag != null)
+            {
+                await _drag.InvokeVoidAsync("dispose");
+                await _drag.DisposeAsync();
+            }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone, and the listeners with it.
+        }
+    }
+}

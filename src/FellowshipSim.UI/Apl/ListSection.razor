@@ -1,0 +1,45 @@
+@using FellowshipSim.Core.APL
+@* One action list: its name, its warning, its actions in priority order, and the button that adds an action. *@
+<section class="list">
+    <div class="head">
+        @if (ActionListModel.IsDefaultList(Vocabulary, List))
+        {
+            <h3>Default list</h3>
+        }
+        else
+        {
+            <ListName List="List" />
+        }
+        <button type="button" class="toggle-all" hidden="@(List.Actions.Count == 0)" @onclick="() => Editor.ToggleAll(List.Name, !AllOpen)">
+            @(AllOpen ? "Collapse all" : "Expand all")
+        </button>
+    </div>
+    <p class="field-warning" hidden="@(Warning == null)">@(Warning ?? "")</p>
+    <ol class="actions">
+        @for (int i = 0; i < List.Actions.Count; i++)
+        {
+            var action = List.Actions[i];
+            <ActionItem @key="action.Key" Vocabulary="Vocabulary" Lists="Lists" List="List" Action="action" Index="i"
+                        Open="Open.Contains(action.Key)" DragFrom="DragFrom" />
+        }
+    </ol>
+    <button type="button" class="secondary-button" @onclick="() => Editor.AddAction(List.Name)">Add action</button>
+</section>
+
+@code {
+    [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AplVocabulary Vocabulary { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ActionList> Lists { get; set; } = [];
+
+    [Parameter, EditorRequired] public ActionList List { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlySet<int> Open { get; set; } = null!;
+
+    [Parameter] public DragFrom? DragFrom { get; set; }
+
+    private string? Warning => ActionListModel.ListWarning(Vocabulary, Lists, List);
+
+    private bool AllOpen => List.Actions.Count > 0 && List.Actions.All(a => Open.Contains(a.Key));
+}

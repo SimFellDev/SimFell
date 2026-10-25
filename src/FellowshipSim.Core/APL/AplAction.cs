@@ -12,6 +12,8 @@ public class AplAction
     /// <summary>Set for <c>run_action_list</c> and <c>call_action_list</c>, which run <see cref="ListName"/>.</summary>
     public AplListAction? ListAction { get; init; }
     public string? ListName { get; init; }
+    /// <summary>Set for <c>variable</c>, which sets a variable and casts nothing.</summary>
+    public AplVariable? Variable { get; init; }
 
     /// <summary>True when the action has no condition or its condition is true at the current target.</summary>
     public bool ConditionHolds(Hero hero, SimulationContext ctx) => Condition == null || Condition.Evaluate(hero, ctx);
@@ -82,6 +84,35 @@ public class AplAction
         }
     }
 
-    public override string ToString() =>
+    public override string ToString() => Variable != null ? $"{AplVariable.ActionName},{Variable}" + (Condition != null ? $",if={Condition}" : "") :
         AbilityName + (ListName != null ? $",{AplActionLine.ListNameKey}={ListName}" : "") + (TargetIf != null ? $",target_if={TargetIf}" : "") + (Condition != null ? $",if={Condition}" : "");
+}
+
+/// <summary>How a <c>variable</c> action changes its variable (<c>op=</c>).</summary>
+public enum AplVariableOp
+{
+    /// <summary><c>op=set</c> (the default): the variable becomes the value.</summary>
+    Set,
+    /// <summary><c>op=add</c>: the value is added.</summary>
+    Add,
+    /// <summary><c>op=sub</c>: the value is taken away.</summary>
+    Sub,
+    /// <summary><c>op=reset</c>: the variable goes back to its default.</summary>
+    Reset,
+}
+
+/// <summary>
+/// A <c>variable,name=&lt;name&gt;,value=&lt;expr&gt;,op=&lt;op&gt;,default=&lt;number&gt;</c> action. <c>variable.&lt;name&gt;</c>
+/// reads the variable; each fight starts it at <see cref="Default"/>.
+/// </summary>
+public sealed record AplVariable(string Name, AplVariableOp Op, IAplExpression? Value, double Default)
+{
+    public const string ActionName = "variable";
+    public const string NameKey = "name";
+    public const string ValueKey = "value";
+    public const string OpKey = "op";
+    public const string DefaultKey = "default";
+
+    public override string ToString() =>
+        $"{NameKey}={Name}" + (Value != null ? $",{ValueKey}={Value}" : "") + $",{OpKey}={Op.ToString().ToLowerInvariant()}";
 }

@@ -26,7 +26,7 @@
     43,
     49
   ],
-  "Traits": [
+  "Augmentations": [
     {
       "Id": 51,
       "Rank": 2,
@@ -53,17 +53,7 @@
       "Name": null
     },
     {
-      "Id": 38,
-      "Rank": 1,
-      "Name": null
-    },
-    {
       "Id": 4,
-      "Rank": 1,
-      "Name": null
-    },
-    {
-      "Id": 6,
       "Rank": 1,
       "Name": null
     },
@@ -78,7 +68,7 @@
       "Name": null
     }
   ],
-  "Blessings": [
+  "Glyphs": [
     {
       "Id": 705,
       "Rank": 1,
@@ -88,11 +78,6 @@
       "Id": 700,
       "Rank": 4,
       "Name": "The Trickster"
-    },
-    {
-      "Id": 699,
-      "Rank": 3,
-      "Name": "The Herald"
     },
     {
       "Id": 709,
@@ -110,18 +95,10 @@
     "Amethyst": 625,
     "Emerald": 625
   },
-  "SetBonusIds": [
-    686,
-    691,
-    5638,
-    691,
-    1771,
-    5638,
-    686,
-    1771
-  ],
+  "Relic1ItemId": 5926,
+  "Relic2ItemId": 0,
   "LegendaryItemIds": [
-    5220
+    5898
   ],
   "WeaponAbilityId": 1558,
   "GameDate": null

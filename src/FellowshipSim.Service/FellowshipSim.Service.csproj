@@ -7,42 +7,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.13">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="NSwag.MSBuild" Version="14.7.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <!-- The one-person app (Local) runs fights in this process: hot methods move to tier 1 without the call-counting delay,
+         as in the engine server. -->
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Core has the action-list types of the engine's responses. -->
-    <ProjectReference Include="..\FellowshipSim.Core\FellowshipSim.Core.csproj" />
+    <!-- The release workflow's version (-p:SimFellVersion=0.1.0), which the one-person app compares with the latest release. -->
+    <AssemblyMetadata Include="SimFellVersion" Value="$(SimFellVersion)" Condition="'$(SimFellVersion)' != ''" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FellowshipSim.Logs\FellowshipSim.Logs.csproj" />
     <ProjectReference Include="..\FellowshipSim.UI\FellowshipSim.UI.csproj" />
     <ProjectReference Include="..\FellowshipSim.ServiceDefaults\FellowshipSim.ServiceDefaults.csproj" />
   </ItemGroup>
-
-  <!--
-    FellowshipSim.Web's types and requests (src/api.ts) are generated from this service's OpenAPI document after each
-    build.
-  -->
-  <PropertyGroup>
-    <OpenApiDocument>$(BaseIntermediateOutputPath)$(MSBuildProjectName).json</OpenApiDocument>
-    <OpenApiGenerateDocumentsOptions>--openapi-version OpenApi3_0</OpenApiGenerateDocumentsOptions>
-    <WebApi>$(MSBuildThisFileDirectory)../FellowshipSim.Web/src/api.ts</WebApi>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <Content Remove="nswag.json" />
-    <None Include="nswag.json" />
-  </ItemGroup>
-
-  <Target Name="GenerateWebApi" AfterTargets="GenerateOpenApiDocuments" Inputs="$(OpenApiDocument);nswag.json" Outputs="$(WebApi)">
-    <Exec Command="$(NSwagExe_Net100) run nswag.json /variables:&quot;Input=$(OpenApiDocument),Output=$(WebApi)&quot;" />
-  </Target>
 
 </Project>

@@ -1,0 +1,39 @@
+@* Augmentations or glyphs: each with its icon, name and rank, from 0 (not taken) to its highest rank. *@
+<div class="grid">
+    @foreach (var option in Options)
+    {
+        int rank = RankOf(option.Id);
+        <div @key="option.Id" class="option @(rank > 0 ? "taken" : "")">
+            <GameIcon Url="@option.IconUrl" />
+            <span class="name">
+                @option.Name
+                @if (!option.Modeled)
+                {
+                    <span class="badge">not modeled</span>
+                }
+            </span>
+            <span class="stepper">
+                <button type="button" class="icon-button" aria-label="@Label("Lower", option)" disabled="@(rank == 0)" @onclick="() => SetRank(option, rank - 1)">−</button>
+                <span class="rank" aria-label="@Label("Rank of", option)">@rank/@option.MaxRank</span>
+                <button type="button" class="icon-button" aria-label="@Label("Raise", option)" disabled="@(rank >= option.MaxRank || Room <= 0)" title="@(Room <= 0 && rank < option.MaxRank ? FullText : null)" @onclick="() => SetRank(option, rank + 1)">+</button>
+            </span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<BuildOption> Options { get; set; } = [];
+
+    /// <summary>The rank the build has of an option, by ID; 0 when it has none.</summary>
+    [Parameter, EditorRequired] public Func<int, int> RankOf { get; set; } = _ => 0;
+
+    private static string Label(string what, BuildOption option) => $"{what} {option.Name}";
+
+    [Parameter, EditorRequired] public Func<BuildOption, int, Task> SetRank { get; set; } = (_, _) => Task.CompletedTask;
+
+    /// <summary>How many more ranks the build can take of these options (their limit and the total's).</summary>
+    [Parameter] public int Room { get; set; } = int.MaxValue;
+
+    /// <summary>Why a raise is off when there is no room.</summary>
+    [Parameter] public string FullText { get; set; } = "At the limit";
+}

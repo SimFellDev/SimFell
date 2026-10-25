@@ -1,0 +1,17 @@
+# Mara, the build of the logged fights: Sinner's Pride, Assassin's Guile, Feed the Queen, Malevolence, Deadly Scheme,
+# Venomous Delight, Macabre Stratagem.
+actions+=/attack
+actions+=/maiden_of_death
+actions+=/matriarch_macabre,if=buff.maiden_of_death.up
+actions+=/macabre_stratagem,if=buff.maiden_of_death.up
+actions+=/final_stratagem
+actions+=/sahrils_wrath
+actions+=/brooding_shadows,if=combo_points=0
+actions+=/stealth_skittering_blades,if=active_enemies>=3
+actions+=/widows_bite,if=buff.brooding_shadows.up
+actions+=/stealth_backstab
+actions+=/arachnid_assault,if=combo_points>=6&active_enemies>=3
+actions+=/queens_fang,if=combo_points>=6
+actions+=/widows_bite,if=energy<=170
+actions+=/skittering_blades,if=active_enemies>=3
+actions+=/backstab

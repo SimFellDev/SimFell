@@ -1,0 +1,78 @@
+.action {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.action.open {
+  border-color: var(--accent);
+}
+
+.action.dragging {
+  opacity: 0.5;
+}
+
+.action.drop-before {
+  box-shadow: 0 -3px 0 var(--accent);
+}
+
+.action.drop-after {
+  box-shadow: 0 3px 0 var(--accent);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.head:hover {
+  background: var(--row-hover);
+}
+
+.grip {
+  cursor: grab;
+  color: var(--muted);
+  padding: 2px;
+  user-select: none;
+}
+
+.toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  padding: 4px;
+  text-align: left;
+}
+
+.toggle ::deep .chevron {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.action.open .toggle ::deep .chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.number {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5em;
+  text-align: right;
+}
+
+.ability {
+  font-weight: 600;
+}
+
+.move:hover:not(:disabled) {
+  color: var(--text);
+}

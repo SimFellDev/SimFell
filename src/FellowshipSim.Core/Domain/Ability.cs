@@ -35,6 +35,15 @@ public abstract class Ability
     public int MaxCharges { get; protected set; } = 1;
     public bool IgnoresGcd { get; protected set; } = false;
 
+    /// <summary>
+    /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
+    /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
+    /// </summary>
+    public double? GlobalCooldownSeconds { get; protected set; }
+
+    /// <summary>Whether haste shortens the global cooldown this ability starts, when it differs from the hero's. Null for the hero's.</summary>
+    public bool? GlobalCooldownScalesWithHaste { get; protected set; }
+
     /// <summary>The ID combat logs use for this ability's damage (the ability ID unless it deals damage through an effect).</summary>
     public int DamageLogId { get; protected set; }
 
@@ -44,14 +53,14 @@ public abstract class Ability
     /// <summary>Extra crit chance on this ability's hits.</summary>
     public double CritChanceBonus { get; set; } = 0.0;
 
+    /// <summary>
+    /// Crit chance a hit of this ability reads from the hero's state with its other numbers, as it is released and again
+    /// as it lands (a buff the next hit to deal damage uses up, Frostweaver's Wrath).
+    /// </summary>
+    public List<Func<SimulationContext, double>> HitCritChanceBonuses { get; } = new();
+
     /// <summary>Multiplier on this ability's crit power (e.g. "20% increased Critical Strike power").</summary>
     public double CritPowerMultiplier { get; set; } = 1.0;
-
-    /// <summary>
-    /// Main Stat damage added to each of this ability's hits after everything else (no expertise, damage buffs or crit),
-    /// as a coefficient (e.g. The Vainglorious).
-    /// </summary>
-    public double BonusCoefficient { get; set; } = 0.0;
 
     public bool ScalesWithExpertise { get; protected set; } = true;
 
@@ -77,6 +86,8 @@ public abstract class Ability
     public double ChannelTickPeriodSeconds { get; protected set; } = 1.0;
     public bool ChannelTicksOnStart { get; protected set; } = false;
     public bool ChannelPartialFinalTick { get; protected set; } = false;
+    /// <summary>The partial final tick comes even when less than a server frame of a period is left (Freezing Torrent).</summary>
+    public bool ChannelFinalTickAlways { get; protected set; } = false;
 
     /// <summary>Unhasted seconds between ticks of the channel starting now (abilities whose tick rate a buff changes override this).</summary>
     public virtual double ChannelTickPeriodFor(SimulationContext ctx) => ChannelTickPeriodSeconds;
@@ -154,11 +165,17 @@ public abstract class Ability
 
     public bool IsInstant => CastTime == SimTime.Zero;
 
+    /// <summary>Haste shortens the cast time (game data castTimeScalesWithHaste).</summary>
+    public bool CastTimeScalesWithHaste { get; protected set; } = true;
+
     public virtual SimTime GetAdjustedCastTime(SimTime now = default)
     {
         if (IsInstant) return SimTime.Zero;
-        return SimTime.FromSeconds(CastTime.TotalSeconds / (1.0 + Owner.GetHaste(now)));
+        return CastTimeScalesWithHaste ? SimTime.FromSeconds(CastTime.TotalSeconds / (1.0 + Owner.GetHaste(now))) : CastTime;
     }
+
+    /// <summary>True when the game ability <paramref name="abilityId"/> (as combat logs give it) is this ability.</summary>
+    public virtual bool IsAbility(int abilityId) => Id == abilityId;
 
     public bool IsReady(SimTime now) => Owner.IsCooldownReady(Name, now);
 

@@ -1,32 +1,50 @@
+using FellowshipSim.Core.Customization.CommonAbilities;
 using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Customization.Legendaries;
-using FellowshipSim.Core.Customization.Sets;
+using StatEnchants = FellowshipSim.Core.Customization.StatEnchants;
+using FellowshipSim.Core.Customization.RelicPassives;
 
 namespace FellowshipSim.Core.Import;
 
 /// <summary>
-/// Turns a <see cref="CharacterBuild"/> into a hero ready to simulate: its stats, then its talents, gems, blessings,
-/// weapon, traits, legendary and sets, each found in the <see cref="Catalog"/> by game ID. Anything the engine does not
-/// model is listed in <see cref="Hero.UnmodeledFeatures"/>.
+/// Turns a <see cref="CharacterBuild"/> into a hero ready to simulate: its stats, then its talents, relic passives, gems,
+/// glyphs, weapon, augmentations and legendary, each found in the <see cref="Catalog"/> by game ID. Anything the engine
+/// does not model is listed in <see cref="Hero.UnmodeledFeatures"/>.
 /// </summary>
 public static class HeroImporter
 {
+    /// <summary>The bound passive of the relic item <paramref name="itemId"/>, or null for no relic or one the catalog lacks.</summary>
+    private static RelicPassive? BindRelic(Hero hero, int itemId)
+    {
+        if (itemId == 0) return null;
+        var relicPassive = Catalog.RelicPassiveOfItem(itemId);
+        if (relicPassive == null)
+        {
+            hero.UnmodeledFeatures.Add($"Relic item {itemId}");
+            return null;
+        }
+        relicPassive.Bind(hero);
+        return relicPassive;
+    }
+
     public static Hero Import(CharacterBuild build)
     {
         var hero = Catalog.CreateHero(build.Hero);
         hero.Name = build.Name;
 
         // Base stats: ratings from gear, and the character sheet's percentages when the build comes from a log
-        // (they already include passive bonuses such as gem nodes and set bonuses).
+        // (they already include passive bonuses such as gem nodes).
         hero.Stats.PrimaryStat = build.PrimaryStat;
         hero.Stats.Stamina = build.Stamina;
         if (build.MaxHealth > 0) hero.Stats.LoggedMaxHealth = build.MaxHealth;
         hero.Stats.Armor = build.Armor;
-        hero.Stats.CritRating = build.CritRating;
-        hero.Stats.HasteRating = build.HasteRating;
-        hero.Stats.ExpertiseRating = build.ExpertiseRating;
-        hero.Stats.SpiritRating = build.SpiritRating;
-        if (build.SheetPercents.Count > 0)
+        // Stat enchants add their rating to gear's; a character sheet already counts them.
+        bool sheet = build.SheetPercents.Count > 0;
+        hero.Stats.CritRating = build.CritRating + (sheet ? 0 : build.EnchantRating(StatType.CritRating));
+        hero.Stats.HasteRating = build.HasteRating + (sheet ? 0 : build.EnchantRating(StatType.HasteRating));
+        hero.Stats.ExpertiseRating = build.ExpertiseRating + (sheet ? 0 : build.EnchantRating(StatType.ExpertiseRating));
+        hero.Stats.SpiritRating = build.SpiritRating + (sheet ? 0 : build.EnchantRating(StatType.SpiritRating));
+        if (sheet)
         {
             hero.Stats.SheetCritChance = build.SheetPercents.GetValueOrDefault("crit");
             hero.Stats.SheetHaste = build.SheetPercents.GetValueOrDefault("haste");
@@ -35,6 +53,7 @@ public static class HeroImporter
         }
 
         hero.Initialize();
+        hero.Abilities.AddRange(CommonAbilities.For(hero));
         foreach (var ability in hero.Abilities.ToList()) ability.Connect();
 
         foreach (int talentId in build.Talents)
@@ -49,36 +68,37 @@ public static class HeroImporter
             talent.Bind(hero);
         }
 
+        foreach (var entry in build.StatEnchants.Where(e => StatEnchants.StatEnchant.Find(e.Id) == null))
+        {
+            hero.UnmodeledFeatures.Add($"Stat enchant {entry.Name ?? entry.Id.ToString()}");
+        }
+
+        // The relic passives before gems: Covetous Greed raises every gem colour's power (already in a sheet's gem power).
+        hero.Relic1 = BindRelic(hero, build.Relic1ItemId);
+        hero.Relic2 = BindRelic(hero, build.Relic2ItemId);
+
         foreach (var (color, power) in build.GemPower)
         {
-            Gem gem = color switch
-            {
-                GemColor.Emerald => new Emerald(),
-                GemColor.Ruby => new Ruby(),
-                GemColor.Amethyst => new Amethyst(),
-                GemColor.Topaz => new Topaz(),
-                GemColor.Sapphire => new Sapphire(),
-                _ => new Diamond(),
-            };
-            gem.Power = power;
+            var gem = Gem.Create(color);
+            gem.Power = hero.Stats.UsesSheetValues ? power : power * hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
             hero.Gems.Add(gem);
             gem.Bind(hero);
             hero.UnmodeledFeatures.AddRange(gem.UnmodeledNodes.Select(n => $"Gem node: {n}"));
         }
 
-        foreach (var entry in build.Blessings)
+        foreach (var entry in build.Glyphs)
         {
-            var blessing = Catalog.CreateBlessing(entry.Id, entry.Rank);
-            if (blessing == null || !blessing.IsModeled)
+            var glyph = Catalog.CreateGlyph(entry.Id, entry.Rank);
+            if (glyph == null)
             {
-                hero.UnmodeledFeatures.Add($"Blessing: {blessing?.Name ?? entry.Name ?? entry.Id.ToString()} (rank {entry.Rank})");
-                if (blessing == null) continue;
+                hero.UnmodeledFeatures.Add($"Glyph: {entry.Name ?? entry.Id.ToString()} (rank {entry.Rank})");
+                continue;
             }
-            hero.Blessings.Add(blessing);
-            blessing.Bind(hero);
+            hero.Glyphs.Add(glyph);
+            glyph.Bind(hero);
         }
 
-        // Weapon before traits: some traits key off the weapon ability.
+        // Weapon before augmentations: some augmentations key off the weapon ability.
         if (build.WeaponAbilityId != 0)
         {
             var weapon = Catalog.CreateWeapon(build.WeaponAbilityId);
@@ -86,16 +106,16 @@ public static class HeroImporter
             weapon?.Equip(hero);
         }
 
-        foreach (var entry in build.Traits)
+        foreach (var entry in build.Augmentations)
         {
-            var trait = Catalog.CreateTrait(entry.Id, entry.Rank);
-            if (trait == null || !trait.IsModeled)
+            var augmentation = Catalog.CreateAugmentation(entry.Id, entry.Rank);
+            if (augmentation == null)
             {
-                hero.UnmodeledFeatures.Add($"Trait: {trait?.Name ?? entry.Name ?? entry.Id.ToString()} (rank {entry.Rank})");
-                if (trait == null) continue;
+                hero.UnmodeledFeatures.Add($"Augmentation: {entry.Name ?? entry.Id.ToString()} (rank {entry.Rank})");
+                continue;
             }
-            hero.Traits.Add(trait);
-            trait.Bind(hero);
+            hero.Augmentations.Add(augmentation);
+            augmentation.Bind(hero);
         }
 
         if (build.LegendaryItemIds.Count > 0)
@@ -109,30 +129,12 @@ public static class HeroImporter
                 legendary.Bind(hero);
             }
             hero.PassiveAuras.Add(LegendaryStats.StrandOfEternity);
-            if (!hero.Stats.UsesSheetValues) hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
-        }
-
-        // Two pieces of a set give its bonus. Sets bind in name order.
-        var sets = build.SetBonusIds
-            .Select(Catalog.SetOf)
-            .GroupBy(t => t)
-            .Where(g => g.Count() >= SetBonus.PiecesForBonus)
-            .Select(g => g.Key)
-            .ToList();
-        foreach (var setType in sets.Where(t => t != null).Select(t => Catalog.CreateSet(t!)).OrderBy(s => SortKey(s.Name), StringComparer.Ordinal))
-        {
-            setType.Bind(hero);
-            hero.Sets.Add(setType);
-            hero.UnmodeledFeatures.AddRange(setType.UnmodeledParts.Select(p => $"Set {setType.Name}: {p}"));
-        }
-        int unknownSetPieces = build.SetBonusIds.Count(id => Catalog.SetOf(id) == null);
-        if (unknownSetPieces > 0)
-        {
-            hero.UnmodeledFeatures.Add($"Set pieces of unknown sets: {string.Join(", ", build.SetBonusIds.Where(id => Catalog.SetOf(id) == null).Distinct())}");
+            // A logged Main Stat already includes Mote of Creation. It adds to the same sum as Rising Spirit, so it comes out
+            // of the sheet and applies as its aura.
+            if (hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat /= 1.0 + LegendaryStats.MoteOfCreationPrimaryStat;
+            hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
         }
 
         return hero;
     }
-
-    private static string SortKey(string name) => name.ToLowerInvariant().Replace("'", "").Replace(' ', '_');
 }

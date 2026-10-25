@@ -1,0 +1,55 @@
+@using FellowshipSim.Logs
+@implements IDisposable
+@inject VisitorJobs Jobs
+@* One job: its progress while it runs, then its result: a sim's DPS, a review's page, or the error. *@
+<Card>
+    <div class="head">
+        <span class="kind">@Job.Kind</span>
+        <h2 class="title">@Job.Title</h2>
+        <span class="status @StatusClass">@Job.Status</span>
+        @if (!Job.IsFinished)
+        {
+            <button type="button" class="secondary-button" @onclick="() => Jobs.Cancel(Job.Id)">Cancel</button>
+        }
+    </div>
+    @if (Job.Status != SimJobStatus.Done)
+    {
+        <JobProgress Job="Job" />
+    }
+    @switch (Job)
+    {
+        case { Status: SimJobStatus.Failed }:
+            <p class="field-error">@Job.Error</p>
+            break;
+        case { Status: SimJobStatus.Done, Result: SavedSim sim }:
+            if (sim.Runs is { Count: > 0 } runs)
+            {
+                <RunsResult Runs="runs" Heading="@(sim.RunsHeading ?? "Runs")" />
+            }
+            else
+            {
+                <SimJobResult Result="sim.Result" />
+            }
+            break;
+    }
+</Card>
+
+@if (Job is { Status: SimJobStatus.Done, Result: ReviewSummary review })
+{
+    <ReviewView HtmlFile="@review.HtmlFile" />
+}
+
+@code {
+    [Parameter, EditorRequired] public SimJob Job { get; set; } = null!;
+
+    private string StatusClass => Job.Status.ToString().ToLowerInvariant();
+
+    protected override void OnInitialized() => Jobs.Changed += OnChanged;
+
+    private void OnChanged(SimJob job)
+    {
+        if (job.Id == Job.Id) _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Jobs.Changed -= OnChanged;
+}

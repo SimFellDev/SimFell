@@ -1,0 +1,147 @@
+/* Full width under the top bar, its steps in line with the page; it stays in view while the page scrolls. */
+.steps {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: calc(50vw - 50%);
+  background: var(--bar);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 16px 18px;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.selected {
+  color: var(--heading);
+  border-bottom-color: var(--heading);
+}
+
+.run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 0;
+}
+
+.summary {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-button {
+  min-height: 40px;
+  padding: 10px 22px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+::deep .file {
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.profile {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  font-family: var(--code-font);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.preview {
+  max-height: 420px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  white-space: pre;
+}
+
+.actions {
+  margin-top: 10px;
+}
+
+.section {
+  margin: 20px 0 0;
+  font-size: 16px;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.mode {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mode .meta {
+  grid-column: 2;
+}
+
+.mode.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings input {
+  width: 160px;
+  color: var(--text);
+  font-size: 15px;
+}

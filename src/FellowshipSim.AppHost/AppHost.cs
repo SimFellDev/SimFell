@@ -6,20 +6,15 @@ var engineKey = builder.AddParameter("engine-key", new GenerateParameterDefault 
 var engine = builder.AddProject<Projects.FellowshipSim_EngineServer>("engine")
     .WithEnvironment("EngineKey", engineKey);
 
-var service = builder.AddProject<Projects.FellowshipSim_Service>("service")
+builder.AddProject<Projects.FellowshipSim_Service>("service")
     .WithEnvironment("EngineKey", engineKey)
     .WithReference(engine)
-    .WaitFor(engine);
-
-builder.AddViteApp("web", "../FellowshipSim.Web")
-    .WithPnpm()
+    .WaitFor(engine)
     .WithEndpoint("http", e =>
     {
         e.TargetHost = "simfell.dev.localhost";
-        e.Port = 5173;
+        e.Port = 5000;
     })
-    .WithReference(service)
-    .WaitFor(service)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

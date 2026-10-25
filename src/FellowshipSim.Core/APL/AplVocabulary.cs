@@ -58,12 +58,13 @@ public sealed class AplVocabulary
     public IReadOnlyList<AplName> Auras { get; }
     public IReadOnlyCollection<string> Named => PropertyExpression.Named.Keys.ToList();
     public IReadOnlyDictionary<string, IReadOnlyCollection<string>> Scopes => PropertyExpression.Scopes;
-    /// <summary>The names each scope in <see cref="Scopes"/> reads: auras for buff and debuff, abilities for cooldown.</summary>
+    /// <summary>The names each scope in <see cref="Scopes"/> reads: auras for buff and debuff, abilities for cooldown and action.</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<AplName>> ScopeNames => new Dictionary<string, IReadOnlyList<AplName>>
     {
         [PropertyExpression.BuffScope] = Auras,
         [PropertyExpression.DebuffScope] = Auras,
         [PropertyExpression.CooldownScope] = Abilities,
+        [PropertyExpression.ActionScope] = Abilities,
     };
     public string ResourcePrefix => PropertyExpression.ResourcePrefix;
     public IReadOnlyList<AplTargetSelectionName> TargetSelections { get; } = Enum.GetValues<AplTargetSelection>()
@@ -131,6 +132,11 @@ public sealed class AplVocabulary
     {
         if (PropertyExpression.Named.ContainsKey(property.PropertyPath)) return (AplTokenKind.Named, null);
         if (Resources.Any(r => r.Slug == property.ResourceName)) return (AplTokenKind.Resource, null);
+        // Build parts and variables read 0 when the build or the list has none of the name.
+        if (property.Scope != null && (PropertyExpression.BuildScopes.ContainsKey(property.Scope) || property.Scope == PropertyExpression.VariableScope))
+        {
+            return (AplTokenKind.Named, null);
+        }
         if (property.Scope == null) return (AplTokenKind.Unknown, $"{Hero} has no value or resource named `{property.PropertyPath}`; it reads as 0.");
 
         var properties = PropertyExpression.Scopes[property.Scope];
@@ -138,7 +144,7 @@ public sealed class AplVocabulary
         {
             return (AplTokenKind.Unknown, $"`{property.Scope}` has no property `{property.Property}` (it has {string.Join(", ", properties)}).");
         }
-        if (property.Scope == PropertyExpression.CooldownScope)
+        if (property.Scope is PropertyExpression.CooldownScope or PropertyExpression.ActionScope)
         {
             var hero = _hero ?? throw new InvalidOperationException($"This vocabulary of {Hero} was read from JSON and has no hero to check against.");
             return AplNames.FindAbility(hero, property.Name!) != null

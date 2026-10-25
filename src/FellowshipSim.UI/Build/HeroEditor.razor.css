@@ -1,0 +1,716 @@
+.toolbar input {
+  flex: 1 1 220px;
+}
+
+.toolbar button {
+  min-height: 40px;
+}
+
+.delete {
+  color: var(--bad);
+}
+
+/* Hero and stats beside the talents, which take two of the three columns. */
+/* The hero and its character sheet in a sidebar pinned below the Sim tabs; everything else scrolls beside it. */
+.editor {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin: 16px 0;
+}
+
+.sidebar {
+  position: sticky;
+  /* Below the Sim page's pinned tab bar. */
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+}
+
+.sidebar ::deep .card {
+  margin: 0;
+  border-color: var(--accent);
+}
+
+.editor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.editor-main ::deep .card,
+.editor-main .pair {
+  margin: 0;
+}
+
+/* The character sheet: each stat and its percentage. */
+.sheet {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+}
+
+.sheet > * {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet > :nth-last-child(-n + 2) {
+  border-bottom: none;
+}
+
+.sheet-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sheet strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sheet .percent {
+  color: var(--heading);
+}
+
+/* The ratings typed in: a label and its number on one line. */
+.ratings {
+  display: grid;
+  gap: 6px;
+}
+
+.ratings label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* A number typed in, without the browser's up and down arrows. */
+.ratings input {
+  width: 96px;
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.ratings input::-webkit-outer-spin-button,
+.ratings input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.gem-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.gem-total {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gem-total strong {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gem-total.taken,
+.gem-total.taken strong {
+  color: var(--text);
+}
+
+@media (max-width: 1000px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* Traits beside blessings. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+  /* Each card is as tall as its content: no empty space under the shorter one. */
+  align-items: start;
+}
+
+/* Stat enchants beside gems: one height, the cards filling it. */
+.pair.even {
+  align-items: stretch;
+}
+
+.pair.even ::deep .card {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.hero-select {
+  position: relative;
+}
+
+.hero-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px 8px 8px;
+  background: var(--input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: left;
+}
+
+.hero-current:hover,
+.hero-current.open {
+  border-color: var(--accent);
+}
+
+.hero-current img {
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.hero-name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-name strong {
+  font-size: 17px;
+}
+
+.chevron,
+.check {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chevron {
+  stroke: var(--muted);
+}
+
+.check {
+  stroke: var(--heading);
+}
+
+/* Covers the page so a click outside the menu closes it. */
+.hero-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.hero-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 21;
+  max-height: 440px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--header);
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+.group {
+  display: block;
+  padding: 8px 10px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.hero-option ::deep .icon {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.hero-option:hover:not(:disabled),
+.hero-option.picked {
+  background: var(--selected);
+}
+
+.hero-option:disabled {
+  opacity: 1;
+  color: #8b8b93;
+}
+
+.hero-option:disabled ::deep .icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.option-name {
+  flex: 1;
+}
+
+.section {
+  margin: 18px 0 10px;
+  font-family: var(--heading-font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+.section .meta {
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 12px;
+}
+
+.stats.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stats label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stats input,
+.stats select {
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.percent {
+  color: var(--heading);
+}
+
+.points {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: -34px 0 12px;
+}
+
+/* A count against its limit ("9 / 14"), as the cards show theirs. */
+.count {
+  color: var(--muted);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A section heading with its count on the right. */
+.section.counted {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tree-row {
+  display: grid;
+  grid-template-columns: 84px repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+/* "I - 2 pt" on one line, as wide as it needs. */
+.tier {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-family: var(--heading-font);
+  color: var(--muted);
+}
+
+.tier .meta {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+}
+
+.talent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--input);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.talent ::deep .icon {
+  opacity: 0.55;
+}
+
+.talent:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.talent.picked {
+  background: var(--selected);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.talent.picked ::deep .icon {
+  opacity: 1;
+}
+
+.talent:disabled {
+  opacity: 0.4;
+}
+
+.talent .name {
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip.picked {
+  background: var(--selected);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* The four sockets: a filled one shows its gem and takes it out when clicked. */
+.sockets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.socket {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.socket.empty {
+  border-style: dashed;
+}
+
+.socket.filled {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.socket.filled:hover {
+  border-color: var(--bad);
+}
+
+/* A row per colour: its gem power, its four gems (click to socket one), and its gear bonuses. */
+.gem-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gem-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name bonus" "picks picks";
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.gem-row.taken {
+  border-color: var(--accent);
+}
+
+.gem-name {
+  grid-area: name;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.gem-picks {
+  grid-area: picks;
+  /* The four sizes share the box's width. */
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gem-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.gem-pick:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.gem-pick.picked {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.gem-pick-power {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gem-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gear-bonus {
+  grid-area: bonus;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A number typed in, without the browser's up and down arrows. */
+.gear-bonus input {
+  width: 44px;
+  padding: 6px 8px;
+  background: var(--surface);
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.gear-bonus input::-webkit-outer-spin-button,
+.gear-bonus input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
+/* Stat enchants as tiles, like Aspects and Sigils (RankedChoices): icon, name over its stats, and the rating. */
+.enchants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.enchant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.enchant.taken {
+  background: var(--selected);
+  border-color: var(--accent);
+}
+
+.enchant-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.enchant-stats {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.enchant.taken .enchant-stats {
+  color: var(--heading);
+}
+
+/* A number typed in, without the browser's up and down arrows. */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.enchant input {
+  width: 56px;
+  padding: 6px 8px;
+  background: var(--surface);
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.enchant input::-webkit-outer-spin-button,
+.enchant input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: 10px;
+}
+
+@media (max-width: 1200px) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .tree-row {
+    grid-template-columns: 72px repeat(3, minmax(0, 1fr));
+  }
+
+  .talent {
+    flex-direction: column;
+    text-align: center;
+    padding: 6px;
+  }
+
+  .talent .name {
+    font-size: 12px;
+  }
+
+  .points {
+    margin-top: 0;
+  }
+}
+
+/* The sidebar's count of every enchant worn against the limit. */
+.slots-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.slots-total strong {
+  color: var(--text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.slots-total.over strong {
+  color: var(--bad);
+}

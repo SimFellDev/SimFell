@@ -21,6 +21,8 @@ public class GlacialBlast : RimeAbility
     /// as sqrt(12/N) beyond 12 targets (yMAZVJL9hTpFjqbC fight 7 @ 31.8s: explosion/spike = 0.2598 on 16, 0.2520 on 17).
     /// </summary>
     public const double GlacialAssaultExplosionTargetThreshold = 12;
+    /// <summary>Ability 2023 maxTargets 40.</summary>
+    public const int GlacialAssaultExplosionMaxTargets = 40;
 
     /// <summary>Seconds added to the cast time (Greater Glacial Blast).</summary>
     public double ExtraCastTimeSeconds { get; set; }
@@ -90,8 +92,9 @@ public class GlacialBlast : RimeAbility
     protected void Explode(SimulationContext ctx, EnemyTarget target, double initialDamage)
     {
         if (initialDamage <= 0.0) return;
-        var nearby = ctx.Outcomes.SelectTargets(GlacialAssaultExplosionId, ctx.ActiveEnemiesExcept(target), ctx);
+        IReadOnlyList<EnemyTarget> nearby = ctx.Outcomes.SelectTargets(GlacialAssaultExplosionId, ctx.ActiveEnemiesExcept(target), ctx);
         if (nearby.Count == 0) return;
+        if (nearby.Count > GlacialAssaultExplosionMaxTargets) nearby = nearby.Take(GlacialAssaultExplosionMaxTargets).ToList();
         double falloff = nearby.Count > GlacialAssaultExplosionTargetThreshold ? Math.Sqrt(GlacialAssaultExplosionTargetThreshold / nearby.Count) : 1.0;
         double damage = initialDamage * GlacialAssaultExplosionFraction * falloff;
         foreach (var enemy in nearby)

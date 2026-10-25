@@ -4,8 +4,8 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 397 (Rime's Drakesblood Tapestry, item 5218; Harbinger of Winter Helm, item 5899): "Each tick of
-/// your Freezing Torrent grants you 1 stack of Frostwyrm's Spite for 15 seconds, up to 30 stacks. Your Cold Snap consumes
+/// Legendary power 397 (Rime's Harbinger of Winter Helm, item 5899): "Each tick of your Freezing Torrent grants you 1
+/// stack of Frostwyrm's Spite for 15 seconds, up to 30 stacks, and you can now move while channeling. Your Cold Snap consumes
 /// all stacks of Frostwyrm's Spite, increasing its damage by 30% per stack. Additionally, your Cold Snap hits 1 additional
 /// enemy near your target for each stack it consumes. Frostwyrm's Spite damage is reduced beyond 3 targets."
 /// The extra hits are copies of that Cold Snap with all its bonuses but no Winter Orb (per the user), logged as effect
@@ -15,8 +15,6 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 public class FrostwyrmsSpite : Legendary
 {
     public const int PowerId = 397;
-    public const int CloakItemId = 5218;
-    /// <summary>The Harbinger of Winter Helm grants the same power as the cloak.</summary>
     public const int HelmItemId = 5899;
     public const int BuffEffectId = 2264;
     public const int DamageEffectId = 2265;
@@ -31,7 +29,7 @@ public class FrostwyrmsSpite : Legendary
     public override int LegendaryPowerId => PowerId;
     public override string Name => "Frostwyrm's Spite";
     public override string HeroName => "Rime";
-    public override IReadOnlyList<int> ItemIds => [CloakItemId, HelmItemId];
+    public override IReadOnlyList<int> ItemIds => [HelmItemId];
 
     public override void Bind(Hero hero)
     {

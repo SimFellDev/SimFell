@@ -1,0 +1,89 @@
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
+  padding: 14px 32px;
+  background: var(--header);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+
+.name {
+  font-family: var(--heading-font);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.white {
+  color: #fff;
+}
+
+.gold {
+  color: var(--heading);
+}
+
+.tagline {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav ::deep a {
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.nav ::deep a:hover {
+  color: var(--text);
+}
+
+.nav ::deep a.active {
+  background: var(--row-hover);
+  border-color: var(--accent);
+  color: var(--heading);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px 48px;
+}
+
+@media (max-width: 600px) {
+  .top {
+    padding: 12px 16px;
+  }
+
+  .main {
+    padding: 0 16px 40px;
+  }
+}

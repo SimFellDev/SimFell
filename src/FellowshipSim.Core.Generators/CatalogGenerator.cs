@@ -10,9 +10,9 @@ using Microsoft.CodeAnalysis.Text;
 namespace FellowshipSim.Core.Generators;
 
 /// <summary>
-/// Writes the constructors <c>Catalog</c> uses: for each hero, talent, trait, blessing, weapon, set and legendary class
+/// Writes the constructors <c>Catalog</c> uses: for each hero, talent, augmentation, glyph, weapon, relic passive and legendary class
 /// with a public constructor without parameters, a switch from its ID to <c>new</c> of the class. The IDs are read from
-/// the class's overrides of <c>Id</c>, <c>WeaponAbilityId</c>, <c>SetBonusIds</c>, <c>ItemIds</c> and <c>HeroName</c>,
+/// the class's overrides of <c>Id</c>, <c>WeaponAbilityId</c>, <c>ItemIds</c> and <c>HeroName</c>,
 /// which must be constants or lists of constants. An ID of 0 means unknown, and the class has no entry.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
@@ -26,20 +26,20 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         "SIMFELL002", "Two classes share a catalog ID",
         "{0} and {1} share the {2} ID {3}", "Catalog", DiagnosticSeverity.Error, true);
 
-    private enum Kind { Hero, Talent, Trait, Blessing, Weapon, Set, Legendary }
+    private enum Kind { Hero, Talent, Augmentation, Glyph, Weapon, RelicPassive, Legendary }
 
     private static readonly (string Base, Kind Kind)[] Bases =
     [
         ("FellowshipSim.Core.Domain.Hero", Kind.Hero),
         ("FellowshipSim.Core.Domain.Talent", Kind.Talent),
-        ("FellowshipSim.Core.Customization.Traits.Trait", Kind.Trait),
-        ("FellowshipSim.Core.Customization.Blessings.Blessing", Kind.Blessing),
+        ("FellowshipSim.Core.Customization.Augmentations.Augmentation", Kind.Augmentation),
+        ("FellowshipSim.Core.Customization.Glyphs.Glyph", Kind.Glyph),
         ("FellowshipSim.Core.Customization.Weapons.Weapon", Kind.Weapon),
-        ("FellowshipSim.Core.Customization.Sets.SetBonus", Kind.Set),
+        ("FellowshipSim.Core.Customization.RelicPassives.RelicPassive", Kind.RelicPassive),
         ("FellowshipSim.Core.Customization.Legendaries.Legendary", Kind.Legendary),
     ];
 
-    /// <summary>One catalog class: its kind, full name, IDs, and a name (a hero's class name, a blessing's or legendary hero's name).</summary>
+    /// <summary>One catalog class: its kind, full name, IDs, and a name (a hero's class name, a glyph's or legendary hero's name).</summary>
     /// <remarks>A class with value equality, so the generator's cache compares entries by value.</remarks>
     private sealed class Entry(Kind kind, string typeName, string shortName, string ids, string name, string? error, Location? errorLocation)
         : System.IEquatable<Entry>
@@ -108,20 +108,19 @@ public sealed class CatalogGenerator : IIncrementalGenerator
                 name2 = type.Name;
                 break;
             case Kind.Talent:
-            case Kind.Trait:
-            case Kind.Blessing:
+            case Kind.Augmentation:
+            case Kind.Glyph:
             case Kind.Weapon:
-            case Kind.Set:
+            case Kind.RelicPassive:
             case Kind.Legendary:
                 string idProperty = kind switch
                 {
                     Kind.Weapon => "WeaponAbilityId",
-                    Kind.Set => "SetBonusIds",
                     Kind.Legendary => "ItemIds",
                     _ => "Id",
                 };
                 if (Read(idProperty, out var idValues)) ids = string.Join(",", idValues.Select(v => (int)v));
-                if (kind == Kind.Blessing && error == null && Read("Name", out var names)) name2 = (string)names[0];
+                if (kind == Kind.Glyph && error == null && Read("Name", out var names)) name2 = (string)names[0];
                 if (kind == Kind.Legendary && error == null && Read("HeroName", out var heroes)) name2 = ((string)heroes[0]).ToLowerInvariant();
                 break;
         }
@@ -183,7 +182,7 @@ public sealed class CatalogGenerator : IIncrementalGenerator
 
         // Classes by ID, in declaration order; an ID of 0 is unknown.
         var byKind = new Dictionary<Kind, List<(int Id, Entry Entry)>>();
-        foreach (var kind in new[] { Kind.Talent, Kind.Trait, Kind.Blessing, Kind.Weapon, Kind.Set })
+        foreach (var kind in new[] { Kind.Talent, Kind.Augmentation, Kind.Glyph, Kind.Weapon, Kind.RelicPassive })
         {
             var list = new List<(int, Entry)>();
             var owners = new Dictionary<int, Entry>();
@@ -244,29 +243,10 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         s.AppendLine();
 
         Switch(s, "global::FellowshipSim.Core.Domain.Talent", "NewTalent", "int id", byKind[Kind.Talent], "");
-        Switch(s, "global::FellowshipSim.Core.Customization.Traits.Trait", "NewTrait", "int id, int rank", byKind[Kind.Trait], " { Rank = rank }");
-        Switch(s, "global::FellowshipSim.Core.Customization.Blessings.Blessing", "NewBlessing", "int id, int rank", byKind[Kind.Blessing], " { Rank = rank }");
+        Switch(s, "global::FellowshipSim.Core.Customization.Augmentations.Augmentation", "NewAugmentation", "int id, int rank", byKind[Kind.Augmentation], " { Rank = rank }");
+        Switch(s, "global::FellowshipSim.Core.Customization.Glyphs.Glyph", "NewGlyph", "int id, int rank", byKind[Kind.Glyph], " { Rank = rank }");
         Switch(s, "global::FellowshipSim.Core.Customization.Weapons.Weapon", "NewWeapon", "int id", byKind[Kind.Weapon], "");
-
-        s.AppendLine("    private static global::System.Type? SetClass(int id) => id switch");
-        s.AppendLine("    {");
-        foreach (var group in byKind[Kind.Set].GroupBy(x => x.Entry.TypeName))
-        {
-            s.AppendLine($"        {string.Join(" or ", group.Select(x => x.Id))} => typeof({group.Key}),");
-        }
-        s.AppendLine("        _ => null,");
-        s.AppendLine("    };");
-        s.AppendLine();
-
-        s.AppendLine("    private static global::FellowshipSim.Core.Customization.Sets.SetBonus? NewSet(global::System.Type type)");
-        s.AppendLine("    {");
-        foreach (var set in Distinct(byKind[Kind.Set]))
-        {
-            s.AppendLine($"        if (type == typeof({set.TypeName})) return new {set.TypeName}();");
-        }
-        s.AppendLine("        return null;");
-        s.AppendLine("    }");
-        s.AppendLine();
+        Switch(s, "global::FellowshipSim.Core.Customization.RelicPassives.RelicPassive", "NewRelicPassive", "int id", byKind[Kind.RelicPassive], "");
 
         s.AppendLine("    private static global::FellowshipSim.Core.Customization.Legendaries.Legendary? NewLegendary(string hero, int itemId) => (hero, itemId) switch");
         s.AppendLine("    {");
@@ -275,9 +255,9 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         s.AppendLine("    };");
         s.AppendLine();
 
-        s.AppendLine("    private static int BlessingIdOf(string name)");
+        s.AppendLine("    private static int GlyphIdOf(string name)");
         s.AppendLine("    {");
-        foreach (var (id, entry) in byKind[Kind.Blessing])
+        foreach (var (id, entry) in byKind[Kind.Glyph])
         {
             s.AppendLine($"        if (string.Equals(name, {Literal(entry.Name)}, global::System.StringComparison.OrdinalIgnoreCase)) return {id};");
         }
@@ -285,10 +265,14 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         s.AppendLine("    }");
         s.AppendLine();
 
-        Types(s, "TraitClasses", Distinct(byKind[Kind.Trait]));
-        Types(s, "BlessingClasses", Distinct(byKind[Kind.Blessing]));
+        Types(s, "AugmentationClasses", Distinct(byKind[Kind.Augmentation]));
+        Types(s, "GlyphClasses", Distinct(byKind[Kind.Glyph]));
         Types(s, "WeaponClasses", Distinct(byKind[Kind.Weapon]));
-        Types(s, "SetClasses", Distinct(byKind[Kind.Set]));
+        Types(s, "RelicPassiveClasses", Distinct(byKind[Kind.RelicPassive]));
+        Instances(s, "NewAugmentations", "global::FellowshipSim.Core.Customization.Augmentations.Augmentation", Distinct(byKind[Kind.Augmentation]));
+        Instances(s, "NewGlyphs", "global::FellowshipSim.Core.Customization.Glyphs.Glyph", Distinct(byKind[Kind.Glyph]));
+        Instances(s, "NewWeapons", "global::FellowshipSim.Core.Customization.Weapons.Weapon", Distinct(byKind[Kind.Weapon]));
+        Instances(s, "NewRelicPassives", "global::FellowshipSim.Core.Customization.RelicPassives.RelicPassive", Distinct(byKind[Kind.RelicPassive]));
         s.AppendLine("    private static (string Hero, global::System.Type Type)[] LegendaryClasses =>");
         s.AppendLine("    [");
         foreach (var (hero, _, entry) in legendaries) s.AppendLine($"        ({Literal(hero)}, typeof({entry.TypeName})),");
@@ -313,6 +297,15 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         s.AppendLine($"    private static global::System.Type[] {field} =>");
         s.AppendLine("    [");
         foreach (var entry in classes) s.AppendLine($"        typeof({entry.TypeName}),");
+        s.AppendLine("    ];");
+        s.AppendLine();
+    }
+
+    private static void Instances(StringBuilder s, string method, string baseType, IEnumerable<Entry> classes)
+    {
+        s.AppendLine($"    private static {baseType}[] {method}() =>");
+        s.AppendLine("    [");
+        foreach (var entry in classes) s.AppendLine($"        new {entry.TypeName}(),");
         s.AppendLine("    ];");
         s.AppendLine();
     }

@@ -42,9 +42,8 @@ public class FreeDiceReplayTests(ITestOutputHelper output)
             output.WriteLine($"{review}: {result.Mean / result.LogDamage:P1} of log, log at the {result.LogPercentile:P0} point ({result.Elapsed.TotalSeconds:F1}s)");
             File.WriteAllText(Path.Combine(data, "reviews", $"{review}.freedice.txt"), text);
             File.WriteAllText(Path.Combine(data, "reviews", $"{review}.freedice.json"), System.Text.Json.JsonSerializer.Serialize(result.ToSummary()));
-            const string navigation = "<nav class=\"fightnav\"><a href=\"/\">&larr; All reviews</a></nav>";
             FreeDiceReportWriter.Write(result, Path.Combine(data, "reviews", $"{review}.freedice.html"),
-                navigation.Replace("</nav>", $"<a href=\"{review}.html\">Exact replay</a></nav>"));
+                $"<nav class=\"fightnav\"><a href=\"{review}.html\">Exact replay</a></nav>");
 
             Assert.Equal(iterations, result.EngineTotals.Count);
             Assert.True(result.Mean > 0);

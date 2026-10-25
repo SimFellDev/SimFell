@@ -1,0 +1,252 @@
+.shell {
+  display: grid;
+  /* One column no wider than the window: the result tabs scroll inside it instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Above every page's own layers (sticky bars at 10, menus at 20 and 21): the results sidebar and the open list live in it. */
+.bar {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-tabs {
+  display: flex;
+  flex: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  flex: none;
+  max-width: 260px;
+  border-bottom: 2px solid transparent;
+}
+
+.tab.selected {
+  border-bottom-color: var(--accent);
+}
+
+.select {
+  min-width: 0;
+  padding: 8px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.select:hover,
+.selected .select {
+  color: var(--text);
+}
+
+.close {
+  flex: none;
+  margin-right: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+}
+
+.close:hover {
+  color: var(--bad);
+}
+
+/* Result tabs: shrink to their minimum width, then scroll with the arrows or the wheel; no scrollbar. */
+.result-tabs {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+}
+
+.result-tabs.empty {
+  visibility: hidden;
+}
+
+.strip {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.strip .tab {
+  flex: 0 1 260px;
+  min-width: 140px;
+  border-left: 1px solid var(--border);
+}
+
+.strip .tab:first-child {
+  border-left: none;
+}
+
+.arrow {
+  display: none;
+  flex: none;
+  padding: 2px 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+}
+
+.arrow:hover {
+  color: var(--text);
+}
+
+.result-tabs[data-overflow] .arrow {
+  display: block;
+}
+
+.result-tabs[data-at-start] .arrow[data-scroll="-1"],
+.result-tabs[data-at-end] .arrow[data-scroll="1"] {
+  visibility: hidden;
+}
+
+.open-list {
+  position: relative;
+  flex: none;
+  padding-bottom: 6px;
+}
+
+.open-toggle {
+  padding: 5px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--text);
+  background: transparent;
+  border-color: var(--border);
+}
+
+/* Covers the window, review iframes included, so a click outside the list closes it. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: 21;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 70vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.dropdown ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.dropdown li {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+}
+
+.dropdown li.selected {
+  background: var(--row-hover);
+}
+
+.pick {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 6px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+}
+
+.pick:hover .pick-title {
+  color: var(--accent);
+}
+
+.kind {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
+.pick-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.close-all {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  font: inherit;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.close-all:hover {
+  color: var(--bad);
+}
+
+.results {
+  flex: none;
+  padding-bottom: 6px;
+}
+
+.panel {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 16px 24px;
+}

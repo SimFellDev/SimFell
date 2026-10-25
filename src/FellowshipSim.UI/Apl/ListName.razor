@@ -1,0 +1,24 @@
+@* The name of a list other than the default, and its delete button. The name is taken on leaving the field or pressing Enter. *@
+<h3><label for="@Id">Action list</label></h3>
+<input id="@Id" class="name" spellcheck="false" autocomplete="off" @bind="_name" @bind:after="Commit" />
+<button type="button" class="icon-button danger-button" title="Delete list" aria-label="Delete list" @onclick="() => Editor.RemoveList(List.Name)">
+    <Icon Shape="IconShape.Bin" />
+</button>
+
+@code {
+    [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
+
+    [Parameter, EditorRequired] public ActionList List { get; set; } = null!;
+
+    private string _name = "";
+
+    private string Id => $"apl-list-{List.Name}";
+
+    protected override void OnInitialized() => _name = List.Name;
+
+    private void Commit()
+    {
+        string name = _name.Trim();
+        if (name == List.Name || !Editor.RenameList(List.Name, name)) _name = List.Name;
+    }
+}

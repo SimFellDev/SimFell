@@ -1,0 +1,375 @@
+/* A sim's report: tiles, two charts over the fight, then the damage and buff tables. */
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.tile.main {
+  border-color: var(--accent);
+}
+
+.tile span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tile strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile.main strong {
+  color: var(--heading);
+}
+
+.tile em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.card h3 {
+  margin: 0;
+  font-family: var(--heading-font);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+.card h3 .meta {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend i {
+  display: inline-block;
+  width: 16px;
+  margin-left: 10px;
+}
+
+.legend i.mean {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--heading);
+}
+
+.legend i.band {
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(212, 175, 110, 0.18);
+}
+
+.legend i.spirit-mean {
+  height: 2px;
+  border-radius: 1px;
+  background: #8ea2ff;
+}
+
+.legend i.average {
+  border-top: 1px dashed #8ea2ff;
+}
+
+/* A chart: the value axis left, the drawing, the time axis under it. */
+.chart {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-rows: 240px auto;
+  column-gap: 8px;
+}
+
+.chart .y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.chart .x {
+  grid-column: 2;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.chart .y span,
+.chart .x span {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.chart svg {
+  width: 100%;
+  height: 240px;
+  display: block;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart .grid {
+  stroke: #1e1e22;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart .band {
+  fill: rgba(212, 175, 110, 0.18);
+  stroke: none;
+}
+
+.chart .mean {
+  fill: none;
+  stroke: var(--heading);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart .spirit-mean {
+  fill: none;
+  stroke: #8ea2ff;
+  stroke-width: 1.5;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart .average {
+  stroke: #8ea2ff;
+  stroke-width: 1;
+  stroke-dasharray: 6 6;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The report's tables: small capital headings, quiet rows, figures right-aligned, the name with its icon on the left. */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.report-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #1e1e22;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-table th:first-child,
+.report-table td.name {
+  text-align: left;
+}
+
+.report-table td.name {
+  color: var(--text);
+}
+
+/* The icon sits inline before the name, so the cell stays a table cell. */
+.report-table td.name ::deep .icon {
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.report-table td.name .meta {
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.report-table tbody tr:hover td {
+  background: var(--row-hover);
+}
+
+.report-table .total td {
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+  font-weight: 700;
+}
+
+/* An ability's amount as FellowshipLogs shows it, on one line: its share, a bar, then its damage. The column takes the
+   table's spare width and the bar fills it. */
+.report-table .amount-cell {
+  width: 100%;
+}
+
+.amount {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.amount .pct {
+  min-width: 44px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.amount .bar {
+  flex: 1;
+  min-width: 80px;
+  width: auto;
+}
+
+.amount .value {
+  min-width: 80px;
+  text-align: right;
+}
+
+/* A buff's timeline: thin bars where it was up, across the column. It has no width of its own (its 1000-wide view box
+   would otherwise make it 1000px wide and the table with it): it takes what the column leaves. The bars take its colour. */
+.amount .spans {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 120px;
+  height: 8px;
+  display: block;
+  color: var(--heading);
+}
+
+.share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* A buff's uptime: the share itself, at full size. */
+.report-table td > .share:only-child {
+  color: var(--text);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.bar {
+  width: 80px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.bar b {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.hint {
+  margin: 0;
+}
+
+/* The cast sequence: a row per 30 seconds, its start time, then each cast's icon with its time under it. */
+.casts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cast-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #1e1e22;
+}
+
+.cast-time {
+  padding-top: 7px;
+  color: var(--heading);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cast-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cast-list li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 36px;
+}
+
+.cast-list ::deep .icon {
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.cast-list span {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}

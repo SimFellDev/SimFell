@@ -21,7 +21,7 @@ public class ReplayScript
     [JsonPropertyName("duration_s")] public double DurationSeconds { get; set; }
     [JsonPropertyName("player")] public ReplayPlayer Player { get; set; } = new();
     [JsonPropertyName("character")] public CharacterBuild? Character { get; set; }
-    /// <summary>Every player's trait ranks, by player ID (buffs they give scale with their rank).</summary>
+    /// <summary>Every player's augmentation ranks, by player ID (buffs they give scale with their rank).</summary>
     [JsonPropertyName("players")] public Dictionary<string, ReplayPartyMember> Players { get; set; } = new();
     [JsonPropertyName("commands")] public List<ReplayCommand> Commands { get; set; } = new();
     [JsonPropertyName("observations")] public ReplayObservations Observations { get; set; } = new();
@@ -51,7 +51,7 @@ public class ReplayPartyMember
 {
     [JsonPropertyName("name")] public string? Name { get; set; }
     [JsonPropertyName("gear_traits")] public Dictionary<string, int> GearTraits { get; set; } = new();
-    /// <summary>Weapon-tree points by log trait ID (3,000,000 + datamine trait ID).</summary>
+    /// <summary>Weapon-tree points by log augmentation ID (3,000,000 + datamine augmentation ID).</summary>
     [JsonPropertyName("weapon_traits")] public Dictionary<string, int> WeaponTraits { get; set; } = new();
 }
 
@@ -73,6 +73,8 @@ public static class CommandKind
     public const string CompleteCast = "complete_cast";
     public const string CancelCast = "cancel_cast";
     public const string StopChannel = "stop_channel";
+    public const string PlayerDeath = "player_death";
+    public const string PlayerRevive = "player_revive";
 }
 
 public class ReplayCommand
@@ -127,10 +129,24 @@ public class LogDamage
     [JsonPropertyName("absorbed")] public double Absorbed { get; set; }
     [JsonPropertyName("overkill")] public double Overkill { get; set; }
     [JsonPropertyName("crit")] public bool Crit { get; set; }
+    /// <summary>The log's hit type (<see cref="ReplayScriptBuilder.HitTypeCrit"/>, <see cref="ReplayScriptBuilder.HitTypeGrievousCrit"/>).</summary>
+    [JsonPropertyName("hit_type")] public int? HitType { get; set; }
     [JsonPropertyName("tick")] public bool Tick { get; set; }
+
+    /// <summary>Damage the enemy's block took off the hit (hit type 4).</summary>
+    [JsonPropertyName("blocked")] public double Blocked { get; set; }
 
     /// <summary>Damage the hit dealt before absorbs.</summary>
     public double TotalAmount => Amount + Absorbed;
+
+    /// <summary>
+    /// The hit's damage before absorbs and the block: what the engine's hit compares with, since the engine has no blocks.
+    /// </summary>
+    public double UnblockedAmount => TotalAmount + Blocked;
+
+    /// <summary>The amount a hit check compares, for display: the unblocked amount, with the blocked part when there is one.</summary>
+    public string ComparedAmountText() =>
+        Blocked > 0 ? $"{UnblockedAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ({Blocked.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} blocked)" : TotalAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 public class LogAura
@@ -143,6 +159,8 @@ public class LogAura
     [JsonPropertyName("target")] public UnitRef Target { get; set; } = new(0, 1);
     [JsonPropertyName("stack")] public int? Stack { get; set; }
     [JsonPropertyName("duration_ms")] public double? DurationMs { get; set; }
+    /// <summary>The ability the log names as the aura's cause (its extraAbilityGameID), if any.</summary>
+    [JsonPropertyName("extra_ability_id")] public int? ExtraAbilityId { get; set; }
 
     public bool IsGain => Type is "applybuff" or "applybuffstack" or "applydebuff" or "applydebuffstack" or "refreshbuff" or "refreshdebuff";
     public bool IsLoss => Type is "removebuff" or "removebuffstack" or "removedebuff" or "removedebuffstack";
@@ -153,6 +171,11 @@ public class LogResourceSnapshot
     [JsonPropertyName("t")] public double Time { get; set; }
     [JsonPropertyName("event")] public string Event { get; set; } = string.Empty;
     [JsonPropertyName("ability_id")] public int? AbilityId { get; set; }
+    /// <summary>
+    /// The event is the activation of an ability (a cast event the log marks activation: an instant cast, or the cast
+    /// logged with a begincast), not a cast-time ability's completion.
+    /// </summary>
+    [JsonPropertyName("activation")] public bool Activation { get; set; }
     [JsonPropertyName("resources")] public Dictionary<string, LogResourceValue> Resources { get; set; } = new();
 }
 

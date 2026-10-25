@@ -4,9 +4,11 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/FellowshipSim.AppHost/FellowshipSim.AppHost.csproj" />
+    <Project Path="src/FellowshipSim.Cli/FellowshipSim.Cli.csproj" />
     <Project Path="src/FellowshipSim.Core/FellowshipSim.Core.csproj" />
     <Project Path="src/FellowshipSim.Desktop/FellowshipSim.Desktop.csproj" />
     <Project Path="src/FellowshipSim.Engine/FellowshipSim.Engine.csproj" />
+    <Project Path="src/FellowshipSim.Launcher/FellowshipSim.Launcher.csproj" />
     <Project Path="src/FellowshipSim.EngineServer/FellowshipSim.EngineServer.csproj" />
     <Project Path="src/FellowshipSim.Core.Generators/FellowshipSim.Core.Generators.csproj" />
     <Project Path="src/FellowshipSim.Logs/FellowshipSim.Logs.csproj" />

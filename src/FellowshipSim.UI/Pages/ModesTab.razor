@@ -1,0 +1,100 @@
+@using System.Globalization
+@using FellowshipSim.Core.Domain
+@using FellowshipSim.Core.Import
+@inject SimPageState State
+@* The Sim page's Modes tab: the fight, the start of the fight, then Compare and Finder. *@
+<Card Title="Fight">
+    <div class="choices" role="radiogroup" aria-label="Fight">
+        <label class="choice @(State.Mode == SimMode.SingleTarget ? "on" : "")">
+            <input type="radio" name="mode" checked="@(State.Mode == SimMode.SingleTarget)" @onchange="() => State.Mode = SimMode.SingleTarget" />
+            <strong>Single target</strong>
+            <span class="meta">One target for the whole fight.</span>
+        </label>
+        <label class="choice @(State.Mode == SimMode.Aoe ? "on" : "")">
+            <input type="radio" name="mode" checked="@(State.Mode == SimMode.Aoe)" @onchange="() => State.Mode = SimMode.Aoe" />
+            <strong>AoE</strong>
+            <span class="meta">Several targets for the whole fight. The report adds the primary target's DPS.</span>
+        </label>
+    </div>
+    <div class="fields">
+        <label class="field">
+            Duration (seconds)
+            <input type="number" min="1" step="any" @bind="State.DurationSeconds" />
+        </label>
+        @if (State.Mode == SimMode.Aoe)
+        {
+            <label class="field">
+                Targets
+                <input type="number" min="2" step="1" @bind="State.AoeTargets" />
+            </label>
+        }
+        <div class="toggle-block">
+            <label class="switch">
+                <input type="checkbox" @bind="State.VaryLength" />
+                <span>Vary the fight length</span>
+            </label>
+            <span class="meta">@LengthText()</span>
+        </div>
+        <label class="field">
+            By ± %
+            <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryLength)"
+                   @bind:get="State.LengthVariancePercent" @bind:set="v => State.LengthVariancePercent = Math.Clamp(v, 0, 90)" />
+        </label>
+    </div>
+    <p class="hint">Targets' health falls with the fight's time (100% at the start, 0% at its end), so execute and health-gated effects come at the right moments.</p>
+</Card>
+
+<Card Title="Start of the fight">
+    <div class="fields">
+        <div class="toggle-block">
+            <label class="switch">
+                <input type="checkbox" @bind="State.StartWithSpirit" />
+                <span>Start with Spirit</span>
+            </label>
+            <span class="meta">For an ultimate held going into the fight. This build holds up to @N(MaxSpirit()) (Sapphire's Ancestral Surge raises it to 110 or 130).</span>
+        </div>
+        <label class="field">
+            Spirit (0 – @N(MaxStartingSpirit))
+            <input type="number" class="short" min="0" max="@MaxStartingSpirit" step="1" disabled="@(!State.StartWithSpirit)"
+                   @bind:get="State.StartingSpirit" @bind:set="v => State.StartingSpirit = Math.Clamp(v, 0, MaxStartingSpirit)" />
+        </label>
+    </div>
+</Card>
+
+<CompareCard Heroes="Heroes" Lists="Lists" OnChanged="OnChanged" />
+<FinderCard OnChanged="OnChanged" />
+
+@code {
+    /// <summary>Every hero the engine has, for the saved builds.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> Heroes { get; set; } = [];
+
+    /// <summary>Every action list the visitor can pick, of every hero.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ActionListEntry> Lists { get; set; } = [];
+
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>The most Spirit a fight can start with: a build with Ancestral Surge - II holds 130.</summary>
+    public const double MaxStartingSpirit = 130;
+
+    // The build's own most Spirit Points; a sim starts with no more than this, whatever is asked.
+    private double MaxSpirit()
+    {
+        try
+        {
+            return HeroImporter.Import(State.Build).Resources.Get(Hero.SpiritPoints).Max;
+        }
+        catch (Exception)
+        {
+            return Hero.SpiritPoints.Max;
+        }
+    }
+
+    private string LengthText()
+    {
+        if (!State.VaryLength || State.LengthVariancePercent <= 0) return "Every fight lasts the duration.";
+        double share = State.LengthVariancePercent / 100;
+        return $"Each fight lasts {N(State.DurationSeconds * (1 - share))} – {N(State.DurationSeconds * (1 + share))} s, so no build is tuned to one exact length.";
+    }
+
+    private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
+}

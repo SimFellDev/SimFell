@@ -1,0 +1,10 @@
+.icon {
+  flex: none;
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.empty {
+  display: inline-block;
+  border: 1px dashed var(--border);
+}

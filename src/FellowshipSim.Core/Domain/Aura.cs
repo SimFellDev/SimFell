@@ -24,6 +24,19 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// <summary>When above 0, a re-application adds this many seconds to the time left instead of restarting the duration.</summary>
     public double ReapplyExtendsSeconds { get; init; }
 
+    /// <summary>When true, a re-application adds its stacks and leaves the time left as it is.</summary>
+    public bool ReapplyKeepsExpiry { get; init; }
+
+    /// <summary>
+    /// When true, the aura stays when the hero dies. Combat logs remove every other aura of the hero at its death.
+    /// </summary>
+    public bool KeepsOnDeath { get; init; }
+
+    /// <summary>
+    /// When true, the aura's expiry takes one stack and restarts its duration; the expiry of its last stack removes it.
+    /// </summary>
+    public bool ExpiryRemovesOneStack { get; init; }
+
     public string Key { get; private init; } = KeyOf(Name, LogId, 0);
 
     // Speed: StatMask is built once. Setting Modifiers rebuilds it.
@@ -194,11 +207,17 @@ public class AuraContainer
         finally { _notifying--; }
     }
 
-    /// <summary>Raised whenever an aura is applied, stacked or refreshed (aura, stacks before, time).</summary>
+    /// <summary>
+    /// Raised whenever an aura is applied, stacked or refreshed, or loses a stack on expiry with its duration restarting
+    /// (<see cref="AuraDef.ExpiryRemovesOneStack"/>): aura, stacks before, time.
+    /// </summary>
     public event Action<Aura, int, SimTime>? OnGained;
 
     /// <summary>Raised when an aura is removed or expires.</summary>
     public event Action<Aura, SimTime>? OnRemoved;
+
+    /// <summary>Raised when an aura loses stacks but stays (aura, stacks before, time).</summary>
+    public event Action<Aura, int, SimTime>? OnStacksLost;
 
     public IReadOnlyDictionary<string, long> UptimeMs => _uptimeMs;
 
@@ -228,7 +247,11 @@ public class AuraContainer
                 existing = new Aura(def) { AppliedAt = existing.AppliedAt, Stacks = existing.Stacks };
                 _auras[def.Key] = existing;
             }
-            if (def.ReapplyExtendsSeconds > 0 && expires != SimTime.Infinite && previousExpiry > now)
+            if (def.ReapplyKeepsExpiry && previousExpiry > now)
+            {
+                expires = previousExpiry;
+            }
+            else if (def.ReapplyExtendsSeconds > 0 && expires != SimTime.Infinite && previousExpiry > now)
             {
                 expires = previousExpiry + SimTime.FromSeconds(def.ReapplyExtendsSeconds);
             }
@@ -312,8 +335,10 @@ public class AuraContainer
         {
             if (aura.Stacks > count)
             {
+                int before = aura.Stacks;
                 aura.Stacks -= count;
                 StatsChanged(aura.Def.StatMask);
+                OnStacksLost?.Invoke(aura, before, now);
             }
             else Remove(key, now);
         }
@@ -401,10 +426,24 @@ public class AuraContainer
         QueueExpiry();
         foreach (var aura in expired)
         {
-            Remove(aura.Key, aura.ExpiresAt);
+            if (aura.Def.ExpiryRemovesOneStack && aura.Stacks > 1) LoseStackOnExpiry(aura);
+            else Remove(aura.Key, aura.ExpiresAt);
         }
         expired.Clear();
         _expired = expired;
+    }
+
+    /// <summary>The aura's duration ran out: it loses a stack, and its duration restarts from the expiry.</summary>
+    private void LoseStackOnExpiry(Aura aura)
+    {
+        var at = aura.ExpiresAt;
+        int before = aura.Stacks;
+        aura.Stacks--;
+        aura.ExpiresAt = at + aura.Duration + SimTime.FromSeconds(ExpiryLagSeconds);
+        StatsChanged(aura.Def.StatMask);
+        ExpiryChanged(aura.ExpiresAt);
+        OnGained?.Invoke(aura, before, at);
+        NotifyTimers(aura);
     }
 
     private List<Aura>? _expired;

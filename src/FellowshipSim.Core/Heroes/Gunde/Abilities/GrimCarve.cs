@@ -1,0 +1,49 @@
+namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
+
+/// <summary>
+/// Ability 2262: "Throw your axe at the target enemy, where it spins like a sawblade, hitting all nearby enemies three
+/// times and dealing 207.6% of Strength with each spin. Applies Rend to the targets for 50% of the damage dealt." Damage
+/// falls off as sqrt(5/N) beyond 5 enemies (game data). Cooldown 15s, shortened by Haste at the cast.
+/// Combat logs (Y4wpb2f3gc8LqJDX fight 25, 40 casts): the spins land 0.17-0.24s, 0.64-0.71s and 1.14-1.21s after the
+/// cast, not hasted; each spin hits the enemies there as it lands.
+/// </summary>
+public class GrimCarve : GundeAbility
+{
+    public const int AbilityId = 2262;
+    public const string AbilityName = "Grim Carve";
+    public const double Coefficient = 2.076;
+    public const double CooldownSeconds = 15.0;
+    public const int Spins = 3;
+    public const double TargetThreshold = 5;
+    public const double RendShareOfDamage = 0.5;
+    /// <summary>The earliest usual times (combat logs), so a spin is never released after it should land.</summary>
+    public const double FirstSpinSeconds = 0.167;
+    public const double SpinIntervalSeconds = 0.467;
+
+    /// <summary>Spins of each cast (Bloody Mess adds to them).</summary>
+    public int SpinCount { get; set; } = Spins;
+
+    /// <summary>Crit chance the cast's spins get, read and used up at the cast (Grim Harvest).</summary>
+    public List<Func<SimulationContext, double>> CastCritChanceBonuses { get; } = new();
+
+    public GrimCarve(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    {
+        BaseCoefficient = Coefficient;
+        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        AoeTargetThreshold = TargetThreshold;
+        RendShare = RendShareOfDamage;
+    }
+
+    public override void Execute(SimulationContext ctx, EnemyTarget target)
+    {
+        TriggerCooldown(ctx);
+        var rend = BeginRend(ctx);
+        double crit = 0.0;
+        foreach (var bonus in CastCritChanceBonuses) crit += bonus(ctx);
+        for (int i = 0; i < SpinCount; i++)
+        {
+            ctx.Schedule(SimTime.FromSeconds(FirstSpinSeconds + i * SpinIntervalSeconds),
+                c => RendingPulse(c, rend, AreaTargets(c, target), extraCritChance: crit > 0.0 ? _ => crit : null), Name);
+        }
+    }
+}

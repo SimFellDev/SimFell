@@ -9,13 +9,13 @@ public class Sapphire : Gem
     [
         new(294, 1, "Ancestral Surge", 80, V(("SpiritPointsBonus", 10), ("PrimaryStatBonus", 0.08)),
             AuraDef.Effect("Ancestral Surge", AncestralSurgeEffectId, modifiers: StatModifier.More(StatType.PrimaryAttributeMultiplier, 1.08))),
-        new(276, 2, "Mystic's Intuition", 150, V(("StaminaBonus", 8), ("SpiritBonus", 8))),
+        new(276, 2, "Mystic's Intuition", 150, V(("StaminaBonus", 4), ("SpiritBonus", 8))),
         new(304, 3, "Resonating Soul", 220, V(("HealthInterval", 0.1), ("DamageReduction", 0.01))),
         new(286, 4, "Oracle's Foresight", 300, V(("SpiritBonus", 0.02))),
         new(308, 5, "Blessing of the Prophet", 450, V(("CostReduction", 0.05), ("DurationBonus", 6))),
         new(295, 6, "Ancestral Surge - II", 600, V(("SpiritPointsBonus", 30), ("PrimaryStatBonus", 0.24)),
             AuraDef.Effect("Ancestral Surge - II", AncestralSurgeIIEffectId, modifiers: StatModifier.More(StatType.PrimaryAttributeMultiplier, 1.24))),
-        new(277, 7, "Mystic's Intuition - II", 800, V(("StaminaBonus", 24), ("SpiritBonus", 24))),
+        new(277, 7, "Mystic's Intuition - II", 800, V(("StaminaBonus", 12), ("SpiritBonus", 24))),
         new(305, 8, "Resonating Soul - II", 1000, V(("HealthInterval", 0.1), ("DamageReduction", 0.03))),
         new(287, 9, "Oracle's Foresight - II", 1250, V(("SpiritBonus", 0.06))),
         new(309, 10, "Blessing of the Prophet - II", 1500, V(("CostReduction", 0.15), ("DurationBonus", 18))),
@@ -49,4 +49,29 @@ public class Sapphire : Gem
                 return true;
         }
     }
+
+    protected override void BindLater(Hero hero, GemNode node, SimTime now)
+    {
+        if (node.Slot != 1) return;
+        hero.AddMaxSpiritPoints(node.Value("SpiritPointsBonus"));
+        hero.SpiritOfHeroismAuras.Add(hero.Register(node.Grants!));
+    }
+
+    /// <summary>Spirit of Heroism gives the active rank's Ancestral Surge, and the maximum Spirit Points follow the rank.</summary>
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
+    {
+        var old = before.FirstOrDefault(n => n.Slot == 1);
+        var next = NodeInSlot(1);
+        if (old == null || next == null || old == next) return;
+        int i = hero.SpiritOfHeroismAuras.IndexOf(old.Grants!);
+        if (i >= 0) hero.SpiritOfHeroismAuras[i] = hero.Register(next.Grants!);
+        hero.AddMaxSpiritPoints(next.Value("SpiritPointsBonus") - old.Value("SpiritPointsBonus"));
+    }
+
+    protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
+    {
+        2 => [StatModifier.Add(StatType.SpiritRating, node.Value("SpiritBonus"))],
+        4 => [StatModifier.Add(StatType.Spirit, node.Value("SpiritBonus"))],
+        _ => [],
+    };
 }

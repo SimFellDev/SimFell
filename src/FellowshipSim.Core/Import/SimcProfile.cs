@@ -1,23 +1,34 @@
 using System.Globalization;
 using System.Text;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.Customization.Aspects;
+using FellowshipSim.Core.Customization.Augmentations;
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.StatEnchants;
+using FellowshipSim.Core.Customization.ProtectiveEnchants;
+using FellowshipSim.Core.Customization.Sigils;
 
 namespace FellowshipSim.Core.Import;
 
 /// <summary>
 /// A character profile in simc style: one <c>key=value</c> per line, names as action-list names ("winters_blessing").
-/// Stats are exact percentages; each rating is the one that gives its percentage.
+/// Stats are exact percentages; each rating is the one that gives its percentage. With percentages, <c>gems</c> is the
+/// character sheet's gem power (Covetous Greed included).
 /// <code>
 /// rime="sww"
 /// primary_stat=300
 /// crit=30%
 /// haste=24%
 /// talents=avalanche/coalescing_frost/...
-/// traits=martial_initiative:2/...
-/// blessings=the_monarch:1/...
+/// aspects=martial_initiative:2/...
+/// sigils=hunters_focus:1/...
+/// protective_enchant=the_oak:1
+/// glyphs=the_monarch:1/...
 /// gems=sapphire:1500/...
-/// set_bonus=dark_prophecy_2pc=1
+/// gem_sockets=splendid_amethyst/large_emerald/...
+/// gear_gem_bonuses=sapphire:6/amethyst:5/...
+/// relic1=orb_of_inner_seas,id=5926
+/// relic2=orb_of_gathering_storms,id=5924
 /// legendary=frostwyrms_spite,id=5899
 /// weapon=ashas_chronoshift_spire
 /// actions+=/frost_bolt
@@ -26,8 +37,6 @@ namespace FellowshipSim.Core.Import;
 /// </summary>
 public sealed record SimcProfile(CharacterBuild Build, string ActionList)
 {
-    private const string SetBonusSuffix = "_2pc";
-
     public static SimcProfile Load(string path) => Parse(File.ReadAllText(path));
 
     public static SimcProfile Parse(string text)
@@ -69,6 +78,11 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             }
         }
         if (hero == null) throw new FormatException("The profile has no hero line.");
+        // The ratings read from the percentages count the stat enchants; a build's ratings are without them.
+        build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
+        build.HasteRating = Math.Max(0, build.HasteRating - build.EnchantRating(StatType.HasteRating));
+        build.ExpertiseRating = Math.Max(0, build.ExpertiseRating - build.EnchantRating(StatType.ExpertiseRating));
+        build.SpiritRating = Math.Max(0, build.SpiritRating - build.EnchantRating(StatType.SpiritRating));
         return new SimcProfile(build, actions.ToString());
     }
 
@@ -99,16 +113,13 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                 var tree = hero.TalentTreeSlots.Select(s => Catalog.CreateTalent(s.TalentId)).OfType<Talent>().Select(t => (t.Name, t.Id));
                 foreach (string name in List(value)) build.Talents.Add(IdOf(name, tree, "talent"));
                 break;
-            case "traits":
+            case "aspects": AddAugmentations<Aspect>(build, value, "aspect"); break;
+            case "sigils": AddAugmentations<Sigil>(build, value, "sigil"); break;
+            case "protective_enchant": AddAugmentations<ProtectiveEnchant>(build, value, "protective enchant"); break;
+            case "glyphs":
                 foreach (var (name, rank) in Ranked(value))
                 {
-                    build.Traits.Add(new BuildEntry(IdOf(name, Catalog.AllTraits.Select(t => (t.Name, t.Id)), "trait"), rank));
-                }
-                break;
-            case "blessings":
-                foreach (var (name, rank) in Ranked(value))
-                {
-                    build.Blessings.Add(new BuildEntry(IdOf(name, Catalog.AllBlessings.Select(b => (b.Name, b.Id)), "blessing"), rank));
+                    build.Glyphs.Add(new BuildEntry(IdOf(name, Catalog.AllGlyphs.Select(g => (g.Name, g.Id)), "glyph"), rank));
                 }
                 break;
             case "gems":
@@ -120,16 +131,36 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     build.GemPower[colors[0]] = power;
                 }
                 break;
-            case "set_bonus":
-            {
-                var (pieces, enabled) = Pair(value);
-                if (!pieces.EndsWith(SetBonusSuffix)) throw new FormatException($"a set bonus is <set>{SetBonusSuffix}=1");
-                string name = pieces[..^SetBonusSuffix.Length];
-                var set = Catalog.AllSets.FirstOrDefault(s => AplNames.Slug(s.Name) == name)
-                          ?? throw new FormatException($"no set '{name}'");
-                if (enabled != 0) build.SetBonusIds.AddRange(Enumerable.Repeat(set.SetBonusIds[0], Customization.Sets.SetBonus.PiecesForBonus));
+            case "gem_sockets":
+                foreach (string name in List(value))
+                {
+                    build.SocketedGemIds.Add((GemItem.All.FirstOrDefault(g => AplNames.Slug(g.Name) == name) ?? throw new FormatException($"no gem '{name}'")).Id);
+                }
                 break;
-            }
+            case "gear_gem_bonuses":
+                foreach (var (name, count) in Ranked(value))
+                {
+                    var colors = Enum.GetValues<GemColor>().Where(c => AplNames.Slug(c.ToString()) == name).ToList();
+                    if (colors.Count == 0) throw new FormatException($"no gem colour '{name}'");
+                    build.GearGemBonuses[colors[0]] = count;
+                }
+                break;
+            case "stat_enchants":
+                foreach (var (name, rating) in Ranked(value))
+                {
+                    var enchant = StatEnchant.All.FirstOrDefault(e => e.Key == name) ?? throw new FormatException($"no stat enchant '{name}'");
+                    build.StatEnchants.Add(new BuildEntry(enchant.Id, rating));
+                }
+                break;
+            case "stat_enchant_counts":
+                foreach (var (name, count) in Ranked(value))
+                {
+                    var enchant = StatEnchant.All.FirstOrDefault(e => e.Key == name) ?? throw new FormatException($"no stat enchant '{name}'");
+                    build.StatEnchantCounts[enchant.Id] = count;
+                }
+                break;
+            case "relic1": build.Relic1ItemId = RelicItemId(value); break;
+            case "relic2": build.Relic2ItemId = RelicItemId(value); break;
             case "legendary":
             {
                 var options = Options(value);
@@ -157,34 +188,55 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         s.AppendLine($"primary_stat={Text(build.PrimaryStat)}");
         if (build.Stamina > 0) s.AppendLine($"stamina={Text(build.Stamina)}");
         if (build.Armor > 0) s.AppendLine($"armor={Text(build.Armor)}");
-        // The log's character sheet when there is one, otherwise the percentages of the ratings.
-        double Sheet(string stat, double baseValue, double rating) =>
-            build.SheetPercents.TryGetValue(stat, out double sheet) ? sheet : baseValue + StatDiminishingReturns.FromRating(rating);
-        s.AppendLine($"crit={PercentText(Sheet("crit", StatBlock.BaseCritChance, build.CritRating))}");
-        s.AppendLine($"haste={PercentText(Sheet("haste", 0, build.HasteRating))}");
-        s.AppendLine($"expertise={PercentText(Sheet("expertise", 0, build.ExpertiseRating))}");
-        s.AppendLine($"spirit={PercentText(Sheet("spirit", StatBlock.BaseSpirit, build.SpiritRating))}");
+        // The log's character sheet when there is one, otherwise the percentages of the ratings with the stat enchants'.
+        double Sheet(string stat, double baseValue, double rating, StatType ratingType) =>
+            build.SheetPercents.TryGetValue(stat, out double sheet) ? sheet
+                : baseValue + StatDiminishingReturns.FromRating(rating + build.EnchantRating(ratingType));
+        s.AppendLine($"crit={PercentText(Sheet("crit", StatBlock.BaseCritChance, build.CritRating, StatType.CritRating))}");
+        s.AppendLine($"haste={PercentText(Sheet("haste", 0, build.HasteRating, StatType.HasteRating))}");
+        s.AppendLine($"expertise={PercentText(Sheet("expertise", 0, build.ExpertiseRating, StatType.ExpertiseRating))}");
+        s.AppendLine($"spirit={PercentText(Sheet("spirit", StatBlock.BaseSpirit, build.SpiritRating, StatType.SpiritRating))}");
         if (build.Talents.Count > 0)
         {
             s.AppendLine($"talents={string.Join('/', build.Talents.Select(id => AplNames.Slug(Catalog.CreateTalent(id)?.Name ?? throw new InvalidOperationException($"Talent {id} is not modeled"))))}");
         }
-        if (build.Traits.Count > 0)
+        var augmentations = build.Augmentations
+            .Select(a => (Entry: a, Augmentation: Catalog.CreateAugmentation(a.Id, a.Rank) ?? throw new InvalidOperationException($"Augmentation {a.Id} is not in the catalog")))
+            .ToList();
+        void AppendAugmentations<T>(string key) where T : Augmentation
         {
-            s.AppendLine($"traits={string.Join('/', build.Traits.Select(t => $"{AplNames.Slug(Catalog.CreateTrait(t.Id, t.Rank)?.Name ?? throw new InvalidOperationException($"Trait {t.Id} is not in the catalog"))}:{t.Rank}"))}");
+            var ofKind = augmentations.Where(a => a.Augmentation is T).ToList();
+            if (ofKind.Count > 0) s.AppendLine($"{key}={string.Join('/', ofKind.Select(a => $"{AplNames.Slug(a.Augmentation.Name)}:{a.Entry.Rank}"))}");
         }
-        if (build.Blessings.Count > 0)
+        AppendAugmentations<Aspect>("aspects");
+        AppendAugmentations<Sigil>("sigils");
+        AppendAugmentations<ProtectiveEnchant>("protective_enchant");
+        if (build.Glyphs.Count > 0)
         {
-            s.AppendLine($"blessings={string.Join('/', build.Blessings.Select(b => $"{AplNames.Slug(Catalog.CreateBlessing(b.Id, b.Rank)?.Name ?? throw new InvalidOperationException($"Blessing {b.Id} is not in the catalog"))}:{b.Rank}"))}");
+            s.AppendLine($"glyphs={string.Join('/', build.Glyphs.Select(g => $"{AplNames.Slug(Catalog.CreateGlyph(g.Id, g.Rank)?.Name ?? throw new InvalidOperationException($"Glyph {g.Id} is not in the catalog"))}:{g.Rank}"))}");
         }
         if (build.GemPower.Count > 0)
         {
             s.AppendLine($"gems={string.Join('/', build.GemPower.Select(g => $"{AplNames.Slug(g.Key.ToString())}:{Text(g.Value)}"))}");
         }
-        foreach (var set in build.SetBonusIds.Select(Catalog.SetOf).OfType<Type>().GroupBy(t => t)
-                     .Where(g => g.Count() >= Customization.Sets.SetBonus.PiecesForBonus).Select(g => Catalog.CreateSet(g.Key)))
+        if (build.SocketedGemIds.Count > 0)
         {
-            s.AppendLine($"set_bonus={AplNames.Slug(set.Name)}{SetBonusSuffix}=1");
+            s.AppendLine($"gem_sockets={string.Join('/', build.SocketedGemIds.Select(id => AplNames.Slug((GemItem.Find(id) ?? throw new InvalidOperationException($"Gem {id} is not known")).Name)))}");
         }
+        if (build.GearGemBonuses.Count > 0)
+        {
+            s.AppendLine($"gear_gem_bonuses={string.Join('/', build.GearGemBonuses.Select(g => $"{AplNames.Slug(g.Key.ToString())}:{g.Value}"))}");
+        }
+        if (build.StatEnchants.Count > 0)
+        {
+            s.AppendLine($"stat_enchants={string.Join('/', build.StatEnchants.Select(e => $"{(StatEnchant.Find(e.Id) ?? throw new InvalidOperationException($"Stat enchant {e.Id} is not known")).Key}:{Text(e.Rank)}"))}");
+        }
+        if (build.StatEnchantCounts.Count > 0)
+        {
+            s.AppendLine($"stat_enchant_counts={string.Join('/', build.StatEnchantCounts.Select(e => $"{(StatEnchant.Find(e.Key) ?? throw new InvalidOperationException($"Stat enchant {e.Key} is not known")).Key}:{e.Value}"))}");
+        }
+        RelicLine(s, "relic1", build.Relic1ItemId);
+        RelicLine(s, "relic2", build.Relic2ItemId);
         foreach (int itemId in build.LegendaryItemIds)
         {
             var legendary = Catalog.CreateLegendary(build.Hero, itemId) ?? throw new InvalidOperationException($"Legendary item {itemId} is not in the catalog");
@@ -206,6 +258,13 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
     private static FormatException Error(int lineNumber, string line, string problem) =>
         new($"Profile line {lineNumber} '{line}': {problem}.");
 
+    /// <summary>Ranked augmentations of one kind (<typeparamref name="T"/>): "name:rank/...".</summary>
+    private static void AddAugmentations<T>(CharacterBuild build, string value, string kind) where T : Augmentation
+    {
+        var known = Catalog.AllAugmentations.OfType<T>().Select(a => (a.Name, a.Id)).ToList();
+        foreach (var (name, rank) in Ranked(value)) build.Augmentations.Add(new BuildEntry(IdOf(name, known, kind), rank));
+    }
+
     private static IEnumerable<string> List(string value) => value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static IEnumerable<(string Name, int Rank)> Ranked(string value) =>
@@ -217,6 +276,23 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         int at = entry.IndexOfAny([':', '=']);
         if (at <= 0) throw new FormatException($"expected name:value in '{entry}'");
         return (entry[..at].Trim(), Number(entry[(at + 1)..]));
+    }
+
+    /// <summary>The item ID of an "item,id=item id" relic slot, checked against the item's name.</summary>
+    private static int RelicItemId(string value)
+    {
+        var options = Options(value);
+        int itemId = (int)Number(options.GetValueOrDefault("id") ?? throw new FormatException("a relic is <item>,id=<item id>"));
+        var relic = Catalog.RelicItemOf(itemId) ?? throw new FormatException($"no relic item {itemId}");
+        if (AplNames.Slug(relic.Name) != options[""]) throw new FormatException($"item {itemId} is {AplNames.Slug(relic.Name)}");
+        return itemId;
+    }
+
+    private static void RelicLine(StringBuilder s, string key, int itemId)
+    {
+        if (itemId == 0) return;
+        var relic = Catalog.RelicItemOf(itemId) ?? throw new InvalidOperationException($"Relic item {itemId} is not in the catalog");
+        s.AppendLine($"{key}={AplNames.Slug(relic.Name)},id={itemId}");
     }
 
     /// <summary>"name,key=value,...": the name under the empty key.</summary>

@@ -49,31 +49,52 @@ public abstract class BoundExpression
         return Crossing.First(ctx, this, Until(ctx), curve.Numerator, curve.Denominator);
     }
 
-    /// <summary>Binds <paramref name="expression"/> to <paramref name="hero"/>.</summary>
-    public static BoundExpression Bind(IAplExpression expression, Hero hero) => expression switch
+    /// <summary>Binds <paramref name="expression"/> to <paramref name="hero"/>. A variable reads 0.</summary>
+    public static BoundExpression Bind(IAplExpression expression, Hero hero) => Bind(expression, hero, null);
+
+    /// <summary>Binds <paramref name="expression"/> to <paramref name="hero"/>, with its variables read from <paramref name="variables"/>.</summary>
+    internal static BoundExpression Bind(IAplExpression expression, Hero hero, BoundVariables? variables) => expression switch
     {
         ConstantExpression c => new BoundConstant(c.Value),
-        GroupExpression g => Bind(g.Inner, hero),
-        UnaryOpExpression { Operator: UnaryOperator.Not } u => new BoundNot(Bind(u.Operand, hero)),
-        UnaryOpExpression { Operator: UnaryOperator.Negate } u => new BoundNegate(Bind(u.Operand, hero)),
-        BinaryOpExpression b => new BoundBinary(Bind(b.Left, hero), b.Operator, Bind(b.Right, hero)),
-        PropertyExpression p => BindProperty(p, hero),
+        GroupExpression g => Bind(g.Inner, hero, variables),
+        UnaryOpExpression { Operator: UnaryOperator.Not } u => new BoundNot(Bind(u.Operand, hero, variables)),
+        UnaryOpExpression { Operator: UnaryOperator.Negate } u => new BoundNegate(Bind(u.Operand, hero, variables)),
+        BinaryOpExpression b => new BoundBinary(Bind(b.Left, hero, variables), b.Operator, Bind(b.Right, hero, variables)),
+        PropertyExpression p => BindProperty(p, hero, variables),
         _ => throw new ArgumentException($"Unsupported APL expression: '{expression}'", nameof(expression)),
     };
 
     // The same order as PropertyExpression.EvaluateNumeric: a named value, then a resource, then a scoped path; else 0.
-    private static BoundExpression BindProperty(PropertyExpression p, Hero hero)
+    private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
+        if (p.PropertyPath == "time") return new BoundTime();
         if (PropertyExpression.Named.TryGetValue(p.PropertyPath, out var named)) return new BoundNamed(hero, named);
-        if (hero.FindResource(p.ResourceName) is { } resource) return new BoundResource(hero.Resources.Get(resource));
-        return p.Scope switch
+        if (hero.FindResource(p.ResourceName) is { } resource)
         {
-            PropertyExpression.BuffScope => new BoundAura(hero, debuff: false, p.Name!, BoundAura.PropertyOf(p.Property!)),
-            PropertyExpression.DebuffScope => new BoundAura(hero, debuff: true, p.Name!, BoundAura.PropertyOf(p.Property!)),
-            // Cooldowns are kept under the ability's own name ("Cold Snap"), not its action-list name.
-            PropertyExpression.CooldownScope => BoundCooldown.For(hero, AplNames.FindAbility(hero, p.Name!), p.Name!, p.Property!),
-            _ => new BoundConstant(0.0),
-        };
+            var state = hero.Resources.Get(resource);
+            return p.IsDeficit ? new BoundResourceDeficit(state) : new BoundResource(state);
+        }
+        switch (p.Scope)
+        {
+            case PropertyExpression.BuffScope:
+                return new BoundAura(hero, debuff: false, p.Name!, BoundAura.PropertyOf(p.Property!));
+            case PropertyExpression.DebuffScope:
+                return new BoundAura(hero, debuff: true, p.Name!, BoundAura.PropertyOf(p.Property!));
+            case PropertyExpression.CooldownScope:
+                // Cooldowns are kept under the ability's own name ("Cold Snap"), not its action-list name.
+                return BoundCooldown.For(hero, AplNames.FindAbility(hero, p.Name!), p.Name!, p.Property!);
+            case PropertyExpression.ActionScope:
+                var ability = AplNames.FindAbility(hero, p.Name!);
+                var read = PropertyExpression.ActionProperty(p.Property!);
+                return new BoundNamed(hero, (_, ctx) => read(ability, ctx.CurrentTime));
+            case PropertyExpression.VariableScope:
+                return variables != null ? new BoundVariable(variables.Slot(p.Name!)) : new BoundConstant(0.0);
+            case { } scope when PropertyExpression.BuildScopes.TryGetValue(scope, out var has):
+                // The build does not change once the hero is built.
+                return new BoundConstant(has(hero, p.Name!) ? 1.0 : 0.0);
+            default:
+                return new BoundConstant(0.0);
+        }
     }
 }
 
@@ -297,6 +318,53 @@ internal sealed class BoundResource(ResourceState state) : BoundEventValue
     public override double EvaluateNumeric(SimulationContext ctx) => state.Current;
 }
 
+/// <summary>The room left in a resource ("spirit.deficit").</summary>
+internal sealed class BoundResourceDeficit(ResourceState state) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => state.Max - state.Current;
+}
+
+/// <summary>The seconds since the fight began, rising a second per second.</summary>
+internal sealed class BoundTime : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => ctx.CurrentTime.TotalSeconds;
+    internal override SimTime Until(SimulationContext ctx) => SimTime.Infinite;
+    internal override bool IsLevel(SimulationContext ctx) => false;
+    internal override TimeCurve Curve(SimulationContext ctx) => TimeCurve.Line(EvaluateNumeric(ctx), 0.001);
+    internal override double NumericAt(SimulationContext ctx, SimTime time) => time.TotalSeconds;
+}
+
+/// <summary>The variables of one bound program, by name.</summary>
+internal sealed class BoundVariables
+{
+    private readonly Dictionary<string, BoundVariableSlot> _slots = new();
+
+    public BoundVariableSlot Slot(string name) =>
+        _slots.TryGetValue(name, out var slot) ? slot : _slots[name] = new BoundVariableSlot();
+}
+
+/// <summary>
+/// One variable's value. It belongs to the fight it was set in: in a new fight (another <see cref="SimulationContext"/>)
+/// it reads <see cref="Default"/> until it is set.
+/// </summary>
+internal sealed class BoundVariableSlot
+{
+    private SimulationContext? _fight;
+    private double _value;
+
+    public double Default { get; set; }
+
+    public double Read(SimulationContext ctx) => ctx == _fight ? _value : Default;
+
+    public void Write(SimulationContext ctx, double value) => (_fight, _value) = (ctx, value);
+}
+
+/// <summary>A variable, which changes only when a <c>variable</c> action sets it in a decision.</summary>
+internal sealed class BoundVariable(BoundVariableSlot slot) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => slot.Read(ctx);
+}
+
 /// <summary>
 /// A property of an aura on the hero (buff) or on the current target (debuff). The aura is found by its action-list name
 /// among the active auras, as <see cref="PropertyExpression"/> finds it: several definitions can share a name (copies with
@@ -304,13 +372,14 @@ internal sealed class BoundResource(ResourceState state) : BoundEventValue
 /// </summary>
 internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.AuraProperty property) : BoundNumeric
 {
-    public enum AuraProperty { Up, Down, Stack, AtMaxStacks, Remains }
+    public enum AuraProperty { Up, Down, Stack, AtMaxStacks, Remains, Refreshable }
 
     /// <summary>The property named <paramref name="name"/>; a property auras lack reads as "up".</summary>
     public static AuraProperty PropertyOf(string name) => name switch
     {
         "down" => AuraProperty.Down,
-        "stack" => AuraProperty.Stack,
+        "stack" or "react" => AuraProperty.Stack,
+        "refreshable" => AuraProperty.Refreshable,
         "at_max_stacks" => AuraProperty.AtMaxStacks,
         "remains" => AuraProperty.Remains,
         _ => AuraProperty.Up,
@@ -335,11 +404,24 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         AuraProperty.Down => aura == null ? 1.0 : 0.0,
         AuraProperty.Stack => aura?.Stacks ?? 0,
         AuraProperty.AtMaxStacks => aura != null && aura.Stacks >= aura.MaxStacks ? 1.0 : 0.0,
+        AuraProperty.Refreshable => PropertyExpression.IsRefreshable(aura, now) ? 1.0 : 0.0,
         _ => aura == null ? 0.0 : aura.ExpiresAt == SimTime.Infinite ? double.MaxValue : (aura.ExpiresAt - now).TotalSeconds,
     };
 
-    // The aura found now runs out at its expiry; another aura of the name appears only in an event.
-    internal override SimTime Until(SimulationContext ctx) => Find(ctx, ctx.CurrentTime)?.ExpiresAt ?? SimTime.Infinite;
+    // The aura found now runs out at its expiry; another aura of the name appears only in an event. A refreshable read
+    // also changes at the first millisecond the aura is in its refresh window.
+    internal override SimTime Until(SimulationContext ctx)
+    {
+        var now = ctx.CurrentTime;
+        if (Find(ctx, now) is not { } aura) return SimTime.Infinite;
+        if (property == AuraProperty.Refreshable && aura.ExpiresAt != SimTime.Infinite)
+        {
+            double window = aura.ExpiresAt.Milliseconds - PropertyExpression.RefreshableFraction * aura.Duration.Milliseconds;
+            var refreshable = SimTime.FromMilliseconds((long)Math.Floor(window) + 1);
+            if (refreshable > now) return refreshable;
+        }
+        return aura.ExpiresAt;
+    }
 
     internal override bool IsLevel(SimulationContext ctx) =>
         property != AuraProperty.Remains || Find(ctx, ctx.CurrentTime) is not { } aura || aura.ExpiresAt == SimTime.Infinite;
@@ -362,7 +444,7 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
 /// </summary>
 internal sealed class BoundCooldown : BoundNumeric
 {
-    private enum CooldownProperty { Ready, Remains, Charges }
+    private enum CooldownProperty { Ready, Remains, Charges, Duration, FullRechargeTime }
 
     private readonly Hero _hero;
     private readonly Ability? _ability;
@@ -380,6 +462,8 @@ internal sealed class BoundCooldown : BoundNumeric
         {
             "remains" => CooldownProperty.Remains,
             "charges" => CooldownProperty.Charges,
+            "duration" => CooldownProperty.Duration,
+            "full_recharge_time" => CooldownProperty.FullRechargeTime,
             _ => CooldownProperty.Ready,
         });
 
@@ -399,13 +483,18 @@ internal sealed class BoundCooldown : BoundNumeric
     internal override SimTime Until(SimulationContext ctx) =>
         State() is { } state && state.ChargesAt(ctx.CurrentTime) < state.MaxCharges ? state.NextChargeAt : SimTime.Infinite;
 
-    internal override bool IsLevel(SimulationContext ctx) =>
-        _property != CooldownProperty.Remains || State() is not { } state || state.ChargesAt(ctx.CurrentTime) != 0 || state.NextChargeAt <= ctx.CurrentTime;
+    // A remaining time falls a second per second while the charge it waits for recharges.
+    private bool Falls(SimulationContext ctx) => State() is { } state && state.NextChargeAt > ctx.CurrentTime && _property switch
+    {
+        CooldownProperty.Remains => state.ChargesAt(ctx.CurrentTime) == 0,
+        CooldownProperty.FullRechargeTime => state.ChargesAt(ctx.CurrentTime) < state.MaxCharges,
+        _ => false,
+    };
+
+    internal override bool IsLevel(SimulationContext ctx) => !Falls(ctx);
 
     internal override TimeCurve Curve(SimulationContext ctx) =>
-        _property == CooldownProperty.Remains && State() is { } state && state.ChargesAt(ctx.CurrentTime) == 0 && state.NextChargeAt > ctx.CurrentTime
-            ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001)
-            : TimeCurve.Constant(EvaluateNumeric(ctx));
+        Falls(ctx) ? TimeCurve.Line(EvaluateNumeric(ctx), -0.001) : TimeCurve.Constant(EvaluateNumeric(ctx));
 
     internal override double NumericAt(SimulationContext ctx, SimTime time)
     {
@@ -415,6 +504,10 @@ internal sealed class BoundCooldown : BoundNumeric
         {
             CooldownProperty.Ready => state == null || state.ChargesAt(now) > 0 ? 1.0 : 0.0,
             CooldownProperty.Remains => state != null && state.ChargesAt(now) == 0 ? Math.Max(0.0, (state.NextChargeAt - time).TotalSeconds) : 0.0,
+            CooldownProperty.Duration => _ability?.Cooldown.TotalSeconds ?? 0.0,
+            CooldownProperty.FullRechargeTime => state != null && state.ChargesAt(now) < state.MaxCharges
+                ? Math.Max(0.0, (state.NextChargeAt - time).TotalSeconds) + (state.MaxCharges - state.ChargesAt(now) - 1) * (_ability?.Cooldown.TotalSeconds ?? 0.0)
+                : 0.0,
             _ => state != null ? state.ChargesAt(now) : _ability?.MaxCharges ?? 1,
         };
     }

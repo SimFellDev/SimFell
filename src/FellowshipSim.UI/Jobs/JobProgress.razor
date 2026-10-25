@@ -1,0 +1,26 @@
+@using System.Globalization
+@inject VisitorJobs Jobs
+@* A job's progress bar, coloured by its status, with its message and percent under it. A queued job has its place in the queue. *@
+<div class="progress @StatusClass">
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Percent">
+        <div class="fill" style="width: @Percent%"></div>
+    </div>
+    <div class="meta">@Text <span class="percent">@Percent%</span></div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SimJob Job { get; set; } = null!;
+
+    /// <summary>Progress in whole percent, in the invariant culture for the bar's CSS width.</summary>
+    private string Percent => Math.Floor((Job.Progress ?? 0) * 100).ToString(CultureInfo.InvariantCulture);
+
+    private string StatusClass => Job.Status.ToString().ToLowerInvariant();
+
+    private string Text => Jobs.JobsAhead(Job) switch
+    {
+        0 => "Queued: next to start",
+        1 => "Queued: 1 job ahead",
+        { } ahead => string.Format(CultureInfo.CurrentCulture, "Queued: {0:N0} jobs ahead", ahead),
+        null => Job.Message ?? Job.Status.ToString(),
+    };
+}

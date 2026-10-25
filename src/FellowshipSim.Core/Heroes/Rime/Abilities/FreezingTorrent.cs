@@ -22,6 +22,11 @@ public class FreezingTorrent : RimeAbility
         // Combat logs: a tick lands as the channel starts, then every hasted period, plus a partial final tick.
         ChannelTicksOnStart = true;
         ChannelPartialFinalTick = true;
+        // The final tick comes when less than a frame of a period is left too, 1ms after the regular tick at the end:
+        // 67 Freezing Torrent channels of Rime's 15 fights end with two ticks on one enemy 0-3ms apart, 2.80-2.81s after
+        // the channel begins with Supreme Torrent (both full: GWChJ8P7tn6fHgV3 #22 @ 116.838, 116.839) and 2.00-2.01s
+        // without it (the second small: NhBnFXmy3bJg9Cav #33 @ 127.877 for 817, 127.878 for 105).
+        ChannelFinalTickAlways = true;
     }
 
     /// <summary>Supreme Torrent: the channel lasts longer.</summary>
@@ -59,6 +64,12 @@ public class FreezingTorrent : RimeAbility
         // (yMAZVJL9hTpFjqbC fight 7 @ 49.522: 10 ticks, 10 hits; @ 34.229: one per tick until Flight of the Navir ends).
         _flightOfTheNavir?.CommandSwallow(ctx);
         Rime.AddAnima(AnimaPerTick, ctx, target);
-        DealDamage(ctx, target, damageMultiplier: fraction, extraCritChance: _soulfrost ? SoulfrostTorrent.CritChance : 0.0);
+        if (!_soulfrost)
+        {
+            DealDamage(ctx, target, damageMultiplier: fraction);
+            return;
+        }
+        DealDamage(ctx, target, damageMultiplier: fraction * SoulfrostTorrent.TickDamageScale(Owner, ctx.CurrentTime),
+            extraCritChance: SoulfrostTorrent.CritChance);
     }
 }

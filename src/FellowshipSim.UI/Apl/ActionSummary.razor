@@ -1,0 +1,67 @@
+@using FellowshipSim.Core.APL
+@using Microsoft.AspNetCore.Components.Rendering
+@implements IDisposable
+@* The action's target and condition, coloured, once each has stayed the same for 300 ms; and a run_action_list's warning. *@
+<div class="summary">@if (!string.IsNullOrWhiteSpace(_target.Text))
+    {
+        RenderClause(__builder, "target",
+            (ActionListModel.SelectionName(Vocabulary, Action.TargetSelection ?? AplTargetSelection.First)?.Label ?? "").ToLowerInvariant(), _target);
+    }
+    @if (!string.IsNullOrWhiteSpace(_condition.Text))
+    {
+        RenderClause(__builder, "if", null, _condition);
+    }
+    @if (Warning is { } warning)
+    {
+        <p class="field-warning">@warning</p>
+    }</div>
+
+@code {
+    [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AplVocabulary Vocabulary { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ActionList> Lists { get; set; } = [];
+
+    [Parameter, EditorRequired] public EditorAction Action { get; set; } = null!;
+
+    private DebouncedCheck _condition = null!, _target = null!;
+
+    private string? Warning => ActionListModel.IsRunAction(Vocabulary, Action) ? ActionListModel.RunWarning(Vocabulary, Lists, Action.ActionList) : null;
+
+    protected override void OnInitialized()
+    {
+        Func<System.Action, Task> dispatch = change => InvokeAsync(() =>
+        {
+            change();
+            StateHasChanged();
+        });
+        _condition = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(300), dispatch);
+        _target = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(300), dispatch);
+    }
+
+    protected override void OnParametersSet()
+    {
+        _condition.Set(Vocabulary.Hero, Action.Condition ?? "");
+        _target.Set(Vocabulary.Hero, Action.TargetExpression ?? "");
+    }
+
+    private void RenderClause(RenderTreeBuilder __builder, string keyword, string? label, DebouncedCheck clause)
+    {
+        string text = clause.Text;
+        <div class="clause"><span class="keyword">@keyword</span>@(" " + (label != null ? $"{label} " : ""))@if (clause.Result is { } result && result.Text == text)
+            {
+                <Highlight Text="@text" Check="result.Check" />
+            }
+            else
+            {
+                @text
+            }</div>
+    }
+
+    public void Dispose()
+    {
+        _condition.Dispose();
+        _target.Dispose();
+    }
+}

@@ -19,14 +19,33 @@ public class ReplayOptions
     /// explained by Rime's class tuning aura.
     /// </summary>
     public double UnexplainedHighMargin { get; set; } = 0.0;
-    /// <summary>
-    /// OPEN ITEM: damage IDs whose amounts are not checked yet (their hits must still match the log one to one).
-    /// 1000101 Amethyst Splinter: per-crit 4-tick re-spread fits early in the fight but not throughout.
-    /// </summary>
-    public HashSet<int> UnverifiedDamageIds { get; set; } = [1000101];
 
     /// <summary>Unmatched hits on a target that dies in the log before they would land hit nothing.</summary>
     public bool MissHitsOnDyingTargets { get; set; } = true;
+
+    /// <summary>
+    /// Damage IDs whose hits the log never shows landing hit nothing (no damage, procs or counters), on any target.
+    /// Combat logs: 12 of 1,248 Frost Bolt casts (1029) in 15 Rime fights complete with no Frost Bolt hit on their living
+    /// target, and
+    /// The Vehement's counter (effect 3194) does not count them (4Ln6PQZCRzc7Wpta fight 77 @ 116.780, fight 78 @
+    /// 1311.371, GWChJ8P7tn6fHgV3 fight 22 @ 597.179, Rzg1nQNHpm2fhYtB fight 23 @ 981.460).
+    /// </summary>
+    public HashSet<int> UnmatchedHitsMissIds { get; set; } = [Core.Heroes.Rime.Abilities.FrostBolt.AbilityId];
+    /// <summary>
+    /// Abilities whose cast the game ends at its completion with nothing done, by the log ID of the debuff a completed
+    /// cast applies: a cast the log completes with no application of it by the player within a server frame is cancelled
+    /// as it would complete. Bursting Ice (1031): at the cast's end its target must pass the alignment filters, else the
+    /// ability is cancelled before the commit of its cooldown and its one application, 1395 (game-data-authority,
+    /// GA_Rime_CastedDebuffAoeDamage ExecuteUbergraph: OnFinished 1693, OnAbilityLateTargetValidationFailed and
+    /// K2_CancelAbility 1344 / 1124, FellowshipCommitHeroAbility 1821, the application 2320). Combat logs: 7 of 797
+    /// completed Bursting Ice casts in 15 Rime fights apply no 1395 to their living target, and in 5 of them the next
+    /// Bursting Ice begins 1.1-7.2s later, inside its 10s cooldown (4Ln6PQZCRzc7Wpta fight 78 @ 252.915,
+    /// D1fBhVPkwYKXWbpr fight 1 @ 123.825, GWChJ8P7tn6fHgV3 fight 22 @ 320.357).
+    /// </summary>
+    public Dictionary<int, int> CastProofDebuffIds { get; set; } = new()
+    {
+        [Core.Heroes.Rime.Abilities.BurstingIce.AbilityId] = Core.Domain.LogIds.Effect(Core.Heroes.Rime.Abilities.BurstingIce.DebuffEffectId),
+    };
     /// <summary>
     /// A partial final tick's fraction depends on where the game's 33ms server frames fall, about +/-0.1 of a full tick;
     /// its damage may differ from the engine's by that much of a full tick on top of the spread.
@@ -54,6 +73,13 @@ public class ReplayOptions
     public double GlobalCooldownToleranceSeconds { get; set; } = 0.1;
     /// <summary>Enemies join this long before their first event in the log (their arrival is only known from it).</summary>
     public double EnemyAriseLeadSeconds { get; set; } = 0.1;
+    /// <summary>
+    /// A channel stops this long before its endchannel event: the stop is logged a few milliseconds into its server frame
+    /// and the frame's tick does not happen. Combat logs (15 Rime fights of patch 0.5.0.0, 93 Freezing Torrent ticks the
+    /// engine had within a frame before a logged stop): 62 of 64 ticks 0-8ms before it have no log tick, 28 of 29 ticks
+    /// 12-32ms before it do.
+    /// </summary>
+    public double ChannelStopLeadSeconds { get; set; } = 0.010;
     public double AvoidedTargetPenaltySeconds { get; set; } = 0.2;
     /// <summary>Absolute slack for integer rounding of small hits.</summary>
     public double DamageAbsoluteTolerance { get; set; } = 1.0;
@@ -63,7 +89,21 @@ public class ReplayOptions
     /// <summary>A log hit may land this long after the engine hit (projectile travel).</summary>
     public double HitLateSeconds { get; set; } = 2.0;
     /// <summary>Log hits with the same damage ID landing within this window belong to one multi-target hit.</summary>
-    public double HitGroupSeconds { get; set; } = 0.006;
+    /// <remarks>
+    /// Combat logs (Y4wpb2f3gc8LqJDX fight 25, Gunde): a pulse on 20-27 enemies is logged over up to 9ms; separate pulses
+    /// land at least a server frame (33ms) apart.
+    /// </remarks>
+    public double HitGroupSeconds { get; set; } = 0.010;
+
+    /// <summary>
+    /// Damage IDs whose multi-target hits land over a longer window than <see cref="HitGroupSeconds"/>, with that window.
+    /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over up to 0.1s, and
+    /// casts come a global cooldown apart.
+    /// </summary>
+    public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [Core.Heroes.Elarion.Abilities.Multishot.AbilityId] = 0.2 };
+
+    /// <summary>The window of one multi-target hit with damage ID <paramref name="logId"/>.</summary>
+    public double GroupSecondsOf(int logId) => HitGroupSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitGroupSeconds;
     /// <summary>A log hit still unmatched this long after it landed is reported as missing from the engine.</summary>
     public double SettleSeconds { get; set; } = 2.1;
 
@@ -76,6 +116,8 @@ public class ReplayOptions
     /// <summary>Aura state may differ from the log by event ordering within this window.</summary>
     public double AuraToleranceSeconds { get; set; } = 0.1;
     public double ResourceSnapshotWindowSeconds { get; set; } = 0.002;
+    /// <summary>A periodic tick may fire this far from the engine's predicted tick time.</summary>
+    public double TickTimeToleranceSeconds { get; set; } = PeriodicEffect.ServerFrameSeconds;
 }
 
 public enum IssueCategory
@@ -85,13 +127,74 @@ public enum IssueCategory
     Damage,
     Resources,
     Auras,
-    Procs
+    Procs,
+    GlobalCooldown,
+    Cooldown,
+    Ticks
+}
+
+/// <summary>The range the engine computes for a logged value. <see cref="Low"/> or <see cref="High"/> is infinite for a one-sided range.</summary>
+/// <param name="Unit">The values' unit: "s", "damage", "crit", "stacks", "ticks", "procs" or a resource's name.</param>
+public sealed record ExpectedRange(double Low, double High, string Unit)
+{
+    public bool Contains(double value) => value >= Low && value <= High;
+
+    /// <summary>The bound <paramref name="value"/> is outside, or the nearer bound for a value inside.</summary>
+    public double NearerBound(double value) =>
+        value < Low ? Low : value > High ? High : (value - Low <= High - value ? Low : High);
+
+    public override string ToString() =>
+        double.IsNegativeInfinity(Low) && double.IsPositiveInfinity(High) ? "any"
+        : double.IsPositiveInfinity(High) ? $"{Format(Low, Unit)} or more"
+        : double.IsNegativeInfinity(Low) ? $"{Format(High, Unit)} or less"
+        : Low == High ? Format(Low, Unit)
+        : $"{Format(Low, Unit)} to {Format(High, Unit)}";
+
+    /// <summary>A value in <paramref name="unit"/>: seconds to the millisecond, everything else to two decimals.</summary>
+    public static string Format(double value, string unit) =>
+        unit == "s"
+            ? value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) + "s"
+            : value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + (unit is "damage" ? "" : " " + unit);
 }
 
 /// <param name="Subject">What the issue is about (ability or aura name), for grouping.</param>
 public sealed record ReplayIssue(double Time, int Step, IssueCategory Category, string Message, string? Subject = null)
 {
-    public override string ToString() => $"[{Category}] step {Step} @ {Time:F3}s: {Message}";
+    /// <summary>The range the engine computes; null for a check with no numeric range.</summary>
+    public ExpectedRange? Expected { get; init; }
+    /// <summary>The log's value.</summary>
+    public double? Observed { get; init; }
+    /// <summary>The engine's state at the check.</summary>
+    public EngineState? State { get; init; }
+
+    /// <summary><see cref="Observed"/> minus the bound it is outside (0 inside the range); null with no <see cref="Expected"/>.</summary>
+    public double? Deviation => Expected is { } e && Observed is { } o
+        ? o < e.Low ? o - e.Low : o > e.High ? o - e.High : 0.0
+        : null;
+
+    /// <summary><see cref="Deviation"/> over the nearer bound; null when that bound is 0 or infinite.</summary>
+    public double? RelativeDeviation
+    {
+        get
+        {
+            if (Deviation is not { } deviation || Observed is not { } o) return null;
+            double bound = Expected!.NearerBound(o);
+            return bound == 0 || double.IsInfinity(bound) ? null : deviation / Math.Abs(bound);
+        }
+    }
+
+    public override string ToString()
+    {
+        string text = $"[{Category}] step {Step} @ {Time:F3}s: {Message}";
+        if (Expected is { } e)
+        {
+            text += $" (expected {e}, observed {(Observed is { } o ? ExpectedRange.Format(o, e.Unit) : "none")}";
+            if (Deviation is { } d) text += $", deviation {(d > 0 ? "+" : "")}{ExpectedRange.Format(d, e.Unit)}";
+            if (RelativeDeviation is { } r) text += $" ({r:+0.0%;-0.0%;0.0%})";
+            text += ")";
+        }
+        return text;
+    }
 }
 
 public sealed class ReplayStep
@@ -125,15 +228,24 @@ public sealed record ResourceCheck(string Resource, double Engine, double Log, d
     public bool Matches => Math.Abs(Engine - Log) <= Tolerance + 1e-9;
 }
 
-public sealed record AuraCheck(string Aura, int EngineStacks, int LogStacks)
+/// <param name="LogId">The aura's log ID (0 when unknown).</param>
+public sealed record AuraCheck(string Aura, int EngineStacks, int LogStacks, int LogId = 0)
 {
     public bool Matches => EngineStacks == LogStacks;
 }
 
 public sealed class ReplayResult
 {
-    /// <summary>All damage the engine dealt.</summary>
+    /// <summary>
+    /// The engine's damage: the sum of <see cref="HitPair.EngineAmount"/> in an exact replay, the damage dealt in free dice.
+    /// </summary>
     public double EngineTotalDamage { get; set; }
+    /// <summary>The damage the replay dealt (<see cref="SimulationContext.TotalDamage"/>): the log total in an exact replay.</summary>
+    public double DamageDealt { get; set; }
+    /// <summary>Log hits no engine hit matched, dealt by the replay (<see cref="SimulationContext.DealLoggedHit"/>).</summary>
+    public int LoggedHitsDealt { get; set; }
+    /// <summary>Engine hits on a target that dies in the log before they could land (no damage, no issue).</summary>
+    public int MissedHits { get; set; }
 
     public string ReportCode { get; init; } = string.Empty;
     public int FightId { get; init; }
@@ -145,12 +257,14 @@ public sealed class ReplayResult
     public List<ReplayStep> Steps { get; } = new();
     public ReplayStep? HaltedAt { get; set; }
     public List<ReplayIssue> HaltIssues { get; } = new();
+    /// <summary>Every issue the verifier reported, in the order reported (those before the first step too).</summary>
+    public List<ReplayIssue> Issues { get; } = new();
     public Dictionary<string, int> UnmodeledAbilities { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> UntrackedLogAuras { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> UnmodeledExternalAuras { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<ProcRollStats> ProcStats { get; } = new();
     public List<HitPair> AllHits { get; } = new();
-    /// <summary>Talents, traits, blessings, gem nodes and set parts of the character the engine does not model.</summary>
+    /// <summary>Talents, augmentations, glyphs, gem nodes and relic passive of the character the engine does not model.</summary>
     public List<string> UnmodeledCustomizations { get; } = new();
     public int LogHits { get; set; }
     /// <summary>Casts the engine would have refused but made to follow the log (with the reason).</summary>

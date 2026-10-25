@@ -1,0 +1,84 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IReviewPages ReviewPages
+@inject IJSRuntime JS
+@inject ReplayLibrary Library
+@inject VisitorReviews VisitorReviews
+@inject Visitor Visitor
+@inject IAppViews Views
+@*
+    A review page from the reviews folder, shown in the app page itself (reviewView.js), so the app page's scroll bar
+    scrolls it. Save keeps it as its own HTML file.
+*@
+<div class="review-bar">
+    <div class="leading">@Leading</div>
+    <button type="button" class="secondary-button" disabled="@(!_loaded)" title="Save this review as an HTML file" @onclick="SaveAsync">Save as HTML</button>
+</div>
+<div @ref="_host" class="review-host"></div>
+
+@code {
+    private ElementReference _host;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<ReviewView>? _self;
+    private string? _shown;
+    private bool _loaded;
+
+    [Parameter, EditorRequired] public string HtmlFile { get; set; } = "";
+
+    /// <summary>Shown left of the save button, such as the way back.</summary>
+    [Parameter] public RenderFragment? Leading { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shown == HtmlFile) return;
+        _shown = HtmlFile;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/review/reviewView.js");
+            _self ??= DotNetObjectReference.Create(this);
+            _loaded = false;
+            _loaded = await _module.InvokeAsync<bool>("show", _host, ReviewPages.Url(HtmlFile), _self);
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page closed before the review showed.
+        }
+    }
+
+    /// <summary>The review page's file, when the visitor ran the review; for the desktop app, whose review host is another origin.</summary>
+    [JSInvokable]
+    public async Task<string?> Read()
+    {
+        string name = Path.GetFileName(HtmlFile);
+        string path = Path.Combine(Library.ReviewsDirectory, name);
+        if (!await VisitorReviews.HasAsync(Visitor, name.Split('.')[0]) || !File.Exists(path)) return null;
+        return await File.ReadAllTextAsync(path);
+    }
+
+    /// <summary>Opens another review page a link of this one names (the free-dice page links its replay review).</summary>
+    [JSInvokable]
+    public void Open(string htmlFile) => _ = InvokeAsync(() => Views.ShowReview(Path.GetFileName(htmlFile), "Review"));
+
+    private async Task SaveAsync()
+    {
+        if (_module != null) await _module.InvokeVoidAsync("save", _host, Path.GetFileName(HtmlFile));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module != null)
+            {
+                await _module.InvokeVoidAsync("dispose", _host);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, and the page with it.
+        }
+        _self?.Dispose();
+    }
+}

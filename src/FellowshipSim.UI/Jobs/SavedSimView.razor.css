@@ -1,0 +1,25 @@
+.head {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+
+.kind {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 6px;
+}
+
+.title {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,41 @@
+@page "/jobs/{Id}"
+@inject VisitorJobs Jobs
+@inject SimResultLibrary Results
+
+<PageTitle>Result - FellowshipSim</PageTitle>
+
+<SectionContent SectionName="@MainLayout.SubtitleSection">
+    A sim or replay: its progress, then its result
+</SectionContent>
+
+@if (_job is { } job)
+{
+    <JobView Job="job" />
+}
+else if (_saved is { } saved)
+{
+    <SavedSimView Sim="saved" />
+}
+else if (_loaded)
+{
+    <p class="hint">You have no sim or replay with this ID. A replay leaves the list when the app restarts; its review stays on the Reviews page.</p>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private SimJob? _job;
+    private SavedSim? _saved;
+    private bool _loaded;
+
+    /// <summary>Address of the page of the job or saved sim <paramref name="id"/>.</summary>
+    public static string Href(string id) => $"jobs/{Uri.EscapeDataString(id)}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loaded = false;
+        _job = Jobs.Get(Id);
+        _saved = _job == null ? await Results.GetAsync(Jobs.Visitor, Id) : null;
+        _loaded = true;
+    }
+}

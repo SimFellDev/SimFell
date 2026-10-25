@@ -1,0 +1,17 @@
+# Elarion, the Heartseeker build of the logged fights: Piercing Seekers, Fusillade, Repeating Stars, Lunar Fury,
+# Rising Moon, Lunarlight Affinity, Fervent Supremacy, Last Lights, Skylit Grace.
+actions+=/shoot
+actions+=/event_horizon
+actions+=/skystriders_grace
+actions+=/lunarlight_mark
+actions+=/chronoshift
+actions+=/skystriders_supremacy
+actions+=/starfall_volley
+actions+=/heartseeker_barrage
+actions+=/celestial_shot,if=buff.celestial_impetus.up
+actions+=/highwind_arrow,if=buff.resurgent_winds.up
+actions+=/multishot,if=buff.skystriders_supremacy.up|buff.focused_expanse.up
+actions+=/highwind_arrow
+actions+=/multishot,if=active_enemies>=3
+actions+=/celestial_shot,if=focus>=60
+actions+=/focused_shot

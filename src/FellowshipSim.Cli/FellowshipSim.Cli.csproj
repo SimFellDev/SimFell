@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <AssemblyName>simfell</AssemblyName>
+    <RootNamespace>FellowshipSim.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>simfell</ToolCommandName>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Hot methods move to tier 1 without the call-counting delay. A fight's rarely run code keeps compiling new methods,
+         and each compilation postponed the tier-up of the fight loop: 2,000 fights took 6 s on one core, against 2.4 s. -->
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FellowshipSim.Engine\FellowshipSim.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

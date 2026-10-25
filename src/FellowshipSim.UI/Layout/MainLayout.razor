@@ -1,5 +1,43 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject VisitorJobs Jobs
+@inject FollowedReviews Followed
+@inject IAppViews Views
+@* The web app's frame: the name, the sections, the FellowshipLogs status (which opens the settings) and the sim results. *@
+<UpdateBanner />
+<header class="top">
+    <a class="brand" href="">
+        <span class="name"><span class="white">SIM</span><span class="gold">FELL</span></span>
+        <span class="tagline">Fellowship simulator</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+        @foreach (var item in AppPage.Sections)
+        {
+            <NavLink @key="item.Route" href="@item.Route" Match="NavLinkMatch.All">@item.Title</NavLink>
+        }
+    </nav>
+    <div class="actions">
+        <ApiStatus />
+        <ResultsSidebar />
+    </div>
+</header>
 
-<main>
+<main class="main">
     @Body
 </main>
+
+@code {
+    /// <summary>Name of the section each page fills with its line under the heading. The frame shows none.</summary>
+    public const string SubtitleSection = "subtitle";
+
+    protected override void OnInitialized() => Jobs.Changed += OnChanged;
+
+    // A review started from the Log Replay page opens when it is done, whichever page shows.
+    private void OnChanged(SimJob job) => _ = InvokeAsync(() =>
+    {
+        if (Followed.TakeDone(job, out var review)) Views.ShowReview(review.HtmlFile, ReviewTitle.Replay(review));
+        else Followed.Forget(job);
+    });
+
+    public void Dispose() => Jobs.Changed -= OnChanged;
+}

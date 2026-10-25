@@ -18,15 +18,17 @@ public sealed class AplProgram
     public IReadOnlyList<BoundAplStep> Actions => _default?.Steps ?? [];
 
     /// <summary>
-    /// Binds <paramref name="lists"/> to <paramref name="hero"/>. An action naming no ability of the hero, or a list action
-    /// naming no list, throws <see cref="InvalidOperationException"/>.
+    /// Binds <paramref name="lists"/> to <paramref name="hero"/>. An action naming an ability another build of the hero has
+    /// (another weapon's) is left out, so one list serves every build. An action naming no ability any build of the hero
+    /// has, or a list action naming no list, throws <see cref="InvalidOperationException"/>.
     /// </summary>
     public static AplProgram Bind(AplActionLists lists, Hero hero)
     {
         var bound = lists.Lists.ToDictionary(kv => kv.Key, _ => new BoundAplList());
+        var variables = new BoundVariables();
         foreach (var (name, actions) in lists.Lists)
         {
-            bound[name].Steps = actions.Select(action => BindStep(action, hero, bound)).ToArray();
+            bound[name].Steps = actions.Select(action => BindStep(action, hero, bound, variables)).OfType<BoundAplStep>().ToArray();
         }
         return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
     }
@@ -50,16 +52,31 @@ public sealed class AplProgram
         {
             foreach (var step in list.Steps)
             {
-                var change = step is BoundAplAction action ? action.NextChange(ctx) : step.Condition?.NextChange(ctx) ?? SimTime.Infinite;
+                var change = step switch
+                {
+                    BoundAplAction action => action.NextChange(ctx),
+                    // A variable is set again at the next decision, so a change of its value is a change of what reads it.
+                    BoundAplVariable variable => Crossing.Earlier(variable.Condition?.NextChange(ctx) ?? SimTime.Infinite,
+                        variable.Value?.NextChange(ctx) ?? SimTime.Infinite),
+                    _ => step.Condition?.NextChange(ctx) ?? SimTime.Infinite,
+                };
                 next = Crossing.Earlier(next, change);
             }
         }
         return Crossing.Later(now, next);
     }
 
-    private static BoundAplStep BindStep(AplAction action, Hero hero, Dictionary<string, BoundAplList> lists)
+    // Null for an action naming no ability of the hero.
+    private static BoundAplStep? BindStep(AplAction action, Hero hero, Dictionary<string, BoundAplList> lists, BoundVariables variables)
     {
-        var condition = action.Condition == null ? null : BoundExpression.Bind(action.Condition, hero);
+        var condition = action.Condition == null ? null : BoundExpression.Bind(action.Condition, hero, variables);
+        if (action.Variable is { } variable)
+        {
+            var slot = variables.Slot(variable.Name);
+            slot.Default = variable.Default;
+            var value = variable.Value == null ? null : BoundExpression.Bind(variable.Value, hero, variables);
+            return new BoundAplVariable(slot, variable.Op, value, condition);
+        }
         if (action.ListAction is { } listAction)
         {
             if (!lists.TryGetValue(action.ListName!, out var list))
@@ -68,10 +85,24 @@ public sealed class AplProgram
             }
             return new BoundAplListAction(list, listAction, condition);
         }
-        var ability = action.ResolveAbility(hero)
-            ?? throw new InvalidOperationException($"APL: {hero.GetType().Name} has no ability named `{action.AbilityName}`.");
-        var targetIf = action.TargetIf == null ? null : new BoundTargetIf(action.TargetIf.Selection, BoundExpression.Bind(action.TargetIf.Expression, hero));
+        if (action.ResolveAbility(hero) is not { } ability)
+        {
+            if (AnyBuildHas(hero, action.AbilityName)) return null;
+            throw new InvalidOperationException($"APL: {hero.GetType().Name} has no ability named `{action.AbilityName}`.");
+        }
+        var targetIf = action.TargetIf == null ? null : new BoundTargetIf(action.TargetIf.Selection, BoundExpression.Bind(action.TargetIf.Expression, hero, variables));
         return new BoundAplAction(hero, ability, condition, targetIf);
+    }
+
+    // The abilities of every build of a hero in the catalog (with every weapon's), by the hero's class.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<AplName>> BuildAbilities = new();
+
+    private static bool AnyBuildHas(Hero hero, string aplName)
+    {
+        if (!Catalog.HasHero(hero.GetType().Name)) return false;
+        var abilities = BuildAbilities.GetOrAdd(hero.GetType(), type => AplVocabulary.For(type.Name).Abilities);
+        string key = AplNames.Slug(aplName).Replace("_", "");
+        return abilities.Any(a => a.Slug.Replace("_", "") == key);
     }
 
     /// <summary>Casts the first ready action, starting at <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.</summary>
@@ -86,6 +117,11 @@ public sealed class AplProgram
         {
             foreach (var step in list.Steps)
             {
+                if (step is BoundAplVariable variable)
+                {
+                    if (variable.ConditionHolds(ctx)) variable.Run(ctx);
+                    continue;
+                }
                 if (step is BoundAplListAction listAction)
                 {
                     if (listAction.List.Running || !listAction.ConditionHolds(ctx)) continue;
@@ -135,6 +171,34 @@ public sealed class BoundAplListAction : BoundAplStep
 
     internal BoundAplList List { get; }
     public AplListAction Kind { get; }
+}
+
+/// <summary>A <c>variable</c> action bound to its variable. Running it sets the variable; it casts nothing.</summary>
+public sealed class BoundAplVariable : BoundAplStep
+{
+    private readonly BoundVariableSlot _slot;
+    private readonly AplVariableOp _op;
+
+    internal BoundAplVariable(BoundVariableSlot slot, AplVariableOp op, BoundExpression? value, BoundExpression? condition) : base(condition)
+    {
+        _slot = slot;
+        _op = op;
+        Value = value;
+    }
+
+    public BoundExpression? Value { get; }
+
+    public void Run(SimulationContext ctx)
+    {
+        double value = Value?.EvaluateNumeric(ctx) ?? 0.0;
+        _slot.Write(ctx, _op switch
+        {
+            AplVariableOp.Add => _slot.Read(ctx) + value,
+            AplVariableOp.Sub => _slot.Read(ctx) - value,
+            AplVariableOp.Reset => _slot.Default,
+            _ => value,
+        });
+    }
 }
 
 /// <summary>A <c>target_if</c> bound to its hero.</summary>

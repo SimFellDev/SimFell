@@ -1,0 +1,287 @@
+/* A compare's or finder's runs: tiles, then the runs table with a change bar per run. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.tile span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tile strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.card h3 {
+  margin: 0;
+  color: var(--heading);
+  font-family: var(--heading-font);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 10px;
+  border-radius: 2px;
+}
+
+.legend span {
+  margin-left: 10px;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #1e1e22;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th.l,
+td.l {
+  text-align: left;
+}
+
+td.name .meta {
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+tbody tr:hover td {
+  background: var(--row-hover);
+}
+
+tr.base td {
+  background: var(--selected);
+}
+
+/* The change column takes the table's spare width, and its track fills it. */
+td.change {
+  width: 100%;
+  min-width: 160px;
+  padding-inline: 14px;
+}
+
+.change-head {
+  padding-inline: 14px;
+}
+
+.track {
+  position: relative;
+  height: 16px;
+}
+
+.track i {
+  position: absolute;
+  display: block;
+}
+
+.track .band {
+  top: -7px;
+  bottom: -7px;
+  background: rgba(161, 161, 170, 0.08);
+}
+
+.track .zero {
+  top: -7px;
+  bottom: -7px;
+  width: 1px;
+  background: #52525b;
+}
+
+tr.base .track .zero {
+  background: var(--heading);
+}
+
+.track .bar {
+  top: 2px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.track .whisker {
+  top: 7px;
+  height: 2px;
+  background: var(--text);
+  opacity: 0.5;
+}
+
+.bar.gain,
+.legend i.gain {
+  background: var(--heading);
+}
+
+.bar.same,
+.legend i.same {
+  background: #52525b;
+}
+
+.bar.loss,
+.legend i.loss {
+  background: var(--bad);
+}
+
+td.gain,
+.tile strong.gain {
+  color: var(--heading);
+}
+
+td.loss,
+.tile strong.loss {
+  color: var(--bad);
+}
+
+td.same {
+  color: var(--muted);
+}
+
+.hero,
+.tag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.tag {
+  border-color: var(--accent);
+  color: var(--heading);
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.buttons button {
+  min-height: 0;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.buttons .load {
+  border-color: var(--accent);
+  color: var(--heading);
+}
+
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-top: 12px;
+}
+
+/* A figure with a smaller line under it: DPS and the main target's, or the change in percent and in DPS. */
+td.two strong {
+  display: block;
+  font-size: 14px;
+}
+
+td.two span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.verdict {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.verdict.gain {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.verdict.loss {
+  border-color: rgb(248 113 145 / 0.5);
+}

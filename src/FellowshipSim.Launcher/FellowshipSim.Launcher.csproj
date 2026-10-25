@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    SimFell.exe: the Windows package's front door. It sits beside the Runtime folder (the published web app) and starts
+    Runtime\FellowshipSim.Service.exe as one person's app. .NET Framework 4.8 comes with Windows 10 and 11, so the
+    launcher is a few KB and needs nothing installed.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>SimFell</AssemblyName>
+    <RootNamespace>FellowshipSim.Launcher</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>

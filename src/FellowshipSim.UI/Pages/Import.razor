@@ -1,0 +1,110 @@
+@page "/import"
+@implements IDisposable
+@inject LogsSettingsStore Settings
+@inject ReviewJobs ReviewJobs
+@inject VisitorJobs Jobs
+@inject ImportPageState State
+@inject FollowedReviews Followed
+@inject IAppViews Views
+
+<PageTitle>Import - FellowshipSim</PageTitle>
+
+<SectionContent SectionName="@MainLayout.SubtitleSection">
+    Replay a logged fight through the engine and review how closely it matches
+</SectionContent>
+
+@if (!_hasCredentials && !Jobs.Visitor.OwnsDataFolder)
+{
+    <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights. Fights downloaded before still replay.</Message>
+}
+else if (!_hasCredentials)
+{
+    <p class="hint">
+        Fights download with your FellowshipLogs API client.
+        <button type="button" class="link-button" @onclick="() => Views.ShowPage(AppPage.Setup)">Set up API access</button>
+        first.
+    </p>
+}
+
+<ImportCard Busy="Busy" OnEditSettings="() => Views.ShowPage(AppPage.Setup)" OnReplay="StartReview" />
+
+<Card Title="Replay" Hidden="State.ReviewJob == null && State.StartError == null">
+    @if (State.StartError != null)
+    {
+        <Message Kind="MessageKind.Error">@State.StartError</Message>
+    }
+    else if (State.ReviewJob is { } job)
+    {
+        @switch (job.Status)
+        {
+            case SimJobStatus.Done when job.Result is ReviewSummary r:
+                <Message Kind="MessageKind.Ok">
+                    Done:
+                    <button type="button" class="link-button" @onclick="() => Views.ShowReview(r.HtmlFile, ReviewTitle.Replay(r))">
+                        open the review of @r.PlayerName in @r.FightName
+                    </button>
+                </Message>
+                break;
+            case SimJobStatus.Failed or SimJobStatus.Cancelled:
+                <Message Kind="MessageKind.Error">@(job.Status == SimJobStatus.Cancelled ? "Cancelled" : job.Error ?? "The replay failed.")</Message>
+                break;
+            default:
+                <Message>@(job.Message ?? "Starting")...</Message>
+                break;
+        }
+    }
+</Card>
+
+@code {
+    private bool _hasCredentials;
+
+    /// <summary>True while the review started here runs: the player buttons are disabled.</summary>
+    private bool Busy => State.ReviewJob is { IsFinished: false };
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _hasCredentials = Settings.Credentials != null;
+        }
+        catch (Exception e)
+        {
+            State.Status = new MessageState(e.Message, MessageKind.Error);
+        }
+        Settings.Saved += OnSettingsSaved;
+        Jobs.Changed += OnChanged;
+    }
+
+    private void OnSettingsSaved() => _ = InvokeAsync(() =>
+    {
+        _hasCredentials = true;
+        StateHasChanged();
+    });
+
+    private void OnChanged(SimJob job)
+    {
+        if (job == State.ReviewJob) _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void StartReview(ReviewTarget target)
+    {
+        if (Busy) return;
+        State.StartError = null;
+        try
+        {
+            State.ReviewJob = ReviewJobs.Start(Jobs.Visitor, target.ReportCode, target.FightId, target.PlayerId);
+            Followed.Follow(State.ReviewJob);
+        }
+        catch (Exception e)
+        {
+            State.ReviewJob = null;
+            State.StartError = e.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        Settings.Saved -= OnSettingsSaved;
+        Jobs.Changed -= OnChanged;
+    }
+}

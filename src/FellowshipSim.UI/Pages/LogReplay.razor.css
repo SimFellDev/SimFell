@@ -1,0 +1,32 @@
+/* Full width under the top bar, its tabs in line with the page. */
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: calc(50vw - 50%);
+  background: var(--bar);
+  border-bottom: 1px solid var(--border);
+}
+
+.subtab {
+  padding: 16px 18px;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.subtab:hover {
+  color: var(--text);
+}
+
+.subtab.selected {
+  color: var(--heading);
+  border-bottom-color: var(--heading);
+}
+

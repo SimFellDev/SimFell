@@ -1,0 +1,18 @@
+@using System.Globalization
+@* The number a comparison reads; the condition takes it on leaving the field or on Enter. *@
+<input type="number" step="any" class="value" aria-label="Value" @bind="_draft" @bind:event="oninput" @onblur="Commit" @onkeydown="Key" />
+
+@code {
+    [Parameter] public double Value { get; set; }
+
+    [Parameter] public EventCallback<double> OnChange { get; set; }
+
+    private string _draft = "";
+
+    protected override void OnInitialized() => _draft = ConditionBuilder.Number(Value);
+
+    private Task Key(KeyboardEventArgs e) => e.Key == "Enter" ? Commit() : Task.CompletedTask;
+
+    private Task Commit() =>
+        OnChange.InvokeAsync(double.TryParse(_draft, NumberStyles.Float, CultureInfo.InvariantCulture, out double number) ? number : 0);
+}

@@ -25,6 +25,7 @@ public class IciclesOfAnzhyr : Ability
     public const int CurseEffectId = 2286;
     public const string CurseName = "Curse of An'zhyr";
     public const double CurseCoefficient = 0.384;
+    /// <summary>Effect 2286 Period, row Weapon.CastedRepetitivelyAOEDamageDebuff.Debuff.TickInterval; hasted.</summary>
     public const double CurseTickSeconds = 3.0;
 
     /// <summary>The curse on an enemy (permanent).</summary>
@@ -39,6 +40,8 @@ public class IciclesOfAnzhyr : Ability
         SetCooldown(CooldownSeconds);
         IgnoresGcd = true;
         _curse = new CurseTick(owner);
+        // Effect 2286 is tagged EffectType.Dot.
+        owner.DotDamageIds.Add(LogIds.Effect(CurseEffectId));
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
@@ -101,15 +104,22 @@ public class IciclesOfAnzhyr : Ability
     private void Afflict(SimulationContext ctx, EnemyTarget enemy)
     {
         enemy.Auras.Apply(Curse, ctx.CurrentTime);
+        HastedTimer? timer = null;
         void Tick(SimulationContext c)
         {
-            if (enemy.IsSleeping || !_curses.TryGetValue(enemy, out var snap)) return;
+            if (enemy.IsSleeping || !_curses.TryGetValue(enemy, out var snap))
+            {
+                timer!.Cancel();
+                return;
+            }
             var now = c.CurrentTime;
             c.ApplyDamage(Owner, enemy, snap.Damage * Owner.DamageMultiplierAgainst(enemy, now), _curse.DamageLogId, CurseName, canCrit: true,
                 snap.CritChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now), snap.CritMultiplier, snapshot: true);
-            HastedTimer.Start(c, Owner, CurseTickSeconds, Tick, CurseName);
         }
-        HastedTimer.Start(ctx, Owner, CurseTickSeconds, Tick, CurseName);
+        // Effect 2286 is tagged EffectType.Dot with no tickrate exemption, period 3s, Infinite, no tick on application
+        // (game-data-authority, GE_Weapon_CastedRepetitivelyAOEDamageDebuff_Dot): its ticks run on the game's period timer,
+        // which each Haste change re-arms at Period / Haste(now) (0x1452EBCA0 -> 0x1452EE870 -> 0x1452D88D0).
+        timer = HastedTimer.StartPeriod(ctx, Owner, CurseTickSeconds, Tick, CurseName, _curse.DamageLogId);
     }
 
     /// <summary>The curse's damage numbers (logged as effect 2286).</summary>

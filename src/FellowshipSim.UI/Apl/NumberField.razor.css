@@ -1,0 +1,7 @@
+.value {
+  width: 72px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--tok-number);
+  font-family: var(--code-font);
+}

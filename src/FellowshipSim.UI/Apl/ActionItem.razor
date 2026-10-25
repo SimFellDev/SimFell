@@ -1,0 +1,100 @@
+@using FellowshipSim.Core.APL
+@*
+    One action of a list: its head (grip, number and title, move and delete buttons), the summary of its condition and
+    target, and its details while it is open. An action moves within its own list. Dropping on an action puts the dragged
+    one in its place: above it when dragged up, below it when dragged down.
+*@
+<li class="@ClassName"
+    @ondragenter="DragEnter" @ondragenter:preventDefault="CanDrop"
+    @ondragover:preventDefault="CanDrop"
+    @ondragleave="DragLeave"
+    @ondrop="Drop" @ondrop:preventDefault>
+    <div class="head">
+        <span class="grip" title="Drag to reorder" draggable="true" data-grip @ondragstart="DragStart" @ondragend="DragEnd">
+            <Icon Shape="IconShape.Grip" />
+        </span>
+        <button type="button" class="toggle" aria-expanded="@(Open ? "true" : "false")" title="@(Open ? "Collapse" : "Expand")"
+                @onclick="() => Editor.Toggle(Action.Key)">
+            <Icon Shape="IconShape.Chevron" Class="chevron" />
+            <span class="number">@(Index + 1)</span>
+            <span class="ability">@ActionListModel.ActionTitle(Vocabulary, Action)</span>
+        </button>
+        <button type="button" class="icon-button move" title="Move up" aria-label="Move up" disabled="@(Index == 0)"
+                @onclick="() => Editor.MoveAction(List.Name, Index, Index - 1)">
+            <Icon Shape="IconShape.Up" />
+        </button>
+        <button type="button" class="icon-button move" title="Move down" aria-label="Move down" disabled="@(Index == List.Actions.Count - 1)"
+                @onclick="() => Editor.MoveAction(List.Name, Index, Index + 1)">
+            <Icon Shape="IconShape.Down" />
+        </button>
+        <button type="button" class="icon-button danger-button" title="Delete action" aria-label="Delete action"
+                @onclick="() => Editor.RemoveAction(List.Name, Index)">
+            <Icon Shape="IconShape.Bin" />
+        </button>
+    </div>
+    <ActionSummary Vocabulary="Vocabulary" Lists="Lists" Action="Action" />
+    @if (Open)
+    {
+        <ActionDetail Vocabulary="Vocabulary" Lists="Lists" List="List" Action="Action" />
+    }
+</li>
+
+@code {
+    [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AplVocabulary Vocabulary { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ActionList> Lists { get; set; } = [];
+
+    [Parameter, EditorRequired] public ActionList List { get; set; } = null!;
+
+    [Parameter, EditorRequired] public EditorAction Action { get; set; } = null!;
+
+    [Parameter] public int Index { get; set; }
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public DragFrom? DragFrom { get; set; }
+
+    private bool _dragging;
+    // Drag enters and leaves of the item and its children: the item is under the drag while more have entered than left.
+    private int _entered;
+
+    private bool CanDrop => DragFrom != null && DragFrom.List == List.Name && DragFrom.Index != Index;
+
+    private string? DropClass => !CanDrop || _entered <= 0 ? null : DragFrom!.Index < Index ? "drop-after" : "drop-before";
+
+    private string ClassName => string.Join(" ", new[] { "action", Open ? "open" : null, _dragging ? "dragging" : null, DropClass }.OfType<string>());
+
+    protected override void OnParametersSet()
+    {
+        if (DragFrom == null) _entered = 0;
+    }
+
+    private void DragStart()
+    {
+        Editor.SetDragFrom(new DragFrom(List.Name, Index));
+        _dragging = true;
+    }
+
+    private void DragEnd()
+    {
+        Editor.SetDragFrom(null);
+        _dragging = false;
+    }
+
+    private void DragEnter()
+    {
+        if (CanDrop) _entered++;
+    }
+
+    private void DragLeave() => _entered = Math.Max(0, _entered - 1);
+
+    private void Drop()
+    {
+        _entered = 0;
+        var from = DragFrom;
+        Editor.SetDragFrom(null);
+        if (from != null && from.List == List.Name) Editor.MoveAction(List.Name, from.Index, Index);
+    }
+}

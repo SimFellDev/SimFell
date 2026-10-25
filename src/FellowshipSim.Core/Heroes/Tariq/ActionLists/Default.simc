@@ -1,0 +1,14 @@
+# Thunder Call before Raging Tempest, so its cooldown runs while Raging Tempest holds.
+actions+=/thunder_call
+actions+=/fated_strike
+actions+=/raging_tempest,if=cooldown.thunder_call.remains>5
+actions+=/focused_wrath,if=buff.thunder_call.up|buff.raging_tempest.up
+actions+=/leap_smash
+actions+=/culling_strike
+actions+=/chain_lightning
+# Hammer Storm on 3 or more enemies, or on fewer with a Schism or Focused Wrath stack.
+actions+=/hammer_storm,if=active_enemies>=3|buff.schism_hammer_storm.up|buff.focused_wrath.up
+actions+=/skull_crusher
+actions+=/heavy_strike
+actions+=/face_breaker
+actions+=/wild_swing

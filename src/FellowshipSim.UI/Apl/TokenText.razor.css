@@ -1,0 +1,33 @@
+/* The colour of each token kind in an expression. Each class name is an AplTokenKind value in lower case. */
+
+.operator {
+  color: var(--tok-operator);
+}
+.number {
+  color: var(--tok-number);
+}
+.named {
+  color: var(--tok-named);
+}
+.resource {
+  color: var(--tok-resource);
+}
+.buff {
+  color: var(--tok-buff);
+}
+.debuff {
+  color: var(--tok-debuff);
+}
+.cooldown {
+  color: var(--tok-cooldown);
+}
+.unknown {
+  color: var(--tok-unknown);
+  text-decoration: underline wavy;
+  text-underline-offset: 3px;
+}
+
+/* The part of the text at a parse error. */
+.error {
+  background: color-mix(in srgb, var(--bad) 25%, transparent);
+}

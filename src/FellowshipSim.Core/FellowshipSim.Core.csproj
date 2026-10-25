@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Each hero's default action lists (DefaultActionLists). -->
+    <EmbeddedResource Include="Heroes\*\ActionLists\*.simc" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FellowshipSim.Core.Generators\FellowshipSim.Core.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

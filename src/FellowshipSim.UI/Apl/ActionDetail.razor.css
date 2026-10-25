@@ -1,0 +1,41 @@
+.detail {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: start;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.detail > label {
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.detail ::deep select {
+  justify-self: start;
+  max-width: 100%;
+}
+
+.detail .comment {
+  width: 100%;
+  resize: vertical;
+}
+
+.detail .arguments {
+  width: 100%;
+  font: 13px/1.5 var(--code-font);
+}
+
+.list-hint {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}

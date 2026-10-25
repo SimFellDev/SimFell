@@ -1,0 +1,144 @@
+@using FellowshipSim.Core.APL
+@* The fields of an open action: its type, ability or list, condition, target, other arguments and comment. *@
+<div class="detail">
+    <label for="@($"{Id}-type")">Type</label>
+    <select id="@($"{Id}-type")" value="@(ListAction ? Action.Ability : "")" @onchange="e => ChangeType((string?)e.Value ?? string.Empty)">
+        <option value="">Cast an ability</option>
+        @foreach (string name in Vocabulary.ListActions)
+        {
+            <option @key="name" value="@name">@ActionListModel.ListActionName(name)</option>
+        }
+    </select>
+
+    @if (ListAction)
+    {
+        <label for="@($"{Id}-list")">List</label>
+        <div>
+            <select id="@($"{Id}-list")" value="@(KnownList ? Action.ActionList : "")"
+                    @onchange="e => Change(a => a with { ActionList = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value! })">
+                @if (!KnownList)
+                {
+                    <option value="">@(OtherLists.Count > 0 ? "Pick a list" : "Add an action list first")</option>
+                }
+                @foreach (var l in OtherLists)
+                {
+                    <option @key="l.Name" value="@l.Name">@l.Name</option>
+                }
+            </select>
+            <p class="hint list-hint">@ListHint</p>
+        </div>
+    }
+    else
+    {
+        <label for="@($"{Id}-ability")">Ability</label>
+        <select id="@($"{Id}-ability")" value="@Action.Ability" @onchange="e => Change(a => a with { Ability = (string?)e.Value ?? string.Empty })">
+            @if (Action.Ability.Length == 0)
+            {
+                <option value="">Pick an ability</option>
+            }
+            @if (Action.Ability.Length > 0 && !KnownAbility)
+            {
+                <option value="@Action.Ability">@Action.Ability (not a @Vocabulary.Hero ability)</option>
+            }
+            @foreach (var a in Vocabulary.Abilities)
+            {
+                <option @key="a.Slug" value="@a.Slug">@a.Name</option>
+            }
+        </select>
+    }
+
+    <label>Condition</label>
+    <div>
+        <ConditionField Vocabulary="Vocabulary" Value="@Action.Condition"
+                        Placeholder="@($"Always. Example: {Vocabulary.Resources.FirstOrDefault()?.Slug ?? "active_enemies"} >= 3 and not buff.{Vocabulary.Auras.FirstOrDefault()?.Slug ?? "name"}.up")"
+                        OnChange="condition => Change(a => a with { Condition = condition })" />
+    </div>
+
+    @if (!ListAction)
+    {
+        <label for="@($"{Id}-target")">Target</label>
+        <select id="@($"{Id}-target")" value="@(Action.TargetSelection?.ToString() ?? "")" @onchange="e => ChangeTarget((string?)e.Value)">
+            <option value="">Current target</option>
+            @foreach (var s in Vocabulary.TargetSelections)
+            {
+                <option @key="s.Selection" value="@s.Selection.ToString()">@s.Label</option>
+            }
+        </select>
+        <label hidden="@(Action.TargetSelection == null)">Target by</label>
+        <div hidden="@(Action.TargetSelection == null)">
+            <CodeField Vocabulary="Vocabulary" Value="@Action.TargetExpression"
+                       Placeholder="@($"Value for each enemy. Example: debuff.{Vocabulary.Auras.FirstOrDefault()?.Slug ?? "name"}.remains")"
+                       OnChange="expression => Change(a => a with { TargetExpression = expression })" />
+        </div>
+    }
+
+    @if (_hasArguments)
+    {
+        <label for="@($"{Id}-arguments")">Other arguments</label>
+        <input id="@($"{Id}-arguments")" class="arguments" spellcheck="false" autocomplete="off" @bind="ArgumentsText" @bind:event="oninput" />
+    }
+
+    <label for="@($"{Id}-comment")">Comment</label>
+    <textarea id="@($"{Id}-comment")" class="comment" rows="2" @bind="CommentText" @bind:event="oninput"></textarea>
+</div>
+
+@code {
+    [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AplVocabulary Vocabulary { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ActionList> Lists { get; set; } = [];
+
+    [Parameter, EditorRequired] public ActionList List { get; set; } = null!;
+
+    [Parameter, EditorRequired] public EditorAction Action { get; set; } = null!;
+
+    // The field for other arguments shows when the action had them as its details opened.
+    private bool _hasArguments;
+
+    private string Id => $"apl-{Action.Key}";
+
+    private string ArgumentsText
+    {
+        get => Action.Arguments ?? "";
+        set => Change(a => a with { Arguments = value });
+    }
+
+    private string CommentText
+    {
+        get => Action.Comment ?? "";
+        set => Change(a => a with { Comment = value });
+    }
+
+    private bool ListAction => ActionListModel.IsListAction(Vocabulary, Action);
+
+    private IReadOnlyList<ActionList> OtherLists =>
+        Lists.Where(l => l.Name != List.Name && !ActionListModel.IsDefaultList(Vocabulary, l)).ToList();
+
+    private bool KnownAbility => Vocabulary.Abilities.Any(a => a.Slug == Action.Ability);
+
+    private bool KnownList => OtherLists.Any(l => l.Name == Action.ActionList);
+
+    private string ListHint => Action.Ability == Vocabulary.ListActions[0]
+        ? "The actions after this one do not run, even when nothing in the named list is cast."
+        : "When nothing in the named list is cast, the next action in this list runs.";
+
+    protected override void OnInitialized() => _hasArguments = !string.IsNullOrEmpty(Action.Arguments);
+
+    private void Change(Func<EditorAction, EditorAction> change) => Editor.ChangeAction(Action.Key, change);
+
+    private void ChangeType(string type)
+    {
+        bool listAction = ListAction;
+        string? firstOther = OtherLists.FirstOrDefault()?.Name;
+        Change(a => type.Length > 0
+            ? a with { Ability = type, ActionList = listAction ? a.ActionList : firstOther, TargetSelection = null, TargetExpression = null }
+            : a with { Ability = "", ActionList = null });
+    }
+
+    private void ChangeTarget(string? value)
+    {
+        var selection = Vocabulary.TargetSelections.FirstOrDefault(s => s.Selection.ToString() == value)?.Selection;
+        Change(a => selection != null ? a with { TargetSelection = selection } : a with { TargetSelection = null, TargetExpression = null });
+    }
+}

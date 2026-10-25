@@ -1,0 +1,39 @@
+.bar {
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 4px;
+  background: var(--row-hover);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+.done .fill {
+  background: var(--good);
+}
+
+.failed .fill {
+  background: var(--bad);
+}
+
+.cancelled .fill {
+  background: var(--muted);
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.percent {
+  font-variant-numeric: tabular-nums;
+}

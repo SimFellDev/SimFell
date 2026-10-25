@@ -1,60 +1,52 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
+  <!-- Each OS builds its own target: Windows on Windows, Mac Catalyst on macOS. -->
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0-windows10.0.19041.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-maccatalyst</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>FellowshipSim</AssemblyName>
-    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
-    <!-- FellowshipSim.Service and FellowshipSim.EngineServer run inside this program, so their projects are libraries of it. -->
-    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+    <RootNamespace>FellowshipSim.Desktop</RootNamespace>
+    <!-- Blazor handles the CSS, not MAUI. -->
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+
+    <ApplicationTitle>FellowshipSim</ApplicationTitle>
+    <ApplicationId>dev.simfell.fellowshipsim</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <WindowsPackageType>None</WindowsPackageType>
+
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">17.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
-  <!-- dotnet publish -r win-x64 makes one FellowshipSim.exe. -->
-  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
-    <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.13" />
-    <PackageReference Include="Photino.NET" Version="4.0.16" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\FellowshipSim.EngineServer\FellowshipSim.EngineServer.csproj" />
-    <ProjectReference Include="..\FellowshipSim.Service\FellowshipSim.Service.csproj" />
-  </ItemGroup>
-
-  <!-- The page: built from FellowshipSim.Web and embedded, so the program is one file. -->
-  <PropertyGroup>
-    <WebDirectory>$(MSBuildThisFileDirectory)..\FellowshipSim.Web\</WebDirectory>
+  <!-- .NET for Mac Catalyst has no server GC and refuses the property. -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
-    <WebSource Include="$(WebDirectory)src\**;$(WebDirectory)index.html;$(WebDirectory)package.json;$(WebDirectory)vite.config.ts" />
+    <!-- Hot methods move to tier 1 without the call-counting delay. A fight's rarely run code keeps compiling new methods,
+         and each compilation postponed the tier-up of the fight loop: 2,000 fights took 6 s on one core, against 2.4 s. -->
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
   </ItemGroup>
 
-  <Target Name="InstallWeb" Condition="!Exists('$(WebDirectory)node_modules')">
-    <Exec Command="pnpm install --frozen-lockfile" WorkingDirectory="$(WebDirectory)" />
-  </Target>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
+  </ItemGroup>
 
-  <!-- After the project references: building FellowshipSim.Service generates the page's src/api.ts. -->
-  <Target Name="BuildWeb" DependsOnTargets="InstallWeb" AfterTargets="ResolveProjectReferences"
-          Inputs="@(WebSource)" Outputs="$(WebDirectory)dist\index.html">
-    <Exec Command="pnpm run build" WorkingDirectory="$(WebDirectory)" />
-  </Target>
-
-  <Target Name="EmbedWeb" AfterTargets="BuildWeb">
-    <ItemGroup>
-      <WebPage Include="$(WebDirectory)dist\**" />
-      <EmbeddedResource Include="@(WebPage)" Link="wwwroot\%(WebPage.RecursiveDir)%(WebPage.Filename)%(WebPage.Extension)" WithCulture="false" />
-    </ItemGroup>
-  </Target>
+  <ItemGroup>
+    <ProjectReference Include="..\FellowshipSim.Engine\FellowshipSim.Engine.csproj" />
+    <ProjectReference Include="..\FellowshipSim.UI\FellowshipSim.UI.csproj" />
+  </ItemGroup>
 
 </Project>

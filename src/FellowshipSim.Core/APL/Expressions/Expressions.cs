@@ -17,14 +17,30 @@ public class ConstantExpression : IAplExpression
 
 /// <summary>
 /// A value read from the hero or the fight, written as a path: a name in <see cref="Named"/>, a resource ("winter_orbs",
-/// or "resource.winter_orbs"), or "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" with a scope and property in <see cref="Scopes"/>.
+/// or "resource.winter_orbs") or the room left in one ("spirit.deficit"), "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" with
+/// a scope and property in <see cref="Scopes"/>, "&lt;scope&gt;.&lt;name&gt;" with a scope in <see cref="BuildScopes"/>
+/// (1 when the build has it), or "variable.&lt;name&gt;".
 /// </summary>
 public class PropertyExpression : IAplExpression
 {
     public const string ResourcePrefix = "resource.";
+    public const string DeficitSuffix = ".deficit";
     public const string BuffScope = "buff";
     public const string DebuffScope = "debuff";
     public const string CooldownScope = "cooldown";
+    public const string ActionScope = "action";
+    public const string TalentScope = "talent";
+    public const string BlessingScope = "blessing";
+    public const string LegendaryScope = "legendary";
+    public const string WeaponScope = "weapon";
+    public const string WeaponTraitScope = "weapon_trait";
+    public const string VariableScope = "variable";
+
+    /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last 30% of its duration.</summary>
+    public const double RefreshableFraction = 0.3;
+
+    /// <summary>The sim's fights have no raid events: none exist, and the next one never comes.</summary>
+    public const double NoRaidEventIn = 10_000.0;
 
     /// <summary>Values named by their whole path.</summary>
     public static IReadOnlyDictionary<string, Func<Hero, SimulationContext, double>> Named { get; } =
@@ -32,9 +48,19 @@ public class PropertyExpression : IAplExpression
         {
             ["active_enemies"] = (_, ctx) => Math.Max(1, ctx.ActiveEnemies.Count),
             ["target.health.pct"] = (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0,
+            ["target.health"] = (_, ctx) => ctx.Player.CurrentTarget?.CurrentHealth ?? 0.0,
             ["target.time_to_die"] = (_, _) => 60.0,
             ["fight_remains"] = (_, _) => 100.0,
+            ["time"] = (_, ctx) => ctx.CurrentTime.TotalSeconds,
+            ["gcd"] = (hero, ctx) => Gcd(hero, ctx.CurrentTime),
+            ["gcd.max"] = (hero, ctx) => Gcd(hero, ctx.CurrentTime),
+            ["raid_event.adds.exists"] = (_, _) => 0.0,
+            ["raid_event.adds.count"] = (_, _) => 0.0,
+            ["raid_event.adds.in"] = (_, _) => NoRaidEventIn,
         };
+
+    /// <summary>The hasted global cooldown, as <see cref="SimulationContext.BeginCast"/> sets it.</summary>
+    public static double Gcd(Hero hero, SimTime now) => hero.GlobalCooldownSeconds / (1.0 + hero.GetHaste(now));
 
     /// <summary>Properties of an aura on the hero (buff) or on the current target (debuff); the aura is null when it is not up.</summary>
     private static readonly Dictionary<string, Func<Aura?, SimTime, double>> AuraProperties = new()
@@ -42,9 +68,16 @@ public class PropertyExpression : IAplExpression
         ["up"] = (aura, _) => aura != null ? 1.0 : 0.0,
         ["down"] = (aura, _) => aura == null ? 1.0 : 0.0,
         ["stack"] = (aura, _) => aura?.Stacks ?? 0,
+        // SimulationCraft's react is the stacks the player has seen; the sim reacts at once.
+        ["react"] = (aura, _) => aura?.Stacks ?? 0,
         ["at_max_stacks"] = (aura, _) => aura != null && aura.Stacks >= aura.MaxStacks ? 1.0 : 0.0,
         ["remains"] = (aura, now) => aura == null ? 0.0 : aura.ExpiresAt == SimTime.Infinite ? double.MaxValue : (aura.ExpiresAt - now).TotalSeconds,
+        ["refreshable"] = (aura, now) => IsRefreshable(aura, now) ? 1.0 : 0.0,
     };
+
+    /// <summary>True when <paramref name="aura"/> is down or in the last <see cref="RefreshableFraction"/> of its duration.</summary>
+    public static bool IsRefreshable(Aura? aura, SimTime now) =>
+        aura == null || (aura.ExpiresAt != SimTime.Infinite && (aura.ExpiresAt - now).TotalSeconds < RefreshableFraction * aura.Duration.TotalSeconds);
 
     /// <summary>Properties of an ability's cooldown, by the ability's name.</summary>
     private static readonly Dictionary<string, Func<Hero, Ability?, string, SimTime, double>> CooldownProperties = new()
@@ -54,6 +87,27 @@ public class PropertyExpression : IAplExpression
         ["remains"] = (hero, _, name, now) => hero.GetCooldownRemains(name, now),
         ["charges"] = (hero, ability, name, now) =>
             hero.Cooldowns.TryGetValue(name, out var state) ? state.ChargesAt(now) : ability?.MaxCharges ?? 1,
+        ["duration"] = (_, ability, _, _) => ability?.Cooldown.TotalSeconds ?? 0.0,
+        ["full_recharge_time"] = (hero, ability, name, now) =>
+            hero.Cooldowns.TryGetValue(name, out var state) ? FullRechargeTime(state, ability, now) : 0.0,
+    };
+
+    /// <summary>
+    /// Seconds until every charge is back: the charge recharging now, then a full cooldown for each other missing charge.
+    /// </summary>
+    public static double FullRechargeTime(CooldownState state, Ability? ability, SimTime now)
+    {
+        int missing = state.MaxCharges - state.ChargesAt(now);
+        if (missing <= 0) return 0.0;
+        return Math.Max(0.0, (state.NextChargeAt - now).TotalSeconds) + (missing - 1) * (ability?.Cooldown.TotalSeconds ?? 0.0);
+    }
+
+    /// <summary>Properties of an action's ability, by the ability's name.</summary>
+    private static readonly Dictionary<string, Func<Ability?, SimTime, double>> ActionProperties = new()
+    {
+        // An instant cast takes the global cooldown.
+        ["execute_time"] = (ability, now) => ability == null ? 0.0
+            : ability.IsInstant ? Gcd(ability.Owner, now) : ability.GetAdjustedCastTime(now).TotalSeconds,
     };
 
     /// <summary>The scopes of "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" paths and the properties each one has.</summary>
@@ -63,15 +117,36 @@ public class PropertyExpression : IAplExpression
             [BuffScope] = AuraProperties.Keys,
             [DebuffScope] = AuraProperties.Keys,
             [CooldownScope] = CooldownProperties.Keys,
+            [ActionScope] = ActionProperties.Keys,
+        };
+
+    /// <summary>
+    /// The scopes of "&lt;scope&gt;.&lt;name&gt;" paths that read the hero's build: 1 when the hero has a talent, blessing,
+    /// legendary or weapon trait of that name, or a weapon (or weapon ability) whose name starts with it. They do not change
+    /// during a fight.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Hero, string, bool>> BuildScopes { get; } =
+        new Dictionary<string, Func<Hero, string, bool>>
+        {
+            [TalentScope] = (hero, name) => hero.Talents.Any(t => AplNames.Slug(t.Name) == name),
+            [BlessingScope] = (hero, name) => hero.Glyphs.Any(b => AplNames.Slug(b.Name) == name),
+            [LegendaryScope] = (hero, name) => hero.Legendaries.Any(l => AplNames.Slug(l.Name) == name),
+            [WeaponTraitScope] = (hero, name) => hero.Augmentations.Any(t => AplNames.Slug(t.Name) == name),
+            [WeaponScope] = (hero, name) =>
+                (hero.EquippedWeapon != null && AplNames.Slug(hero.EquippedWeapon.Name).StartsWith(name, StringComparison.Ordinal))
+                || (hero.WeaponAbility != null && AplNames.Slug(hero.WeaponAbility.Name).StartsWith(name, StringComparison.Ordinal)),
         };
 
     public string PropertyPath { get; }
 
-    /// <summary>The scope of a "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" path, or null.</summary>
+    /// <summary>
+    /// The scope of a "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" path, of a "&lt;scope&gt;.&lt;name&gt;" path in
+    /// <see cref="BuildScopes"/>, or <see cref="VariableScope"/>; else null.
+    /// </summary>
     public string? Scope { get; }
-    /// <summary>The aura or ability a scoped path names ("glacial_assault").</summary>
+    /// <summary>The aura, ability, build part or variable a scoped path names ("glacial_assault").</summary>
     public string? Name { get; }
-    /// <summary>The property a scoped path reads ("stack"). A property its scope lacks reads as "up" or "ready".</summary>
+    /// <summary>The property a scoped path reads ("stack"); null for a build part or a variable. A property its scope lacks reads as "up" or "ready".</summary>
     public string? Property { get; }
 
     public PropertyExpression(string propertyPath)
@@ -82,23 +157,42 @@ public class PropertyExpression : IAplExpression
         {
             (Scope, Name, Property) = (parts[0], parts[1], parts[2]);
         }
+        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] == VariableScope))
+        {
+            (Scope, Name) = (parts[0], parts[1]);
+        }
     }
 
-    /// <summary>The resource name of an unscoped path ("winter_orbs" for "resource.winter_orbs").</summary>
-    public string ResourceName => PropertyPath.StartsWith(ResourcePrefix) ? PropertyPath[ResourcePrefix.Length..] : PropertyPath;
+    /// <summary>The resource name of an unscoped path ("winter_orbs" for "resource.winter_orbs" and "winter_orbs.deficit").</summary>
+    public string ResourceName
+    {
+        get
+        {
+            string path = PropertyPath.StartsWith(ResourcePrefix) ? PropertyPath[ResourcePrefix.Length..] : PropertyPath;
+            return IsDeficit ? path[..^DeficitSuffix.Length] : path;
+        }
+    }
+
+    /// <summary>True for a path that reads the room left in a resource ("spirit.deficit").</summary>
+    public bool IsDeficit => PropertyPath.EndsWith(DeficitSuffix, StringComparison.Ordinal);
 
     public bool Evaluate(Hero hero, SimulationContext ctx)
     {
         return EvaluateNumeric(hero, ctx) != 0.0;
     }
 
+    /// <remarks>A variable reads 0 here: only a bound program (<see cref="AplProgram"/>) runs variable actions.</remarks>
     public double EvaluateNumeric(Hero hero, SimulationContext ctx)
     {
         var now = ctx.CurrentTime;
 
         if (Named.TryGetValue(PropertyPath, out var named)) return named(hero, ctx);
 
-        if (hero.FindResource(ResourceName) is { } resource) return hero.ResourceAmount(resource);
+        if (hero.FindResource(ResourceName) is { } resource)
+        {
+            var state = hero.Resources.Get(resource);
+            return IsDeficit ? state.Max - state.Current : state.Current;
+        }
 
         switch (Scope)
         {
@@ -114,10 +208,36 @@ public class PropertyExpression : IAplExpression
                 var ability = AplNames.FindAbility(hero, Name!);
                 var cooldown = CooldownProperties.GetValueOrDefault(Property!) ?? CooldownProperties["ready"];
                 return cooldown(hero, ability, ability?.Name ?? Name!, now);
+
+            case ActionScope:
+                return ActionProperty(Property!)(AplNames.FindAbility(hero, Name!), now);
+
+            case { } scope when BuildScopes.TryGetValue(scope, out var has):
+                return has(hero, Name!) ? 1.0 : 0.0;
         }
 
         return 0.0;
     }
+
+    /// <summary>The value of an action property ("execute_time"); a property actions lack reads as 0.</summary>
+    public static Func<Ability?, SimTime, double> ActionProperty(string property) =>
+        ActionProperties.GetValueOrDefault(property) ?? ((_, _) => 0.0);
+
+    /// <summary>The value of a cooldown property; a property cooldowns lack reads as "ready".</summary>
+    public static Func<Hero, Ability?, string, SimTime, double> CooldownProperty(string property) =>
+        CooldownProperties.GetValueOrDefault(property) ?? CooldownProperties["ready"];
+
+    /// <summary>
+    /// Paths an action reads about its own ability, unscoped ("refreshable", "full_recharge_time"), as the scoped path
+    /// they stand for on the action's ability <paramref name="ability"/>; null for any other path.
+    /// </summary>
+    public static string? OfAction(string path, string ability) => path switch
+    {
+        "refreshable" or "ticking" => $"{DebuffScope}.{ability}.{(path == "ticking" ? "up" : path)}",
+        "full_recharge_time" or "charges" => $"{CooldownScope}.{ability}.{path}",
+        "execute_time" or "cast_time" => $"{ActionScope}.{ability}.execute_time",
+        _ => null,
+    };
 
     private static Func<Aura?, SimTime, double> AuraProperty(string property) =>
         AuraProperties.GetValueOrDefault(property) ?? AuraProperties["up"];

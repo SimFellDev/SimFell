@@ -6,12 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AspireUseCliBundle>true</AspireUseCliBundle>
-    <UserSecretsId>e3b609f3-1269-44c6-83d0-8cb2e3b45605</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.6.3" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FellowshipSim.EngineServer\FellowshipSim.EngineServer.csproj" />

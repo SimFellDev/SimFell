@@ -1,0 +1,16 @@
+@* A game icon from the Codex CDN, or an empty square of its size when there is none. *@
+@if (Url != null)
+{
+    <img class="icon" src="@Url" alt="" width="@Size" height="@Size" />
+}
+else
+{
+    <span class="icon empty" style="width: @(Size)px; height: @(Size)px"></span>
+}
+
+@code {
+    [Parameter] public string? Url { get; set; }
+
+    /// <summary>Width and height in pixels.</summary>
+    [Parameter] public int Size { get; set; } = 32;
+}

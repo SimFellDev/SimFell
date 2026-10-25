@@ -69,8 +69,12 @@ public class RisingTalons : IceComet
             bool first = i == 0;
             ctx.Schedule(SimTime.FromSeconds(FirstWaveDelaySeconds + i * WaveIntervalSeconds), c =>
             {
+                // The first wave is the comet's impact for what the next comet to deal damage uses up (Frostweaver's
+                // Wrath): it reads the impact bonuses, the later waves do not (per the user).
+                double impactCrit = 0.0;
+                if (first) foreach (var bonus in ImpactCritChanceBonuses) impactCrit += bonus(c);
                 // Each wave is an impact with the damage of the cast; the falloff is already in it.
-                Impact(c, target, damage, critChance, critMultiplier, fixedFalloff: 1.0);
+                Impact(c, target, damage, critChance + impactCrit, critMultiplier, fixedFalloff: 1.0);
                 if (first) RaiseStruck(c, target);
             }, Name);
         }

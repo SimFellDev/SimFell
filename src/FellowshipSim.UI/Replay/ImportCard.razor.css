@@ -1,0 +1,108 @@
+.linked-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 10px;
+}
+
+.fights {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.fight {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.fight.selected {
+  border-color: var(--accent);
+}
+
+.fight-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fight-name {
+  font-weight: 600;
+}
+
+.players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* A player: name, then hero, on a dark chip. */
+.player {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.player:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.player-name {
+  font-weight: 600;
+}
+
+.player-hero {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* The player picked to import (the link's at first). */
+.player.picked {
+  background: var(--selected);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.player.picked .player-name {
+  color: var(--heading);
+}
+
+/* The pick, and the button that imports it. */
+.import-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.import-button {
+  min-height: 40px;
+  padding: 8px 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* A hero the engine does not have yet. */
+.player.unsupported {
+  background: transparent;
+  color: var(--muted);
+}
+
+.player.unsupported .player-hero {
+  color: var(--muted);
+}

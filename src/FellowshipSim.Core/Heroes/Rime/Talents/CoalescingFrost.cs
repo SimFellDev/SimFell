@@ -71,12 +71,28 @@ public class CoalescingFrost : Talent
         }, "Coalescing Frost expires");
     }
 
+    /// <summary>
+    /// The eruption strikes its enemy for the full damage and the enemies around it with the target falloff over their
+    /// number. Combat logs (10 fights of patch 0.5.0.0, 300 eruptions): the erupting enemy's hit over the others' is
+    /// sqrt((N - 1) / 5) with N enemies struck (N = 8: 1.20, 10: 1.33, 12: 1.53, 16: 1.80, 19: 1.89), and 1 up to N = 6.
+    /// </summary>
     private void Erupt(SimulationContext ctx, EnemyTarget target, bool dying)
     {
         if (!_stacks.Remove(target, out var state) || state.Stacks <= 0) return;
         var enemies = dying ? ctx.ActiveEnemiesExcept(target) : ctx.ActiveEnemies;
         if (enemies.Count == 0) return;
-        _eruption!.DealAoeDamage(ctx, enemies, damageMultiplier: state.Stacks);
+        var eruption = _eruption!;
+        var struck = ctx.Outcomes.SelectTargets(eruption.DamageLogId, enemies, ctx);
+        int around = 0;
+        for (int i = 0; i < struck.Count; i++)
+        {
+            if (struck[i] != target) around++;
+        }
+        double falloff = around > TargetThreshold ? Math.Sqrt(TargetThreshold / around) : 1.0;
+        for (int i = 0; i < struck.Count; i++)
+        {
+            eruption.DealDamage(ctx, struck[i], damageMultiplier: state.Stacks * (struck[i] == target ? 1.0 : falloff));
+        }
     }
 
     /// <summary>The eruption's damage: 56% Intellect per stack, logged under effect 2300, sqrt(5/N) beyond 5 targets.</summary>

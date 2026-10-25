@@ -224,6 +224,11 @@ public static class AplParser
         if (SkippedActions.Contains(syntax.Name))
             return null;
 
+        if (syntax.Name == AplVariable.ActionName)
+        {
+            return new AplAction { AbilityName = syntax.Name, Condition = syntax.Condition, Variable = ToVariable(syntax), RawLine = line };
+        }
+
         var listAction = AplListActions.Parse(syntax.Name);
         if (listAction != null && syntax.ListName == null)
         {
@@ -233,13 +238,52 @@ public static class AplParser
         return new AplAction
         {
             AbilityName = syntax.Name,
-            Condition = syntax.Condition,
-            TargetIf = syntax.TargetIf,
+            Condition = listAction == null ? OfAction(syntax.Condition, syntax.Name) : syntax.Condition,
+            TargetIf = listAction == null && syntax.TargetIf is { } targetIf
+                ? targetIf with { Expression = OfAction(targetIf.Expression, syntax.Name)! }
+                : syntax.TargetIf,
             ListAction = listAction,
             ListName = listAction != null ? syntax.ListName : null,
             RawLine = line
         };
     }
+
+    private static AplVariable ToVariable(AplActionLine syntax)
+    {
+        IAplExpression? Argument(string key) =>
+            syntax.Arguments.LastOrDefault(a => a.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+
+        if (Argument(AplVariable.NameKey) is not PropertyExpression name)
+        {
+            throw new ParseException($"`{AplVariable.ActionName}` needs `{AplVariable.NameKey}=<variable>`.", Position.Empty);
+        }
+        var op = AplVariableOp.Set;
+        if (Argument(AplVariable.OpKey) is { } opArgument
+            && !(opArgument is PropertyExpression opName && Enum.TryParse(opName.PropertyPath, ignoreCase: true, out op)))
+        {
+            throw new ParseException($"`{AplVariable.OpKey}=` is one of {string.Join(", ", Enum.GetNames<AplVariableOp>().Select(n => n.ToLowerInvariant()))}.", Position.Empty);
+        }
+        var value = Argument(AplVariable.ValueKey);
+        if (value == null && op != AplVariableOp.Reset)
+        {
+            throw new ParseException($"`{AplVariable.ActionName}` needs `{AplVariable.ValueKey}=<expression>`.", Position.Empty);
+        }
+        double @default = Argument(AplVariable.DefaultKey) is ConstantExpression c ? c.Value : 0.0;
+        return new AplVariable(name.PropertyPath, op, value, @default);
+    }
+
+    /// <summary>
+    /// <paramref name="expression"/> with the paths an action reads about its own ability ("refreshable") written as the
+    /// scoped paths they stand for (<see cref="PropertyExpression.OfAction"/>).
+    /// </summary>
+    private static IAplExpression? OfAction(IAplExpression? expression, string ability) => expression switch
+    {
+        PropertyExpression p when PropertyExpression.OfAction(p.PropertyPath, ability) is { } path => new PropertyExpression(path),
+        GroupExpression g => new GroupExpression(OfAction(g.Inner, ability)!),
+        UnaryOpExpression u => new UnaryOpExpression(u.Operator, OfAction(u.Operand, ability)!),
+        BinaryOpExpression b => new BinaryOpExpression(OfAction(b.Left, ability)!, b.Operator, OfAction(b.Right, ability)!),
+        _ => expression,
+    };
 
     /// <summary>One action line as written, including the list name and the actions that control the list.</summary>
     public static AplActionLine ParseActionSyntax(string line) => ActionLine.Parse(Tokenizer.Tokenize(line));

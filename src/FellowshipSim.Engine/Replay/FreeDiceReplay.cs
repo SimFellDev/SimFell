@@ -54,8 +54,9 @@ public static class FreeDiceReplay
     /// <summary>
     /// Runs <paramref name="iterations"/> replays, in parallel across the CPU's cores (each run has its own hero and
     /// engine; run i uses seed <paramref name="firstSeed"/> + i, so results do not depend on the thread count).
+    /// <paramref name="maxThreads"/> caps the threads (null: every core).
     /// </summary>
-    public static Result Run(ReplayScript script, int iterations, int firstSeed = 1)
+    public static Result Run(ReplayScript script, int iterations, int firstSeed = 1, int? maxThreads = null)
     {
         var totals = new double[iterations];
         var forced = new int[iterations];
@@ -63,7 +64,7 @@ public static class FreeDiceReplay
         var clock = Stopwatch.StartNew();
         // Building one hero first sets up the shared class catalog before the threads start.
         _ = ReplayDriver.CreateHero(script);
-        Parallel.For(0, iterations, i =>
+        Parallel.For(0, iterations, new ParallelOptions { MaxDegreeOfParallelism = maxThreads ?? -1 }, i =>
         {
             var hero = ReplayDriver.CreateHero(script);
             var tallies = new Dictionary<int, Tally>();

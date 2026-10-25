@@ -1,0 +1,179 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject DesktopTabs Tabs
+@inject VisitorJobs Jobs
+@inject FollowedReviews Followed
+@inject IJSRuntime JS
+@*
+    The desktop app's frame: a tab for each menu page, then a strip of closable tabs for the jobs and review pages
+    opened, with arrows when they overflow and a list of them all, then the Results button. Each tab's content stays
+    rendered once shown, and only the selected tab's content is visible.
+*@
+<div class="shell">
+    <header class="bar" role="tablist">
+        <nav class="page-tabs">
+            @foreach (var tab in Tabs.Tabs.Where(t => !t.Closable))
+            {
+                @TabButton(tab)
+            }
+        </nav>
+        <div class="result-tabs @(ResultTabs.Count == 0 ? "empty" : "")" @ref="_resultTabs">
+            <button type="button" class="arrow" data-scroll="-1" title="Scroll left" aria-label="Scroll the open results left">‹</button>
+            <div class="strip" data-strip>
+                @foreach (var tab in ResultTabs)
+                {
+                    @TabButton(tab)
+                }
+            </div>
+            <button type="button" class="arrow" data-scroll="1" title="Scroll right" aria-label="Scroll the open results right">›</button>
+        </div>
+        @if (ResultTabs.Count > 0)
+        {
+            <div class="open-list" @onkeydown="OnListKeyDown">
+                <button type="button" class="open-toggle" aria-haspopup="true" aria-expanded="@(_listOpen ? "true" : "false")"
+                        @onclick="() => _listOpen = !_listOpen">
+                    @ResultTabs.Count open ▾
+                </button>
+                @if (_listOpen)
+                {
+                    <div class="backdrop" @onclick="() => _listOpen = false"></div>
+                    <div class="dropdown" role="menu">
+                        <ul>
+                            @foreach (var tab in ResultTabs.AsEnumerable().Reverse())
+                            {
+                                <li @key="tab.Key" class="@(tab == Tabs.Selected ? "selected" : "")">
+                                    <button type="button" class="pick" role="menuitem" title="@tab.Title" @onclick="() => Pick(tab)">
+                                        <span class="kind">@(tab.Kind == DesktopTabKind.Review ? "Review" : "Sim")</span>
+                                        <span class="pick-title">@tab.Title</span>
+                                    </button>
+                                    <button type="button" class="close" title="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
+                                </li>
+                            }
+                        </ul>
+                        <button type="button" class="close-all" @onclick="CloseAll">Close all results</button>
+                    </div>
+                }
+            </div>
+        }
+        <div class="results"><ResultsSidebar /></div>
+    </header>
+    @foreach (var tab in Tabs.Tabs.Where(Tabs.IsShown))
+    {
+        <section @key="tab.Key" class="panel" role="tabpanel" hidden="@(tab != Tabs.Selected)">
+            <div class="content">
+                @switch (tab)
+                {
+                    case { Kind: DesktopTabKind.Page, Page: { } menuPage }:
+                        <DynamicComponent Type="menuPage.Component" />
+                        break;
+                    case { Kind: DesktopTabKind.Job, Job: { } job }:
+                        <JobView Job="job" />
+                        break;
+                    case { Kind: DesktopTabKind.Job, SavedSim: { } sim }:
+                        <SavedSimView Sim="sim" />
+                        break;
+                    case { Kind: DesktopTabKind.Review, ReviewFile: { } file }:
+                        <ReviewView @key="file" HtmlFile="@file" />
+                        break;
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private ElementReference _resultTabs;
+    private IJSObjectReference? _module, _scrolling;
+    private bool _listOpen;
+    private DesktopTab? _revealed;
+
+    private List<DesktopTab> ResultTabs => Tabs.Tabs.Where(t => t.Closable).ToList();
+
+    private RenderFragment TabButton(DesktopTab tab) => __builder =>
+    {
+        bool selected = tab == Tabs.Selected;
+        <div @key="tab.Key" class="tab @(selected ? "selected" : "") @(tab.Closable ? "closable" : "")">
+            <button type="button" class="select" role="tab" aria-selected="@(selected ? "true" : "false")" title="@tab.Title"
+                    @onclick="() => Tabs.Select(tab)">
+                @tab.Title
+            </button>
+            @if (tab.Closable)
+            {
+                <button type="button" class="close" title="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
+            }
+        </div>
+    };
+
+    protected override void OnInitialized()
+    {
+        Tabs.Changed += OnTabsChanged;
+        Jobs.Changed += OnChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/shell/resultTabs.js");
+                _scrolling = await _module.InvokeAsync<IJSObjectReference>("attach", _resultTabs);
+            }
+            // A result tab opened or picked from the list comes into view.
+            if (_module != null && Tabs.Selected != _revealed)
+            {
+                _revealed = Tabs.Selected;
+                if (Tabs.Selected.Closable) await _module.InvokeVoidAsync("reveal", _resultTabs);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The window closed.
+        }
+    }
+
+    private void OnTabsChanged() => StateHasChanged();
+
+    // A review started from the Import tab opens as a tab when it is done.
+    private void OnChanged(SimJob job) => _ = InvokeAsync(() =>
+    {
+        if (Followed.TakeDone(job, out var review)) Tabs.ShowReview(review.HtmlFile, ReviewTitle.Replay(review));
+        else Followed.Forget(job);
+    });
+
+    private void Pick(DesktopTab tab)
+    {
+        _listOpen = false;
+        Tabs.Select(tab);
+    }
+
+    private void CloseAll()
+    {
+        _listOpen = false;
+        Tabs.CloseResults();
+    }
+
+    private void OnListKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _listOpen = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Tabs.Changed -= OnTabsChanged;
+        Jobs.Changed -= OnChanged;
+        try
+        {
+            if (_scrolling != null)
+            {
+                await _scrolling.InvokeVoidAsync("dispose");
+                await _scrolling.DisposeAsync();
+            }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The window is gone, and the listeners with it.
+        }
+    }
+}

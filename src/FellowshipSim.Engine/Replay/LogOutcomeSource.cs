@@ -1,26 +1,29 @@
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// Answers the engine's undecided questions from the combat log during a replay:
-///   - each engine hit is matched to the log hit with the same damage ID on the same target; the log decides
-///     whether it crit and when it landed (projectile travel),
-///   - each proc roll succeeds if the log shows what that proc produces (its evidence log ID) at the roll.
-/// Damage spread is not rolled: the engine's average roll is compared against the log instead.
-/// Anything the log cannot explain is recorded as a <see cref="ReplayIssue"/>.
+/// Answers every one of the engine's open outcomes from the combat log during an exact replay. The replay makes no random
+/// roll:
+///   - each engine hit is matched to the log hit with the same damage ID on the same target; the log decides whether it
+///     crit, when it landed (projectile travel) and how much it dealt (<see cref="LogDamage.UnblockedAmount"/>),
+///   - each proc roll succeeds if the log shows what that proc produces (its evidence log ID) at the roll,
+///   - each periodic tick with a damage log ID fires at the time of the log tick it reserves.
+/// <see cref="ReplayVerifier"/> compares each logged value with the engine's range for it.
 /// </summary>
 public sealed class LogOutcomeSource : IOutcomeSource
 {
     private readonly ReplayOptions _options;
     private readonly HitLedger _hits;
+    private readonly ReplayVerifier _verifier;
     private readonly List<LogAura> _playerAuraEvents;
     private readonly HashSet<int> _playerAuraIds;
     private readonly HashSet<LogAura> _claimedAuraEvidence = new();
     private readonly HashSet<LogDamage> _claimedDamageEvidence = new();
 
-    public LogOutcomeSource(ReplayScript script, ReplayOptions options, HitLedger hits)
+    public LogOutcomeSource(ReplayScript script, ReplayOptions options, HitLedger hits, ReplayVerifier verifier)
     {
         _options = options;
         _hits = hits;
+        _verifier = verifier;
         if (options.FreeDiceSeed.HasValue)
         {
             // Free dice: the engine rolls its own outcomes, so this only collects issues (no log lookups to build).
@@ -33,6 +36,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             .OrderBy(a => a.Time)
             .ToList();
         _playerAuraIds = _playerAuraEvents.Select(a => a.AbilityId).ToHashSet();
+        _resourceReadings = script.Observations.Resources.OrderBy(r => r.Time).ToList();
         // The player's debuffs on enemies, with how many stacks each event added (for stack-jump evidence).
         foreach (var group in script.Observations.Auras
                      .Where(a => a.Source.Id == script.Player.Id && a.Target.Id != script.Player.Id)
@@ -40,13 +44,17 @@ public sealed class LogOutcomeSource : IOutcomeSource
         {
             int stacks = 0;
             var list = new List<(LogAura Event, int Added)>();
+            var losses = new List<double>();
+            _enemyDebuffApplications[group.Key] = group.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time).ToList();
             foreach (var a in group.OrderBy(a => a.Time))
             {
                 int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
                 if (a.IsGain && now > stacks) list.Add((a, now - stacks));
+                if (a.IsLoss && now < stacks) losses.Add(a.Time);
                 stacks = now;
             }
             _enemyStackGains[group.Key] = list;
+            _enemyStackLosses[group.Key] = losses;
         }
         foreach (var c in script.Commands.Where(c => c.Kind == CommandKind.EnemyDemise && c.Enemy != null))
         {
@@ -56,30 +64,57 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     private readonly Dictionary<UnitRef, double> _demise = new();
     private readonly Dictionary<(int LogId, UnitRef Target), List<(LogAura Event, int Added)>> _enemyStackGains = new();
+    // The player's debuffs on enemies, applied or refreshed (for enemy-debuff evidence).
+    private readonly Dictionary<(int LogId, UnitRef Target), List<LogAura>> _enemyDebuffApplications = new();
+    private readonly HashSet<LogAura> _claimedDebuffApplications = new();
+
+    /// <summary>Proof of a proc that applies a debuff: the log applies or refreshes it on the proc's enemy in the window.</summary>
+    private bool ClaimEnemyDebuffEvidence(ProcEvidence.Evidence evidence, double now, EnemyTarget? target)
+    {
+        if (target == null || !_enemyDebuffApplications.TryGetValue((evidence.LogId, new UnitRef(target.Id, target.InstanceId)), out var applied)) return false;
+        double from = now + evidence.MinDelaySeconds - _options.SameTickSeconds, to = now + evidence.DelaySeconds + _options.SameTickSeconds;
+        foreach (var a in applied)
+        {
+            if (a.Time < from || _claimedDebuffApplications.Contains(a)) continue;
+            if (a.Time > to) break;
+            _claimedDebuffApplications.Add(a);
+            return true;
+        }
+        return false;
+    }
+    // When the player's debuffs on enemies lost stacks (for stack-loss evidence).
+    private readonly Dictionary<(int LogId, UnitRef Target), List<double>> _enemyStackLosses = new();
+
+    /// <summary>True when the player's debuff <paramref name="logId"/> on <paramref name="target"/> lost a stack in the server frame of <paramref name="time"/>.</summary>
+    private bool LostStackAt(int logId, UnitRef target, double time) =>
+        _enemyStackLosses.TryGetValue((logId, target), out var losses) && losses.Any(t => Math.Abs(t - time) <= _options.SameTickSeconds);
     private readonly HashSet<LogAura> _claimedStackEvidence = new();
     private const double StackEvidenceWindowSeconds = 0.1;
 
     /// <summary>Hits that would have landed on an enemy already dead in the log (the projectile hit nothing).</summary>
     public int MissedHits { get; private set; }
 
-    /// <summary>Set by the driver: issues and hits are attributed to this step.</summary>
-    public ReplayStep? CurrentStep { get; set; }
-
-    public List<ReplayIssue> PendingIssues { get; } = new();
     public Dictionary<string, ProcRollStats> ProcStats { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public List<HitPair> AllHits { get; } = new();
 
     /// <summary>
-    /// The enemies the log shows this hit striking: the earliest not-yet-used group of log hits with this damage ID
-    /// (hits landing together) within the travel window. Enemies the engine does not know are skipped.
-    /// Without such a group the engine's own candidates are used (and reported as extra hits).
+    /// The enemies the log shows this hit striking. Inside a tick of a periodic effect with a reserved group, the reserved
+    /// group's targets; otherwise the earliest not-yet-used group of log hits with this damage ID (hits landing together)
+    /// within the travel window. Enemies the engine does not know are skipped.
     /// </summary>
     public IReadOnlyList<EnemyTarget> SelectTargets(int damageLogId, IReadOnlyList<EnemyTarget> candidates, SimulationContext ctx)
     {
-        var group = _hits.ClaimGroup(damageLogId, ctx.CurrentTime.TotalSeconds, _options, ctx.CurrentTickFraction);
+        IReadOnlyList<UnitRef>? group;
+        if (LogTimedTick(damageLogId, ctx) is { } ticks)
+        {
+            // A tick with no log tick in its window strikes the engine's enemies: each hit is an engine hit with no log hit.
+            group = ticks.Group;
+            ticks.Group = null;
+            if (group == null) return candidates;
+        }
+        else group = _hits.ClaimGroup(damageLogId, ctx.CurrentTime.TotalSeconds, _options, ctx.CurrentTickFraction);
         if (group == null)
         {
-            Report(ctx, IssueCategory.Hits, $"Engine multi-target hit {damageLogId} at {ctx.CurrentTime} has no log hits", $"extra engine multi-target hit: {damageLogId}");
+            _verifier.Report(ctx, IssueCategory.Hits, $"Engine multi-target hit {damageLogId} at {ctx.CurrentTime} has no log hits", $"extra engine multi-target hit: {damageLogId}");
             return Array.Empty<EnemyTarget>();
         }
         var targets = new List<EnemyTarget>();
@@ -94,6 +129,14 @@ public sealed class LogOutcomeSource : IOutcomeSource
     /// <summary>The target of the next log hit with this damage ID that no engine hit has claimed yet (within the travel window).</summary>
     public EnemyTarget? ChooseTarget(int damageLogId, IReadOnlyList<EnemyTarget> candidates, SimulationContext ctx, EnemyTarget? preferred = null)
     {
+        // A tick that reserved its log hit strikes that hit's target; one with no log tick, the engine's choice.
+        if (LogTimedTick(damageLogId, ctx) is { } ticks)
+        {
+            var group = ticks.Group;
+            ticks.Group = null;
+            var fallback = preferred ?? (candidates.Count > 0 ? candidates[0] : null);
+            return group is [var reserved, ..] ? ctx.FindEnemy(reserved.Id, reserved.Instance) ?? fallback : fallback;
+        }
         if (preferred != null)
         {
             var unitRef = new UnitRef(preferred.Id, preferred.InstanceId);
@@ -109,16 +152,23 @@ public sealed class LogOutcomeSource : IOutcomeSource
         return enemy ?? (candidates.Count > 0 ? candidates[0] : null);
     }
 
+    /// <summary>The log ticks of the periodic effect ticking now, when its ticks follow the log for this damage ID.</summary>
+    private EffectTicks? LogTimedTick(int damageLogId, SimulationContext ctx) =>
+        ctx.CurrentPeriodicEffect is { } effect && effect.DamageLogId == damageLogId && _ticks.TryGetValue(effect, out var ticks) ? ticks : null;
+
     /// <summary>On release: match the log hit, which decides the crit and when the hit lands.</summary>
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
         var target = hit.Target == null ? null : new UnitRef(hit.Target.Id, hit.Target.InstanceId);
         double now = ctx.CurrentTime.TotalSeconds;
-        var match = target == null ? null : _hits.Match(hit.AbilityId, target, now, _options);
+        // A tick's hit takes the log tick its effect reserved, and no other: one missing log tick shifts no later pairing.
+        bool tickHit = LogTimedTick(hit.AbilityId, ctx) != null;
+        var match = target == null ? null : _hits.Match(hit.AbilityId, target, now, _options, ctx.CurrentPeriodicEffect, reservedOnly: tickHit);
         if (match != null) _hits.RecordTravel(hit.AbilityId, match.Time - now);
 
-        if (match == null && _options.MissHitsOnDyingTargets && target != null && _demise.TryGetValue(target, out var died)
-            && died >= now - _options.SameTickSeconds && died <= now + _hits.LongestTravelSeconds(hit.AbilityId, _options) + PeriodicEffect.ServerFrameSeconds)
+        if (match == null && target != null && (_options.UnmatchedHitsMissIds.Contains(hit.AbilityId)
+            || (_options.MissHitsOnDyingTargets && _demise.TryGetValue(target, out var died)
+                && died >= now - _options.SameTickSeconds && died <= now + _hits.LongestTravelSeconds(hit.AbilityId, _options) + PeriodicEffect.ServerFrameSeconds)))
         {
             // The target dies in the log before this hit could land (the log has no hit for it, and its flight can be as
             // long as the longest seen; Frost Bolt's varies with distance, 0.03-1.9s): it hits nothing (no damage, no
@@ -129,70 +179,119 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
         if (match == null)
         {
-            Report(ctx, IssueCategory.Hits,
-                $"Engine hit {hit.AbilityName} ({hit.AbilityId}) on {target?.ToString() ?? "no target"} has no matching log hit",
-                $"extra engine hit: {hit.AbilityName} ({hit.AbilityId})");
-            return new HitOutcome(false, SimTime.Zero, 1.0, new PendingHit(now, null));
-        }
-
-        if (match.Crit && !hit.CanCrit)
-        {
-            Report(ctx, IssueCategory.Hits,
-                $"Log hit {match.AbilityName} at {match.Time:F3} crit, but the engine says {hit.AbilityName} cannot crit",
-                $"crit on non-critable: {hit.AbilityName}");
+            _verifier.EngineHitWithoutLogHit(ctx, hit);
+            return new HitOutcome(false, SimTime.Zero, 1.0, null, Missed: true);
         }
 
         var delay = SimTime.FromSeconds(Math.Max(0.0, match.Time - now));
-        return new HitOutcome(match.Crit, delay, 1.0, new PendingHit(now, match));
+        return new HitOutcome(match.Crit, delay, 1.0, new LogMatch(now, match));
     }
 
-    /// <summary>On landing: the engine's damage (average roll) is compared to the log hit.</summary>
+    /// <summary>On landing: the hit deals the log hit's damage, and the verifier compares it with the engine's.</summary>
     public double Land(in HitRequest landed, HitOutcome outcome, SimulationContext ctx)
     {
-        var pending = (PendingHit)outcome.Token!;
-        var target = landed.Target == null ? null : new UnitRef(landed.Target.Id, landed.Target.InstanceId);
-        var context = new HitContext(
-            ctx.ActiveEnemies.Count(),
-            landed.Source.Auras.Active(ctx.CurrentTime).Where(a => a.LogId > 0).Select(a => a.LogId).ToArray(),
-            landed.Source.Auras.Active(ctx.CurrentTime).Where(a => a.LogId == 0).Select(a => a.Name).ToArray());
-        double health = landed.Target?.HealthFraction ?? 1.0;
-
-        if (pending.Log == null)
-        {
-            double expected = landed.CanCrit ? 1.0 + (landed.CritChance * (landed.CritMultiplier - 1.0)) : 1.0;
-            Record(new HitPair(pending.ReleasedAt, landed.AbilityName, landed.AbilityId, target, landed.BaseDamage * expected + landed.FlatDamage, null, landed.CanCrit && landed.CritChance >= 1.0, landed.CritChance, health)
-            {
-                // An engine hit with no log hit still dealt its damage: it counts in the engine's totals.
-                Context = context,
-                TickFraction = landed.TickFraction,
-                LandedTime = ctx.CurrentTime.TotalSeconds,
-            });
-            return expected;
-        }
-
-        var match = pending.Log;
-        double multiplier = match.Crit ? landed.CritMultiplier : 1.0;
-        var pair = new HitPair(pending.ReleasedAt, landed.AbilityName, landed.AbilityId, target, landed.BaseDamage * multiplier + landed.FlatDamage, match, match.Crit, landed.CritChance, health)
-        {
-            Context = context,
-            TickFraction = landed.TickFraction,
-            LandedTime = ctx.CurrentTime.TotalSeconds
-        };
-        Record(pair);
-
-        if (!_options.UnverifiedDamageIds.Contains(landed.AbilityId) && !pair.WithinSpread(_options))
-        {
-            Report(ctx, IssueCategory.Damage,
-                $"{landed.AbilityName} on {target} at {match.Time:F3}: log {match.TotalAmount:F0}{(match.Crit ? " (crit)" : "")} vs engine {pair.EngineAmount:F0} " +
-                $"(ratio {pair.Ratio:F3}, allowed {1 - _options.DamageSpread:F2}-{(1 + _options.DamageSpread) * (1 + _options.UnexplainedHighMargin):F3})",
-                $"damage {(pair.Ratio > 1 ? "too low" : "too high")}: {landed.AbilityName} ({landed.AbilityId})");
-        }
-        return multiplier;
+        var match = (LogMatch)outcome.Token!;
+        _verifier.CheckHit(ctx, landed, match.Log, match.ReleasedAt);
+        return match.Log.UnblockedAmount;
     }
 
-    private sealed record PendingHit(double ReleasedAt, LogDamage? Log);
+    private sealed record LogMatch(double ReleasedAt, LogDamage Log);
 
     public void HitFinished(SimulationContext ctx) { }
+
+    // ------------------------------------------------------------------ periodic ticks
+
+    /// <summary>A periodic effect's log ticks: each tick's reserved log time (null without one) and each predicted time, paired in order.</summary>
+    private sealed class EffectTicks
+    {
+        public readonly LinkedList<double?> Reserved = new();
+        public readonly Queue<SimTime> Predicted = new();
+        public IReadOnlyList<UnitRef>? Group;
+        public int ReservedCount;
+        /// <summary>The effect's <see cref="PeriodicEffect.TicksFired"/> at the latest ask: equal now when that tick has not fired.</summary>
+        public int TicksFiredAtLastAsk = -1;
+        public double? LastAt;
+        public IReadOnlyList<UnitRef>? LastGroup;
+    }
+
+    private readonly Dictionary<PeriodicEffect, EffectTicks> _ticks = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// The time of the unclaimed log hit with the tick's damage ID on the effect's target landing nearest the scheduled
+    /// time, within half the effect's period on either side; the hit is reserved for the effect. An effect without a single
+    /// target reserves a group of hits the same way. Without such a hit the tick fires at the scheduled time.
+    /// </summary>
+    public SimTime TickAt(in TickRequest tick, SimulationContext ctx)
+    {
+        if (ctx.CurrentPeriodicEffect is not { } effect) return tick.Scheduled;
+        if (!_ticks.TryGetValue(effect, out var ticks))
+        {
+            _ticks[effect] = ticks = new EffectTicks();
+            effect.TickPredicted += OnTickPredicted;
+            effect.Ended += OnEffectEnded;
+        }
+        // The tick asked for last never fired (the effect's duration ran out first, e.g. before its partial tick): this tick
+        // takes its place, and the log tick it reserved.
+        if (ticks.TicksFiredAtLastAsk == effect.TicksFired)
+        {
+            if (ticks.LastAt is { } reservedAt)
+            {
+                ticks.Group = ticks.LastGroup;
+                return SimTime.FromSeconds(reservedAt);
+            }
+            ticks.Reserved.RemoveLast();
+        }
+        double scheduled = tick.Scheduled.TotalSeconds;
+        double half = effect.PeriodSecondsAt(ctx.CurrentTime) / 2.0;
+        double? at;
+        if (tick.Target is { } enemy)
+        {
+            at = _hits.ReserveTick(tick.DamageLogId, new UnitRef(enemy.Id, enemy.InstanceId), scheduled, half, effect)?.Time;
+            ticks.LastGroup = null;
+        }
+        else
+        {
+            var group = _hits.ReserveTickGroup(tick.DamageLogId, scheduled, half, _options, effect, tick.Fraction);
+            ticks.Group = ticks.LastGroup = group?.Select(h => h.Target).Distinct().ToList();
+            at = group?[0].Time;
+        }
+        ticks.TicksFiredAtLastAsk = effect.TicksFired;
+        ticks.LastAt = at;
+        if (at.HasValue) ticks.ReservedCount++;
+        ticks.Reserved.AddLast(at);
+        PairTicks(ctx, effect, ticks);
+        return at is { } time ? SimTime.FromSeconds(time) : tick.Scheduled;
+    }
+
+    private void OnTickPredicted(SimulationContext ctx, PeriodicEffect effect, SimTime predicted)
+    {
+        if (!_ticks.TryGetValue(effect, out var ticks)) return;
+        ticks.Predicted.Enqueue(predicted);
+        PairTicks(ctx, effect, ticks);
+    }
+
+    private void PairTicks(SimulationContext ctx, PeriodicEffect effect, EffectTicks ticks)
+    {
+        while (ticks.Reserved.Count > 0 && ticks.Predicted.Count > 0)
+        {
+            var reserved = ticks.Reserved.First!.Value;
+            ticks.Reserved.RemoveFirst();
+            var predicted = ticks.Predicted.Dequeue();
+            if (reserved is { } logTime) _verifier.CheckTickTime(ctx, effect, predicted, logTime);
+        }
+    }
+
+    /// <summary>The effect's reservation that has not fired is free again, and its tick count is checked.</summary>
+    private void OnEffectEnded(SimulationContext ctx, PeriodicEffect effect)
+    {
+        if (!_ticks.Remove(effect, out var ticks)) return;
+        _hits.Release(effect);
+        // The last tick asked for did not fire when the effect ended before it.
+        int reserved = ticks.ReservedCount - (ticks.TicksFiredAtLastAsk == effect.TicksFired && ticks.LastAt.HasValue ? 1 : 0);
+        _verifier.CheckTickCount(ctx, effect, reserved);
+    }
+
+    // ------------------------------------------------------------------ procs
 
     public bool RollProc(string procKey, double chance, SimulationContext ctx, EnemyTarget? target = null)
     {
@@ -207,26 +306,78 @@ public sealed class LogOutcomeSource : IOutcomeSource
         var evidence = ProcEvidence.For(procKey);
         if (evidence == null)
         {
-            Report(ctx, IssueCategory.Procs, $"Proc '{procKey}' has no evidence listed in ProcEvidence; treated as not procced", $"proc without evidence: {procKey}");
+            _verifier.Report(ctx, IssueCategory.Procs, $"Proc '{procKey}' has no evidence listed in ProcEvidence; treated as not procced", $"proc without evidence: {procKey}");
             return false;
         }
 
         double now = ctx.CurrentTime.TotalSeconds;
-        bool procced = evidence.StackJump > 0
+        bool procced = evidence.Resource != null
+            ? ClaimResourceEvidence(evidence, now)
+            : evidence.EnemyDebuffApplied
+            ? ClaimEnemyDebuffEvidence(evidence, now, target)
+            : evidence.StackJump > 0
             ? ClaimStackEvidence(evidence.LogId, evidence.StackJump, now, target)
             : _playerAuraIds.Contains(evidence.LogId)
-            ? ClaimAuraEvidence(evidence.LogId, now)
-            : ClaimDamageEvidence(evidence.LogId, now, evidence.MinDelaySeconds, evidence.DelaySeconds, target);
-        if (procced)
-        {
-            stats.Procs++;
-            if (chance <= 0.0)
-            {
-                Report(ctx, IssueCategory.Procs, $"Log shows '{procKey}' procced at {now:F3} but the engine's chance was {chance:P1}", $"proc with zero chance: {procKey}");
-            }
-        }
+            ? ClaimAuraEvidence(evidence.LogId, now, evidence.NotCausedByAbilityId)
+            : ClaimDamageEvidence(evidence, now, target);
+        if (procced) stats.Procs++;
+        _verifier.CheckProc(ctx, procKey, chance, procced, target);
         return procced;
     }
+
+    /// <summary>
+    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within 30%) between two
+    /// readings, the first at most a frame after the roll and the second within 0.5s of it, beyond what it regenerates
+    /// meanwhile. A reading at a cast is before its cost, so a cast's reading never starts a jump.
+    /// </summary>
+    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, double now)
+    {
+        if (!_resourceJumps.TryGetValue(evidence, out var jumps))
+        {
+            jumps = ResourceJumps(evidence);
+            _resourceJumps[evidence] = jumps;
+        }
+        for (int i = 0; i < jumps.Count; i++)
+        {
+            var jump = jumps[i];
+            if (jump.To < now - _options.SameTickSeconds) continue;
+            if (jump.From > now + PeriodicEffect.ServerFrameSeconds) break;
+            if (jump.To > now + ResourceEvidenceWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
+            _claimedResourceJumps.Add((evidence, i));
+            return true;
+        }
+        return false;
+    }
+
+    private List<(double From, double To)> ResourceJumps(ProcEvidence.Evidence evidence)
+    {
+        var jumps = new List<(double From, double To)>();
+        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
+        if (log == null) return jumps;
+        string type = log.LogResourceType.ToString();
+        double max = evidence.Resource!.Max;
+        LogResourceSnapshot? previous = null;
+        double previousAmount = 0;
+        foreach (var reading in _resourceReadings)
+        {
+            if (!reading.Resources.TryGetValue(type, out var value)) continue;
+            double amount = log.EngineAmount(value);
+            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds
+                && amount < max - 0.5 && previousAmount < max - 0.5)
+            {
+                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
+                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
+            }
+            previous = reading;
+            previousAmount = amount;
+        }
+        return jumps;
+    }
+
+    private const double ResourceEvidenceWindowSeconds = 0.5;
+    private readonly List<LogResourceSnapshot> _resourceReadings = [];
+    private readonly Dictionary<ProcEvidence.Evidence, List<(double From, double To)>> _resourceJumps = new();
+    private readonly HashSet<(ProcEvidence.Evidence, int)> _claimedResourceJumps = new();
 
     /// <summary>Proof of a proc that adds extra stacks: the debuff on <paramref name="target"/> gains <paramref name="jump"/> stacks at once.</summary>
     private bool ClaimStackEvidence(int logId, int jump, double now, EnemyTarget? target)
@@ -240,16 +391,30 @@ public sealed class LogOutcomeSource : IOutcomeSource
             .FirstOrDefault();
         if (gain.Event == null) return false;
         _claimedStackEvidence.Add(gain.Event);
-        return gain.Added >= jump;
+        int added = gain.Added;
+        if (added < jump)
+        {
+            // A new debuff given several stacks at once is logged as its application (1 stack) and its stack count in the
+            // same millisecond (combat logs: all 220 Coalescing Frost applications with 2 stacks in the 15 Rime fights of
+            // docs/accuracy/rime-accuracy-v1.md, each on a Freezing Torrent crit).
+            foreach (var g in gains)
+            {
+                if (g.Event.Time != gain.Event.Time || _claimedStackEvidence.Contains(g.Event)) continue;
+                _claimedStackEvidence.Add(g.Event);
+                added += g.Added;
+            }
+        }
+        return added >= jump;
     }
 
-    private bool ClaimAuraEvidence(int logId, double now)
+    private bool ClaimAuraEvidence(int logId, double now, int notCausedBy = 0)
     {
         foreach (var ev in _playerAuraEvents)
         {
             if (ev.Time < now - _options.ProcEarlySeconds) continue;
             if (ev.Time > now + _options.ProcAuraWindowSeconds) break;
             if (ev.AbilityId != logId || !ev.IsGain || _claimedAuraEvidence.Contains(ev)) continue;
+            if (notCausedBy != 0 && ev.ExtraAbilityId == notCausedBy) continue;
             _claimedAuraEvidence.Add(ev);
             return true;
         }
@@ -257,35 +422,45 @@ public sealed class LogOutcomeSource : IOutcomeSource
     }
 
     /// <summary>A group of log hits with the proc's damage ID landing at the roll (within one server tick, plus the effect's delay).</summary>
-    private bool ClaimDamageEvidence(int logId, double now, double minDelay, double delay, EnemyTarget? target)
+    private bool ClaimDamageEvidence(ProcEvidence.Evidence evidence, double now, EnemyTarget? target)
     {
         // Hits an engine hit already accounts for (matched, or a group claimed for its targets) are not evidence of a proc.
-        var hit = _hits.Peek(logId, now + minDelay - _options.SameTickSeconds, now + _options.SameTickSeconds + delay,
-            h => !_claimedDamageEvidence.Contains(h) && !_hits.IsAccountedFor(h)
-                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId)));
+        // A hit type proves a proc of the hit itself: its group is claimed before the roll (a Wild Swing the enemy avoided).
+        bool Free(LogDamage h) => !_claimedDamageEvidence.Contains(h) && (evidence.HitTypes != null || !_hits.IsAccountedFor(h));
+        int logId = evidence.LogId;
+        var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
+            h => Free(h) && (evidence.HitTypes == null || (h.HitType is { } type && evidence.HitTypes.Contains(type)))
+                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId))
+                 && (evidence.StackLossLogId == 0 || LostStackAt(evidence.StackLossLogId, h.Target, h.Time) == evidence.StackLoss));
         if (hit == null) return false;
+        if (evidence.ReservesHit)
+        {
+            // The proc's own hit on its enemy takes the proof, not an earlier log hit still free; the hits on other
+            // enemies in the same server frame are other procs.
+            _hits.ReserveForMatch(hit);
+            _claimedDamageEvidence.Add(hit);
+            return true;
+        }
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
+        // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks): each the first free
+        // hit from 3/4 to 3/2 of the spacing after the one before.
+        double previous = hit.Time;
+        for (int k = 1; k <= evidence.FollowingHits; k++)
+        {
+            var following = _hits.Peek(logId, previous + 0.75 * evidence.FollowingSpacingSeconds, previous + 1.5 * evidence.FollowingSpacingSeconds, Free);
+            if (following == null) break;
+            _claimedDamageEvidence.Add(following);
+            previous = following.Time;
+        }
         return true;
-    }
-
-    private void Record(HitPair pair)
-    {
-        AllHits.Add(pair);
-        CurrentStep?.Hits.Add(pair);
-    }
-
-    public void Report(SimulationContext ctx, IssueCategory category, string message, string? subject = null)
-    {
-        var issue = new ReplayIssue(ctx.CurrentTime.TotalSeconds, CurrentStep?.Index ?? 0, category, message, subject);
-        PendingIssues.Add(issue);
-        CurrentStep?.Issues.Add(issue);
     }
 }
 
 /// <summary>
 /// The log's damage hits, consumed as the engine produces matching hits. A log hit matches an engine hit with the
 /// same damage ID on the same target, landing between slightly before and up to the travel window after the engine hit.
+/// A periodic effect's tick reserves its log hit first; a log hit reserved by one effect is not free for another.
 /// </summary>
 public sealed class HitLedger
 {
@@ -293,8 +468,7 @@ public sealed class HitLedger
     private readonly Dictionary<int, List<LogDamage>> _byAbility = new();
     private readonly List<LogDamage> _all;
     private readonly HashSet<LogDamage> _matched = new();
-    private readonly HashSet<LogDamage> _reported = new();
-    private int _settledCursor;
+    private readonly HashSet<LogDamage> _dealt = new();
 
     public HitLedger(IEnumerable<LogDamage> hits)
     {
@@ -309,15 +483,39 @@ public sealed class HitLedger
         }
     }
 
-    public LogDamage? Match(int logId, UnitRef target, double engineTime, ReplayOptions options)
+    /// <summary>Every log hit, in time order.</summary>
+    public IReadOnlyList<LogDamage> All => _all;
+
+    /// <param name="owner">The periodic effect ticking now: its reserved log hit on the target is taken first.</param>
+    /// <param name="reservedOnly">Take only a log hit <paramref name="owner"/> reserved (the hit of a tick that follows the log).</param>
+    public LogDamage? Match(int logId, UnitRef target, double engineTime, ReplayOptions options, PeriodicEffect? owner = null,
+        bool reservedOnly = false)
     {
+        // A tick takes the log hit its effect reserved: the one nearest now.
+        if (owner != null && _owned.TryGetValue(owner, out var owned))
+        {
+            LogDamage? best = null;
+            foreach (var h in owned)
+            {
+                if (h.AbilityId != logId || h.Target != target || _matched.Contains(h) || _dealt.Contains(h)) continue;
+                if (best == null || Math.Abs(h.Time - engineTime) < Math.Abs(best.Time - engineTime)) best = h;
+            }
+            if (best != null)
+            {
+                _matched.Add(best);
+                return best;
+            }
+        }
+        if (reservedOnly) return null;
         // A hit that chose its target from a log hit takes that hit.
         if (_reserved.TryGetValue((logId, target), out var queue))
         {
             while (queue.Count > 0)
             {
                 var reserved = queue.Dequeue();
-                if (_matched.Add(reserved)) return reserved;
+                // A reservation the engine never used is stale once the hit is behind the window.
+                if (reserved.Time < engineTime - options.HitEarlySeconds) continue;
+                if (!_dealt.Contains(reserved) && _matched.Add(reserved)) return reserved;
             }
         }
         if (!_byKey.TryGetValue((logId, target.Id, target.Instance), out var list)) return null;
@@ -325,20 +523,115 @@ public sealed class HitLedger
         {
             if (h.Time < engineTime - options.HitEarlySeconds) continue;
             if (h.Time > engineTime + options.HitLateSeconds) break;
-            if (_matched.Contains(h)) continue;
+            if (_matched.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, owner)) continue;
             _matched.Add(h);
             return h;
         }
         return null;
     }
 
+    // ------------------------------------------------------------------ periodic tick reservations
+
+    private readonly Dictionary<LogDamage, PeriodicEffect> _ownerOf = new();
+    private readonly Dictionary<PeriodicEffect, List<LogDamage>> _owned = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>True when an active periodic effect other than <paramref name="owner"/> reserved this log hit.</summary>
+    private bool OwnedByOther(LogDamage h, PeriodicEffect? owner) =>
+        _ownerOf.TryGetValue(h, out var o) && o != owner && o.IsActive;
+
+    /// <remarks>
+    /// A log hit an engine hit chose as its target and has not matched yet is free for a tick: the effect's own cast
+    /// chooses its enemies from its first tick's hits (Slaughter).
+    /// </remarks>
+    private bool FreeForTick(LogDamage h, PeriodicEffect owner) =>
+        !_matched.Contains(h) && !_dealt.Contains(h) && !OwnedByOther(h, owner) && !(_ownerOf.TryGetValue(h, out var o) && o == owner);
+
+    private void Own(LogDamage h, PeriodicEffect owner)
+    {
+        _ownerOf[h] = owner;
+        if (!_owned.TryGetValue(owner, out var list)) _owned[owner] = list = new List<LogDamage>();
+        list.Add(h);
+    }
+
+    /// <summary>
+    /// Reserves for <paramref name="owner"/> the free log hit with <paramref name="logId"/> on <paramref name="target"/>
+    /// landing nearest <paramref name="scheduled"/>, within <paramref name="halfWindow"/> on either side.
+    /// </summary>
+    public LogDamage? ReserveTick(int logId, UnitRef target, double scheduled, double halfWindow, PeriodicEffect owner)
+    {
+        if (!_byKey.TryGetValue((logId, target.Id, target.Instance), out var list)) return null;
+        LogDamage? best = null;
+        foreach (var h in list)
+        {
+            if (h.Time < scheduled - halfWindow) continue;
+            if (h.Time > scheduled + halfWindow) break;
+            if (!FreeForTick(h, owner)) continue;
+            if (best == null || Math.Abs(h.Time - scheduled) < Math.Abs(best.Time - scheduled)) best = h;
+        }
+        if (best != null) Own(best, owner);
+        return best;
+    }
+
+    /// <summary>
+    /// Reserves for <paramref name="owner"/> the free group of log hits with <paramref name="logId"/> landing nearest
+    /// <paramref name="scheduled"/>, within <paramref name="halfWindow"/> on either side (a pulse on every enemy in its area).
+    /// </summary>
+    public IReadOnlyList<LogDamage>? ReserveTickGroup(int logId, double scheduled, double halfWindow, ReplayOptions options, PeriodicEffect owner,
+        double tickFraction = 1.0)
+    {
+        List<LogDamage>? best = null;
+        double bestDistance = double.MaxValue;
+        foreach (var group in Groups(logId, options))
+        {
+            var first = group[0];
+            if (first.Time < scheduled - halfWindow) continue;
+            if (first.Time > scheduled + halfWindow) break;
+            if (_claimedGroups.Contains(first) || !group.All(h => FreeForTick(h, owner))) continue;
+            double distance = Math.Abs(first.Time - scheduled);
+            bool looksPartial = GroupRatio(group, options) < options.PartialTickRatio;
+            if (looksPartial != tickFraction < 1.0) distance += options.PartialMismatchPenaltySeconds;
+            if (distance < bestDistance)
+            {
+                best = group;
+                bestDistance = distance;
+            }
+        }
+        if (best == null) return null;
+        _claimedGroups.Add(best[0]);
+        foreach (var h in best) Own(h, owner);
+        return best;
+    }
+
+    /// <summary>The log hits <paramref name="owner"/> reserved and no engine hit took are free again.</summary>
+    public void Release(PeriodicEffect owner)
+    {
+        if (!_owned.Remove(owner, out var list)) return;
+        foreach (var h in list)
+        {
+            _ownerOf.Remove(h);
+            if (!_matched.Contains(h) && _groupOf.TryGetValue(h, out var group) && group[0] == h) _claimedGroups.Remove(h);
+        }
+    }
+
+    // ------------------------------------------------------------------ target choices
+
     private readonly HashSet<LogDamage> _claimedGroups = new();
     private readonly HashSet<LogDamage> _claimedGroupHits = new();
 
     /// <summary>True when an engine hit has matched this log hit or claimed its group for targeting.</summary>
-    public bool IsAccountedFor(LogDamage hit) => _matched.Contains(hit) || _claimedGroupHits.Contains(hit);
+    public bool IsAccountedFor(LogDamage hit) => _matched.Contains(hit) || _claimedGroupHits.Contains(hit) || _ownerOf.ContainsKey(hit);
+
+    /// <summary>True when an engine hit matched this log hit.</summary>
+    public bool IsMatched(LogDamage hit) => _matched.Contains(hit);
+
+    /// <summary>The replay dealt this log hit itself (no engine hit matched it in its window).</summary>
+    public void MarkDealt(LogDamage hit) => _dealt.Add(hit);
+
     private readonly HashSet<LogDamage> _targetChoices = new();
     private readonly Dictionary<(int LogId, UnitRef Unit), Queue<LogDamage>> _reserved = new();
+
+    /// <summary>The next engine hit with the ID of <paramref name="h"/> on its target matches <paramref name="h"/>.</summary>
+    public void ReserveForMatch(LogDamage h) => Reserve(h);
 
     private void Reserve(LogDamage h)
     {
@@ -356,12 +649,11 @@ public sealed class HitLedger
         {
             if (h.Time < engineTime - options.HitEarlySeconds) continue;
             if (h.Time > engineTime + options.HitLateSeconds) break;
-            if (!_matched.Contains(h) && !_targetChoices.Contains(h)) return true;
+            if (!_matched.Contains(h) && !_targetChoices.Contains(h) && !_dealt.Contains(h)) return true;
         }
         return false;
     }
 
-    /// <summary>The target of the earliest unmatched log hit with <paramref name="logId"/> in the travel window not already chosen.</summary>
     private readonly Dictionary<int, List<double>> _travel = new();
 
     /// <summary>Records how long after its release a matched hit landed (learns each ID's typical travel time).</summary>
@@ -399,7 +691,7 @@ public sealed class HitLedger
         {
             if (h.Time < engineTime - options.HitEarlySeconds) continue;
             if (h.Time > engineTime + options.HitLateSeconds) break;
-            if (_matched.Contains(h) || _targetChoices.Contains(h)) continue;
+            if (_matched.Contains(h) || _targetChoices.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, null)) continue;
             double score = Math.Abs(h.Time - expected) + (avoid != null && h.Target == avoid ? options.AvoidedTargetPenaltySeconds : 0.0);
             if (score < bestScore)
             {
@@ -429,10 +721,10 @@ public sealed class HitLedger
             List<LogDamage>? current = null;
             foreach (var h in list)
             {
-                if (current == null || h.Time - current[0].Time > options.HitGroupSeconds || current.Any(x => x.Target == h.Target))
+                if (current == null || h.Time - current[0].Time > options.GroupSecondsOf(logId) || current.Any(x => x.Target == h.Target))
                 {
                     // A repeated target opens a new group only if no later open group can take it.
-                    current = groups.Count > 0 && h.Time - groups[^1][0].Time <= options.HitGroupSeconds
+                    current = groups.Count > 0 && h.Time - groups[^1][0].Time <= options.GroupSecondsOf(logId)
                               && current != null && current != groups[^1] && !groups[^1].Any(x => x.Target == h.Target)
                         ? groups[^1]
                         : null;
@@ -466,7 +758,7 @@ public sealed class HitLedger
             var first = group[0];
             if (first.Time < engineTime - options.HitEarlySeconds) continue;
             if (first.Time > engineTime + options.HitLateSeconds) break;
-            if (_claimedGroups.Contains(first)) continue;
+            if (_claimedGroups.Contains(first) || group.Any(h => OwnedByOther(h, null) || _dealt.Contains(h))) continue;
             double distance = Math.Abs(first.Time - engineTime);
             bool looksPartial = GroupRatio(group, options) < options.PartialTickRatio;
             if (looksPartial != tickFraction < 1.0) distance += options.PartialMismatchPenaltySeconds;
@@ -493,7 +785,7 @@ public sealed class HitLedger
         var ratios = new List<double>();
         foreach (var h in group)
         {
-            var prev = list.LastOrDefault(p => p.Time < group[0].Time - options.HitGroupSeconds && p.Time > h.Time - 3.0
+            var prev = list.LastOrDefault(p => p.Time < group[0].Time - options.GroupSecondsOf(group[0].AbilityId) && p.Time > h.Time - 3.0
                                                && p.Target == h.Target && p.Crit == h.Crit && p.TotalAmount > 0);
             if (prev != null) ratios.Add(h.TotalAmount / prev.TotalAmount);
         }
@@ -521,20 +813,15 @@ public sealed class HitLedger
         return null;
     }
 
-    /// <summary>Log hits that landed before <paramref name="settledBefore"/> without any engine hit matching them (each returned once).</summary>
-    public IEnumerable<LogDamage> UnmatchedBefore(double settledBefore)
-    {
-        while (_settledCursor < _all.Count && _all[_settledCursor].Time < settledBefore)
-        {
-            var h = _all[_settledCursor++];
-            if (!_matched.Contains(h) && _reported.Add(h)) yield return h;
-        }
-    }
-
     public int TotalHits => _all.Count;
     public int MatchedHits => _matched.Count;
 }
 
+/// <summary>
+/// One engine hit and its log hit, or a log hit no engine hit matched (<see cref="EngineAmount"/> 0, no
+/// <see cref="LandedTime"/>).
+/// </summary>
+/// <param name="EngineAmount">The engine's average roll: base damage, times the crit multiplier on a logged crit.</param>
 public sealed record HitPair(
     double EngineTime,
     string AbilityName,
@@ -546,8 +833,13 @@ public sealed record HitPair(
     double CritChance,
     double TargetHealthFraction)
 {
-    /// <summary>Diagnostics: the situation the engine hit was dealt in.</summary>
-    public HitContext? Context { get; init; }
+    /// <summary>The low end of the engine's damage range for the hit.</summary>
+    public double ExpectedLow { get; init; }
+    /// <summary>The high end of the engine's damage range for the hit.</summary>
+    public double ExpectedHigh { get; init; }
+
+    /// <summary>The engine's state at the check (landing, or release for a hit that never landed).</summary>
+    public EngineState? State { get; init; }
 
     /// <summary>Below 1 for a partial final tick of a periodic effect.</summary>
     public double TickFraction { get; init; } = 1.0;
@@ -555,28 +847,22 @@ public sealed record HitPair(
     /// <summary>When the engine's hit landed (dealt its damage); null if it never landed.</summary>
     public double? LandedTime { get; init; }
 
-    public double? Ratio => Log == null || EngineAmount <= 0 ? null : Log.TotalAmount / EngineAmount;
+    /// <summary>Log over engine, with the log hit before its block (the engine has no blocks).</summary>
+    public double? Ratio => Log == null || EngineAmount <= 0 ? null : Log.UnblockedAmount / EngineAmount;
 
-    public bool WithinSpread(ReplayOptions options)
+    /// <summary>The log amount (0 with no log hit) minus the range bound it is outside; 0 inside the range.</summary>
+    public double Deviation
     {
-        if (Log == null) return false;
-        double low = EngineAmount * (1.0 - options.DamageSpread) - options.DamageAbsoluteTolerance;
-        double high = EngineAmount * (1.0 + options.DamageSpread) * (1.0 + options.UnexplainedHighMargin) + options.DamageAbsoluteTolerance;
-        if (TickFraction < 1.0 && TickFraction > 0.0)
+        get
         {
-            // The fraction of a partial tick is only known to about one server frame.
-            double fullTick = EngineAmount / TickFraction;
-            low -= fullTick * options.PartialTickFractionTolerance;
-            high += fullTick * options.PartialTickFractionTolerance;
+            double observed = Log?.UnblockedAmount ?? 0.0;
+            return observed < ExpectedLow ? observed - ExpectedLow : observed > ExpectedHigh ? observed - ExpectedHigh : 0.0;
         }
-        // Overkill truncates the logged amount, so only an engine hit that is too small is detectable then.
-        if (Log.Overkill > 0 && Log.TotalAmount < EngineAmount) return true;
-        return Log.TotalAmount >= low && Log.TotalAmount <= high;
     }
-}
 
-/// <summary>The situation of an engine hit: active enemies and the hero's active auras (log IDs, and names of internal ones).</summary>
-public sealed record HitContext(int ActiveEnemies, int[] AuraLogIds, string[] InternalAuras);
+    /// <summary>True when the log amount is inside the engine's damage range.</summary>
+    public bool WithinRange => Log != null && Deviation == 0.0;
+}
 
 public sealed class ProcRollStats
 {

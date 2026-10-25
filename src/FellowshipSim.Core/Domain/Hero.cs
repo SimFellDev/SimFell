@@ -1,7 +1,8 @@
-using FellowshipSim.Core.Customization.Blessings;
+using FellowshipSim.Core.Customization.Augmentations;
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.Glyphs;
 using FellowshipSim.Core.Customization.Legendaries;
-using FellowshipSim.Core.Customization.Traits;
+using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Weapons;
 
 namespace FellowshipSim.Core.Domain;
@@ -72,12 +73,17 @@ public abstract class Hero : Actor
     public Weapon? EquippedWeapon { get; set; }
     public Ability? WeaponAbility { get; set; }
     public List<Ability> Abilities { get; } = new();
-    public List<Blessing> Blessings { get; } = new();
-    public List<Trait> Traits { get; } = new();
+    public List<Glyph> Glyphs { get; } = new();
+    public List<Augmentation> Augmentations { get; } = new();
     public List<Legendary> Legendaries { get; } = new();
     public List<Gem> Gems { get; } = new();
     public List<Talent> Talents { get; } = new();
-    public List<Customization.Sets.SetBonus> Sets { get; } = new();
+    /// <summary>The passive of the relic in slot 1.</summary>
+    public RelicPassive? Relic1 { get; set; }
+    /// <summary>The passive of the relic in slot 2.</summary>
+    public RelicPassive? Relic2 { get; set; }
+    /// <summary>The passives of both relic slots.</summary>
+    public IEnumerable<RelicPassive> RelicPassives => new[] { Relic1, Relic2 }.OfType<RelicPassive>();
 
     public Dictionary<string, CooldownState> Cooldowns { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Changes whenever a cooldown state is added to <see cref="Cooldowns"/> or they are cleared.</summary>
@@ -86,6 +92,9 @@ public abstract class Hero : Actor
 
     /// <summary>The global cooldown before haste (per the user: 1.5s, hasted).</summary>
     public double GlobalCooldownSeconds { get; set; } = 1.5;
+
+    /// <summary>Haste shortens the global cooldown (Mara's 1s global cooldown is not hasted).</summary>
+    public bool GlobalCooldownScalesWithHaste { get; protected set; } = true;
 
     /// <summary>Parts of the hero's build the engine does not model (filled when the build is imported).</summary>
     public List<string> UnmodeledFeatures { get; } = new();
@@ -105,14 +114,36 @@ public abstract class Hero : Actor
     /// </summary>
     public double ClassDamageTuning { get; set; } = 1.0;
 
+    /// <summary>
+    /// Talent points every hero has to spend on its tree (in game; combat logs: sww's Rime spends all 14, e.g. 1c + 2b +
+    /// 2c + 3a + 4a + 4b + 4c + 5a + 6a + 6c).
+    /// </summary>
+    public const int TalentPoints = 14;
+
     /// <summary>The hero's talent tree, as in game.</summary>
     public abstract IReadOnlyList<TalentSlot> TalentTreeSlots { get; }
+
+    /// <summary>The hero's main stat; it names the hero's stat enchants.</summary>
+    public abstract MainStat MainStat { get; }
 
     /// <summary>
     /// Auras built at runtime (from a rank or a gem node) rather than declared as <c>public static readonly AuraDef</c>
     /// constants; see <see cref="Register"/>.
     /// </summary>
     public HashSet<AuraDef> RuntimeAuras { get; } = new();
+
+    /// <summary>
+    /// Damage IDs whose hits are the ticks of a damage over time (game effects tagged EffectType.Dot): a tick is no
+    /// application of an effect (Kindling rolls on applications).
+    /// </summary>
+    public HashSet<int> DotDamageIds { get; } = new();
+
+    /// <summary>
+    /// The last tick of a damage over time whose execution ended an ability of the hero, with the tick's damage ID. Every
+    /// ability end flushes the server's ability queue (UCRGameplayAbility::EndAbility 0x1450DACD0 calling 0x1452D7370,
+    /// build 26162532), so a cast the queue held activates inside that tick.
+    /// </summary>
+    public (int DamageLogId, HastedTimer Timer)? QueueFlushingTick { get; set; }
 
     /// <summary>Extra crit chance against a specific target (e.g. bonuses vs. healthy enemies).</summary>
     public List<Func<EnemyTarget, SimTime, double>> TargetCritChanceBonuses { get; } = new();
@@ -126,7 +157,7 @@ public abstract class Hero : Actor
     /// <summary>Cooldown acceleration for specific abilities (0.05 = cooldown recovers 5% faster).</summary>
     public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
 
-    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> entry reads, other than through haste (e.g. Inspired Arms).</summary>
+    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> entry reads, other than through haste (e.g. Glorious Purpose).</summary>
     public HashSet<string> CooldownAccelerationAuraKeys { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Seconds added to Spirit of Heroism.</summary>
@@ -140,9 +171,12 @@ public abstract class Hero : Actor
     public const double SpiritOfHeroismSeconds = 20.0;
     public const double SpiritOfHeroismHaste = 0.3;
 
-    /// <summary>Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds.</summary>
+    /// <summary>
+    /// Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds. Combat logs: it stays through the
+    /// hero's death (4 deaths, none removed it).
+    /// </summary>
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
-        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste));
+        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
 
     /// <summary>A hit of the hero landed. Handlers run in the order they subscribed, with those of <see cref="OnDamageDealtBy"/> and <see cref="Ability.Hit"/>.</summary>
     public event DamageDealtHandler? OnDamageDealt
@@ -198,13 +232,28 @@ public abstract class Hero : Actor
     /// Not raised for Spirit Refunds, which give back what was spent.
     /// </summary>
     public event Action<ResourceDef, double, EnemyTarget?, SimulationContext>? OnResourceGained;
+    /// <summary>A Spirit Refund gave back the resource spent (a moment after the spend).</summary>
+    public event Action<ResourceDef, double, SimulationContext>? OnResourceRefunded;
     /// <summary>Spirit of Heroism started / ended.</summary>
     public event Action<SimulationContext>? SpiritOfHeroismStarted;
     public event Action<SimulationContext>? SpiritOfHeroismEnded;
-    /// <summary>A Spirit Refund triggered on a spend of the resource (the refund itself arrives a moment later).</summary>
-    public event Action<ResourceDef, double, SimulationContext>? OnSpiritRefund;
+    /// <summary>
+    /// A Spirit Refund triggered on a spend of the resource (the refund itself arrives a moment later), or with no resource
+    /// for a hero whose refund is not a spend.
+    /// </summary>
+    public event Action<ResourceDef?, double, SimulationContext>? OnSpiritRefund;
     /// <summary>A cast is about to resolve (also free casts from procs): talents add to it here (see <see cref="CastBonus"/>).</summary>
     public event Action<CastBonus>? OnCastResolving;
+
+    /// <summary>An enemy in combat was defeated (not one that left combat alive), as it is removed.</summary>
+    public event Action<SimulationContext, EnemyTarget>? OnEnemyDefeated;
+
+    internal void TriggerEnemyDefeated(SimulationContext ctx, EnemyTarget enemy) => OnEnemyDefeated?.Invoke(ctx, enemy);
+
+    /// <summary>The hero applied a harmful effect that deals no damage of its own to an enemy (a debuff such as Bursting Ice's).</summary>
+    public event Action<SimulationContext, EnemyTarget>? OnHarmfulEffectApplied;
+
+    public void TriggerHarmfulEffectApplied(SimulationContext ctx, EnemyTarget enemy) => OnHarmfulEffectApplied?.Invoke(ctx, enemy);
 
     /// <summary>The cast in progress, if any (abilities with a cast time between begin and completion).</summary>
     public ActiveCast? CurrentCast { get; internal set; }
@@ -248,9 +297,6 @@ public abstract class Hero : Actor
     /// <summary>Spirit Points a Spirit Refund grants (hero_data SpiritProc FlatSpiritPointGain: 1, Rime 2).</summary>
     public double SpiritPointsPerSpiritRefund { get; protected set; } = 1.0;
 
-    /// <summary>Spirit Points at the start of a dungeon (The Herald, Undulating Spirit...).</summary>
-    public double StartingSpiritPoints { get; set; }
-
     /// <summary>Share taken off the Spirit ability's cost (Blessing of the Prophet).</summary>
     public double SpiritAbilityCostReduction { get; set; }
 
@@ -268,7 +314,11 @@ public abstract class Hero : Actor
             c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
         }
         ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+        OnFightBegins(ctx);
     }
+
+    /// <summary>Starts what runs for the whole fight on its own for one hero (Mara: Energy regeneration).</summary>
+    protected virtual void OnFightBegins(SimulationContext ctx) { }
 
     /// <summary>The resources this hero has (declared with <see cref="AddResource"/> in <see cref="Initialize"/>).</summary>
     public List<ResourceDef> ResourceDefs { get; } = new();
@@ -322,12 +372,28 @@ public abstract class Hero : Actor
         state.Current = Math.Max(0.0, state.Current - amount);
         NotifyResourceSpent(resource, amount, ctx?.CurrentTime ?? default);
         if (amount <= 0 || ctx == null || resource != SpiritRefundResource) return;
-        if (!RollSpiritRefund(ctx)) return;
-        // Rising Spirit comes with the spend; the resource comes back a moment later.
+        if (!TriggerSpiritRefund(resource, amount, ctx)) return;
+        // The resource comes back a moment after the spend.
+        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c =>
+        {
+            AddToResource(resource, amount, c, null, isGain: false);
+            OnResourceRefunded?.Invoke(resource, amount, c);
+        }, "Spirit Refund");
+    }
+
+    /// <summary>
+    /// Rolls a Spirit Refund. When it triggers, Rising Spirit and the Spirit Points come at once and
+    /// <see cref="OnSpiritRefund"/> is raised. A hero whose Spirit Refund comes from using an ability rather than spending
+    /// a resource (Gunde: abilities that apply Rend) calls this with no <paramref name="resource"/> and gives what its
+    /// refund gives itself.
+    /// </summary>
+    protected bool TriggerSpiritRefund(ResourceDef? resource, double amount, SimulationContext ctx)
+    {
+        if (!RollSpiritRefund(ctx)) return false;
         Auras.Apply(RisingSpirit, ctx.CurrentTime);
         OnSpiritRefund?.Invoke(resource, amount, ctx);
         GainResource(SpiritPoints, SpiritPointsPerSpiritRefund, ctx);
-        ctx.Schedule(SimTime.FromSeconds(SpiritRefundDelaySeconds), c => AddToResource(resource, amount, c, null, isGain: false), "Spirit Refund");
+        return true;
     }
 
     /// <summary>Tells effects that count spent resource (e.g. cooldown reductions per point spent) that it was spent.</summary>
@@ -477,13 +543,19 @@ public abstract class Hero : Actor
     /// <summary>Damage multiplier of a critical hit.</summary>
     public double CritMultiplier(SimTime now) => Auras.Fold(StatType.CritMultiplier, StatBlock.BaseCritMultiplier, now);
 
-    /// <summary>Total haste at <paramref name="now"/>: rating haste (with rating buffs) plus haste from auras.</summary>
+    /// <summary>
+    /// Total haste at <paramref name="now"/>: rating haste (with rating buffs) plus haste from auras. The game's Haste
+    /// attribute is 1 + haste (hero baseAttributes Haste 1), so a multiplying haste modifier scales 1 + haste. Combat logs
+    /// (4Ln6PQZCRzc7Wpta fight 77, Shadow's Defeat "Haste Multiplicitive 1.2"): Freezing Torrent ticks under it come every
+    /// 0.4 or 0.2857 seconds over 1.2 x (1 + haste) (726.190: 0.2565s at 28.6% haste; 709.624: 0.1902s at 24.4%; 379.487:
+    /// 0.1534s with Spirit of Heroism).
+    /// </summary>
     public double GetHaste(SimTime now) =>
         IsCurrent(ref _haste, StatType.HasteRating, StatType.Haste, now)
             ? _haste.Value
             : _haste.Value = Math.Max(0.0,
-                StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now))
-                + Auras.Fold(StatType.Haste, 0.0, now));
+                Auras.Fold(StatType.Haste,
+                    1.0 + StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now)), now) - 1.0);
 
     public double Expertise(SimTime now) =>
         IsCurrent(ref _expertise, StatType.ExpertiseRating, StatType.Expertise, now)
@@ -616,10 +688,11 @@ public abstract class Hero : Actor
 
     protected void ResetCombatState()
     {
-        Resources.Get(SpiritPoints).Initial = StartingSpiritPoints;
         Resources.Reset();
+        foreach (var gem in Gems) gem.ResetLive();
         Auras.ClearAll();
         Auras.ClearTimers();
+        QueueFlushingTick = null;
         Cooldowns.Clear();
         CooldownsVersion++;
         GlobalCooldownEndTime = SimTime.Zero;

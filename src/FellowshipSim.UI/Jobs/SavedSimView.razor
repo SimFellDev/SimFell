@@ -1,0 +1,21 @@
+@using System.Globalization
+@* A finished sim read back from the data folder: its title and when it ran, then its DPS. *@
+<Card>
+    <div class="head">
+        <span class="kind">Sim</span>
+        <h2 class="title">@Sim.Title</h2>
+        <span class="meta">@Sim.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</span>
+    </div>
+    @if (Sim.Runs is { Count: > 0 } runs)
+    {
+        <RunsResult Runs="runs" Heading="@(Sim.RunsHeading ?? "Runs")" />
+    }
+    else
+    {
+        <SimJobResult Result="Sim.Result" />
+    }
+</Card>
+
+@code {
+    [Parameter, EditorRequired] public SavedSim Sim { get; set; } = null!;
+}

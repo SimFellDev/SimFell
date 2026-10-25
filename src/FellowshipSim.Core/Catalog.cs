@@ -1,15 +1,16 @@
-using FellowshipSim.Core.Customization.Blessings;
+using FellowshipSim.Core.Customization.Augmentations;
+using FellowshipSim.Core.Customization.Glyphs;
 using FellowshipSim.Core.Customization.Legendaries;
-using FellowshipSim.Core.Customization.Sets;
-using FellowshipSim.Core.Customization.Traits;
+using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Weapons;
 
 namespace FellowshipSim.Core;
 
 /// <summary>
-/// Every hero, talent, trait, blessing, set, legendary and weapon the engine has, found by their class: adding a class
-/// with its ID constant is all it takes for builds and combat logs to use it. Classes must have a constructor without
-/// parameters. The constructors by ID are written at build time by FellowshipSim.Core.Generators' CatalogGenerator.
+/// Every hero, talent, augmentation, glyph, relic passive, legendary and weapon the engine has, found by their class:
+/// adding a class with its ID constant is all it takes for builds and combat logs to use it. Classes must have a
+/// constructor without parameters. The constructors by ID are written at build time by FellowshipSim.Core.Generators'
+/// CatalogGenerator.
 /// </summary>
 public static partial class Catalog
 {
@@ -22,37 +23,42 @@ public static partial class Catalog
         NewHero(name) ?? throw new NotSupportedException($"{name} is not supported yet (supported: {string.Join(", ", Heroes.Keys)}).");
 
     public static Talent? CreateTalent(int id) => NewTalent(id);
-    public static Trait? CreateTrait(int id, int rank) => NewTrait(id, rank);
-    public static Blessing? CreateBlessing(int id, int rank) => NewBlessing(id, rank);
+    public static Augmentation? CreateAugmentation(int id, int rank) => NewAugmentation(id, rank);
+    public static Glyph? CreateGlyph(int id, int rank) => NewGlyph(id, rank);
     public static Weapon? CreateWeapon(int weaponAbilityId) => NewWeapon(weaponAbilityId);
+    public static RelicPassive? CreateRelicPassive(int id) => NewRelicPassive(id);
+
+    /// <summary>The passive the relic item <paramref name="itemId"/> grants, or null for an item that is no relic.</summary>
+    public static RelicPassive? RelicPassiveOfItem(int itemId) => AllRelicPassives.FirstOrDefault(r => r.Items.Any(i => i.Id == itemId));
+
+    /// <summary>The relic item <paramref name="itemId"/>, or null for an item that is no relic.</summary>
+    public static RelicItem? RelicItemOf(int itemId) => AllRelicItems.FirstOrDefault(i => i.Id == itemId);
+
+    /// <summary>Every relic item that grants a relic passive.</summary>
+    public static IEnumerable<RelicItem> AllRelicItems => AllRelicPassives.SelectMany(r => r.Items);
 
     /// <summary>
-    /// A blessing's game ID from its name (0 if unknown). Combat logs give blessings per-item IDs, so they are matched by name.
+    /// A glyph's game ID from its name (0 if unknown). Combat logs give glyphs per-item IDs, so they are matched by name.
     /// </summary>
-    public static int BlessingIdByName(string name) => BlessingIdOf(name);
-
-    /// <summary>The set a gear piece with this set-bonus ID belongs to (its class), or null.</summary>
-    public static Type? SetOf(int setBonusId) => SetClass(setBonusId);
-
-    public static SetBonus CreateSet(Type setType) =>
-        NewSet(setType) ?? throw new ArgumentException($"{setType.Name} is not a set.", nameof(setType));
+    public static int GlyphIdByName(string name) => GlyphIdOf(name);
 
     public static Legendary? CreateLegendary(string hero, int itemId) => NewLegendary(hero.ToLowerInvariant(), itemId);
 
-    /// <summary>One instance of every trait, at rank 1.</summary>
-    public static IEnumerable<Trait> AllTraits => TraitClasses.Select(t => (Trait)Activator.CreateInstance(t)!);
+    /// <summary>One instance of every augmentation (aspects, sigils and protective enchants), at rank 1.</summary>
+    public static IEnumerable<Augmentation> AllAugmentations => NewAugmentations();
 
-    /// <summary>One instance of every blessing, at rank 1.</summary>
-    public static IEnumerable<Blessing> AllBlessings => BlessingClasses.Select(t => (Blessing)Activator.CreateInstance(t)!);
+    /// <summary>One instance of every glyph, at rank 1.</summary>
+    public static IEnumerable<Glyph> AllGlyphs => NewGlyphs();
 
     /// <summary>One instance of every weapon.</summary>
-    public static IEnumerable<Weapon> AllWeapons => WeaponClasses.Select(t => (Weapon)Activator.CreateInstance(t)!);
+    public static IEnumerable<Weapon> AllWeapons => NewWeapons();
 
-    public static IEnumerable<SetBonus> AllSets => SetClasses.Select(t => (SetBonus)Activator.CreateInstance(t)!);
+    /// <summary>One instance of every relic passive.</summary>
+    public static IEnumerable<RelicPassive> AllRelicPassives => NewRelicPassives();
 
-    /// <summary>The trait, blessing, weapon, set and legendary classes <paramref name="hero"/> can have.</summary>
+    /// <summary>The augmentation, glyph, weapon, relic passive and legendary classes <paramref name="hero"/> can have.</summary>
     public static IEnumerable<Type> GearTypes(string hero) =>
-        TraitClasses.Concat(BlessingClasses).Concat(WeaponClasses).Concat(SetClasses)
+        AugmentationClasses.Concat(GlyphClasses).Concat(WeaponClasses).Concat(RelicPassiveClasses)
             .Concat(LegendaryClasses.Where(l => l.Hero == hero.ToLowerInvariant()).Select(l => l.Type))
             .Distinct();
 }
