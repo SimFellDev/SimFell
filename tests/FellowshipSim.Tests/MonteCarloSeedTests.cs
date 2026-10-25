@@ -34,6 +34,23 @@ public class MonteCarloSeedTests
     }
 
     [Fact]
+    public void A_Run_Gives_The_Same_Totals_On_Any_Number_Of_Threads()
+    {
+        var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rime_character.json")))!;
+        MonteCarloResult RunOn(int threads) => new MonteCarloSimulator(build, AplParser.ParseScript(Apl))
+            .Run(SimTime.FromSeconds(60), iterations: 250, targetCount: 2, firstSeed: 1, degreeOfParallelism: threads);
+
+        var one = RunOn(1);
+        var four = RunOn(4);
+        Assert.Equal(one.MeanDps, four.MeanDps);
+        Assert.Equal(one.StandardDeviation, four.StandardDeviation);
+        Assert.Equal(one.TotalMeanDamage, four.TotalMeanDamage);
+        Assert.Equal(one.AbilityDpsBreakdown, four.AbilityDpsBreakdown);
+        Assert.Equal(one.PrimaryTargetDps, four.PrimaryTargetDps);
+    }
+
+    [Fact]
     public void A_Seed_Repeats_Its_Fight()
     {
         var first = Run(Apl, iterations: 5, firstSeed: 3);

@@ -69,9 +69,9 @@ public class MonteCarloSimulator
     /// can be repeated exactly. <paramref name="keepFightDamage"/> keeps each fight's damage in
     /// <see cref="MonteCarloResult.IterationDamage"/>.
     /// <para>
-    /// <paramref name="progress"/> receives the count of completed fights: once per batch of about 1% of the fights (at
-    /// most <see cref="MaxProgressBatch"/>) on each thread, and <paramref name="iterations"/> last. Counts only rise, and
-    /// no two calls overlap. <paramref name="cancellationToken"/> stops the run between fights with an
+    /// <paramref name="progress"/> receives the count of completed fights: once per chunk of about 1% of the fights (at
+    /// most <see cref="MaxProgressBatch"/>), and <paramref name="iterations"/> last. Counts only rise, and no two calls
+    /// overlap. The totals are the same on any number of threads. <paramref name="cancellationToken"/> stops the run between fights with an
     /// <see cref="OperationCanceledException"/>.
     /// </para>
     /// <paramref name="fight"/> sets each fight's length, the targets' health and the starting Spirit
@@ -90,25 +90,43 @@ public class MonteCarloSimulator
             MaxDegreeOfParallelism = degreeOfParallelism ?? DefaultDegreeOfParallelism,
             CancellationToken = cancellationToken,
         };
-        var reporter = progress == null ? null : new ProgressReporter(progress, Math.Clamp(iterations / 100, 1, MaxProgressBatch));
+        var reporter = progress == null ? null : new ProgressReporter(progress);
 
-        Parallel.For(0, iterations, options,
-            () => (Worker: _idle.TryTake(out var worker) ? worker : NewWorker(), Totals: new Totals()),
-            (i, _, local) =>
+        // Fights run in chunks of consecutive fights, and the chunks' totals merge in chunk order whatever thread ran
+        // them, so a run gives the same totals to the last bit on any number of threads.
+        int chunkSize = Math.Clamp(iterations / 100, 1, MaxProgressBatch);
+        int chunkCount = (iterations + chunkSize - 1) / chunkSize;
+        var finished = new Totals?[chunkCount];
+        int nextToMerge = 0;
+
+        Parallel.For(0, chunkCount, options,
+            () => _idle.TryTake(out var worker) ? worker : NewWorker(),
+            (chunk, _, worker) =>
             {
-                var length = fight.Length(duration, firstSeed + i);
-                double damage = Fight(local.Worker, length, targetCount, firstSeed + i, i, seconds, fight, local.Totals);
-                double lengthSeconds = Math.Max(1.0, length.TotalSeconds);
-                local.Totals.Add(damage / lengthSeconds, damage, lengthSeconds);
-                if (fightDamage != null) fightDamage[i] = damage;
-                reporter?.FightDone(local.Totals);
-                return local;
+                var totals = new Totals();
+                int end = Math.Min(iterations, (chunk + 1) * chunkSize);
+                for (int i = chunk * chunkSize; i < end; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var length = fight.Length(duration, firstSeed + i);
+                    double damage = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
+                    double lengthSeconds = Math.Max(1.0, length.TotalSeconds);
+                    totals.Add(damage / lengthSeconds, damage, lengthSeconds);
+                    if (fightDamage != null) fightDamage[i] = damage;
+                }
+                lock (finished)
+                {
+                    finished[chunk] = totals;
+                    while (nextToMerge < chunkCount && finished[nextToMerge] is { } next)
+                    {
+                        total.Merge(next);
+                        finished[nextToMerge++] = null;
+                    }
+                }
+                reporter?.FightsDone(end - chunk * chunkSize);
+                return worker;
             },
-            local =>
-            {
-                lock (total) total.Merge(local.Totals);
-                _idle.Add(local.Worker);
-            });
+            worker => _idle.Add(worker));
         reporter?.Finish(iterations);
 
         // The fights' mean length: every fight's, or the duration for a run of none.
@@ -206,26 +224,21 @@ public class MonteCarloSimulator
         return next;
     }
 
-    /// <summary>The most fights a thread runs between two progress reports.</summary>
+    /// <summary>The most fights in a chunk of a run, and so between two progress reports.</summary>
     public const int MaxProgressBatch = 1000;
 
     private sealed record Worker(Hero Hero, AplProgram Program, FightRecorder Recorder);
 
     /// <summary>
-    /// Completed fights of a run, sent to the progress callback per batch of a thread's fights. A fight costs one
-    /// comparison; a batch costs one interlocked add and one lock.
+    /// Completed fights of a run, sent to the progress callback per chunk of fights. A chunk costs one interlocked add and
+    /// one lock.
     /// </summary>
-    private sealed class ProgressReporter(Action<int> progress, int batch)
+    private sealed class ProgressReporter(Action<int> progress)
     {
         private int _completed;
         private int _reported;
 
-        public void FightDone(Totals local)
-        {
-            if (local.Count - local.Reported < batch) return;
-            local.Reported = local.Count;
-            Report(Interlocked.Add(ref _completed, batch));
-        }
+        public void FightsDone(int fights) => Report(Interlocked.Add(ref _completed, fights));
 
         public void Finish(int iterations) => Report(iterations);
 
@@ -244,8 +257,6 @@ public class MonteCarloSimulator
     private sealed class Totals
     {
         public long Count;
-        /// <summary><see cref="Count"/> at this thread's last progress report.</summary>
-        public long Reported;
         public double Mean;
         public double M2;
         public double Min = double.PositiveInfinity;

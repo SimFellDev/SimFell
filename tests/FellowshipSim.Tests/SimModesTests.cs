@@ -71,10 +71,8 @@ public class SimModesTests
             new MonteCarloSimulator(build, AplParser.ParseScript(DefaultActionLists.Read("Rime", DefaultActionLists.DefaultName)!))
                 .Run(SimTime.FromSeconds(Seconds), Fights, degreeOfParallelism: 2, fight: new FightOptions(StartingSpirit: spirit)).MeanDps;
 
-        // Without Ancestral Surge the most is 100, so 130 starts the same as 100. The threads' totals merge in the order
-        // the threads finish, so the mean's last bits vary.
-        double most = Dps(Rime(), 100);
-        Assert.Equal(most, Dps(Rime(), 130), most * 1e-9);
+        // Without Ancestral Surge the most is 100, so 130 starts the same as 100.
+        Assert.Equal(Dps(Rime(), 100), Dps(Rime(), 130));
         // Ancestral Surge - II (600 Sapphire) holds 130, and the extra 30 starts the fight.
         var sapphire = Rime();
         sapphire.GemPower[GemColor.Sapphire] = 600;
