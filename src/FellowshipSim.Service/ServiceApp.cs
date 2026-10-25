@@ -81,6 +81,7 @@ public static class ServiceApp
         if (local)
         {
             builder.Services.AddSingleton(Visitor.DataFolderOwner);
+            builder.Services.AddSingleton<IDataFolder>(new FileManagerDataFolder(dataDirectory));
             // The packaged app tells when a newer build is released.
             builder.Services.AddHttpClient(nameof(AppUpdates), c => c.Timeout = TimeSpan.FromSeconds(10));
             // "--PretendLatestVersion=0.2.0" acts as if that version were released, to see the banner without a release.

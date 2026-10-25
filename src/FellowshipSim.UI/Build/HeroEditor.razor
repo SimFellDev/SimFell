@@ -476,7 +476,7 @@
             await Profiles.SaveAsync(Visitor, new ProfileEntry(Build.Hero, name), new SimcProfile(Build, "").Format());
             await LoadSavedListAsync();
             State.SavedName = name;
-            State.BuildStatus = MessageState.Ok(Visitor.OwnsDataFolder ? $"Saved to data/profiles/{Build.Hero}/{name}.simc." : $"Saved {name} to your builds.");
+            State.BuildStatus = MessageState.Ok($"Saved {name} to your builds.");
         }
         catch (Exception e)
         {
