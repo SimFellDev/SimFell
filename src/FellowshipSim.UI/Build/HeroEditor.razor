@@ -371,9 +371,12 @@
 
     private Task Changed() => OnChanged.InvokeAsync();
 
+    // A child's change (RankedChoices calls back through a Func, not an EventCallback) redraws only the child, so this
+    // editor redraws itself too: its counts and every stepper's room change with it.
     private Task Set(Action change)
     {
         change();
+        StateHasChanged();
         return Changed();
     }
 
