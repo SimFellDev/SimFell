@@ -65,6 +65,9 @@ public sealed class Mara : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
+    /// <summary>Datamine hero 11: mainStat Agility.</summary>
+    public override MainStat MainStat => MainStat.Agility;
+
     /// <summary>Macabre Stratagem: Final Stratagem is replaced by Macabre Stratagem.</summary>
     public bool HasMacabreStratagem { get; internal set; }
 

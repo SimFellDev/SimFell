@@ -37,7 +37,7 @@ public class MaraReplayTests(ITestOutputHelper output)
                                  $"damage {engineDamage / logDamage:P1} of log, {result.PassedSteps}/{result.Steps.Count} clean steps, " +
                                  $"{result.ForcedCasts.Count} forced casts");
                 Report(result, options);
-                Assert.True(result.MatchedLogHits > 0);
+                ExactReplayAssertions.Hold(result);
             }
         }
     }
@@ -52,11 +52,11 @@ public class MaraReplayTests(ITestOutputHelper output)
         {
             var log = logById.GetValueOrDefault(id) ?? [];
             var engine = engineById.GetValueOrDefault(id) ?? [];
-            var matched = engine.Where(h => h.Log != null).ToList();
+            var matched = engine.Where(h => h.Log != null && h.LandedTime.HasValue).ToList();
             double ratio = matched.Sum(h => h.EngineAmount) > 0 ? matched.Sum(h => h.Log!.UnblockedAmount) / matched.Sum(h => h.EngineAmount) : 0;
             string name = (engine.FirstOrDefault()?.AbilityName ?? log.FirstOrDefault()?.AbilityName ?? "?").PadRight(20)[..20];
             output.WriteLine($"{id,-9} {name}  {log.Count,8}  {matched.Count,7}  {engine.Count - matched.Count,11}  {log.Sum(h => h.TotalAmount),11:N0}  {engine.Sum(h => h.EngineAmount),11:N0}  " +
-                             $"{matched.Count(h => h.WithinSpread(options)),9}  {ratio,6:F3}");
+                             $"{matched.Count(h => h.WithinRange),9}  {ratio,6:F3}");
         }
         output.WriteLine("");
         foreach (var group in result.Steps.SelectMany(s => s.Issues).GroupBy(i => (i.Category, i.Subject)).OrderByDescending(g => g.Count()).Take(40))
@@ -106,10 +106,10 @@ public class MaraReplayTests(ITestOutputHelper output)
                     output.WriteLine($"  crits with engine crit chance {(g.Key ? ">= 100%" : "< 100%")}: {g.Count()} {Ratio(g):F3}");
                 }
                 foreach (var g in matched.GroupBy(h => h.AbilityName)) output.WriteLine($"  as {g.Key}: {g.Count()} {Ratio(g):F3}");
-                foreach (var g in matched.Where(h => h.AbilityName.EndsWith("(shadowy clone)")).GroupBy(h => h.Context?.AuraLogIds.Contains(1002245) == true)) output.WriteLine($"  clone with Assassin's Guile {g.Key}: {g.Count()} {Ratio(g):F3}");
-                foreach (var aura in matched.SelectMany(h => h.Context?.AuraLogIds ?? []).Distinct().OrderBy(a => a))
+                foreach (var g in matched.Where(h => h.AbilityName.EndsWith("(shadowy clone)")).GroupBy(h => h.State?.Hero.Auras.Any(a => a.LogId == 1002245) == true)) output.WriteLine($"  clone with Assassin's Guile {g.Key}: {g.Count()} {Ratio(g):F3}");
+                foreach (var aura in matched.SelectMany(h => h.State?.Hero.Auras.Where(a => a.LogId > 0).Select(a => a.LogId) ?? []).Distinct().OrderBy(a => a))
                 {
-                    var with = matched.Where(h => h.Context!.AuraLogIds.Contains(aura)).ToList();
+                    var with = matched.Where(h => h.State!.Hero.Auras.Any(a => a.LogId == aura)).ToList();
                     var without = matched.Except(with).ToList();
                     if (with.Count < 5 || without.Count < 5) continue;
                     output.WriteLine($"  aura {aura}: with {with.Count} {Ratio(with):F3}, without {without.Count} {Ratio(without):F3}");

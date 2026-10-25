@@ -55,6 +55,27 @@ public class MonteCarloSeedTests
         }
     }
 
+    /// <summary>Totals of fights 1-4 of each hero's default action list, captured after Rime replay accuracy v1 (#8).</summary>
+    [Theory]
+    [InlineData("Rime", 120, 3, new[] { 2870678.2440036838, 2843688.0938747828, 2929791.065455927, 2897177.6522508198 })]
+    [InlineData("Rime", 300, 1, new[] { 7233920.9662274774, 7623903.1019708812, 7579174.9157335293, 7815783.4910974968 })]
+    [InlineData("Ardeos", 120, 3, new[] { 1845987.3390204795, 2042634.8375148706, 1929449.9252678133, 1949523.0494714687 })]
+    [InlineData("Ardeos", 300, 1, new[] { 3608322.4011011017, 3532991.629864017, 3372426.210184026, 3220176.1674971473 })]
+    [InlineData("Gunde", 120, 3, new[] { 3811424.4034362095, 3560833.2644922696, 3234331.2926150644, 3706322.8886219356 })]
+    [InlineData("Gunde", 300, 1, new[] { 5973349.8170667086, 5268126.14582658, 5361702.123513517, 6138935.9951158399 })]
+    [InlineData("Mara", 120, 3, new[] { 1516517.1318114088, 1069946.8106850635, 1299322.9615743649, 1367035.5049298343 })]
+    [InlineData("Mara", 300, 1, new[] { 3533874.9679868752, 3179579.6722181421, 3178372.0824673641, 3172106.5293867188 })]
+    [InlineData("Tariq", 120, 3, new[] { 1414937.2808608001, 1377475.57163405, 1307630.9678825177, 1512618.7135326373 })]
+    [InlineData("Tariq", 300, 1, new[] { 2669110.3478315724, 2636357.4835497807, 3006694.6476314552, 2885783.5698467265 })]
+    public void Each_Seed_Gives_The_Totals_Of_Rime_Accuracy_V1(string hero, int seconds, int targets, double[] totals)
+    {
+        var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"{hero.ToLowerInvariant()}_character.json")))!;
+        var result = new MonteCarloSimulator(build, AplParser.ParseScript(DefaultActionLists.Read(hero, DefaultActionLists.DefaultName)!))
+            .Run(SimTime.FromSeconds(seconds), totals.Length, targets, firstSeed: 1, degreeOfParallelism: 1, keepFightDamage: true);
+        Assert.Equal(totals, result.IterationDamage);
+    }
+
     private static MonteCarloResult Run(string apl, int iterations, int firstSeed, int seconds = 120, int targets = 3)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

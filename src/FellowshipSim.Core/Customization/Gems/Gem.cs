@@ -45,6 +45,7 @@ public abstract class Gem
     public abstract GemColor Color { get; }
     public double Power { get; set; }
 
+    /// <summary>The tree of gem colour <paramref name="color"/>.</summary>
     public static Gem Create(GemColor color) => color switch
     {
         GemColor.Emerald => new Emerald(),
@@ -60,6 +61,9 @@ public abstract class Gem
 
     /// <summary>Every node of this colour's tree.</summary>
     protected abstract IReadOnlyList<GemNode> NodeTable { get; }
+
+    /// <summary>Every node of this colour's tree, as <see cref="NodeTable"/>.</summary>
+    public IReadOnlyList<GemNode> Tree => NodeTable;
 
     /// <summary>The nodes active at <see cref="Power"/>.</summary>
     public IReadOnlyList<GemNode> Nodes { get; private set; } = Array.Empty<GemNode>();

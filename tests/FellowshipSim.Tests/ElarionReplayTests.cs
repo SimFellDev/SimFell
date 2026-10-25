@@ -45,7 +45,7 @@ public class ElarionReplayTests(ITestOutputHelper output)
                 {
                     File.WriteAllLines(Path.Combine(traceFolder, $"trace_{reportCode}_{fightId}.csv"), trace);
                 }
-                Assert.True(result.MatchedLogHits > 0);
+                ExactReplayAssertions.Hold(result);
             }
         }
     }
@@ -60,11 +60,11 @@ public class ElarionReplayTests(ITestOutputHelper output)
         {
             var log = logById.GetValueOrDefault(id) ?? [];
             var engine = engineById.GetValueOrDefault(id) ?? [];
-            var matched = engine.Where(h => h.Log != null).ToList();
-            double ratio = matched.Sum(h => h.EngineAmount) > 0 ? matched.Sum(h => h.Log!.TotalAmount) / matched.Sum(h => h.EngineAmount) : 0;
+            var matched = engine.Where(h => h.Log != null && h.LandedTime.HasValue).ToList();
+            double ratio = matched.Sum(h => h.EngineAmount) > 0 ? matched.Sum(h => h.Log!.UnblockedAmount) / matched.Sum(h => h.EngineAmount) : 0;
             string name = (engine.FirstOrDefault()?.AbilityName ?? log.FirstOrDefault()?.AbilityName ?? "?").PadRight(20)[..20];
             output.WriteLine($"{id,-9} {name}  {log.Count,8}  {matched.Count,7}  {engine.Count - matched.Count,11}  {log.Sum(h => h.TotalAmount),11:N0}  {engine.Sum(h => h.EngineAmount),11:N0}  " +
-                             $"{matched.Count(h => h.WithinSpread(options)),9}  {ratio,6:F3}");
+                             $"{matched.Count(h => h.WithinRange),9}  {ratio,6:F3}");
         }
         output.WriteLine("");
         foreach (var group in result.Steps.SelectMany(s => s.Issues).GroupBy(i => (i.Category, i.Subject)).OrderByDescending(g => g.Count()).Take(40))
@@ -89,6 +89,6 @@ public class ElarionReplayTests(ITestOutputHelper output)
             string.Join(";", s.Resources.Select(r => string.Format(inv, "{0}={1:F1}/{2:F1}", r.Resource, r.Engine, r.Log))))));
         File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3}",
             h.EngineTime, h.AbilityId, h.Target == null ? "" : $"{h.Target.Id}.{h.Target.Instance}", h.EngineAmount, h.Crit ? 1 : 0,
-            h.Log == null ? "" : h.Log.TotalAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction)));
+            h.Log == null ? "" : h.Log.UnblockedAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction)));
     }
 }

@@ -8,5 +8,8 @@ namespace FellowshipSim.Core.Customization.ProtectiveEnchants;
 /// </summary>
 public abstract class ProtectiveEnchant : Augmentation
 {
+    /// <summary>Protective enchants a character can have at once (per the user: "Defensives are pick three").</summary>
+    public const int MaxPerBuild = 3;
+
     public override void Bind(Hero hero) { }
 }

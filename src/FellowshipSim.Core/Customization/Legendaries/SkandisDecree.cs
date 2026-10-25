@@ -11,8 +11,9 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 public class SkandisDecree : Legendary
 {
     public const int PowerId = 396;
+    /// <summary>Harbinger of Winter Leggings.</summary>
     public const int LegsItemId = 5900;
-    public const double DurationBonusSeconds = 2.0;
+    public const double BurstingIceBonusSeconds = 2.0;
 
     public override int LegendaryPowerId => PowerId;
     public override string Name => "Skandi's Decree";
@@ -21,7 +22,6 @@ public class SkandisDecree : Legendary
 
     public override void Bind(Hero hero)
     {
-        if (hero is not Rime rime || rime.GetAbility<BurstingIce>() is not { } burstingIce) return;
-        burstingIce.DurationBonusSeconds += DurationBonusSeconds;
+        if (hero is Rime rime && rime.GetAbility<BurstingIce>() is { } burstingIce) burstingIce.BonusDurationSeconds += BurstingIceBonusSeconds;
     }
 }

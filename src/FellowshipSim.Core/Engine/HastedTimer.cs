@@ -32,6 +32,12 @@ public sealed class HastedTimer
     private SimTime _lastUpdate;
     private ScheduledEvent? _event;
     private ScheduledEvent? _repeatEvent;
+    // A tick an outcome source moved (IOutcomeSource.TickAt): the next tick fires there whatever the haste.
+    private SimTime? _movedTo;
+    // The same for a repeated tick.
+    private SimTime? _movedRepeatTo;
+    // Called once a period timer has its next tick.
+    private Action<SimulationContext>? _afterTick;
     private bool _updating;
     // A period timer's tick is running: a haste change now re-arms it from the tick.
     private bool _executing;
@@ -59,11 +65,13 @@ public sealed class HastedTimer
             {
                 if (!IsActive) return;
                 _event = null;
+                _movedTo = null;
                 Execute(c, regular: true);
             };
             _repeat = c =>
             {
                 _repeatEvent = null;
+                _movedRepeatTo = null;
                 if (!IsActive) return;
                 Execute(c, regular: false);
             };
@@ -90,6 +98,12 @@ public sealed class HastedTimer
     /// </summary>
     public int DamageLogId { get; private init; }
 
+    /// <summary>When the timer fires at the current haste: a period timer's repeated tick when one is pending.</summary>
+    public SimTime DueTime => RepeatPending ? _repeatEvent!.Time : _event?.Time ?? _ctx.CurrentTime;
+
+    /// <summary>A period timer's tick is to come again a server frame after the last.</summary>
+    public bool RepeatPending => _repeatEvent is { HasFired: false, IsCancelled: false };
+
     /// <summary>Hasted progress made so far, in base seconds.</summary>
     public double ElapsedBaseSeconds =>
         _baseSeconds - (_remainingBase - (_ctx.CurrentTime - _lastUpdate).TotalSeconds * (1.0 + _haste));
@@ -105,15 +119,35 @@ public sealed class HastedTimer
     /// <summary>
     /// The period timer of a running EffectType.Dot or EffectType.Hot effect: <paramref name="onTick"/> every
     /// <paramref name="basePeriodSeconds"/> of hasted time from now until <see cref="Cancel"/>, the first tick one period
-    /// after the start. <paramref name="damageLogId"/> is the damage ID of the tick's own hits.
+    /// after the start. <paramref name="damageLogId"/> is the damage ID of the tick's own hits. <paramref name="afterTick"/> is
+    /// called each time the timer has its next tick (<see cref="DueTime"/>).
     /// </summary>
     public static HastedTimer StartPeriod(SimulationContext ctx, Hero hero, double basePeriodSeconds, Action<SimulationContext> onTick, string label,
-        int damageLogId)
+        int damageLogId, Action<SimulationContext>? afterTick = null)
     {
         var timer = new HastedTimer(ctx, hero, basePeriodSeconds, onTick, label, period: true) { DamageLogId = damageLogId };
+        timer._afterTick = afterTick;
         hero.Auras.AddTimer(timer);
         timer.Reschedule();
         return timer;
+    }
+
+    /// <summary>
+    /// Moves a period timer's next tick (<see cref="DueTime"/>) to <paramref name="at"/>, where it fires whatever the haste;
+    /// the period after it runs from there.
+    /// </summary>
+    public void MoveNextTick(SimTime at)
+    {
+        if (!_period || !IsActive) return;
+        if (RepeatPending)
+        {
+            _movedRepeatTo = at;
+            _repeatEvent!.Cancel();
+            _repeatEvent = _ctx.ScheduleAt(at, _repeat!, _label);
+            return;
+        }
+        _movedTo = at;
+        Reschedule();
     }
 
     public void Cancel()
@@ -143,7 +177,8 @@ public sealed class HastedTimer
             _executing = false;
             _ctx.ExecutingTick = outer;
         }
-        if (IsActive && _rearmedInTick) Rearm(LastTick);
+        // The next tick keeps the time an outcome source gave it.
+        if (IsActive && _rearmedInTick) Rearm(LastTick, keepMove: true);
     }
 
     /// <summary>
@@ -198,7 +233,7 @@ public sealed class HastedTimer
             c.ExecutingTick = outer;
         }
         if (!IsActive) return;
-        if (_rearmedInTick) Rearm(now);
+        if (_rearmedInTick) Rearm(now, keepMove: false);
         else if (regular)
         {
             // The next period starts at this tick.
@@ -206,23 +241,30 @@ public sealed class HastedTimer
             _lastUpdate = now;
             Reschedule();
         }
+        if (IsActive) _afterTick?.Invoke(c);
     }
 
-    /// <summary>A first delay of 0 at <paramref name="tick"/>: the tick again on the next server frame, then every new period from it.</summary>
-    private void Rearm(SimTime tick)
+    /// <summary>
+    /// A first delay of 0 at <paramref name="tick"/>: the tick again on the next server frame, then every new period from it.
+    /// With <paramref name="keepMove"/>, the repeated tick takes the time an outcome source gave the next tick.
+    /// </summary>
+    private void Rearm(SimTime tick, bool keepMove)
     {
+        var moved = keepMove ? _movedRepeatTo ?? _movedTo : null;
+        _movedTo = null;
+        _movedRepeatTo = moved;
         _haste = _hero.GetHaste(_ctx.CurrentTime);
         _remainingBase = _baseSeconds;
         _lastUpdate = tick;
         Reschedule();
         _repeatEvent?.Cancel();
-        _repeatEvent = _ctx.ScheduleAt(tick + SimTime.FromSeconds(PeriodicEffect.ServerFrameSeconds), _repeat!, _label);
+        _repeatEvent = _ctx.ScheduleAt(moved ?? tick + SimTime.FromSeconds(PeriodicEffect.ServerFrameSeconds), _repeat!, _label);
     }
 
     private void Reschedule()
     {
         _event?.Cancel();
-        var due = _lastUpdate + SimTime.FromSeconds(Math.Max(0.0, _remainingBase) / (1.0 + _haste));
+        var due = _movedTo ?? _lastUpdate + SimTime.FromSeconds(Math.Max(0.0, _remainingBase) / (1.0 + _haste));
         _event = _ctx.ScheduleAt(due, _due, _label);
     }
 

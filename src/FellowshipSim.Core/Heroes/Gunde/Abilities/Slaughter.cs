@@ -65,6 +65,7 @@ public class Slaughter : GundeAbility
             {
                 if (!enemy.IsSleeping) c.ApplyDamage(Owner, enemy, perTick, DamageLogId, Name, canCrit: false, 0.0, 1.0);
             },
-            onEnd: (c, _) => enemy.Auras.Remove(Dot, c.CurrentTime));
+            onEnd: (c, _) => enemy.Auras.Remove(Dot, c.CurrentTime),
+            damageLogId: DamageLogId, target: enemy);
     }
 }

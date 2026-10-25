@@ -64,6 +64,12 @@ public class SimulationContext
     /// <summary>The period timer (<see cref="HastedTimer.StartPeriod"/>) whose tick is executing right now.</summary>
     public HastedTimer? ExecutingTick { get; internal set; }
 
+    /// <summary>The periodic effect whose tick is being asked for (<see cref="IOutcomeSource.TickAt"/>) or dealt right now.</summary>
+    public PeriodicEffect? CurrentPeriodicEffect { get; internal set; }
+
+    /// <summary>The hit being released (<see cref="IOutcomeSource.ResolveHit"/>) or landed (<see cref="IOutcomeSource.Land"/>) right now.</summary>
+    public PendingHit? CurrentHit { get; private set; }
+
     /// <summary>How early an ability may come off the global cooldown (a replay allows server-frame and latency slack).</summary>
     public double GlobalCooldownToleranceSeconds { get; set; }
     public SimulationRng Rng { get; } = new();
@@ -405,7 +411,10 @@ public class SimulationContext
         hit.TickFraction = CurrentTickFraction;
         var released = Request(hit);
         hit.Released = released;
-        var outcome = hit.ForcedCrit.HasValue ? new HitOutcome(hit.ForcedCrit.Value) : Outcomes.ResolveHit(released, this);
+        var outer = CurrentHit;
+        CurrentHit = hit;
+        var outcome = Outcomes.ResolveHit(released, this);
+        CurrentHit = outer;
         hit.Outcome = outcome;
 
         // The hit lands (and triggers procs) after its travel time; damage uses the stats at landing.
@@ -433,7 +442,8 @@ public class SimulationContext
             chance = Math.Clamp(n.CritChance, 0.0, 1.0);
         }
         double tickFraction = hit.TickFraction;
-        return new HitRequest(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, baseDamage, hit.CanCrit, chance, n.CritMultiplier, CurrentTime, tickFraction);
+        return new HitRequest(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, baseDamage, hit.CanCrit, chance, n.CritMultiplier, CurrentTime, tickFraction,
+            hit.ForcedCrit);
     }
 
     /// <summary>The hit lands: deals its damage, raises <see cref="Hero.OnDamageDealt"/> and returns it to the pool.</summary>
@@ -461,15 +471,29 @@ public class SimulationContext
         }
         var released = hit.Released;
         var landed = hit.Snapshot || CurrentTime == released.Time ? released : Request(hit);
-        bool forced = hit.ForcedCrit.HasValue;
-        double multiplier = forced
-            ? (outcome.IsCrit ? landed.CritMultiplier : 1.0)
-            : Outcomes.Land(landed, outcome, this);
-        dealt = landed.BaseDamage * multiplier;
+        var outer = CurrentHit;
+        CurrentHit = hit;
+        dealt = Outcomes.Land(landed, outcome, this);
+        CurrentHit = outer;
 
-        var source = hit.Source;
-        var target = hit.Target;
-        string abilityName = hit.AbilityName;
+        double critChance = landed.ForcedCrit is { } forced ? (forced ? 1.0 : 0.0) : landed.CanCrit ? landed.CritChance : 0.0;
+        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance);
+        Outcomes.HitFinished(this);
+        onLanded?.Invoke(this, dealt);
+        ReturnHit(hit);
+        return dealt;
+    }
+
+    /// <summary>
+    /// Deals a fixed amount with no <see cref="IOutcomeSource"/> call: a replay deals each logged hit no engine hit matched
+    /// this way.
+    /// </summary>
+    public void DealLoggedHit(Hero source, EnemyTarget target, int abilityId, string abilityName, double amount, bool isCrit) =>
+        Deal(source, target, abilityId, abilityName, amount, isCrit, isCrit ? 1.0 : 0.0);
+
+    /// <summary>Adds <paramref name="dealt"/> to the totals and the target's health loss, then raises <see cref="Hero.OnDamageDealt"/>.</summary>
+    private void Deal(Hero source, EnemyTarget? target, int abilityId, string abilityName, double dealt, bool isCrit, double critChance)
+    {
         TotalDamage += dealt;
         if (!_damageSlotByInstance.TryGetValue(abilityName, out int slot)) slot = DamageSlot(abilityName);
         CollectionsMarshal.AsSpan(_damageByName)[slot].Damage += dealt;
@@ -477,11 +501,7 @@ public class SimulationContext
         {
             target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
         }
-        source.TriggerDamageDealt(new DamageContext(source, target, hit.AbilityId, abilityName, dealt, outcome.IsCrit, CurrentTime, this));
-        if (!forced) Outcomes.HitFinished(this);
-        onLanded?.Invoke(this, dealt);
-        ReturnHit(hit);
-        return dealt;
+        source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this, critChance));
     }
 
     private void ReturnHit(PendingHit hit)

@@ -13,7 +13,18 @@ public readonly record struct HitRequest(
     double CritChance,
     double CritMultiplier,
     SimTime Time,
-    double TickFraction = 1.0);
+    double TickFraction = 1.0,
+    bool? ForcedCrit = null);
+
+/// <summary>A tick of a periodic effect with a damage log ID, at the time the engine schedules it.</summary>
+/// <param name="Fraction">The tick's fraction of a full tick (below 1 for a partial final tick).</param>
+public readonly record struct TickRequest(
+    Hero Source,
+    EnemyTarget? Target,
+    int DamageLogId,
+    string Name,
+    SimTime Scheduled,
+    double Fraction);
 
 /// <summary>
 /// What is decided when a hit is released: whether it crits, how long it travels before landing, and a damage
@@ -55,10 +66,13 @@ public interface IOutcomeSource
     HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx);
 
     /// <summary>
-    /// The hit lands: returns the multiplier on <paramref name="landed"/>'s base damage (crit and spread), where
-    /// <paramref name="landed"/> carries the base damage and crit values computed at landing.
+    /// The hit lands: returns the damage it deals. <paramref name="landed"/> has the base damage and crit values computed
+    /// at landing.
     /// </summary>
     double Land(in HitRequest landed, HitOutcome outcome, SimulationContext ctx);
+
+    /// <summary>Firing time of a periodic tick with a damage log ID.</summary>
+    SimTime TickAt(in TickRequest tick, SimulationContext ctx);
 
     /// <summary>Called once a landed hit has been dealt and everything it triggered (procs, follow-up hits) has run.</summary>
     void HitFinished(SimulationContext ctx);
@@ -96,6 +110,8 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
+        // A forced crit rolls nothing: no crit and no spread.
+        if (hit.ForcedCrit is { } forced) return new HitOutcome(forced);
         if (Mode == OutcomeMode.Discrete)
         {
             bool isCrit = hit.CanCrit && _rng.Roll(hit.CritChance);
@@ -107,9 +123,12 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public double Land(in HitRequest landed, HitOutcome outcome, SimulationContext ctx)
     {
-        if (Mode == OutcomeMode.Discrete) return (outcome.IsCrit ? landed.CritMultiplier : 1.0) * outcome.Spread;
-        return landed.CanCrit ? 1.0 + (landed.CritChance * (landed.CritMultiplier - 1.0)) : 1.0;
+        if (landed.ForcedCrit.HasValue) return landed.BaseDamage * (outcome.IsCrit ? landed.CritMultiplier : 1.0);
+        if (Mode == OutcomeMode.Discrete) return landed.BaseDamage * ((outcome.IsCrit ? landed.CritMultiplier : 1.0) * outcome.Spread);
+        return landed.BaseDamage * (landed.CanCrit ? 1.0 + (landed.CritChance * (landed.CritMultiplier - 1.0)) : 1.0);
     }
+
+    public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => tick.Scheduled;
 
     public void HitFinished(SimulationContext ctx) { }
 }

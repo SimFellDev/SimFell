@@ -51,6 +51,9 @@ public sealed class Gunde : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
+    /// <summary>Datamine hero 9: mainStat Strength.</summary>
+    public override MainStat MainStat => MainStat.Strength;
+
     /// <summary>Every enemy's Rend.</summary>
     public Rend Rend { get; }
 

@@ -76,7 +76,7 @@ public sealed class LocalSimEngine : ISimEngine
             var result = simulator.Run(SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations, settings.TargetCount,
                 settings.FirstSeed, settings.DegreeOfParallelism,
                 progress: progress == null ? null : completed => progress.Report(new SimProgress(completed, settings.Iterations)),
-                cancellationToken: ct);
+                cancellationToken: ct, fight: settings.Fight);
             return SimResult.From(result);
         }, ct);
 }

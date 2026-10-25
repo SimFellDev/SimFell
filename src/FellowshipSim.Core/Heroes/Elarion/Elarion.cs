@@ -60,6 +60,9 @@ public sealed class Elarion : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
+    /// <summary>Datamine hero 2: mainStat Agility.</summary>
+    public override MainStat MainStat => MainStat.Agility;
+
     /// <summary>Multipliers on every Focus cost (Event Horizon), read as a cast pays.</summary>
     public List<Func<SimTime, double>> FocusCostMultipliers { get; } = new();
 

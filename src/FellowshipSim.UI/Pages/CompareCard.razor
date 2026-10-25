@@ -1,0 +1,151 @@
+@using FellowshipSim.Core.APL
+@inject SimPageState State
+@inject ProfileStore Profiles
+@inject Visitor Visitor
+@* Compare on the Modes tab: its switch, then a row per run (a build and its action list), the first the baseline. *@
+<Card>
+    <div class="head">
+        <label class="switch">
+            <input type="checkbox" checked="@On" @onchange="Toggle" />
+            <span class="switch-title">Compare</span>
+        </label>
+        @if (!On)
+        {
+            <span class="meta">Off · turn on to sim several builds and action lists (turns Finder off)</span>
+        }
+    </div>
+    <div class="body @(On ? "" : "off")" inert="@(!On)">
+        <p class="hint">Each row is one run: a build with an action list. A new row's list starts as its hero's Default, and the list menu shows only that hero's lists. Row 1 is the baseline the results compare against. While Compare is on, the action list picker on 4. Advanced &amp; APL is disabled.</p>
+        @if (_error != null)
+        {
+            <p class="field-error">@_error</p>
+        }
+        <ol class="rows">
+            @for (int i = 0; i < State.CompareRows.Count; i++)
+            {
+                var row = State.CompareRows[i];
+                string hero = HeroOf(row);
+                <li @key="row" class="compare-row @(i == 0 ? "base" : "")">
+                    <span class="num">@(i + 1)</span>
+                    <span class="hero">@hero</span>
+                    <select aria-label="Build" @bind:get="BuildValue(row)" @bind:set="v => PickBuild(row, v)">
+                        <option value="">Current build (@State.Build.Name)</option>
+                        @foreach (var saved in _saved)
+                        {
+                            <option @key="saved" value="@BuildValue(saved)">@saved.Name · @saved.Hero</option>
+                        }
+                    </select>
+                    <select aria-label="Action list" @bind="row.ListValue">
+                        @foreach (var list in Lists.Where(l => l.Hero.Equals(hero, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            <option @key="Sim.ListValue(list)" value="@Sim.ListValue(list)">@list.Name@(list.Shared ? " (shared)" : "")</option>
+                        }
+                    </select>
+                    <span class="end">
+                        @if (i == 0)
+                        {
+                            <span class="tag">baseline</span>
+                        }
+                        <button type="button" class="remove" title="Remove this run" aria-label="Remove run @(i + 1)" @onclick="() => Remove(row)">✕</button>
+                    </span>
+                </li>
+            }
+        </ol>
+        <div class="adds">
+            <button type="button" class="add" @onclick="AddRun">+ Add a run</button>
+            <button type="button" class="add" disabled="@(_saved.Count == 0)" @onclick="AddEverySavedBuild">+ Every saved build</button>
+            <button type="button" class="add" @onclick="AddEverySavedList">+ Every saved action list</button>
+            <button type="button" class="clear" disabled="@(State.CompareRows.Count == 0)" @onclick="ClearAll">Clear all</button>
+            <span class="meta count">@Runs(State.CompareRows.Count)</span>
+        </div>
+    </div>
+</Card>
+
+@code {
+    /// <summary>Every hero the engine has, for the saved builds.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> Heroes { get; set; } = [];
+
+    /// <summary>Every action list the visitor can pick, of every hero.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ActionListEntry> Lists { get; set; } = [];
+
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private IReadOnlyList<ProfileEntry> _saved = [];
+    private IReadOnlyList<string> _loadedFor = [];
+    private string? _error;
+
+    private bool On => State.Extra == SimExtra.Compare;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ReferenceEquals(_loadedFor, Heroes)) return;
+        _loadedFor = Heroes;
+        try
+        {
+            _saved = await Profiles.ListAsync(Visitor, Heroes);
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    /// <summary>"Run" or "runs" with the count.</summary>
+    public static string Runs(int count) => $"{count} {(count == 1 ? "run" : "runs")}";
+
+    private string HeroOf(CompareRow row) => row.Saved?.Hero ?? State.Build.Hero;
+
+    private static string BuildValue(CompareRow row) => row.Saved is { } saved ? BuildValue(saved) : "";
+
+    private static string BuildValue(ProfileEntry saved) => $"{saved.Hero}/{saved.Name}";
+
+    private static string DefaultList(string hero) => $"builtin/{hero}/{DefaultActionLists.DefaultName}";
+
+    private async Task Toggle(ChangeEventArgs e)
+    {
+        bool on = e.Value is true;
+        State.Extra = on ? SimExtra.Compare : SimExtra.None;
+        if (on && State.CompareRows.Count == 0) AddRun();
+        await OnChanged.InvokeAsync();
+    }
+
+    private void PickBuild(CompareRow row, string? value)
+    {
+        string before = HeroOf(row);
+        row.Saved = _saved.FirstOrDefault(s => BuildValue(s) == value);
+        // A build of another hero takes that hero's default list.
+        if (!HeroOf(row).Equals(before, StringComparison.OrdinalIgnoreCase)) row.ListValue = DefaultList(HeroOf(row));
+    }
+
+    private void AddRun() => State.CompareRows.Add(new CompareRow { ListValue = DefaultList(State.Build.Hero) });
+
+    private Task AddEverySavedBuild()
+    {
+        foreach (var saved in _saved)
+        {
+            State.CompareRows.Add(new CompareRow { Saved = saved, ListValue = DefaultList(saved.Hero) });
+        }
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task AddEverySavedList()
+    {
+        foreach (var list in Lists.Where(l => !l.BuiltIn && l.Hero.Equals(State.Build.Hero, StringComparison.OrdinalIgnoreCase)))
+        {
+            State.CompareRows.Add(new CompareRow { ListValue = Sim.ListValue(list) });
+        }
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task Remove(CompareRow row)
+    {
+        State.CompareRows.Remove(row);
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task ClearAll()
+    {
+        State.CompareRows.Clear();
+        return OnChanged.InvokeAsync();
+    }
+}

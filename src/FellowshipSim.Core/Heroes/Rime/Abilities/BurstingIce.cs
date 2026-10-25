@@ -33,7 +33,7 @@ public class BurstingIce : RimeAbility
     private int _activeDebuffs;
 
     /// <summary>Seconds added to the debuff's duration (Skandi's Decree).</summary>
-    public double DurationBonusSeconds
+    public double BonusDurationSeconds
     {
         get;
         set
@@ -44,7 +44,7 @@ public class BurstingIce : RimeAbility
     }
 
     /// <summary>The debuff's duration with its bonus.</summary>
-    public double Duration => DurationSeconds + DurationBonusSeconds;
+    public double Duration => DurationSeconds + BonusDurationSeconds;
 
     private AuraDef _debuff = Debuff;
 
@@ -135,7 +135,7 @@ public class BurstingIce : RimeAbility
                 if (demise != null) c.EnemyDemising -= demise;
                 if (--_activeDebuffs == 0) hero.Auras.Remove(WintersEmbrace, c.CurrentTime);
             },
-            damageOverTimeLogId: DamageLogId);
+            damageLogId: DamageLogId, damageOverTime: true);
     }
 
     public void ResetState() => _activeDebuffs = 0;

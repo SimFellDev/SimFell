@@ -6,14 +6,21 @@ namespace FellowshipSim.Core.Engine;
 /// immediately on start, and a final partial tick fires at the end for the leftover fraction of a period.
 /// Stopping the effect cancels every tick that has not fired yet.
 /// </summary>
+/// <remarks>
+/// An effect with a <see cref="DamageLogId"/> asks <see cref="IOutcomeSource.TickAt"/> for each tick's firing time once the
+/// tick before it has fired. A simulation answers with the engine's own time, so the ticks keep the schedule they have
+/// without a damage log ID.
+/// </remarks>
 public sealed class PeriodicEffect
 {
     private readonly List<ScheduledEvent> _events = new();
     private readonly Action<SimulationContext, double> _onTick;
     private readonly Action<SimulationContext, bool>? _onEnd;
+    private readonly Hero? _hastedBy;
 
     private PeriodicEffect(string name, SimTime start, SimTime end, double periodSeconds,
-        Action<SimulationContext, double> onTick, Action<SimulationContext, bool>? onEnd)
+        Action<SimulationContext, double> onTick, Action<SimulationContext, bool>? onEnd, Hero source, int damageLogId,
+        EnemyTarget? target, Hero? hastedBy)
     {
         Name = name;
         Start = start;
@@ -21,6 +28,11 @@ public sealed class PeriodicEffect
         Period = periodSeconds;
         _onTick = onTick;
         _onEnd = onEnd;
+        Source = source;
+        DamageLogId = damageLogId;
+        Target = target;
+        _hastedBy = hastedBy;
+        LastTickTime = start;
     }
 
     public string Name { get; }
@@ -29,6 +41,28 @@ public sealed class PeriodicEffect
     public double Period { get; }
     public int TicksFired { get; private set; }
     public bool IsActive { get; private set; } = true;
+
+    /// <summary>The hero whose effect this is.</summary>
+    public Hero Source { get; }
+    /// <summary>The damage ID of the effect's tick hits (0 for an effect that deals no damage of its own, e.g. resource gains).</summary>
+    public int DamageLogId { get; }
+    /// <summary>The enemy every tick hits; null for a pulse on every enemy in its area.</summary>
+    public EnemyTarget? Target { get; }
+    /// <summary>When the latest tick fired (the start before the first).</summary>
+    public SimTime LastTickTime { get; private set; }
+
+    /// <summary>Seconds between full ticks at <paramref name="now"/> (the hasted period for <see cref="BeginHasted"/>).</summary>
+    public double PeriodSecondsAt(SimTime now) => _hastedBy == null ? Period : Period / (1.0 + _hastedBy.GetHaste(now));
+
+    /// <summary>
+    /// The engine's predicted time of each tick with a damage log ID. For <see cref="Begin"/> it is the previous tick's
+    /// time plus the period. For <see cref="BeginHasted"/> it is the fire time of the tick's <see cref="HastedTimer"/>,
+    /// started at the previous tick.
+    /// </summary>
+    public event Action<SimulationContext, PeriodicEffect, SimTime>? TickPredicted;
+
+    /// <summary>Raised once when the effect ends, naturally or stopped early.</summary>
+    public event Action<SimulationContext, PeriodicEffect>? Ended;
 
     /// <summary>
     /// The game runs on server frames; a partial final tick shorter than one frame never happens
@@ -47,8 +81,20 @@ public sealed class PeriodicEffect
 
     private HastedTimer? _nextHastedTick;
 
-    /// <summary>The period timer of a damage over time (<see cref="BeginHasted"/> with a damageOverTimeLogId).</summary>
+    /// <summary>The period timer of a damage over time (<see cref="BeginHasted"/> with damageOverTime).</summary>
     public HastedTimer? PeriodTimer => _nextHastedTick;
+
+    // Ticks of a Begin effect with a damage log ID, in firing order. A tick's scheduled event is _events[tick - _slotOffset]
+    // (the tick on start has none); the last tick has _partialFraction when it is a partial tick.
+    private int _slotCount;
+    private int _slotOffset;
+    private double _partialFraction;
+    private int _nextSlot;
+    private SimTime _lastScheduled;
+    private Action<SimulationContext>? _fireSlot;
+
+    /// <summary>A tick moved to the time <see cref="IOutcomeSource.TickAt"/> gave; the effect ends after it.</summary>
+    private ScheduledEvent? _movedTick;
 
     /// <param name="onTick">Called per tick with the tick's fraction of a full tick (1.0, or less for a partial final tick).</param>
     /// <param name="onEnd">Called once when the effect ends; the flag is true when it was stopped early.</param>
@@ -56,6 +102,8 @@ public sealed class PeriodicEffect
     /// Every tick fires this much after its scheduled time (but no later than the end); tick counts and the partial
     /// final tick's fraction still follow the schedule.
     /// </param>
+    /// <param name="damageLogId">The damage ID of the tick hits; 0 for an effect that deals no damage of its own.</param>
+    /// <param name="target">The enemy every tick hits; null for a pulse on every enemy in its area.</param>
     /// <param name="minPartialSeconds">The shortest leftover that gives a partial final tick.</param>
     public static PeriodicEffect Begin(
         SimulationContext ctx,
@@ -67,16 +115,27 @@ public sealed class PeriodicEffect
         Action<SimulationContext, double> onTick,
         Action<SimulationContext, bool>? onEnd = null,
         double tickDelaySeconds = 0.0,
+        int damageLogId = 0,
+        EnemyTarget? target = null,
         double minPartialSeconds = ServerFrameSeconds)
     {
         if (periodSeconds <= 0) throw new ArgumentOutOfRangeException(nameof(periodSeconds));
 
         var start = ctx.CurrentTime;
         var end = start + SimTime.FromSeconds(durationSeconds);
-        var effect = new PeriodicEffect(name, start, end, periodSeconds, onTick, onEnd);
+        var effect = new PeriodicEffect(name, start, end, periodSeconds, onTick, onEnd, ctx.Player, damageLogId, target, hastedBy: null);
 
         int fullTicks = (int)Math.Floor((durationSeconds + 1e-6) / periodSeconds);
         int firstTick = tickOnStart && tickDelaySeconds > 0 ? 0 : 1;
+        double remainder = durationSeconds - fullTicks * periodSeconds;
+        bool partial = partialFinalTick && remainder >= Math.Max(minPartialSeconds, 1e-6);
+        bool tickNow = tickOnStart && tickDelaySeconds <= 0;
+        if (damageLogId != 0)
+        {
+            effect.BeginSlots(ctx, fullTicks, firstTick, remainder, partial, tickNow, durationSeconds, tickDelaySeconds);
+            return effect;
+        }
+
         // One handler for every full tick.
         Action<SimulationContext> fullTick = c => effect.Tick(c, 1.0);
         for (int k = firstTick; k <= fullTicks; k++)
@@ -85,8 +144,7 @@ public sealed class PeriodicEffect
             effect._events.Add(ctx.Kernel.ScheduleAt(at, fullTick, name));
         }
 
-        double remainder = durationSeconds - fullTicks * periodSeconds;
-        if (partialFinalTick && remainder >= Math.Max(minPartialSeconds, 1e-6))
+        if (partial)
         {
             double fraction = remainder / periodSeconds;
             effect._events.Add(ctx.Kernel.ScheduleAt(end, c => effect.Tick(c, fraction), name));
@@ -94,7 +152,7 @@ public sealed class PeriodicEffect
 
         effect._events.Add(ctx.Kernel.ScheduleAt(end, c => effect.Finish(c, clipped: false), name));
 
-        if (tickOnStart && tickDelaySeconds <= 0)
+        if (tickNow)
         {
             effect.Tick(ctx, 1.0);
         }
@@ -103,13 +161,97 @@ public sealed class PeriodicEffect
     }
 
     /// <summary>
+    /// The ticks of a <see cref="Begin"/> effect with a damage log ID: the same events in the same order as without one,
+    /// each moved to the time <see cref="IOutcomeSource.TickAt"/> gives once the tick before it has fired.
+    /// </summary>
+    private void BeginSlots(SimulationContext ctx, int fullTicks, int firstTick, double remainder, bool partial, bool tickNow,
+        double durationSeconds, double tickDelaySeconds)
+    {
+        _slotOffset = tickNow ? 1 : 0;
+        _slotCount = _slotOffset + Math.Max(0, fullTicks - firstTick + 1) + (partial ? 1 : 0);
+        _partialFraction = partial ? remainder / Period : 0.0;
+        _lastScheduled = Start;
+        _fireSlot = FireSlot;
+        for (int k = firstTick; k <= fullTicks; k++)
+        {
+            var at = Start + SimTime.FromSeconds(Math.Min(k * Period + tickDelaySeconds, durationSeconds));
+            _events.Add(ctx.Kernel.ScheduleAt(at, _fireSlot, Name));
+        }
+        if (partial) _events.Add(ctx.Kernel.ScheduleAt(End, _fireSlot, Name));
+        _events.Add(ctx.Kernel.ScheduleAt(End, FinishAtEnd, Name));
+        if (_slotCount > 0) AskSlot(ctx, 0);
+    }
+
+    /// <summary>The event tick <paramref name="slot"/> was scheduled with; null for the tick on start.</summary>
+    private ScheduledEvent? SlotEvent(int slot) => slot < _slotOffset ? null : _events[slot - _slotOffset];
+
+    private SimTime SlotTime(int slot) => SlotEvent(slot)?.Time ?? Start;
+
+    /// <summary>Asks the firing time of tick <paramref name="slot"/> and moves its event there.</summary>
+    private void AskSlot(SimulationContext ctx, int slot)
+    {
+        var scheduled = SlotTime(slot);
+        double fraction = slot == _slotCount - 1 && _partialFraction > 0 ? _partialFraction : 1.0;
+        var at = AskTick(ctx, scheduled, fraction);
+        // Predicted: the previous tick plus the period, i.e. the schedule shifted by the previous tick's move.
+        TickPredicted?.Invoke(ctx, this, SimTime.FromMilliseconds(scheduled.Milliseconds + LastTickTime.Milliseconds - _lastScheduled.Milliseconds));
+        // Ticks keep their order: a tick moves no later than the next one's scheduled time.
+        if (slot + 1 < _slotCount && at >= SlotTime(slot + 1)) at = scheduled;
+        var original = SlotEvent(slot);
+        if (at == scheduled)
+        {
+            // A tick on start fires now.
+            if (original == null) FireSlot(ctx);
+            return;
+        }
+        original?.Cancel();
+        _events.Add(_movedTick = ctx.ScheduleAt(at, _fireSlot!, Name));
+    }
+
+    private void FireSlot(SimulationContext ctx)
+    {
+        if (!IsActive) return;
+        int slot = _nextSlot++;
+        LastTickTime = ctx.CurrentTime;
+        _lastScheduled = SlotTime(slot);
+        Tick(ctx, slot == _slotCount - 1 && _partialFraction > 0 ? _partialFraction : 1.0);
+        if (IsActive && _nextSlot < _slotCount) AskSlot(ctx, _nextSlot);
+    }
+
+    private void FinishAtEnd(SimulationContext ctx)
+    {
+        // A tick moved past the end fires before the effect ends.
+        if (_movedTick is { HasFired: false, IsCancelled: false } moved && moved.Time >= ctx.CurrentTime)
+        {
+            _events.Add(ctx.ScheduleAt(moved.Time, FinishAtEnd, Name));
+            return;
+        }
+        Finish(ctx, clipped: false);
+    }
+
+    /// <summary>The firing time <see cref="IOutcomeSource.TickAt"/> gives for a tick scheduled at <paramref name="scheduled"/>.</summary>
+    private SimTime AskTick(SimulationContext ctx, SimTime scheduled, double fraction)
+    {
+        var outer = ctx.CurrentPeriodicEffect;
+        ctx.CurrentPeriodicEffect = this;
+        try { return ctx.Outcomes.TickAt(new TickRequest(Source, Target, DamageLogId, Name, scheduled, fraction), ctx); }
+        finally { ctx.CurrentPeriodicEffect = outer; }
+    }
+
+    /// <summary>
     /// Like <see cref="Begin"/>, but each tick comes after <paramref name="basePeriodSeconds"/> of the hero's hasted time,
     /// so the ticks speed up or slow down the moment haste changes (combat logs: Bursting Ice pulses re-time when
     /// Inspired Allegiance ends mid-debuff). The duration is fixed; the partial final tick is the hasted progress left.
     /// </summary>
-    /// <param name="damageOverTimeLogId">
-    /// For an effect tagged EffectType.Dot or EffectType.Hot, the damage ID of its ticks' hits: its ticks run on the game's
-    /// period timer (<see cref="HastedTimer.StartPeriod"/>), and a haste change inside a tick repeats it a server frame later.
+    /// <remarks>
+    /// With a damage log ID, a tick that <see cref="IOutcomeSource.TickAt"/> moves fires at the time given. Its
+    /// <see cref="HastedTimer"/> still runs from the previous tick to its own fire time, which raises
+    /// <see cref="TickPredicted"/> and fires no tick. A damage over time's period timer moves its tick to the time given,
+    /// and its next period runs from there.
+    /// </remarks>
+    /// <param name="damageOverTime">
+    /// For an effect tagged EffectType.Dot or EffectType.Hot with a damage log ID: its ticks run on the game's period timer
+    /// (<see cref="HastedTimer.StartPeriod"/>), and a haste change inside a tick repeats it a server frame later.
     /// </param>
     public static PeriodicEffect BeginHasted(
         SimulationContext ctx,
@@ -122,43 +264,109 @@ public sealed class PeriodicEffect
         Action<SimulationContext, double> onTick,
         Action<SimulationContext, bool>? onEnd = null,
         bool retimeOnHasteChange = true,
-        int damageOverTimeLogId = 0)
+        int damageLogId = 0,
+        EnemyTarget? target = null,
+        bool damageOverTime = false)
     {
+        if (damageOverTime && damageLogId == 0) throw new ArgumentException("A damage over time needs its damage log ID.", nameof(damageLogId));
         if (basePeriodSeconds <= 0) throw new ArgumentOutOfRangeException(nameof(basePeriodSeconds));
 
         var start = ctx.CurrentTime;
         // Like any timed aura, the effect ends on the server frame after its duration runs out (see AuraContainer.ExpiryLagSeconds).
         var nominalEnd = start + SimTime.FromSeconds(durationSeconds);
         var end = nominalEnd + SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds);
-        var effect = new PeriodicEffect(name, start, end, basePeriodSeconds, onTick, onEnd);
+        var effect = new PeriodicEffect(name, start, end, basePeriodSeconds, onTick, onEnd, hero, damageLogId, target, hastedBy: hero);
         var lastTick = start;
         // One handler for every tick, made once.
         Action<SimulationContext>? fire = null;
+        Action<SimulationContext>? fireMoved = null;
+        Action<SimulationContext>? predict = null;
 
         void Fire(SimulationContext cc)
         {
             if (cc.CurrentTime > nominalEnd || !effect.IsActive) return;
+            effect.TickPredicted?.Invoke(cc, effect, cc.CurrentTime);
+            FireTick(cc);
+        }
+
+        void FireTick(SimulationContext cc)
+        {
+            if (cc.CurrentTime > nominalEnd || !effect.IsActive) return;
             lastTick = cc.CurrentTime;
+            effect.LastTickTime = lastTick;
             effect.Tick(cc, 1.0);
-            if (effect.IsActive && damageOverTimeLogId == 0) ScheduleNext(cc);
+            if (effect.IsActive) ScheduleNext(cc);
+        }
+
+        void Predict(SimulationContext cc)
+        {
+            if (effect.IsActive) effect.TickPredicted?.Invoke(cc, effect, cc.CurrentTime);
+        }
+
+        // A damage over time ticks on its period timer, a repeated tick included.
+        bool tickMoved = false;
+        void PeriodTick(SimulationContext cc)
+        {
+            if (cc.CurrentTime > nominalEnd || !effect.IsActive) return;
+            if (!tickMoved) effect.TickPredicted?.Invoke(cc, effect, cc.CurrentTime);
+            tickMoved = false;
+            lastTick = cc.CurrentTime;
+            effect.LastTickTime = lastTick;
+            effect.Tick(cc, 1.0);
+        }
+
+        // Once the period timer has its next tick, asks its firing time and moves the tick there.
+        void AskPeriodTick(SimulationContext c)
+        {
+            if (!effect.IsActive || effect._nextHastedTick is not { IsActive: true } timer) return;
+            var due = timer.DueTime;
+            var at = effect.AskTick(c, due, 1.0);
+            if (at == due) return;
+            // The tick fires at the time given; a timer from the last tick predicts it (a repeated tick is predicted a
+            // server frame after the last).
+            tickMoved = true;
+            if (timer.RepeatPending) effect.TickPredicted?.Invoke(c, effect, due);
+            else HastedTimer.Start(c, hero, basePeriodSeconds, predict ??= Predict, name);
+            timer.MoveNextTick(at);
         }
 
         void ScheduleNext(SimulationContext c)
         {
             fire ??= Fire;
-            if (damageOverTimeLogId != 0)
+            if (damageOverTime)
             {
-                effect._nextHastedTick = HastedTimer.StartPeriod(c, hero, basePeriodSeconds, fire, name, damageOverTimeLogId);
+                if (effect._nextHastedTick is { IsActive: true }) return;
+                effect._nextHastedTick = HastedTimer.StartPeriod(c, hero, basePeriodSeconds, PeriodTick, name, damageLogId, AskPeriodTick);
+                AskPeriodTick(c);
                 return;
             }
             if (retimeOnHasteChange)
             {
-                effect._nextHastedTick = HastedTimer.Start(c, hero, basePeriodSeconds, fire, name);
+                var timer = HastedTimer.Start(c, hero, basePeriodSeconds, fire, name);
+                effect._nextHastedTick = timer;
+                if (damageLogId == 0) return;
+                var due = timer.DueTime;
+                var at = effect.AskTick(c, due, 1.0);
+                if (at == due) return;
+                // The tick fires at the time given; the timer only predicts.
+                timer.Cancel();
+                effect._nextHastedTick = HastedTimer.Start(c, hero, basePeriodSeconds, predict ??= Predict, name);
+                effect._events.Add(effect._movedTick = c.ScheduleAt(at, fireMoved ??= FireTick, name));
                 return;
             }
             // The period is fixed by the haste when the previous tick fired.
-            var period = SimTime.FromSeconds(basePeriodSeconds / (1.0 + hero.GetHaste(c.CurrentTime)));
-            effect._events.Add(c.Kernel.ScheduleAt(c.CurrentTime + period, fire, name));
+            var next = c.CurrentTime + SimTime.FromSeconds(basePeriodSeconds / (1.0 + hero.GetHaste(c.CurrentTime)));
+            if (damageLogId != 0)
+            {
+                var at = effect.AskTick(c, next, 1.0);
+                if (at != next)
+                {
+                    effect._events.Add(c.Kernel.ScheduleAt(next, predict ??= Predict, name));
+                    effect._events.Add(effect._movedTick = c.ScheduleAt(at, fireMoved ??= FireTick, name));
+                    return;
+                }
+            }
+            effect._events.Add(c.Kernel.ScheduleAt(next, fire, name));
         }
 
         // The duration runs out at the nominal end (no more ticks; the partial tick is measured there) ...
@@ -170,7 +378,7 @@ public sealed class PeriodicEffect
             double fraction = timer is { IsActive: true } ? timer.ElapsedBaseSeconds / basePeriodSeconds : 0.0;
             // A damage over time's partial tick reads how long its period has run (period - remaining, 0x1452D0C70) as the
             // duration runs out: a re-arm since the last tick shortens it.
-            double elapsed = damageOverTimeLogId != 0 && timer is { IsActive: true }
+            double elapsed = damageOverTime && timer is { IsActive: true }
                 ? timer.ElapsedBaseSeconds / (1.0 + hero.GetHaste(c.CurrentTime))
                 : (c.CurrentTime - lastTick).TotalSeconds;
             timer?.Cancel();
@@ -180,14 +388,60 @@ public sealed class PeriodicEffect
             }
         }, name));
         // ... and the partial tick and the end happen on the next server frame.
+        Action<SimulationContext>? finishAfterPartial = null;
         effect._events.Add(ctx.Kernel.ScheduleAt(end, c =>
         {
             if (!effect.IsActive) return;
-            if (partial > 0) effect.Tick(c, partial);
+            if (partial > 0)
+            {
+                double fraction = partial;
+                partial = 0.0;
+                if (damageLogId != 0)
+                {
+                    var at = effect.AskTick(c, c.CurrentTime, fraction);
+                    effect.TickPredicted?.Invoke(c, effect, c.CurrentTime);
+                    if (at != c.CurrentTime)
+                    {
+                        // The partial tick fires at the time given, and the effect ends after it.
+                        finishAfterPartial = cc =>
+                        {
+                            if (!effect.IsActive) return;
+                            effect.LastTickTime = cc.CurrentTime;
+                            effect.Tick(cc, fraction);
+                            effect.Finish(cc, clipped: false);
+                        };
+                        effect._events.Add(c.ScheduleAt(at, finishAfterPartial, name));
+                        return;
+                    }
+                }
+                effect.LastTickTime = c.CurrentTime;
+                effect.Tick(c, fraction);
+            }
+            // A full tick moved past the end fires before the effect ends.
+            if (effect._movedTick is { HasFired: false, IsCancelled: false } moved && moved.Time >= c.CurrentTime)
+            {
+                effect._events.Add(c.ScheduleAt(moved.Time, cc => effect.Finish(cc, clipped: false), name));
+                return;
+            }
             effect.Finish(c, clipped: false);
         }, name));
 
-        if (tickOnStart) effect.Tick(ctx, 1.0);
+        if (tickOnStart)
+        {
+            var at = damageLogId == 0 ? start : effect.AskTick(ctx, start, 1.0);
+            if (at == start)
+            {
+                effect.TickPredicted?.Invoke(ctx, effect, start);
+                effect.Tick(ctx, 1.0);
+            }
+            else
+            {
+                // The first tick fires at the time given; the next is asked for once it has.
+                effect.TickPredicted?.Invoke(ctx, effect, start);
+                effect._events.Add(effect._movedTick = ctx.ScheduleAt(at, fireMoved ??= FireTick, name));
+                return effect;
+            }
+        }
         if (effect.IsActive) ScheduleNext(ctx);
         return effect;
     }
@@ -205,8 +459,14 @@ public sealed class PeriodicEffect
         TicksFired++;
         // Hits dealt by this tick are marked as a partial tick when fraction < 1.
         ctx.CurrentTickFraction = fraction;
+        var outer = ctx.CurrentPeriodicEffect;
+        ctx.CurrentPeriodicEffect = this;
         try { _onTick(ctx, fraction); }
-        finally { ctx.CurrentTickFraction = 1.0; }
+        finally
+        {
+            ctx.CurrentTickFraction = 1.0;
+            ctx.CurrentPeriodicEffect = outer;
+        }
     }
 
     private void Finish(SimulationContext ctx, bool clipped)
@@ -219,5 +479,6 @@ public sealed class PeriodicEffect
             if (!ev.HasFired) ev.Cancel();
         }
         _onEnd?.Invoke(ctx, clipped);
+        Ended?.Invoke(ctx, this);
     }
 }

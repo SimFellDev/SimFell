@@ -1,6 +1,7 @@
 using FellowshipSim.Core.Customization.CommonAbilities;
 using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Customization.Legendaries;
+using StatEnchants = FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Customization.RelicPassives;
 
 namespace FellowshipSim.Core.Import;
@@ -37,11 +38,13 @@ public static class HeroImporter
         hero.Stats.Stamina = build.Stamina;
         if (build.MaxHealth > 0) hero.Stats.LoggedMaxHealth = build.MaxHealth;
         hero.Stats.Armor = build.Armor;
-        hero.Stats.CritRating = build.CritRating;
-        hero.Stats.HasteRating = build.HasteRating;
-        hero.Stats.ExpertiseRating = build.ExpertiseRating;
-        hero.Stats.SpiritRating = build.SpiritRating;
-        if (build.SheetPercents.Count > 0)
+        // Stat enchants add their rating to gear's; a character sheet already counts them.
+        bool sheet = build.SheetPercents.Count > 0;
+        hero.Stats.CritRating = build.CritRating + (sheet ? 0 : build.EnchantRating(StatType.CritRating));
+        hero.Stats.HasteRating = build.HasteRating + (sheet ? 0 : build.EnchantRating(StatType.HasteRating));
+        hero.Stats.ExpertiseRating = build.ExpertiseRating + (sheet ? 0 : build.EnchantRating(StatType.ExpertiseRating));
+        hero.Stats.SpiritRating = build.SpiritRating + (sheet ? 0 : build.EnchantRating(StatType.SpiritRating));
+        if (sheet)
         {
             hero.Stats.SheetCritChance = build.SheetPercents.GetValueOrDefault("crit");
             hero.Stats.SheetHaste = build.SheetPercents.GetValueOrDefault("haste");
@@ -63,6 +66,11 @@ public static class HeroImporter
             }
             hero.Talents.Add(talent);
             talent.Bind(hero);
+        }
+
+        foreach (var entry in build.StatEnchants.Where(e => StatEnchants.StatEnchant.Find(e.Id) == null))
+        {
+            hero.UnmodeledFeatures.Add($"Stat enchant {entry.Name ?? entry.Id.ToString()}");
         }
 
         // The relic passives before gems: Covetous Greed raises every gem colour's power (already in a sheet's gem power).

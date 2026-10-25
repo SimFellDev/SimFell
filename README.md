@@ -152,8 +152,10 @@ requirement (Frost Bolt for Rime), with no condition or target.
 
 ## The two checks
 
-- **Exact replay** (the review pages): the log decides every crit, proc and target, and each engine hit is compared
-  with the log's. Good for finding which mechanic is wrong.
+- **Exact replay** (the review pages): every crit, proc, target, landing time, damage amount and periodic tick time is
+  the log's, and each logged value is checked against the range the engine computes for it. A review page lists each
+  value outside its range under Disagreements, with the engine's state at that moment. Good for finding which mechanic
+  is wrong.
 - **Free dice**: only the casts follow the log; the engine rolls its own crits and procs, many times over. The average
   should match the log, and the log should look like a typical run. Good for overall accuracy.
 

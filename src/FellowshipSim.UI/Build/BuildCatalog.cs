@@ -1,6 +1,11 @@
 using System.Collections.Concurrent;
 using FellowshipSim.Core;
+using FellowshipSim.Core.Customization.Aspects;
+using FellowshipSim.Core.Customization.Augmentations;
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.ProtectiveEnchants;
+using FellowshipSim.Core.Customization.Sigils;
+using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Domain;
 
@@ -25,20 +30,32 @@ public sealed class BuildCatalog
                 ? new BuildOption(talent.Id, talent.Name, GameIcons.Talents.GetValueOrDefault(talent.Id))
                 : new BuildOption(slot.TalentId, $"Talent {slot.TalentId}", GameIcons.Talents.GetValueOrDefault(slot.TalentId), Modeled: false)))
             .ToList();
+        // The hero's own weapons (four each in the game).
         Weapons = Catalog.AllWeapons
-            .Select(w => new BuildOption(w.WeaponAbilityId, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.WeaponAbilityId)))
+            .Where(w => !GameIcons.WeaponHeroes.TryGetValue(w.WeaponAbilityId, out var heroes) || heroes.Contains(hero, StringComparer.OrdinalIgnoreCase))
+            .Select(w =>new BuildOption(w.WeaponAbilityId, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.WeaponAbilityId)))
             .OrderBy(o => o.Name).ToList();
         Legendaries = Catalog.GearTypes(hero).Where(t => typeof(Legendary).IsAssignableFrom(t) && !t.IsAbstract)
             .Select(t => (Legendary)Activator.CreateInstance(t)!)
             .Where(l => l.ItemIds.Count > 0)
-            .Select(l => new BuildOption(l.ItemIds[0], l.Name, GameIcons.LegendaryPowers.GetValueOrDefault(l.LegendaryPowerId), l.IsModeled))
+            // The power's icon, else the hero's legendary item's.
+            .Select(l => new BuildOption(l.ItemIds[0], l.Name,
+                GameIcons.LegendaryPowers.GetValueOrDefault(l.LegendaryPowerId) ?? GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{l.ItemIds[0]}"), l.IsModeled))
             .OrderBy(o => o.Name).ToList();
         Relics = Catalog.AllRelicPassives
             .SelectMany(r => r.Items.Select(i => new RelicOption(i.Id, i.Name, r.Name)))
             .OrderBy(o => o.Name).ToList();
-        Augmentations = Catalog.AllAugmentations
+        var augmentations = Catalog.AllAugmentations.ToList();
+        List<BuildOption> OfKind<T>() => augmentations.OfType<T>().Cast<Augmentation>()
             .Select(t => new BuildOption(t.Id, t.Name, GameIcons.Augmentations.GetValueOrDefault(t.Id), MaxRank: GameIcons.AugmentationMaxRanks.GetValueOrDefault(t.Id, DefaultMaxRank)))
             .OrderBy(o => o.Name).ToList();
+        Aspects = OfKind<Aspect>();
+        Sigils = OfKind<Sigil>();
+        ProtectiveEnchants = OfKind<ProtectiveEnchant>();
+        var mainStat = Catalog.CreateHero(hero).MainStat;
+        StatEnchants = StatEnchant.All
+            .Select(e => new StatEnchantOption(e, e.NameFor(mainStat)))
+            .ToList();
         Glyphs = Catalog.AllGlyphs
             .Select(b => new BuildOption(b.Id, b.Name, GameIcons.Glyphs.GetValueOrDefault(b.Id), MaxRank: GameIcons.GlyphMaxRanks.GetValueOrDefault(b.Id, DefaultMaxRank)))
             .OrderBy(o => o.Name).ToList();
@@ -58,7 +75,15 @@ public sealed class BuildCatalog
 
     public IReadOnlyList<RelicOption> Relics { get; }
 
-    public IReadOnlyList<BuildOption> Augmentations { get; }
+    public IReadOnlyList<BuildOption> Aspects { get; }
+
+    public IReadOnlyList<BuildOption> Sigils { get; }
+
+    /// <summary>Protective enchants: one rank each, up to <see cref="ProtectiveEnchant.MaxPerBuild"/> in a build.</summary>
+    public IReadOnlyList<BuildOption> ProtectiveEnchants { get; }
+
+    /// <summary>The stat enchants, named for the hero's main stat ("Chimera's Cunning" for an Intellect hero).</summary>
+    public IReadOnlyList<StatEnchantOption> StatEnchants { get; }
 
     public IReadOnlyList<BuildOption> Glyphs { get; }
 
@@ -66,6 +91,27 @@ public sealed class BuildCatalog
 
     /// <summary>The icon's image of gem colour <paramref name="color"/>, or null.</summary>
     public static string? GemIconUrl(GemColor color) => GameIcons.Gems.TryGetValue(color.ToString(), out var icon) ? GameIcons.Url(icon) : null;
+
+    /// <summary>
+    /// The icon's image of a damage source or aura with log ID <paramref name="logId"/> (an ability's ID, or an effect's,
+    /// talent's or augmentation's plus its offset): its own record's icon, else the first record of its name with one.
+    /// </summary>
+    public static string? IconUrl(int logId, string name)
+    {
+        string? icon = logId switch
+        {
+            >= LogIds.AugmentationOffset => GameIcons.Augmentations.GetValueOrDefault(logId - LogIds.AugmentationOffset),
+            >= LogIds.TalentOffset => GameIcons.Talents.GetValueOrDefault(logId - LogIds.TalentOffset),
+            >= LogIds.EffectOffset => GameIcons.Effects.GetValueOrDefault(logId - LogIds.EffectOffset),
+            > 0 => GameIcons.Abilities.GetValueOrDefault(logId),
+            _ => null,
+        };
+        icon ??= GameIcons.Names.GetValueOrDefault(name);
+        return icon == null ? null : GameIcons.Url(icon);
+    }
+
+    /// <summary>The icon's image of gem <paramref name="gem"/> (its colour and size), or null.</summary>
+    public static string? GemIconUrl(GemItem gem) => GameIcons.GemItems.TryGetValue(gem.Id, out var icon) ? GameIcons.Url(icon) : null;
 
     /// <summary>Every hero of the game (the datamine's), by name; <see cref="Catalog.Heroes"/> are the ones the engine has.</summary>
     public static IReadOnlyList<string> GameHeroes { get; } = GameIcons.Heroes.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();

@@ -13,5 +13,5 @@ public sealed class WebViews(NavigationManager navigation) : IAppViews
 
     public void ShowSavedSim(SavedSim sim) => navigation.NavigateTo(Pages.Job.Href(sim.Id));
 
-    public void ShowReview(string htmlFile, string title) => navigation.NavigateTo(Pages.Review.Href(htmlFile));
+    public void ShowReview(string htmlFile, string title) => navigation.NavigateTo(Pages.LogReplay.Href(htmlFile));
 }

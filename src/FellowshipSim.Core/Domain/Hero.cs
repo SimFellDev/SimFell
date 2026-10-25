@@ -123,6 +123,9 @@ public abstract class Hero : Actor
     /// <summary>The hero's talent tree, as in game.</summary>
     public abstract IReadOnlyList<TalentSlot> TalentTreeSlots { get; }
 
+    /// <summary>The hero's main stat; it names the hero's stat enchants.</summary>
+    public abstract MainStat MainStat { get; }
+
     /// <summary>
     /// Auras built at runtime (from a rank or a gem node) rather than declared as <c>public static readonly AuraDef</c>
     /// constants; see <see cref="Register"/>.

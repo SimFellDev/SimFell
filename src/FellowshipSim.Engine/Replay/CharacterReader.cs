@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.StatEnchants;
 using System.Text.Json.Nodes;
 using FellowshipSim.Core;
 using FellowshipSim.Core.Customization.Gems;
@@ -72,6 +73,7 @@ public static class CharacterReader
         // IDs in logs, so they are matched to the game's glyphs by name.
         var augmentations = new List<(int Id, int Rank, string? Name)>();
         var glyphs = new List<(int Id, int Rank, string? Name)>();
+        var statEnchants = new List<(int Id, int Rank, string? Name)>();
         foreach (var item in combatant["gear"]?.AsArray() ?? [])
         {
             if (item == null) continue;
@@ -84,7 +86,11 @@ public static class CharacterReader
             }
             foreach (var t in item["traits"]?.AsArray() ?? [])
             {
-                AddRank(augmentations, (int)Num(t?["id"]) - LogIds.AugmentationOffset, (int)Num(t?["rank"], 1), Str(t?["name"]));
+                int id = (int)Num(t?["id"]) - LogIds.AugmentationOffset;
+                int rank = (int)Num(t?["rank"], 1);
+                // A stat enchant's rank is its rating, added to the item's other enchants of the same ID.
+                if (StatEnchant.Find(id) != null) AddRank(statEnchants, id, rank, Str(t?["name"]));
+                else AddRank(augmentations, id, rank, Str(t?["name"]));
             }
             foreach (var b in item["blessings"]?.AsArray() ?? [])
             {
@@ -92,6 +98,12 @@ public static class CharacterReader
                 int i = glyphs.FindIndex(x => x.Name == name);
                 if (i < 0) glyphs.Add((Catalog.GlyphIdByName(name), (int)Num(b?["level"], 1), name));
                 else glyphs[i] = (glyphs[i].Id, glyphs[i].Rank + (int)Num(b?["level"], 1), name);
+            }
+            // The gem in the item's socket, and the item's gem power bonuses (each names its colour).
+            if (GemItem.Find((int)Num(item["gem"]?["id"])) is { } gem) build.SocketedGemIds.Add(gem.Id);
+            foreach (var bonus in item["gemPowers"]?.AsArray() ?? [])
+            {
+                if (Enum.TryParse(Str(bonus?["name"]), out GemColor color)) build.GearGemBonuses[color] = build.GearGemBonuses.GetValueOrDefault(color) + 1;
             }
             if (Num(item["quality"]) >= 6) build.LegendaryItemIds.Add(itemId);
         }
@@ -102,12 +114,21 @@ public static class CharacterReader
             int id = (int)Num(t?["id"]);
             int points = (int)Num(t?["points"]);
             if (points <= 0) continue;
-            if (id >= LogIds.AugmentationOffset) AddRank(augmentations, id - LogIds.AugmentationOffset, points, null, cap: true);
+            // The weapon tree has a node per stat enchant (65 to 70); each point adds 1 to that enchant (per the user).
+            if (id >= LogIds.AugmentationOffset && StatEnchant.Find(id - LogIds.AugmentationOffset) != null) AddRank(statEnchants, id - LogIds.AugmentationOffset, points, null);
+            else if (id >= LogIds.AugmentationOffset) AddRank(augmentations, id - LogIds.AugmentationOffset, points, null, cap: true);
             else if (build.WeaponAbilityId == 0) build.WeaponAbilityId = id;
         }
 
         build.Augmentations.AddRange(augmentations.Select(t => new BuildEntry(t.Id, Math.Min(MaxAugmentationRank, t.Rank), t.Name)));
         build.Glyphs.AddRange(glyphs.Select(b => new BuildEntry(b.Id, b.Rank, b.Name)));
+        build.StatEnchants.AddRange(statEnchants.Select(e => new BuildEntry(e.Id, e.Rank, e.Name)));
+        // A build's ratings are without its stat enchants. UNVERIFIED: the logged ratings are taken to count the enchants
+        // (they are the gear's totals); no log has confirmed it.
+        build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
+        build.HasteRating = Math.Max(0, build.HasteRating - build.EnchantRating(StatType.HasteRating));
+        build.ExpertiseRating = Math.Max(0, build.ExpertiseRating - build.EnchantRating(StatType.ExpertiseRating));
+        build.SpiritRating = Math.Max(0, build.SpiritRating - build.EnchantRating(StatType.SpiritRating));
         foreach (var colour in GemOrder)
         {
             if (gemPower[colour] != 0) build.GemPower[colour] = gemPower[colour];

@@ -1,0 +1,238 @@
+@using System.Globalization
+@using FellowshipSim.Core.Import
+@inject SimPageState Sim
+@inject IAppViews Views
+@* A compare's or finder's runs: each against the first (the baseline), with Load and View report; or one run's report. *@
+@if (_report is { } shown)
+{
+    <div class="report-head">
+        <button type="button" class="link-button" @onclick="() => _report = null">‹ All runs</button>
+        <strong>@shown.Label</strong>
+        <span class="meta">@shown.Detail</span>
+    </div>
+    <SimJobResult Result="shown.Result" />
+}
+else
+{
+    <div class="tiles">
+        <div class="tile">
+            <span>@BaseName</span>
+            <strong>@N(Base.Result.MeanDps) DPS</strong>
+            <em>@(BaseName == "Baseline" ? Base.Label : "what the others are measured against")</em>
+        </div>
+        <div class="tile">
+            <span>Best change</span>
+            <strong class="@Class(Best)">@Signed(Change(Best))</strong>
+            <em>@(Best == Base ? "nothing beat it" : Best.Label)</em>
+        </div>
+        <div class="tile">
+            <span>Better</span>
+            <strong class="gain">@Others.Count(r => Verdict(r) > 0) of @Others.Count</strong>
+            <em>a real gain, not chance</em>
+        </div>
+        <div class="tile">
+            <span>Too close to call</span>
+            <strong>@Others.Count(r => Verdict(r) == 0)</strong>
+            <em>could be chance either way</em>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-head">
+            <h3>@Heading</h3>
+            <span class="legend"><i class="gain"></i>Better <i class="same"></i>Too close to call <i class="loss"></i>Worse <span title="Each sim is many random fights, so its DPS wobbles a little. The thin line around a bar is how far chance alone could move it.">· thin line: how far chance could move it</span></span>
+        </div>
+        <div class="scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th class="l">Run</th>
+                        <th>DPS</th>
+                        <th title="@($"Against the {BaseName.ToLowerInvariant()}")">Change</th>
+                        <th class="change-head"></th>
+                        <th class="l" title="Better or Worse when the change is bigger than chance alone could make it">Verdict</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int rank = 0; }
+                    @foreach (var run in Runs.OrderByDescending(r => r.Result.MeanDps))
+                    {
+                        bool isBase = run == Base;
+                        if (!isBase) rank++;
+                        <tr class="@(isBase ? "base" : "")">
+                            <td>@(isBase ? "–" : rank.ToString(CultureInfo.CurrentCulture))</td>
+                            <td class="l name">
+                                @run.Label
+                                <span class="meta">@run.Detail</span>
+                                @if (Heroes)
+                                {
+                                    <span class="hero">@run.Hero</span>
+                                }
+                                @if (isBase && run.Label != BaseName)
+                                {
+                                    <span class="tag">@BaseName.ToLowerInvariant()</span>
+                                }
+                            </td>
+                            <td class="two">
+                                <strong>@N(run.Result.MeanDps)</strong>
+                                @if (Primary && run.Result.PrimaryTargetDps is { } primary)
+                                {
+                                    <span title="The DPS to the first target alone">@N(primary) main target</span>
+                                }
+                            </td>
+                            <td class="two @(isBase ? "same" : Class(run))">
+                                @if (isBase)
+                                {
+                                    <strong>—</strong>
+                                }
+                                else
+                                {
+                                    <strong>@Signed(Change(run))</strong>
+                                    <span>@SignedN(run.Result.MeanDps - Base.Result.MeanDps) DPS</span>
+                                }
+                            </td>
+                            <td class="change">
+                                <div class="track">
+                                    <i class="band" style="@Span(-Margin(Base) / Base.Result.MeanDps * 100, Margin(Base) / Base.Result.MeanDps * 100)"></i>
+                                    <i class="zero" style="left: @P(X(0))%"></i>
+                                    @if (!isBase)
+                                    {
+                                        double change = Change(run);
+                                        double whisker = DifferenceMargin(run) / Base.Result.MeanDps * 100;
+                                        <i class="bar @Class(run)" style="@Span(Math.Min(0, change), Math.Max(0, change))"></i>
+                                        <i class="whisker" style="@Span(change - whisker, change + whisker)"></i>
+                                    }
+                                </div>
+                            </td>
+                            <td class="l">
+                                @if (!isBase)
+                                {
+                                    <span class="verdict @Class(run)" title="@VerdictTitle(run)">@VerdictText(run)</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="buttons">
+                                    @if (!isBase)
+                                    {
+                                        <button type="button" class="secondary-button load" @onclick="() => Load(run)">Load</button>
+                                    }
+                                    <button type="button" class="secondary-button" @onclick="() => _report = run">View report</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_loaded != null)
+        {
+            <p class="hint">@_loaded</p>
+        }
+    </section>
+}
+
+@code {
+    /// <summary>The runs, the first the baseline.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<SimRun> Runs { get; set; } = [];
+
+    /// <summary>What the runs try, over the table.</summary>
+    [Parameter] public string Heading { get; set; } = "Runs";
+
+    private SimRun? _report;
+    private string? _loaded;
+
+    private SimRun Base => Runs[0];
+
+    // A finder's baseline is the current build; a compare's is its first row.
+    private string BaseName => Base.Label == "Current build" ? "Current build" : "Baseline";
+
+    private IReadOnlyList<SimRun> Others => Runs.Skip(1).ToList();
+
+    private SimRun Best => Others.Where(r => Change(r) > 0).MaxBy(r => r.Result.MeanDps) ?? Base;
+
+    // A column for the first target's DPS when the runs had more than one target.
+    private bool Primary => Runs.Any(r => r.Result.PrimaryTargetDps is { } p && p < r.Result.MeanDps * 0.999);
+
+    // The hero on each row when the runs have more than one.
+    private bool Heroes => Runs.Select(r => r.Hero).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1;
+
+    /// <summary>The run's DPS change against the baseline, in percent.</summary>
+    private double Change(SimRun run) => Base.Result.MeanDps > 0 ? (run.Result.MeanDps / Base.Result.MeanDps - 1) * 100 : 0;
+
+    /// <summary>The 95% margin of a run's mean DPS.</summary>
+    private static double Margin(SimRun run) =>
+        run.Result.Iterations > 0 ? 1.96 * run.Result.StandardDeviation / Math.Sqrt(run.Result.Iterations) : 0;
+
+    /// <summary>The 95% margin of the difference between a run's mean DPS and the baseline's.</summary>
+    private double DifferenceMargin(SimRun run) => Math.Sqrt(Margin(run) * Margin(run) + Margin(Base) * Margin(Base));
+
+    /// <summary>1 for a clear gain, -1 for a clear loss, 0 inside the margin.</summary>
+    private int Verdict(SimRun run)
+    {
+        double difference = run.Result.MeanDps - Base.Result.MeanDps;
+        return Math.Abs(difference) <= DifferenceMargin(run) ? 0 : Math.Sign(difference);
+    }
+
+    private string VerdictText(SimRun run) => Verdict(run) switch { > 0 => "Better", < 0 => "Worse", _ => "Too close to call" };
+
+    // The verdict in plain words: the change against what chance alone could do over this many fights.
+    private string VerdictTitle(SimRun run) =>
+        $"{SignedN(run.Result.MeanDps - Base.Result.MeanDps)} DPS; chance alone could move it by up to {N(DifferenceMargin(run))} DPS " +
+        $"over {N(run.Result.Iterations)} fights, so the change is {(Verdict(run) == 0 ? "no bigger than chance" : "bigger than chance (95% sure)")}.";
+
+    private string Class(SimRun run) => run == Base ? "same" : Verdict(run) switch { > 0 => "gain", < 0 => "loss", _ => "same" };
+
+    // The chart's range in percent: every change and its whisker, and zero, with a little room.
+    private (double Low, double High) Range()
+    {
+        double low = 0, high = 0;
+        foreach (var run in Others)
+        {
+            double change = Change(run), whisker = DifferenceMargin(run) / Math.Max(1, Base.Result.MeanDps) * 100;
+            low = Math.Min(low, change - whisker);
+            high = Math.Max(high, change + whisker);
+        }
+        double pad = Math.Max(0.1, (high - low) * 0.05);
+        return (low - pad, high + pad);
+    }
+
+    private double X(double change)
+    {
+        var (low, high) = Range();
+        return Math.Clamp((change - low) / (high - low) * 100, 0, 100);
+    }
+
+    private string Span(double from, double to) => $"left: {P(X(from))}%; width: {P(Math.Max(0, X(to) - X(from)))}%";
+
+    private static string P(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private static string N(double value) => value.ToString("N0", CultureInfo.CurrentCulture);
+
+    private static string SignedN(double value) => (value >= 0 ? "+" : "−") + Math.Abs(value).ToString("N0", CultureInfo.CurrentCulture);
+
+    private static string Signed(double percent) => (percent >= 0 ? "+" : "−") + Math.Abs(percent).ToString("0.00", CultureInfo.CurrentCulture) + "%";
+
+    // Puts the run's build and action list in the Sim page and shows it.
+    private void Load(SimRun run)
+    {
+        try
+        {
+            var profile = SimcProfile.Parse(run.Profile);
+            Sim.Editor = new BuildEditor(profile.Build);
+            Sim.SavedName = "";
+            Sim.ActionListText = profile.ActionList;
+            Sim.ActionListName = run.ActionListName;
+            Sim.ActionListValue = run.ActionListValue;
+            Sim.BuildStatus = MessageState.Ok($"Loaded {run.Label} ({run.Detail}) from a sim.");
+            Sim.Tab = SimTab.Hero;
+            Sim.NotifyChanged();
+            Views.ShowPage(AppPage.Sim);
+        }
+        catch (FormatException e)
+        {
+            _loaded = e.Message;
+        }
+    }
+}

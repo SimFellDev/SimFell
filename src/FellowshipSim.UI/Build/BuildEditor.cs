@@ -1,4 +1,7 @@
 using FellowshipSim.Core.Customization.Gems;
+using FellowshipSim.Core.Customization.ProtectiveEnchants;
+using FellowshipSim.Core.Customization.RelicPassives;
+using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using CoreCatalog = FellowshipSim.Core.Catalog;
@@ -64,9 +67,83 @@ public sealed class BuildEditor(CharacterBuild build)
         Build.SheetPercents.Remove(Key(stat));
     }
 
-    /// <summary>The stat's character-sheet percentage (a fraction): the log's when the build came from one, otherwise its rating's.</summary>
+    /// <summary>
+    /// The stat's character-sheet percentage (a fraction): the log's when the build came from one, otherwise its rating's
+    /// with the stat enchants' rating; then the gem nodes' bonus to it, as the sim adds it.
+    /// </summary>
     public double Percent(RatedStat stat) =>
-        Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat));
+        (Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet
+            : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat) + Build.EnchantRating(RatingType(stat))))
+        + GemBonus(stat);
+
+    private string? _gemBonusesFor;
+    private StatBlock? _gemBonuses;
+
+    /// <summary>
+    /// The percentage the build's gems add to <paramref name="stat"/>: its gems bound to a hero as <see cref="HeroImporter"/>
+    /// binds them. The gem power is the character sheet's (Covetous Greed included), as a sim's profile reads it. Worked
+    /// out again only when the gems change.
+    /// </summary>
+    private double GemBonus(RatedStat stat)
+    {
+        string key = $"{Build.Hero}|{string.Join(",", Build.GemPower.OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Value}"))}";
+        if (key != _gemBonusesFor)
+        {
+            var hero = CoreCatalog.CreateHero(Build.Hero);
+            foreach (var (color, power) in Build.GemPower)
+            {
+                var gem = FellowshipSim.Core.Customization.Gems.Gem.Create(color);
+                gem.Power = power;
+                gem.Bind(hero);
+            }
+            _gemBonuses = hero.Stats;
+            _gemBonusesFor = key;
+        }
+        return stat switch
+        {
+            RatedStat.Crit => _gemBonuses!.BonusCritChance,
+            RatedStat.Haste => _gemBonuses!.BonusHaste,
+            RatedStat.Expertise => _gemBonuses!.BonusExpertise,
+            _ => _gemBonuses!.BonusSpirit,
+        };
+    }
+
+    private static StatType RatingType(RatedStat stat) => stat switch
+    {
+        RatedStat.Crit => StatType.CritRating,
+        RatedStat.Haste => StatType.HasteRating,
+        RatedStat.Expertise => StatType.ExpertiseRating,
+        _ => StatType.SpiritRating,
+    };
+
+    private static RatedStat StatOf(StatType rating) => rating switch
+    {
+        StatType.CritRating => RatedStat.Crit,
+        StatType.HasteRating => RatedStat.Haste,
+        StatType.ExpertiseRating => RatedStat.Expertise,
+        _ => RatedStat.Spirit,
+    };
+
+    /// <summary>The rating the build's stat enchant <paramref name="id"/> adds to each of its stats; 0 when it has none.</summary>
+    public double StatEnchantRating(int id) => Build.StatEnchants.FirstOrDefault(e => e.Id == id)?.Rank ?? 0;
+
+    /// <summary>
+    /// Sets the rating a stat enchant adds. Its two stats leave the log's character sheet (which counted the old enchant)
+    /// for their ratings, which are without enchants, plus the enchants.
+    /// </summary>
+    public void SetStatEnchantRating(StatEnchant enchant, double rating)
+    {
+        int value = (int)Math.Max(0, Math.Round(rating));
+        Build.SheetPercents.Remove(Key(StatOf(enchant.FirstRating)));
+        Build.SheetPercents.Remove(Key(StatOf(enchant.SecondRating)));
+        int at = Build.StatEnchants.FindIndex(e => e.Id == enchant.Id);
+        if (value == 0)
+        {
+            if (at >= 0) Build.StatEnchants.RemoveAt(at);
+        }
+        else if (at >= 0) Build.StatEnchants[at] = Build.StatEnchants[at] with { Rank = value };
+        else Build.StatEnchants.Add(new BuildEntry(enchant.Id, value));
+    }
 
     /// <summary>True when <see cref="Percent"/> is the log's character sheet, which counts gem nodes too.</summary>
     public bool PercentFromLog(RatedStat stat) => Build.SheetPercents.ContainsKey(Key(stat));
@@ -93,16 +170,57 @@ public sealed class BuildEditor(CharacterBuild build)
     public int? Relic1
     {
         get => Build.Relic1ItemId == 0 ? null : Build.Relic1ItemId;
-        set => Build.Relic1ItemId = value ?? 0;
+        set
+        {
+            Build.Relic1ItemId = value ?? 0;
+            RecountGemPower();
+        }
     }
 
     /// <summary>The item ID of the relic in slot 2, or null for no relic.</summary>
     public int? Relic2
     {
         get => Build.Relic2ItemId == 0 ? null : Build.Relic2ItemId;
-        set => Build.Relic2ItemId = value ?? 0;
+        set
+        {
+            Build.Relic2ItemId = value ?? 0;
+            RecountGemPower();
+        }
     }
 
+    /// <summary>Relics a build wears: <see cref="Relic1"/> and <see cref="Relic2"/>.</summary>
+    public const int RelicSlots = 2;
+
+    public int RelicCount => (Build.Relic1ItemId != 0 ? 1 : 0) + (Build.Relic2ItemId != 0 ? 1 : 0);
+
+    public bool HasRelic(int itemId) => itemId != 0 && (Build.Relic1ItemId == itemId || Build.Relic2ItemId == itemId);
+
+    /// <summary>
+    /// Wears relic item <paramref name="itemId"/> in the first empty slot, or takes it off when worn. With both slots
+    /// full, a new relic is refused: false.
+    /// </summary>
+    public bool ToggleRelic(int itemId)
+    {
+        if (Build.Relic1ItemId == itemId) Relic1 = null;
+        else if (Build.Relic2ItemId == itemId) Relic2 = null;
+        else if (Build.Relic1ItemId == 0) Relic1 = itemId;
+        else if (Build.Relic2ItemId == 0) Relic2 = itemId;
+        else return false;
+        return true;
+    }
+
+    /// <summary>Puts gem <paramref name="gemId"/> in the next empty socket. With every socket filled it is refused: false.</summary>
+    public bool AddGem(int gemId)
+    {
+        if (Build.SocketedGemIds.Count >= GemItem.Sockets) return false;
+        SetSocket(Build.SocketedGemIds.Count, gemId);
+        return true;
+    }
+
+    /// <summary>How many of gem <paramref name="gemId"/> are socketed.</summary>
+    public int SocketedCount(int gemId) => Build.SocketedGemIds.Count(id => id == gemId);
+
+    /// <summary>A colour's gem power as the character sheet shows it.</summary>
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
 
     public void SetGem(GemColor color, double power)
@@ -111,9 +229,65 @@ public sealed class BuildEditor(CharacterBuild build)
         else Build.GemPower.Remove(color);
     }
 
+    /// <summary>The gem in socket <paramref name="socket"/> (0 to <see cref="GemItem.Sockets"/> - 1), or null when empty.</summary>
+    public GemItem? Socket(int socket) => socket < Build.SocketedGemIds.Count ? GemItem.Find(Build.SocketedGemIds[socket]) : null;
+
+    /// <summary>Puts gem <paramref name="gemId"/> in socket <paramref name="socket"/>, or empties it for null.</summary>
+    public void SetSocket(int socket, int? gemId)
+    {
+        var sockets = Enumerable.Range(0, GemItem.Sockets).Select(i => Socket(i)?.Id).ToArray();
+        sockets[socket] = gemId is { } id && GemItem.Find(id) != null ? id : null;
+        Build.SocketedGemIds = sockets.OfType<int>().ToList();
+        RecountGemPower(always: true);
+    }
+
+    /// <summary>The gear's gem power bonuses of <paramref name="color"/> (<see cref="GemItem.GearBonusPower"/> each).</summary>
+    public int GearBonuses(GemColor color) => Build.GearGemBonuses.GetValueOrDefault(color);
+
+    public void SetGearBonuses(GemColor color, int count)
+    {
+        if (count > 0) Build.GearGemBonuses[color] = count;
+        else Build.GearGemBonuses.Remove(color);
+        RecountGemPower(always: true);
+    }
+
+    /// <summary>True when the build says where its gem power comes from (sockets or gear bonuses).</summary>
+    public bool HasGemSources => Build.SocketedGemIds.Count > 0 || Build.GearGemBonuses.Count > 0;
+
+    /// <summary>
+    /// Works out each colour's gem power from the sockets and gear bonuses, times the relics' multiplier (Covetous Greed).
+    /// A relic change on a build that does not say where its gem power comes from keeps the totals it has.
+    /// </summary>
+    private void RecountGemPower(bool always = false)
+    {
+        if (!always && !HasGemSources) return;
+        double multiplier = new[] { Build.Relic1ItemId, Build.Relic2ItemId }
+            .Select(CoreCatalog.RelicPassiveOfItem).OfType<RelicPassive>().Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
+        Build.GemPower = GemItem.PowerByColor(Build.SocketedGemIds, Build.GearGemBonuses, multiplier);
+    }
+
     public int AugmentationRank(int id) => Build.Augmentations.FirstOrDefault(a => a.Id == id)?.Rank ?? 0;
 
     public void SetAugmentationRank(BuildOption augmentation, int rank) => SetRank(Build.Augmentations, augmentation, rank);
+
+    /// <summary>Protective enchants the build has, of the catalog's <see cref="BuildCatalog.ProtectiveEnchants"/>.</summary>
+    public int ProtectiveEnchantCount => Catalog.ProtectiveEnchants.Count(p => AugmentationRank(p.Id) > 0);
+
+    /// <summary>
+    /// Takes the protective enchant, or drops it when taken. Taking one more than <see cref="ProtectiveEnchant.MaxPerBuild"/>
+    /// is refused: false.
+    /// </summary>
+    public bool ToggleProtectiveEnchant(BuildOption enchant)
+    {
+        if (AugmentationRank(enchant.Id) > 0)
+        {
+            SetAugmentationRank(enchant, 0);
+            return true;
+        }
+        if (ProtectiveEnchantCount >= ProtectiveEnchant.MaxPerBuild) return false;
+        SetAugmentationRank(enchant, 1);
+        return true;
+    }
 
     public int GlyphRank(int id) => Build.Glyphs.FirstOrDefault(g => g.Id == id)?.Rank ?? 0;
 

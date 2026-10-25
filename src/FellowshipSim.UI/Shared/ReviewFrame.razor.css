@@ -1,9 +1,0 @@
-.page {
-  display: block;
-  width: 100%;
-  height: calc(100vh - 160px);
-  min-height: 480px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
