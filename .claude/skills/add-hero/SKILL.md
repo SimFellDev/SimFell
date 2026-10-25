@@ -115,7 +115,7 @@ other teammate's name, followed by its brief from this file.
 ## 7. Pull request
 
 1. The implementer rebases the branch onto `upstream/main` and re-runs the full suite.
-2. The session removes the data junction, pushes the branch to `origin` and opens a pull request on `Toonic/SimFell`
+2. The session removes the data junction, pushes the branch to `origin` and opens a pull request on `SimFellDev/SimFell`
    against `main`. The body has what the hero has, the shared engine and replay changes, the full-suite count, a table
    of the replay numbers per fight, and the `UNVERIFIED` values and known gaps.
 3. The session reports the pull request link and the replay numbers to the user, with `/replay-accuracy <Hero>` as the
