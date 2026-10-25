@@ -54,6 +54,9 @@ public sealed class BuildEditor(CharacterBuild build)
         _ => Build.SpiritRating,
     };
 
+    /// <summary>The stat's rating with the stat enchants' rating: what the sim and the character sheet count.</summary>
+    public double TotalRating(RatedStat stat) => Rating(stat) + Build.EnchantRating(RatingType(stat));
+
     public void SetRating(RatedStat stat, double rating)
     {
         rating = Math.Max(0, rating);

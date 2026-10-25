@@ -99,6 +99,20 @@
   -moz-appearance: textfield;
 }
 
+/* A rating and its total with the stat enchants, to its right. */
+.ratings .rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ratings .total {
+  min-width: 44px;
+  text-align: right;
+  color: var(--heading);
+  font-variant-numeric: tabular-nums;
+}
+
 .ratings input::-webkit-outer-spin-button,
 .ratings input::-webkit-inner-spin-button {
   -webkit-appearance: none;

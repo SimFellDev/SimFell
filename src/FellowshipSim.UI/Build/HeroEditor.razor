@@ -87,21 +87,33 @@
             <div class="ratings">
                 <label>
                     Main stat
-                    <input type="number" min="0" step="1" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Build.PrimaryStat = Math.Max(0, v))" />
+                    <span class="rating">
+                        <input type="number" min="0" step="1" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Build.PrimaryStat = Math.Max(0, v))" />
+                        <span class="total"></span>
+                    </span>
                 </label>
                 <label>
                     Stamina
-                    <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
+                    <span class="rating">
+                        <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
+                        <span class="total"></span>
+                    </span>
                 </label>
                 <label>
                     Armor
-                    <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
+                    <span class="rating">
+                        <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
+                        <span class="total"></span>
+                    </span>
                 </label>
                 @foreach (var stat in Enum.GetValues<RatedStat>())
                 {
                     <label @key="stat" title="@SheetNote(stat)">
                         @StatName(stat)
-                        <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+                        <span class="rating">
+                            <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+                            <span class="total" title="Total rating: this rating and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
+                        </span>
                     </label>
                 }
             </div>
