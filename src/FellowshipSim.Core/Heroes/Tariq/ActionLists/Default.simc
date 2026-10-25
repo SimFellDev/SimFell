@@ -1,14 +1,24 @@
-# Thunder Call before Raging Tempest, so its cooldown runs while Raging Tempest holds.
-actions+=/thunder_call
-actions+=/fated_strike
-actions+=/raging_tempest,if=cooldown.thunder_call.remains>5
-actions+=/focused_wrath,if=buff.thunder_call.up|buff.raging_tempest.up
+# Tariq's default action list: FellowSimc's SimC list (apl/tariq/tariq_apl.simc) in SimFell's names.
+# Left out: Earthbreaker, a weapon the engine does not have.
+actions.precombat=snapshot_stats
+actions=thunder_call
+actions+=/raging_tempest,if=!buff.thunder_call.up
 actions+=/leap_smash
-actions+=/culling_strike
-actions+=/chain_lightning
-# Hammer Storm on 3 or more enemies, or on fewer with a Schism or Focused Wrath stack.
-actions+=/hammer_storm,if=active_enemies>=3|buff.schism_hammer_storm.up|buff.focused_wrath.up
-actions+=/skull_crusher
-actions+=/heavy_strike
-actions+=/face_breaker
+actions+=/voidbringers_touch
+actions+=/sahrils_wrath,if=buff.thunder_call.up
+actions+=/focused_wrath,if=buff.focused_wrath.stack<2
+actions+=/culling_strike,if=active_enemies<=20&fury>=10|buff.executioners_grin.up|talent.pneuma
+actions+=/heavy_strike,if=buff.kill_em_all.up
+actions+=/chain_lightning,if=fury.deficit>=10
+actions+=/heavy_strike,if=fury.deficit>=12
+actions+=/call_action_list,name=finishers
+actions+=/face_breaker,if=fury.deficit>=7
+actions+=/fated_strike
 actions+=/wild_swing
+
+# ---- Finishers: a Schism stack first, then Skull Crusher or Hammer Storm above 50 Fury.
+actions.finishers=hammer_storm,if=buff.schism__hammer_storm.up&(buff.focused_wrath.up|active_enemies>=2&(buff.schism__hammer_storm.stack=2|buff.schism__hammer_storm.remains<=gcd.max*3))
+actions.finishers+=/skull_crusher,if=buff.schism__skull_crusher.up&(buff.schism__skull_crusher.stack=2|buff.schism__skull_crusher.remains<=gcd.max*3|buff.focused_wrath.up)
+actions.finishers+=/skull_crusher,if=talent.schism&fury>50
+actions.finishers+=/hammer_storm,if=active_enemies>=3&(fury>50|fight_remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
+actions.finishers+=/skull_crusher,if=active_enemies<3&(fury>50|fight_remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
