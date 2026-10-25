@@ -7,6 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The one-person app (Local) runs fights in this process: hot methods move to tier 1 without the call-counting delay,
+         as in the engine server. -->
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The release workflow's version (-p:SimFellVersion=0.1.0), which the one-person app compares with the latest release. -->
+    <AssemblyMetadata Include="SimFellVersion" Value="$(SimFellVersion)" Condition="'$(SimFellVersion)' != ''" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FellowshipSim.Logs\FellowshipSim.Logs.csproj" />
     <ProjectReference Include="..\FellowshipSim.UI\FellowshipSim.UI.csproj" />
     <ProjectReference Include="..\FellowshipSim.ServiceDefaults\FellowshipSim.ServiceDefaults.csproj" />

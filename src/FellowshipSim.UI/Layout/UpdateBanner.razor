@@ -1,0 +1,23 @@
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider Services
+@* Over the frame of the packaged app: a line when a newer build is published, with its download. *@
+@if (_newer is { } newer)
+{
+    <div class="update" role="status">
+        <span>Your SimFell is out of date: @newer.Version.ToString(3) is out (you have @_updates!.Version!.ToString(3)).</span>
+        <a href="@newer.Url" target="_blank" rel="noopener">Download the latest</a>
+        <button type="button" class="dismiss" aria-label="Hide until next start" @onclick="() => _newer = null">✕</button>
+    </div>
+}
+
+@code {
+    private AppUpdates? _updates;
+    private AppRelease? _newer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Only the packaged app registers its updates; the website and the desktop app show no banner.
+        _updates = Services.GetService<AppUpdates>();
+        if (_updates != null) _newer = await _updates.NewerAsync();
+    }
+}

@@ -1,0 +1,112 @@
+# Builds SimFell for Windows, macOS and Linux and publishes them as one release on the public SimFellDev/SimFell-Releases
+# (this repository stays private), flagged as the latest release. Each run raises the version from the latest release:
+# the patch (0.0.X) at first, or the minor (0.X.0) or major (X.0.0) when picked. The app compares its version with the
+# latest release and shows a banner when a newer one is out.
+#
+# Run it by hand: Actions > Release > Run workflow. It needs the secret SIMFELL_RELEASE: a fine-grained token with
+# "Contents: Read and write" on SimFellDev/SimFell-Releases alone.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      increase:
+        description: Which part of the version to raise
+        type: choice
+        options:
+          - patch (0.0.X)
+          - minor (0.X.0)
+          - major (X.0.0)
+        default: patch (0.0.X)
+      notes:
+        description: What is new in this release (optional)
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Next version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - id: next
+        name: Raise the latest release's version
+        env:
+          GH_TOKEN: ${{ secrets.SIMFELL_RELEASE }}
+          INCREASE: ${{ inputs.increase }}
+        run: |
+          # The highest vX.Y.Z tag released so far, or 0.0.0 before the first.
+          latest=$(gh release list --repo SimFellDev/SimFell-Releases --limit 1000 --json tagName --jq '.[].tagName' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n 1)
+          latest=${latest:-0.0.0}
+          IFS=. read -r major minor patch <<< "$latest"
+          case "$INCREASE" in
+            major*) major=$((major + 1)); minor=0; patch=0 ;;
+            minor*) minor=$((minor + 1)); patch=0 ;;
+            *)      patch=$((patch + 1)) ;;
+          esac
+          echo "Latest $latest, next $major.$minor.$patch"
+          echo "version=$major.$minor.$patch" >> "$GITHUB_OUTPUT"
+
+  package:
+    name: Package ${{ matrix.rid }}
+    needs: version
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # Each on its own system: the Windows launcher builds on Windows, and a macOS or Linux zip made there keeps the
+          # files' run permission.
+          - { rid: win-x64, os: windows-latest }
+          - { rid: osx-arm64, os: macos-latest }
+          - { rid: osx-x64, os: macos-latest }
+          - { rid: linux-x64, os: ubuntu-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Package
+        run: dotnet run tools/package.cs -- --rid ${{ matrix.rid }} --version ${{ needs.version.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SimFell-${{ matrix.rid }}
+          path: bin/package/SimFell-${{ matrix.rid }}.zip
+          retention-days: 7
+
+  release:
+    name: Publish ${{ needs.version.outputs.version }}
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: zips
+          merge-multiple: true
+      - name: Release on SimFellDev/SimFell-Releases as the latest
+        env:
+          GH_TOKEN: ${{ secrets.SIMFELL_RELEASE }}
+          NOTES: ${{ inputs.notes }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          {
+            if [ -n "$NOTES" ]; then printf '%s\n\n' "$NOTES"; fi
+            echo "Download the zip for your system, extract the whole SimFell folder, then start it:"
+            echo "- Windows: SimFell.exe"
+            echo "- macOS: SimFell.command (Apple Silicon: osx-arm64; Intel: osx-x64). The first time, right-click it and choose Open."
+            echo "  If macOS still blocks it (the app is not signed), run this in Terminal on the extracted folder:"
+            echo "  xattr -dr com.apple.quarantine ~/Downloads/SimFell"
+            echo "- Linux: simfell.sh"
+            echo
+            echo "SimFell opens in your browser. Close its window to stop it."
+          } > notes.md
+          gh release create "v$VERSION" zips/*.zip \
+            --repo SimFellDev/SimFell-Releases \
+            --title "SimFell $VERSION" \
+            --notes-file notes.md \
+            --latest
