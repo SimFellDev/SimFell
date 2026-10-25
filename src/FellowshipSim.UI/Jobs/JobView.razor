@@ -2,6 +2,10 @@
 @implements IDisposable
 @inject VisitorJobs Jobs
 @* One job: its progress while it runs, then its result: a sim's DPS, a review's page, or the error. *@
+@if (Job.Kind == SimJobKind.Sim)
+{
+    <ResultNav ShowAllRuns="_report != null" OnAllRuns="() => _report = null" />
+}
 <Card>
     <div class="head">
         <span class="kind">@Job.Kind</span>
@@ -24,7 +28,7 @@
         case { Status: SimJobStatus.Done, Result: SavedSim sim }:
             if (sim.Runs is { Count: > 0 } runs)
             {
-                <RunsResult Runs="runs" Heading="@(sim.RunsHeading ?? "Runs")" />
+                <RunsResult Runs="runs" Heading="@(sim.RunsHeading ?? "Runs")" @bind-Report="_report" />
             }
             else
             {
@@ -41,6 +45,8 @@
 
 @code {
     [Parameter, EditorRequired] public SimJob Job { get; set; } = null!;
+
+    private SimRun? _report;
 
     private string StatusClass => Job.Status.ToString().ToLowerInvariant();
 

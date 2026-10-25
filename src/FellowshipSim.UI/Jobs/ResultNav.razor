@@ -1,0 +1,25 @@
+@inject SimPageState Sim
+@inject IAppViews Views
+@* Over a sim's result, outside its card: back to Hero & Loadout, and from one run's report back to all the runs. *@
+<nav class="result-nav" aria-label="Back">
+    <button type="button" class="secondary-button" @onclick="BackToEditor">‹ Back to editor</button>
+    @if (ShowAllRuns)
+    {
+        <button type="button" class="secondary-button" @onclick="OnAllRuns">‹ Back to all runs</button>
+    }
+</nav>
+
+@code {
+    /// <summary>True while one run's report shows in place of the runs.</summary>
+    [Parameter] public bool ShowAllRuns { get; set; }
+
+    [Parameter] public EventCallback OnAllRuns { get; set; }
+
+    // The editor as it was left: the result's build loads only from a run's Load.
+    private void BackToEditor()
+    {
+        Sim.Tab = SimTab.Hero;
+        Sim.NotifyChanged();
+        Views.ShowPage(AppPage.Sim);
+    }
+}

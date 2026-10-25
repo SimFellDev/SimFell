@@ -2,11 +2,11 @@
 @using FellowshipSim.Core.Import
 @inject SimPageState Sim
 @inject IAppViews Views
-@* A compare's or finder's runs: each against the first (the baseline), with Load and View report; or one run's report. *@
-@if (_report is { } shown)
+@* A compare's or finder's runs: each against the first (the baseline), with Load and View report; or one run's report
+   (its way back to the runs is in ResultNav, over the card). *@
+@if (Report is { } shown)
 {
     <div class="report-head">
-        <button type="button" class="secondary-button" @onclick="() => _report = null">‹ Back to all runs</button>
         <strong>@shown.Label</strong>
         <span class="meta">@shown.Detail</span>
     </div>
@@ -118,7 +118,7 @@ else
                                     {
                                         <button type="button" class="secondary-button load" @onclick="() => Load(run)">Load</button>
                                     }
-                                    <button type="button" class="secondary-button" @onclick="() => _report = run">View report</button>
+                                    <button type="button" class="secondary-button" @onclick="() => ReportChanged.InvokeAsync(run)">View report</button>
                                 </div>
                             </td>
                         </tr>
@@ -140,7 +140,11 @@ else
     /// <summary>What the runs try, over the table.</summary>
     [Parameter] public string Heading { get; set; } = "Runs";
 
-    private SimRun? _report;
+    /// <summary>The run whose report shows in place of the runs; null for the runs.</summary>
+    [Parameter] public SimRun? Report { get; set; }
+
+    [Parameter] public EventCallback<SimRun?> ReportChanged { get; set; }
+
     private string? _loaded;
 
     private SimRun Base => Runs[0];

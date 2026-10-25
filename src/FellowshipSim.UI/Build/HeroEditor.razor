@@ -1,4 +1,5 @@
 @using System.Globalization
+@using Microsoft.JSInterop
 @using FellowshipSim.Core.Customization.Gems
 @using FellowshipSim.Core.Import
 @using FellowshipSim.Core.Customization.ProtectiveEnchants
@@ -7,6 +8,7 @@
 @inject ProfileStore Profiles
 @inject Visitor Visitor
 @inject SimPageState State
+@inject IJSRuntime JS
 @implements IDisposable
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
@@ -23,9 +25,21 @@
         <button type="button" class="secondary-button" @onclick="SaveAsync">Save</button>
         <button type="button" class="secondary-button" @onclick="New">New</button>
         <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
+        <button type="button" class="secondary-button" aria-expanded="@(_exportOpen ? "true" : "false")" @onclick="ExportAsync">Export</button>
         <button type="button" class="secondary-button delete" disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync">Delete</button>
     </div>
     <Message Kind="State.BuildStatus.Kind">@State.BuildStatus.Text</Message>
+    @if (_exportOpen)
+    {
+        @* The build as a profile, the text Import reads; it follows the build while it shows. *@
+        <div class="export">
+            <textarea aria-label="Build profile" readonly spellcheck="false" rows="8">@ExportText</textarea>
+            <div class="row">
+                <button type="button" class="secondary-button" @onclick="CopyExportAsync">Copy</button>
+                <button type="button" class="secondary-button" @onclick="() => _exportOpen = false">Close</button>
+            </div>
+        </div>
+    }
 </Card>
 
 <div class="editor">
@@ -429,6 +443,30 @@
         State.ActionListName = FellowshipSim.Core.APL.DefaultActionLists.DefaultName;
         State.ActionListText = null;
         return Changed();
+    }
+
+    private bool _exportOpen;
+
+    private string ExportText => new SimcProfile(Build, "").Format();
+
+    // Shows the build's profile and copies it: the text Import takes, to share or to keep.
+    private async Task ExportAsync()
+    {
+        _exportOpen = true;
+        await CopyExportAsync();
+    }
+
+    private async Task CopyExportAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", ExportText);
+            State.BuildStatus = MessageState.Ok("Copied the build to the clipboard. Import takes it as a profile.");
+        }
+        catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
+        {
+            State.BuildStatus = new MessageState("Select the build's text below and copy it. Import takes it as a profile.");
+        }
     }
 
     private Task New()

@@ -761,3 +761,18 @@
 .slots-total.over strong {
   color: var(--bad);
 }
+
+/* The build's profile text from Export, with Copy and Close under it. */
+.export {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.export textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
