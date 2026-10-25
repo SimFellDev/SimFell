@@ -83,8 +83,16 @@
                     <strong class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</strong>
                 }
             </div>
-            <h3 class="section">Ratings</h3>
+            <h3 class="section">Stats</h3>
+            @* Gear: the stats typed in, as the gear gives them. Total: with what the game adds (the base main stat, the stat enchants). *@
             <div class="ratings">
+                <div class="group">
+                    <span>Primary</span>
+                    <span class="rating">
+                        <span class="column" title="The stats the gear gives">Gear</span>
+                        <span class="total" title="With the base main stat and the stat enchants">Total</span>
+                    </span>
+                </div>
                 <label>
                     Stamina
                     <span class="rating">
@@ -92,30 +100,26 @@
                         <span class="total"></span>
                     </span>
                 </label>
-                <label title="@($"The gear's bonus over the base {BuildEditor.BaseMainStat:0}")">
+                <label title="@($"The gear's main stat; the total adds the base {BuildEditor.BaseMainStat:0}")">
                     Main stat
                     <span class="rating">
-                        <input type="number" min="0" step="1" aria-label="Main stat bonus" @bind:get="Editor.MainStatBonus" @bind:set="v => Set(() => Editor.MainStatBonus = v)" />
-                        <span class="total" title="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the bonus")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
+                        <input type="number" min="0" step="1" aria-label="Main stat from gear" @bind:get="Editor.MainStatBonus" @bind:set="v => Set(() => Editor.MainStatBonus = v)" />
+                        <span class="total" title="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the gear's")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
                 </label>
+                <div class="group">
+                    <span>Secondary</span>
+                </div>
                 @foreach (var stat in BuildEditor.InGameOrder)
                 {
                     <label @key="stat" title="@SheetNote(stat)">
                         @StatName(stat)
                         <span class="rating">
                             <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
-                            <span class="total" title="Total rating: this rating and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
+                            <span class="total" title="Total rating: the gear's and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
                         </span>
                     </label>
                 }
-                <label>
-                    Armor
-                    <span class="rating">
-                        <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
-                        <span class="total"></span>
-                    </span>
-                </label>
             </div>
             <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit ? "over" : "")"
                  title="@($"Slots filled: stat enchants, gem power bonuses, and aspect, sigil and glyph ranks (protective enchants not counted){(Editor.HasWeapon ? "; the weapon adds 5" : "")}")">

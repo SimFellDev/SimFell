@@ -99,7 +99,37 @@
   -moz-appearance: textfield;
 }
 
-/* A rating and its total with the stat enchants, to its right. */
+/* Primary and Secondary, with the Gear and Total column names over the first group. */
+.ratings .group {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+.ratings .group:first-child {
+  margin-top: 0;
+}
+
+.ratings .group .column,
+.ratings .group .total {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.ratings .group .column {
+  width: 96px;
+  text-align: right;
+}
+
+/* A stat as the gear gives it, and its total to its right. */
 .ratings .rating {
   display: flex;
   align-items: center;
