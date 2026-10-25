@@ -16,6 +16,20 @@ public sealed class BuildEditorTests : IDisposable
     private readonly string _data = Path.Combine(Path.GetTempPath(), $"simfell-profiles-{Guid.NewGuid():N}");
 
     [Fact]
+    public void The_Main_Stat_Is_Typed_As_The_Bonus_Over_The_Base_100()
+    {
+        var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
+        Assert.Equal(0, editor.MainStatBonus);
+        editor.MainStatBonus = 130;
+        Assert.Equal(230, editor.Build.PrimaryStat);
+        editor.MainStatBonus = -5;
+        Assert.Equal(BuildEditor.BaseMainStat, editor.Build.PrimaryStat);
+        // A log's main stat is the total.
+        editor.Build.PrimaryStat = 1650;
+        Assert.Equal(1550, editor.MainStatBonus);
+    }
+
+    [Fact]
     public void The_Catalog_Has_Rimes_Tree_With_Icons_And_Every_Weapon()
     {
         var catalog = BuildCatalog.For("rime");

@@ -77,7 +77,7 @@
             <div class="sheet">
                 <span class="sheet-label">Main stat</span>
                 <strong>@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</strong>
-                @foreach (var stat in Enum.GetValues<RatedStat>())
+                @foreach (var stat in BuildEditor.InGameOrder)
                 {
                     <span class="sheet-label" title="@SheetNote(stat)">@StatName(stat)</span>
                     <strong class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</strong>
@@ -86,27 +86,20 @@
             <h3 class="section">Ratings</h3>
             <div class="ratings">
                 <label>
-                    Main stat
-                    <span class="rating">
-                        <input type="number" min="0" step="1" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Build.PrimaryStat = Math.Max(0, v))" />
-                        <span class="total"></span>
-                    </span>
-                </label>
-                <label>
                     Stamina
                     <span class="rating">
                         <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
                         <span class="total"></span>
                     </span>
                 </label>
-                <label>
-                    Armor
+                <label title="@($"The gear's bonus over the base {BuildEditor.BaseMainStat:0}")">
+                    Main stat
                     <span class="rating">
-                        <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
-                        <span class="total"></span>
+                        <input type="number" min="0" step="1" aria-label="Main stat bonus" @bind:get="Editor.MainStatBonus" @bind:set="v => Set(() => Editor.MainStatBonus = v)" />
+                        <span class="total" title="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the bonus")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
                 </label>
-                @foreach (var stat in Enum.GetValues<RatedStat>())
+                @foreach (var stat in BuildEditor.InGameOrder)
                 {
                     <label @key="stat" title="@SheetNote(stat)">
                         @StatName(stat)
@@ -116,6 +109,13 @@
                         </span>
                     </label>
                 }
+                <label>
+                    Armor
+                    <span class="rating">
+                        <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
+                        <span class="total"></span>
+                    </span>
+                </label>
             </div>
             <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit ? "over" : "")"
                  title="@($"Slots filled: stat enchants, gem power bonuses, and aspect, sigil and glyph ranks (protective enchants not counted){(Editor.HasWeapon ? "; the weapon adds 5" : "")}")">
