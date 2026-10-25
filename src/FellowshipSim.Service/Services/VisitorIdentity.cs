@@ -28,16 +28,29 @@ public static class VisitorIdentity
     }
 
     /// <summary>
-    /// Signs a request without a visitor cookie in as a new visitor. The request's user is the new visitor too, so the
-    /// page rendered for this same request has it.
+    /// Signs a request without a visitor cookie in as a new visitor, in a cookie that outlives the browser. The request's
+    /// user is the new visitor too, so the page rendered for this same request has it. A visitor whose cookie ends with
+    /// the browser (issued before) gets it again, persistent.
     /// </summary>
     public static async Task IssueAsync(HttpContext context, RequestDelegate next)
     {
-        if (IdOf(context.User) == null)
+        if (IdOf(context.User) != null)
+        {
+            // A cookie issued before it was persistent ends with the browser: it is issued again for the same visitor.
+            var current = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (current is { Succeeded: true, Properties.IsPersistent: false })
+            {
+                await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, current.Principal!,
+                    new AuthenticationProperties { IsPersistent = true });
+            }
+        }
+        else
         {
             var user = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimType, Guid.NewGuid().ToString("N"))], CookieAuthenticationDefaults.AuthenticationScheme));
-            await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, user);
+            // Persistent: without it the cookie lasts until the browser closes, and the next visit is a new visitor who
+            // sees none of their saved builds, lists, sims or reviews.
+            await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, user, new AuthenticationProperties { IsPersistent = true });
             context.User = user;
         }
         await next(context);
