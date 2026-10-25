@@ -27,6 +27,30 @@ public class ReplayOptions
 
     /// <summary>Unmatched hits on a target that dies in the log before they would land hit nothing.</summary>
     public bool MissHitsOnDyingTargets { get; set; } = true;
+
+    /// <summary>
+    /// Damage IDs whose hits the log never shows landing hit nothing (no damage, procs or counters), on any target.
+    /// Combat logs: 12 of 1,248 Frost Bolt casts (1029) in 15 Rime fights complete with no Frost Bolt hit on their living
+    /// target, and
+    /// The Vehement's counter (effect 3194) does not count them (4Ln6PQZCRzc7Wpta fight 77 @ 116.780, fight 78 @
+    /// 1311.371, GWChJ8P7tn6fHgV3 fight 22 @ 597.179, Rzg1nQNHpm2fhYtB fight 23 @ 981.460).
+    /// </summary>
+    public HashSet<int> UnmatchedHitsMissIds { get; set; } = [Core.Heroes.Rime.Abilities.FrostBolt.AbilityId];
+    /// <summary>
+    /// Abilities whose cast the game ends at its completion with nothing done, by the log ID of the debuff a completed
+    /// cast applies: a cast the log completes with no application of it by the player within a server frame is cancelled
+    /// as it would complete. Bursting Ice (1031): at the cast's end its target must pass the alignment filters, else the
+    /// ability is cancelled before the commit of its cooldown and its one application, 1395 (game-data-authority,
+    /// GA_Rime_CastedDebuffAoeDamage ExecuteUbergraph: OnFinished 1693, OnAbilityLateTargetValidationFailed and
+    /// K2_CancelAbility 1344 / 1124, FellowshipCommitHeroAbility 1821, the application 2320). Combat logs: 7 of 797
+    /// completed Bursting Ice casts in 15 Rime fights apply no 1395 to their living target, and in 5 of them the next
+    /// Bursting Ice begins 1.1-7.2s later, inside its 10s cooldown (4Ln6PQZCRzc7Wpta fight 78 @ 252.915,
+    /// D1fBhVPkwYKXWbpr fight 1 @ 123.825, GWChJ8P7tn6fHgV3 fight 22 @ 320.357).
+    /// </summary>
+    public Dictionary<int, int> CastProofDebuffIds { get; set; } = new()
+    {
+        [Core.Heroes.Rime.Abilities.BurstingIce.AbilityId] = Core.Domain.LogIds.Effect(Core.Heroes.Rime.Abilities.BurstingIce.DebuffEffectId),
+    };
     /// <summary>
     /// A partial final tick's fraction depends on where the game's 33ms server frames fall, about +/-0.1 of a full tick;
     /// its damage may differ from the engine's by that much of a full tick on top of the spread.
@@ -54,6 +78,13 @@ public class ReplayOptions
     public double GlobalCooldownToleranceSeconds { get; set; } = 0.1;
     /// <summary>Enemies join this long before their first event in the log (their arrival is only known from it).</summary>
     public double EnemyAriseLeadSeconds { get; set; } = 0.1;
+    /// <summary>
+    /// A channel stops this long before its endchannel event: the stop is logged a few milliseconds into its server frame
+    /// and the frame's tick does not happen. Combat logs (15 Rime fights of patch 0.5.0.0, 93 Freezing Torrent ticks the
+    /// engine had within a frame before a logged stop): 62 of 64 ticks 0-8ms before it have no log tick, 28 of 29 ticks
+    /// 12-32ms before it do.
+    /// </summary>
+    public double ChannelStopLeadSeconds { get; set; } = 0.010;
     public double AvoidedTargetPenaltySeconds { get; set; } = 0.2;
     /// <summary>Absolute slack for integer rounding of small hits.</summary>
     public double DamageAbsoluteTolerance { get; set; } = 1.0;

@@ -7,7 +7,10 @@ namespace FellowshipSim.Engine.Replay;
 /// </summary>
 public static class ModeledAuras
 {
-    public static HashSet<int> LogIds(Hero hero)
+    public static HashSet<int> LogIds(Hero hero) => Defs(hero).Select(a => a.LogId).ToHashSet();
+
+    /// <summary>The modeled auras with a log ID, but the passive ones (on all fight in the engine, never logged as buffs).</summary>
+    public static IEnumerable<AuraDef> Defs(Hero hero)
     {
         var owners = new List<object> { hero };
         owners.AddRange(hero.Abilities);
@@ -19,11 +22,7 @@ public static class ModeledAuras
         owners.AddRange(hero.Legendaries);
         owners.AddRange(hero.RelicPassives);
         var declared = AuraDef.DeclaredOn(owners.Select(o => o.GetType()));
-        // Passive auras are left out: they are on all fight in the engine and logs do not report them as buffs.
-        return declared.Concat(hero.RuntimeAuras)
-            .Select(a => a.LogId)
-            .Where(id => id > 0)
-            .Except(hero.PassiveAuras.Select(a => a.LogId))
-            .ToHashSet();
+        var passive = hero.PassiveAuras.Select(a => a.LogId).ToHashSet();
+        return declared.Concat(hero.RuntimeAuras).Where(a => a.LogId > 0 && !passive.Contains(a.LogId));
     }
 }

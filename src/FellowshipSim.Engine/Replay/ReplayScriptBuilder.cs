@@ -306,7 +306,8 @@ public static class ReplayScriptBuilder
                 }
                 obsResources.Add(new JsonObject
                 {
-                    ["t"] = Rel(Num(e["timestamp"])), ["event"] = type, ["ability_id"] = e["abilityGameID"]?.DeepClone(), ["resources"] = byType,
+                    ["t"] = Rel(Num(e["timestamp"])), ["event"] = type, ["ability_id"] = e["abilityGameID"]?.DeepClone(),
+                    ["activation"] = e["activation"]?.GetValue<bool>() == true, ["resources"] = byType,
                 });
             }
         }

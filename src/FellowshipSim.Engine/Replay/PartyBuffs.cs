@@ -22,6 +22,12 @@ public static class PartyBuffs
     public const int GreedsEmbraceEffectId = 649;
     public const int BloodFrenzyEffectId = 192;
     public const int BloodScentEffectId = 3045;
+    public const int GreedyEffectId = 194;
+    public const int OrbEnergyEffectId = 2437;
+    public const int RainOfBloodEffectId = 2896;
+    public const int ReturnedBuffEffectId = 2463;
+    public const int WardstoneVulnerableEffectId = 1112;
+    public const int WardstoneFocusingVulnerableEffectId = 1108;
 
     public static readonly PartyBuff[] All =
     [
@@ -37,11 +43,33 @@ public static class PartyBuffs
         new(AuraDef.Effect("Shadow's Defeat", ShadowsDefeatEffectId, 60,
             modifiers: [StatModifier.More(StatType.DamageScale, 1.2), StatModifier.Increased(StatType.Haste, 1.2)])),
 
+        // Greedy (Greedspawned affix): effect modifier DamageScale 1.02 Multiplicitive per stack, up to 10 stacks.
+        new(AuraDef.Effect("Greedy", GreedyEffectId, maxStacks: 10, modifiers: StatModifier.Increased(StatType.DamageScale, 1.02))),
+
+        // Orb Energy: "5% Additional damage per stack" (effect modifier DamageScale 1.05 Multiplicitive, up to 99 stacks).
+        new(AuraDef.Effect("Orb Energy", OrbEnergyEffectId, maxStacks: 99, modifiers: StatModifier.Increased(StatType.DamageScale, 1.05))),
+
+        // Rain of Blood (Overlord Varux): "{DamageScale} damage dealt per stack" (effect modifier DamageScale 1.05
+        // Multiplicitive, up to 100 stacks).
+        new(AuraDef.Effect("Rain of Blood", RainOfBloodEffectId, maxStacks: 100, modifiers: StatModifier.Increased(StatType.DamageScale, 1.05))),
+
+        // Returned Buff (Deathless Katrine's Sever Soul, ability 589): effect 2463 modifier DamageScale 1.4 MultiplyCompound, 15s.
+        // Logs: Rime's hits under it are 1.409 of the engine without it (NhBnFXmy3bJg9Cav fight 33, 70 hits).
+        new(AuraDef.Effect("Returned Buff", ReturnedBuffEffectId, modifiers: StatModifier.More(StatType.DamageScale, 1.4))),
+
         // Enemy auras: only their damage taken is listed.
         // Anomalous Instability (Anomalous Orb affix): "Taking 400% damage." Logs: hits on targets with it are 3.8 to 3.9
         // times the engine's (Fc8v6yWxD14GQMnV fight 19, pWmcV42K39GHTLQX fight 23).
         new(AuraDef.Effect("Anomalous Instability", AnomalousInstabilityEffectId,
             modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 4.0))),
+
+        // Vulnerable (Godfall Wardstone, stunned or interrupted through Brittle, ability 898; and Focusing, ability 896):
+        // effect modifier IncomingDamageMultiplier 4 Multiplicitive, 8s. Logs: Rime's hits on Godfall Wardstones are 3.3-4.8
+        // times the engine's without it (GWChJ8P7tn6fHgV3 fight 20, AY1m6jPKTZyx4vz2 fight 9).
+        new(AuraDef.Effect("Vulnerable", WardstoneVulnerableEffectId,
+            modifiers: StatModifier.Increased(StatType.IncomingDamageMultiplier, 4.0))),
+        new(AuraDef.Effect("Vulnerable", WardstoneFocusingVulnerableEffectId,
+            modifiers: StatModifier.Increased(StatType.IncomingDamageMultiplier, 4.0))),
 
         // Greed's Embrace (Greedspawned Demon): "Damage taken reduced by 80%." Logs: 0.2 to 0.25 of the engine's hits
         // (pWmcV42K39GHTLQX fight 23).

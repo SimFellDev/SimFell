@@ -76,6 +76,10 @@ public sealed class Rime : Hero
         Abilities.Add(_flightOfTheNavir = new FlightOfTheNavir(this));
         Abilities.Add(new WrathOfWinter(this));
         Abilities.Add(_frostSwallows = new FrostSwallows(this));
+        Abilities.Add(new IceDash(this));
+        Abilities.Add(new BrainFreeze(this));
+        Abilities.Add(new FrostWard(this));
+        Abilities.Add(new FrigidWinds(this));
     }
 
     private BurstingIce? _burstingIce;

@@ -31,24 +31,67 @@ public class Topaz : Gem
         switch (node.Slot)
         {
             case 1: // Adrenaline Rush: Haste for 10s each time you deal damage to an enemy at 30% health or less.
-                var rush = node.Grants!;
-                double threshold = node.Value("HealthThreshold");
-                hero.OnDamageDealt += (in dmg) =>
-                {
-                    if (dmg.Target is { } target && target.HealthFraction <= threshold) hero.Auras.Apply(rush, dmg.Timestamp);
-                };
+                BindAdrenalineRush(hero, node);
                 return true;
             case 4: // Feline Grace: Haste.
                 hero.Stats.BonusHaste += node.Value("HasteBonus");
                 return true;
             case 5: // Blessing of the Virtuoso: "You retain X Haste from Spirit of Heroism while it is not active."
-                var essence = node.Grants!;
-                hero.PassiveAuras.Add(essence);
-                hero.SpiritOfHeroismStarted += ctx => hero.Auras.Remove(essence, ctx.CurrentTime);
-                hero.SpiritOfHeroismEnded += ctx => hero.Auras.Apply(essence, ctx.CurrentTime);
+                hero.PassiveAuras.Add(node.Grants!);
+                BindVirtuoso(hero, node);
                 return true;
             default: // Thief's Alacrity (rating, in the logged ratings) and Rogue's Resurgence (healing).
                 return true;
         }
     }
+
+    // Adrenaline Rush and Essence of the Virtuoso of the active ranks (null: none).
+    private AuraDef? _rush, _essence;
+    private double _rushThreshold;
+
+    private void BindAdrenalineRush(Hero hero, GemNode node)
+    {
+        SetRanks();
+        hero.OnDamageDealt += (in dmg) =>
+        {
+            if (_rush != null && dmg.Target is { } target && target.HealthFraction <= _rushThreshold) hero.Auras.Apply(_rush, dmg.Timestamp);
+        };
+    }
+
+    private void BindVirtuoso(Hero hero, GemNode node)
+    {
+        SetRanks();
+        hero.SpiritOfHeroismStarted += ctx =>
+        {
+            if (_essence != null) hero.Auras.Remove(_essence, ctx.CurrentTime);
+        };
+        hero.SpiritOfHeroismEnded += ctx =>
+        {
+            if (_essence != null) hero.Auras.Apply(_essence, ctx.CurrentTime);
+        };
+    }
+
+    private void SetRanks()
+    {
+        _rush = NodeInSlot(1)?.Grants;
+        _rushThreshold = NodeInSlot(1)?.Value("HealthThreshold") ?? 0.0;
+        _essence = NodeInSlot(5)?.Grants;
+    }
+
+    protected override void BindLater(Hero hero, GemNode node, SimTime now)
+    {
+        if (node.Slot == 1) BindAdrenalineRush(hero, node);
+        if (node.Slot != 5) return;
+        BindVirtuoso(hero, node);
+        if (!hero.Auras.HasAura(Hero.SpiritOfHeroism, now)) hero.Auras.Apply(node.Grants!, now);
+    }
+
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now) => SetRanks();
+
+    protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
+    {
+        2 => [StatModifier.Add(StatType.HasteRating, node.Value("HasteBonus"))],
+        4 => [StatModifier.Add(StatType.Haste, node.Value("HasteBonus"))],
+        _ => [],
+    };
 }

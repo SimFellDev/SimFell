@@ -96,10 +96,18 @@ public class IceComet : RimeAbility
         double critMultiplier = CritMultiplierAt(now);
         ctx.Schedule(SimTime.FromSeconds(delaySeconds), c =>
         {
-            Impact(c, target, damage, critChance, critMultiplier, fixedFalloff: null);
+            double impactCrit = 0.0;
+            foreach (var bonus in ImpactCritChanceBonuses) impactCrit += bonus(c);
+            Impact(c, target, damage, critChance + impactCrit, critMultiplier, fixedFalloff: null);
             if (raisesStruck) RaiseStruck(c, target);
         }, Name);
     }
+
+    /// <summary>
+    /// Crit chance a comet's impact gets when it strikes (each read once per impact, for every enemy struck): buffs the
+    /// next comet to deal damage uses up (Frostweaver's Wrath).
+    /// </summary>
+    public List<Func<SimulationContext, double>> ImpactCritChanceBonuses { get; } = new();
 
     protected void RaiseStruck(SimulationContext ctx, EnemyTarget target)
     {

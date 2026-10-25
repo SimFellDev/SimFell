@@ -34,12 +34,15 @@ public class AmethystSplinters : Aspect
         {
             Tick = ctx =>
             {
-                NextTick = null;
-                if (target.IsSleeping || ctx.CurrentTime >= EndsAt) return;
-                // The crit's damage already includes the hero's damage buffs, so the ticks are not scaled again.
+                if (target.IsSleeping || ctx.CurrentTime >= EndsAt)
+                {
+                    NextTick?.Cancel();
+                    NextTick = null;
+                    return;
+                }
+                // The crit's damage already includes the hero's damage buffs, so the ticks are not scaled again; a crit
+                // landing before the next tick restarts the 8 seconds and keeps the rhythm.
                 ctx.ApplyDamage(hero, target, TickValue, logId, DotName, canCrit: false, 0.0, 1.0);
-                // Keep the rhythm: a crit landing before the next tick restarts the 8 seconds.
-                NextTick = HastedTimer.Start(ctx, hero, TickPeriodSeconds, Tick!, DotName);
             };
         }
 
@@ -53,6 +56,8 @@ public class AmethystSplinters : Aspect
     {
         double share = ForRank(DamageShareByRank);
         int logId = LogIds.Effect(DotEffectId);
+        // Effect 101 is tagged EffectType.Dot: its ticks run on the game's period timer.
+        hero.DotDamageIds.Add(logId);
         var splinters = new Dictionary<EnemyTarget, Splinter>();
         // The fight the splinters belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;
@@ -72,7 +77,7 @@ public class AmethystSplinters : Aspect
             double left = s.EndsAt > now ? s.TickValue * (s.EndsAt - now).TotalSeconds / TickPeriodSeconds : 0.0;
             s.TickValue = (left + dmg.Amount * share) / BaseTicks;
             s.EndsAt = now + SimTime.FromSeconds(DurationSeconds);
-            s.NextTick ??= HastedTimer.Start(ctx, hero, TickPeriodSeconds, s.Tick, DotName);
+            s.NextTick ??= HastedTimer.StartPeriod(ctx, hero, TickPeriodSeconds, s.Tick, DotName, logId);
         };
     }
 }

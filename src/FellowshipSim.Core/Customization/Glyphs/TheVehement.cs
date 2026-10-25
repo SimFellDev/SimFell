@@ -34,24 +34,18 @@ public class TheVehement : Glyph
         // OPEN: gpfHLmTBrqcd3Zn4 fight 37 erupts one hit early 12 times, each on a Cold Snap that consumed Frostwyrm's Spite
         // with the counter at 2; PCaMVTFbZzNLrfx3 fight 5 never does in the same situation (10 times). Not modeled.
         var basicIds = hero.Abilities.Where(a => a.Category == AbilityCategory.Basic).Select(a => a.DamageLogId).ToHashSet();
-        int hits = 0;
-        // The fight the hits belong to (each sim iteration and replay has its own).
-        SimulationContext? fight = null;
         hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.SimContext == null || dmg.Target == null || !basicIds.Contains(dmg.AbilityId)) return;
-            if (fight != dmg.SimContext)
-            {
-                fight = dmg.SimContext;
-                hits = 0;
-            }
-            hits++;
+            // The count is the counter's stacks: the hero's death removes the counter and the count starts again (combat
+            // logs: GWChJ8P7tn6fHgV3 fight 20 @ 551.968 and 824.381, the counter removed 3ms after each death, the next
+            // BASIC hit at 1 stack).
+            int hits = hero.Auras.GetStacks(counter, dmg.Timestamp) + 1;
             if (hits < threshold)
             {
                 hero.Auras.Apply(counter, dmg.Timestamp, setStacks: hits);
                 return;
             }
-            hits = 0;
             hero.Auras.Remove(counter, dmg.Timestamp);
             var ctx = dmg.SimContext;
             var enemies = ctx.Outcomes.SelectTargets(damageId, ctx.ActiveEnemies, ctx);
