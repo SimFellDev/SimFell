@@ -32,9 +32,9 @@
                     <input @ref="_nameInput" aria-label="Action list name" placeholder="Action list name" autocomplete="off" @bind="State.Name" />
                     <select aria-label="Saved action lists" @bind:get="State.SelectedSaved" @bind:set="PickSaved">
                         <option value="">Load list...</option>
-                        @foreach (var saved in State.Saved)
+                        @foreach (var saved in State.Saved.Where(s => s.Hero.Equals(v.Hero, StringComparison.OrdinalIgnoreCase)))
                         {
-                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name (@saved.Hero@(saved.BuiltIn ? ", built in" : saved.Shared ? ", shared" : ""))</option>
+                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : saved.Shared ? " (shared)" : "")</option>
                         }
                     </select>
                     <button type="button" class="secondary-button" @onclick="Save">Save</button>
@@ -103,9 +103,7 @@
             State.Saved = await _savedLists.ListAsync();
             State.Editor.Load(v, []);
             State.Loaded = true;
-            // The editor starts on the hero's built-in default list.
-            string defaultList = SavedValue(new ActionListEntry(v.Hero, DefaultActionLists.DefaultName, BuiltIn: true));
-            if (State.Saved.Any(s => SavedValue(s) == defaultList)) await PickSaved(defaultList);
+            await PickDefault(v.Hero);
         }
         catch (Exception e)
         {
@@ -199,16 +197,26 @@
         });
     }
 
+    // Another hero's lists are of no use to this one: the editor opens the new hero's built-in default list, and the
+    // saved lists show only theirs.
     private async Task SelectHero(string hero)
     {
         try
         {
             State.Editor.SetVocabulary(await VocabularyOf(hero));
+            await PickDefault(State.Editor.Vocabulary!.Hero);
         }
         catch (Exception e)
         {
             Fail(e);
         }
+    }
+
+    /// <summary>Opens <paramref name="hero"/>'s built-in default list, or an empty one when it has none.</summary>
+    private Task PickDefault(string hero)
+    {
+        string defaultList = SavedValue(new ActionListEntry(hero, DefaultActionLists.DefaultName, BuiltIn: true));
+        return PickSaved(State.Saved.Any(s => SavedValue(s) == defaultList) ? defaultList : "");
     }
 
     private async Task LoadSavedLists(string selected = "")
