@@ -395,9 +395,7 @@
         int weaponLimit = GearFit.WeaponLimit(slot, Editor.HasWeapon);
         <span class="gear-count">
             <span>
-                <span class="where">@(slot is EnchantSlot.StatEnchants or EnchantSlot.Gems ? "Gear" : "Armor")</span>
-                @Editor.GearUsed(slot) / @GearFit.GearLimit(slot) ·
-                <span class="@(room > 0 ? "room" : "full")">@(room > 0 ? $"room for {room}" : "full")</span>
+                <span class="@(room > 0 ? "room" : "full")">@(room > 0 ? $"{room} Slots Available" : "Full")</span>
             </span>
             @if (weaponLimit > 0)
             {
