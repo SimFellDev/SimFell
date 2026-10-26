@@ -1,10 +1,19 @@
 @* A section of the page, with its title when the section is one of several. *@
 <section class="card" hidden="@Hidden">
-    @if (Title != null && Count != null)
+    @if (Title != null && (Count != null || CountContent != null))
     {
         <div class="head">
             <h2 class="title">@Title</h2>
-            <span class="count @(Over ? "over" : "")" title="@CountTitle">@Count</span>
+            <span class="count @(Over ? "over" : "")" title="@CountTitle">
+                @if (CountContent != null)
+                {
+                    @CountContent
+                }
+                else
+                {
+                    @Count
+                }
+            </span>
         </div>
     }
     else if (Title != null)
@@ -22,6 +31,9 @@
 
     /// <summary>A count shown beside the title ("4 / 12"), or none.</summary>
     [Parameter] public string? Count { get; set; }
+
+    /// <summary>A count with more than text in it, in place of <see cref="Count"/>.</summary>
+    [Parameter] public RenderFragment? CountContent { get; set; }
 
     /// <summary>What <see cref="Count"/> counts, on hover.</summary>
     [Parameter] public string? CountTitle { get; set; }

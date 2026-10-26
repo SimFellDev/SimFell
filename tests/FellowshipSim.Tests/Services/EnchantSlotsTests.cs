@@ -16,25 +16,79 @@ public class EnchantSlotsTests
     private static BuildEditor NewEditor() => new(BuildEditor.NewBuild("Rime"));
 
     [Fact]
-    public void Each_Kind_Stops_At_Its_Limit()
+    public void Each_Kind_Stops_Where_The_Gear_Has_No_Slot_Left_For_It()
     {
         var editor = NewEditor();
         foreach (var glyph in editor.Catalog.Glyphs) editor.SetGlyphRank(glyph, glyph.MaxRank);
         Assert.Equal(12, editor.Used(EnchantSlot.Glyphs));
 
+        // 12 glyphs take 2 slots of each armor piece, so gems fill the 7 other pieces (2 each) and the 6 armor slots left.
         foreach (var color in BuildCatalog.GemColors) editor.SetGearBonuses(color, 10);
-        Assert.Equal(26, editor.Used(EnchantSlot.Gems));
-
-        // 26 + 12 = 38 of 39: one more of anything, then nothing.
+        Assert.Equal(14 + 6, editor.Used(EnchantSlot.Gems));
+        Assert.Equal(32, editor.UsedTotal);
         var aspect = editor.Catalog.Aspects[0];
         editor.SetAugmentationRank(aspect, aspect.MaxRank);
-        Assert.Equal(1, editor.AugmentationRank(aspect.Id));
-        Assert.Equal(39, editor.UsedTotal);
+        Assert.Equal(0, editor.AugmentationRank(aspect.Id));
         Assert.Equal(0, editor.Room(EnchantSlot.Sigils));
-        // Protective enchants are outside the 39: all three still fit, and a fourth does not.
+        // The other pieces' third slots still take stat enchants.
+        Assert.Equal(7, editor.Room(EnchantSlot.StatEnchants));
+        Assert.True(editor.FitsGear);
+        // Protective enchants are apart: all three still fit, and a fourth does not.
         foreach (var p in editor.Catalog.ProtectiveEnchants.Take(3)) Assert.True(editor.ToggleProtectiveEnchant(p));
         Assert.False(editor.ToggleProtectiveEnchant(editor.Catalog.ProtectiveEnchants[3]));
-        Assert.Equal(39, editor.UsedTotal);
+    }
+
+    private static Func<EnchantSlot, int> Counts(int aspects = 0, int sigils = 0, int glyphs = 0, int stats = 0, int gems = 0) => slot => slot switch
+    {
+        EnchantSlot.Aspects => aspects,
+        EnchantSlot.Sigils => sigils,
+        EnchantSlot.Glyphs => glyphs,
+        EnchantSlot.StatEnchants => stats,
+        _ => gems,
+    };
+
+    [Fact]
+    public void Each_Kind_Alone_Fills_Two_Slots_Of_Every_Piece_That_Takes_It()
+    {
+        Assert.True(GearFit.Fits(Counts(aspects: 12), weapon: false));
+        Assert.False(GearFit.Fits(Counts(aspects: 13), weapon: false));
+        Assert.True(GearFit.Fits(Counts(stats: 26), weapon: false));
+        Assert.True(GearFit.Fits(Counts(gems: 26), weapon: false));
+        Assert.Equal(12, GearFit.Room(EnchantSlot.Glyphs, Counts(), weapon: false));
+        Assert.Equal(26 + 2, GearFit.Room(EnchantSlot.StatEnchants, Counts(), weapon: true));
+    }
+
+    [Fact]
+    public void Stat_Enchants_And_Gems_Fill_The_Other_Pieces_First()
+    {
+        // Armor full of aspects and sigils, the other pieces full of stats and gems: 39, nothing more fits.
+        var full = Counts(aspects: 12, sigils: 6, stats: 14, gems: 7);
+        Assert.True(GearFit.Fits(full, weapon: false));
+        Assert.All(GearFit.Kinds, k => Assert.Equal(0, GearFit.Room(k, full, weapon: false)));
+
+        // A gem off frees a slot on an other piece: a gem fits again, an aspect does not, and nor does a stat enchant
+        // (those pieces already hold 2 each).
+        var oneGemOff = Counts(aspects: 12, sigils: 6, stats: 14, gems: 6);
+        Assert.Equal(1, GearFit.Room(EnchantSlot.Gems, oneGemOff, weapon: false));
+        Assert.Equal(0, GearFit.Room(EnchantSlot.Aspects, oneGemOff, weapon: false));
+        Assert.Equal(0, GearFit.Room(EnchantSlot.StatEnchants, oneGemOff, weapon: false));
+
+        // 12 aspects leave 6 armor slots, and the other pieces take 14 stat enchants: 26 do not fit.
+        Assert.False(GearFit.Fits(Counts(aspects: 12, stats: 26), weapon: false));
+        Assert.Equal(20, GearFit.Room(EnchantSlot.StatEnchants, Counts(aspects: 12), weapon: false));
+    }
+
+    [Fact]
+    public void A_Weapons_Tree_Holds_An_Aspect_Two_Sigils_And_Two_Stat_Enchants_First()
+    {
+        var editor = NewEditor();
+        editor.Weapon = editor.Catalog.Weapons[0].Id;
+        var aspect = editor.Catalog.Aspects[0];
+        editor.SetAugmentationRank(aspect, 1);
+        Assert.Equal((1, 0), (editor.WeaponUsed(EnchantSlot.Aspects), editor.GearUsed(EnchantSlot.Aspects)));
+        editor.SetAugmentationRank(aspect, 3);
+        Assert.Equal((1, 2), (editor.WeaponUsed(EnchantSlot.Aspects), editor.GearUsed(EnchantSlot.Aspects)));
+        Assert.Equal(13 - 3, editor.Room(EnchantSlot.Aspects));
     }
 
     [Fact]

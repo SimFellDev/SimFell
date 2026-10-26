@@ -14,8 +14,20 @@ public enum EnchantSlot { StatEnchants, Gems, Aspects, Sigils, Glyphs, Protectiv
 /// <summary>The limits of each <see cref="EnchantSlot"/> (per the user).</summary>
 public static class EnchantSlots
 {
+    /// <summary>The armor pieces that take aspects, sigils and glyphs as well (head, shoulders, chest, back, hands, waist and feet, less the legendary's).</summary>
+    public const int ArmorPieces = 6;
+
+    /// <summary>The pieces that take stat enchants and gem power bonuses alone (the weapon item, neck, wrists, rings and trinkets).</summary>
+    public const int OtherPieces = 7;
+
+    /// <summary>Enchants each piece holds.</summary>
+    public const int SlotsPerPiece = 3;
+
+    /// <summary>The most enchants of one kind a piece holds (combat logs: no item of 89 players holds more).</summary>
+    public const int MostOfAKindPerPiece = 2;
+
     /// <summary>Enchants a build wears in all, without the weapon's; protective enchants are not counted.</summary>
-    public const int Total = 39;
+    public const int Total = SlotsPerPiece * (ArmorPieces + OtherPieces);
 
     /// <summary>What a weapon adds to the limits: 2 sigils, 2 stat enchants and 1 aspect (5 in all).</summary>
     public const int WeaponSigils = 2;
