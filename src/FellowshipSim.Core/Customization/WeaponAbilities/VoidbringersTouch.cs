@@ -1,7 +1,7 @@
 namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
-/// Weapon ability 155 (weapon power 349): "Apply Voidbringer's Touch to target enemy for 15 seconds, causing 10% of all
+/// Weapon ability 155 (weapon power 349, debuff effect 68): "Apply Voidbringer's Touch to target enemy for 15 seconds, causing 10% of all
 /// damage you deal to any enemy to be replicated and stored in the effect. Once Voidbringer's Touch expires, or a total of
 /// 4250% Main Stat damage has been accumulated, the effect erupts in a shadowy explosion, instantly dealing the
 /// accumulated damage to the target. Voidbringer's Touch has +100% critical strike chance. ... always triggers if the
@@ -13,6 +13,7 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 public class VoidbringersTouch : Ability
 {
     public const int AbilityId = 155;
+    public const int DebuffEffectId = 68;
     public const string AbilityName = "Voidbringer's Touch";
     public const double CooldownSeconds = 90.0;
     public const double DurationSeconds = 15.0;
@@ -20,6 +21,9 @@ public class VoidbringersTouch : Ability
     /// <summary>The cap on stored damage, as Main Stat.</summary>
     public const double CapCoefficient = 42.5;
     public const double CritChance = 1.0;
+
+    /// <summary>The debuff on the touched enemy while it stores damage (effect 68, "Voidbringer's Touch", 15 seconds).</summary>
+    public static readonly AuraDef Debuff = AuraDef.Effect(AbilityName, DebuffEffectId, DurationSeconds);
 
     private EnemyTarget? _target;
     private double _stored;
@@ -55,6 +59,7 @@ public class VoidbringersTouch : Ability
         }
         if (_target != null) Erupt(ctx);
         _target = target;
+        target.Auras.Apply(Debuff, ctx.CurrentTime);
         _stored = 0.0;
         int touch = ++_touch;
         ctx.Schedule(SimTime.FromSeconds(DurationSeconds), c => { if (touch == _touch) Erupt(c); }, Name);
@@ -70,6 +75,7 @@ public class VoidbringersTouch : Ability
     private void Erupt(SimulationContext ctx)
     {
         if (_target is not { } target) return;
+        target.Auras.Remove(Debuff, ctx.CurrentTime);
         double share = Math.Min(1.0, _stored / Cap(ctx));
         _target = null;
         _stored = 0.0;

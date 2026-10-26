@@ -20,7 +20,7 @@ actions.talons+=/cold_snap,if=cooldown.chronoshift.up&worb<5&!buff.glacial_assau
 actions.talons+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|fight_remains<=30)&(cooldown.cold_snap.charges=0|worb>=5)&target.time_to_die>=10
 actions.talons+=/wrath_of_winter,if=(target.time_to_die>=18|fight_remains<=20)&(buff.ice_blitz.up|spirit>=85)
 actions.talons+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
-actions.talons+=/voidbringers_touch,if=!debuff.voidbringer_accumulator.up
+actions.talons+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 
 # --------------------------------------------------------------------
 # Priority 2: Keep Winter's Embrace Active & Prime Spenders (Bursting Ice on Cooldown)

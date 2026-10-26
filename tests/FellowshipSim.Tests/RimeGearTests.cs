@@ -1,4 +1,5 @@
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Customization.WeaponAbilities;
 using FellowshipSim.Core.Domain;
@@ -8,7 +9,7 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>Skandi's Decree and Nature's Fury (Branch of the Everliving) in a sim.</summary>
+/// <summary>Skandi's Decree, Nature's Fury (Branch of the Everliving) and Voidbringer's Touch in a sim.</summary>
 public class RimeGearTests
 {
     [Fact]
@@ -39,6 +40,29 @@ public class RimeGearTests
         // One cast in 30s (cooldown 60s): four hits, 0.3s apart.
         Assert.Equal(NaturesFury.Hits, hits.Count);
         for (int i = 1; i < hits.Count; i++) Assert.Equal(NaturesFury.BounceSeconds, hits[i].Time - hits[i - 1].Time, 3);
+    }
+
+    [Fact]
+    public void Voidbringers_Touch_Is_A_Debuff_On_Its_Target_Until_It_Erupts()
+    {
+        var vocabulary = AplVocabulary.For("Rime");
+        var touched = AplParser.ParseExpression("debuff.voidbringers_touch.up");
+        Assert.Equal(AplTokenKind.Debuff, vocabulary.Classify((PropertyExpression)touched).Kind);
+
+        var hero = HeroImporter.Import(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, WeaponAbilityId = VoidbringersTouch.AbilityId });
+        int frostBolt = hero.GetAbility<FrostBolt>()!.DamageLogId;
+        var bolts = new List<(double Time, int Stacks)>();
+        hero.OnDamageDealt += (in dmg) =>
+        {
+            if (dmg.AbilityId == frostBolt) bolts.Add((dmg.Timestamp.TotalSeconds, dmg.Target!.Auras.GetStacks(VoidbringersTouch.Debuff, dmg.Timestamp)));
+        };
+        new MonteCarloSimulator(() => hero, AplParser.ParseScript("actions=voidbringers_touch,if=!debuff.voidbringers_touch.up\nactions+=/frost_bolt"))
+            .Run(SimTime.FromSeconds(40), 1, 1, degreeOfParallelism: 1);
+
+        // Frost Bolts store far short of the cap, so the touch erupts when it runs out at 15s.
+        Assert.Contains(bolts, b => b.Time < VoidbringersTouch.DurationSeconds);
+        Assert.Contains(bolts, b => b.Time > VoidbringersTouch.DurationSeconds);
+        Assert.All(bolts, b => Assert.Equal(b.Time < VoidbringersTouch.DurationSeconds ? 1 : 0, b.Stacks));
     }
 
     private static int Hits(CharacterBuild build, string apl, Func<Hero, int> damageId)
