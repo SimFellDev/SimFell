@@ -7,6 +7,7 @@
 @if (Report is { } shown)
 {
     <div class="report-head">
+        <button type="button" class="secondary-button" @onclick="() => _report = null">‹ Back to all runs</button>
         <strong>@shown.Label</strong>
         <span class="meta">@shown.Detail</span>
     </div>
