@@ -18,14 +18,14 @@
             }
         </nav>
         <div class="result-tabs @(ResultTabs.Count == 0 ? "empty" : "")" @ref="_resultTabs">
-            <button type="button" class="arrow" data-scroll="-1" title="Scroll left" aria-label="Scroll the open results left">‹</button>
+            <button type="button" class="arrow" data-scroll="-1" data-tooltip="Scroll left" aria-label="Scroll the open results left">‹</button>
             <div class="strip" data-strip>
                 @foreach (var tab in ResultTabs)
                 {
                     @TabButton(tab)
                 }
             </div>
-            <button type="button" class="arrow" data-scroll="1" title="Scroll right" aria-label="Scroll the open results right">›</button>
+            <button type="button" class="arrow" data-scroll="1" data-tooltip="Scroll right" aria-label="Scroll the open results right">›</button>
         </div>
         @if (ResultTabs.Count > 0)
         {
@@ -42,11 +42,11 @@
                             @foreach (var tab in ResultTabs.AsEnumerable().Reverse())
                             {
                                 <li @key="tab.Key" class="@(tab == Tabs.Selected ? "selected" : "")">
-                                    <button type="button" class="pick" role="menuitem" title="@tab.Title" @onclick="() => Pick(tab)">
+                                    <button type="button" class="pick" role="menuitem" data-tooltip="@tab.Title" @onclick="() => Pick(tab)">
                                         <span class="kind">@(tab.Kind == DesktopTabKind.Review ? "Review" : "Sim")</span>
                                         <span class="pick-title">@tab.Title</span>
                                     </button>
-                                    <button type="button" class="close" title="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
+                                    <button type="button" class="close" data-tooltip="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
                                 </li>
                             }
                         </ul>
@@ -80,6 +80,7 @@
         </section>
     }
 </div>
+<TooltipLayer />
 
 @code {
     private ElementReference _resultTabs;
@@ -93,13 +94,13 @@
     {
         bool selected = tab == Tabs.Selected;
         <div @key="tab.Key" class="tab @(selected ? "selected" : "") @(tab.Closable ? "closable" : "")">
-            <button type="button" class="select" role="tab" aria-selected="@(selected ? "true" : "false")" title="@tab.Title"
+            <button type="button" class="select" role="tab" aria-selected="@(selected ? "true" : "false")" data-tooltip="@tab.Title"
                     @onclick="() => Tabs.Select(tab)">
                 @tab.Title
             </button>
             @if (tab.Closable)
             {
-                <button type="button" class="close" title="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
+                <button type="button" class="close" data-tooltip="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
             }
         </div>
     };

@@ -1,0 +1,22 @@
+@*
+    What it wraps, with a tooltip of markup. An element whose tooltip is plain text takes data-tooltip="..." instead, and no
+    wrapper. The content is rendered hidden beside the child; tooltip.js copies it into the bubble (TooltipLayer).
+*@
+@if (Content == null)
+{
+    @ChildContent
+}
+else
+{
+    <span class="tooltip-anchor" data-tooltip-direction="@Direction.ToString().ToLowerInvariant()">@ChildContent<span class="tooltip-content" hidden>@Content</span></span>
+}
+
+@code {
+    /// <summary>The tooltip; without it, the child shows with no tooltip.</summary>
+    [Parameter] public RenderFragment? Content { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The side the tooltip goes on when the window has room there.</summary>
+    [Parameter] public TooltipDirection Direction { get; set; } = TooltipDirection.Down;
+}

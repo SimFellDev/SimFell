@@ -18,12 +18,12 @@
                             <th>Hero</th>
                             <th>Fight</th>
                             <th>Logged</th>
-                            <th class="num" title="Log hits the engine reproduced">Hits matched</th>
-                            <th class="num" title="Exact replay (the log decides crits, procs and targets): engine damage as a share of the log's">Replay vs log</th>
-                            <th class="num" title="Free dice (only the casts follow the log; the engine rolls its own crits and procs): the engine's average over many runs as a share of the log">Free dice vs log</th>
-                            <th class="num" title="Share of free-dice runs that dealt less than the log: near 50% means the log is a typical run; near 0% the engine is too high, near 100% too low">Log's place</th>
-                            <th class="num" title="Replay steps with no issues">Clean steps</th>
-                            <th class="num" title="Casts the engine would have refused but were forced to follow the log">Forced casts</th>
+                            <th class="num" data-tooltip="Log hits the engine reproduced">Hits matched</th>
+                            <th class="num" data-tooltip="Exact replay (the log decides crits, procs and targets): engine damage as a share of the log's">Replay vs log</th>
+                            <th class="num" data-tooltip="Free dice (only the casts follow the log; the engine rolls its own crits and procs): the engine's average over many runs as a share of the log">Free dice vs log</th>
+                            <th class="num" data-tooltip="Share of free-dice runs that dealt less than the log: near 50% means the log is a typical run; near 0% the engine is too high, near 100% too low">Log's place</th>
+                            <th class="num" data-tooltip="Replay steps with no issues">Clean steps</th>
+                            <th class="num" data-tooltip="Casts the engine would have refused but were forced to follow the log">Forced casts</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -41,7 +41,7 @@
                                     @date
                                     @if (r.FightDate is { } logged && !GamePatch.Current.Covers(logged, null))
                                     {
-                                        <span class="old-patch" title="@($"Logged before patch {GamePatch.Current.Name}, which the engine models: this review is no guide to the engine's accuracy now.")">old patch</span>
+                                        <span class="old-patch" data-tooltip="@($"Logged before patch {GamePatch.Current.Name}, which the engine models: this review is no guide to the engine's accuracy now.")">old patch</span>
                                     }
                                 </td>
                                 <td class="num @RatioClass(hits, 0.02, 0.05)">@Percent(hits)</td>
@@ -50,7 +50,7 @@
                                 {
                                     double fdDamage = fd.EngineMean / fd.LogDamage;
                                     <td class="num @RatioClass(fdDamage, 0.02, 0.05)"
-                                        title="@($"{fd.Runs} runs, engine 5-95%: {Math.Round(fd.Engine5, MidpointRounding.AwayFromZero):N0} - {Math.Round(fd.Engine95, MidpointRounding.AwayFromZero):N0}")">
+                                        data-tooltip="@($"{fd.Runs} runs, engine 5-95%: {Math.Round(fd.Engine5, MidpointRounding.AwayFromZero):N0} - {Math.Round(fd.Engine95, MidpointRounding.AwayFromZero):N0}")">
                                         <button type="button" class="link-button" @onclick="() => Views.ShowReview(FreeDiceFile(r), ReviewTitle.FreeDice(r))">@Percent(fdDamage)</button>
                                     </td>
                                     <td class="num @PlaceClass(fd.LogPercentile)">@(Math.Round(fd.LogPercentile * 100, MidpointRounding.AwayFromZero))%</td>

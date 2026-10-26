@@ -25,7 +25,7 @@
         <aside class="sidebar" aria-label="Sim results">
             <div class="sidebar-head">
                 <h2>Sim results</h2>
-                <button type="button" class="icon-button" title="Close" aria-label="Close" @onclick="Close">✕</button>
+                <button type="button" class="icon-button" data-tooltip="Close" aria-label="Close" @onclick="Close">✕</button>
             </div>
             <div class="sidebar-body">
                 @if (Jobs.List().Where(j => j.Kind == SimJobKind.Sim && j.Status != SimJobStatus.Done).Reverse().ToList() is { Count: > 0 } jobs)
@@ -38,7 +38,7 @@
                                 <button type="button" class="pick" @onclick="() => Show(job)">
                                     <span class="item-head">
                                         <span class="kind">@job.Kind</span>
-                                        <span class="item-title" title="@job.Title">@job.Title</span>
+                                        <span class="item-title" data-tooltip="@job.Title">@job.Title</span>
                                         <span class="status @job.Status.ToString().ToLowerInvariant()">@job.Status</span>
                                     </span>
                                     <JobProgress Job="job" />
@@ -48,7 +48,7 @@
                                     {
                                         <button type="button" class="secondary-button" @onclick="() => Jobs.Cancel(job.Id)">Cancel</button>
                                     }
-                                    <button type="button" class="icon-button danger-button" title="Remove" aria-label="Remove"
+                                    <button type="button" class="icon-button danger-button" data-tooltip="Remove" aria-label="Remove"
                                             @onclick="() => Jobs.Remove(job.Id)">✕</button>
                                 </span>
                             </li>
@@ -69,7 +69,7 @@
                                 <button type="button" class="pick" @onclick="() => Show(result)">
                                     <span class="item-head">
                                         <span class="kind">@result.Kind</span>
-                                        <span class="item-title" title="@result.Title">@result.Title</span>
+                                        <span class="item-title" data-tooltip="@result.Title">@result.Title</span>
                                     </span>
                                     <span class="item-meta">
                                         <span>@result.Value</span>

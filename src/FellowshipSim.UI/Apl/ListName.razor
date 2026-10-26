@@ -1,7 +1,7 @@
 @* The name of a list other than the default, and its delete button. The name is taken on leaving the field or pressing Enter. *@
 <h3><label for="@Id">Action list</label></h3>
 <input id="@Id" class="name" spellcheck="false" autocomplete="off" @bind="_name" @bind:after="Commit" />
-<button type="button" class="icon-button danger-button" title="Delete list" aria-label="Delete list" @onclick="() => Editor.RemoveList(List.Name)">
+<button type="button" class="icon-button danger-button" data-tooltip="Delete list" aria-label="Delete list" @onclick="() => Editor.RemoveList(List.Name)">
     <Icon Shape="IconShape.Bin" />
 </button>
 

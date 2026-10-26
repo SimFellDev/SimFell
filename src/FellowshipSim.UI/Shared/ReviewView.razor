@@ -12,7 +12,7 @@
 *@
 <div class="review-bar">
     <div class="leading">@Leading</div>
-    <button type="button" class="secondary-button" disabled="@(!_loaded)" title="Save this review as an HTML file" @onclick="SaveAsync">Save as HTML</button>
+    <button type="button" class="secondary-button" disabled="@(!_loaded)" data-tooltip="Save this review as an HTML file" @onclick="SaveAsync">Save as HTML</button>
 </div>
 <div @ref="_host" class="review-host"></div>
 

@@ -137,10 +137,10 @@
                             <th>Ability</th>
                             <th class="amount-cell">Amount</th>
                             <th>Casts</th>
-                            <th title="Damage per cast">Avg cast</th>
+                            <th data-tooltip="Damage per cast">Avg cast</th>
                             <th>Hits</th>
-                            <th title="Damage per hit, crits included">Avg hit</th>
-                            <th title="The hits' mean chance to crit (a sim deals each hit's expected damage)">Crit %</th>
+                            <th data-tooltip="Damage per hit, crits included">Avg hit</th>
+                            <th data-tooltip="The hits' mean chance to crit (a sim deals each hit's expected damage)">Crit %</th>
                             <th>DPS</th>
                         </tr>
                     </thead>
@@ -210,7 +210,7 @@
                         <ol class="cast-list">
                             @foreach (var cast in window)
                             {
-                                <li title="@($"{cast.Name} at {Clock(cast.Time, tenths: true)}")">
+                                <li data-tooltip="@($"{cast.Name} at {Clock(cast.Time, tenths: true)}")">
                                     <GameIcon Url="@BuildCatalog.IconUrl(cast.Id, cast.Name)" Size="30" />
                                     <span>@cast.Time.ToString("0.0", CultureInfo.CurrentCulture)</span>
                                 </li>
@@ -267,13 +267,13 @@
                 <tr>
                     <th>@kind</th>
                     <th class="amount-cell">Uptime</th>
-                    <th title="Applications: times it starts, per fight">Apps</th>
-                    <th title="Refreshes: times it is applied again while up, per fight">Refr.</th>
-                    <th title="Average duration">Dur.</th>
-                    <th title="Average stacks while up">Stacks</th>
-                    <th title="Most stacks">Max</th>
-                    <th title="Share of the fight at the most stacks">At max</th>
-                    <th title="Average gap: time from one ending to the next starting">Gap</th>
+                    <th data-tooltip="Applications: times it starts, per fight">Apps</th>
+                    <th data-tooltip="Refreshes: times it is applied again while up, per fight">Refr.</th>
+                    <th data-tooltip="Average duration">Dur.</th>
+                    <th data-tooltip="Average stacks while up">Stacks</th>
+                    <th data-tooltip="Most stacks">Max</th>
+                    <th data-tooltip="Share of the fight at the most stacks">At max</th>
+                    <th data-tooltip="Average gap: time from one ending to the next starting">Gap</th>
                 </tr>
             </thead>
             <tbody>

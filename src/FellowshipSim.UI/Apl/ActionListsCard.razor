@@ -40,7 +40,7 @@
                     <button type="button" class="secondary-button" @onclick="Save">Save</button>
                     <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
                     <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
-                    <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" title="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
+                    <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" data-tooltip="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
                 </div>
                 @if (_pending is { } pending)
                 {

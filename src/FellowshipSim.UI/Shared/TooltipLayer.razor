@@ -1,0 +1,45 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@*
+    The bubble every tooltip shows in: an element's data-tooltip text, or a Tooltip component's content. tooltip.js fills,
+    places and hides it; Blazor renders it once, empty. Each frame (MainLayout, DesktopShell) has one.
+*@
+<div class="tooltip" id="app-tooltip" role="tooltip" hidden @ref="_bubble"></div>
+
+@code {
+    private ElementReference _bubble;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _handle;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/tooltip/tooltip.js");
+            _handle = await _module.InvokeAsync<IJSObjectReference>("start", _bubble);
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The page closed.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_handle != null)
+            {
+                await _handle.InvokeVoidAsync("dispose");
+                await _handle.DisposeAsync();
+            }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, and the page with it.
+        }
+    }
+}

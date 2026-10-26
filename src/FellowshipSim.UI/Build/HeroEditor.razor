@@ -93,7 +93,7 @@
                 <strong>@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</strong>
                 @foreach (var stat in BuildEditor.InGameOrder)
                 {
-                    <span class="sheet-label" title="@SheetNote(stat)">@StatName(stat)</span>
+                    <span class="sheet-label" data-tooltip="@SheetNote(stat)">@StatName(stat)</span>
                     <strong class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</strong>
                 }
             </div>
@@ -103,8 +103,8 @@
                 <div class="stat-group">
                     <span>Primary</span>
                     <span class="rating">
-                        <span class="column" title="The stats the gear gives">Gear</span>
-                        <span class="total" title="With the base main stat and the stat enchants">Total</span>
+                        <span class="column" data-tooltip="The stats the gear gives">Gear</span>
+                        <span class="total" data-tooltip="With the base main stat and the stat enchants">Total</span>
                     </span>
                 </div>
                 <label>
@@ -114,11 +114,11 @@
                         <span class="total"></span>
                     </span>
                 </label>
-                <label title="@($"The gear's main stat; the total adds the base {BuildEditor.BaseMainStat:0}")">
+                <label data-tooltip="@($"The gear's main stat; the total adds the base {BuildEditor.BaseMainStat:0}")">
                     Main stat
                     <span class="rating">
                         <input type="number" min="0" step="1" aria-label="Main stat from gear" @bind:get="Editor.MainStatBonus" @bind:set="v => Set(() => Editor.MainStatBonus = v)" />
-                        <span class="total" title="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the gear's")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
+                        <span class="total" data-tooltip="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the gear's")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
                 </label>
                 <div class="stat-group">
@@ -126,17 +126,17 @@
                 </div>
                 @foreach (var stat in BuildEditor.InGameOrder)
                 {
-                    <label @key="stat" title="@SheetNote(stat)">
+                    <label @key="stat" data-tooltip="@SheetNote(stat)">
                         @StatName(stat)
                         <span class="rating">
                             <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
-                            <span class="total" title="Total rating: the gear's and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
+                            <span class="total" data-tooltip="Total rating: the gear's and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
                         </span>
                     </label>
                 }
             </div>
             <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit || !Editor.FitsGear ? "over" : "")"
-                 title="@($"Slots filled: stat enchants, gem power bonuses, and aspect, sigil and glyph ranks (protective enchants not counted){(Editor.HasWeapon ? "; the weapon adds 5" : "")}")">
+                 data-tooltip="@($"Slots filled: stat enchants, gem power bonuses, and aspect, sigil and glyph ranks (protective enchants not counted){(Editor.HasWeapon ? "; the weapon adds 5" : "")}")">
                 <span>Slots</span>
                 <strong>@Editor.UsedTotal / @Editor.TotalLimit</strong>
             </div>
@@ -158,7 +158,7 @@
     <div class="editor-main">
         <Card Title="Talents">
             <div class="points">
-                <span class="count" title="Talent points spent">@(FellowshipSim.Core.Domain.Hero.TalentPoints - Editor.PointsLeft) / @FellowshipSim.Core.Domain.Hero.TalentPoints</span>
+                <span class="count" data-tooltip="Talent points spent">@(FellowshipSim.Core.Domain.Hero.TalentPoints - Editor.PointsLeft) / @FellowshipSim.Core.Domain.Hero.TalentPoints</span>
                 <button type="button" class="secondary-button small" @onclick="ClearTalents">Clear all</button>
             </div>
             <div class="tree">
@@ -171,7 +171,7 @@
                             bool picked = Editor.HasTalent(t.Slot.TalentId);
                             bool affordable = picked || t.Slot.Cost <= Editor.PointsLeft;
                             <button @key="t.Slot.TalentId" type="button" class="talent @(picked ? "picked" : "")" aria-pressed="@picked"
-                                    disabled="@(!affordable)" title="@TalentTitle(t)"
+                                    disabled="@(!affordable)" data-tooltip="@TalentTitle(t)"
                                     @onclick="() => ToggleTalent(t)">
                                 <GameIcon Url="@t.Talent.IconUrl" Size="36" />
                                 <span class="name">@t.Talent.Name</span>
@@ -205,7 +205,7 @@
                     {
                         bool picked = Editor.Legendary == l.Id;
                         <button @key="l.Id" type="button" class="chip @(picked ? "picked" : "")" aria-pressed="@picked"
-                                title="@(l.Modeled ? null : "Not modeled yet")" @onclick="() => Set(() => Editor.Legendary = picked ? null : l.Id)">
+                                data-tooltip="@(l.Modeled ? null : "Not modeled yet")" @onclick="() => Set(() => Editor.Legendary = picked ? null : l.Id)">
                             <GameIcon Url="@l.IconUrl" Size="24" />
                             @l.Name
                             @if (!l.Modeled)
@@ -215,14 +215,14 @@
                         </button>
                     }
                 </div>
-            <h3 class="section counted">Relics <span class="count" title="Relics worn">@Editor.RelicCount / @BuildEditor.RelicSlots</span></h3>
+            <h3 class="section counted">Relics <span class="count" data-tooltip="Relics worn">@Editor.RelicCount / @BuildEditor.RelicSlots</span></h3>
                 <div class="chips">
                     @foreach (var r in Catalog.Relics)
                     {
                         bool worn = Editor.HasRelic(r.ItemId);
                         bool full = !worn && Editor.RelicCount >= BuildEditor.RelicSlots;
                         <button @key="r.ItemId" type="button" class="chip @(worn ? "picked" : "")" aria-pressed="@worn" disabled="@full"
-                                title="@(full ? $"Take off one of the {BuildEditor.RelicSlots} first" : r.Name)" @onclick="() => Set(() => Editor.ToggleRelic(r.ItemId))">
+                                data-tooltip="@(full ? $"Take off one of the {BuildEditor.RelicSlots} first" : r.Name)" @onclick="() => Set(() => Editor.ToggleRelic(r.ItemId))">
                             <GameIcon Url="@r.IconUrl" Size="24" />
                             @r.PassiveName
                         </button>
@@ -248,7 +248,7 @@
                                 <button type="button" class="icon-button" aria-label="@($"One fewer {e.Name}")" disabled="@(count <= 0)"
                                         @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count - 1))">−</button>
                                 <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="count" @bind:set="v => Set(() => Editor.SetStatEnchantCount(e.Enchant, v))" />
-                                <button type="button" class="icon-button" aria-label="@($"One more {e.Name}")" disabled="@full" title="@(full ? FullText(EnchantSlot.StatEnchants) : null)"
+                                <button type="button" class="icon-button" aria-label="@($"One more {e.Name}")" disabled="@full" data-tooltip="@(full ? FullText(EnchantSlot.StatEnchants) : null)"
                                         @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count + 1))">+</button>
                             </span>
                         </div>
@@ -263,11 +263,11 @@
                             var gem = Editor.Socket(socket);
                             if (gem == null)
                             {
-                                <span @key="socket" class="socket empty" title="Empty socket"></span>
+                                <span @key="socket" class="socket empty" data-tooltip="Empty socket"></span>
                             }
                             else
                             {
-                                <button @key="socket" type="button" class="socket filled" title="@($"Take out the {gem.Name}")" aria-label="@($"Take out the {gem.Name}")"
+                                <button @key="socket" type="button" class="socket filled" data-tooltip="@($"Take out the {gem.Name}")" aria-label="@($"Take out the {gem.Name}")"
                                         @onclick="() => Set(() => Editor.SetSocket(socket, null))">
                                     <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="32" />
                                 </button>
@@ -286,7 +286,7 @@
                                 {
                                     int count = Editor.SocketedCount(g.Id);
                                     <button @key="g.Id" type="button" class="gem-pick @(count > 0 ? "picked" : "")" disabled="@socketsFull"
-                                            title="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
+                                            data-tooltip="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
                                             @onclick="() => Set(() => Editor.AddGem(g.Id))">
                                         <GameIcon Url="@BuildCatalog.GemIconUrl(g)" Size="26" />
                                         <span class="gem-pick-power">@g.Power</span>
@@ -303,7 +303,7 @@
                                             @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
                                     <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
                                     <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")" disabled="@(Editor.Room(EnchantSlot.Gems) <= 0)"
-                                            title="@(Editor.Room(EnchantSlot.Gems) <= 0 ? FullText(EnchantSlot.Gems) : null)"
+                                            data-tooltip="@(Editor.Room(EnchantSlot.Gems) <= 0 ? FullText(EnchantSlot.Gems) : null)"
                                             @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
                                 </span>
                             </span>
@@ -336,7 +336,7 @@
                         bool taken = Editor.AugmentationRank(p.Id) > 0;
                         bool full = !taken && Editor.Room(EnchantSlot.Protective) <= 0;
                         <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
-                                title="@(full ? FullText(EnchantSlot.Protective) : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
+                                data-tooltip="@(full ? FullText(EnchantSlot.Protective) : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
                             <GameIcon Url="@p.IconUrl" Size="24" />
                             @p.Name
                         </button>

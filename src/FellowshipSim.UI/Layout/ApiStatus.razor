@@ -2,7 +2,7 @@
 @inject LogsSettingsStore Settings
 @inject IAppViews Views
 @* Whether the app can download fights from FellowshipLogs. It opens the settings. *@
-<button type="button" class="status @(_connected ? "connected" : "missing")" title="FellowshipLogs API settings"
+<button type="button" class="status @(_connected ? "connected" : "missing")" data-tooltip="FellowshipLogs API settings"
         @onclick="() => Views.ShowPage(AppPage.Setup)">
     <span class="dot" aria-hidden="true"></span>
     @(_connected ? "Logs API connected" : "Logs API not set up")

@@ -1,0 +1,4 @@
+/* The anchor has no box: the child lays out as it would unwrapped. */
+.tooltip-anchor {
+  display: contents;
+}

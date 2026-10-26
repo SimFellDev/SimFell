@@ -8,7 +8,7 @@
 *@
 <span class="picker">
     <button @ref="_button" type="button" class="value @ButtonClass" aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
-            title="@_title" @onclick="Toggle">
+            data-tooltip="@_title" @onclick="Toggle">
         @if (Value == null)
         {
             @("Pick a value")

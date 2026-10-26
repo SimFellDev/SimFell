@@ -10,24 +10,24 @@
     @ondragleave="DragLeave"
     @ondrop="Drop" @ondrop:preventDefault>
     <div class="head">
-        <span class="grip" title="Drag to reorder" draggable="true" data-grip @ondragstart="DragStart" @ondragend="DragEnd">
+        <span class="grip" data-tooltip="Drag to reorder" draggable="true" data-grip @ondragstart="DragStart" @ondragend="DragEnd">
             <Icon Shape="IconShape.Grip" />
         </span>
-        <button type="button" class="toggle" aria-expanded="@(Open ? "true" : "false")" title="@(Open ? "Collapse" : "Expand")"
+        <button type="button" class="toggle" aria-expanded="@(Open ? "true" : "false")" data-tooltip="@(Open ? "Collapse" : "Expand")"
                 @onclick="() => Editor.Toggle(Action.Key)">
             <Icon Shape="IconShape.Chevron" Class="chevron" />
             <span class="number">@(Index + 1)</span>
             <span class="ability">@ActionListModel.ActionTitle(Vocabulary, Action)</span>
         </button>
-        <button type="button" class="icon-button move" title="Move up" aria-label="Move up" disabled="@(Index == 0)"
+        <button type="button" class="icon-button move" data-tooltip="Move up" aria-label="Move up" disabled="@(Index == 0)"
                 @onclick="() => Editor.MoveAction(List.Name, Index, Index - 1)">
             <Icon Shape="IconShape.Up" />
         </button>
-        <button type="button" class="icon-button move" title="Move down" aria-label="Move down" disabled="@(Index == List.Actions.Count - 1)"
+        <button type="button" class="icon-button move" data-tooltip="Move down" aria-label="Move down" disabled="@(Index == List.Actions.Count - 1)"
                 @onclick="() => Editor.MoveAction(List.Name, Index, Index + 1)">
             <Icon Shape="IconShape.Down" />
         </button>
-        <button type="button" class="icon-button danger-button" title="Delete action" aria-label="Delete action"
+        <button type="button" class="icon-button danger-button" data-tooltip="Delete action" aria-label="Delete action"
                 @onclick="() => Editor.RemoveAction(List.Name, Index)">
             <Icon Shape="IconShape.Bin" />
         </button>

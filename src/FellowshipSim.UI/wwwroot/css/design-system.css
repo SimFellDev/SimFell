@@ -133,3 +133,64 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* The tooltip bubble (TooltipLayer, tooltip.js), fixed to the window above every other layer. data-side is the side of
+   its element it is on, and --arrow the arrow's offset along that side. */
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: min(600px, calc(100vw - 20px));
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.25);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.tooltip[hidden] {
+  display: none;
+}
+
+.tooltip.rich {
+  white-space: normal;
+}
+
+.tooltip::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--surface);
+  border: solid var(--border);
+  border-width: 0 1px 1px 0;
+}
+
+.tooltip[data-side="up"]::after {
+  top: 100%;
+  left: var(--arrow);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.tooltip[data-side="down"]::after {
+  bottom: 100%;
+  left: var(--arrow);
+  transform: translate(-50%, 50%) rotate(-135deg);
+}
+
+.tooltip[data-side="left"]::after {
+  left: 100%;
+  top: var(--arrow);
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.tooltip[data-side="right"]::after {
+  right: 100%;
+  top: var(--arrow);
+  transform: translate(50%, -50%) rotate(135deg);
+}

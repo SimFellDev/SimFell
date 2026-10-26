@@ -15,7 +15,7 @@
             <span class="stepper">
                 <button type="button" class="icon-button" aria-label="@Label("Lower", option)" disabled="@(rank == 0)" @onclick="() => SetRank(option, rank - 1)">−</button>
                 <span class="rank" aria-label="@Label("Rank of", option)">@rank/@option.MaxRank</span>
-                <button type="button" class="icon-button" aria-label="@Label("Raise", option)" disabled="@(rank >= option.MaxRank || Room <= 0)" title="@(Room <= 0 && rank < option.MaxRank ? FullText : null)" @onclick="() => SetRank(option, rank + 1)">+</button>
+                <button type="button" class="icon-button" aria-label="@Label("Raise", option)" disabled="@(rank >= option.MaxRank || Room <= 0)" data-tooltip="@(Room <= 0 && rank < option.MaxRank ? FullText : null)" @onclick="() => SetRank(option, rank + 1)">+</button>
             </span>
         </div>
     }

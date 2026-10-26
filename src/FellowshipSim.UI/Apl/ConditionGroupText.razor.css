@@ -10,3 +10,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* The whole text in the tooltip, wrapped. */
+.group-tooltip {
+  font: 13px/1.5 var(--code-font);
+}

@@ -1,14 +1,10 @@
 @using FellowshipSim.Core.APL
 @implements IDisposable
-@* A closed group's text on one line, coloured once it has stayed the same for 300 ms, with the whole text in its title. *@
-<div class="group-text" title="@Text">@if (_text.Result is { } result && result.Text == _text.Text && _text.Text == Text)
-    {
-        <Highlight Text="@Text" Check="result.Check" />
-    }
-    else
-    {
-        @Text
-    }</div>
+@* A closed group's text on one line, coloured once it has stayed the same for 300 ms, with the whole text in its tooltip. *@
+<Tooltip>
+    <Content><span class="group-tooltip">@Coloured</span></Content>
+    <ChildContent><div class="group-text">@Coloured</div></ChildContent>
+</Tooltip>
 
 @code {
     [CascadingParameter] public ActionListEditor Editor { get; set; } = null!;
@@ -27,6 +23,18 @@
         }));
 
     protected override void OnParametersSet() => _text.Set(Vocabulary.Hero, Text);
+
+    private RenderFragment Coloured => __builder =>
+    {
+        if (_text.Result is { } result && result.Text == _text.Text && _text.Text == Text)
+        {
+            <Highlight Text="@Text" Check="result.Check" />
+        }
+        else
+        {
+            @Text
+        }
+    };
 
     public void Dispose() => _text.Dispose();
 }

@@ -10,7 +10,7 @@
     <div class="bar">
         <div class="segmented" role="group" aria-label="Condition editor">
             <button type="button" aria-pressed="@(Building ? "true" : "false")" disabled="@(Rows == null)"
-                    title="@(Rows == null ? "The text does not parse" : "")" @onclick="() => PickMode(ActionListEditor.BuilderMode)">
+                    data-tooltip="@(Rows == null ? "The text does not parse" : "")" @onclick="() => PickMode(ActionListEditor.BuilderMode)">
                 Builder
             </button>
             <button type="button" aria-pressed="@(!Building ? "true" : "false")" @onclick="() => PickMode(ActionListEditor.TextMode)">
@@ -156,7 +156,7 @@
             <div @key="rowKey" class="group @(item.Collapsed ? "closed" : null)">
                 <div class="group-start">
                     <button type="button" class="chevron-button" aria-expanded="@(item.Collapsed ? "false" : "true")"
-                            title="@(item.Collapsed ? "Expand" : "Collapse")" aria-label="@(item.Collapsed ? "Expand group" : "Collapse group")"
+                            data-tooltip="@(item.Collapsed ? "Expand" : "Collapse")" aria-label="@(item.Collapsed ? "Expand group" : "Collapse group")"
                             @onclick="() => ToggleGroup(item)">
                         <Icon Shape="IconShape.Chevron" Class="chevron" />
                     </button>
@@ -250,7 +250,7 @@
             }
             RenderTerm(__builder, term, termKey, patch => update(r => patch(locate(r)[at])));
         }
-        <select @key="@($"{key}:add:{_picks}")" aria-label="Add to this value" title="Add to this value" class="operator add" value=""
+        <select @key="@($"{key}:add:{_picks}")" aria-label="Add to this value" data-tooltip="Add to this value" class="operator add" value=""
                 @onchange="e => PickName(e, picked => AddToSide(picked, update, locate, addRow))">
             <option value=""></option>
             <optgroup label="Arithmetic">
@@ -416,7 +416,7 @@
 
     private void RenderDelete(RenderTreeBuilder __builder, string label, Func<Task> onClick)
     {
-        <button type="button" class="icon-button danger-button remove" title="@label" aria-label="@label" @onclick="onClick">
+        <button type="button" class="icon-button danger-button remove" data-tooltip="@label" aria-label="@label" @onclick="onClick">
             <Icon Shape="IconShape.Bin" />
         </button>
     }

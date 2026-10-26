@@ -41,7 +41,7 @@ else
     <section class="card">
         <div class="card-head">
             <h3>@Heading</h3>
-            <span class="legend"><i class="gain"></i>Better <i class="same"></i>Too close to call <i class="loss"></i>Worse <span title="Each sim is many random fights, so its DPS wobbles a little. The thin line around a bar is how far chance alone could move it.">· thin line: how far chance could move it</span></span>
+            <span class="legend"><i class="gain"></i>Better <i class="same"></i>Too close to call <i class="loss"></i>Worse <span data-tooltip="Each sim is many random fights, so its DPS wobbles a little. The thin line around a bar is how far chance alone could move it.">· thin line: how far chance could move it</span></span>
         </div>
         <div class="scroll">
             <table>
@@ -50,9 +50,9 @@ else
                         <th>#</th>
                         <th class="l">Run</th>
                         <th>DPS</th>
-                        <th title="@($"Against the {BaseName.ToLowerInvariant()}")">Change</th>
+                        <th data-tooltip="@($"Against the {BaseName.ToLowerInvariant()}")">Change</th>
                         <th class="change-head"></th>
-                        <th class="l" title="Better or Worse when the change is bigger than chance alone could make it">Verdict</th>
+                        <th class="l" data-tooltip="Better or Worse when the change is bigger than chance alone could make it">Verdict</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -80,7 +80,7 @@ else
                                 <strong>@N(run.Result.MeanDps)</strong>
                                 @if (Primary && run.Result.PrimaryTargetDps is { } primary)
                                 {
-                                    <span title="The DPS to the first target alone">@N(primary) main target</span>
+                                    <span data-tooltip="The DPS to the first target alone">@N(primary) main target</span>
                                 }
                             </td>
                             <td class="two @(isBase ? "same" : Class(run))">
@@ -110,7 +110,7 @@ else
                             <td class="l">
                                 @if (!isBase)
                                 {
-                                    <span class="verdict @Class(run)" title="@VerdictTitle(run)">@VerdictText(run)</span>
+                                    <span class="verdict @Class(run)" data-tooltip="@VerdictTitle(run)">@VerdictText(run)</span>
                                 }
                             </td>
                             <td>

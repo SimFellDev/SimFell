@@ -51,7 +51,7 @@
                                 string kind = !p.Supported ? "player unsupported" : picked ? "player picked" : "player";
                                 <button @key="p.Id" type="button" class="@kind" aria-pressed="@picked"
                                         disabled="@(!p.Supported || Busy)"
-                                        title="@(p.Supported ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
+                                        data-tooltip="@(p.Supported ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
                                         @onclick="() => State.Picked = (f.Id, p.Id)">
                                     <span class="player-name">@p.Name</span>
                                     <span class="player-hero">@p.Hero</span>
