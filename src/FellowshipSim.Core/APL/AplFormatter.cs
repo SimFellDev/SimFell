@@ -41,7 +41,8 @@ public static class AplFormatter
         _ => op.Symbol()
     };
 
-    private static string Prefix(UnaryOperator op, AplOperatorStyle style) =>
+    /// <summary>A prefix operator as written before its operand: "not " for <c>!</c> in words, else its symbol.</summary>
+    public static string Prefix(UnaryOperator op, AplOperatorStyle style) =>
         op == UnaryOperator.Not && style == AplOperatorStyle.Words ? "not " : op.Symbol();
 
     public static string Format(IAplExpression expression, AplOperatorStyle style = AplOperatorStyle.Symbols) => expression switch

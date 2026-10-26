@@ -1,0 +1,213 @@
+@using FellowshipSim.Core.APL
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@*
+    Button with a builder term's value, in its kind's colour. While open, a searchable list of every kind's names, each kind
+    in its own colour, then Number and Group, then (on a term) each prefix. valuePicker.js filters the list and moves its
+    selection; a pick runs here.
+*@
+<span class="picker">
+    <button @ref="_button" type="button" class="value @ButtonClass" aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
+            title="@_title" @onclick="Toggle">
+        @if (Value == null)
+        {
+            @("Pick a value")
+        }
+        else if (Value.Kind == ConditionBuilder.NumberKind)
+        {
+            @("Number")
+        }
+        else if (Value.Kind == ConditionBuilder.GroupKind)
+        {
+            @("Group")
+        }
+        else if (Kinds.FirstOrDefault(k => k.Id == Value.Kind) is { } kind && kind.Names.FirstOrDefault(n => n.Slug == Value.Name) is { } name)
+        {
+            <span style="@KindColour(kind)">@ConditionBuilder.NameLabel(kind, name)</span>
+        }
+        else
+        {
+            <TokenText Text="@($"{Value.Name} ({_title})")" Kind="AplTokenKind.Unknown" />
+        }
+    </button>
+    @if (_open)
+    {
+        <div @ref="_popup" class="popup">
+            <input @ref="_search" class="search" type="text" role="combobox" aria-controls="@($"{_id}-list")" aria-expanded="true"
+                   aria-autocomplete="list" aria-label="Search names" placeholder="Search names" spellcheck="false" autocomplete="off" />
+            <ul @ref="_list" id="@($"{_id}-list")" role="listbox" aria-label="Values">
+                @* Each kind is a group, so its sticky heading stays in view only over its own names. *@
+                @{ int option = 0; }
+                @foreach (var kind in Kinds.Where(k => k.Names.Count > 0))
+                {
+                    <li @key="kind.Id" class="kind" role="presentation">
+                        <div class="kind-head" role="presentation"><span class="swatch" style="@KindColour(kind)"></span>@kind.Label</div>
+                        <ul role="group" aria-label="@kind.Label">
+                            @foreach (var n in kind.Names)
+                            {
+                                string label = ConditionBuilder.NameLabel(kind, n);
+                                var pick = new ValuePick(kind.Id, n.Slug);
+                                <li @key="n.Slug" id="@($"{_id}-{option++}")" role="option" data-search="@($"{label} {n.Slug}".ToLowerInvariant())"
+                                    data-picked="@(pick == Value)" @onmousedown="() => Pick(pick)" @onmousedown:preventDefault>
+                                    <span style="@KindColour(kind)">@label</span>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+                }
+                <li @key="@("other")" class="kind" role="presentation">
+                    <div class="kind-head" role="presentation">Other</div>
+                    <ul role="group" aria-label="Other">
+                        @foreach (var (kindId, label) in new[] { (ConditionBuilder.NumberKind, "Number"), (ConditionBuilder.GroupKind, "Group") })
+                        {
+                            var pick = new ValuePick(kindId);
+                            <li @key="kindId" id="@($"{_id}-{option++}")" role="option" data-search="@label.ToLowerInvariant()" data-picked="@(pick == Value)"
+                                @onmousedown="() => Pick(pick)" @onmousedown:preventDefault>@label</li>
+                        }
+                    </ul>
+                </li>
+                @if (!Placeholder)
+                {
+                    <li @key="@("prefix")" class="kind" role="presentation">
+                        <div class="kind-head" role="presentation">Prefix</div>
+                        <ul role="group" aria-label="Prefix">
+                            @foreach (string p in ConditionBuilder.Prefixes)
+                            {
+                                string label = "Add " + ConditionBuilder.PrefixLabel(p);
+                                <li @key="p" id="@($"{_id}-{option++}")" role="option" data-search="@label.ToLowerInvariant()"
+                                    @onmousedown="() => Pick(new ValuePick(ConditionBuilder.PrefixKind, Prefix: p))" @onmousedown:preventDefault>
+                                    <span class="operator">@label</span>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+                }
+                <li @key="@("none")" class="none" hidden>No name matches</li>
+            </ul>
+        </div>
+    }
+</span>
+
+@code {
+    private static int s_count;
+
+    [Parameter, EditorRequired] public AplVocabulary Vocabulary { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ConditionKind> Kinds { get; set; } = [];
+
+    /// <summary>The picked value: a kind and name, Number or Group; null for none.</summary>
+    [Parameter] public ValuePick? Value { get; set; }
+
+    /// <summary>The picker of a group's empty row, which lists no prefixes.</summary>
+    [Parameter] public bool Placeholder { get; set; }
+
+    [Parameter] public EventCallback<ValuePick> OnPick { get; set; }
+
+    private readonly string _id = $"value-picker-{Interlocked.Increment(ref s_count)}";
+    private ElementReference _button, _popup, _search, _list;
+    private IJSObjectReference? _module, _handle;
+    private DotNetObjectReference<ValuePicker>? _self;
+    private bool _open, _attach, _focus;
+    private string? _title;
+
+    /// <summary>The colour of a kind's names: --kind-<id> in app.css.</summary>
+    private static string KindColour(ConditionKind kind) => $"color: var(--kind-{kind.Id})";
+
+    private string ButtonClass => Value == null ? "empty" : _title != null ? "unlisted" : "";
+
+    protected override void OnParametersSet() => _title = Unlisted();
+
+    /// <summary>Why a name is not in its kind's names: the names it starts (on a kind that matches starts), else not a name of the hero.</summary>
+    private string? Unlisted()
+    {
+        if (Value is not { Name: { } name } || Kinds.FirstOrDefault(k => k.Id == Value.Kind) is not { } kind || kind.Names.Any(n => n.Slug == name))
+        {
+            return null;
+        }
+        return ConditionBuilder.Knows(kind, name)
+            ? string.Join(", ", kind.Names.Where(n => n.Slug.StartsWith(name, StringComparison.Ordinal)).Select(n => n.Name))
+            : $"not a {Vocabulary.Hero} name";
+    }
+
+    private async Task Toggle()
+    {
+        if (_open)
+        {
+            await Close(false);
+            return;
+        }
+        _open = true;
+        _attach = true;
+    }
+
+    private async Task Pick(ValuePick pick)
+    {
+        await Detach();
+        _open = false;
+        _focus = true;
+        await OnPick.InvokeAsync(pick);
+    }
+
+    /// <summary>Closes the list. <paramref name="focusButton"/> focuses the button: on Escape, and on a click outside every control.</summary>
+    [JSInvokable]
+    public async Task Close(bool focusButton)
+    {
+        if (!_open) return;
+        await Detach();
+        _open = false;
+        _focus = focusButton;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (_attach && _open)
+            {
+                _attach = false;
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/apl/valuePicker.js");
+                _self ??= DotNetObjectReference.Create(this);
+                _handle = await _module.InvokeAsync<IJSObjectReference>("open", _button, _popup, _search, _list, _self);
+            }
+            if (_focus)
+            {
+                _focus = false;
+                await _button.FocusAsync();
+            }
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The page closed, or the button left it.
+        }
+    }
+
+    private async Task Detach()
+    {
+        if (_handle is not { } handle) return;
+        _handle = null;
+        try
+        {
+            await handle.InvokeVoidAsync("dispose");
+            await handle.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone, and the listeners with it.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Detach();
+        try
+        {
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone.
+        }
+        _self?.Dispose();
+    }
+}

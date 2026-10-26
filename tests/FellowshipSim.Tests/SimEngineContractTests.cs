@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
 
@@ -41,14 +42,16 @@ public class SimEngineContractTests
     [Fact]
     public async Task A_Vocabulary_Reads_Back_From_Its_Json()
     {
-        AssertRoundTrip((await _engine.GetVocabularyAsync("Rime"))!);
+        var vocabulary = (await _engine.GetVocabularyAsync("Rime"))!;
+        Assert.NotEmpty(vocabulary.BuildNames[PropertyExpression.TalentScope]);
+        AssertRoundTrip(vocabulary);
         Assert.Null(await _engine.GetVocabularyAsync("Nobody"));
     }
 
     [Fact]
     public async Task An_Expression_Check_Reads_Back_From_Its_Json()
     {
-        var check = (await _engine.CheckExpressionAsync("Rime", "buff.ice_blitz.up&cooldown.ice_blitz.remains>10"))!;
+        var check = (await _engine.CheckExpressionAsync("Rime", "buff.ice_blitz.up&cooldown.ice_blitz.remains>10|-!worb+100*(spirit>=15|talent.x)<=gcd.max<1"))!;
         Assert.NotNull(check.Condition);
         AssertRoundTrip(check);
         Assert.Null(await _engine.CheckExpressionAsync("Nobody", "1"));

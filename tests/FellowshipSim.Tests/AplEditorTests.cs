@@ -349,61 +349,50 @@ public class AplEditorTests
     [Fact]
     public void Condition_Rows_Keep_Each_Join_And_Group_Parentheses()
     {
-        var rows = AplCondition.Rows(AplParser.ParseExpression("a & b | c"))!;
+        var rows = AplCondition.Rows(AplParser.ParseExpression("a & b | c"));
         Assert.Equal([null, "and", "or"], rows.Select(r => r.Join));
-        Assert.Equal(["a", "b", "c"], rows.Select(r => r.Path));
+        Assert.Equal(["a", "b", "c"], rows.Select(r => Assert.Single(r.Left!).Path));
 
-        rows = AplCondition.Rows(AplParser.ParseExpression("worb<5&!(buff.x.up|buff.y.up)"))!;
+        rows = AplCondition.Rows(AplParser.ParseExpression("worb<5&!(buff.x.up|buff.y.up)"));
         Assert.Equal(2, rows.Count);
-        Assert.Equal(new AplConditionItem(null, false, "worb", "<", 5), rows[0]);
+        Assert.True(rows[0] is { Join: null, Not: false });
+        Assert.Equal(new AplTerm(null, Path: "worb"), Assert.Single(rows[0].Left!));
+        var comparison = Assert.Single(rows[0].Comparisons!);
+        Assert.Equal("<", comparison.Comparison);
+        Assert.Equal(new AplTerm(null, Number: 5), Assert.Single(comparison.Terms));
         Assert.True(rows[1] is { Join: "and", Not: true, Items.Count: 2 });
-        Assert.Equal(["buff.x.up", "buff.y.up"], rows[1].Items!.Select(r => r.Path));
+        Assert.Equal(["buff.x.up", "buff.y.up"], rows[1].Items!.Select(r => Assert.Single(r.Left!).Path));
         Assert.Equal("or", rows[1].Items![1].Join);
 
-        Assert.Equal(new AplConditionItem(null, true, "worb", ">=", 5), Assert.Single(AplCondition.Rows(AplParser.ParseExpression("!(worb>=5)"))!));
-        Assert.Equal(new AplConditionItem(null, true, "buff.x.up"), Assert.Single(AplCondition.Rows(AplParser.ParseExpression("!buff.x.up"))!));
-        Assert.Equal(-1, Assert.Single(AplCondition.Rows(AplParser.ParseExpression("worb>=-1"))!).Value);
+        var negated = Assert.Single(AplCondition.Rows(AplParser.ParseExpression("!(worb>=5)")));
+        Assert.True(negated is { Not: true, Comparisons.Count: 1 });
+        Assert.True(Assert.Single(AplCondition.Rows(AplParser.ParseExpression("!buff.x.up"))) is { Not: true, Comparisons: null });
+        Assert.Equal(-1, Assert.Single(Assert.Single(Assert.Single(AplCondition.Rows(AplParser.ParseExpression("worb>=-1"))).Comparisons!).Terms).Number);
     }
 
-    [Theory]
-    [InlineData("worb+1>=5")]
-    [InlineData("worb>=spirit")]
-    [InlineData("3")]
-    [InlineData("!worb>=5")]
-    public void Condition_Rows_Are_Null_For_Parts_With_No_Row(string text)
+    [Fact]
+    public void Condition_Rows_Keep_Arithmetic_Prefixes_And_Chained_Comparisons()
     {
-        Assert.Null(AplCondition.Rows(AplParser.ParseExpression(text)));
-        Assert.Null(AplVocabulary.For("Rime").Check(text).Condition);
-    }
+        var row = Assert.Single(AplCondition.Rows(AplParser.ParseExpression("(active_enemies-active_dot.searing_blaze)>=1")));
+        var inner = Assert.Single(Assert.Single(row.Left!).Items!);
+        Assert.Equal([new AplTerm(null, Path: "active_enemies"), new AplTerm("-", Path: "active_dot.searing_blaze")], inner.Left!);
 
-    // The editor writes rows back as text this way: each join as its word, a group in parentheses, 'not' before a value
-    // or a group, and a negated comparison in parentheses.
-    [Theory]
-    [InlineData("(spirit >= 70 or buff.ice_blitz.up) and (cooldown.cold_snap.charges = 0 or worb >= 5) and target.time_to_die >= 10")]
-    [InlineData("a and b or c and not (d or e)")]
-    [InlineData("not (worb >= 5) or not buff.x.up")]
-    public void Condition_Rows_Written_Back_Read_The_Same(string text)
-    {
-        static string Write(IEnumerable<AplConditionItem> items) => string.Concat(items.Select(item =>
-        {
-            string value = item.Items != null ? $"({Write(item.Items)})"
-                : item.Comparison != null ? $"{item.Path} {item.Comparison} {item.Value}" : item.Path!;
-            string negated = !item.Not ? value : item.Comparison != null ? $"not ({value})" : $"not {value}";
-            return item.Join == null ? negated : $" {item.Join} {negated}";
-        }));
+        row = Assert.Single(AplCondition.Rows(AplParser.ParseExpression("full_recharge_time<=gcd.max*3+talent.rolling_flames*0.4")));
+        var terms = Assert.Single(row.Comparisons!).Terms;
+        Assert.Equal([null, "*", "+", "*"], terms.Select(t => t.Operator));
+        Assert.Equal(["gcd.max", null, "talent.rolling_flames", null], terms.Select(t => t.Path));
+        Assert.Equal([null, 3, null, 0.4], terms.Select(t => t.Number));
 
-        var rows = AplCondition.Rows(AplParser.ParseExpression(text))!;
-        Assert.Equal(text, Write(rows));
-        Assert.Equal(rows, AplCondition.Rows(AplParser.ParseExpression(Write(rows)))!, new ConditionComparer());
-    }
+        row = Assert.Single(AplCondition.Rows(AplParser.ParseExpression("a<b<=c")));
+        Assert.Equal(["<", "<="], row.Comparisons!.Select(c => c.Comparison));
 
-    private sealed class ConditionComparer : IEqualityComparer<AplConditionItem>
-    {
-        public bool Equals(AplConditionItem? x, AplConditionItem? y) =>
-            x! with { Items = null } == y! with { Items = null }
-            && (x.Items == null ? y.Items == null : y.Items != null && x.Items.SequenceEqual(y.Items, this));
+        row = Assert.Single(AplCondition.Rows(AplParser.ParseExpression("-!x+100*(y>=15)")));
+        Assert.Equal("-!", row.Left![0].Prefix);
+        Assert.Equal(">=", Assert.Single(Assert.Single(row.Left[2].Items!).Comparisons!).Comparison);
 
-        public int GetHashCode(AplConditionItem obj) => 0;
+        row = Assert.Single(AplCondition.Rows(AplParser.ParseExpression("!!x")));
+        Assert.True(row is { Not: false });
+        Assert.Equal("!!", Assert.Single(row.Left!).Prefix);
     }
 
     [Fact]

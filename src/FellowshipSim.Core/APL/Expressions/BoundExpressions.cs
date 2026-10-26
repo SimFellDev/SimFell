@@ -58,7 +58,7 @@ public abstract class BoundExpression
         ConstantExpression c => new BoundConstant(c.Value),
         GroupExpression g => Bind(g.Inner, hero, variables),
         UnaryOpExpression { Operator: UnaryOperator.Not } u => new BoundNot(Bind(u.Operand, hero, variables)),
-        UnaryOpExpression { Operator: UnaryOperator.Negate } u => new BoundNegate(Bind(u.Operand, hero, variables)),
+        UnaryOpExpression { Operator: UnaryOperator.Minus } u => new BoundMinus(Bind(u.Operand, hero, variables)),
         BinaryOpExpression b => new BoundBinary(Bind(b.Left, hero, variables), b.Operator, Bind(b.Right, hero, variables)),
         PropertyExpression p => BindProperty(p, hero, variables),
         _ => throw new ArgumentException($"Unsupported APL expression: '{expression}'", nameof(expression)),
@@ -564,7 +564,7 @@ internal sealed class BoundNot(BoundExpression operand) : BoundExpression
     public override SimTime NextChange(SimulationContext ctx) => operand.NextChange(ctx);
 }
 
-internal sealed class BoundNegate(BoundExpression operand) : BoundExpression
+internal sealed class BoundMinus(BoundExpression operand) : BoundExpression
 {
     public override bool Evaluate(SimulationContext ctx) => operand.EvaluateNumeric(ctx) != 0.0;
     public override double EvaluateNumeric(SimulationContext ctx) => -operand.EvaluateNumeric(ctx);

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using FellowshipSim.Core.APL.Expressions;
+using FellowshipSim.Core.Customization.Weapons;
 using FellowshipSim.Core.Import;
 using Superpower;
 using Superpower.Model;
@@ -36,7 +37,7 @@ public sealed record AplTokenSpan(int Start, int Length, AplTokenKind Kind, stri
 /// <summary>
 /// An expression's tokens, its parse error (with the error's offset in the text) when it does not parse, the text with
 /// <c>&amp;</c>, <c>|</c> and <c>!</c> written <c>and</c>, <c>or</c> and <c>not</c> (<see cref="InWords"/>, null when it does not tokenize),
-/// and its builder rows (<see cref="Condition"/>, null when it does not parse or has a part with no row).
+/// and its builder rows (<see cref="Condition"/>, null when it does not parse).
 /// </summary>
 public sealed record AplExpressionCheck(
     IReadOnlyList<AplTokenSpan> Tokens, string? Error, int? ErrorStart, string? InWords = null,
@@ -67,7 +68,15 @@ public sealed class AplVocabulary
         [PropertyExpression.CooldownScope] = Abilities,
         [PropertyExpression.ActionScope] = Abilities,
     };
+    /// <summary>
+    /// The names each scope in <see cref="PropertyExpression.BuildScopes"/> reads: the talents of the hero's tree, every
+    /// blessing, the hero's legendaries, every weapon trait, and every weapon and weapon ability.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<AplName>> BuildNames { get; }
+    /// <summary>Values an action reads about its own ability, unscoped ("full_recharge_time").</summary>
+    public IReadOnlyCollection<string> ActionValues => PropertyExpression.ActionValues.Keys.ToList();
     public string ResourcePrefix => PropertyExpression.ResourcePrefix;
+    public string DeficitSuffix => PropertyExpression.DeficitSuffix;
     public IReadOnlyList<AplTargetSelectionName> TargetSelections { get; } = Enum.GetValues<AplTargetSelection>()
         .Select(s => new AplTargetSelectionName(s, AplTargetIf.Prefix(s), AplTargetIf.Label(s))).ToList();
     /// <summary><c>run_action_list</c> and <c>call_action_list</c>.</summary>
@@ -85,16 +94,17 @@ public sealed class AplVocabulary
     /// </summary>
     [JsonConstructor]
     public AplVocabulary(string hero, IReadOnlyList<AplName> abilities, IReadOnlyList<AplName> resources, IReadOnlyList<AplName> auras,
-        IReadOnlyList<string> repeatableAbilities)
+        IReadOnlyList<string> repeatableAbilities, IReadOnlyDictionary<string, IReadOnlyList<AplName>> buildNames)
     {
         Hero = hero;
         Abilities = abilities;
         Resources = resources;
         Auras = auras;
         RepeatableAbilities = repeatableAbilities;
+        BuildNames = buildNames;
     }
 
-    private AplVocabulary(string heroName, Hero hero)
+    private AplVocabulary(string heroName, Hero hero, IReadOnlyList<Weapon> weapons)
     {
         _hero = hero;
         Hero = heroName;
@@ -115,7 +125,19 @@ public sealed class AplVocabulary
             .Concat(hero is ITargetEffects effects ? effects.TargetEffectNames : [])
             .Select(name => new AplName(AplNames.Slug(name), name))
             .DistinctBy(n => n.Slug).OrderBy(n => n.Slug, StringComparer.Ordinal).ToList();
+        BuildNames = PropertyExpression.BuildScopes.Keys.ToDictionary(scope => scope, scope => Names(scope switch
+        {
+            PropertyExpression.TalentScope => hero.Talents.Select(t => t.Name),
+            PropertyExpression.BlessingScope => Catalog.AllGlyphs.Select(b => b.Name),
+            PropertyExpression.LegendaryScope => Catalog.Legendaries(heroName).Select(l => l.Name),
+            PropertyExpression.WeaponTraitScope => Catalog.AllAugmentations.Select(t => t.Name),
+            PropertyExpression.WeaponScope => weapons.SelectMany(w => w.Ability is { } ability ? [w.Name, ability.Name] : new[] { w.Name }),
+            _ => throw new InvalidOperationException($"No names for the build scope `{scope}`."),
+        }));
     }
+
+    private static IReadOnlyList<AplName> Names(IEnumerable<string> names) =>
+        names.Select(name => new AplName(AplNames.Slug(name), name)).DistinctBy(n => n.Slug).OrderBy(n => n.Slug, StringComparer.Ordinal).ToList();
 
     /// <summary>
     /// The vocabulary of <paramref name="heroName"/> (a name in <see cref="Catalog.Heroes"/>), with every talent of its tree
@@ -125,8 +147,9 @@ public sealed class AplVocabulary
     {
         var tree = Catalog.CreateHero(heroName).TalentTreeSlots;
         var hero = HeroImporter.Import(new CharacterBuild { Hero = heroName, Talents = tree.Select(s => s.TalentId).ToList() });
-        foreach (var weapon in Catalog.AllWeapons) weapon.Equip(hero);
-        return new AplVocabulary(Catalog.Heroes.Keys.First(k => k.Equals(heroName, StringComparison.OrdinalIgnoreCase)), hero);
+        var weapons = Catalog.AllWeapons.ToList();
+        foreach (var weapon in weapons) weapon.Equip(hero);
+        return new AplVocabulary(Catalog.Heroes.Keys.First(k => k.Equals(heroName, StringComparison.OrdinalIgnoreCase)), hero, weapons);
     }
 
     /// <summary>Token kind of <paramref name="property"/> for this hero, and the problem when the hero has nothing by that name.</summary>

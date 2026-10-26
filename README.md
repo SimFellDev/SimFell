@@ -127,10 +127,15 @@ ability, a condition, a target and a comment; drag the handle or use the arrows 
 condition has a colour for its kind (buff, debuff, cooldown, resource), and a wavy underline marks a name the hero
 does not have. Conditions in the editor chain with `and`, `or` and `not`; the text has `&`, `|` and `!`. A `&`, `|`
 or `!` typed in the editor becomes its word when you leave the field. Parentheses stay as written. **Builder** shows a
-condition as rows: each row has its `and` or `or`, its `not`, and a buff, debuff, cooldown, resource or fight value with
-an optional comparison; **Group ( )** adds rows in parentheses. **Text** shows the condition as text. Typing a name, a `.`
-or Ctrl+Space lists the names that fit; Enter or Tab writes the one picked. A condition with arithmetic has no rows, so
-it shows as text. **Action list text** has the text of the list. Text pasted there loads into the editor. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
+condition as rows: each row has its `and` or `or`, its `not`, and a value compared in turn to further values. A
+**Group** is a box of rows in parentheses; its chevron closes it to one line of its text, and **Close all groups** closes
+every group. Each value is terms joined by `+`, `-`, `*`, `%` or `%%`. Each term's picker lists the names by kind (buff,
+debuff, dot, cooldown, action, resource, fight value, value of the action itself, talent, blessing, legendary, weapon
+trait, weapon, enemies with a debuff, variable), then **Number** and **Group** for a condition in parentheses, then `not`
+or `-` before the term; typing filters the list. The empty select after a value adds a term, a comparison, or inside
+parentheses an `and` or `or` row; an emptied operator or comparison removes its term or value. **Text** shows the
+condition as text. Typing a name, a `.` or Ctrl+Space lists the names that fit; Enter or Tab writes the one picked.
+**Action list text** has the text of the list. Text pasted there loads into the editor. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
 app, **Save** writes one of your own lists in `data/visitors/<visitor id>/apls/`, and **Saved** also lists the shared
 lists in `data/apls/`, marked "shared". A shared list loads into the editor, and saving it makes your own copy.
 

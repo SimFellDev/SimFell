@@ -62,10 +62,10 @@ public class AplParserTests
         Assert.Equal(expected, AplParser.ParseExpression(text).Evaluate(null!, null!));
 
     [Fact]
-    public void Expression_Builds_Negate()
+    public void Expression_Builds_Minus()
     {
         var expr = Assert.IsType<UnaryOpExpression>(AplParser.ParseExpression("-2.5"));
-        Assert.Equal(UnaryOperator.Negate, expr.Operator);
+        Assert.Equal(UnaryOperator.Minus, expr.Operator);
         Assert.Equal(2.5, Assert.IsType<ConstantExpression>(expr.Operand).Value);
     }
 

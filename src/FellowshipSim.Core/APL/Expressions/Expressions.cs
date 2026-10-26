@@ -248,12 +248,19 @@ public class PropertyExpression : IAplExpression
     /// Paths an action reads about its own ability, unscoped ("refreshable", "full_recharge_time"), as the scoped path
     /// they stand for on the action's ability <paramref name="ability"/>; null for any other path.
     /// </summary>
-    public static string? OfAction(string path, string ability) => path switch
+    public static string? OfAction(string path, string ability) =>
+        ActionValues.TryGetValue(path, out var scoped) ? scoped(ability) : null;
+
+    /// <summary>Paths an action reads about its own ability, with the scoped path each stands for on an ability.</summary>
+    public static IReadOnlyDictionary<string, Func<string, string>> ActionValues { get; } = new Dictionary<string, Func<string, string>>
     {
-        "refreshable" or "ticking" => $"{DebuffScope}.{ability}.{(path == "ticking" ? "up" : path)}",
-        "full_recharge_time" or "charges" or "charges_fractional" => $"{CooldownScope}.{ability}.{path}",
-        "execute_time" or "cast_time" => $"{ActionScope}.{ability}.execute_time",
-        _ => null,
+        ["refreshable"] = ability => $"{DebuffScope}.{ability}.refreshable",
+        ["ticking"] = ability => $"{DebuffScope}.{ability}.up",
+        ["full_recharge_time"] = ability => $"{CooldownScope}.{ability}.full_recharge_time",
+        ["charges"] = ability => $"{CooldownScope}.{ability}.charges",
+        ["charges_fractional"] = ability => $"{CooldownScope}.{ability}.charges_fractional",
+        ["execute_time"] = ability => $"{ActionScope}.{ability}.execute_time",
+        ["cast_time"] = ability => $"{ActionScope}.{ability}.execute_time",
     };
 
     private static Func<TargetEffect?, SimTime, double> AuraProperty(string property) =>
@@ -278,7 +285,7 @@ public class UnaryOpExpression : IAplExpression
         return Operator switch
         {
             UnaryOperator.Not => !Operand.Evaluate(hero, ctx),
-            UnaryOperator.Negate => Operand.EvaluateNumeric(hero, ctx) != 0.0,
+            UnaryOperator.Minus => Operand.EvaluateNumeric(hero, ctx) != 0.0,
             _ => throw new InvalidOperationException($"Unsupported APL unary operator: '{Operator}'")
         };
     }
@@ -288,7 +295,7 @@ public class UnaryOpExpression : IAplExpression
         return Operator switch
         {
             UnaryOperator.Not => Operand.Evaluate(hero, ctx) ? 0.0 : 1.0,
-            UnaryOperator.Negate => -Operand.EvaluateNumeric(hero, ctx),
+            UnaryOperator.Minus => -Operand.EvaluateNumeric(hero, ctx),
             _ => throw new InvalidOperationException($"Unsupported APL unary operator: '{Operator}'")
         };
     }

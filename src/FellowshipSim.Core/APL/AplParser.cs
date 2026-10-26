@@ -75,7 +75,7 @@ public static class AplParser
     private static UnaryOperator? PrefixOperator(AplToken kind) => kind switch
     {
         AplToken.Not => UnaryOperator.Not,
-        AplToken.Minus => UnaryOperator.Negate,
+        AplToken.Minus => UnaryOperator.Minus,
         _ => null
     };
 

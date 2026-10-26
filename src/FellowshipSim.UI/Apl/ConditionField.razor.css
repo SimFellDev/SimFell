@@ -5,9 +5,19 @@
   min-width: 0;
 }
 
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar .link-button {
+  font-size: 13px;
+}
+
 .segmented {
   display: inline-flex;
-  align-self: flex-start;
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
@@ -64,28 +74,6 @@
   font-size: 13px;
 }
 
-/* A join (62px), the gap, and a 'not' (44px): '(' and ')' start after it, and so does a group's rail. */
-.lead {
-  width: 112px;
-  flex: none;
-}
-
-.rail {
-  position: relative;
-  align-self: stretch;
-  width: 14px;
-  flex: none;
-}
-
-.rail::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 6px;
-  border-left: 2px solid var(--border);
-}
-
 .if {
   width: 62px;
   flex: none;
@@ -115,16 +103,14 @@
   background: color-mix(in srgb, var(--tok-operator) 16%, transparent);
 }
 
-.kind {
-  width: 130px;
-}
-
-.name {
-  width: 190px;
-}
-
 .property {
-  width: 120px;
+  field-sizing: content;
+}
+
+@supports not (field-sizing: content) {
+  .property {
+    width: 120px;
+  }
 }
 
 .comparison {
@@ -138,14 +124,138 @@
   border-color: transparent;
 }
 
-.paren {
-  width: 14px;
-  flex: none;
-  text-align: center;
-  color: var(--text);
-  font: 600 16px var(--code-font);
+.operator {
+  width: 58px;
+  color: var(--tok-operator);
+  font-family: var(--code-font);
 }
 
-.placeholder .kind {
+.operator.add {
   border-style: dashed;
+}
+
+.prefix {
+  width: 72px;
+  color: var(--tok-operator);
+  font-family: var(--code-font);
+}
+
+
+/* A group is a tinted box; its chevron, join and 'not' are on its top-left edge, its delete button on the top-right edge.
+   A nested box is on its parent's tint, one step deeper in gold. Every border is an even 1px on all four sides. */
+.group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 14px 0 4px;
+  padding: 16px 6px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.group.closed {
+  padding-bottom: 6px;
+}
+
+.group-start,
+.group-end {
+  position: absolute;
+  top: -12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.group-start {
+  left: 6px;
+}
+
+.group-end {
+  right: 6px;
+}
+
+/* 22px controls, opaque so the border line is hidden behind them. */
+.group-start select,
+.group-start button,
+.group-start .if,
+.group-end button {
+  width: auto;
+  height: 22px;
+  min-width: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--input);
+  font: 12px var(--code-font);
+}
+
+.group-start .if {
+  display: inline-flex;
+  align-items: center;
+}
+
+.group-start .not[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--tok-operator) 16%, var(--input));
+}
+
+.group-end .remove {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  color: var(--muted);
+}
+
+.group-end .remove ::deep .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.chevron-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.group-start .chevron-button {
+  padding: 0 4px;
+}
+
+.chevron-button ::deep .chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.15s;
+}
+
+.chevron-button[aria-expanded="true"] ::deep .chevron {
+  transform: rotate(90deg);
+}
+
+/* A condition in parentheses on a side: the group's tint and border, inline for one row and on its own lines for several. */
+.term-group,
+.parentheses {
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.term-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 4px 2px 6px;
+}
+
+.parentheses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 0 100%;
+  min-width: 0;
+  padding: 4px 6px;
 }

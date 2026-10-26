@@ -2,24 +2,33 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @implements IDisposable
 @*
-    A condition edited as rows (Builder) or as text (Text). Both write action-list text; text with a part the builder has no
-    row for (arithmetic) is edited as text. The engine reads text into rows (check.Condition); the builder writes them back
-    as text.
+    A condition edited as rows (Builder) or as text (Text). Both write action-list text. The engine reads text into rows
+    (check.Condition); the builder writes them back as text. A row is a value, or a value compared in turn to further values;
+    each value is terms joined by arithmetic, and a term is a name, a number or a condition in parentheses, with its prefixes.
 *@
 <div class="condition">
-    <div class="segmented" role="group" aria-label="Condition editor">
-        <button type="button" aria-pressed="@(Building ? "true" : "false")" disabled="@(Rows == null)"
-                title="@(Rows == null ? "Arithmetic is edited as text" : "")" @onclick="() => PickMode(ActionListEditor.BuilderMode)">
-            Builder
-        </button>
-        <button type="button" aria-pressed="@(!Building ? "true" : "false")" @onclick="() => PickMode(ActionListEditor.TextMode)">
-            Text
-        </button>
+    <div class="bar">
+        <div class="segmented" role="group" aria-label="Condition editor">
+            <button type="button" aria-pressed="@(Building ? "true" : "false")" disabled="@(Rows == null)"
+                    title="@(Rows == null ? "The text does not parse" : "")" @onclick="() => PickMode(ActionListEditor.BuilderMode)">
+                Builder
+            </button>
+            <button type="button" aria-pressed="@(!Building ? "true" : "false")" @onclick="() => PickMode(ActionListEditor.TextMode)">
+                Text
+            </button>
+        </div>
+        @if (Building && ConditionBuilder.Groups(Rows!).ToList() is { Count: > 0 } groups)
+        {
+            bool allClosed = groups.All(g => g.Collapsed);
+            <button type="button" class="link-button" @onclick="() => Arrange(next => { foreach (var g in ConditionBuilder.Groups(next)) g.Collapsed = !allClosed; })">
+                @(allClosed ? "Open all groups" : "Close all groups")
+            </button>
+        }
     </div>
     <div class="builder" hidden="@(!Building)">
         @if (Rows is { } rows)
         {
-            RenderItems(__builder, rows, [], 0);
+            RenderItems(__builder, rows, "", patch => Commit(patch), 0);
         }
     </div>
     <CodeField Vocabulary="Vocabulary" Value="@Value" Placeholder="@Placeholder" Hidden="Building" OnChange="OnChange" />
@@ -37,25 +46,39 @@
     [Parameter] public EventCallback<string> OnChange { get; set; }
 
     private const string AndJoin = "and";
+    // The values of the empty select after a side's last term: an operator adds a term, a comparison adds a side, and a
+    // join adds a row to the condition in parentheses the side is in.
+    private const string OperatorPick = "operator:";
+    private const string ComparisonPick = "comparison:";
+    private const string JoinPick = "join:";
 
     private string _mode = ActionListEditor.BuilderMode;
     /// <summary>The rows the builder last wrote, with their text: they hold rows the text has no part for yet.</summary>
     private (string Text, List<ConditionRow> Rows)? _built;
-    /// <summary>The join and 'not' picked on each group's empty row, by the group's path.</summary>
+    /// <summary>The join and 'not' picked on each group's empty row, by the group's key.</summary>
     private readonly Dictionary<string, (string Join, bool Not)> _placeholders = [];
     private DebouncedCheck _read = null!;
+    private (CheckedText Read, List<ConditionRow> Rows)? _readRows;
     private IReadOnlyList<ConditionKind> _kinds = [];
-    /// <summary>Counts picks on the selects that show no value, so each pick renders a new select showing none again.</summary>
+    /// <summary>Counts picks on the add select, so each pick renders a new select showing no value again.</summary>
     private int _picks;
 
     private string Text => Value ?? "";
 
-    /// <summary>The builder's own text has its rows; other text is read into rows by the engine. null: the text has no rows.</summary>
+    /// <summary>The builder's own text has its rows; other text is read into rows by the engine. null: the text does not parse.</summary>
     private List<ConditionRow>? Rows =>
         _built is { } built && built.Text == Text ? built.Rows
         : string.IsNullOrWhiteSpace(Text) ? []
-        : _read.Result is { } read ? (read.Check?.Condition is { } condition ? ConditionRow.From(condition) : null)
+        : _read.Result is { } read ? ReadRows(read)
         : null;
+
+    /// <summary>The rows of a check, read once per check, so a group keeps one row between renders.</summary>
+    private List<ConditionRow>? ReadRows(CheckedText read)
+    {
+        if (read.Check?.Condition is not { } condition) return null;
+        if (_readRows is not { } cached || !ReferenceEquals(cached.Read, read)) _readRows = (read, ConditionRow.From(condition));
+        return _readRows.Value.Rows;
+    }
 
     private bool Building => _mode == ActionListEditor.BuilderMode && Rows != null;
 
@@ -72,7 +95,7 @@
     protected override void OnParametersSet()
     {
         _read.Set(Vocabulary.Hero, Text);
-        _kinds = ConditionBuilder.Kinds(Vocabulary);
+        _kinds = ConditionBuilder.Kinds(Vocabulary, ConditionBuilder.Variables(Editor.Lists));
     }
 
     private void PickMode(string mode)
@@ -91,106 +114,247 @@
         return OnChange.InvokeAsync(written);
     }
 
-    private void RenderItems(RenderTreeBuilder __builder, List<ConditionRow> items, int[] group, int depth)
+    /// <summary>Applies a change that has no part in the text (a group opened or closed) to a copy of the rows, and shows them again.</summary>
+    private void Arrange(Action<List<ConditionRow>> change)
+    {
+        var next = (Rows ?? []).Select(r => r.Clone()).ToList();
+        change(next);
+        _built = (Text, next);
+    }
+
+    /// <summary>
+    /// Opens or closes <paramref name="group"/>. Its place in <see cref="ConditionBuilder.Groups"/> is the same in a copy of
+    /// the rows, so that place finds it in the copy.
+    /// </summary>
+    private void ToggleGroup(ConditionRow group)
+    {
+        int at = ConditionBuilder.Groups(Rows ?? []).ToList().IndexOf(group);
+        if (at < 0) return;
+        Arrange(next =>
+        {
+            var copy = ConditionBuilder.Groups(next).ElementAt(at);
+            copy.Collapsed = !copy.Collapsed;
+        });
+    }
+
+    /// <summary>The rows of a group, then its empty row. <paramref name="updateRows"/> changes the rows on a copy of the condition.</summary>
+    private void RenderItems(RenderTreeBuilder __builder, List<ConditionRow> items, string key, Func<Action<List<ConditionRow>>, Task> updateRows, int depth, bool nested = false)
     {
         for (int index = 0; index < items.Count; index++)
         {
             var item = items[index];
+            int at = index;
+            string rowKey = $"{key}:{at}";
+            Task Update(Action<ConditionRow> patch) => updateRows(rows => patch(rows[at]));
+            Task Delete() => updateRows(rows => rows.RemoveAt(at));
             if (item.Items is not { } inner)
             {
-                RenderValueRow(__builder, item, group, index, depth);
+                RenderValueRow(__builder, item, rowKey, at, depth, nested, Update, Delete);
                 continue;
             }
-            int at = index;
-            int[] innerPath = [.. group, at];
-            string key = string.Join(".", innerPath);
-            Task Update(Action<ConditionRow> patch) => Commit(next => patch(ConditionBuilder.GroupAt(next, group)[at]));
-            <div @key="@($"{key}:open")" class="condition-row">
-                @{ RenderRowStart(__builder, item.Join, item.Not, at, depth, join => Update(r => r.Join = join), () => Update(r => r.Not = !item.Not)); }
-                <span class="paren">(</span>
-                @{ RenderDelete(__builder, "Delete group", () => Commit(next => ConditionBuilder.GroupAt(next, group).RemoveAt(at))); }
-            </div>
-            RenderItems(__builder, inner, innerPath, depth + 1);
-            <div @key="@($"{key}:close")" class="condition-row">
-                @{ RenderIndent(__builder, depth); }
-                <span class="lead"></span>
-                <span class="paren">)</span>
-            </div>
-        }
-        RenderPlaceholderRow(__builder, items, group, depth);
-    }
-
-    private void RenderValueRow(RenderTreeBuilder __builder, ConditionRow item, int[] group, int index, int depth)
-    {
-        Task Update(Action<ConditionRow> patch) => Commit(next =>
-        {
-            var target = ConditionBuilder.GroupAt(next, group)[index];
-            patch(target);
-            if (!string.IsNullOrEmpty(target.Path)) target.Kind = null;
-        });
-        var path = !string.IsNullOrEmpty(item.Path)
-            ? ConditionBuilder.SplitPath(Vocabulary, item.Path)
-            : new PathParts(item.Kind ?? _kinds[0].Id, "");
-        var kind = _kinds.First(k => k.Id == path.Kind);
-        bool known = kind.Names.Any(n => n.Slug == path.Name);
-        IReadOnlyList<string>? properties = kind.Properties != null && path.Property != null && !kind.Properties.Contains(path.Property)
-            ? [path.Property, .. kind.Properties]
-            : kind.Properties;
-        <div @key="@($"{string.Join(".", group)}:{index}")" class="condition-row">
-            @{ RenderRowStart(__builder, item.Join, item.Not, index, depth, join => Update(r => r.Join = join), () => Update(r => r.Not = !item.Not)); }
-            @* The selects wrap under each other, so a narrow row keeps its join, 'not' and group rails in place. *@
-            <div class="fields">
-                @* A new kind clears the name: the row waits for one. *@
-                <select aria-label="Kind" class="kind" value="@path.Kind"
-                        @onchange="e => Update(r => { r.Kind = (string?)e.Value; r.Path = null; r.Comparison = null; r.Value = null; })">
-                    @foreach (var k in _kinds)
+            @* A group's join, 'not' and chevron are on its top edge, and its delete button on the top right. *@
+            <div @key="rowKey" class="group @(item.Collapsed ? "closed" : null)">
+                <div class="group-start">
+                    <button type="button" class="chevron-button" aria-expanded="@(item.Collapsed ? "false" : "true")"
+                            title="@(item.Collapsed ? "Expand" : "Collapse")" aria-label="@(item.Collapsed ? "Expand group" : "Collapse group")"
+                            @onclick="() => ToggleGroup(item)">
+                        <Icon Shape="IconShape.Chevron" Class="chevron" />
+                    </button>
+                    @if (at > 0)
                     {
-                        <option @key="k.Id" value="@k.Id">@k.Label</option>
+                        RenderJoin(__builder, item.Join, join => Update(r => r.Join = join));
                     }
-                </select>
-                @if (string.IsNullOrEmpty(item.Path))
+                    else if (depth == 0 && !nested)
+                    {
+                        <span class="if">if</span>
+                    }
+                    @{ RenderNot(__builder, item.Not, () => Update(r => r.Not = !item.Not)); }
+                </div>
+                <div class="group-end">
+                    @{ RenderDelete(__builder, "Delete group", Delete); }
+                </div>
+                @if (item.Collapsed)
                 {
-                    <select @key="_picks" aria-label="Name" class="name" value=""
-                            @onchange="e => PickName(e, name => Update(r => r.Path = ConditionBuilder.JoinPath(Vocabulary, new PathParts(kind.Id, name, kind.Properties?.FirstOrDefault()))))">
-                        <option value=""></option>
-                        @{ RenderNameOptions(__builder, kind); }
-                    </select>
+                    <ConditionGroupText Vocabulary="Vocabulary" Text="@ConditionBuilder.Text(inner)" />
                 }
                 else
                 {
-                    <select aria-label="Name" class="name" value="@path.Name"
-                            @onchange="e => Update(r => r.Path = ConditionBuilder.JoinPath(Vocabulary, path with { Name = (string?)e.Value ?? string.Empty }))">
-                        @if (!known)
-                        {
-                            <option value="@path.Name">@path.Name (not a @Vocabulary.Hero name)</option>
-                        }
-                        @{ RenderNameOptions(__builder, kind); }
-                    </select>
-                    @if (properties != null)
-                    {
-                        <select aria-label="Property" class="property" value="@path.Property"
-                                @onchange="e => Update(r => r.Path = ConditionBuilder.JoinPath(Vocabulary, path with { Property = (string?)e.Value }))">
-                            @foreach (string p in properties)
-                            {
-                                <option @key="p" value="@p">@p</option>
-                            }
-                        </select>
-                    }
-                    <select aria-label="Comparison" class="comparison" value="@(item.Comparison ?? "")"
-                            @onchange="e => Update(r => { string? comparison = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value!; r.Comparison = comparison; r.Value = comparison != null ? item.Value ?? 0 : null; })">
-                        <option value=""></option>
-                        @foreach (string c in ConditionBuilder.Comparisons)
-                        {
-                            <option @key="c" value="@c">@c</option>
-                        }
-                    </select>
-                    @if (!string.IsNullOrEmpty(item.Comparison))
-                    {
-                        <NumberField @key="item.Value ?? 0" Value="item.Value ?? 0" OnChange="number => Update(r => r.Value = number)" />
-                    }
+                    RenderItems(__builder, inner, rowKey, patch => updateRows(rows => patch(rows[at].Items!)), depth + 1, nested);
                 }
             </div>
-            @{ RenderDelete(__builder, "Delete condition", () => Commit(next => ConditionBuilder.GroupAt(next, group).RemoveAt(index))); }
+        }
+        RenderPlaceholder(__builder, items, key, depth, nested, row => updateRows(rows => rows.Add(row)));
+    }
+
+    private void RenderValueRow(RenderTreeBuilder __builder, ConditionRow item, string key, int index, int depth, bool nested,
+        Func<Action<ConditionRow>, Task> update, Func<Task> delete)
+    {
+        <div @key="key" class="condition-row">
+            @{ RenderRowStart(__builder, item.Join, item.Not, index, depth, nested, join => update(r => r.Join = join), () => update(r => r.Not = !item.Not)); }
+            @* The fields wrap under each other, so a narrow row keeps its join and 'not' in place. *@
+            <div class="fields">
+                @{ RenderSides(__builder, item, key, update, null); }
+            </div>
+            @{ RenderDelete(__builder, "Delete condition", delete); }
+        </div>
+    }
+
+    /// <summary>
+    /// A row's first side, then each comparison and its side. A comparison emptied removes its side. <paramref name="addRow"/>
+    /// adds a row to the condition in parentheses the row is alone in; null for a row with its own line.
+    /// </summary>
+    private void RenderSides(RenderTreeBuilder __builder, ConditionRow row, string key, Func<Action<ConditionRow>, Task> update, Func<string, Task>? addRow)
+    {
+        bool lastSide = row.Comparisons.Count == 0;
+        RenderTerms(__builder, row.Left ?? [], $"{key}:left", update, r => r.Left!, lastSide, lastSide ? addRow : null);
+        for (int index = 0; index < row.Comparisons.Count; index++)
+        {
+            var comparison = row.Comparisons[index];
+            int at = index;
+            bool last = at == row.Comparisons.Count - 1;
+            <select @key="@($"{key}:{at}:comparison")" aria-label="Comparison" class="comparison" value="@comparison.Comparison"
+                    @onchange="e => update(r => { if (string.IsNullOrEmpty((string?)e.Value)) r.Comparisons.RemoveAt(at); else r.Comparisons[at].Comparison = (string)e.Value!; })">
+                <option value=""></option>
+                @foreach (string c in ConditionBuilder.Comparisons)
+                {
+                    <option @key="c" value="@c">@c</option>
+                }
+            </select>
+            RenderTerms(__builder, comparison.Terms, $"{key}:{at}:side", update, r => r.Comparisons[at].Terms, last, last ? addRow : null);
+        }
+    }
+
+    /// <summary>
+    /// The terms of a side, each after its operator, then an empty select: picking an operator adds a term (0), a
+    /// comparison adds a side (on the row's last side), and a join adds a row (<paramref name="addRow"/>). Emptying a term's
+    /// operator removes the term. <paramref name="locate"/> finds the terms on a copy of the row.
+    /// </summary>
+    private void RenderTerms(RenderTreeBuilder __builder, List<ConditionTerm> terms, string key, Func<Action<ConditionRow>, Task> update,
+        Func<ConditionRow, List<ConditionTerm>> locate, bool lastSide, Func<string, Task>? addRow)
+    {
+        for (int index = 0; index < terms.Count; index++)
+        {
+            var term = terms[index];
+            int at = index;
+            string termKey = $"{key}.{at}";
+            if (at > 0)
+            {
+                <select @key="@($"{termKey}:operator")" aria-label="Operator" class="operator" value="@(term.Operator ?? "")"
+                        @onchange="e => update(r => { if (string.IsNullOrEmpty((string?)e.Value)) locate(r).RemoveAt(at); else locate(r)[at].Operator = (string)e.Value!; })">
+                    <option value=""></option>
+                    @foreach (string o in ConditionBuilder.Operators)
+                    {
+                        <option @key="o" value="@o">@o</option>
+                    }
+                </select>
+            }
+            RenderTerm(__builder, term, termKey, patch => update(r => patch(locate(r)[at])));
+        }
+        <select @key="@($"{key}:add:{_picks}")" aria-label="Add to this value" title="Add to this value" class="operator add" value=""
+                @onchange="e => PickName(e, picked => AddToSide(picked, update, locate, addRow))">
+            <option value=""></option>
+            <optgroup label="Arithmetic">
+                @foreach (string o in ConditionBuilder.Operators)
+                {
+                    <option @key="o" value="@(OperatorPick + o)">@o</option>
+                }
+            </optgroup>
+            @if (lastSide)
+            {
+                <optgroup label="Comparison">
+                    @foreach (string c in ConditionBuilder.Comparisons)
+                    {
+                        <option @key="c" value="@(ComparisonPick + c)">@c</option>
+                    }
+                </optgroup>
+            }
+            @if (addRow != null)
+            {
+                <optgroup label="Join">
+                    <option value="@(JoinPick + "and")">and</option>
+                    <option value="@(JoinPick + "or")">or</option>
+                </optgroup>
+            }
+        </select>
+    }
+
+    private Task AddToSide(string picked, Func<Action<ConditionRow>, Task> update, Func<ConditionRow, List<ConditionTerm>> locate, Func<string, Task>? addRow)
+    {
+        if (picked.StartsWith(OperatorPick, StringComparison.Ordinal))
+        {
+            return update(r => locate(r).Add(new ConditionTerm { Operator = picked[OperatorPick.Length..], Number = 0 }));
+        }
+        if (picked.StartsWith(ComparisonPick, StringComparison.Ordinal))
+        {
+            return update(r => r.Comparisons.Add(new ConditionComparison { Comparison = picked[ComparisonPick.Length..], Terms = [new ConditionTerm { Number = 0 }] }));
+        }
+        return addRow?.Invoke(picked[JoinPick.Length..]) ?? Task.CompletedTask;
+    }
+
+    /// <summary>A term's prefixes and value, then its property, its number, or its condition in parentheses.</summary>
+    private void RenderTerm(RenderTreeBuilder __builder, ConditionTerm term, string key, Func<Action<ConditionTerm>, Task> update)
+    {
+        var path = !string.IsNullOrEmpty(term.Path) ? ConditionBuilder.SplitPath(Vocabulary, term.Path) : null;
+        ValuePick? value = term.Items != null ? new ValuePick(ConditionBuilder.GroupKind)
+            : path != null ? new ValuePick(path.Kind, path.Name)
+            : term.Number != null ? new ValuePick(ConditionBuilder.NumberKind)
+            : null;
+        @* Prefixes show on a term that has them; the value picker adds them. *@
+        if (!string.IsNullOrEmpty(term.Prefix))
+        {
+            <select @key="@($"{key}:prefix")" aria-label="Prefix" class="prefix" value="@term.Prefix"
+                    @onchange="e => update(t => t.Prefix = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value!)">
+                <option value=""></option>
+                @if (!ConditionBuilder.Prefixes.Contains(term.Prefix))
+                {
+                    <option value="@term.Prefix">@ConditionBuilder.PrefixLabel(term.Prefix)</option>
+                }
+                @foreach (string p in ConditionBuilder.Prefixes)
+                {
+                    <option @key="p" value="@p">@ConditionBuilder.PrefixLabel(p)</option>
+                }
+            </select>
+        }
+        <ValuePicker @key="@($"{key}:value")" Vocabulary="Vocabulary" Kinds="_kinds" Value="value"
+                     OnPick="pick => update(t => ConditionBuilder.Apply(t, pick, Vocabulary, _kinds))" />
+        if (term.Items is { } items)
+        {
+            RenderParentheses(__builder, items, key, update);
+            return;
+        }
+        if (path == null && term.Number is { } number)
+        {
+            <NumberField @key="@($"{key}:number:{number}")" Value="number" OnChange="value => update(t => t.Number = value)" />
+            return;
+        }
+        if (path == null || _kinds.FirstOrDefault(k => k.Id == path.Kind) is not { Properties: { } kindProperties }) return;
+        IReadOnlyList<string> properties = path.Property != null && !kindProperties.Contains(path.Property) ? [path.Property, .. kindProperties] : kindProperties;
+        <select @key="@($"{key}:property")" aria-label="Property" class="property" value="@path.Property"
+                @onchange="e => update(t => t.Path = ConditionBuilder.JoinPath(Vocabulary, path with { Property = (string?)e.Value }))">
+            @foreach (string p in properties)
+            {
+                <option @key="p" value="@p">@p</option>
+            }
+        </select>
+    }
+
+    /// <summary>
+    /// A condition in parentheses on a side of a row. One row with no 'not' shows on the side's line, and a join after its
+    /// last term adds a row; more rows show under the side, each on its own line.
+    /// </summary>
+    private void RenderParentheses(RenderTreeBuilder __builder, List<ConditionRow> items, string key, Func<Action<ConditionTerm>, Task> update)
+    {
+        Task UpdateRows(Action<List<ConditionRow>> patch) => update(t => patch(t.Items!));
+        if (items is [{ Items: null, Not: false } only])
+        {
+            <span @key="@($"{key}:terms")" class="term-group">
+                @{ RenderSides(__builder, only, $"{key}:0", patch => UpdateRows(rows => patch(rows[0])),
+                       join => UpdateRows(rows => rows.Add(new ConditionRow { Join = join, Left = [new ConditionTerm()] }))); }
+            </span>
+            return;
+        }
+        <div @key="@($"{key}:rows")" class="parentheses">
+            @{ RenderItems(__builder, items, key, UpdateRows, 0, nested: true); }
         </div>
     }
 
@@ -200,22 +364,14 @@
         return e.Value is string name && name.Length > 0 ? pick(name) : Task.CompletedTask;
     }
 
-    // Each group ends with an empty row. Picking its kind makes it a row (or a group), and a new empty row follows.
-    private void RenderPlaceholderRow(RenderTreeBuilder __builder, List<ConditionRow> items, int[] group, int depth)
+    // Each group ends with an empty row. A pick in its value picker makes it a row (or a group), and a new empty row follows.
+    private void RenderPlaceholder(RenderTreeBuilder __builder, List<ConditionRow> items, string key, int depth, bool nested, Func<ConditionRow, Task> add)
     {
-        string key = string.Join(".", group);
         var state = _placeholders.TryGetValue(key, out var stored) ? stored : (Join: AndJoin, Not: false);
         <div @key="@($"{key}:placeholder")" class="condition-row placeholder">
-            @{ RenderRowStart(__builder, state.Join, state.Not, items.Count, depth,
+            @{ RenderRowStart(__builder, state.Join, state.Not, items.Count, depth, nested,
                    join => SetPlaceholder(key, state with { Join = join }), () => SetPlaceholder(key, state with { Not = !state.Not })); }
-            <select @key="_picks" aria-label="Kind" class="kind" value="" @onchange="e => PickKind(e, key, state, group)">
-                <option value=""></option>
-                @foreach (var k in _kinds)
-                {
-                    <option @key="k.Id" value="@k.Id">@k.Label</option>
-                }
-                <option value="@ConditionBuilder.GroupKind">Group ( )</option>
-            </select>
+            <ValuePicker Vocabulary="Vocabulary" Kinds="_kinds" Placeholder="true" OnPick="pick => PickRow(pick, key, state, add)" />
         </div>
     }
 
@@ -225,41 +381,37 @@
         return Task.CompletedTask;
     }
 
-    private Task PickKind(ChangeEventArgs e, string key, (string Join, bool Not) state, int[] group)
+    private Task PickRow(ValuePick pick, string key, (string Join, bool Not) state, Func<ConditionRow, Task> add)
     {
-        _picks++;
-        if (e.Value is not string picked || picked.Length == 0) return Task.CompletedTask;
         _placeholders.Remove(key);
-        return Commit(next => ConditionBuilder.GroupAt(next, group).Add(picked == ConditionBuilder.GroupKind
-            ? new ConditionRow { Join = state.Join, Not = state.Not, Items = [] }
-            : new ConditionRow { Join = state.Join, Not = state.Not, Kind = picked }));
+        return add(ConditionBuilder.RowFor(pick, state.Join, state.Not, Vocabulary, _kinds));
     }
 
-    /// <summary>The rails of the groups the row is in, its join (or 'if' on the first row) and its 'not'.</summary>
-    private void RenderRowStart(RenderTreeBuilder __builder, string? join, bool not, int index, int depth, Func<string, Task> setJoin, Func<Task> toggleNot)
+    /// <summary>A row's join (or 'if' on the condition's first row, and a blank slot on a group's first row) and its 'not'.</summary>
+    private void RenderRowStart(RenderTreeBuilder __builder, string? join, bool not, int index, int depth, bool nested, Func<string, Task> setJoin, Func<Task> toggleNot)
     {
-        RenderIndent(__builder, depth);
         if (index == 0)
         {
-            <span class="if">@(depth == 0 ? "if" : "")</span>
+            <span class="if">@(depth == 0 && !nested ? "if" : "")</span>
         }
         else
         {
-            <select aria-label="Join" class="join" value="@(join ?? "and")" @onchange="e => setJoin(e.Value as string ?? AndJoin)">
-                <option value="and">and</option>
-                <option value="or">or</option>
-            </select>
+            RenderJoin(__builder, join, setJoin);
         }
-        <button type="button" class="not" aria-pressed="@(not ? "true" : "false")" @onclick="toggleNot">not</button>
+        RenderNot(__builder, not, toggleNot);
     }
 
-    /// <summary>Aliases share a name ("Winter Orbs" is worb and winter_orbs), so a shared name shows its slug.</summary>
-    private void RenderNameOptions(RenderTreeBuilder __builder, ConditionKind kind)
+    private void RenderJoin(RenderTreeBuilder __builder, string? join, Func<string, Task> setJoin)
     {
-        foreach (var n in kind.Names)
-        {
-            <option @key="n.Slug" value="@n.Slug">@ConditionBuilder.NameLabel(kind, n)</option>
-        }
+        <select aria-label="Join" class="join" value="@(join ?? AndJoin)" @onchange="e => setJoin(e.Value as string ?? AndJoin)">
+            <option value="and">and</option>
+            <option value="or">or</option>
+        </select>
+    }
+
+    private void RenderNot(RenderTreeBuilder __builder, bool not, Func<Task> toggleNot)
+    {
+        <button type="button" class="not" aria-pressed="@(not ? "true" : "false")" @onclick="toggleNot">not</button>
     }
 
     private void RenderDelete(RenderTreeBuilder __builder, string label, Func<Task> onClick)
@@ -267,16 +419,6 @@
         <button type="button" class="icon-button danger-button remove" title="@label" aria-label="@label" @onclick="onClick">
             <Icon Shape="IconShape.Bin" />
         </button>
-    }
-
-    /// <summary>A row in a group starts under its group's '(': a space as wide as a join and a 'not', then the group's rail.</summary>
-    private void RenderIndent(RenderTreeBuilder __builder, int depth)
-    {
-        for (int d = 0; d < depth; d++)
-        {
-            <span class="lead"></span>
-            <span class="rail"></span>
-        }
     }
 
     public void Dispose() => _read.Dispose();

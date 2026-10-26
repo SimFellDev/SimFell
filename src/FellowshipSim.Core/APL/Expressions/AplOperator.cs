@@ -21,8 +21,10 @@ public enum BinaryOperator
 
 public enum UnaryOperator
 {
+    /// <summary>Written '!': the negation, 1 where its operand is 0 and 0 elsewhere.</summary>
     Not,
-    Negate,
+    /// <summary>Written '-' before one operand: its value with the opposite sign.</summary>
+    Minus,
 }
 
 public static class AplOperatorSymbols
@@ -48,7 +50,7 @@ public static class AplOperatorSymbols
     public static string Symbol(this UnaryOperator op) => op switch
     {
         UnaryOperator.Not => "!",
-        UnaryOperator.Negate => "-",
+        UnaryOperator.Minus => "-",
         _ => throw new ArgumentOutOfRangeException(nameof(op), op, null)
     };
 }

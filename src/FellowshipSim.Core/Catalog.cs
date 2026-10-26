@@ -44,6 +44,10 @@ public static partial class Catalog
 
     public static Legendary? CreateLegendary(string hero, int itemId) => NewLegendary(hero.ToLowerInvariant(), itemId);
 
+    /// <summary>One instance of every legendary <paramref name="hero"/> can wear.</summary>
+    public static IEnumerable<Legendary> Legendaries(string hero) =>
+        LegendaryClasses.Where(l => l.Hero == hero.ToLowerInvariant()).Select(l => (Legendary)Activator.CreateInstance(l.Type)!);
+
     /// <summary>One instance of every augmentation (aspects, sigils and protective enchants), at rank 1.</summary>
     public static IEnumerable<Augmentation> AllAugmentations => NewAugmentations();
 

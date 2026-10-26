@@ -7,7 +7,7 @@
 @inject ActionListsState State
 @* Visual action-list editor: one section per action list, each with its actions in priority order. *@
 <Card>
-    <div @ref="_root">
+    <div @ref="_root" class="apl-editor">
         @if (State.Editor.Vocabulary is not { } v)
         {
             <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>

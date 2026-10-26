@@ -63,3 +63,7 @@
   font: 13px/1.5 var(--code-font);
   resize: vertical;
 }
+
+.hint {
+  max-width: 90ch;
+}

@@ -47,8 +47,8 @@
         </select>
     }
 
-    <label>Condition</label>
-    <div>
+    <label class="wide">Condition</label>
+    <div class="wide">
         <ConditionField Vocabulary="Vocabulary" Value="@Action.Condition"
                         Placeholder="@($"Always. Example: {Vocabulary.Resources.FirstOrDefault()?.Slug ?? "active_enemies"} >= 3 and not buff.{Vocabulary.Auras.FirstOrDefault()?.Slug ?? "name"}.up")"
                         OnChange="condition => Change(a => a with { Condition = condition })" />
