@@ -15,7 +15,7 @@ public enum StepEventKind
 
 /// <summary>One thing that happened in a <see cref="StepDriver"/> fight. <see cref="Value"/> is the damage dealt, the
 /// resource amount, or the aura's stacks; 0 for casts. <see cref="Target"/> is the name of the enemy a damage event hit and <see cref="CritChance"/> the hit's chance to crit (0 for other events).</summary>
-public readonly record struct StepEvent(SimTime Time, StepEventKind Kind, string Name, double Value = 0, string? Target = null, double CritChance = 0);
+public readonly record struct StepEvent(SimTime Time, StepEventKind Kind, string Name, double Value = 0, string? Target = null, double CritChance = 0, int AbilityId = 0);
 
 /// <summary>
 /// Plays a fight with the actor controlled from code instead of an action list: <c>Cast</c> starts an ability and returns
@@ -104,13 +104,13 @@ public sealed class StepDriver
 
     private void Subscribe()
     {
-        void Add(StepEventKind kind, string name, double value = 0, string? target = null, double critChance = 0) =>
-            _events.Add(new StepEvent(Now, kind, name, value, target, critChance));
+        void Add(StepEventKind kind, string name, double value = 0, string? target = null, double critChance = 0, int abilityId = 0) =>
+            _events.Add(new StepEvent(Now, kind, name, value, target, critChance, abilityId));
 
         Hero.OnCastStarted += (a, _, _) => Add(StepEventKind.CastStarted, a.Name);
         Hero.OnCastCompleted += (a, _, _) => Add(StepEventKind.CastCompleted, a.Name);
         Hero.OnCastCancelled += (a, _, _) => Add(StepEventKind.CastCancelled, a.Name);
-        Hero.OnDamageDealt += (in DamageContext hit) => Add(StepEventKind.Damage, hit.AbilityName, hit.Amount, hit.Target?.Name, hit.CritChance);
+        Hero.OnDamageDealt += (in DamageContext hit) => Add(StepEventKind.Damage, hit.AbilityName, hit.Amount, hit.Target?.Name, hit.CritChance, hit.AbilityId);
         Hero.OnResourceGained += (r, amount, _, _) => Add(StepEventKind.ResourceGained, r.Name, amount);
         Hero.OnResourceSpent += (r, amount, _) => Add(StepEventKind.ResourceSpent, r.Name, amount);
         Hero.OnResourceOverflow += (r, amount, _) => Add(StepEventKind.ResourceOverflow, r.Name, amount);
