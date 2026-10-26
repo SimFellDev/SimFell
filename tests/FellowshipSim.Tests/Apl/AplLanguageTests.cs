@@ -147,6 +147,24 @@ public class AplLanguageTests
         Assert.True(AplParser.ParseScript(DefaultActionLists.Read(heroName, DefaultActionLists.DefaultName)!).TryAct(hero, ctx), heroName);
     }
 
+    [Theory]
+    [InlineData("Rime")]
+    [InlineData("Gunde")]
+    [InlineData("Ardeos")]
+    [InlineData("Tariq")]
+    [InlineData("Mara")]
+    [InlineData("Elarion")]
+    public void Every_Aura_Gear_Gives_Is_In_The_Vocabulary(string heroName)
+    {
+        var auras = AplVocabulary.For(heroName).Auras.Select(a => a.Slug).ToHashSet();
+        var hero = HeroImporter.Import(new CharacterBuild { Hero = heroName, PrimaryStat = 1000 });
+        foreach (var glyph in Catalog.AllGlyphs) glyph.Bind(hero);
+        foreach (var augmentation in Catalog.AllAugmentations) augmentation.Bind(hero);
+        foreach (var relic in Catalog.AllRelicPassives) relic.Bind(hero);
+        foreach (var legendary in Catalog.Legendaries(heroName)) legendary.Bind(hero);
+        Assert.Empty(hero.RuntimeAuras.Select(a => AplNames.Slug(a.Name)).Where(slug => !auras.Contains(slug)).Distinct());
+    }
+
     private static (Hero Hero, SimulationContext Ctx) Fight(IEnumerable<int> talents, string heroName = "Rime")
     {
         var hero = HeroImporter.Import(new CharacterBuild { Hero = heroName, PrimaryStat = 1000, Talents = talents.ToList() });

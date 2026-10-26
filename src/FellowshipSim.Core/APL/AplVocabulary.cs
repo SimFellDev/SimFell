@@ -104,7 +104,7 @@ public sealed class AplVocabulary
         BuildNames = buildNames;
     }
 
-    private AplVocabulary(string heroName, Hero hero, IReadOnlyList<Weapon> weapons)
+    private AplVocabulary(string heroName, Hero hero, IReadOnlyList<Weapon> weapons, IEnumerable<AuraDef> gearAuras)
     {
         _hero = hero;
         Hero = heroName;
@@ -121,7 +121,7 @@ public sealed class AplVocabulary
             .Concat(hero.Abilities.Select(a => a.GetType()))
             .Concat(hero.Talents.Select(t => t.GetType()))
             .Concat(Catalog.GearTypes(heroName));
-        Auras = AuraDef.DeclaredOn(owners).Concat(hero.RuntimeAuras).Select(a => a.Name)
+        Auras = AuraDef.DeclaredOn(owners).Concat(hero.RuntimeAuras).Concat(gearAuras).Select(a => a.Name)
             .Concat(hero is ITargetEffects effects ? effects.TargetEffectNames : [])
             .Select(name => new AplName(AplNames.Slug(name), name))
             .DistinctBy(n => n.Slug).OrderBy(n => n.Slug, StringComparer.Ordinal).ToList();
@@ -141,7 +141,7 @@ public sealed class AplVocabulary
 
     /// <summary>
     /// The vocabulary of <paramref name="heroName"/> (a name in <see cref="Catalog.Heroes"/>), with every talent of its tree
-    /// and every weapon ability.
+    /// and every weapon ability, and the auras of all gear it can wear.
     /// </summary>
     public static AplVocabulary For(string heroName)
     {
@@ -149,7 +149,13 @@ public sealed class AplVocabulary
         var hero = HeroImporter.Import(new CharacterBuild { Hero = heroName, Talents = tree.Select(s => s.TalentId).ToList() });
         var weapons = Catalog.AllWeapons.ToList();
         foreach (var weapon in weapons) weapon.Equip(hero);
-        return new AplVocabulary(Catalog.Heroes.Keys.First(k => k.Equals(heroName, StringComparison.OrdinalIgnoreCase)), hero, weapons);
+        // Gear that builds its auras in Bind (a rank's stacks or modifiers) has them only once bound, on a hero of its own.
+        var gear = HeroImporter.Import(new CharacterBuild { Hero = heroName });
+        foreach (var glyph in Catalog.AllGlyphs) glyph.Bind(gear);
+        foreach (var augmentation in Catalog.AllAugmentations) augmentation.Bind(gear);
+        foreach (var relic in Catalog.AllRelicPassives) relic.Bind(gear);
+        foreach (var legendary in Catalog.Legendaries(heroName)) legendary.Bind(gear);
+        return new AplVocabulary(Catalog.Heroes.Keys.First(k => k.Equals(heroName, StringComparison.OrdinalIgnoreCase)), hero, weapons, gear.RuntimeAuras);
     }
 
     /// <summary>Token kind of <paramref name="property"/> for this hero, and the problem when the hero has nothing by that name.</summary>

@@ -74,8 +74,8 @@ public class ConditionBuilderTests
     }
 
     /// <summary>
-    /// Every name the hero has in every built-in condition and target expression is in its kind's names: the builder lists
-    /// it for picking. A name the hero lacks is underlined in the text and listed as not a name of the hero.
+    /// Every name in every built-in condition and target expression is a name of the hero and in its kind's names: the
+    /// builder lists it for picking.
     /// </summary>
     [Fact]
     public void Every_name_in_a_built_in_expression_is_in_its_kind()
@@ -88,8 +88,7 @@ public class ConditionBuilderTests
             {
                 var kinds = ConditionBuilder.Kinds(vocabulary, ConditionBuilder.Variables([new ActionList(list.Key, list.Select(a => EditorAction.From(a.Action)).ToList())]));
                 foreach (string path in list.SelectMany(a => new[] { a.Action.Condition, a.Action.TargetExpression }).OfType<string>()
-                             .SelectMany(text => Paths(AplCondition.Rows(AplParser.ParseExpression(text)))).Distinct()
-                             .Where(path => vocabulary.Classify(new PropertyExpression(path)).Kind != AplTokenKind.Unknown))
+                             .SelectMany(text => Paths(AplCondition.Rows(AplParser.ParseExpression(text)))).Distinct())
                 {
                     var parts = ConditionBuilder.SplitPath(vocabulary, path);
                     var kind = kinds.Single(k => k.Id == parts.Kind);
