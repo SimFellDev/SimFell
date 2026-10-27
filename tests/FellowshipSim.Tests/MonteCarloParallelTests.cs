@@ -26,6 +26,10 @@ public class MonteCarloParallelTests
     private const int Seconds = 120;
     private const int Targets = 3;
 
+    /// <summary>
+    /// FLAKY: this test fails on some runs and passes on others, with no change to the code between them (seen on the functional tests branch:
+    /// it failed in 2 of 3 consecutive runs of the non-functional tests). Not investigated; left to the test's authors.
+    /// </summary>
     [Fact]
     public void Fight_I_Has_The_Same_Total_At_Every_Degree_Of_Parallelism()
     {
