@@ -63,6 +63,7 @@ public sealed class AplVocabulary
     {
         [PropertyExpression.BuffScope] = Auras,
         [PropertyExpression.DebuffScope] = Auras,
+        [PropertyExpression.DotScope] = Auras,
         [PropertyExpression.CooldownScope] = Abilities,
         [PropertyExpression.ActionScope] = Abilities,
     };
@@ -110,8 +111,9 @@ public sealed class AplVocabulary
             .Concat(hero.Abilities.Select(a => a.GetType()))
             .Concat(hero.Talents.Select(t => t.GetType()))
             .Concat(Catalog.GearTypes(heroName));
-        Auras = AuraDef.DeclaredOn(owners).Concat(hero.RuntimeAuras)
-            .Select(a => new AplName(AplNames.Slug(a.Name), a.Name))
+        Auras = AuraDef.DeclaredOn(owners).Concat(hero.RuntimeAuras).Select(a => a.Name)
+            .Concat(hero is ITargetEffects effects ? effects.TargetEffectNames : [])
+            .Select(name => new AplName(AplNames.Slug(name), name))
             .DistinctBy(n => n.Slug).OrderBy(n => n.Slug, StringComparer.Ordinal).ToList();
     }
 
@@ -137,6 +139,12 @@ public sealed class AplVocabulary
         {
             return (AplTokenKind.Named, null);
         }
+        if (property.Scope == PropertyExpression.ActiveDotScope)
+        {
+            return Auras.Any(a => a.Slug == property.Name) ? (AplTokenKind.Debuff, null) : (AplTokenKind.Unknown, $"{Hero} has no debuff named `{property.Name}`.");
+        }
+        // An action's own values ("full_recharge_time", "refreshable") read its ability (AplParser binds them so).
+        if (property.Scope == null && PropertyExpression.OfAction(property.PropertyPath, "") != null) return (AplTokenKind.Named, null);
         if (property.Scope == null) return (AplTokenKind.Unknown, $"{Hero} has no value or resource named `{property.PropertyPath}`; it reads as 0.");
 
         var properties = PropertyExpression.Scopes[property.Scope];

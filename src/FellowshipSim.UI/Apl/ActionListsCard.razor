@@ -22,7 +22,7 @@
                 <div class="row toolbar">
                     <label class="field">
                         Hero
-                        <select @bind:get="v.Hero" @bind:set="SelectHero">
+                        <select @key="_pickerKey" @bind:get="v.Hero" @bind:set="SelectHero">
                             @foreach (string hero in State.Heroes)
                             {
                                 <option @key="hero">@hero</option>
@@ -30,18 +30,27 @@
                         </select>
                     </label>
                     <input @ref="_nameInput" aria-label="Action list name" placeholder="Action list name" autocomplete="off" @bind="State.Name" />
-                    <select aria-label="Saved action lists" @bind:get="State.SelectedSaved" @bind:set="PickSaved">
+                    <select @key="_pickerKey" aria-label="Saved action lists" @bind:get="State.SelectedSaved" @bind:set="PickSavedAsked">
                         <option value="">Load list...</option>
-                        @foreach (var saved in State.Saved)
+                        @foreach (var saved in State.Saved.Where(s => s.Hero.Equals(v.Hero, StringComparison.OrdinalIgnoreCase)))
                         {
-                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name (@saved.Hero@(saved.BuiltIn ? ", built in" : saved.Shared ? ", shared" : ""))</option>
+                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : saved.Shared ? " (shared)" : "")</option>
                         }
                     </select>
                     <button type="button" class="secondary-button" @onclick="Save">Save</button>
-                    <button type="button" class="secondary-button" @onclick="New">New</button>
+                    <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
                     <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
                     <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" title="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
                 </div>
+                @if (_pending is { } pending)
+                {
+                    <div class="confirm" role="alertdialog" aria-label="Unsaved changes">
+                        <span>@(State.Name.Trim().Length > 0 ? State.Name.Trim() : "This list") has changes that are not saved. Save them before @pending.What?</span>
+                        <button type="button" @onclick="SaveThenContinue">Save</button>
+                        <button type="button" class="secondary-button" @onclick="DiscardThenContinue">Discard</button>
+                        <button type="button" class="secondary-button" @onclick="CancelPending">Cancel</button>
+                    </div>
+                }
                 <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>
                 <div>
                     @foreach (var list in State.Editor.Lists)
@@ -75,6 +84,11 @@
     private AplVocabulary? _writtenVocabulary;
     private CancellationTokenSource? _write;
 
+    // The step waiting on the unsaved changes (open another hero, list or a new one), and a key that draws the pickers
+    // anew so a cancelled pick shows the list still open.
+    private (string What, Func<Task> Then)? _pending;
+    private int _pickerKey;
+
     private const string SharedValue = "shared";
     private const string BuiltInValue = "builtin";
 
@@ -103,9 +117,7 @@
             State.Saved = await _savedLists.ListAsync();
             State.Editor.Load(v, []);
             State.Loaded = true;
-            // The editor starts on the hero's built-in default list.
-            string defaultList = SavedValue(new ActionListEntry(v.Hero, DefaultActionLists.DefaultName, BuiltIn: true));
-            if (State.Saved.Any(s => SavedValue(s) == defaultList)) await PickSaved(defaultList);
+            await PickDefault(v.Hero);
         }
         catch (Exception e)
         {
@@ -199,16 +211,28 @@
         });
     }
 
-    private async Task SelectHero(string hero)
+    // Another hero's lists are of no use to this one: the editor opens the new hero's built-in default list, and the
+    // saved lists show only theirs.
+    private Task SelectHero(string hero) => AskFirst($"opening {hero}", () => OpenHero(hero));
+
+    private async Task OpenHero(string hero)
     {
         try
         {
             State.Editor.SetVocabulary(await VocabularyOf(hero));
+            await PickDefault(State.Editor.Vocabulary!.Hero);
         }
         catch (Exception e)
         {
             Fail(e);
         }
+    }
+
+    /// <summary>Opens <paramref name="hero"/>'s built-in default list, or an empty one when it has none.</summary>
+    private Task PickDefault(string hero)
+    {
+        string defaultList = SavedValue(new ActionListEntry(hero, DefaultActionLists.DefaultName, BuiltIn: true));
+        return PickSaved(State.Saved.Any(s => SavedValue(s) == defaultList) ? defaultList : "");
     }
 
     private async Task LoadSavedLists(string selected = "")
@@ -245,6 +269,7 @@
         {
             State.Name = "";
             State.Editor.Load(State.Editor.Vocabulary!, []);
+            State.MarkClean();
             return;
         }
         string[] parts = value.Split('/');
@@ -261,9 +286,11 @@
                 State.TextOpen = true;
                 State.TextKey++;
                 State.Editor.SetStatus(MessageState.Error($"The saved text does not parse: {list.Error}"));
+                State.MarkClean();
                 return;
             }
             State.Editor.Load(heroVocabulary, list.Actions ?? []);
+            State.MarkClean();
         }
         catch (Exception e)
         {
@@ -277,7 +304,41 @@
 
     private bool CanDelete => PickedOwnList != null;
 
-    private Task New() => PickSaved("");
+    private Task NewAsked() => AskFirst("starting a new list", () => PickSaved(""));
+
+    private Task PickSavedAsked(string value)
+    {
+        var picked = State.Saved.FirstOrDefault(s => SavedValue(s) == value);
+        return AskFirst(picked != null ? $"opening {picked.Name}" : "starting a new list", () => PickSaved(value));
+    }
+
+    /// <summary>Runs <paramref name="then"/> now, or after asking to save when the lists have changes not saved.</summary>
+    private Task AskFirst(string what, Func<Task> then)
+    {
+        if (!State.HasEdits) return then();
+        _pending = (what, then);
+        _pickerKey++;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveThenContinue()
+    {
+        if (_pending is not { } pending) return;
+        await Save();
+        // A save that failed keeps the question, with the reason in the status.
+        if (State.HasEdits) return;
+        _pending = null;
+        await pending.Then();
+    }
+
+    private async Task DiscardThenContinue()
+    {
+        if (_pending is not { } pending) return;
+        _pending = null;
+        await pending.Then();
+    }
+
+    private void CancelPending() => _pending = null;
 
     // A copy of the lists, not saved yet: Save keeps it under its new name.
     private void Duplicate()
@@ -316,9 +377,9 @@
         try
         {
             var saved = await _savedLists.SaveAsync(v.Hero, listName, ActionListModel.DocumentActions(lists));
-            State.Editor.SetStatus(MessageState.Ok(Visitor.OwnsDataFolder
-                ? $"Saved to {Store.PathOf(saved.Hero, saved.Name)}."
-                : $"Saved {saved.Name} to your action lists."));
+            State.MarkClean();
+            // No folder in the message: on a stream it would show the user's name.
+            State.Editor.SetStatus(MessageState.Ok($"Saved {saved.Name} to your action lists."));
             await LoadSavedLists(SavedValue(saved));
         }
         catch (ActionListNotSavedException e)

@@ -14,7 +14,6 @@ if (!ServiceApp.IsLocal(app.Configuration))
 await app.StartAsync();
 string url = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
 Console.WriteLine($"SimFell {(ServiceApp.AppVersion is { } version ? $"{version.ToString(3)} " : "")}is running at {url}");
-Console.WriteLine($"Your data: {app.Services.GetRequiredService<FellowshipSim.Logs.ReplayLibrary>().DataDirectory}");
 Console.WriteLine("Close this window to stop it.");
 // "--NoBrowser=true" leaves the browser closed.
 if (!app.Configuration.GetValue<bool>("NoBrowser"))

@@ -35,6 +35,23 @@ public class ActionListEditorTests
     }
 
     [Fact]
+    public void The_lists_have_edits_after_a_change_not_after_opening_an_action()
+    {
+        var state = new ActionListsState(new LocalSimEngine());
+        state.Editor.Load(_v, [new AplDocumentAction("a")]);
+        Assert.True(state.HasEdits);
+        state.MarkClean();
+        Assert.False(state.HasEdits);
+
+        state.Editor.Toggle(state.Editor.Lists[0].Actions[0].Key);
+        state.Editor.SetStatus(MessageState.Ok("Saved."));
+        Assert.False(state.HasEdits);
+
+        state.Editor.AddAction(_v.DefaultList);
+        Assert.True(state.HasEdits);
+    }
+
+    [Fact]
     public void An_action_moves_within_its_list()
     {
         var editor = Loaded(new AplDocumentAction("a"), new AplDocumentAction("b"), new AplDocumentAction("c"));

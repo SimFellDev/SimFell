@@ -748,6 +748,24 @@ public sealed class CooldownState
         return _charges;
     }
 
+    /// <summary>
+    /// The part of the charge recharging that has come back by <paramref name="time"/> (0 to 1), at the rate read at
+    /// <paramref name="now"/>: <paramref name="time"/> is now or later, with no event between. 0 when no charge recharges.
+    /// </summary>
+    public double RechargedPart(SimTime now, SimTime time)
+    {
+        Advance(now);
+        if (!Recharging || _rechargeBase <= 0) return 0.0;
+        return Math.Clamp(1.0 - Math.Max(0.0, (NextChargeAt - time).TotalSeconds) * _rate / _rechargeBase, 0.0, 1.0);
+    }
+
+    /// <summary>How much of a charge comes back each second at the rate read at <paramref name="now"/>; 0 when no charge recharges.</summary>
+    public double RechargePerSecond(SimTime now)
+    {
+        Advance(now);
+        return Recharging && _rechargeBase > 0 ? _rate / _rechargeBase : 0.0;
+    }
+
     /// <summary>Spends a charge; a recharge of <paramref name="rechargeSeconds"/> cooldown-seconds starts if none is running.</summary>
     public void Spend(SimTime now, double rechargeSeconds)
     {

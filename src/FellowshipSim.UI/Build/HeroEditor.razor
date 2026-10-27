@@ -1,4 +1,5 @@
 @using System.Globalization
+@using Microsoft.JSInterop
 @using FellowshipSim.Core.Customization.Gems
 @using FellowshipSim.Core.Import
 @using FellowshipSim.Core.Customization.ProtectiveEnchants
@@ -7,6 +8,7 @@
 @inject ProfileStore Profiles
 @inject Visitor Visitor
 @inject SimPageState State
+@inject IJSRuntime JS
 @implements IDisposable
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
@@ -23,9 +25,21 @@
         <button type="button" class="secondary-button" @onclick="SaveAsync">Save</button>
         <button type="button" class="secondary-button" @onclick="New">New</button>
         <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
+        <button type="button" class="secondary-button" aria-expanded="@(_exportOpen ? "true" : "false")" @onclick="ExportAsync">Export</button>
         <button type="button" class="secondary-button delete" disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync">Delete</button>
     </div>
     <Message Kind="State.BuildStatus.Kind">@State.BuildStatus.Text</Message>
+    @if (_exportOpen)
+    {
+        @* The build as a profile, the text Import reads; it follows the build while it shows. *@
+        <div class="export">
+            <textarea aria-label="Build profile" readonly spellcheck="false" rows="8">@ExportText</textarea>
+            <div class="row">
+                <button type="button" class="secondary-button" @onclick="CopyExportAsync">Copy</button>
+                <button type="button" class="secondary-button" @onclick="() => _exportOpen = false">Close</button>
+            </div>
+        </div>
+    }
 </Card>
 
 <div class="editor">
@@ -77,35 +91,51 @@
             <div class="sheet">
                 <span class="sheet-label">Main stat</span>
                 <strong>@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</strong>
-                @foreach (var stat in Enum.GetValues<RatedStat>())
+                @foreach (var stat in BuildEditor.InGameOrder)
                 {
                     <span class="sheet-label" title="@SheetNote(stat)">@StatName(stat)</span>
                     <strong class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</strong>
                 }
             </div>
-            <h3 class="section">Ratings</h3>
+            <h3 class="section">Stats</h3>
+            @* Gear: the stats typed in, as the gear gives them. Total: with what the game adds (the base main stat, the stat enchants). *@
             <div class="ratings">
-                <label>
-                    Main stat
-                    <input type="number" min="0" step="1" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Build.PrimaryStat = Math.Max(0, v))" />
-                </label>
+                <div class="stat-group">
+                    <span>Primary</span>
+                    <span class="rating">
+                        <span class="column" title="The stats the gear gives">Gear</span>
+                        <span class="total" title="With the base main stat and the stat enchants">Total</span>
+                    </span>
+                </div>
                 <label>
                     Stamina
-                    <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
+                    <span class="rating">
+                        <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
+                        <span class="total"></span>
+                    </span>
                 </label>
-                <label>
-                    Armor
-                    <input type="number" min="0" step="1" @bind:get="Build.Armor" @bind:set="v => Set(() => Build.Armor = Math.Max(0, v))" />
+                <label title="@($"The gear's main stat; the total adds the base {BuildEditor.BaseMainStat:0}")">
+                    Main stat
+                    <span class="rating">
+                        <input type="number" min="0" step="1" aria-label="Main stat from gear" @bind:get="Editor.MainStatBonus" @bind:set="v => Set(() => Editor.MainStatBonus = v)" />
+                        <span class="total" title="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the gear's")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
+                    </span>
                 </label>
-                @foreach (var stat in Enum.GetValues<RatedStat>())
+                <div class="stat-group">
+                    <span>Secondary</span>
+                </div>
+                @foreach (var stat in BuildEditor.InGameOrder)
                 {
                     <label @key="stat" title="@SheetNote(stat)">
                         @StatName(stat)
-                        <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+                        <span class="rating">
+                            <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+                            <span class="total" title="Total rating: the gear's and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
+                        </span>
                     </label>
                 }
             </div>
-            <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit ? "over" : "")"
+            <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit || !Editor.FitsGear ? "over" : "")"
                  title="@($"Slots filled: stat enchants, gem power bonuses, and aspect, sigil and glyph ranks (protective enchants not counted){(Editor.HasWeapon ? "; the weapon adds 5" : "")}")">
                 <span>Slots</span>
                 <strong>@Editor.UsedTotal / @Editor.TotalLimit</strong>
@@ -201,7 +231,7 @@
         </Card>
 
         <div class="pair even">
-            <Card Title="Stat enchants" Count="@SlotCount(EnchantSlot.StatEnchants)" CountTitle="@SlotTitle(EnchantSlot.StatEnchants)" Over="@SlotOver(EnchantSlot.StatEnchants)">
+            <Card Title="Stat enchants" CountContent="@GearCount(EnchantSlot.StatEnchants)" CountTitle="@GearTitle(EnchantSlot.StatEnchants)" Over="@GearOver(EnchantSlot.StatEnchants)">
                 <div class="enchants">
                     @foreach (var e in Catalog.StatEnchants)
                     {
@@ -225,7 +255,7 @@
                     }
                 </div>
             </Card>
-            <Card Title="Gems" Count="@SlotCount(EnchantSlot.Gems)" CountTitle="@SlotTitle(EnchantSlot.Gems)" Over="@SlotOver(EnchantSlot.Gems)">
+            <Card Title="Gems" CountContent="@GearCount(EnchantSlot.Gems)" CountTitle="@GearTitle(EnchantSlot.Gems)" Over="@GearOver(EnchantSlot.Gems)">
                     <div class="sockets">
                         @for (int i = 0; i < GemItem.Sockets; i++)
                         {
@@ -284,18 +314,18 @@
         </div>
 
         <div class="pair">
-            <Card Title="Aspects" Count="@SlotCount(EnchantSlot.Aspects)" CountTitle="@SlotTitle(EnchantSlot.Aspects)" Over="@SlotOver(EnchantSlot.Aspects)">
+            <Card Title="Aspects" CountContent="@GearCount(EnchantSlot.Aspects)" CountTitle="@GearTitle(EnchantSlot.Aspects)" Over="@GearOver(EnchantSlot.Aspects)">
                 <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
                                Room="Editor.Room(EnchantSlot.Aspects)" FullText="@FullText(EnchantSlot.Aspects)" />
             </Card>
-            <Card Title="Sigils" Count="@SlotCount(EnchantSlot.Sigils)" CountTitle="@SlotTitle(EnchantSlot.Sigils)" Over="@SlotOver(EnchantSlot.Sigils)">
+            <Card Title="Sigils" CountContent="@GearCount(EnchantSlot.Sigils)" CountTitle="@GearTitle(EnchantSlot.Sigils)" Over="@GearOver(EnchantSlot.Sigils)">
                 <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
                                Room="Editor.Room(EnchantSlot.Sigils)" FullText="@FullText(EnchantSlot.Sigils)" />
             </Card>
         </div>
 
         <div class="pair">
-            <Card Title="Glyphs" Count="@SlotCount(EnchantSlot.Glyphs)" CountTitle="@SlotTitle(EnchantSlot.Glyphs)" Over="@SlotOver(EnchantSlot.Glyphs)">
+            <Card Title="Glyphs" CountContent="@GearCount(EnchantSlot.Glyphs)" CountTitle="@GearTitle(EnchantSlot.Glyphs)" Over="@GearOver(EnchantSlot.Glyphs)">
                 <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))"
                                Room="Editor.Room(EnchantSlot.Glyphs)" FullText="@FullText(EnchantSlot.Glyphs)" />
             </Card>
@@ -358,10 +388,34 @@
 
     private bool SlotOver(EnchantSlot slot) => Editor.Used(slot) > Editor.Limit(slot);
 
-    // Why a + is off: this kind is at its limit, or all enchants are.
-    private string FullText(EnchantSlot slot) => Editor.Used(slot) >= Editor.Limit(slot)
+    // A gear kind's count: on the armor (or all gear) against its most, the room left, and the weapon's tree on a line of its own.
+    private RenderFragment GearCount(EnchantSlot slot) => __builder =>
+    {
+        int room = Editor.Room(slot);
+        int weaponLimit = GearFit.WeaponLimit(slot, Editor.HasWeapon);
+        <span class="gear-count">
+            <span>
+                <span class="@(room > 0 ? "room" : "full")">@(room > 0 ? $"{room} Slots Available" : "Full")</span>
+            </span>
+            @if (weaponLimit > 0)
+            {
+                <span><span class="where">Weapon</span> @Editor.WeaponUsed(slot) / @weaponLimit</span>
+            }
+        </span>
+    };
+
+    private string GearTitle(EnchantSlot slot) => slot is EnchantSlot.StatEnchants or EnchantSlot.Gems
+        ? $"{EnchantSlots.Name(slot)} on gear, of the {GearFit.GearLimit(slot)} its {EnchantSlots.ArmorPieces + EnchantSlots.OtherPieces} pieces hold (2 each). Room: how many more fit with the rest of your enchants."
+        : $"{EnchantSlots.Name(slot)} on armor, of the {GearFit.GearLimit(slot)} its {EnchantSlots.ArmorPieces} pieces hold (2 each). Room: how many more fit; stat enchants and gems fill the other pieces first.";
+
+    private bool GearOver(EnchantSlot slot) => Editor.GearUsed(slot) > GearFit.GearLimit(slot) || !Editor.FitsGear;
+
+    // Why a + is off: this kind is at its most, or no slot that takes it is left.
+    private string FullText(EnchantSlot slot) => slot == EnchantSlot.Protective || Editor.Used(slot) >= Editor.Limit(slot)
         ? $"At the limit of {Editor.Limit(slot)} {EnchantSlots.Name(slot)}"
-        : $"At the limit of {Editor.TotalLimit} slots in all";
+        : slot is EnchantSlot.StatEnchants or EnchantSlot.Gems
+            ? $"No slot left that takes {EnchantSlots.Name(slot)}: take off another enchant to make room"
+            : $"No armor slot left for {EnchantSlots.Name(slot)}: stat enchants and gems fill the other pieces first, then armor";
 
     private static string TalentTitle(TalentOption t) => $"{t.Slot.Code}: {t.Talent.Name}" + (t.Talent.Modeled ? "" : " (not modeled)");
 
@@ -371,9 +425,12 @@
 
     private Task Changed() => OnChanged.InvokeAsync();
 
+    // A child's change (RankedChoices calls back through a Func, not an EventCallback) redraws only the child, so this
+    // editor redraws itself too: its counts and every stepper's room change with it.
     private Task Set(Action change)
     {
         change();
+        StateHasChanged();
         return Changed();
     }
 
@@ -410,6 +467,30 @@
         State.ActionListName = FellowshipSim.Core.APL.DefaultActionLists.DefaultName;
         State.ActionListText = null;
         return Changed();
+    }
+
+    private bool _exportOpen;
+
+    private string ExportText => new SimcProfile(Build, "").Format();
+
+    // Shows the build's profile and copies it: the text Import takes, to share or to keep.
+    private async Task ExportAsync()
+    {
+        _exportOpen = true;
+        await CopyExportAsync();
+    }
+
+    private async Task CopyExportAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", ExportText);
+            State.BuildStatus = MessageState.Ok("Copied the build to the clipboard. Import takes it as a profile.");
+        }
+        catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
+        {
+            State.BuildStatus = new MessageState("Select the build's text below and copy it. Import takes it as a profile.");
+        }
     }
 
     private Task New()
@@ -473,7 +554,7 @@
             await Profiles.SaveAsync(Visitor, new ProfileEntry(Build.Hero, name), new SimcProfile(Build, "").Format());
             await LoadSavedListAsync();
             State.SavedName = name;
-            State.BuildStatus = MessageState.Ok(Visitor.OwnsDataFolder ? $"Saved to data/profiles/{Build.Hero}/{name}.simc." : $"Saved {name} to your builds.");
+            State.BuildStatus = MessageState.Ok($"Saved {name} to your builds.");
         }
         catch (Exception e)
         {

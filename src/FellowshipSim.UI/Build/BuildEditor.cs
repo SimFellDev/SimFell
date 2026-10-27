@@ -18,8 +18,21 @@ public sealed class BuildEditor(CharacterBuild build)
 
     public BuildCatalog Catalog => BuildCatalog.For(Build.Hero);
 
+    /// <summary>The main stat every hero has before gear (per the user); the editor takes the gear's bonus over it.</summary>
+    public const double BaseMainStat = 100;
+
+    /// <summary>The rated stats in the in-game character sheet's order.</summary>
+    public static IReadOnlyList<RatedStat> InGameOrder { get; } = [RatedStat.Crit, RatedStat.Expertise, RatedStat.Haste, RatedStat.Spirit];
+
     /// <summary>A new build of <paramref name="hero"/> with nothing picked.</summary>
-    public static CharacterBuild NewBuild(string hero) => new() { Hero = hero, Name = "New build", PrimaryStat = 100 };
+    public static CharacterBuild NewBuild(string hero) => new() { Hero = hero, Name = "New build", PrimaryStat = BaseMainStat };
+
+    /// <summary>The main stat over <see cref="BaseMainStat"/>: what the gear adds.</summary>
+    public double MainStatBonus
+    {
+        get => Math.Max(0, Build.PrimaryStat - BaseMainStat);
+        set => Build.PrimaryStat = BaseMainStat + Math.Max(0, value);
+    }
 
     public int PointsLeft => Catalog.PointsLeft(Build.Talents);
 
@@ -53,6 +66,9 @@ public sealed class BuildEditor(CharacterBuild build)
         RatedStat.Expertise => Build.ExpertiseRating,
         _ => Build.SpiritRating,
     };
+
+    /// <summary>The stat's rating with the stat enchants' rating: what the sim and the character sheet count.</summary>
+    public double TotalRating(RatedStat stat) => Rating(stat) + Build.EnchantRating(RatingType(stat));
 
     public void SetRating(RatedStat stat, double rating)
     {
@@ -218,10 +234,22 @@ public sealed class BuildEditor(CharacterBuild build)
     /// <summary>Enchants the build can wear in all.</summary>
     public int TotalLimit => EnchantSlots.TotalLimit(HasWeapon);
 
-    /// <summary>How many more of <paramref name="slot"/> the build can take: its own limit and the total's.</summary>
-    public int Room(EnchantSlot slot) => Math.Max(0, slot == EnchantSlot.Protective
-        ? Limit(slot) - Used(slot)
-        : Math.Min(Limit(slot) - Used(slot), TotalLimit - UsedTotal));
+    /// <summary>
+    /// How many more of <paramref name="slot"/> the build can take: as many as still fit on its gear with the rest of its
+    /// enchants (<see cref="GearFit"/>); protective enchants, up to their limit.
+    /// </summary>
+    public int Room(EnchantSlot slot) => slot == EnchantSlot.Protective
+        ? Math.Max(0, Limit(slot) - Used(slot))
+        : GearFit.Room(slot, Used, HasWeapon);
+
+    /// <summary>True when every enchant the build has can be worn on its gear (an import can have more).</summary>
+    public bool FitsGear => GearFit.Fits(Used, HasWeapon);
+
+    /// <summary>The part of <paramref name="slot"/>'s count the weapon's tree holds: it fills first.</summary>
+    public int WeaponUsed(EnchantSlot slot) => Math.Min(Used(slot), GearFit.WeaponLimit(slot, HasWeapon));
+
+    /// <summary>The part of <paramref name="slot"/>'s count on the armor and other pieces.</summary>
+    public int GearUsed(EnchantSlot slot) => Used(slot) - WeaponUsed(slot);
 
     /// <summary>Stat enchants that give <paramref name="rating"/> (<see cref="EnchantSlots.RatingPerStatEnchant"/> each, rounded up).</summary>
     public static int StatEnchantsFor(double rating) => (int)Math.Ceiling(rating / EnchantSlots.RatingPerStatEnchant - 1e-9);

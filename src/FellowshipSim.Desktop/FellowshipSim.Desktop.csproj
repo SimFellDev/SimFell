@@ -14,7 +14,7 @@
     <!-- Blazor handles the CSS, not MAUI. -->
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
 
-    <ApplicationTitle>FellowshipSim</ApplicationTitle>
+    <ApplicationTitle>SimFell</ApplicationTitle>
     <ApplicationId>dev.simfell.fellowshipsim</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>

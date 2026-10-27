@@ -1,17 +1,57 @@
-# Elarion, the Heartseeker build of the logged fights: Piercing Seekers, Fusillade, Repeating Stars, Lunar Fury,
-# Rising Moon, Lunarlight Affinity, Fervent Supremacy, Last Lights, Skylit Grace.
-actions+=/shoot
-actions+=/event_horizon
-actions+=/skystriders_grace
-actions+=/lunarlight_mark
-actions+=/chronoshift
-actions+=/skystriders_supremacy
-actions+=/starfall_volley
-actions+=/heartseeker_barrage
-actions+=/celestial_shot,if=buff.celestial_impetus.up
-actions+=/highwind_arrow,if=buff.resurgent_winds.up
-actions+=/multishot,if=buff.skystriders_supremacy.up|buff.focused_expanse.up
-actions+=/highwind_arrow
-actions+=/multishot,if=active_enemies>=3
-actions+=/celestial_shot,if=focus>=60
-actions+=/focused_shot
+# Elarion's default action list: FellowSimc's SimC list (apl/elarion/elarion_apl.simc) in SimFell's names, with its
+# Astronomer's Hail list. An Empowered Multishot is Skystrider's Supremacy or Focused Expanse.
+# Left out: the Deadly Focus list (it needs The Vainglorious, a blessing no longer in the game), the Multishot charge
+# (no log shows one), Starfall Volley's and Stars Aligned's buffs, Shimmer's value per stack (targets go by health),
+# Voidbringer's accumulator, Focused Shot's last use and Chronoshift's cancel.
+actions.precombat=snapshot_stats
+actions.precombat+=/focused_shot
+# Shoot whenever the swing timer allows.
+actions=shoot
+actions+=/run_action_list,name=hail,if=legendary.astronomers_hail
+actions+=/run_action_list,name=main
+
+# ---- Main
+actions.main=event_horizon,target_if=target.time_to_die>=16|fight_remains<=20,if=!weapon_trait.visions_of_grandeur|weapon.chronoshift&cooldown.chronoshift.remains>=5*weapon_trait.visions_of_grandeur|weapon.voidbringer&cooldown.voidbringers_touch.remains>=5*weapon_trait.visions_of_grandeur|!weapon.voidbringers_touch&!weapon.chronoshift
+actions.main+=/icicles_of_anzhyr
+actions.main+=/skystriders_grace,if=(buff.event_horizon.up&target.time_to_die>=10|target.time_to_die>=16|fight_remains<=20)&!buff.skystriders_grace.up
+actions.main+=/skystriders_supremacy,if=!buff.skystriders_supremacy.up&talent.fervent_supremacy
+actions.main+=/lunarlight_mark,if=!buff.resurgent_winds.at_max_stacks|!talent.resurgent_winds
+actions.main+=/voidbringers_touch,target_if=target.time_to_die>=12|fight_remains<=20
+actions.main+=/natures_fury
+actions.main+=/highwind_arrow,target_if=max:target.health*(1+0.5*debuff.lunarlight_mark.up),if=buff.resurgent_winds.up
+actions.main+=/starfall_volley
+actions.main+=/highwind_arrow,target_if=max:target.health,if=legendary.shimmer&debuff.shimmer.remains<=gcd.max*3|charges>=(3-debuff.shimmer.stack)&legendary.shimmer&!debuff.shimmer.at_max_stacks|buff.resurgent_winds.up
+actions.main+=/heartseeker_barrage,target_if=max:debuff.lunarlight_mark.stack,if=buff.impending_heartseeker.up|debuff.lunarlight_mark.up&(talent.fusillade|!legendary.astronomers_hail)&(active_enemies<8|talent.piercing_seekers)|talent.fervent_supremacy&active_enemies=1|buff.event_horizon.up
+actions.main+=/chronoshift
+actions.main+=/multishot,if=(buff.skystriders_supremacy.up|buff.focused_expanse.up)&active_enemies<=2
+actions.main+=/highwind_arrow,target_if=max:target.health,if=charges_fractional>=2&(!buff.skystriders_supremacy.up|talent.fervent_supremacy|talent.resurgent_winds)
+actions.main+=/skystriders_supremacy,if=!buff.skystriders_supremacy.up&!talent.fervent_supremacy
+actions.main+=/celestial_shot,target_if=max:target.health,if=buff.celestial_impetus.react&talent.impending_heartseeker&!buff.impending_heartseeker.up
+actions.main+=/highwind_arrow,target_if=max:target.health,if=active_enemies>=2&!legendary.shimmer
+actions.main+=/multishot,if=buff.skystriders_supremacy.up|buff.focused_expanse.up
+actions.main+=/highwind_arrow,if=!legendary.shimmer
+# Not in the SimC list, which cast Multishot from its charges: with none, Multishot on 3 or more enemies (+4-6% on 4).
+actions.main+=/multishot,if=active_enemies>=3
+actions.main+=/heartseeker_barrage,target_if=max:target.health,if=active_enemies=1
+actions.main+=/celestial_shot,target_if=max:target.health,if=focus>=60
+actions.main+=/focused_shot,target_if=max:target.health
+
+# ---- Astronomer's Hail
+actions.hail=event_horizon,target_if=target.time_to_die>=16|fight_remains<=20,if=!weapon_trait.visions_of_grandeur|weapon.chronoshift&cooldown.chronoshift.remains>=5*weapon_trait.visions_of_grandeur|weapon.voidbringer&cooldown.voidbringers_touch.remains>=5*weapon_trait.visions_of_grandeur|!weapon.voidbringers_touch&!weapon.chronoshift
+actions.hail+=/icicles_of_anzhyr
+actions.hail+=/skystriders_grace,if=(buff.event_horizon.up&target.time_to_die>=10|target.time_to_die>=16|fight_remains<=20)&!buff.skystriders_grace.up
+actions.hail+=/skystriders_supremacy,if=!buff.skystriders_supremacy.up&talent.fervent_supremacy
+actions.hail+=/lunarlight_mark,if=!buff.resurgent_winds.at_max_stacks|!talent.resurgent_winds
+actions.hail+=/voidbringers_touch,target_if=target.time_to_die>=12|fight_remains<=20
+actions.hail+=/natures_fury
+actions.hail+=/highwind_arrow,if=active_enemies<3&talent.strikers_aim&(!buff.strikers_aim.at_max_stacks|buff.strikers_aim.remains<=4)
+actions.hail+=/starfall_volley
+actions.hail+=/chronoshift,if=cooldown.starfall_volley.remains>10
+actions.hail+=/heartseeker_barrage,target_if=max:debuff.lunarlight_mark.stack,if=active_enemies=1|buff.event_horizon.up|debuff.lunarlight_mark.stack>1
+actions.hail+=/celestial_shot,target_if=max:target.health,if=buff.celestial_impetus.react&buff.event_horizon.up&talent.impending_heartseeker
+actions.hail+=/skystriders_supremacy,if=!buff.skystriders_supremacy.up&!talent.fervent_supremacy
+actions.hail+=/multishot,if=buff.skystriders_supremacy.up|buff.focused_expanse.up|active_enemies>1
+actions.hail+=/celestial_shot,target_if=max:target.health,if=buff.celestial_impetus.react&active_enemies<3
+actions.hail+=/highwind_arrow,if=active_enemies>2|active_enemies<3&talent.strikers_aim&(!buff.strikers_aim.at_max_stacks|buff.strikers_aim.remains<=5|full_recharge_time<=gcd.max*3)
+actions.hail+=/celestial_shot,target_if=max:target.health,if=focus>=40&active_enemies=1
+actions.hail+=/focused_shot,target_if=max:target.health

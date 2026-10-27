@@ -23,8 +23,9 @@ public static class MauiProgram
         builder.Configuration.AddUserSecrets(typeof(MauiProgram).Assembly);
         builder.Configuration.AddEnvironmentVariables();
 
-        builder.Services.AddSimFellUI(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FellowshipSim"))
-            .AddSimFellDesktopShell();
+        string dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FellowshipSim");
+        builder.Services.AddSimFellUI(dataDirectory).AddSimFellDesktopShell();
+        builder.Services.AddSingleton<IDataFolder>(new DesktopDataFolder(dataDirectory));
         builder.Services.AddSingleton<ISimEngine, LocalSimEngine>();
         builder.Services.AddSingleton<ReviewPages>();
         builder.Services.AddSingleton<IReviewPages>(s => s.GetRequiredService<ReviewPages>());
