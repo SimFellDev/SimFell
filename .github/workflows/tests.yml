@@ -1,0 +1,54 @@
+# Builds the solution's test project and runs every test, on each pull request to main and each push to main. The
+# replay and free-dice tests have no fights here (data/ is not committed), so they pass without a fight to run.
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request or branch cancels the run before it.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: dotnet test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Test
+        run: dotnet test tests/FellowshipSim.Tests -c Release --logger "trx;LogFileName=results.trx" --results-directory TestResults
+      - name: Summary
+        if: always()
+        run: |
+          # The counts from the run's results, at the top of the run's page.
+          trx=TestResults/results.trx
+          if [ ! -f "$trx" ]; then
+            echo "No test results: the build failed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          counters=$(grep -o '<Counters [^>]*>' "$trx")
+          count() { echo "$counters" | grep -o "$1=\"[0-9]*\"" | grep -o '[0-9]*'; }
+          {
+            echo "| Total | Passed | Failed |"
+            echo "| ---: | ---: | ---: |"
+            echo "| $(count total) | $(count passed) | $(count failed) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Each failed test by name.
+          grep -o '<UnitTestResult [^>]*outcome="Failed"[^>]*>' "$trx" | grep -o 'testName="[^"]*"' \
+            | sed 's/^testName="\(.*\)"$/- \1/' >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults
+          retention-days: 7
