@@ -33,6 +33,9 @@ public class Topaz : Gem
             case 1: // Adrenaline Rush: Haste for 10s each time you deal damage to an enemy at 30% health or less.
                 BindAdrenalineRush(hero, node);
                 return true;
+            case 2: // Thief's Alacrity: flat Stamina/Haste rating (a character sheet's ratings already include it).
+                if (!hero.Stats.UsesSheetValues) hero.Stats.HasteRating += node.Value("HasteBonus");
+                return true;
             case 4: // Feline Grace: Haste.
                 hero.Stats.BonusHaste += node.Value("HasteBonus");
                 return true;
@@ -40,7 +43,7 @@ public class Topaz : Gem
                 hero.PassiveAuras.Add(node.Grants!);
                 BindVirtuoso(hero, node);
                 return true;
-            default: // Thief's Alacrity (rating, in the logged ratings) and Rogue's Resurgence (healing).
+            default: // Rogue's Resurgence (healing).
                 return true;
         }
     }

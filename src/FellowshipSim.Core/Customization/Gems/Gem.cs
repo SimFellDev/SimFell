@@ -87,6 +87,12 @@ public abstract class Gem
             if (!BindNode(hero, node)) UnmodeledNodes.Add(node.Name);
             else if (node.Grants != null) hero.Register(node.Grants);
         }
+        // A power bound over the cap has the overcap bonus from the start (a character sheet's Main Stat already includes it).
+        if (!hero.Stats.UsesSheetValues && Power > OvercapPower)
+        {
+            var overcap = AuraDef.Internal($"{Color} gem overcap", 0, 1, StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + OvercapBonusPerPower * (Power - OvercapPower)));
+            hero.PassiveAuras.Add(hero.Register(overcap));
+        }
     }
 
     /// <summary>The nodes active at <paramref name="power"/>, in slot order.</summary>

@@ -476,32 +476,16 @@ public abstract class Hero : Actor
     /// <summary>
     /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
     /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top. Weapon abilities ignore the pool except for their own
-    /// effects: Chronoshift recovers at 8x while channeling it (per the user; 10 Rime logs: no early casts, and ruru's
-    /// fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool).
+    /// Charge abilities that recharge with haste add the haste on top. Weapon abilities ignore the pool and haste: their
+    /// cooldown runs at normal speed (Chronoshift's barrier does not speed up its own either; only cooldown reduction shortens them).
+    /// (10 Rime logs: no early casts, and ruru's fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool.)
     /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
         bool weaponOwnOnly = ability.IgnoresCooldownRecovery;
         double pool = 1.0 + (weaponOwnOnly ? 0.0 : CooldownAcceleration(ability, now));
-        if (!weaponOwnOnly)
-        {
-            pool += Auras.SumBonuses(StatType.CooldownRecovery, now);
-        }
-        else
-        {
-            foreach (var aura in Auras.Active(now))
-            {
-                // Weapon abilities only speed up from their own recovery effects (Chronoshift's barrier, per the user).
-                if (!aura.Def.Changes(CooldownRecoveryStat) || !ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
-                var mods = aura.Modifiers;
-                for (int i = 0; i < mods.Count; i++)
-                {
-                    if (mods[i].Type == StatType.CooldownRecovery) pool += mods[i].Value - 1.0;
-                }
-            }
-        }
+        if (!weaponOwnOnly) pool += Auras.SumBonuses(StatType.CooldownRecovery, now);
         return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
     }
 
@@ -731,8 +715,8 @@ public sealed class CooldownState
     private double _rate = 1.0;
     // The version of the rate's inputs when it was last read (-1: never read).
     private long _rateReadAt = -1;
-    // Set when Advance skipped reading the rate of a full cooldown.
-    private bool _rateStale;
+    // Set while the cooldown is full: no rate is read until a recharge starts (Spend). A new state is full, so it starts set.
+    private bool _rateStale = true;
     private bool _advancing;
 
     /// <param name="rateAt">The rate at a time.</param>
@@ -831,6 +815,7 @@ public sealed class CooldownState
     {
         _charges = MaxCharges;
         _remaining = 0;
+        _rateStale = true;
     }
 
     /// <summary>Gives back one charge now (a forced cast in a replay); the recharge in progress carries on.</summary>
@@ -845,7 +830,7 @@ public sealed class CooldownState
     /// <summary>Progresses the recharge to <paramref name="now"/> at the rate last read, then reads the rate at <paramref name="now"/>.</summary>
     public void Advance(SimTime now)
     {
-        if (now == default || now < _last || _advancing) return;
+        if (now < _last || _advancing) return;
         _advancing = true;
         try
         {

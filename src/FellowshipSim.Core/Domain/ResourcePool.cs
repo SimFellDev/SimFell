@@ -46,6 +46,9 @@ public class ResourcePool
         return _resources.TryGetValue(type, out state!);
     }
 
+    /// <summary>Every resource's state (for tests that fill them all).</summary>
+    public IEnumerable<ResourceState> States => _resources.Values;
+
     private void Set(ResourceDef type, ResourceState state)
     {
         _resources[type] = state;

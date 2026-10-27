@@ -34,7 +34,8 @@ public class AmethystSplinters : Aspect
         {
             Tick = ctx =>
             {
-                if (target.IsSleeping || ctx.CurrentTime >= EndsAt)
+                // A tick landing exactly as the 8 seconds end still deals (4 ticks, the last 8.0s after the crit).
+                if (target.IsSleeping || ctx.CurrentTime > EndsAt)
                 {
                     NextTick?.Cancel();
                     NextTick = null;

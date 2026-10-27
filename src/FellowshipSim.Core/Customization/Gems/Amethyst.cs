@@ -26,7 +26,8 @@ public class Amethyst : Gem
             case 1: // Sealed Fate: extra crit chance against characters above a health threshold.
                 BindSealedFate(hero, node);
                 return true;
-            case 2: // Berserker's Zeal: flat Stamina/Crit rating (in the sheet ratings).
+            case 2: // Berserker's Zeal: flat Stamina/Crit rating (a character sheet's ratings already include it).
+                if (!hero.Stats.UsesSheetValues) hero.Stats.CritRating += node.Value("CritBonus");
                 return true;
             case 4: // Killer Instinct: crit chance.
                 hero.Stats.BonusCritChance += node.Value("CritChanceBonus");

@@ -36,8 +36,8 @@ public class StarfallVolley : ElarionAbility
     /// <summary>Multiplier on the hits on the volley's own target (Astronomer's Hail).</summary>
     public double MainTargetMultiplier { get; set; } = 1.0;
 
-    /// <summary>A first volley began falling (true) or the last one ended (false) (Skylit Grace).</summary>
-    public event Action<SimulationContext, bool>? ActiveChanged;
+    /// <summary>A volley began or ended falling: the number of volleys falling now (Skylit Grace).</summary>
+    public event Action<SimulationContext, int>? CountChanged;
 
     private readonly List<Volley> _volleys = new();
 
@@ -51,6 +51,9 @@ public class StarfallVolley : ElarionAbility
 
     /// <summary>A volley is falling now.</summary>
     public bool IsActive => _volleys.Count > 0;
+
+    /// <summary>The volleys falling now (they can overlap).</summary>
+    public int ActiveCount => _volleys.Count;
 
     /// <summary>Adds <paramref name="seconds"/> to every volley falling now (Astronomer's Hail).</summary>
     public void Extend(SimulationContext ctx, double seconds)
@@ -69,7 +72,7 @@ public class StarfallVolley : ElarionAbility
         Pay(ctx, CostAt(ctx.CurrentTime));
         var volley = new Volley(target, ctx.CurrentTime + SimTime.FromSeconds(DurationSeconds + ExtraDurationSeconds));
         _volleys.Add(volley);
-        if (_volleys.Count == 1) ActiveChanged?.Invoke(ctx, true);
+        CountChanged?.Invoke(ctx, _volleys.Count);
         ScheduleEnd(ctx, volley);
         Pelt(ctx, volley);
     }
@@ -79,7 +82,7 @@ public class StarfallVolley : ElarionAbility
         {
             volley.Timer?.Cancel();
             _volleys.Remove(volley);
-            if (_volleys.Count == 0) ActiveChanged?.Invoke(c, false);
+            CountChanged?.Invoke(c, _volleys.Count);
         }, Name);
 
     private void Pelt(SimulationContext ctx, Volley volley)
