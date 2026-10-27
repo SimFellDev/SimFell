@@ -1,17 +1,15 @@
-# Builds the solution's test project and runs every test, on each pull request to main and each push to main. The
-# replay and free-dice tests have no fights here (data/ is not committed), so they pass without a fight to run.
+# Builds the solution's test project and runs every test, on each pull request to main. The replay and free-dice tests
+# have no fights here (data/ is not committed), so they pass without a fight to run.
 name: Tests
 
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
-# A newer push to the same pull request or branch cancels the run before it.
+# A newer push to the same pull request cancels the run before it.
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
