@@ -48,6 +48,13 @@
 <div class="editor">
     <aside class="sidebar" aria-label="Hero and character sheet">
         <Card Title="Hero">
+                @* Every hero's portrait, loaded with the page, so the hero menu opens with its portraits drawn. *@
+                <div hidden>
+                    @foreach (string hero in BuildCatalog.GameHeroes)
+                    {
+                        <GameIcon @key="hero" Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
+                    }
+                </div>
                 <div class="hero-select" @onkeydown="OnHeroKeyDown">
                     <button type="button" class="hero-current @(_heroMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_heroMenuOpen ? "true" : "false")"
                             @onclick="() => _heroMenuOpen = !_heroMenuOpen">
