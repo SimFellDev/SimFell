@@ -4,7 +4,7 @@ using WA = FellowshipSim.Core.Customization.WeaponAbilities;
 
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
-/// <summary>Which heroes can have which weapon ability, as theory data (the melee and ranged sets).</summary>
+/// <summary>Which heroes can have which weapon ability, as theory data, from each hero's own list in <see cref="GearHero.WeaponAbilities"/>.</summary>
 public static class WeaponHeroes
 {
     public const int FatedStrikeId = 160;

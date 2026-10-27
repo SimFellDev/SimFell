@@ -24,6 +24,7 @@ public class EventHorizon : ElarionAbility
     public EventHorizon(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
     {
         CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        IgnoresGcd = true;
         owner.FocusCostMultipliers.Add(now => owner.Auras.HasAura(Buff, now) ? CostMultiplier : 1.0);
         owner.CooldownAccelerations.Add((_, now) => owner.Auras.HasAura(Buff, now) ? owner.GetHaste(now) : 0.0);
         owner.CooldownAccelerationAuraKeys.Add(Buff.Key);

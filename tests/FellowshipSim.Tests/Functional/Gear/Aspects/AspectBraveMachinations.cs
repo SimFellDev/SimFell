@@ -6,8 +6,8 @@ namespace FellowshipSim.Tests.Functional.GearAspect;
 /// <summary>
 /// Brave Machinations (aspect 48): "Your Weapon Ability's Critical Strike chance is increased by 9.5% / 17% / 24% / 32%. If your Weapon Ability deals a
 /// Critical Strike, its Cooldown is reduced by 15% / 20% / 25% / 30%" (of its default cooldown, once per cast).
-/// Dev: over the six heroes and each weapon ability the hero can have (melee: Fated Strike, Sahril's Wrath, Voidbringer's Touch; ranged: Chronoshift,
-/// Icicles of An'zhyr, Voidbringer's Touch, Nature's Fury; the engine has no Earthbreaker yet), and the four ranks. Each test compares a fight with
+/// Dev: over the six heroes and each weapon ability the hero is authorized to have (<see cref="GearHero.WeaponAbilities"/>; the engine has no
+/// Earthbreaker yet), and the four ranks. Each test compares a fight with
 /// the aspect to the same fight without it, so what the weapon does on its own cancels. The cooldown part is not checked against a log (UNVERIFIED in the
 /// engine); it is tested by its tooltip. Crit chance 1.0 makes every hit a crit in expected-value mode (a crit chance over 50% is a crit).
 /// </summary>
@@ -83,6 +83,30 @@ public class AspectBraveMachinations
         with.AspectPlayWeapon(hw.Hero);
         without.AspectPlayWeapon(hw.Hero);
         Assert.Equal(0.30 * hw.WeaponCooldown, without.AspectWeaponCooldownLeft() - with.AspectWeaponCooldownLeft(), 1e-6);
+    }
+
+    /// <summary>
+    /// Player: a crit from Icicles of An'zhyr's curse (its damage over time) does not take the cooldown off: only the weapon ability's own hits count.
+    /// Dev: no crit chance from the hero, so no wave crits; from 2.5 seconds on (after the last wave) every hit against the enemy crits, which the curse's
+    /// first tick (3 seconds after the last wave, at 5.27 seconds) then does. The cooldown after that tick is the one without the aspect.
+    /// TODO: to check in game whether a crit of the curse counts for Brave Machinations (the engine's damage over time is not a hit of the weapon ability).
+    /// </summary>
+    [Theory(Skip = "To check in game: does a critical strike of Icicles of An'zhyr's curse (damage over time) cut the cooldown with Brave Machinations?")]
+    [MemberData(nameof(Heroes))]
+    public void A_Crit_Of_The_Icicles_Curse_Does_Not_Cut_The_Cooldown(GearHero hero)
+    {
+        if (!hero.WeaponAbilities.Contains(AspectFights.IciclesOfAnzhyr)) return;
+        var hw = new AspectHeroWeapon(hero, AspectFights.IciclesOfAnzhyr);
+        var with = Fight(hw, true, 4);
+        var without = Fight(hw, false);
+        foreach (var f in new[] { with, without })
+        {
+            f.Hero.TargetCritChanceBonuses.Add((_, now) => now.TotalSeconds >= 2.5 ? 1.0 : 0.0);
+            f.AspectCastWeapon(settle: 6.0);
+        }
+
+        Assert.Contains(with.Events, e => e.Kind == StepEventKind.Damage && e.Name == "Curse of An'zhyr" && e.CritChance > 0.5);
+        Assert.Equal(without.AspectWeaponCooldownLeft(), with.AspectWeaponCooldownLeft(), 1e-6);
     }
 
     /// <summary>

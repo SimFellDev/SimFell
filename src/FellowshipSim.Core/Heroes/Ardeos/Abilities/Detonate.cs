@@ -21,11 +21,11 @@ public class Detonate : ArdeosAbility
     public List<AuraDef> FreeCastBuffs { get; } = new();
 
     /// <summary>
-    /// Combat logs (5 fights, 896 Detonates in a row): they come 0.96-0.97s apart at every haste from 0.2 to 1.3, while
-    /// the other instants take the hero's 1.5s global cooldown, hasted. Detonate's global cooldown is 29 server frames, not
-    /// hasted.
+    /// Detonate keeps the hero busy for 1 second in game, not hasted (the other instants take the hero's 1.5s global
+    /// cooldown, hasted). Combat logs (5 fights, 896 Detonates in a row) show them 0.96-0.97s apart at every haste from 0.2
+    /// to 1.3, 29 server frames; the game's 1s is taken over the logs' spacing.
     /// </summary>
-    public const double GlobalCooldown = 29.0 / 30.0;
+    public const double GlobalCooldown = 1.0;
 
     public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {

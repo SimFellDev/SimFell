@@ -21,8 +21,10 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
   7 Fire Ball ticks, some in Wildfire).
 - **Incinerate's stacks:** a tick at 8 stacks is 3.1 times one at 1 stack: stack n deals 1 + 0.3 (n - 1) times the base
   (fight 7).
-- **Cinders:** a tick at a faster rate generates less, so an effect generates the same Cinders per second: Engulfing
-  Flames ticks give 3.85 Cinders, and 2.94 in Wildfire, 3.85 / 1.3 (fight 7). Fire Ball ticks generate 2 times the
+- **Cinders:** a tick's Cinders are the nominal ones divided by (1 + haste) (the in-game formula), so haste leaves the
+  Cinders per second alone, and Wildfire's faster ticks keep their full Cinders (an Engulfing Flames under Wildfire gives
+  more than 30). Fight 7 logged Engulfing Flames ticks of 3.85 Cinders, and 2.94 in Wildfire (3.85 / 1.3): that fits a
+  division by Wildfire's rate too, which the engine no longer does; to check against the logs. Fire Ball ticks generate 2 times the
   falloff of the Fire Ball that applied them (deltas of 1.17-1.43). The tooltip gives this a 50% chance, but replays
   of all 5 fights refuse the fewest Detonates for want of Cinders when every tick generates.
 
@@ -33,8 +35,9 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
   an Incinerate effect that had ended). The hits crit on their own, and the effects keep ticking.
 - The hits take no multiplier of their own: the effects' damage already has every damage bonus. The logged Detonate
   damage over the replay's is 0.98-1.07 of the same ratio for the effects it detonates (five fights, mean 1.03).
-- Detonate's global cooldown is 29 server frames (0.967s), not hasted. Across the five fights, 896 Detonates in a row
-  come 0.96-0.97s apart at every haste from 0.2 to 1.3. The other instants take the hero's 1.5s global cooldown, hasted.
+- Detonate's global cooldown is 1s, not hasted, as in game. The logs show 29 server frames (0.967s): across the five
+  fights, 896 Detonates in a row come 0.96-0.97s apart at every haste from 0.2 to 1.3. The other instants take the
+  hero's 1.5s global cooldown, hasted.
 - On many enemies the server sends the hits one frame at a time, so they queue up and land up to several seconds late
   (fight 7: 89 hits in the 5.1s after the last cast of a pull).
 

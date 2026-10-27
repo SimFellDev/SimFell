@@ -112,11 +112,9 @@ public class ArdeosAbilitiesComplex
 
     /// <summary>
     /// Player: thirty Searing Blazes in a row, each costing its global cooldown, still do damage and give Cinders.
-    /// Dev: 30 casts (more than 30 seconds go by); Cinders over 20 and some damage.
-    /// TODO: the Cinders check assumes 1 Cinder per tick (22 ticks in 45 seconds). The engine gives 0.8 per tick (12 over 30 seconds). Season 4
-    /// is believed to give 1 per tick; to check in game.
+    /// Dev: 30 casts (more than 30 seconds go by); Cinders over 20 and some damage (1 Cinder per tick: 22 ticks in 45 seconds).
     /// </summary>
-    [Fact(Skip = "Cinders per Searing Blaze tick: the test assumes 1, the engine gives 0.8: to check in game")]
+    [Fact]
     public void Thirty_Searing_Blazes_In_A_Row_Deal_Damage_And_Give_Cinders()
     {
         var f = StepFights.Ardeos();

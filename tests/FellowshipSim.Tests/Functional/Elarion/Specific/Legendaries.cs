@@ -108,19 +108,19 @@ public class ElarionLegendaries
     }
 
     /// <summary>
-    /// Player: each Shimmer stack makes you deal 10% more damage to the enemy, up to 2 stacks.
-    /// Dev: a Highwind Arrow's first hit on an enemy with 1 stack against one with none: 1.1; with 2: 1.2; a third application stays at 2.
-    /// TODO: the Python sim's Shimmer. The engine has +8% per stack up to 3 (the game data's text). Check in game.
+    /// Player: each Shimmer stack makes you deal 8% more damage to the enemy, up to 3 stacks.
+    /// Dev: a Highwind Arrow's first hit on an enemy with 1 stack against one with none: 1.08; with 2: 1.16; a third application makes
+    /// 3 stacks. (The game data's text; the Python sim's earlier game version had 10% up to 2.)
     /// </summary>
-    [Fact(Skip = "The Python sim has Shimmer at +10% per stack, up to 2; the engine +8%, up to 3 (game data): to check in game")]
-    public void Each_Shimmer_Stack_Raises_Damage_By_10_Percent_Up_To_2_Stacks()
+    [Fact]
+    public void Each_Shimmer_Stack_Raises_Damage_By_8_Percent_Up_To_3_Stacks()
     {
         var plain = StepFights.Elarion();
         plain.Cast<HighwindArrow>();
         double reference = plain.Damage("Highwind Arrow")[0].Value;
 
         var f = StepFights.Elarion(legendaries: [Shimmer.HelmItemId]);
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 4; i++)
         {
             f.Cast<HighwindArrow>();
             f.Wait(0.5);
@@ -128,64 +128,63 @@ public class ElarionLegendaries
         }
 
         var hits = f.Damage("Highwind Arrow");
-        Assert.Equal(1.1, hits[1].Value / reference, Ratio);
-        Assert.Equal(1.2, hits[2].Value / reference, Ratio);
-        Assert.Equal(2, f.Enemy.Auras.GetStacks(Shimmer.Debuff, f.Now));
+        Assert.Equal(1.08, hits[1].Value / reference, Ratio);
+        Assert.Equal(1.16, hits[2].Value / reference, Ratio);
+        Assert.Equal(3, f.Enemy.Auras.GetStacks(Shimmer.Debuff, f.Now));
     }
 
     /// <summary>
-    /// Player: with Final Crescendo's empowered arrow, Shimmer lands on 8 enemies of a group of 12 (the target and 7 ricochets).
-    /// Dev: 12 enemies; Final Crescendo and Shimmer; the empowered arrow; 8 enemies have Shimmer.
-    /// TODO: with Final Crescendo skipped (4th cast in the Python sim, 3rd with 8 ricochets in the engine): skipped too.
+    /// Player: with Final Crescendo's empowered arrow, Shimmer lands on 9 enemies of a group of 12 (the target and 8 ricochets).
+    /// Dev: 12 enemies; Final Crescendo and Shimmer; its two stacks given and one arrow; 9 enemies have Shimmer.
     /// </summary>
-    [Fact(Skip = "Final Crescendo: the Python sim triggers it on the 4th cast with 7 ricochets, the engine on the 3rd with 8: to check in game")]
-    public void The_Empowered_Highwind_Arrow_Applies_Shimmer_To_8_Of_12_Enemies()
+    [Fact]
+    public void The_Empowered_Highwind_Arrow_Applies_Shimmer_To_9_Of_12_Enemies()
     {
         var f = StepFights.Elarion(enemies: 12, talents: [ElarionTalents.FinalCrescendo.TalentId], legendaries: [Shimmer.HelmItemId]);
-        for (int i = 0; i < 4; i++)
-        {
-            f.Cast<HighwindArrow>();
-            f.Hero.CooldownOf(f.Ability<HighwindArrow>()).ResetAll();
-        }
+        f.Hero.Auras.Apply(ElarionTalents.FinalCrescendo.Buff, f.Now, setStacks: 2);
+        f.Cast<HighwindArrow>();
         f.Wait(0.5);
 
-        Assert.Equal(8, f.Context.AllEnemies.Count(e => e.Auras.HasAura(Shimmer.Debuff, f.Now)));
+        Assert.Equal(9, f.Context.AllEnemies.Count(e => e.Auras.HasAura(Shimmer.Debuff, f.Now)));
     }
 
     // ---- Astronomer's Hail
 
     /// <summary>
-    /// Player: the leggings legendary makes Starfall Volley last 2 seconds longer (10 seconds).
-    /// Dev: the legendary worn; a Starfall Volley is still falling at 9.5 seconds and over at 10.5.
-    /// TODO: the Python sim's boots legendary. The engine's Astronomer's Hail has +3 seconds. Check in game.
+    /// Player: Astronomer's Hail makes Starfall Volley last 3 seconds longer (11 seconds).
+    /// Dev: the legendary worn; a Starfall Volley is still falling at 10.5 seconds and over at 11.5. (The legendary's tooltip; the
+    /// Python sim's earlier game version had +2 seconds.)
     /// </summary>
-    [Fact(Skip = "The Python sim's legendary gives Starfall Volley +2s and 0.5s per Multishot; the engine's Astronomer's Hail +3s and 0.25s: to check in game")]
-    public void The_Legendary_Makes_Starfall_Volley_Last_10_Seconds()
+    [Fact]
+    public void The_Legendary_Makes_Starfall_Volley_Last_11_Seconds()
     {
         var f = StepFights.Elarion(legendaries: [AstronomersHail.LeggingsItemId]);
         f.Cast<StarfallVolley>();
 
-        f.Wait(9.5 - f.Now.TotalSeconds);
+        f.Wait(10.5 - f.Now.TotalSeconds);
         Assert.True(f.Ability<StarfallVolley>().IsActive);
         f.Wait(1.0);
         Assert.False(f.Ability<StarfallVolley>().IsActive);
     }
 
     /// <summary>
-    /// Player: each Multishot you cast while Starfall Volley falls extends it by 0.5 seconds.
-    /// Dev: the legendary worn; a Starfall Volley, then 9 Multishots (the first 4 empowered by Fervent Supremacy); the volley ends at its
-    /// cast + 8 + 2 + 9 x 0.5 seconds.
-    /// TODO: as above.
+    /// Player: each Multishot you cast while Starfall Volley falls extends it by 0.25 seconds.
+    /// Dev: the legendary worn; a Starfall Volley, then 3 Multishots (Focus topped up each time; empowered by Fervent Supremacy), all while it falls; the volley ends at its
+    /// cast + 8 + 3 + 3 x 0.25 seconds.
     /// </summary>
-    [Fact(Skip = "The Python sim's legendary gives Starfall Volley +2s and 0.5s per Multishot; the engine's Astronomer's Hail +3s and 0.25s: to check in game")]
-    public void Each_Multishot_Extends_Starfall_Volley_By_Half_A_Second()
+    [Fact]
+    public void Each_Multishot_Extends_Starfall_Volley_By_A_Quarter_Of_A_Second()
     {
         var f = StepFights.Elarion(talents: [ElarionTalents.FerventSupremacy.TalentId], legendaries: [AstronomersHail.LeggingsItemId]);
         f.Cast<SkystridersSupremacy>();
         f.Cast<StarfallVolley>();
         double start = f.Now.TotalSeconds - 1.5;
-        for (int i = 0; i < 9; i++) f.Cast<Multishot>();
-        double end = start + 8 + 2 + 9 * 0.5;
+        for (int i = 0; i < 3; i++)
+        {
+            f.Hero.Resources.Get(Elarion.Focus).Current = 100;
+            f.Cast<Multishot>();
+        }
+        double end = start + 8 + 3 + 3 * 0.25;
 
         f.Wait(end - 0.3 - f.Now.TotalSeconds);
         Assert.True(f.Ability<StarfallVolley>().IsActive);

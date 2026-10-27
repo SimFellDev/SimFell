@@ -130,18 +130,19 @@ public class ElarionHasteBreakpoints
     /// Player: Skystrider's Supremacy empowers the Multishots you start in the next 4 seconds, so how many fit depends on haste: 3 at
     /// no haste, 4 from 12.5%, 5 from 50%, 6 from 87.5%. Each fires 3 arrows (at one enemy) and the next Multishot is not empowered.
     /// Dev: Supremacy cast, then back-to-back Multishots at the haste; the expected number of them have 3 arrows each, and the one
-    /// after has 1. Hastes are placed just either side of each breakpoint.
-    /// TODO: these breakpoints are hard to reach in game (the first Multishot has to follow the Supremacy at once), and the engine
-    /// rounds cast times to the millisecond (87.4% and 87.6% haste both give 0.8s), so the pair around 87.5% may disagree.
+    /// after has 1. The hastes are placed well either side of each breakpoint: the engine's auras last 1/60s longer than their duration
+    /// (from the combat logs), so Supremacy's window is 4.0167s and the breakpoints are at about 12%, 49% and 87%, not at 12.5%, 50% and
+    /// 87.5%, and cast times are rounded to the millisecond. These breakpoints are hard to reach in game (the first Multishot has to
+    /// follow the Supremacy at once).
     /// </summary>
     [Theory]
     [InlineData(0.0, 3)]
-    [InlineData(0.124, 3)]
-    [InlineData(0.126, 4)]
-    [InlineData(0.49, 4)]
-    [InlineData(0.51, 5)]
-    [InlineData(0.874, 5)]
-    [InlineData(0.876, 6)]
+    [InlineData(0.10, 3)]
+    [InlineData(0.14, 4)]
+    [InlineData(0.45, 4)]
+    [InlineData(0.54, 5)]
+    [InlineData(0.83, 5)]
+    [InlineData(0.91, 6)]
     public void Skystriders_Supremacy_Empowers_3_To_6_Multishots_By_Haste(double haste, int casts)
     {
         var f = StepFights.Elarion(haste);

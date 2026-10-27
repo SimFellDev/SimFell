@@ -92,11 +92,11 @@ public class GlyphComplexStackingTests
 
     /// <summary>
     /// Player: The Subduer and The Mystic multiply: a Power hit on an enemy at 30% health with 30% Spirit does 1.20 x 1.12 of what it does without them.
-    /// Dev: rank 4 of both (The Mystic: 1.2% for each of 10 steps of 3% Spirit); the Power probe's first hit, with and without. Ardeos fails for the same
-    /// reason as in The Mystic's tests: his Detonate does not get The Mystic's power.
+    /// Dev: rank 4 of both (The Mystic: 1.2% for each of 10 steps of 3% Spirit); the Power probe's first hit, with and without. Not for Ardeos (his Detonate does
+    /// not get The Mystic's power in the engine: skipped in The Mystic's tests, to check against the game).
     /// </summary>
     [Theory]
-    [MemberData(nameof(HeroNames), MemberType = typeof(GlyphFights))]
+    [MemberData(nameof(GlyphMysticTests.NotArdeos), MemberType = typeof(GlyphMysticTests))]
     public void The_Subduers_And_The_Mystics_Damage_Multiply(string hero)
     {
         double Damage((int, int)[] glyphs)

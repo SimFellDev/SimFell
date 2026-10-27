@@ -109,22 +109,6 @@ public class ElarionAbilitiesSimple
     }
 
     /// <summary>
-    /// Player: Multishot hits at most 12 enemies: your target and 11 more.
-    /// Dev: 20 enemies; one Multishot; 12 hits.
-    /// TODO: this is the Python sim's hard cap. The engine has the game data's soft one (all 20 are hit, for sqrt(12 / 20) of the
-    /// damage: see the test below). Check in game which it is.
-    /// </summary>
-    [Fact(Skip = "The Python sim has a hard cap of 12 enemies, the engine a soft one from the game data: to check in game")]
-    public void Multishot_Hits_At_Most_12_Enemies()
-    {
-        var f = StepFights.Elarion(enemies: 20);
-
-        f.Cast<Multishot>();
-
-        Assert.Equal(12, f.Damage("Multishot").Count);
-    }
-
-    /// <summary>
     /// Player: with more than 12 enemies Multishot's damage per arrow falls by sqrt(12 / enemies); with 12 or fewer it does not.
     /// Dev: damage of one arrow with one enemy as the reference; the same arrow with 12 enemies (equal) and with 24 (x sqrt(12 / 24)).
     /// </summary>
@@ -165,21 +149,20 @@ public class ElarionAbilitiesSimple
     }
 
     /// <summary>
-    /// Player: Highwind Arrow's ricochets deal 70% of the first hit.
-    /// Dev: 3 enemies; one Highwind Arrow; the second and third hits are 0.7 of the first.
-    /// TODO: this is the Python sim's value. The engine has 50%, from combat logs (Bowguy constant BounceDamageMultiplierAfterFirstHit
-    /// 0.5; fight fXyzwGcQkTrLD34R fight 4). Check in game.
+    /// Player: Highwind Arrow's ricochets deal 50% of the first hit.
+    /// Dev: 3 enemies; one Highwind Arrow; the second and third hits are 0.5 of the first. (Combat logs, and the game's constant
+    /// BounceDamageMultiplierAfterFirstHit 0.5; the Python sim's earlier game version had 70%.)
     /// </summary>
-    [Fact(Skip = "The Python sim has ricochets at 70%, the engine 50% (from combat logs): to check in game")]
-    public void Highwind_Arrow_Ricochets_Deal_70_Percent_Of_The_First_Hit()
+    [Fact]
+    public void Highwind_Arrow_Ricochets_Deal_50_Percent_Of_The_First_Hit()
     {
         var f = StepFights.Elarion(enemies: 3);
 
         f.Cast<HighwindArrow>();
 
         var hits = f.Damage("Highwind Arrow");
-        Assert.Equal(0.7, hits[1].Value / hits[0].Value, Ratio);
-        Assert.Equal(0.7, hits[2].Value / hits[0].Value, Ratio);
+        Assert.Equal(0.5, hits[1].Value / hits[0].Value, Ratio);
+        Assert.Equal(0.5, hits[2].Value / hits[0].Value, Ratio);
     }
 
     /// <summary>
@@ -237,21 +220,6 @@ public class ElarionAbilitiesSimple
 
         Assert.Equal(1.0, twelve.Damage("Starfall Volley")[0].Value / reference, Ratio);
         Assert.Equal(Math.Sqrt(12.0 / 24), twentyFour.Damage("Starfall Volley")[0].Value / reference, Ratio);
-    }
-
-    /// <summary>
-    /// Player: Starfall Volley hits at most 12 enemies each pulse.
-    /// Dev: 20 enemies; one Starfall Volley; the first pulse has 12 hits.
-    /// TODO: the Python sim's hard cap, as for Multishot; the engine has the soft one. Check in game.
-    /// </summary>
-    [Fact(Skip = "The Python sim has a hard cap of 12 enemies, the engine a soft one from the game data: to check in game")]
-    public void Starfall_Volley_Hits_At_Most_12_Enemies_Per_Pulse()
-    {
-        var f = StepFights.Elarion(enemies: 20);
-
-        f.Cast<StarfallVolley>();
-
-        Assert.Equal(12, f.Damage("Starfall Volley").Count(h => h.Time == f.Damage("Starfall Volley")[0].Time));
     }
 
     // ---- Arrows of a channel

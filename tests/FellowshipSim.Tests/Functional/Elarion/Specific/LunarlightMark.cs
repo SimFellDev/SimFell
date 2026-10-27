@@ -100,20 +100,21 @@ public class ElarionLunarlightMark
     }
 
     /// <summary>
-    /// Player: Lunarlight Affinity doubles the salvo chance of Starfall Volley's hits: 50% instead of 25%.
-    /// Dev: one stack of the mark; one Starfall Volley with the proc forced off; the first salvo roll is at 50% with Lunarlight Affinity.
-    /// TODO: the Python sim's Lunarlight Affinity. The game's talent (and the engine's) has Starfall Volley's salvos keep the mark's
-    /// stack and Salvo crit more (+20%); it has no doubled chance. Check in game.
+    /// Player: with Lunarlight Affinity, the salvos of Starfall Volley's hits do not take a stack of the mark.
+    /// Dev: one stack of the mark; one Starfall Volley with the salvo forced; several salvos hit and the stack is still there.
+    /// (The talent's text; the Python sim's earlier game version doubled the salvo chance instead.)
     /// </summary>
-    [Fact(Skip = "The Python sim's Lunarlight Affinity doubles Starfall Volley's salvo chance; the game's talent does something else: to check in game")]
-    public void Lunarlight_Affinity_Doubles_The_Salvo_Chance_Of_Starfall_Volley()
+    [Fact]
+    public void Lunarlight_Affinity_Keeps_The_Mark_Through_Starfall_Volleys_Salvos()
     {
         var f = Marked(1, talents: [ElarionTalents.LunarlightAffinity.TalentId]);
-        var procs = f.ForceProcs(_ => false);
+        NoImpetus(f, key => key == SalvoProc ? true : null);
 
         f.Cast<StarfallVolley>();
+        f.Wait(10);
 
-        Assert.Equal(0.5, procs.Rolls.First(r => r.Key == SalvoProc).Chance, 1e-9);
+        Assert.True(f.Damage("Lunarlight Salvo").Count > 1);
+        Assert.Equal(1, Stacks(f));
     }
 
     // ---- What a salvo does to the mark
@@ -297,21 +298,22 @@ public class ElarionLunarlightMark
     }
 
     /// <summary>
-    /// Player: Heartseeker Barrage's salvos erupt in 20% of cases, in a blast on the enemies around the target (up to 12 hit in all,
-    /// the target included), instead of the salvo.
-    /// Dev: 12 enemies, the target marked, one barrage with the salvo and the eruption forced; 12 eruption hits and no salvo.
-    /// TODO: this is the Python sim. The engine, from combat logs, has the eruption 25% of the time after a salvo (not instead of
-    /// it), on the enemies near the target and not on it. Check in game.
+    /// Player: a salvo of Heartseeker Barrage can erupt (25% of the time, after the salvo, from combat logs), striking the enemies around
+    /// the target, not the target itself.
+    /// Dev: 12 enemies, the target marked with one stack, one barrage with the salvo and the eruption forced; one salvo, and the eruption
+    /// hits the 11 other enemies once each. (The Python sim's earlier game version had the eruption replace the salvo, at 20%.)
     /// </summary>
-    [Fact(Skip = "The Python sim's eruption replaces the salvo, 20%, on 12 enemies; the engine's follows it, 25%, on the others: to check in game")]
-    public void Heartseeker_Barrage_Salvo_Can_Erupt_On_12_Enemies_Instead()
+    [Fact]
+    public void A_Heartseeker_Barrage_Salvo_Can_Erupt_On_The_Other_Enemies()
     {
         var f = Marked(1, enemies: 12);
         f.ForceProcs(key => key == SalvoProc || key == LunarlightSalvo.EruptProcKey ? true : null);
 
         f.Cast<HeartseekerBarrage>();
 
-        Assert.Equal(12, f.Damage("Lunarlight Salvo: Erupt").Count);
-        Assert.Empty(f.Damage("Lunarlight Salvo"));
+        Assert.Single(f.Damage("Lunarlight Salvo"));
+        var erupt = f.Damage("Lunarlight Salvo: Erupt");
+        Assert.Equal(11, erupt.Count);
+        Assert.DoesNotContain(erupt, e => e.Target == f.Enemy.Name);
     }
 }

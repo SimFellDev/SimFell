@@ -1,8 +1,9 @@
 # Weapon abilities: tests and open questions
 
-Written from the engine's code and the tooltips quoted in it, over every hero that can have the weapon: melee (Gunde, Mara, Tariq) Fated Strike, Sahril's Wrath,
-Voidbringer's Touch (and Earthbreaker, missing); ranged (Elarion, Rime, Ardeos) Chronoshift, Icicles of An'zhyr, Voidbringer's Touch, Nature's Fury. The heroes
-come from `GearFights.Heroes`; each test is a theory over them. Damage is read as a multiple of Main Stat (1000) over the hero's class tuning (1.04 Rime and
+Written from the engine's code and the tooltips quoted in it, over every hero authorized to have the weapon. Authorization is a list per hero in `GearHero.WeaponAbilities` (`GearFights.cs`), with no
+grouping of heroes (not by role, nor by main stat): Rime, Ardeos and Elarion have Chronoshift, Icicles of An'zhyr, Voidbringer's Touch and Nature's Fury; Gunde,
+Mara and Tariq have Fated Strike, Sahril's Wrath and Voidbringer's Touch (Earthbreaker is missing from the engine). The engine itself binds any weapon to any hero.
+The heroes come from those lists; each test is a theory over them. Damage is read as a multiple of Main Stat (1000) over the hero's class tuning (1.04 Rime and
 Mara, 1.1 Ardeos, 1.08 Elarion, 1.0 Gunde and Tariq), so one coefficient serves every hero.
 
 | File | Covers |
@@ -20,12 +21,7 @@ Mara, 1.1 Ardeos, 1.08 Elarion, 1.0 Gunde and Tariq), so one coefficient serves 
 - None. (Voidbringer's Touch's eruption scales with Expertise: confirmed by the user, `The_Eruption_At_The_Cap_Is_Scaled_By_Expertise` passes. The engine's code comment saying otherwise is stale.)
 
 ## Skipped, to check in game
-- **Chronoshift's own cooldown during its channel:** the engine recovers it at 8 times while channeling (160 seconds left after the channel instead of 177). Suspected
-  sim mistake (the user is 99% sure). `The_Barrier_Does_Not_Speed_Up_Chronoshifts_Own_Cooldown`.
-- **Voidbringer's Touch's cooldown and haste:** the engine shortens it with haste (60 seconds at 50%) while every other weapon ability keeps its fixed cooldown.
-  `Haste_Does_Not_Shorten_Its_Cooldown`.
-- **Weapon sets:** the engine binds any weapon to any hero; the melee/ranged restriction is not in the engine. `A_Hero_Cannot_Have_A_Weapon_Of_The_Other_Set`.
-- **Earthbreaker** is missing from the engine, so the melee set is one weapon short. `Earthbreaker_Is_A_Melee_Weapon_Ability` (placeholder).
+- **Earthbreaker** is missing from the engine, so it is in no hero's list. `Earthbreaker_Is_A_Weapon_Ability_Of_Gunde_Mara_And_Tariq` (placeholder).
 
 ## Followed the engine, with a TODO in the test
 - **Voidbringer's Touch applies the class tuning a second time:** the stored damage already carries it (1.04 Rime and Mara, 1.1 Ardeos, 1.08 Elarion), and the

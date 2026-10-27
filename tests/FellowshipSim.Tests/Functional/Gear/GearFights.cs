@@ -15,6 +15,8 @@ namespace FellowshipSim.Tests.Functional;
 /// <summary>What a bare test hero wears for the gear tests; everything is empty or zero by default.</summary>
 public sealed class GearLoadout
 {
+    /// <summary>Whether the build has a character sheet (its percentages include what gems and passives give); false builds the hero from gear and gem power alone.</summary>
+    public bool Sheet { get; init; } = true;
     public double Haste { get; init; }
     public double Crit { get; init; }
     public double Spirit { get; init; }
@@ -40,12 +42,23 @@ public sealed class GearLoadout
 /// </summary>
 public sealed record GearHero(string Name, MainStat MainStat, Type Basic, Type Core, Type Power, Type Major, Type Spirit, Type? Control, Type Unit)
 {
-    /// <summary>The weapon abilities the hero can have (game IDs): the melee set or the ranged set.</summary>
-    public int[] WeaponAbilities => IsMelee
-        ? [WA.FatedStrike.AbilityId, WA.SahrilsWrath.AbilityId, WA.VoidbringersTouch.AbilityId]
-        : [WA.Chronoshift.AbilityId, WA.IciclesOfAnzhyr.AbilityId, WA.VoidbringersTouch.AbilityId, WA.NaturesFury.AbilityId];
+    /// <summary>
+    /// The weapon abilities each hero is authorized to have (game IDs), hero by hero. Nothing groups heroes (by role, main stat or anything else): a hero's
+    /// list is its own, so a future design that gives a weapon to another hero, or one hero a different set, changes one line here and no test.
+    /// The engine does not restrict weapons (it binds any weapon to any hero); this list says which pairs the tests exercise.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, int[]> AuthorizedWeapons = new Dictionary<string, int[]>
+    {
+        ["Rime"] = [WA.Chronoshift.AbilityId, WA.IciclesOfAnzhyr.AbilityId, WA.VoidbringersTouch.AbilityId, WA.NaturesFury.AbilityId],
+        ["Ardeos"] = [WA.Chronoshift.AbilityId, WA.IciclesOfAnzhyr.AbilityId, WA.VoidbringersTouch.AbilityId, WA.NaturesFury.AbilityId],
+        ["Elarion"] = [WA.Chronoshift.AbilityId, WA.IciclesOfAnzhyr.AbilityId, WA.VoidbringersTouch.AbilityId, WA.NaturesFury.AbilityId],
+        ["Gunde"] = [WA.FatedStrike.AbilityId, WA.SahrilsWrath.AbilityId, WA.VoidbringersTouch.AbilityId],
+        ["Mara"] = [WA.FatedStrike.AbilityId, WA.SahrilsWrath.AbilityId, WA.VoidbringersTouch.AbilityId],
+        ["Tariq"] = [WA.FatedStrike.AbilityId, WA.SahrilsWrath.AbilityId, WA.VoidbringersTouch.AbilityId],
+    };
 
-    public bool IsMelee => MainStat == MainStat.Strength || Name == "Mara";
+    /// <summary>The weapon abilities this hero is authorized to have (game IDs).</summary>
+    public int[] WeaponAbilities => AuthorizedWeapons[Name];
 
     public override string ToString() => Name;
 
@@ -53,10 +66,13 @@ public sealed record GearHero(string Name, MainStat MainStat, Type Basic, Type C
     {
         loadout ??= new GearLoadout();
         var build = new CharacterBuild { Name = "Test " + Name, Hero = Name, PrimaryStat = loadout.MainStat, WeaponAbilityId = loadout.WeaponAbilityId };
-        build.SheetPercents["haste"] = loadout.Haste;
-        build.SheetPercents["crit"] = loadout.Crit;
-        build.SheetPercents["spirit"] = loadout.Spirit;
-        build.SheetPercents["expertise"] = loadout.Expertise;
+        if (loadout.Sheet)
+        {
+            build.SheetPercents["haste"] = loadout.Haste;
+            build.SheetPercents["crit"] = loadout.Crit;
+            build.SheetPercents["spirit"] = loadout.Spirit;
+            build.SheetPercents["expertise"] = loadout.Expertise;
+        }
         foreach (var (id, rank) in loadout.Glyphs) build.Glyphs.Add(new BuildEntry(id, rank));
         foreach (var (id, rank) in loadout.Augmentations) build.Augmentations.Add(new BuildEntry(id, rank));
         foreach (var (color, power) in loadout.Gems) build.GemPower[color] = power;

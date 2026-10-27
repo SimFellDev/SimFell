@@ -228,29 +228,29 @@ public class RelicPassives
 
     /// <summary>
     /// Player: Gilded Broach gives +5% Main Stat as a passive (on top of its healing when you drop below 20% health).
-    /// Dev: Main Stat read on a hero with the relic over a bare hero. FAILS ON PURPOSE: the engine has the relic as a defensive-only passive and gives no Main Stat.
-    /// TODO: missing feature (user says +5% Main Stat). Assumed to multiply Main Stat like the other percentage Main Stat buffs; if the game adds it to another
+    /// Dev: Main Stat read on a hero built without a character sheet (a sheet's Main Stat already includes the passive) with the relic over a bare one. The tooltip does not say it; it is from the user.
+    /// TODO: assumed to multiply Main Stat like the other percentage Main Stat buffs; if the game adds it to another
     /// percentage bonus instead, the number below is the same alone but changes when others are present.
     /// </summary>
     [Theory]
     [MemberData(nameof(Heroes))]
     public void Gilded_Broach_Gives_5_Percent_Main_Stat(GearHero hero)
     {
-        var plain = hero.Fight();
-        var f = hero.Fight(RelicFights.With(RelicFights.OrbOfSanguineRestoration));
+        var plain = hero.Fight(new GearLoadout { Sheet = false });
+        var f = hero.Fight(new GearLoadout { Sheet = false, Relics = [RelicFights.OrbOfSanguineRestoration] });
         Assert.Equal(plain.MainStat() * 1.05, f.MainStat(), 3);
     }
 
     /// <summary>
     /// Player: Gilded Broach's Main Stat is a big damage boost: hits deal 5% more.
-    /// Dev: the unit hit over a bare hero's. FAILS ON PURPOSE with the test above (missing feature).
+    /// Dev: the unit hit over a bare hero's.
     /// </summary>
     [Theory]
     [MemberData(nameof(Heroes))]
     public void Gilded_Broach_Raises_Damage_By_5_Percent(GearHero hero)
     {
-        double with = RelicFights.UnitHit(hero, RelicFights.With(RelicFights.OrbOfSanguineRestoration));
-        double without = RelicFights.UnitHit(hero, new GearLoadout());
+        double with = RelicFights.UnitHit(hero, new GearLoadout { Sheet = false, Relics = [RelicFights.OrbOfSanguineRestoration] });
+        double without = RelicFights.UnitHit(hero, new GearLoadout { Sheet = false });
         Assert.Equal(1.05, with / without, 3);
     }
 

@@ -4,15 +4,15 @@ using FellowshipSim.Core.Engine;
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
 /// <summary>
-/// Getting a weapon ability: each hero has the four weapon abilities of its set (melee: Fated Strike, Sahril's Wrath, Voidbringer's Touch and Earthbreaker;
-/// ranged: Chronoshift, Icicles of An'zhyr, Voidbringer's Touch and Nature's Fury), and gear that boosts a category of abilities leaves them alone.
-/// Dev: the weapon is bound by its weapon ability ID; the hero builds come from <see cref="GearFights"/>. The set of each hero is the user's.
+/// Getting a weapon ability: each hero has the weapon abilities it is authorized to have, and gear that boosts a category of abilities leaves them alone.
+/// Dev: the weapon is bound by its weapon ability ID; the hero builds come from <see cref="GearFights"/>. Which weapons a hero is authorized to have is
+/// <see cref="GearHero.WeaponAbilities"/>, a list per hero with no grouping of heroes: tests never ask what kind of hero it is.
 /// </summary>
 public class WeaponEquipping
 {
     /// <summary>
     /// Player: with a weapon, the hero has its weapon ability in its abilities and as its weapon ability, in the Weapon category.
-    /// Dev: every hero with every weapon of its set.
+    /// Dev: every hero with every weapon it is authorized to have.
     /// </summary>
     [Theory]
     [MemberData(nameof(WeaponHeroes.Pairs), MemberType = typeof(WeaponHeroes))]
@@ -41,7 +41,7 @@ public class WeaponEquipping
 
     /// <summary>
     /// Player: a weapon ability can be used in a fight (it is cast, goes on cooldown, and refuses a second cast while on cooldown).
-    /// Dev: every hero with every weapon of its set; a cast, then a second one at once.
+    /// Dev: every hero with every weapon it is authorized to have; a cast, then a second one at once.
     /// </summary>
     [Theory]
     [MemberData(nameof(WeaponHeroes.Pairs), MemberType = typeof(WeaponHeroes))]
@@ -57,32 +57,14 @@ public class WeaponEquipping
     }
 
     /// <summary>
-    /// Player: the weapons of the other set are not for you: a melee hero has no Chronoshift, Icicles of An'zhyr or Nature's Fury, a ranged hero has no
-    /// Fated Strike or Sahril's Wrath. (Voidbringer's Touch is in both sets.)
-    /// Dev: the sets the tests use are the user's; this checks them against the heroes' builders, as the engine itself binds any weapon to any hero.
+    /// Player: Earthbreaker is one of the weapon abilities Gunde, Mara and Tariq can have.
+    /// Dev: placeholder, no test can run: the engine has no Earthbreaker (no ability, no weapon, so a build asking for one has it unmodeled), so it is in
+    /// no hero's authorized list in <see cref="GearHero.WeaponAbilities"/>.
     /// </summary>
-    [Fact(Skip = "The engine binds any weapon ability to any hero (no restriction by main stat). TODO: check in game whether a melee hero can have Chronoshift (it should not), and add the restriction to the engine.")]
-    public void A_Hero_Cannot_Have_A_Weapon_Of_The_Other_Set()
+    [Fact(Skip = "Missing feature: Earthbreaker is not in the engine. TODO: add it (ability, weapon, ID), add it to Gunde's, Mara's and Tariq's lists, and write its tests (damage, cooldown, cast time, what it does) from its tooltip.")]
+    public void Earthbreaker_Is_A_Weapon_Ability_Of_Gunde_Mara_And_Tariq()
     {
-        foreach (var hero in GearFights.Heroes)
-        {
-            int[] other = hero.IsMelee
-                ? [WeaponHeroes.ChronoshiftId, WeaponHeroes.IciclesId, WeaponHeroes.NaturesFuryId]
-                : [WeaponHeroes.FatedStrikeId, WeaponHeroes.SahrilsWrathId];
-            foreach (int id in other) Assert.Null(hero.WithWeapon(id).Hero.WeaponAbility);
-        }
-    }
-
-    /// <summary>
-    /// Player: Earthbreaker is the fourth weapon ability of the melee heroes (Gunde, Mara, Tariq).
-    /// Dev: placeholder, no test can run: the engine has no Earthbreaker (no ability, no weapon, so a build asking for one has it unmodeled), so the
-    /// melee set is one weapon short.
-    /// </summary>
-    [Fact(Skip = "Missing feature: Earthbreaker is not in the engine. TODO: add it (ability, weapon, ID) and write its tests (damage, cooldown, cast time, what it does) from its tooltip.")]
-    public void Earthbreaker_Is_A_Melee_Weapon_Ability()
-    {
-        foreach (var hero in GearFights.Heroes.Where(h => h.IsMelee))
-            Assert.Equal(4, hero.WeaponAbilities.Length);
+        Assert.Fail("Earthbreaker is not modeled");
     }
 
     // ---- Category-keyed gear leaves weapon abilities alone
@@ -90,14 +72,14 @@ public class WeaponEquipping
     /// <summary>
     /// Player: The Sinister (Core abilities' crit chance and crit power) does not touch a weapon ability; The Mystic (Power abilities' damage per Spirit)
     /// neither; The Trickster (Power abilities grant crit chance) is not set off by it.
-    /// Dev: each hero with the first weapon of its set that hits at once (Fated Strike or Chronoshift), glyphs at rank 4, 30% crit and 30% Spirit: the weapon's
+    /// Dev: each hero with the first of its authorized weapons that hits at once (Fated Strike or Chronoshift), glyphs at rank 4, 30% crit and 30% Spirit: the weapon's
     /// first hit has the same damage and crit chance with and without the glyph, and The Trickster's buff (effect 3181) never appears.
     /// </summary>
     [Theory]
     [MemberData(nameof(GearHero.All), MemberType = typeof(GearHero))]
     public void Glyphs_Of_Other_Categories_Do_Not_Change_A_Weapon_Ability(GearHero hero)
     {
-        int weaponId = hero.IsMelee ? WeaponHeroes.FatedStrikeId : WeaponHeroes.ChronoshiftId;
+        int weaponId = hero.WeaponAbilities.First(w => w is WeaponHeroes.FatedStrikeId or WeaponHeroes.ChronoshiftId);
         string name = WeaponHeroes.NameOf(weaponId);
 
         StepEvent First(params (int Id, int Rank)[] glyphs)
@@ -120,15 +102,15 @@ public class WeaponEquipping
     /// <summary>
     /// Player: a weapon ability ignores cooldown recovery: the cooldown speed-ups that other abilities get (here The Monarch's acceleration, and haste) do not
     /// make it come back sooner.
-    /// Dev: each hero with a weapon of its set with no recovery effect of its own (Fated Strike or Icicles of An'zhyr), 50% haste and The Monarch at rank 4:
+    /// Dev: each hero with an authorized weapon with no recovery effect of its own (Fated Strike or Icicles of An'zhyr), 50% haste and The Monarch at rank 4:
     /// 10 seconds after the cast, exactly 10 seconds are off the cooldown (60 and 40 seconds).
     /// </summary>
     [Theory]
     [MemberData(nameof(GearHero.All), MemberType = typeof(GearHero))]
     public void Cooldown_Recovery_Does_Not_Speed_Up_A_Weapon_Ability(GearHero hero)
     {
-        int weaponId = hero.IsMelee ? WeaponHeroes.FatedStrikeId : WeaponHeroes.IciclesId;
-        double cooldown = hero.IsMelee ? 60 : 40;
+        int weaponId = hero.WeaponAbilities.First(w => w is WeaponHeroes.FatedStrikeId or WeaponHeroes.IciclesId);
+        double cooldown = GearAspect.AspectFights.WeaponCooldowns[weaponId];
         var f = hero.WithWeapon(weaponId, haste: 0.5, gear: new GearLoadout { Glyphs = [(705, 4)] });
         f.Cast(f.Weapon());
         double castAt = f.CompletedAt(WeaponHeroes.NameOf(weaponId));

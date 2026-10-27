@@ -14,7 +14,7 @@ integration or unit tests in either project. Classes are `Ardeos<File>`.
 | | Detonate only hits enemies with an effect | `AbilitiesSimple` |
 | | Searing Blaze, Engulfing Flames, Fire Ball burn scaling (6 sets) | `AbilitiesSimple` (ratios, no absolute bases; the crit row dropped) |
 | | Fire Frogs burn scaling | not ported (needs a single frog attack) |
-| py `test_timings` | Detonate always 1s | `CastTimes` (fails: engine 0.967s from logs) |
+| py `test_timings` | Detonate always 1s | `CastTimes` (engine 1s, the logs' 0.967s overruled) |
 | | Incinerate downtime and hits | `CastTimes`, `AbilitiesComplex` |
 | | burn tick counts: Engulfing Flames, Incinerate | `HasteBreakpoints` |
 | | Searing Blaze (24s) | `HasteBreakpoints` (season 4: 30s, 15/17/18 ticks) |
@@ -24,8 +24,8 @@ integration or unit tests in either project. Classes are `Ardeos<File>`.
 | C++ `test_ardeos_smoke` | smoke cast | not ported (trivial) |
 | | Engulfing Flames ticks per cast count | `AbilitiesComplex` |
 | | recast leaves Searing Blaze's rhythm alone | `AbilitiesComplex` |
-| | full Searing Blaze: 12 Cinders | `ResourceEconomy` (skip: per-tick Cinders unsettled) |
-| | 30 real casts (with and without Agonizing Blaze) | `AbilitiesComplex` (the plain one skipped: it assumes 1 Cinder per tick) |
+| | full Searing Blaze: 15 Cinders (1 a tick; the tooltip's 12 is outdated), plus 6 and 7 blazes in Embers | `ResourceEconomy` |
+| | 30 real casts (with and without Agonizing Blaze) | `AbilitiesComplex` |
 | | Engulfing Flames durations (6 tests) | `Specific/EngulfingFlamesDuration` |
 
 Added from the engine's documented values (the "other" tests, to fill the categories): `ResourceEconomy` (30 Cinders, Embers, Detonate's cost),

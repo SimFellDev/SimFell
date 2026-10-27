@@ -125,8 +125,7 @@ public class ElarionCastTimes
     /// <summary>
     /// Player: Event Horizon takes 0.7 seconds to cast, shortened by haste.
     /// Dev: 100 Spirit Points set; one Event Horizon at 0%, 20% and 50% haste; expects 0.7 / (1 + haste).
-    /// TODO: the engine keeps Elarion busy for the 1.5s global cooldown after Event Horizon, longer than its cast. The Python sim has
-    /// no global cooldown for it. Check in game.
+    /// It starts no global cooldown, so nothing keeps Elarion busy after the cast.
     /// </summary>
     [Theory]
     [InlineData(0.0)]
@@ -186,7 +185,6 @@ public class ElarionCastTimes
     /// Dev: at 20% haste: Lunarlight Mark (0s), a barrage (2s), a Highwind Arrow, a Multishot, then Event Horizon; then a Highwind
     /// Arrow and a Multishot at 50% haste; then 20 seconds later (the buff gone) a Highwind Arrow and a Multishot at 20%. The
     /// haste before and after is read from the hero. Each leg is compared within 1ms per cast.
-    /// TODO: fails with Event Horizon's cast time (see Event_Horizon_Takes_0_7_Seconds_Over_1_Plus_Haste: the engine has a global cooldown).
     /// </summary>
     [Fact]
     public void Down_Times_Add_Up_Over_A_Rotation_And_Follow_Haste_Changes()

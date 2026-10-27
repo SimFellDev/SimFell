@@ -71,11 +71,32 @@ public class GlyphMonarchTests
         Assert.True(checkedAbilities > 0);
     }
 
+    public static IEnumerable<object[]> HeroWeapons =>
+        GearFights.Heroes.SelectMany(h => h.WeaponAbilities.Select(w => new object[] { h.Name, w }));
+
     /// <summary>
-    /// Player: it applies to Major abilities only, not to your Spirit ability or your weapon ability.
-    /// Dev: not tested: the Spirit probes have no cooldown, and a weapon ability has its own tests.
-    /// TODO: check in game that the Monarch does not speed up a Spirit ability's cooldown (none of the six heroes' Spirit abilities has one in the engine).
+    /// Player: the glyph leaves every ability that is not a Major ability alone, long cooldowns included (it once sped up every cooldown in the game).
+    /// Dev: each hero with each weapon ability it is authorized to have, rank 4, 20% haste: every ability of the hero that is not a Major ability and has a
+    /// cooldown of 10 seconds or more (the weapon ability, and the hero's own Core, Power and Control abilities that have one) lasts as long with the glyph
+    /// as without. The weapon ability is always among them, so every hero has a long cooldown tested.
     /// </summary>
-    [Fact(Skip = "No hero's Spirit ability has a cooldown in the engine, so there is nothing to compare")]
-    public void The_Spirit_Ability_Is_Not_Touched() { }
+    [Theory]
+    [MemberData(nameof(HeroWeapons))]
+    public void Long_Cooldowns_Of_Other_Abilities_Are_Not_Touched(string hero, int weaponId)
+    {
+        StepDriver WithGlyph(int glyph) => Hero(hero).Fight(new GearLoadout { Glyphs = glyph == 0 ? [] : [(glyph, 4)], Haste = 0.2, WeaponAbilityId = weaponId });
+        var names = WithGlyph(0).Hero.Abilities
+            .Where(a => a.Category != AbilityCategory.Major && a.Cooldown.TotalSeconds >= 10)
+            .Select(a => a.Name).ToList();
+        Assert.Contains(WithGlyph(0).Hero.WeaponAbility!.Name, names);
+        foreach (var name in names)
+        {
+            var plain = WithGlyph(0);
+            double without = CooldownLength(plain, plain.Hero.Abilities.First(a => a.Name == name));
+            var with = WithGlyph(Monarch);
+            double length = CooldownLength(with, with.Hero.Abilities.First(a => a.Name == name));
+            Assert.True(without > 0, $"{name} must have a cooldown");
+            Assert.Equal(without, length, 1e-3);
+        }
+    }
 }

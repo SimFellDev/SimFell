@@ -7,8 +7,8 @@ namespace FellowshipSim.Tests.Functional.GearAspect;
 /// Visions of Grandeur (aspect 47): "Your Weapon Ability's Cooldown is reduced by 25% / 50% / 75% / 100% when you activate your Spirit Ability" (of its
 /// default cooldown), and "Your Weapon Ability generates 2.5 Spirit Points multiplied by a value equal to your Weapon Ability's default cooldown, divided
 /// by 30" (combat logs: 15 Spirit Points per Chronoshift, 180s).
-/// Dev: one generic test per rule, run over the six heroes and every weapon ability each can have (melee: Fated Strike 60s, Sahril's Wrath 120s,
-/// Voidbringer's Touch 90s; ranged: Chronoshift 180s, Icicles of An'zhyr 40s, Voidbringer's Touch, Nature's Fury 60s; the engine has no Earthbreaker yet).
+/// Dev: one generic test per rule, run over the six heroes and every weapon ability each is authorized to have (<see cref="GearHero.WeaponAbilities"/>; default
+/// cooldowns: Fated Strike 60s, Sahril's Wrath 120s, Voidbringer's Touch 90s, Chronoshift 180s, Icicles of An'zhyr 40s, Nature's Fury 60s; the engine has no Earthbreaker yet).
 /// Each compares a fight with the aspect to the same fight without it, so what the weapon and the hero do on their own cancels out.
 /// </summary>
 public class AspectVisionsOfGrandeur

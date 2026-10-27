@@ -73,13 +73,12 @@ public class ElarionCooldownDurationSimple
     }
 
     /// <summary>
-    /// Player: with Repeating Stars, each hit of a Multishot takes 0.3 seconds off Starfall Volley's cooldown: with N enemies, N x 0.3.
-    /// Dev: Repeating Stars taken; 4 enemies; a Starfall Volley, then a Multishot; the volley is ready 4 x 0.3 sooner.
-    /// TODO: the Python sim's Repeating Stars. The game's talent (and the engine's) takes 1.5 seconds off per Multishot (3 if
-    /// Empowered), whatever the number of enemies. Check in game.
+    /// Player: with Repeating Stars, each Multishot takes 1.5 seconds off Starfall Volley's cooldown, whatever the number of enemies.
+    /// Dev: Repeating Stars taken; 4 enemies; a Starfall Volley, then a Multishot; the volley is ready 1.5 sooner. (The game's talent;
+    /// the Python sim's earlier game version took 0.3 per hit.)
     /// </summary>
-    [Fact(Skip = "The Python sim takes 0.3 seconds per Multishot hit, the game's talent 1.5 seconds per cast: to check in game")]
-    public void Repeating_Stars_Takes_0_3_Seconds_Per_Multishot_Hit_Off_Starfall_Volley()
+    [Fact]
+    public void Repeating_Stars_Takes_1_5_Seconds_Per_Multishot_Off_Starfall_Volley()
     {
         var f = StepFights.Elarion(enemies: 4, talents: [ElarionTalents.RepeatingStars.TalentId]);
         f.Cast<StarfallVolley>();
@@ -87,6 +86,6 @@ public class ElarionCooldownDurationSimple
 
         f.Cast<Multishot>();
 
-        Assert.Equal(before - 4 * 0.3, f.Now.TotalSeconds + f.Hero.GetCooldownRemains<StarfallVolley>(f.Now), Tolerance);
+        Assert.Equal(before - 1.5, f.Now.TotalSeconds + f.Hero.GetCooldownRemains<StarfallVolley>(f.Now), Tolerance);
     }
 }

@@ -1,11 +1,12 @@
 # Sigil tests: notes
 
-All 8 sigils, every rank, every hero (`GearHero.All`), written from the code's tooltips and the sigil classes. Files: `Sigils/Sigil*.cs` (one per sigil, `SigilCommon.cs` the helpers) and `Complex/SigilComplex.cs`. 498 tests (493 passed, 3 skipped, 2 failing on purpose).
+All 8 sigils, every rank, every hero (`GearHero.All`), written from the code's tooltips and the sigil classes. Files: `Sigils/Sigil*.cs` (one per sigil, `SigilCommon.cs` the helpers) and `Complex/SigilComplex.cs`. 498 tests (493 passed, 5 skipped, 0 failing).
 
 ## Failing on purpose (possible engine bug)
-- **Kindling rolls on other damage-over-time ticks (Ardeos, Gunde).** The game data says a tick does not roll (listener `InTriggerPeriodicExecutions` false). The engine skips only the ticks registered in `Hero.DotDamageIds`, and only gear effects (Kindling, Amethyst Splinters, Icicles' curse) register there, so Fire Ball's burn and Rend ticks roll: 7 rolls instead of 1 for Ardeos, 6 instead of 2 for Gunde. Test: `SigilKindling.Ticks_Do_Not_Roll`. The other four heroes pass (their unit hit has no damage over time).
+- None.
 
 ## Skipped (to check in game)
+- **Kindling rolls on other damage-over-time ticks (Ardeos, Gunde)** (`Ticks_Do_Not_Roll`, 2 cases). The game data says a tick does not roll (listener `InTriggerPeriodicExecutions` false). The engine skips only the ticks registered in `Hero.DotDamageIds`, and only gear effects (Kindling, Amethyst Splinters, Icicles' curse) register there, so Fire Ball's burn and Rend ticks roll: 7 rolls instead of 1 for Ardeos, 6 instead of 2 for Gunde. Test: `SigilKindling.Ticks_Do_Not_Roll`. The other four heroes pass (their unit hit has no damage over time).
 - **Hunter's Focus: what counts as a targeted offensive ability** (`SigilHuntersFocus.Only_Targeted_Offensive_Abilities_Count`). The engine counts any ability with a damage coefficient, at cast completion. The game is thought to count successful casts of targeted abilities only; area abilities, effect ticks and abilities that pick their own target are unsettled. The stack, duration, rank and target-switch tests run.
 - **Kindling's total** (`The_Burn_Deals_The_Tooltips_Total`): the tooltip's 483% at rank 1 is 7 ticks of 0.69, the engine has 6 ticks (9s at 1.5s); how many ticks the game's burn has is not settled. The other Kindling tests follow the engine's 6.
 - **Patient Soul's "3 seconds still / 6 seconds after moving"**: movement is not simulated.

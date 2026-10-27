@@ -1,8 +1,7 @@
 # Aspect tests: notes
 
 Eight aspects (Amethyst Splinters, Diamond Strike, Emerald Judgement, Ruby Storm, Sapphire Aurastone, Brave Machinations, Martial Initiative, Visions of
-Grandeur), over the six heroes (`GearHero.All`), and over each weapon ability a hero can have for the three that depend on the weapon (melee: Fated Strike,
-Sahril's Wrath, Voidbringer's Touch; ranged: Chronoshift, Icicles of An'zhyr, Voidbringer's Touch, Nature's Fury). All four ranks wherever the rank changes a
+Grandeur), over the six heroes (`GearHero.All`), and over each weapon ability a hero is authorized to have (`GearHero.WeaponAbilities`, a list per hero) for the three that depend on the weapon. All four ranks wherever the rank changes a
 number. Cross-tests are in `../Complex/AspectComplex*.cs`.
 
 | File | Covers |
@@ -17,22 +16,14 @@ number. Cross-tests are in `../Complex/AspectComplex*.cs`.
 | `AspectVisionsOfGrandeur` | Spirit Points by the weapon's cooldown, cooldown cut by rank share when the Spirit ability is cast, only those, nothing without a weapon |
 | `Complex/AspectComplexDiamondStrike` | Harmonious Soul's +35% a stack with the beam (and the amplification multiplying with it) |
 | `Complex/AspectComplexEmeraldFirstStrike` | the spike boosted by, and refreshing, the Emerald gem's First Strike |
-| `Complex/AspectComplexChronoshiftRecovery` | the skipped Chronoshift own-recovery rule |
 
 ## Failing on purpose (possible engine bugs)
-
-- **Amethyst Splinters has 3 ticks, not 4, with no haste** (6 tests, one per hero: `The_Splinter_Deals_The_Whole_Share_In_Four_Ticks_Two_Seconds_Apart`).
-  The tooltip says X% over 8 seconds and the code says 8s of 2s ticks, but the engine ends the splinter before a tick that lands exactly 8.0s after the
-  crit, so only 75% of the share is dealt. Either the game ticks at the end too (bug here) or it does not (the code comment is wrong). Check in game.
-- **Brave Machinations cuts Nature's Fury's cooldown twice** (12 + 3 tests, ranged heroes with Nature's Fury: `A_Weapon_Crit_Cuts_Its_Cooldown_By_The_Rank_Share_Of_The_Default`
-  and `The_Cooldown_Comes_Off_Once_Per_Cast`). The engine intends once per cast ("once per cast" is in its own docs; the tooltip does not say). Nature's
-  Fury's first hit lands as its cast completes, in the order hit, then cast completed; the cast completing resets the aspect's once-per-cast flag, so the
-  bounces that crit cut it a second time. The test follows the engine's stated rule. If the game cuts per crit, the rule and the other weapons change.
+- None.
 
 ## Skipped (to check in game)
 
-- **Chronoshift's own cooldown recovery** (`AspectComplexChronoshiftRecovery`): the engine lets the channel's 800% cooldown recovery speed Chronoshift's own
-  cooldown (156s left after the cast, 176s expected). The user is 99% sure that is a sim mistake; rule written out and skipped.
+- **Brave Machinations and the Icicles of An'zhyr curse** (`A_Crit_Of_The_Icicles_Curse_Does_Not_Cut_The_Cooldown`): the engine does not count a crit of the curse's
+  damage over time as a weapon crit (the test passes when run); whether the game does is to check.
 
 ## Followed the engine (a TODO in the test)
 
@@ -53,7 +44,7 @@ number. Cross-tests are in `../Complex/AspectComplex*.cs`.
 
 ## Not covered
 
-- **Earthbreaker**, the fourth melee weapon ability: not in the engine, so no weapon-dependent aspect is tested with it. Add it to
+- **Earthbreaker**, a weapon ability of Gunde, Mara and Tariq: not in the engine, so no weapon-dependent aspect is tested with it. Add it to
   `GearHero.WeaponAbilities` and the names/cooldown tables in `AspectFights` when it exists.
 - **Martial Initiative's 15% Damage Reduction**: the sim takes no damage, nothing to read it from.
 - **Ruby Storm "targeted, offensive abilities"**: which abilities roll (the engine: any cast that completes with a damage coefficient, once per cast). Not tested which abilities do not.

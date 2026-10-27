@@ -38,7 +38,8 @@ public class Emerald : Gem
             case 1: // First Strike: Expertise for 15s when dealing damage to an enemy for the first time.
                 BindFirstStrike(hero, node);
                 return true;
-            case 2: // Vanguard's Resolve: flat Stamina/Expertise rating (in the sheet ratings).
+            case 2: // Vanguard's Resolve: flat Stamina/Expertise rating (a character sheet's ratings already include it).
+                if (!hero.Stats.UsesSheetValues) hero.Stats.ExpertiseRating += node.Value("ExpertiseBonus");
                 return true;
             case 4: // Tactician's Accumen: Expertise.
                 hero.Stats.BonusExpertise += node.Value("ExpertiseBonus");
@@ -67,8 +68,15 @@ public class Emerald : Gem
         if (node.Slot == 1) BindFirstStrike(hero, node);
     }
 
-    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now) =>
+    /// <summary>First Strike's rank and Blessing of the Commander's cooldown reduction follow the active nodes.</summary>
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
+    {
         FirstStrike = NodeInSlot(1)?.Grants is { } strike ? hero.Register(strike) : null;
+        var commander = NodeInSlot(5);
+        var old = before.FirstOrDefault(n => n.Slot == 5);
+        if (old != commander)
+            hero.Stats.CooldownReductionPct += (commander?.Value("CooldownReduction") ?? 0.0) - (old?.Value("CooldownReduction") ?? 0.0);
+    }
 
     protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
     {

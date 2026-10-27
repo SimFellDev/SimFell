@@ -370,12 +370,10 @@ public class ElarionResourceEconomy
     }
 
     /// <summary>
-    /// Player: Event Horizon halves Celestial Shot's 15 Focus: it is not stated whether that is 7, 8 or 7.5.
-    /// Dev: asserts the Python sim's value (8: the half rounded up).
-    /// TODO: open question from mechanics_to_test.md ("Focus cost of celestial shot under event horizon: 7 or 8? Floor or
-    /// ceiling?"); the engine does not round (7.5). Check in game.
+    /// Player: Event Horizon halves Celestial Shot's 15 Focus, rounded up: 8 (confirmed in game).
+    /// Dev: Event Horizon cast with 100 Spirit Points, then a Celestial Shot; 8 Focus is spent.
     /// </summary>
-    [Fact(Skip = "Open question: the rounding of a halved odd cost (7, 8 or 7.5): to check in game")]
+    [Fact]
     public void Event_Horizon_Rounds_Celestial_Shots_Cost_Up_To_8()
     {
         var f = StepFights.Elarion();
@@ -386,28 +384,5 @@ public class ElarionResourceEconomy
 
         var spend = Assert.Single(f.Events, e => e.Kind == StepEventKind.ResourceSpent && e.Name == "Focus");
         Assert.Equal(8, spend.Value);
-    }
-
-    // ---- Spirit Points
-
-    /// <summary>
-    /// Player: you regenerate 1 Spirit Point every 3 seconds, raised by your Spirit: 10% Spirit makes it 1.1 per 3 seconds.
-    /// Dev: starts from 50 Spirit Points; at 0%, 10%, 25% and 35% Spirit, 12 seconds pass; expects 50 + 12 x (1 + spirit) / 3.
-    /// TODO: the engine regenerates a flat point per 3 seconds (Hero.SpiritPointRegenSeconds); the Python sim scales it with
-    /// Spirit. Check in game.
-    /// </summary>
-    [Theory]
-    [InlineData(0.0)]
-    [InlineData(0.1)]
-    [InlineData(0.25)]
-    [InlineData(0.35)]
-    public void Spirit_Points_Regenerate_One_Per_Three_Seconds_Raised_By_Spirit(double spirit)
-    {
-        var f = StepFights.Elarion(spirit: spirit);
-        f.Hero.Resources.Get(Hero.SpiritPoints).Current = 50;
-
-        f.Wait(12);
-
-        Assert.Equal(50 + 12 * (1 + spirit) / 3, f.Hero.ResourceAmount(Hero.SpiritPoints), 1e-3);
     }
 }

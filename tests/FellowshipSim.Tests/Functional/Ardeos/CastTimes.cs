@@ -17,8 +17,7 @@ public class ArdeosCastTimes
     /// <summary>
     /// Player: Detonate always keeps you busy for 1 second, whatever your haste.
     /// Dev: one Detonate (an Ember and a Searing Blaze on the enemy) at 0%, 10% and 20% haste; the clock is 1.0.
-    /// TODO: the engine has 0.967s (29/30), from 896 Detonates in combat logs at every haste; the cast time is known to be 1s in game, so this is
-    /// expected to fail until the reason for the logs' 0.967s is understood.
+    /// (The combat logs show 0.967s, 29 server frames, over 896 Detonates; the game's 1s is what the engine uses.)
     /// </summary>
     [Theory]
     [InlineData(0.0)]

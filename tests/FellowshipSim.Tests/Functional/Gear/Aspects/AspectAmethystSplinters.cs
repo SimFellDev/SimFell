@@ -58,8 +58,8 @@ public class AspectAmethystSplinters
 
     /// <summary>
     /// Player: the splinter deals X% of the crit over 8 seconds: 4 ticks, 2 seconds apart, the last one as the 8 seconds end.
-    /// Dev: no haste; tick times from the crit's instant; the total against X% x S. The engine ends the splinter before a tick landing exactly 8.0s
-    /// after the crit, so it deals 3 ticks (75% of the share): failing on purpose, a possible bug (or the engine's boundary, to check in game).
+    /// Dev: no haste; tick times from the crit's instant; the total against X% x S. The engine used to end the splinter before a tick landing exactly 8.0s
+    /// after the crit (3 ticks, 75% of the share); the last tick now lands.
     /// </summary>
     [Theory]
     [MemberData(nameof(Heroes))]

@@ -74,7 +74,7 @@ internal static class AspectFights
     /// <summary>Seconds left on the weapon ability's cooldown.</summary>
     public static double AspectWeaponCooldownLeft(this StepDriver f) => f.Hero.GetCooldownRemains(f.AspectWeapon().Name, f.Now);
 
-    public const int VoidbringersTouch = 155, NaturesFury = 161, Chronoshift = 1558;
+    public const int VoidbringersTouch = 155, NaturesFury = 161, Chronoshift = 1558, IciclesOfAnzhyr = 1561;
 
     /// <summary>
     /// Casts the weapon ability and lets everything it does happen: 5 seconds for the ones that hit at once or in waves. Voidbringer's Touch only

@@ -99,11 +99,14 @@ public class GemTopaz
 
     /// <summary>
     /// Player: Thief's Alacrity gives 8 haste rating (24 at rank II).
-    /// Dev: not testable as written: the engine leaves the rating to the character sheet, so a hero built from gem power gets nothing.
+    /// Dev: a hero built from gem power (no character sheet, so nothing else gives rating): the haste at the node's power over the one just below is the
+    /// percentage of 8 rating (rank II: of 24 less 8, as it replaces the rank I node), through the stat's diminishing returns.
     /// </summary>
-    [Fact(Skip = "Thief's Alacrity's rating is only in a character sheet: a build from gem power ignores it")]
-    public void Thiefs_Alacrity_Adds_Haste_Rating()
+    [Theory]
+    [MemberData(nameof(GemFights.Heroes), MemberType = typeof(GemFights))]
+    public void Thiefs_Alacrity_Adds_Haste_Rating(GearHero hero)
     {
-        // TODO: decide whether a build without a sheet should get the node's rating (needs the rating-to-percent conversion at the hero's level).
+        Assert.Equal(StatDiminishingReturns.FromRating(8), GemFights.Delta(hero, Color, 149, 150, GemFights.Haste), 1e-9);
+        Assert.Equal(StatDiminishingReturns.FromRating(24) - StatDiminishingReturns.FromRating(8), GemFights.Delta(hero, Color, 799, 800, GemFights.Haste), 1e-9);
     }
 }

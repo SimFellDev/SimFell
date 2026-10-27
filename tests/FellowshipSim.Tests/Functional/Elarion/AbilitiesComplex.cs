@@ -114,29 +114,4 @@ public class ElarionAbilitiesComplex
         Assert.Equal(2, stacks.Skip(1).Count(s => s == 2));
         Assert.Equal(1, stacks.Skip(1).Count(s => s == 0));
     }
-
-    // ---- Multishot charges
-
-    /// <summary>
-    /// Player: a Highwind Arrow that ricochets to at least 3 enemies gives you a charge of Multishot, up to 5.
-    /// Dev: 3 enemies; ten Highwind Arrows; Multishot's charges go 0, 1, 2, ... 5.
-    /// TODO: the Python sim models Multishot charges. The engine has none (combat logs show no Multishot charge: Multishot is cast with
-    /// no limit but its Focus). Check in game.
-    /// </summary>
-    [Fact(Skip = "The Python sim has Multishot charges from Highwind Arrow; the engine has none (no charge in the combat logs): to check in game")]
-    public void Highwind_Arrow_On_3_Enemies_Gives_A_Multishot_Charge()
-    {
-        Assert.Fail("The engine has no Multishot charges to read.");
-    }
-
-    /// <summary>
-    /// Player: a Highwind Arrow that ricochets to only one other enemy gives no Multishot charge.
-    /// Dev: as above, with 2 enemies.
-    /// TODO: as above.
-    /// </summary>
-    [Fact(Skip = "The Python sim has Multishot charges from Highwind Arrow; the engine has none (no charge in the combat logs): to check in game")]
-    public void Highwind_Arrow_On_2_Enemies_Gives_No_Multishot_Charge()
-    {
-        Assert.Fail("The engine has no Multishot charges to read.");
-    }
 }

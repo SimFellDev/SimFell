@@ -77,12 +77,12 @@ public class ElarionTalentsComplex
     }
 
     /// <summary>
-    /// Player: Fervent Supremacy's Empowered Multishots deal 25% more damage.
-    /// Dev: a Multishot arrow with Fervent Supremacy and Skystrider's Supremacy, against a plain Multishot's; the ratio is 1.25.
-    /// TODO: the Python sim's value. The game's talent text (and the engine) has 50%. Check in game.
+    /// Player: Fervent Supremacy's Empowered Multishots deal 50% more damage.
+    /// Dev: a Multishot arrow with Fervent Supremacy and Skystrider's Supremacy, against a plain Multishot's; the ratio is 1.5.
+    /// (The game's talent text; the Python sim's earlier game version had 25%.)
     /// </summary>
-    [Fact(Skip = "The Python sim has +25% damage, the game's talent text +50%: to check in game")]
-    public void Fervent_Supremacy_Raises_Multishot_Damage_By_25_Percent()
+    [Fact]
+    public void Fervent_Supremacy_Raises_Multishot_Damage_By_50_Percent()
     {
         var plain = StepFights.Elarion();
         plain.Cast<Multishot>();
@@ -90,19 +90,18 @@ public class ElarionTalentsComplex
         f.Cast<SkystridersSupremacy>();
         f.Cast<Multishot>();
 
-        Assert.All(f.Damage("Multishot"), h => Assert.Equal(1.25, h.Value / plain.Damage("Multishot")[0].Value, Ratio));
+        Assert.All(f.Damage("Multishot"), h => Assert.Equal(1.5, h.Value / plain.Damage("Multishot")[0].Value, Ratio));
     }
 
     /// <summary>
     /// Player: Focused Expanse makes every Empowered Multishot deal 20% more, whichever Supremacy empowers it: with Fervent Supremacy
     /// 1.5 x that.
-    /// Dev: the Python sim's check: an Empowered Multishot arrow against a plain one: 1.25 with Focused Expanse and a Skystrider's
-    /// Supremacy, 1.5 with Fervent Supremacy too.
-    /// TODO: the Python sim's values (see the test above for Fervent Supremacy's, and the engine's Focused Expanse is +20%). Check in game.
+    /// Dev: an Empowered Multishot arrow against a plain one: 1.2 with Focused Expanse and a Skystrider's Supremacy, 1.8 with
+    /// Fervent Supremacy too (the two multiply).
     /// </summary>
-    [Theory(Skip = "The Python sim's Focused Expanse and Fervent Supremacy bonuses differ from the game's talent text: to check in game")]
-    [InlineData(false, 1.25)]
-    [InlineData(true, 1.5)]
+    [Theory]
+    [InlineData(false, 1.2)]
+    [InlineData(true, 1.8)]
     public void Focused_Expanse_Raises_Both_Supremacies_Multishots(bool fervent, double ratio)
     {
         var plain = StepFights.Elarion();
@@ -148,10 +147,9 @@ public class ElarionTalentsComplex
     /// Player: Resurgent Winds' 50% and Final Crescendo's +100% multiply: 3 times a plain arrow.
     /// Dev: both talents; Final Crescendo's stacks and Resurgent Winds applied; one Highwind Arrow on a marked enemy; the first hit is 3
     /// times a plain arrow's.
-    /// TODO: the Python sim's Final Crescendo comes on the 4th cast, the engine's (from combat logs) on the third: skipped with the tests
-    /// of Final Crescendo below.
+    /// Final Crescendo comes on the 3rd cast (combat logs; the Python sim's earlier game version had the 4th).
     /// </summary>
-    [Fact(Skip = "Final Crescendo: the Python sim triggers it on the 4th cast, the engine (from combat logs) on the 3rd: to check in game")]
+    [Fact]
     public void Resurgent_Winds_And_Final_Crescendo_Multiply()
     {
         var plain = StepFights.Elarion();
@@ -162,7 +160,7 @@ public class ElarionTalentsComplex
         var f = StepFights.Elarion(talents: [ElarionTalents.ResurgentWinds.TalentId, ElarionTalents.FinalCrescendo.TalentId]);
         f.ForceProcs(_ => false);
         f.Enemy.Auras.Apply(LunarlightMark.Debuff, f.Now, stacks: 5);
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 2; i++)
         {
             f.Cast<HighwindArrow>();
             f.Hero.CooldownOf(f.Ability<HighwindArrow>()).ResetAll();
@@ -174,18 +172,18 @@ public class ElarionTalentsComplex
     }
 
     /// <summary>
-    /// Player: with Final Crescendo, every 4th Highwind Arrow deals double damage and ricochets to 7 more enemies: 8 hits; the first
-    /// three have 3 hits each (the target and 2 ricochets).
-    /// Dev: Final Crescendo taken; 8 enemies; four Highwind Arrows (the charges reset between); casts 1 to 3 have 3 hits each, the 4th has 8,
-    /// the first of them double a normal first hit.
-    /// TODO: the engine has it on the 3rd cast (stacks at 2), with 8 ricochets (combat logs: fXyzwGcQkTrLD34R fight 4). Check in game.
+    /// Player: with Final Crescendo, every 3rd Highwind Arrow deals double damage and ricochets to 8 more enemies: 9 hits; the first
+    /// two have 3 hits each (the target and 2 ricochets).
+    /// Dev: Final Crescendo taken; 10 enemies; three Highwind Arrows (the charges reset between); casts 1 and 2 have 3 hits each, the
+    /// 3rd has 9, the first of them double a normal first hit. (Combat logs: fXyzwGcQkTrLD34R fight 4; the Python sim's earlier game
+    /// version had every 4th, with 7 ricochets.)
     /// </summary>
-    [Fact(Skip = "Final Crescendo: the Python sim triggers it on the 4th cast with 7 ricochets, the engine (from combat logs) on the 3rd with 8: to check in game")]
-    public void Final_Crescendo_Empowers_Every_4th_Highwind_Arrow()
+    [Fact]
+    public void Final_Crescendo_Empowers_Every_3rd_Highwind_Arrow()
     {
-        var f = StepFights.Elarion(enemies: 8, talents: [ElarionTalents.FinalCrescendo.TalentId]);
+        var f = StepFights.Elarion(enemies: 10, talents: [ElarionTalents.FinalCrescendo.TalentId]);
         var counts = new List<int>();
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 3; i++)
         {
             int before = f.Damage("Highwind Arrow").Count;
             f.Cast<HighwindArrow>();
@@ -194,21 +192,20 @@ public class ElarionTalentsComplex
             f.Hero.CooldownOf(f.Ability<HighwindArrow>()).ResetAll();
         }
 
-        Assert.Equal([3, 3, 3, 8], counts);
+        Assert.Equal([3, 3, 9], counts);
         var hits = f.Damage("Highwind Arrow");
-        Assert.Equal(2.0, hits[9].Value / hits[0].Value, Ratio);
+        Assert.Equal(2.0, hits[6].Value / hits[0].Value, Ratio);
     }
 
     /// <summary>
     /// Player: after the empowered Highwind Arrow, Final Crescendo starts again from nothing.
-    /// Dev: four Highwind Arrows (the 4th being the empowered one); the buff has 0 stacks after it, and 1, 2, 3 stacks... after the others.
-    /// TODO: as above.
+    /// Dev: three Highwind Arrows (the 3rd being the empowered one); the buff has 0, 1 and 2 stacks before them, and 0 after the 3rd.
     /// </summary>
-    [Fact(Skip = "Final Crescendo: the Python sim triggers it on the 4th cast, the engine (from combat logs) on the 3rd: to check in game")]
+    [Fact]
     public void Final_Crescendo_Stacks_Reset_After_The_Empowered_Arrow()
     {
-        var f = StepFights.Elarion(enemies: 8, talents: [ElarionTalents.FinalCrescendo.TalentId]);
-        for (int i = 0; i < 4; i++)
+        var f = StepFights.Elarion(enemies: 10, talents: [ElarionTalents.FinalCrescendo.TalentId]);
+        for (int i = 0; i < 3; i++)
         {
             Assert.Equal(i, f.Hero.Auras.GetStacks(ElarionTalents.FinalCrescendo.Buff, f.Now));
             f.Cast<HighwindArrow>();

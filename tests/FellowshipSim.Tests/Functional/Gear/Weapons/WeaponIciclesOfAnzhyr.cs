@@ -3,7 +3,7 @@ using FellowshipSim.Core.Engine;
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
 /// <summary>
-/// Icicles of An'zhyr (Frozen Staff of An'zhyr, ranged heroes): "Conjure 3 waves of icicles to pelt the target area, dealing 144% Main Stat frost damage to all
+/// Icicles of An'zhyr (Frozen Staff of An'zhyr): "Conjure 3 waves of icicles to pelt the target area, dealing 144% Main Stat frost damage to all
 /// enemies in the area with each wave. Enemies hit by the final wave are afflicted by Curse of An'zhyr permanently, taking 38.4% Main Stat frost damage every 3
 /// seconds. Enemies afflicted by Curse of An'zhyr take +200% increased direct damage from Icicles of An'zhyr. Can be cast during Global Cooldown." Cooldown 40
 /// seconds.

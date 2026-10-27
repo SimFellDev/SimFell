@@ -3,7 +3,7 @@ using FellowshipSim.Core.Engine;
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
 /// <summary>
-/// Fated Strike (Fateful Arms, melee heroes): "Strike target enemy, dealing 739% damage to it and cleaving for 287.4% damage to nearby enemies. Fated Strike
+/// Fated Strike (Fateful Arms): "Strike target enemy, dealing 739% damage to it and cleaving for 287.4% damage to nearby enemies. Fated Strike
 /// applies Glorious Purpose to you for 6 seconds, granting you +200% increased Cooldown Acceleration for the duration." Cooldown 60 seconds.
 /// Dev: damage is the expected value with no crit; a hit is read as a multiple of Main Stat (1000) over the class tuning (<see cref="WeaponFights.Coefficient"/>).
 /// The cleave loses damage as sqrt(3/N) beyond 3 enemies cleaved (the log: 26 other enemies hit gave sqrt(3/26)).

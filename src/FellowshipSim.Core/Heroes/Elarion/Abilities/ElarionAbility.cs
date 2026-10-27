@@ -17,7 +17,7 @@ public abstract class ElarionAbility : Ability
     /// The Focus a cast costs now: the cost times Event Horizon's multiplier and the ability's own (an Empowered
     /// Multishot), or nothing for a free cast (Celestial Impetus, Resurgent Winds).
     /// </summary>
-    public virtual double CostAt(SimTime now) => FocusCost * Elarion.FocusCostMultiplier(now);
+    public virtual double CostAt(SimTime now) => FocusCost > 0 ? Math.Ceiling(FocusCost * Elarion.FocusCostMultiplier(now) - 1e-9) : 0.0;
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {

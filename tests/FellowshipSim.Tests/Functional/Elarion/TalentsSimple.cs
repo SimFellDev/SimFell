@@ -145,12 +145,12 @@ public class ElarionTalentsSimple
     }
 
     /// <summary>
-    /// Player: Last Lights adds 30% critical strike chance against enemies below 30% health.
-    /// Dev: 15% crit; Last Lights taken; the enemy at 20% health; a Focused Shot; its crit chance is the shot's on a healthy enemy plus 0.3.
-    /// TODO: the Python sim's value. The game's talent (and the engine's) has +20%. Check in game.
+    /// Player: Last Lights adds 20% critical strike chance against enemies below 30% health.
+    /// Dev: 15% crit; Last Lights taken; the enemy at 20% health; a Focused Shot; its crit chance is the shot's on a healthy enemy plus 0.2.
+    /// (The Python sim's earlier game version had 30%.)
     /// </summary>
-    [Fact(Skip = "The Python sim has +30% crit chance, the game's talent +20%: to check in game")]
-    public void Last_Lights_Adds_30_Percent_Crit_Chance_Below_30_Percent_Health()
+    [Fact]
+    public void Last_Lights_Adds_20_Percent_Crit_Chance_Below_30_Percent_Health()
     {
         var healthy = StepFights.Elarion(crit: 0.15, talents: [ElarionTalents.LastLights.TalentId]);
         healthy.Cast<FocusedShot>();
@@ -158,17 +158,16 @@ public class ElarionTalentsSimple
         weak.Enemy.CurrentHealth = weak.Enemy.MaxHealth * 0.2;
         weak.Cast<FocusedShot>();
 
-        Assert.Equal(healthy.Damage("Focused Shot")[0].CritChance + 0.3, weak.Damage("Focused Shot")[0].CritChance, 1e-9);
+        Assert.Equal(healthy.Damage("Focused Shot")[0].CritChance + 0.2, weak.Damage("Focused Shot")[0].CritChance, 1e-9);
     }
 
     /// <summary>
-    /// Player: Lunarlight Affinity adds 40% critical strike chance to Lunarlight Salvo.
+    /// Player: Lunarlight Affinity adds 20% critical strike chance to Lunarlight Salvo.
     /// Dev: 15% crit; Lunarlight Affinity taken; a marked enemy and a Focused Shot with the salvo forced; the salvo's crit chance is the
-    /// shot's plus 0.4.
-    /// TODO: the Python sim's value. The game's talent (and the engine's) has +20%. Check in game.
+    /// shot's plus 0.2. (The Python sim's earlier game version had 40%.)
     /// </summary>
-    [Fact(Skip = "The Python sim has +40% crit chance on salvos, the game's talent +20%: to check in game")]
-    public void Lunarlight_Affinity_Adds_40_Percent_Crit_Chance_To_Lunarlight_Salvo()
+    [Fact]
+    public void Lunarlight_Affinity_Adds_20_Percent_Crit_Chance_To_Lunarlight_Salvo()
     {
         var f = StepFights.Elarion(crit: 0.15, talents: [ElarionTalents.LunarlightAffinity.TalentId]);
         f.ForceProcs(key => key == LunarlightSalvo.ProcKey ? true : false);
@@ -176,6 +175,6 @@ public class ElarionTalentsSimple
 
         f.Cast<FocusedShot>();
 
-        Assert.Equal(f.Damage("Focused Shot")[0].CritChance + 0.4, f.Damage("Lunarlight Salvo")[0].CritChance, 1e-9);
+        Assert.Equal(f.Damage("Focused Shot")[0].CritChance + 0.2, f.Damage("Lunarlight Salvo")[0].CritChance, 1e-9);
     }
 }

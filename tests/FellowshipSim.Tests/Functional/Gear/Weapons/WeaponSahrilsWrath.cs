@@ -3,7 +3,7 @@ using FellowshipSim.Core.Engine;
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
 /// <summary>
-/// Sahril's Wrath (Sahril's Arms, melee heroes): "Instantly deal 2109% fire damage to all enemies within a 1000 radius. You gain 1 stack of Sundering Wrath for
+/// Sahril's Wrath (Sahril's Arms): "Instantly deal 2109% fire damage to all enemies within a 1000 radius. You gain 1 stack of Sundering Wrath for
 /// each enemy hit up to a maximum of 5 stacks, granting you +6% additional critical strike chance per stack for 20 seconds. Can be cast during Global
 /// Cooldown." Cooldown 120 seconds; the damage falls off as sqrt(1/N) beyond 1 enemy (game data: threshold 1; the log: 13 enemies hit gave 5 stacks).
 /// Dev: damage is the expected value with no crit; a hit is read as a multiple of Main Stat (1000) over the class tuning.
@@ -52,7 +52,7 @@ public class WeaponSahrilsWrath
         var f = hero.WithWeapon(Id, enemies: enemies);
         f.Cast(f.Weapon());
         int before = f.Events.Count;
-        // Core ability: Tariq's Wild Swing cannot crit, so the melee heroes' Core abilities are the hit that shows a crit chance.
+        // Core ability: Tariq's Wild Swing cannot crit, so the Core abilities of the heroes with this weapon are the hit that shows a crit chance.
         hero.CastProbe(f, hero.Core);
 
         var hit = f.Events.Skip(before).First(e => e.Kind == StepEventKind.Damage);

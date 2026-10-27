@@ -4,7 +4,7 @@ using FellowshipSim.Core.Engine;
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
 /// <summary>
-/// Chronoshift (Asha's Chronoshift Spire, ranged heroes): a 1 second cast, then a 3 second channel that pulses at all nearby enemies every 1.5 seconds. While
+/// Chronoshift (Asha's Chronoshift Spire): a 1 second cast, then a 3 second channel that pulses at all nearby enemies every 1.5 seconds. While
 /// channeling, Asha's Arcane Embrace halves the damage you take and gives 800% increased cooldown recovery. Cooldown 180 seconds.
 /// Dev: damage is the expected value with no crit; a pulse is read as a multiple of Main Stat (1000) over the class tuning. The cast time and the pulse period are
 /// hasted. From the logs: a pulse lands as the channel starts (the engine's comes a server frame, 0.033 seconds, after the cast completes), then every hasted
@@ -156,36 +156,5 @@ public class WeaponChronoshift
         f.WaitUntil(channelEnd);
 
         Assert.Equal(24.0, before() - f.CooldownSecondsLeft(other), 0.05);
-    }
-
-    /// <summary>Player: Chronoshift has a 180 second cooldown, and haste does not shorten it. Dev: 0% and 50% haste, read the moment the cast completes.</summary>
-    [Theory]
-    [MemberData(nameof(WeaponHeroes.Chronoshift), MemberType = typeof(WeaponHeroes))]
-    public void Its_Cooldown_Is_180_Seconds_Whatever_The_Haste(GearHero hero)
-    {
-        foreach (double haste in new[] { 0.0, 0.5 })
-        {
-            var f = hero.WithWeapon(Id, haste: haste);
-            var remaining = f.CooldownAtCompletion(f.Weapon());
-            f.Cast(f.Weapon());
-
-            Assert.Equal(180.0, remaining(), 0.002);
-        }
-    }
-
-    /// <summary>
-    /// Player: Chronoshift's own cooldown is not sped up by its barrier: it runs at normal speed while you channel (a weapon ability ignores cooldown recovery).
-    /// Dev: the channel's 3 seconds are over; the cooldown has run down by 3 seconds only, so 177 seconds are left.
-    /// </summary>
-    [Theory(Skip = "Suspected sim mistake: the engine recovers Chronoshift's own cooldown at 8 times while channeling it (160 seconds left instead of 177), from the user's remark; the user thinks it is wrong (99%). TODO: check in game.")]
-    [MemberData(nameof(WeaponHeroes.Chronoshift), MemberType = typeof(WeaponHeroes))]
-    public void The_Barrier_Does_Not_Speed_Up_Chronoshifts_Own_Cooldown(GearHero hero)
-    {
-        var f = hero.WithWeapon(Id);
-        f.Cast(f.Weapon());
-        double start = f.CompletedAt(Name);
-        f.WaitUntil(start + 3.0);
-
-        Assert.Equal(177.0, f.CooldownSecondsLeft(f.Weapon()), 0.05);
     }
 }

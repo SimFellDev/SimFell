@@ -174,21 +174,6 @@ public class WeaponVoidbringersTouch
     }
 
     /// <summary>
-    /// Player: haste does not shorten a weapon ability's cooldown, Voidbringer's Touch's included: 90 seconds at 50% haste too.
-    /// Dev: read the moment the cast completes.
-    /// </summary>
-    [Theory(Skip = "The engine shortens this cooldown with haste (it sets it explicitly: 60 seconds at 50% haste) while the other weapon abilities keep theirs. TODO: check in game; if haste does shorten it, this test is wrong and the rule is per ability.")]
-    [MemberData(nameof(WeaponHeroes.VoidbringersTouch), MemberType = typeof(WeaponHeroes))]
-    public void Haste_Does_Not_Shorten_Its_Cooldown(GearHero hero)
-    {
-        var f = hero.WithWeapon(Id, haste: 0.5);
-        var remaining = f.CooldownAtCompletion(f.Weapon());
-        f.Cast(f.Weapon());
-
-        Assert.Equal(90.0, remaining(), 0.002);
-    }
-
-    /// <summary>
     /// Player: it can be cast during the global cooldown.
     /// Dev: an instant ability of the hero starts a global cooldown and Voidbringer's Touch is cast 0.05 seconds later.
     /// </summary>

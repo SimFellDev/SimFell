@@ -46,14 +46,11 @@ public static class GlyphFights
     }
 
     /// <summary>
-    /// Casts <paramref name="ability"/> (after a second, not at the fight's first instant) and returns how long its cooldown lasts in real seconds: from
+    /// Casts <paramref name="ability"/> and returns how long its cooldown lasts in real seconds: from
     /// the cast's completion to the end the engine predicts a second later, at the rate the hero has then.
-    /// Dev: a cooldown started at time 0 reads its recovery rate only after its first progress, so its first segment runs at rate 1; that edge of the
-    /// fight's first instant is left out by waiting.
     /// </summary>
     public static double CooldownLength(StepDriver f, Ability ability)
     {
-        f.Wait(1);
         GearFights.Fill(f);
         f.Cast(ability);
         double started = f.Events.Last(e => e.Kind == StepEventKind.CastCompleted).Time.TotalSeconds;

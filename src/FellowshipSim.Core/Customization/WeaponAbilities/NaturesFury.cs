@@ -31,7 +31,8 @@ public class NaturesFury : Ability
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        DealDamage(ctx, target, FirstHitMultiplier);
+        // The first hit lands right after the cast completes (not inside it), then each bounce.
+        ctx.Schedule(SimTime.Zero, c => DealDamage(c, target, FirstHitMultiplier), Name);
         for (int i = 1; i < Hits; i++)
         {
             ctx.Schedule(SimTime.FromSeconds(i * BounceSeconds), c =>

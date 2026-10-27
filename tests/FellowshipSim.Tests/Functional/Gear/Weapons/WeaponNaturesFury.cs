@@ -3,7 +3,7 @@ using FellowshipSim.Core.Engine;
 namespace FellowshipSim.Tests.Functional.GearWeapon;
 
 /// <summary>
-/// Nature's Fury (Branch of the Everliving, ranged heroes): "Conjure the forces of nature to bounce between up to 4 enemies, dealing 1397.7% Main Stat nature
+/// Nature's Fury (Branch of the Everliving): "Conjure the forces of nature to bounce between up to 4 enemies, dealing 1397.7% Main Stat nature
 /// damage to each one. The 1st hit from Nature's Fury has +100% increased damage or healing. Nature's Fury has an additional +30% Critical Strike chance." Cast
 /// time 1.5 seconds (hasted), cooldown 60 seconds.
 /// Dev: damage is the expected value, so the +30% crit chance adds 30% to each hit (crit multiplier 2): a hit is 13.977 x 1.3 times Main Stat (and the class

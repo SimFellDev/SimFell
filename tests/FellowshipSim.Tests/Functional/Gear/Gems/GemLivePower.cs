@@ -68,8 +68,7 @@ public class GemLivePower
     /// Player: a gem's flat rating node (Berserker's Zeal, Thief's Alacrity, Vanguard's Resolve, Mystic's Intuition) reached or lost during a fight changes
     /// the stat: more of it with the node, less without.
     /// Dev: the stat after raising the power across 150 (and the rank II step at 800) is higher than before, and back to the old value when it falls again.
-    /// The exact size is not asserted (it is the rating's value at the hero's level). TODO: a hero built from gem power has none of these ratings from the
-    /// start (the engine leaves them to a character sheet) but gets them when the power changes: to settle with the Skipped rating tests of each colour.
+    /// The exact size is not asserted (it is each colour's own test: a hero built from gem power has the rating from the start).
     /// </summary>
     [Theory]
     [MemberData(nameof(RatingChanges))]
