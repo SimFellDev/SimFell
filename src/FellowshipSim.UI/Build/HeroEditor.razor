@@ -15,7 +15,7 @@
 <Card>
     <div class="row toolbar">
         <input aria-label="Build name" placeholder="Build name" autocomplete="off" @bind="Build.Name" @bind:after="Changed" />
-        <select aria-label="Saved builds" @bind:get="State.SavedName" @bind:set="LoadSavedAsync">
+        <select @key="_pickerKey" aria-label="Saved builds" @bind:get="State.SavedName" @bind:set="LoadSavedAsked">
             <option value="">Load build...</option>
             @foreach (var saved in _saved)
             {
@@ -23,12 +23,15 @@
             }
         </select>
         <button type="button" class="secondary-button" @onclick="SaveAsync">Save</button>
-        <button type="button" class="secondary-button" @onclick="New">New</button>
+        <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
         <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
         <button type="button" class="secondary-button" aria-expanded="@(_exportOpen ? "true" : "false")" @onclick="ExportAsync">Export</button>
         <button type="button" class="secondary-button delete" disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync">Delete</button>
     </div>
-    <Message Kind="State.BuildStatus.Kind">@State.BuildStatus.Text</Message>
+    @if (State.BuildStatus.Text.Length > 0)
+    {
+        <Message Kind="State.BuildStatus.Kind">@State.BuildStatus.Text</Message>
+    }
     @if (_exportOpen)
     {
         @* The build as a profile, the text Import reads; it follows the build while it shows. *@
@@ -347,12 +350,36 @@
     </div>
 </div>
 
+@if (State.HasBuildEdits)
+{
+    @* Over the bottom of the window while the build has changes not saved; a step waiting on them asks first. *@
+    <div class="unsaved-space"></div>
+    <div class="unsaved" role="@(_pending != null ? "alertdialog" : "status")" aria-label="Unsaved changes">
+        <span>
+            @(Build.Name.Trim().Length > 0 ? Build.Name.Trim() : "This build") has changes that are not saved.@(_pending is { } pending ? $" Save them before {pending.What}?" : "")
+        </span>
+        <button type="button" @onclick="SaveThenContinue">Save</button>
+        <button type="button" class="secondary-button" @onclick="DiscardThenContinue">Discard</button>
+        @if (_pending != null)
+        {
+            <button type="button" class="secondary-button" @onclick="CancelPending">Cancel</button>
+        }
+    </div>
+}
+
 @code {
     /// <summary>Called after every change to the build.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
     private IReadOnlyList<string> _heroes = [];
     private IReadOnlyList<ProfileEntry> _saved = [];
+    // The hero _saved lists the builds of.
+    private string? _savedHero;
+
+    // The step waiting on the unsaved changes (open another hero, build or a new one), and a key that draws the picker
+    // anew so a cancelled pick shows the build still open.
+    private (string What, Func<Task> Then)? _pending;
+    private int _pickerKey;
 
     private BuildEditor Editor => State.Editor;
     private CharacterBuild Build => State.Build;
@@ -366,7 +393,7 @@
         try
         {
             _heroes = await Engine.GetHeroesAsync();
-            await LoadSavedListAsync();
+            await LoadSavedListAsync(force: true);
         }
         catch (Exception e)
         {
@@ -374,7 +401,20 @@
         }
     }
 
-    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    {
+        StateHasChanged();
+        try
+        {
+            await LoadSavedListAsync();
+            StateHasChanged();
+        }
+        catch (Exception e)
+        {
+            State.BuildStatus = MessageState.Error(e.Message);
+            StateHasChanged();
+        }
+    });
 
     public void Dispose() => State.Changed -= OnStateChanged;
 
@@ -454,20 +494,65 @@
     private Task PickHeroFromMenu(string hero)
     {
         _heroMenuOpen = false;
-        return PickHero(hero);
+        if (hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)) return Task.CompletedTask;
+        return AskFirst($"opening {hero}", () => PickHero(hero));
     }
 
-    private Task PickHero(string hero)
+    // Builds are saved per hero: the picker lists the new hero's builds.
+    private async Task PickHero(string hero)
     {
-        if (hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)) return Task.CompletedTask;
         State.Editor = new BuildEditor(BuildEditor.NewBuild(hero));
         State.SavedName = "";
+        State.MarkBuildClean();
+        State.BuildStatus = MessageState.None;
         // Another hero runs its own default list.
         State.ActionListValue = $"builtin/{hero}/{FellowshipSim.Core.APL.DefaultActionLists.DefaultName}";
         State.ActionListName = FellowshipSim.Core.APL.DefaultActionLists.DefaultName;
         State.ActionListText = null;
-        return Changed();
+        try
+        {
+            await LoadSavedListAsync(force: true);
+        }
+        catch (Exception e)
+        {
+            State.BuildStatus = MessageState.Error(e.Message);
+        }
+        await Changed();
     }
+
+    /// <summary>Runs <paramref name="then"/> now, or after asking to save when the build has changes not saved.</summary>
+    private Task AskFirst(string what, Func<Task> then)
+    {
+        if (!State.HasBuildEdits) return then();
+        _pending = (what, then);
+        _pickerKey++;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveThenContinue()
+    {
+        await SaveAsync();
+        // A save that failed keeps the question, with the reason in the status.
+        if (State.HasBuildEdits || _pending is not { } pending) return;
+        _pending = null;
+        await pending.Then();
+    }
+
+    // With no step waiting, the build goes back to how it was last loaded, saved or started anew.
+    private async Task DiscardThenContinue()
+    {
+        if (_pending is not { } pending)
+        {
+            State.DiscardBuildEdits();
+            State.BuildStatus = MessageState.None;
+            await Changed();
+            return;
+        }
+        _pending = null;
+        await pending.Then();
+    }
+
+    private void CancelPending() => _pending = null;
 
     private bool _exportOpen;
 
@@ -493,10 +578,13 @@
         }
     }
 
+    private Task NewAsked() => AskFirst("starting a new build", New);
+
     private Task New()
     {
         State.Editor = new BuildEditor(BuildEditor.NewBuild(Build.Hero));
         State.SavedName = "";
+        State.MarkBuildClean();
         State.BuildStatus = MessageState.None;
         return Changed();
     }
@@ -517,8 +605,19 @@
         return Changed();
     }
 
-    private async Task LoadSavedListAsync() =>
-        _saved = (await Profiles.ListAsync(Visitor, [Build.Hero])).ToList();
+    // A build from an import or a sim's run can be another hero's, so the list reads the builds of the hero shown.
+    private async Task LoadSavedListAsync(bool force = false)
+    {
+        string hero = Build.Hero;
+        if (!force && hero.Equals(_savedHero, StringComparison.OrdinalIgnoreCase)) return;
+        var saved = (await Profiles.ListAsync(Visitor, [hero])).ToList();
+        // The build shows another hero now, whose list replaces this one.
+        if (!hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)) return;
+        _saved = saved;
+        _savedHero = hero;
+    }
+
+    private Task LoadSavedAsked(string name) => name.Length > 0 ? AskFirst($"opening {name}", () => LoadSavedAsync(name)) : LoadSavedAsync(name);
 
     private async Task LoadSavedAsync(string name)
     {
@@ -531,6 +630,7 @@
             var build = SimcProfile.Parse(text).Build;
             build.Name = name;
             State.Editor = new BuildEditor(build);
+            State.MarkBuildClean();
             State.BuildStatus = MessageState.Ok($"Loaded {name}.");
             await Changed();
         }
@@ -552,8 +652,9 @@
         {
             Build.Name = name;
             await Profiles.SaveAsync(Visitor, new ProfileEntry(Build.Hero, name), new SimcProfile(Build, "").Format());
-            await LoadSavedListAsync();
+            await LoadSavedListAsync(force: true);
             State.SavedName = name;
+            State.MarkBuildClean();
             State.BuildStatus = MessageState.Ok($"Saved {name} to your builds.");
         }
         catch (Exception e)
@@ -568,7 +669,7 @@
         try
         {
             await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, name));
-            await LoadSavedListAsync();
+            await LoadSavedListAsync(force: true);
             State.SavedName = "";
             State.BuildStatus = MessageState.Ok($"Deleted {name}. The editor keeps the build until you change it.");
         }

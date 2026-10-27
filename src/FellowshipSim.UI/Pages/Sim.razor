@@ -271,6 +271,7 @@
         var removed = BuildEditor.RemoveUnknown(build);
         State.Editor = new BuildEditor(build);
         State.SavedName = "";
+        State.MarkBuildClean();
         State.ImportStatus = MessageState.Ok($"Using the build of {from}." + (removed.Count > 0 ? $" Left out (not in the engine): {string.Join(", ", removed)}." : ""));
         State.BuildStatus = State.ImportStatus;
         State.Tab = SimTab.Hero;

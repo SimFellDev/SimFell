@@ -46,6 +46,20 @@ public sealed class SimPageState
 
     public MessageState BuildStatus { get; set; } = MessageState.None;
 
+    // The build's profile when it was last loaded, saved or started anew.
+    private string _cleanProfile;
+
+    public SimPageState() => _cleanProfile = new SimcProfile(Build, "").Format();
+
+    /// <summary>True when the build has changed since it was last loaded, saved or started anew.</summary>
+    public bool HasBuildEdits => new SimcProfile(Build, "").Format() != _cleanProfile;
+
+    /// <summary>Marks the build as loaded, saved or started anew.</summary>
+    public void MarkBuildClean() => _cleanProfile = new SimcProfile(Build, "").Format();
+
+    /// <summary>Puts back the build as it was last loaded, saved or started anew.</summary>
+    public void DiscardBuildEdits() => Editor = new BuildEditor(SimcProfile.Parse(_cleanProfile).Build);
+
     /// <summary>A .simc profile pasted on the Import tab.</summary>
     public string ProfileText { get; set; } = "";
 

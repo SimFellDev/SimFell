@@ -74,6 +74,12 @@
   font-size: 13px;
 }
 
+.condition-row select {
+  padding-right: 26px;
+  background-position: right 8px center;
+  background-size: 12px;
+}
+
 .if {
   width: 62px;
   flex: none;
@@ -187,8 +193,14 @@
   padding: 0 6px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  background: var(--input);
+  background-color: var(--input);
   font: 12px var(--code-font);
+}
+
+.group-start select {
+  padding-right: 20px;
+  background-position: right 5px center;
+  background-size: 11px;
 }
 
 .group-start .if {

@@ -1,11 +1,13 @@
 @inherits LayoutComponentBase
-@implements IDisposable
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 @inject VisitorJobs Jobs
+@inject IJSRuntime JS
 @inject FollowedReviews Followed
 @inject IAppViews Views
 @* The web app's frame: the name, the sections, the FellowshipLogs status (which opens the settings) and the sim results. *@
 <UpdateBanner />
-<header class="top">
+<header @ref="_header" class="top">
     <a class="brand" href="">
         <span class="name"><span class="white">SIM</span><span class="gold">FELL</span></span>
         <span class="tagline">Fellowship simulator</span>
@@ -31,7 +33,25 @@
     /// <summary>Name of the section each page fills with its line under the heading. The frame shows none.</summary>
     public const string SubtitleSection = "subtitle";
 
+    private ElementReference _header;
+    private IJSObjectReference? _module, _height;
+
     protected override void OnInitialized() => Jobs.Changed += OnChanged;
+
+    // The bars pinned under the top bar read its height from --header-height.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/shell/headerHeight.js");
+            _height = await _module.InvokeAsync<IJSObjectReference>("observe", _header);
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The page closed.
+        }
+    }
 
     // A review started from the Log Replay page opens when it is done, whichever page shows.
     private void OnChanged(SimJob job) => _ = InvokeAsync(() =>
@@ -40,5 +60,21 @@
         else Followed.Forget(job);
     });
 
-    public void Dispose() => Jobs.Changed -= OnChanged;
+    public async ValueTask DisposeAsync()
+    {
+        Jobs.Changed -= OnChanged;
+        try
+        {
+            if (_height != null)
+            {
+                await _height.InvokeVoidAsync("dispose");
+                await _height.DisposeAsync();
+            }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, and the page with it.
+        }
+    }
 }

@@ -1,4 +1,8 @@
+/* Pinned to the window's top; it holds the results sidebar, so it stacks above the pinned bars of the pages. */
 .top {
+  position: sticky;
+  top: 0;
+  z-index: 15;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

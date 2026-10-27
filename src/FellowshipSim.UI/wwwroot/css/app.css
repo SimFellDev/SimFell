@@ -27,6 +27,9 @@
   --warn: #f5a524;
   --bad: #f87191;
   --row-hover: #18181c;
+  /* Tooltips: a step lighter than the cards, so a tooltip over a card stands out. */
+  --popover: #1f1f24;
+  --popover-border: #3f3f46;
   --heading-font: Cinzel, Georgia, serif;
   --code-font: ui-monospace, "Cascadia Mono", Consolas, monospace;
   --tok-operator: #e0b04e;
@@ -90,6 +93,17 @@ textarea {
   background: var(--input);
   color: var(--text);
   font: inherit;
+}
+
+/* The hero menu's chevron in place of the browser's arrow, 10px from the edge and 8px from the text. An image cannot read
+   a custom property, so its stroke is --muted's value. */
+select {
+  appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
 }
 
 /* Each page load focuses its first heading (FocusOnNavigate) for screen readers; it needs no ring. */
