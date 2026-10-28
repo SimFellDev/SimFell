@@ -42,8 +42,9 @@ public class Ruby : Gem
                 if (hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat /= 1.0 + node.Value("PrimaryStatIncrease");
                 hero.SituationalAuras.Add(node.Grants!);
                 return true;
-            case 5: // Blessing of the Conqueror: damage while in combat with a boss (situational).
+            case 5: // Blessing of the Conqueror: damage while in combat with a boss (situational; a sim's fight may have none).
                 hero.SituationalAuras.Add(node.Grants!);
+                hero.BossAuras.Add(node.Grants!);
                 return true;
             case 2: // Champion's Heart: flat Main Stat (a logged Main Stat already includes it).
                 if (!hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat += node.Value("PrimaryStatBonus");

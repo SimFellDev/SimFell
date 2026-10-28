@@ -109,6 +109,12 @@ public abstract class Hero : Actor
     public List<AuraDef> SituationalAuras { get; } = new();
 
     /// <summary>
+    /// The <see cref="SituationalAuras"/> up only in combat with a boss (Ruby's Blessing of the Conqueror): a sim without a
+    /// boss (<see cref="Engine.FightOptions.Boss"/>) takes them off as each fight starts. A replay follows the log for them.
+    /// </summary>
+    public List<AuraDef> BossAuras { get; } = new();
+
+    /// <summary>
     /// The class tuning aura every hero has: a damage multiplier the game sets per hero (hero attribute
     /// BalancingDamageAura). 1.0 unless the hero sets its own value in <see cref="Initialize"/>.
     /// </summary>

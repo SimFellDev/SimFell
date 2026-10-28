@@ -5,8 +5,9 @@ namespace FellowshipSim.Core.Engine;
 /// share (0.2: 240 to 360 s of a 300 s sim), the same for a seed in every run. <see cref="HealthFollowsTime"/> takes the
 /// targets from full health at the start to none at the fight's end, whatever damage they take, so health-gated effects
 /// come at their share of the fight. <see cref="StartingSpirit"/> is the hero's Spirit Points as the fight starts.
+/// <see cref="Boss"/> is true for a fight against a boss: without one, the hero's <see cref="Domain.Hero.BossAuras"/> are off.
 /// </summary>
-public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0)
+public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0, bool Boss = true)
 {
     public static readonly FightOptions Default = new();
 

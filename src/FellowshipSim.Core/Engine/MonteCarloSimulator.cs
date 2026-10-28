@@ -238,6 +238,7 @@ public class MonteCarloSimulator
         worker.Recorder.Begin(fight, seconds, totals.Report);
         hero.BeginFight(ctx);
         if (options.StartingSpirit > 0) hero.GainResource(Hero.SpiritPoints, options.StartingSpirit, ctx);
+        if (!options.Boss) foreach (var aura in hero.BossAuras) hero.Auras.Remove(aura, SimTime.Zero);
 
         // Populate enemies
         for (int i = 1; i <= targetCount; i++)

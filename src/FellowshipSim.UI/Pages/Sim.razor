@@ -282,7 +282,8 @@
         DegreeOfParallelism: Math.Clamp(State.Threads, 1, MaxThreads),
         LengthVariance: State.VaryLength ? State.LengthVariancePercent / 100 : 0,
         HealthFollowsTime: true,
-        StartingSpirit: State.StartWithSpirit ? State.StartingSpirit : 0);
+        StartingSpirit: State.StartWithSpirit ? State.StartingSpirit : 0,
+        Boss: State.Boss);
 
     private async Task StartAsync()
     {

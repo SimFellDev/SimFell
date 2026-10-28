@@ -80,6 +80,9 @@ public sealed class SimPageState
 
     public double LengthVariancePercent { get; set; } = DefaultLengthVariancePercent;
 
+    /// <summary>True for fights against a boss: Ruby's Blessing of the Conqueror counts only then.</summary>
+    public bool Boss { get; set; } = true;
+
     /// <summary>True when the hero starts each fight with <see cref="StartingSpirit"/> Spirit Points.</summary>
     public bool StartWithSpirit { get; set; }
 
