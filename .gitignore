@@ -11,3 +11,6 @@ data/
 
 # BenchmarkDotNet results
 BenchmarkDotNet.Artifacts/
+
+# The browser app's local FellowshipLogs API client (never deployed: FellowshipLogs' terms keep it to its owner)
+src/FellowshipSim.Web/wwwroot/appsettings.json

@@ -13,7 +13,7 @@
     Replay a logged fight through the engine and review how closely it matches
 </SectionContent>
 
-@if (!_hasCredentials && !Jobs.Visitor.OwnsDataFolder)
+@if (!_hasCredentials && !Settings.CanSave(Jobs.Visitor))
 {
     <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights. Fights downloaded before still replay.</Message>
 }

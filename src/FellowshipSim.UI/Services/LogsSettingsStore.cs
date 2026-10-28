@@ -11,10 +11,20 @@ public sealed record LogsCredentials(string ClientId, string ClientSecret);
 /// Where the FellowshipLogs API credentials come from: the configuration keys FELLOWSHIPLOGS_CLIENT_ID and
 /// FELLOWSHIPLOGS_CLIENT_SECRET if set (environment variables, or the <c>simfell</c> user secrets in development),
 /// otherwise <c>settings.json</c> in the data folder (saved from the desktop app's Setup page; the data folder is never
-/// committed).
+/// committed). An app that does not save credentials (<see cref="SavesCredentials"/> false: the browser app) takes them
+/// from its configuration alone.
 /// </summary>
 public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory httpClients, IConfiguration configuration)
 {
+    /// <summary>
+    /// False for an app whose visitors cannot save credentials (the browser app, a public site: FellowshipLogs' terms keep
+    /// an API client to its owner); it then reads neither <c>settings.json</c> nor saves one.
+    /// </summary>
+    public bool SavesCredentials { get; init; } = true;
+
+    /// <summary>True when <paramref name="visitor"/> can save the app's credentials: the data folder's owner, where they are saved.</summary>
+    public bool CanSave(Visitor visitor) => SavesCredentials && visitor.OwnsDataFolder;
+
     public const string ClientIdKey = "FELLOWSHIPLOGS_CLIENT_ID";
     public const string ClientSecretKey = "FELLOWSHIPLOGS_CLIENT_SECRET";
 
@@ -30,7 +40,7 @@ public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory 
             string? id = configuration[ClientIdKey];
             string? secret = configuration[ClientSecretKey];
             if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(secret)) return new LogsCredentials(id, secret);
-            if (!File.Exists(SettingsPath)) return null;
+            if (!SavesCredentials || !File.Exists(SettingsPath)) return null;
             var saved = JsonSerializer.Deserialize<LogsCredentials>(File.ReadAllText(SettingsPath));
             return saved is { ClientId.Length: > 0, ClientSecret.Length: > 0 } ? saved : null;
         }
@@ -46,7 +56,7 @@ public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory 
     /// </summary>
     public void Save(Visitor visitor, LogsCredentials credentials)
     {
-        if (!visitor.OwnsDataFolder) throw new InvalidOperationException("This app's FellowshipLogs API access is set by its host.");
+        if (!CanSave(visitor)) throw new InvalidOperationException("This app's FellowshipLogs API access is set by its host.");
         File.WriteAllText(SettingsPath, JsonSerializer.Serialize(credentials, new JsonSerializerOptions { WriteIndented = true }));
         Saved?.Invoke();
     }
@@ -57,7 +67,7 @@ public sealed class LogsSettingsStore(ReplayLibrary library, IHttpClientFactory 
     /// </summary>
     public async Task SignInAndSaveAsync(Visitor visitor, string clientId, string clientSecret, CancellationToken ct = default)
     {
-        if (!visitor.OwnsDataFolder) throw new InvalidOperationException("This app's FellowshipLogs API access is set by its host.");
+        if (!CanSave(visitor)) throw new InvalidOperationException("This app's FellowshipLogs API access is set by its host.");
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
         {
             throw new ArgumentException("Enter both the client ID and the client secret.");

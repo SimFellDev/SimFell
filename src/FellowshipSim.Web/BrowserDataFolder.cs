@@ -20,8 +20,11 @@ public sealed class BrowserDataFolder(IJSRuntime js)
     /// <summary>Reviews kept: each page is several MB, all of it in the page's memory.</summary>
     public const int KeptReviews = 10;
 
-    /// <summary>The folders the browser keeps nothing of: raw fights and replay scripts.</summary>
-    private static readonly string[] NotKept = ["fights/", "scripts/"];
+    /// <summary>
+    /// What the browser keeps nothing of: raw fights, replay scripts, and an API client a visitor saved before the app
+    /// stopped taking one.
+    /// </summary>
+    private static readonly string[] NotKept = ["fights/", "scripts/", "settings.json"];
 
     private static readonly TimeSpan SaveEvery = TimeSpan.FromSeconds(2);
 
@@ -96,10 +99,10 @@ public sealed class BrowserDataFolder(IJSRuntime js)
     // No fight or replay script stays (a review writes its script); the newest reviews stay, the rest go.
     private static void Prune()
     {
-        foreach (string folder in NotKept)
+        foreach (string path in NotKept.Select(p => Path.Combine(Root, p)))
         {
-            var kept = new DirectoryInfo(Path.Combine(Root, folder));
-            if (kept.Exists) foreach (var file in kept.GetFiles()) file.Delete();
+            if (File.Exists(path)) File.Delete(path);
+            else if (Directory.Exists(path)) foreach (var file in new DirectoryInfo(path).GetFiles()) file.Delete();
         }
         var reviews = new DirectoryInfo(Path.Combine(Root, "reviews"));
         if (!reviews.Exists) return;

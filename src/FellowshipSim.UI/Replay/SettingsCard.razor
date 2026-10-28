@@ -4,7 +4,7 @@
 @inject IServiceProvider Services
 
 <Card Title="FellowshipLogs API access" Hidden="Hidden">
-    @if (!Visitor.OwnsDataFolder)
+    @if (!Settings.CanSave(Visitor))
     {
         <p class="hint">
             Fights are downloaded from

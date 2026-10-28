@@ -27,7 +27,7 @@ public static class SimFellUIServiceCollectionExtensions
         services.AddHttpClient(LogsSettingsStore.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(2));
         services.AddSingleton(library);
         services.TryAddSingleton<IBlobStore>(new DiskBlobStore(library.DataDirectory));
-        services.AddSingleton<LogsSettingsStore>();
+        services.TryAddSingleton<LogsSettingsStore>();
         services.AddSingleton<ActionListStore>();
         services.AddSingleton(new SimJobQueue(jobs));
         services.TryAddSingleton<IFightReviewer, DiskFightReviewer>();

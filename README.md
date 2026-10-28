@@ -92,8 +92,10 @@ runs on a server. Sims spread over web workers, one per core but the page's (up 
 its own, and a sim gives the same result as on the desktop app. Its files stay in the browser (IndexedDB): builds and
 action lists, settings, the newest 20 sims and the newest 10 reviews; a replay downloads its fight on a worker and keeps
 only the review. Builds and action lists
-also download as `.simc` files. Each visitor enters their own FellowshipLogs API client on **Setup**, kept in their
-browser.
+also download as `.simc` files. It takes no FellowshipLogs API client from its visitors (FellowshipLogs' terms keep a
+client to its owner), so the deployed site imports and replays no fights. To use your own locally, put it in
+`src/FellowshipSim.Web/wwwroot/appsettings.json` (git-ignored) as `FELLOWSHIPLOGS_CLIENT_ID` and
+`FELLOWSHIPLOGS_CLIENT_SECRET`.
 
 ```
 dotnet run --project src/FellowshipSim.Web
