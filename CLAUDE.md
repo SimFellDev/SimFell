@@ -97,8 +97,9 @@ or the desktop app).
   simfelldev.github.io by the Deploy web app workflow), its one visitor `Visitor.DataFolderOwner`. `WorkerSimEngine` runs
   sims and replays on web workers (`wwwroot/sim/`), each a .NET runtime of its own calling `SimWorker`'s `[JSExport]`
   methods: a sim's chunks (`SimChunks`, `MonteCarloSimulator.RunChunk`) spread over them and combine to the same result
-  as `LocalSimEngine`'s. The data folder is in the runtime's in-memory file system, copied to IndexedDB
-  (`BrowserDataFolder`).
+  as `LocalSimEngine`'s. A replay downloads its fight and replays it on a worker (`WorkerFightReviewer`, the
+  browser's `IFightReviewer`), so no fight sits in the page. The data folder is in the runtime's in-memory file system,
+  copied to IndexedDB (`BrowserDataFolder`).
 - **FellowshipSim.Cli** is `simfell`: one `LocalSimEngine.SimulateAsync` of a `.simc` profile, result on stdout,
   progress on stderr.
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to

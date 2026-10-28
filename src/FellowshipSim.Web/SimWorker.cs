@@ -4,6 +4,7 @@ using System.Text.Json;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
+using FellowshipSim.Engine.Replay;
 using FellowshipSim.Logs;
 
 namespace FellowshipSim.Web;
@@ -50,6 +51,31 @@ public static partial class SimWorker
             reply = new ReviewReply(review, null);
         }
         catch (SimEngineException e)
+        {
+            reply = new ReviewReply(null, e.Message);
+        }
+        return JsonSerializer.Serialize(reply, SimChunks.Json);
+    }
+
+    /// <summary>
+    /// Downloads fight <paramref name="fightId"/> of report <paramref name="reportCode"/> from FellowshipLogs with the
+    /// visitor's API client and replays player <paramref name="playerId"/>: a <see cref="ReviewReply"/> as JSON. The fight
+    /// stays in this worker, never in the page's memory, and goes when the replay ends.
+    /// </summary>
+    [JSExport]
+    public static async Task<string> ReviewFight(string reportCode, int fightId, int playerId, string clientId, string clientSecret, int callId)
+    {
+        var progress = new ProgressTo(callId);
+        ReviewReply reply;
+        try
+        {
+            using var http = new HttpClient();
+            progress.Report("Downloading the fight from FellowshipLogs");
+            var raw = await new FellowshipLogsClient(http, clientId, clientSecret).DownloadFightAsync(reportCode, fightId, progress);
+            progress.Report("Replaying the fight");
+            reply = new ReviewReply(ReplayReview.Run(raw, playerId, progress: progress), null);
+        }
+        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
         }

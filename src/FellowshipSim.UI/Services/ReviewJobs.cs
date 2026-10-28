@@ -6,17 +6,14 @@ using Microsoft.Extensions.Logging;
 namespace FellowshipSim.UI.Services;
 
 /// <summary>
-/// Replay reviews as <see cref="SimJobKind.Review"/> jobs on the <see cref="SimJobQueue"/>: each job downloads its fight
-/// (a minute or more the first time), the engine replays it, and the review's files are saved in the data folder. A done
+/// Replay reviews as <see cref="SimJobKind.Review"/> jobs on the <see cref="SimJobQueue"/>: each job gets its fight and
+/// replays it (<see cref="IFightReviewer"/>), and the review's files are saved in the data folder. A done
 /// job's <see cref="SimJob.Result"/> is the <see cref="ReviewSummary"/>, and its <see cref="SimJob.Input"/> the
 /// <see cref="ReviewTarget"/>. The review is the visitor's (<see cref="VisitorReviews"/>).
 /// </summary>
-public sealed class ReviewJobs(SimJobQueue queue, ReplayLibrary library, VisitorReviews reviews, LogsSettingsStore settings, ISimEngine engine,
+public sealed class ReviewJobs(SimJobQueue queue, ReplayLibrary library, VisitorReviews reviews, IFightReviewer reviewer,
     ILogger<ReviewJobs> log)
 {
-    // Reviews of two players of one fight would download its raw fight to the same file at once.
-    private readonly SemaphoreSlim _oneDownloadAtATime = new(1, 1);
-
     public SimJob Start(Visitor visitor, string reportCode, int fightId, int playerId)
     {
         var target = new ReviewTarget(reportCode, fightId, playerId);
@@ -24,23 +21,7 @@ public sealed class ReviewJobs(SimJobQueue queue, ReplayLibrary library, Visitor
         {
             try
             {
-                var ct = context.CancellationToken;
-                string rawFight;
-                await _oneDownloadAtATime.WaitAsync(ct);
-                try
-                {
-                    rawFight = await library.GetRawFightFileAsync(settings.CreateClient(), reportCode, fightId, context, ct);
-                }
-                finally
-                {
-                    _oneDownloadAtATime.Release();
-                }
-                context.Report("Replaying the fight");
-                ReviewArtifacts review;
-                await using (var fight = File.OpenRead(rawFight))
-                {
-                    review = await engine.ReviewAsync(fight, playerId, context, ct);
-                }
+                var review = await reviewer.ReviewAsync(reportCode, fightId, playerId, context);
                 library.Save(review);
                 await reviews.AddAsync(visitor, review.Summary, CancellationToken.None);
                 return review.Summary;

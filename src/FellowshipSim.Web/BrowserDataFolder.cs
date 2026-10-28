@@ -4,21 +4,24 @@ namespace FellowshipSim.Web;
 
 /// <summary>
 /// The browser app's data folder. Its files are in the browser runtime's in-memory file system at <see cref="Root"/>, so
-/// every store that reads and writes the folder (fights, replay scripts, reviews, settings, builds, action lists, sims)
-/// runs as it does on a computer; storage.js keeps a copy of each file in the browser's IndexedDB. The copies come back
-/// at start (<see cref="RestoreAsync"/>), and a changed or removed file is copied every couple of seconds
-/// (<see cref="KeepSaving"/>). The browser keeps the newest <see cref="KeptSims"/> sims (<see cref="FellowshipSim.UI.Services.SimResultLibrary.Keep"/>),
-/// <see cref="KeptReviews"/> reviews and <see cref="KeptFights"/> downloaded fights.
+/// every store that reads and writes the folder (reviews, settings, builds, action lists, sims) runs as it does on a
+/// computer; storage.js keeps a copy of each file in the browser's IndexedDB. The copies come back at start
+/// (<see cref="RestoreAsync"/>), and a changed or removed file is copied every couple of seconds (<see cref="KeepSaving"/>).
+/// The browser keeps the newest <see cref="KeptSims"/> sims (<see cref="FellowshipSim.UI.Services.SimResultLibrary.Keep"/>)
+/// and <see cref="KeptReviews"/> reviews. It keeps no downloaded fight and no replay script (<see cref="NotKept"/>): a
+/// fight is hundreds of MB once read, so a sim worker downloads and replays it (<see cref="WorkerFightReviewer"/>).
 /// </summary>
 public sealed class BrowserDataFolder(IJSRuntime js)
 {
     public const string Root = "/simfell";
 
     public const int KeptSims = 20;
-    public const int KeptReviews = 20;
 
-    /// <summary>Downloaded fights kept: each is several MB of events, and is downloaded again when a replay needs it.</summary>
-    public const int KeptFights = 10;
+    /// <summary>Reviews kept: each page is several MB, all of it in the page's memory.</summary>
+    public const int KeptReviews = 10;
+
+    /// <summary>The folders the browser keeps nothing of: raw fights and replay scripts.</summary>
+    private static readonly string[] NotKept = ["fights/", "scripts/"];
 
     private static readonly TimeSpan SaveEvery = TimeSpan.FromSeconds(2);
 
@@ -36,6 +39,12 @@ public sealed class BrowserDataFolder(IJSRuntime js)
         var storage = await StorageAsync();
         foreach (string key in await storage.InvokeAsync<string[]>("list"))
         {
+            // An earlier version kept fights: they go without being read.
+            if (NotKept.Any(key.StartsWith))
+            {
+                await storage.InvokeVoidAsync("remove", key);
+                continue;
+            }
             if (await storage.InvokeAsync<string?>("read", key) is not { } text || PathOf(key) is not { } path) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             await File.WriteAllTextAsync(path, text);
@@ -84,13 +93,13 @@ public sealed class BrowserDataFolder(IJSRuntime js)
         }
     }
 
-    // The newest fights and reviews (with their replay scripts) stay; the rest go.
+    // No fight or replay script stays (a review writes its script); the newest reviews stay, the rest go.
     private static void Prune()
     {
-        var library = new DirectoryInfo(Path.Combine(Root, "fights"));
-        if (library.Exists)
+        foreach (string folder in NotKept)
         {
-            foreach (var old in library.GetFiles("*.raw.json").OrderByDescending(f => f.LastWriteTimeUtc).Skip(KeptFights)) old.Delete();
+            var kept = new DirectoryInfo(Path.Combine(Root, folder));
+            if (kept.Exists) foreach (var file in kept.GetFiles()) file.Delete();
         }
         var reviews = new DirectoryInfo(Path.Combine(Root, "reviews"));
         if (!reviews.Exists) return;
@@ -98,8 +107,6 @@ public sealed class BrowserDataFolder(IJSRuntime js)
         {
             string id = old.Name[..^".summary.json".Length];
             foreach (var file in reviews.GetFiles($"{id}.*")) file.Delete();
-            var script = new FileInfo(Path.Combine(Root, "scripts", $"{id}.replay.json"));
-            if (script.Exists) script.Delete();
         }
     }
 

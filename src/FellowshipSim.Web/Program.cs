@@ -15,6 +15,7 @@ builder.Services.AddSingleton<BrowserDataFolder>();
 builder.Services.AddSingleton<SimWorkerPool>();
 builder.Services.AddSingleton<ISimEngine, WorkerSimEngine>();
 builder.Services.AddSingleton<IReviewPages, BrowserReviewPages>();
+builder.Services.AddSingleton<IFightReviewer, WorkerFightReviewer>();
 builder.Services.AddSingleton(Visitor.DataFolderOwner);
 builder.Services.AddSingleton(s => new SimResultLibrary(s.GetRequiredService<IBlobStore>()) { Keep = BrowserDataFolder.KeptSims });
 builder.Services.AddSimFellUI(BrowserDataFolder.Root).AddSimFellWebShell();

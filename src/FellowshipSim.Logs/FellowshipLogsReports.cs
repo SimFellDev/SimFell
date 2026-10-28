@@ -134,7 +134,13 @@ public static class FellowshipLogsReports
         {
             var page = (await client.QueryAsync(EventsQuery, new { code = reportCode, fightIDs = new[] { fightId }, startTime = from, endTime = end }, ct))
                 ["reportData"]!["report"]!["events"]!;
-            foreach (var e in page["data"]?.AsArray() ?? []) events.Add(e?.DeepClone());
+            // Moved, not copied: a long fight's events are hundreds of MB as a tree, and the browser app has little room.
+            if (page["data"]?.AsArray() is { } data)
+            {
+                var moved = data.ToArray();
+                data.Clear();
+                foreach (var e in moved) events.Add(e);
+            }
             progress?.Report($"Downloaded {events.Count:N0} events");
             double? next = page["nextPageTimestamp"]?.GetValue<double?>();
             if (next == null || next <= from) break;

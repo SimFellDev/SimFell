@@ -1,4 +1,5 @@
 using FellowshipSim.Engine;
+using FellowshipSim.UI.Services;
 using Microsoft.JSInterop;
 
 namespace FellowshipSim.Web;
@@ -52,6 +53,26 @@ public sealed class SimWorkerPool(IJSRuntime js)
         try
         {
             return await pool.InvokeAsync<string>("review", CancellationToken.None, rawFight, playerId, sink);
+        }
+        catch (JSException e)
+        {
+            throw new SimEngineException(Reason(e));
+        }
+    }
+
+    /// <summary>
+    /// Downloads a fight and replays player <paramref name="playerId"/> on a worker, with <paramref name="credentials"/>;
+    /// the worker's <see cref="ReviewReply"/> JSON.
+    /// </summary>
+    public async Task<string> ReviewFightAsync(string reportCode, int fightId, int playerId, LogsCredentials credentials,
+        IProgress<string>? progress)
+    {
+        var pool = await PoolAsync();
+        using var sink = DotNetObjectReference.Create(new Sink(null, progress));
+        try
+        {
+            return await pool.InvokeAsync<string>("reviewFight", CancellationToken.None, reportCode, fightId, playerId,
+                credentials.ClientId, credentials.ClientSecret, sink);
         }
         catch (JSException e)
         {
