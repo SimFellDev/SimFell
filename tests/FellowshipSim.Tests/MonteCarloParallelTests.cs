@@ -31,12 +31,16 @@ public class MonteCarloParallelTests
     {
         const int fights = 96;
         var (single, _) = Run(fights, degreeOfParallelism: 1);
+        int mostHeroes = 0;
         foreach (int threads in new[] { 2, 4, 8 })
         {
             var (result, heroes) = Run(fights, threads);
-            Assert.True(heroes > 1, $"{threads} threads built {heroes} hero");
+            mostHeroes = Math.Max(mostHeroes, heroes);
             Assert.Equal(single.IterationDamage, result.IterationDamage);
         }
+        // A run may use fewer threads than it allows: on a busy machine the first can fight every chunk before another
+        // starts. One of the runs used several, so the comparison covers fights spread over threads.
+        Assert.True(mostHeroes > 1, $"Every run built {mostHeroes} hero");
     }
 
     [Fact]
