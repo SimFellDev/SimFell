@@ -47,9 +47,16 @@
   font-size: 12px;
 }
 
-/* A field its switch has turned off: the label and the number dimmed. */
+/* A field its switch has turned off: the label dimmed, and the number greyed out with no box to type in. */
 .field.off {
-  opacity: 0.45;
+  opacity: 0.5;
+}
+
+.field input:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-style: dashed;
+  cursor: not-allowed;
 }
 
 .field input {
