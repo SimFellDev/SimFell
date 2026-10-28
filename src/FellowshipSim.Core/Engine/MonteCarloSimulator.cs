@@ -82,7 +82,6 @@ public class MonteCarloSimulator
         CancellationToken cancellationToken = default, FightOptions? fight = null)
     {
         fight ??= FightOptions.Default;
-        int seconds = (int)Math.Ceiling(Math.Max(1.0, fight.LongestLength(duration).TotalSeconds));
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
         var total = new Totals();
         var options = new ParallelOptions
@@ -94,8 +93,7 @@ public class MonteCarloSimulator
 
         // Fights run in chunks of consecutive fights, and the chunks' totals merge in chunk order whatever thread ran
         // them, so a run gives the same totals to the last bit on any number of threads.
-        int chunkSize = Math.Clamp(iterations / 100, 1, MaxProgressBatch);
-        int chunkCount = (iterations + chunkSize - 1) / chunkSize;
+        int chunkCount = ChunkCount(iterations);
         var finished = new Totals?[chunkCount];
         int nextToMerge = 0;
 
@@ -103,17 +101,7 @@ public class MonteCarloSimulator
             () => _idle.TryTake(out var worker) ? worker : NewWorker(),
             (chunk, _, worker) =>
             {
-                var totals = new Totals();
-                int end = Math.Min(iterations, (chunk + 1) * chunkSize);
-                for (int i = chunk * chunkSize; i < end; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var length = fight.Length(duration, firstSeed + i);
-                    double damage = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
-                    double lengthSeconds = Math.Max(1.0, length.TotalSeconds);
-                    totals.Add(damage / lengthSeconds, damage, lengthSeconds);
-                    if (fightDamage != null) fightDamage[i] = damage;
-                }
+                var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight, fightDamage, cancellationToken);
                 lock (finished)
                 {
                     finished[chunk] = totals;
@@ -123,12 +111,85 @@ public class MonteCarloSimulator
                         finished[nextToMerge++] = null;
                     }
                 }
-                reporter?.FightsDone(end - chunk * chunkSize);
+                reporter?.FightsDone((int)totals.Count);
                 return worker;
             },
             worker => _idle.Add(worker));
         reporter?.Finish(iterations);
+        return Result(total, fightDamage, duration, iterations, targetCount);
+    }
 
+    /// <summary>
+    /// The chunks a run of <paramref name="iterations"/> fights is split into: consecutive fights, about 1% of them each
+    /// (at most <see cref="MaxProgressBatch"/>).
+    /// </summary>
+    public static int ChunkCount(int iterations) => (iterations + ChunkSize(iterations) - 1) / ChunkSize(iterations);
+
+    private static int ChunkSize(int iterations) => Math.Clamp(iterations / 100, 1, MaxProgressBatch);
+
+    /// <summary>
+    /// Fights chunk <paramref name="chunk"/> (of <see cref="ChunkCount"/>) of a run, as <see cref="Run"/> would with the same
+    /// arguments, and returns its totals; <see cref="Combine"/> merges a run's chunks. A run can so be split between
+    /// processes and still give <see cref="Run"/>'s result.
+    /// </summary>
+    public MonteCarloChunk RunChunk(int chunk, SimTime duration, int iterations, int targetCount = 1, int firstSeed = 1,
+        bool keepFightDamage = false, CancellationToken cancellationToken = default, FightOptions? fight = null)
+    {
+        var worker = _idle.TryTake(out var idle) ? idle : NewWorker();
+        try
+        {
+            int size = ChunkSize(iterations);
+            double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
+            var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight ?? FightOptions.Default,
+                fightDamage, cancellationToken);
+            int start = chunk * size;
+            return totals.ToChunk(chunk, fightDamage == null ? [] : fightDamage[start..Math.Min(iterations, start + size)]);
+        }
+        finally
+        {
+            _idle.Add(worker);
+        }
+    }
+
+    /// <summary>
+    /// The result of a run from its chunks (<see cref="RunChunk"/>), every one of them, in chunk order: the same as
+    /// <see cref="Run"/> with the same arguments.
+    /// </summary>
+    public static MonteCarloResult Combine(IReadOnlyList<MonteCarloChunk> chunks, SimTime duration, int iterations,
+        int targetCount = 1, bool keepFightDamage = false)
+    {
+        if (chunks.Count != ChunkCount(iterations) || chunks.Where((c, i) => c.Index != i).Any())
+        {
+            throw new ArgumentException($"A run of {iterations} fights has {ChunkCount(iterations)} chunks, in order.", nameof(chunks));
+        }
+        var total = new Totals();
+        foreach (var chunk in chunks) total.Merge(Totals.From(chunk));
+        double[]? fightDamage = keepFightDamage ? chunks.SelectMany(c => c.FightDamage).ToArray() : null;
+        return Result(total, fightDamage, duration, iterations, targetCount);
+    }
+
+    // The fights of one chunk on one worker. A kept fight's damage goes in its place in fightDamage.
+    private static Totals FightChunk(Worker worker, int chunk, SimTime duration, int iterations, int targetCount, int firstSeed,
+        FightOptions fight, double[]? fightDamage, CancellationToken cancellationToken)
+    {
+        int seconds = (int)Math.Ceiling(Math.Max(1.0, fight.LongestLength(duration).TotalSeconds));
+        int size = ChunkSize(iterations);
+        var totals = new Totals();
+        int end = Math.Min(iterations, (chunk + 1) * size);
+        for (int i = chunk * size; i < end; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var length = fight.Length(duration, firstSeed + i);
+            double damage = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
+            double lengthSeconds = Math.Max(1.0, length.TotalSeconds);
+            totals.Add(damage / lengthSeconds, damage, lengthSeconds);
+            if (fightDamage != null) fightDamage[i] = damage;
+        }
+        return totals;
+    }
+
+    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations, int targetCount)
+    {
         // The fights' mean length: every fight's, or the duration for a run of none.
         double totalSeconds = total.Count > 0 ? total.LengthSum / total.Count : Math.Max(1.0, duration.TotalSeconds);
         var abilityDps = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
@@ -265,7 +326,11 @@ public class MonteCarloSimulator
         public double DamageSum, LengthSum;
         public readonly Dictionary<string, double> AbilityDamage = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>The fights' report: damage over time, sources and auras.</summary>
-        public readonly FightRecorder.Tally Report = new();
+        public readonly FightRecorder.Tally Report;
+
+        public Totals() : this(new FightRecorder.Tally()) { }
+
+        public Totals(FightRecorder.Tally report) => Report = report;
 
         public void Add(double dps, double damage, double seconds)
         {
@@ -298,6 +363,37 @@ public class MonteCarloSimulator
                 AbilityDamage[ability] = cur + damage;
             }
             Report.Merge(other.Report);
+        }
+
+        public MonteCarloChunk ToChunk(int index, double[] fightDamage) => new()
+        {
+            Index = index,
+            Count = Count,
+            Mean = Mean,
+            M2 = M2,
+            Min = Min,
+            Max = Max,
+            DamageSum = DamageSum,
+            LengthSum = LengthSum,
+            AbilityDamage = new Dictionary<string, double>(AbilityDamage, StringComparer.OrdinalIgnoreCase),
+            FightDamage = fightDamage,
+            Report = Report.ToTotals(),
+        };
+
+        public static Totals From(MonteCarloChunk chunk)
+        {
+            var totals = new Totals(FightRecorder.Tally.From(chunk.Report))
+            {
+                Count = chunk.Count,
+                Mean = chunk.Mean,
+                M2 = chunk.M2,
+                Min = chunk.Min,
+                Max = chunk.Max,
+                DamageSum = chunk.DamageSum,
+                LengthSum = chunk.LengthSum,
+            };
+            foreach (var (ability, damage) in chunk.AbilityDamage) totals.AbilityDamage[ability] = damage;
+            return totals;
         }
     }
 }

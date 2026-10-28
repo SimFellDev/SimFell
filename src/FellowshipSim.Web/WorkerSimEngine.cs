@@ -1,0 +1,51 @@
+using System.Text.Json;
+using FellowshipSim.Core.APL;
+using FellowshipSim.Core.Import;
+using FellowshipSim.Engine;
+using FellowshipSim.Logs;
+
+namespace FellowshipSim.Web;
+
+/// <summary>
+/// The browser app's engine. Heroes, the action-list grammar and checks run on the page (<see cref="LocalSimEngine"/>);
+/// sims and replays run on the sim workers (<see cref="SimWorkerPool"/>), so the page stays free while they work. A sim
+/// gives the same result as <see cref="LocalSimEngine"/>'s, to the last bit.
+/// </summary>
+public sealed class WorkerSimEngine(SimWorkerPool workers) : ISimEngine
+{
+    private readonly LocalSimEngine _local = new();
+
+    public Task<IReadOnlyList<string>> GetHeroesAsync(CancellationToken ct = default) => _local.GetHeroesAsync(ct);
+
+    public Task<AplVocabulary?> GetVocabularyAsync(string hero, CancellationToken ct = default) => _local.GetVocabularyAsync(hero, ct);
+
+    public Task<AplExpressionCheck?> CheckExpressionAsync(string hero, string text, CancellationToken ct = default) =>
+        _local.CheckExpressionAsync(hero, text, ct);
+
+    public Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default) => _local.ParseActionListAsync(text, ct);
+
+    public Task<AplDocumentText> WriteActionListAsync(IReadOnlyList<AplDocumentAction> actions, CancellationToken ct = default) =>
+        _local.WriteActionListAsync(actions, ct);
+
+    public async Task<ReviewArtifacts> ReviewAsync(Stream rawFight, int playerId, IProgress<string>? progress = null,
+        CancellationToken ct = default)
+    {
+        string raw = await new StreamReader(rawFight).ReadToEndAsync(ct);
+        string json = await workers.ReviewAsync(raw, playerId, progress);
+        var reply = JsonSerializer.Deserialize<ReviewReply>(json, SimChunks.Json)!;
+        return reply.Review ?? throw new SimEngineException(reply.Error ?? "The replay gave no review.");
+    }
+
+    public async Task<SimResult> SimulateAsync(SimcProfile profile, SimSettings settings, IProgress<SimProgress>? progress = null,
+        CancellationToken ct = default)
+    {
+        // An action list the engine cannot run is refused here, with its reason, before any worker starts.
+        SimChunks.NewSimulator(profile);
+        int chunks = SimChunks.Count(settings);
+        string json = await workers.SimulateAsync(JsonSerializer.Serialize(profile, SimChunks.Json),
+            JsonSerializer.Serialize(settings, SimChunks.Json), chunks, settings.DegreeOfParallelism,
+            done => progress?.Report(new SimProgress(done == chunks ? settings.Iterations : settings.Iterations * done / chunks, settings.Iterations)),
+            ct);
+        return JsonSerializer.Deserialize<SimResult>(json, SimChunks.Json)!;
+    }
+}

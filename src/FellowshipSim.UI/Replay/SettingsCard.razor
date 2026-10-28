@@ -32,7 +32,8 @@
             <li>Open <a href="@ApiClientsPage" target="_blank" rel="noopener">API clients</a> and create a new client. Any name will do, such as SimFell.</li>
             <li>Copy its client ID and client secret into the fields below, then Save.</li>
         </ol>
-        <p class="hint">They are saved only on this computer, in SimFell's data folder.</p>
+        @* An app with a data folder to open runs on a computer; the browser app keeps its files in the browser. *@
+        <p class="hint">@(_dataFolder != null ? "They are saved only on this computer, in SimFell's data folder." : "They are saved only in this browser, on this computer.")</p>
         @* The folder opens rather than shows: its path names the user, and a streamer's screen would show it. *@
         @if (_dataFolder != null)
         {

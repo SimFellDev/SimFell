@@ -93,8 +93,8 @@ public sealed class SimPageState
 
     public FinderRanks FinderRanks { get; set; } = FinderRanks.NextRank;
 
-    /// <summary>Threads a sim runs on: at first all of the machine's logical processors but two.</summary>
-    public int Threads { get; set; } = Math.Max(1, Environment.ProcessorCount - 2);
+    /// <summary>Threads a sim runs on: at first <see cref="SimThreads.Default"/>.</summary>
+    public int Threads { get; set; } = SimThreads.Default;
 
     /// <summary>The action list picked, as kept/hero/name; empty for one that came with an imported profile.</summary>
     public string ActionListValue { get; set; } = $"builtin/Rime/{Core.APL.DefaultActionLists.DefaultName}";

@@ -39,6 +39,7 @@
             <textarea aria-label="Build profile" readonly spellcheck="false" rows="8">@ExportText</textarea>
             <div class="row">
                 <button type="button" class="secondary-button" @onclick="CopyExportAsync">Copy</button>
+                <button type="button" class="secondary-button" data-tooltip="Save the build as a .simc file" @onclick="DownloadExportAsync">Download</button>
                 <button type="button" class="secondary-button" @onclick="() => _exportOpen = false">Close</button>
             </div>
         </div>
@@ -571,6 +572,8 @@
         _exportOpen = true;
         await CopyExportAsync();
     }
+
+    private Task DownloadExportAsync() => FileDownloads.SaveAsync(JS, Build.Name, ".simc", ExportText);
 
     private async Task CopyExportAsync()
     {

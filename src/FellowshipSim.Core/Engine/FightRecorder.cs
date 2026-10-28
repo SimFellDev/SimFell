@@ -361,6 +361,55 @@ internal sealed class FightRecorder
             foreach (var ((name, onTarget), aura) in other.Auras) Aura(name, onTarget).Add(aura);
         }
 
+        /// <summary>These totals in a chunk's form (<see cref="MonteCarloChunk.Report"/>).</summary>
+        public MonteCarloChunk.ReportTotals ToTotals() => new()
+        {
+            Fights = Fights,
+            DamageSum = DamageSum,
+            Band = Band.Select(b => new MonteCarloChunk.BandFight(b.Fight, b.Damage)).ToList(),
+            Samples = Samples.Select(s => new MonteCarloChunk.SampleFight(s.Fight, s.Damage,
+                s.Spans.Select(a => new MonteCarloChunk.AuraSpans(a.Key.Name, a.Key.OnTarget, a.Value)).ToList(), s.Casts, s.Spirit)).ToList(),
+            SpiritSum = SpiritSum,
+            SpiritFights = SpiritFights,
+            SpiritMax = SpiritMax,
+            Sources = Sources.Select(s => new MonteCarloChunk.SourceTotals(s.Key, s.Value.Damage, s.Value.Crits, s.Value.Casts, s.Value.Hits, s.Value.Id)).ToList(),
+            Auras = Auras.Select(a => new MonteCarloChunk.AuraTotals(a.Key.Name, a.Key.OnTarget, a.Value.UpSeconds, a.Value.StackSeconds,
+                a.Value.AtMaxSeconds, a.Value.GapSeconds, a.Value.Applications, a.Value.Refreshes, a.Value.Gaps, a.Value.MaxStacks,
+                a.Value.StackCap, a.Value.LogId)).ToList(),
+            PrimaryDamage = PrimaryDamage,
+        };
+
+        /// <summary>The totals of a chunk's form.</summary>
+        public static Tally From(MonteCarloChunk.ReportTotals totals)
+        {
+            var tally = new Tally
+            {
+                Fights = totals.Fights,
+                DamageSum = totals.DamageSum,
+                SpiritSum = totals.SpiritSum,
+                SpiritFights = totals.SpiritFights,
+                SpiritMax = totals.SpiritMax,
+                PrimaryDamage = totals.PrimaryDamage,
+            };
+            tally.Band.AddRange(totals.Band.Select(b => (b.Fight, b.Damage)));
+            tally.Samples.AddRange(totals.Samples.Select(s => (s.Fight, s.Damage,
+                s.Spans.ToDictionary(a => (a.Name, a.OnTarget), a => a.Spans), s.Casts, s.Spirit)));
+            foreach (var s in totals.Sources)
+            {
+                tally.Sources[s.Name] = new SourceTally { Damage = s.Damage, Crits = s.Crits, Casts = s.Casts, Hits = s.Hits, Id = s.Id };
+            }
+            foreach (var a in totals.Auras)
+            {
+                tally.Auras[(a.Name, a.OnTarget)] = new AuraTally
+                {
+                    UpSeconds = a.UpSeconds, StackSeconds = a.StackSeconds, AtMaxSeconds = a.AtMaxSeconds, GapSeconds = a.GapSeconds,
+                    Applications = a.Applications, Refreshes = a.Refreshes, Gaps = a.Gaps, MaxStacks = a.MaxStacks,
+                    StackCap = a.StackCap, LogId = a.LogId,
+                };
+            }
+            return tally;
+        }
+
         /// <summary>The run's damage over time: the mean of every fight, and the band's 5th and 95th percentiles.</summary>
         public SimTimeline Timeline()
         {

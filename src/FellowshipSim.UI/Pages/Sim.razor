@@ -109,7 +109,7 @@
     private const long MaxProfileBytes = 1024 * 1024;
 
     /// <summary>The most threads a sim can ask for: the machine's logical processors.</summary>
-    private static int MaxThreads => Environment.ProcessorCount;
+    private static int MaxThreads => SimThreads.Available;
 
     private SavedActionLists _savedLists = null!;
     private IReadOnlyList<ActionListEntry> _lists = [];

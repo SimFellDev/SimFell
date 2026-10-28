@@ -16,6 +16,9 @@ dotnet build -c Release
 # the web app: engine and FellowshipSim.Service (http://simfell.dev.localhost:5000)
 aspire run
 
+# the browser app (a static site; sims and replays on the visitor's web workers)
+dotnet run --project src/FellowshipSim.Web
+
 # the desktop app on Windows
 dotnet run --project src/FellowshipSim.Desktop -c Release -f net10.0-windows10.0.19041.0
 
@@ -90,6 +93,12 @@ or the desktop app).
 - **FellowshipSim.Desktop** is a .NET MAUI Blazor Hybrid app (`net10.0-windows10.0.19041.0`, `net10.0-maccatalyst`)
   hosting FellowshipSim.UI, with `LocalSimEngine` in-process and the data folder in local application data. Review
   pages come from a WebView2 virtual host on Windows and a URL scheme handler on Mac Catalyst.
+- **FellowshipSim.Web** is the browser app: Blazor WebAssembly hosting FellowshipSim.UI as a static site (published to
+  simfelldev.github.io by the Deploy web app workflow), its one visitor `Visitor.DataFolderOwner`. `WorkerSimEngine` runs
+  sims and replays on web workers (`wwwroot/sim/`), each a .NET runtime of its own calling `SimWorker`'s `[JSExport]`
+  methods: a sim's chunks (`SimChunks`, `MonteCarloSimulator.RunChunk`) spread over them and combine to the same result
+  as `LocalSimEngine`'s. The data folder is in the runtime's in-memory file system, copied to IndexedDB
+  (`BrowserDataFolder`).
 - **FellowshipSim.Cli** is `simfell`: one `LocalSimEngine.SimulateAsync` of a `.simc` profile, result on stdout,
   progress on stderr.
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to

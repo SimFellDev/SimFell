@@ -64,15 +64,7 @@ public sealed class LocalSimEngine : ISimEngine
         CancellationToken ct = default) =>
         Task.Run(() =>
         {
-            MonteCarloSimulator simulator;
-            try
-            {
-                simulator = new MonteCarloSimulator(profile.Build, AplParser.ParseScript(profile.ActionList));
-            }
-            catch (Exception e) when (e is ParseException or InvalidOperationException)
-            {
-                throw new SimEngineException(e.Message, e);
-            }
+            var simulator = SimChunks.NewSimulator(profile);
             var result = simulator.Run(SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations, settings.TargetCount,
                 settings.FirstSeed, settings.DegreeOfParallelism,
                 progress: progress == null ? null : completed => progress.Report(new SimProgress(completed, settings.Iterations)),

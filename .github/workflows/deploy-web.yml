@@ -1,0 +1,53 @@
+# Builds the browser app (src/FellowshipSim.Web) and publishes it to https://simfelldev.github.io: a static site on the
+# public SimFellDev/simfelldev.github.io (this repository stays private). Every sim and replay runs on the visitor's own
+# computer, and their files stay in their browser.
+#
+# Run it by hand: Actions > Deploy web app > Run workflow. It needs the secret SIMFELL_PAGES: a fine-grained token with
+# "Contents: Read and write" on SimFellDev/simfelldev.github.io alone. That repository's Pages settings serve its main
+# branch, from the root.
+name: Deploy web app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Ahead-of-time compiled: sims run about three times as fast as interpreted, for a larger first download.
+      - name: Install the WebAssembly tools
+        run: dotnet workload install wasm-tools
+
+      - name: Publish
+        run: dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish
+
+      - name: Ready the site for GitHub Pages
+        working-directory: publish/wwwroot
+        run: |
+          # No Jekyll, which would leave out _framework and _content; and every address the app routes opens the app.
+          touch .nojekyll
+          cp index.html 404.html
+
+      - name: Push to SimFellDev/simfelldev.github.io
+        env:
+          TOKEN: ${{ secrets.SIMFELL_PAGES }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/SimFellDev/simfelldev.github.io.git" site
+          # The site is the build alone: what the last deploy left goes, the repository's own git files stay.
+          find site -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r publish/wwwroot/. site/
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "SimFell ${GITHUB_SHA::7}" || { echo "The site is unchanged."; exit 0; }
+          git push

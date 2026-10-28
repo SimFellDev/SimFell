@@ -15,6 +15,7 @@
     <Project Path="src/FellowshipSim.ServiceDefaults/FellowshipSim.ServiceDefaults.csproj" />
     <Project Path="src/FellowshipSim.UI/FellowshipSim.UI.csproj" />
     <Project Path="src/FellowshipSim.Service/FellowshipSim.Service.csproj" />
+    <Project Path="src/FellowshipSim.Web/FellowshipSim.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FellowshipSim.Tests/FellowshipSim.Tests.csproj" />

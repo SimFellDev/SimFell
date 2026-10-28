@@ -85,6 +85,23 @@ entered while another tab shows.
 When the result tabs don't fit, ‹ and › scroll them, as does the mouse wheel over them. The **N open** list beside them
 names every open result tab, selects or closes one, and closes them all.
 
+## Run the browser app
+
+The browser app is the same app as a static site: every sim and replay runs on the visitor's own computer, and nothing
+runs on a server. Sims spread over web workers, one per core but the page's (up to 16); each worker is a .NET runtime of
+its own, and a sim gives the same result as on the desktop app. Its files stay in the browser (IndexedDB): builds and
+action lists, settings, the newest 20 sims and 20 reviews, and the newest 10 downloaded fights. Builds and action lists
+also download as `.simc` files. Each visitor enters their own FellowshipLogs API client on **Setup**, kept in their
+browser.
+
+```
+dotnet run --project src/FellowshipSim.Web
+```
+
+The **Deploy web app** workflow (Actions, run by hand) publishes it ahead-of-time compiled to
+https://simfelldev.github.io, from the public SimFellDev/simfelldev.github.io. It needs the secret `SIMFELL_PAGES`, a
+fine-grained token with "Contents: Read and write" on that repository alone.
+
 ## Sim a profile
 
 A profile is a `.simc` file: the hero, stats, talents, traits, blessings, gear and its `actions` lines, which are the
@@ -203,6 +220,7 @@ Runs the engine tests and replays every downloaded fight, rewriting its review p
 | `src/FellowshipSim.Service` | The web app: a Blazor Web App (Interactive Server) hosting FellowshipSim.UI. `RemoteSimEngine` calls the engine service |
 | `src/FellowshipSim.AppHost` | Aspire: runs the engine service and FellowshipSim.Service together |
 | `src/FellowshipSim.Desktop` | The desktop app: FellowshipSim.UI in a .NET MAUI BlazorWebView, with the engine in-process |
+| `src/FellowshipSim.Web` | The browser app: FellowshipSim.UI in Blazor WebAssembly, sims and replays on web workers (`wwwroot/sim/`), its files in the browser's IndexedDB (`BrowserDataFolder`) |
 | `src/FellowshipSim.Cli` | `simfell`, the command-line sim |
 | `tests/FellowshipSim.Tests` | Tests, including the free-dice runner |
 | `docs/` | [Adding a hero](docs/ADDING_A_HERO.md) |

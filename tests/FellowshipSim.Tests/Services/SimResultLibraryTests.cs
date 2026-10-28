@@ -47,6 +47,17 @@ public sealed class SimResultLibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Library_That_Keeps_Some_Drops_The_Oldest_As_New_Ones_Come()
+    {
+        var kept = new SimResultLibrary(_store) { Keep = 2 };
+        var day = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc);
+        foreach (int i in Enumerable.Range(0, 4)) await kept.SaveAsync(A, Sim($"s{i}", day.AddDays(i)));
+
+        Assert.Equal(["s3", "s2"], (await kept.ListAsync(A)).Select(s => s.Id));
+        Assert.Null(await kept.GetAsync(A, "s0"));
+    }
+
+    [Fact]
     public async Task A_Visitor_Reads_Only_Their_Own_Sims()
     {
         await _results.SaveAsync(A, Sim("a-sim", DateTime.UtcNow));

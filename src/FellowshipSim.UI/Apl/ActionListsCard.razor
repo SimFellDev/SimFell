@@ -67,6 +67,7 @@
                     <textarea spellcheck="false" rows="10" @bind="State.Text"></textarea>
                     <div class="row">
                         <button type="button" class="secondary-button" @onclick="LoadText">Load this text into the editor</button>
+                        <button type="button" class="secondary-button" data-tooltip="Save the action list as a .simc file" @onclick="Download">Download</button>
                     </div>
                     <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>
                 </details>
@@ -246,6 +247,9 @@
         if (State.Editor.AddList(State.NewList.Trim())) State.NewList = "";
         else await _newListInput.FocusAsync();
     }
+
+    private Task Download() =>
+        FileDownloads.SaveAsync(JS, State.Name.Trim().Length > 0 ? State.Name : State.Editor.Vocabulary?.Hero ?? "action list", ".simc", State.Text);
 
     private async Task LoadText()
     {
