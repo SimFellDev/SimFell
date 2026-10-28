@@ -1,4 +1,3 @@
-@implements IDisposable
 @inject LogsSettingsStore Settings
 @inject IAppViews Views
 @* Whether the app can download fights from FellowshipLogs. It opens the settings. *@
@@ -13,12 +12,6 @@
 
     protected override void OnInitialized()
     {
-        Read();
-        Settings.Saved += OnSaved;
-    }
-
-    private void Read()
-    {
         try
         {
             _connected = Settings.Credentials != null;
@@ -28,12 +21,4 @@
             _connected = false;
         }
     }
-
-    private void OnSaved() => _ = InvokeAsync(() =>
-    {
-        Read();
-        StateHasChanged();
-    });
-
-    public void Dispose() => Settings.Saved -= OnSaved;
 }

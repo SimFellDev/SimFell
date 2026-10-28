@@ -1,70 +1,36 @@
+@using Microsoft.Extensions.DependencyInjection
 @inject LogsSettingsStore Settings
 @inject Visitor Visitor
-@using Microsoft.Extensions.DependencyInjection
 @inject IServiceProvider Services
-
-<Card Title="FellowshipLogs API access" Hidden="Hidden">
-    @if (!Settings.CanSave(Visitor))
+@* Whether the app has FellowshipLogs API access. No page takes a client (FellowshipLogs' terms keep it to its owner). *@
+<Card Title="FellowshipLogs API access">
+    <p class="hint">
+        Fights are downloaded from
+        <a href="https://www.fellowshiplogs.com" target="_blank" rel="noopener">FellowshipLogs</a>
+        with this app's API client.
+    </p>
+    @if (Settings.Credentials != null)
     {
-        <p class="hint">
-            Fights are downloaded from
-            <a href="https://www.fellowshiplogs.com" target="_blank" rel="noopener">FellowshipLogs</a>
-            with this app's API client, set by its host.
-        </p>
-        @if (Settings.Credentials != null)
-        {
-            <Message Kind="MessageKind.Ok">API access is set up.</Message>
-        }
-        else
-        {
-            <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights.</Message>
-        }
+        <Message Kind="MessageKind.Ok">API access is set up.</Message>
     }
     else
     {
-        <p class="hint">
-            Fights are downloaded from
-            <a href="https://www.fellowshiplogs.com" target="_blank" rel="noopener">FellowshipLogs</a>
-            with your own API client. To make one:
-        </p>
-        <ol class="steps">
-            <li>Sign in to <a href="https://www.fellowshiplogs.com" target="_blank" rel="noopener">FellowshipLogs</a>.</li>
-            <li>Open <a href="@ApiClientsPage" target="_blank" rel="noopener">API clients</a> and create a new client. Any name will do, such as SimFell.</li>
-            <li>Copy its client ID and client secret into the fields below, then Save.</li>
-        </ol>
-        @* An app with a data folder to open runs on a computer; the browser app keeps its files in the browser. *@
-        <p class="hint">@(_dataFolder != null ? "They are saved only on this computer, in SimFell's data folder." : "They are saved only in this browser, on this computer.")</p>
-        @* The folder opens rather than shows: its path names the user, and a streamer's screen would show it. *@
-        @if (_dataFolder != null)
-        {
+        <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights.</Message>
+    }
+    @* An app on its owner's computer reads the client from settings.json in its data folder, which opens rather than shows. *@
+    @if (_dataFolder != null && Settings.ReadsSettingsFile && Visitor.OwnsDataFolder)
+    {
+        <div class="row">
+            <span class="hint">The client comes from settings.json in SimFell's data folder.</span>
             <button type="button" class="secondary-button" @onclick="OpenFolderAsync">Open folder</button>
-        }
-        <form class="row" @onsubmit="SaveAsync">
-            <input @ref="_clientIdInput" placeholder="Client ID" autocomplete="off" required @bind="_clientId" />
-            <input placeholder="Client secret" type="password" autocomplete="off" required @bind="_clientSecret" />
-            <button type="submit">Save</button>
-        </form>
+        </div>
         <Message Kind="_statusKind">@_status</Message>
     }
 </Card>
 
 @code {
-    /// <summary>FellowshipLogs' page of the account's API clients, where one is created.</summary>
-    public const string ApiClientsPage = "https://www.fellowshiplogs.com/api/clients/";
-
-    [Parameter] public bool Hidden { get; set; }
-
-    /// <summary>Each change focuses the client ID field.</summary>
-    [Parameter] public int FocusRequest { get; set; }
-
-    [Parameter] public EventCallback OnSaved { get; set; }
-
-    private ElementReference _clientIdInput;
-    private string _clientId = "";
-    private string _clientSecret = "";
     private string _status = "";
     private MessageKind _statusKind;
-    private int _focused;
     // Registered only by an app on its user's own computer.
     private IDataFolder? _dataFolder;
 
@@ -80,33 +46,5 @@
         {
             (_status, _statusKind) = ($"The folder did not open: {e.Message}", MessageKind.Error);
         }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (FocusRequest > 0 && FocusRequest != _focused)
-        {
-            _focused = FocusRequest;
-            await _clientIdInput.FocusAsync();
-        }
-    }
-
-    private async Task SaveAsync()
-    {
-        (_status, _statusKind) = ("Checking...", MessageKind.Plain);
-        try
-        {
-            await Settings.SignInAndSaveAsync(Visitor, _clientId, _clientSecret);
-        }
-        catch (Exception e)
-        {
-            (_status, _statusKind) = (e.Message, MessageKind.Error);
-            return;
-        }
-        (_status, _statusKind) = ("Saved.", MessageKind.Ok);
-        _clientSecret = "";
-        StateHasChanged();
-        await Task.Delay(800);
-        await OnSaved.InvokeAsync();
     }
 }

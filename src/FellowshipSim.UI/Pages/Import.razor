@@ -13,17 +13,9 @@
     Replay a logged fight through the engine and review how closely it matches
 </SectionContent>
 
-@if (!_hasCredentials && !Settings.CanSave(Jobs.Visitor))
+@if (!_hasCredentials)
 {
     <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights. Fights downloaded before still replay.</Message>
-}
-else if (!_hasCredentials)
-{
-    <p class="hint">
-        Fights download with your FellowshipLogs API client.
-        <button type="button" class="link-button" @onclick="() => Views.ShowPage(AppPage.Setup)">Set up API access</button>
-        first.
-    </p>
 }
 
 <ImportCard Busy="Busy" OnEditSettings="() => Views.ShowPage(AppPage.Setup)" OnReplay="StartReview" />
@@ -71,15 +63,8 @@ else if (!_hasCredentials)
         {
             State.Status = new MessageState(e.Message, MessageKind.Error);
         }
-        Settings.Saved += OnSettingsSaved;
         Jobs.Changed += OnChanged;
     }
-
-    private void OnSettingsSaved() => _ = InvokeAsync(() =>
-    {
-        _hasCredentials = true;
-        StateHasChanged();
-    });
 
     private void OnChanged(SimJob job)
     {
@@ -104,7 +89,6 @@ else if (!_hasCredentials)
 
     public void Dispose()
     {
-        Settings.Saved -= OnSettingsSaved;
         Jobs.Changed -= OnChanged;
     }
 }

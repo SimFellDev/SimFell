@@ -16,8 +16,8 @@ SimFell runs in three ways. They share the same engine:
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - The [Aspire CLI](https://aspire.dev), to run the web app
 - The .NET MAUI workload (`dotnet workload install maui`), to build the desktop app
-- A FellowshipLogs API client ID and secret, to download fights: sign in to FellowshipLogs, create a client on
-  [API clients](https://www.fellowshiplogs.com/api/clients/), and copy its client ID and secret
+- A FellowshipLogs API client ID and secret, to download fights (your own: FellowshipLogs' terms keep a client to its
+  owner, so no page of the app takes one)
 
 ## Build
 
@@ -75,7 +75,8 @@ dotnet run --project src/FellowshipSim.Desktop -c Release -f net10.0-windows10.0
 
 On macOS, use the target framework `net10.0-maccatalyst`. Its data folder is `FellowshipSim` in your local application
 data (`%LOCALAPPDATA%\FellowshipSim` on Windows). The data folder is yours alone: every review in it is listed, and
-**Setup** saves your FellowshipLogs client ID and secret in its `settings.json`.
+Its FellowshipLogs client ID and secret come from `settings.json` there, which you write yourself
+(`{ "ClientId": "...", "ClientSecret": "..." }`); **Setup** shows whether API access is set up and opens the folder.
 
 The desktop app has the same pages as the web app, each as a tab. Starting a sim opens its tab, which shows its progress
 and then its result. A replay started from **Import** opens its review page in a tab when it finishes. Picking a result

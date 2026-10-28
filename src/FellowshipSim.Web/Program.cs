@@ -17,10 +17,9 @@ builder.Services.AddSingleton<ISimEngine, WorkerSimEngine>();
 builder.Services.AddSingleton<IReviewPages, BrowserReviewPages>();
 builder.Services.AddSingleton<IFightReviewer, WorkerFightReviewer>();
 builder.Services.AddSingleton(Visitor.DataFolderOwner);
-// A public site's visitors cannot set an API client (FellowshipLogs' terms keep it to its owner): it comes from
-// wwwroot/appsettings.json alone, a git-ignored file for local use, so the deployed site has none.
+// The API client comes from wwwroot/appsettings.json alone, a git-ignored file for local use, so the deployed site has none.
 builder.Services.AddSingleton(s => new LogsSettingsStore(s.GetRequiredService<FellowshipSim.Logs.ReplayLibrary>(),
-    s.GetRequiredService<IHttpClientFactory>(), builder.Configuration) { SavesCredentials = false });
+    s.GetRequiredService<IHttpClientFactory>(), builder.Configuration) { ReadsSettingsFile = false });
 builder.Services.AddSingleton(s => new SimResultLibrary(s.GetRequiredService<IBlobStore>()) { Keep = BrowserDataFolder.KeptSims });
 builder.Services.AddSimFellUI(BrowserDataFolder.Root).AddSimFellWebShell();
 
