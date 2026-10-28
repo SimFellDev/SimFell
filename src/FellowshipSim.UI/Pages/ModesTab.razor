@@ -33,7 +33,7 @@
             </label>
             <span class="meta">@LengthText()</span>
         </div>
-        <label class="field">
+        <label class="field @(State.VaryLength ? "" : "off")">
             By ± %
             <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryLength)"
                    @bind:get="State.LengthVariancePercent" @bind:set="v => State.LengthVariancePercent = Math.Clamp(v, 0, 90)" />
@@ -56,7 +56,7 @@
                 <span>Start with Spirit</span>
             </label>
         </div>
-        <label class="field">
+        <label class="field @(State.StartWithSpirit ? "" : "off")">
             Spirit (0 – @N(MaxStartingSpirit))
             <input type="number" class="short" min="0" max="@MaxStartingSpirit" step="1" disabled="@(!State.StartWithSpirit)"
                    @bind:get="State.StartingSpirit" @bind:set="v => State.StartingSpirit = Math.Clamp(v, 0, MaxStartingSpirit)" />

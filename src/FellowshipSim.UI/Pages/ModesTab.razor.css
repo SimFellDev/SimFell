@@ -47,6 +47,11 @@
   font-size: 12px;
 }
 
+/* A field its switch has turned off: the label and the number dimmed. */
+.field.off {
+  opacity: 0.45;
+}
+
 .field input {
   width: 120px;
   height: 36px;
