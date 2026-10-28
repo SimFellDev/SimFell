@@ -84,6 +84,12 @@ public static class ServiceApp
         {
             builder.Services.AddSingleton(Visitor.DataFolderOwner);
             builder.Services.AddSingleton<IDataFolder>(new FileManagerDataFolder(dataDirectory));
+            // Signing in to FellowshipLogs opens the browser; the way back comes to this computer.
+            builder.Services.AddSingleton<ISignInLauncher>(new LoopbackSignInLauncher(url =>
+            {
+                using var _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+                return Task.CompletedTask;
+            }));
             // The packaged app tells when a newer build is released.
             builder.Services.AddHttpClient(nameof(AppUpdates), c => c.Timeout = TimeSpan.FromSeconds(10));
             // "--PretendLatestVersion=0.2.0" acts as if that version were released, to see the banner without a release.

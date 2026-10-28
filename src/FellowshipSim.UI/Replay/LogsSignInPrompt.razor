@@ -1,0 +1,56 @@
+@using FellowshipSim.Logs
+@implements IDisposable
+@inject LogsSignIn LogsSignIn
+@inject LogsSettingsStore Settings
+@inject NavigationManager Navigation
+@*
+    Shown where the app needs FellowshipLogs and has no access: a sign-in, or, in an app without one (the hosted web app),
+    that it downloads no fights. Nothing shows once the app has access.
+*@
+@if (!Settings.HasAccess)
+{
+    @if (LogsSignIn.CanSignIn)
+    {
+        <div class="row sign-in">
+            <span class="hint">@(_waiting ? "Finish signing in in your browser…" : $"Sign in with your FellowshipLogs account {Purpose}.")</span>
+            <button type="button" disabled="@_waiting" @onclick="SignInAsync">Sign in with FellowshipLogs</button>
+        </div>
+        <Message Kind="MessageKind.Error">@_error</Message>
+    }
+    else
+    {
+        <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights.</Message>
+    }
+}
+
+@code {
+    /// <summary>What signing in is for, after "Sign in with your FellowshipLogs account" ("to import fights").</summary>
+    [Parameter] public string Purpose { get; set; } = "to download fights";
+
+    private bool _waiting;
+    private string? _error;
+
+    protected override void OnInitialized() => LogsSignIn.Changed += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    // The browser app leaves for FellowshipLogs here; the desktop and local apps wait for the browser to come back.
+    private async Task SignInAsync()
+    {
+        (_waiting, _error) = (true, null);
+        try
+        {
+            await LogsSignIn.SignInAsync(Navigation.ToBaseRelativePath(Navigation.Uri));
+        }
+        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or InvalidOperationException)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _waiting = false;
+        }
+    }
+
+    public void Dispose() => LogsSignIn.Changed -= OnChanged;
+}

@@ -6,7 +6,7 @@
         <a href="https://www.fellowshiplogs.com" target="_blank" rel="noopener">FellowshipLogs</a>
         with this app's API client.
     </p>
-    @if (Settings.Credentials != null)
+    @if (Settings.HasAccess)
     {
         <Message Kind="MessageKind.Ok">API access is set up.</Message>
     }

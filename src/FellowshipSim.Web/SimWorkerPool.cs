@@ -61,10 +61,11 @@ public sealed class SimWorkerPool(IJSRuntime js)
     }
 
     /// <summary>
-    /// Downloads a fight and replays player <paramref name="playerId"/> on a worker, with <paramref name="credentials"/>;
-    /// the worker's <see cref="ReviewReply"/> JSON.
+    /// Downloads a fight and replays player <paramref name="playerId"/> on a worker, as the signed-in user
+    /// (<paramref name="accessToken"/>) or else with a developer's <paramref name="credentials"/>; the worker's
+    /// <see cref="ReviewReply"/> JSON.
     /// </summary>
-    public async Task<string> ReviewFightAsync(string reportCode, int fightId, int playerId, LogsCredentials credentials,
+    public async Task<string> ReviewFightAsync(string reportCode, int fightId, int playerId, string? accessToken, LogsCredentials? credentials,
         IProgress<string>? progress)
     {
         var pool = await PoolAsync();
@@ -72,7 +73,7 @@ public sealed class SimWorkerPool(IJSRuntime js)
         try
         {
             return await pool.InvokeAsync<string>("reviewFight", CancellationToken.None, reportCode, fightId, playerId,
-                credentials.ClientId, credentials.ClientSecret, sink);
+                accessToken ?? "", credentials?.ClientId ?? "", credentials?.ClientSecret ?? "", sink);
         }
         catch (JSException e)
         {

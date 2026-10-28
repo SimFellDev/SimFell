@@ -13,8 +13,8 @@ public sealed class ReportLookup(ReplayLibrary library, LogsSettingsStore settin
     public async Task<Report> FindAsync(string link, CancellationToken ct = default)
     {
         var parsed = ReportLink.Parse(link);
-        var client = settings.CreateClient()
-                     ?? throw new FellowshipLogsException("Set your FellowshipLogs API client ID and secret first.");
+        var client = await settings.CreateClientAsync(ct)
+                     ?? throw new FellowshipLogsException("Sign in with FellowshipLogs first.");
         var summary = await client.GetSummaryAsync(parsed.ReportCode, ct);
         var heroes = (await engine.GetHeroesAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var downloaded = library.ListDownloadedFights().Where(f => f.ReportCode == parsed.ReportCode).Select(f => f.FightId).ToHashSet();

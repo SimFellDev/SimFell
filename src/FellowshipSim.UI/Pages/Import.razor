@@ -1,6 +1,5 @@
 @page "/import"
 @implements IDisposable
-@inject LogsSettingsStore Settings
 @inject ReviewJobs ReviewJobs
 @inject VisitorJobs Jobs
 @inject ImportPageState State
@@ -13,10 +12,7 @@
     Replay a logged fight through the engine and review how closely it matches
 </SectionContent>
 
-@if (!_hasCredentials)
-{
-    <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights. Fights downloaded before still replay.</Message>
-}
+<LogsSignInPrompt Purpose="to import fights and replay them" />
 
 <ImportCard Busy="Busy" OnReplay="StartReview" />
 
@@ -48,21 +44,12 @@
 </Card>
 
 @code {
-    private bool _hasCredentials;
 
     /// <summary>True while the review started here runs: the player buttons are disabled.</summary>
     private bool Busy => State.ReviewJob is { IsFinished: false };
 
     protected override void OnInitialized()
     {
-        try
-        {
-            _hasCredentials = Settings.Credentials != null;
-        }
-        catch (Exception e)
-        {
-            State.Status = new MessageState(e.Message, MessageKind.Error);
-        }
         Jobs.Changed += OnChanged;
     }
 

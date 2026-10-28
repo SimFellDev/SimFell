@@ -86,7 +86,7 @@ public sealed class ReplayLibrary
             progress?.Report("Using the downloaded fight");
             return path;
         }
-        if (client == null) throw new FellowshipLogsException("Set your FellowshipLogs API client ID and secret to download fights.");
+        if (client == null) throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
         progress?.Report("Downloading the fight from FellowshipLogs");
         var raw = await client.DownloadFightAsync(reportCode, fightId, progress, ct);
         await File.WriteAllTextAsync(path, raw.ToJsonString(), ct);

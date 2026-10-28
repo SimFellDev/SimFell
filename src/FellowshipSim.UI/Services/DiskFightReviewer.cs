@@ -20,7 +20,7 @@ public sealed class DiskFightReviewer(ReplayLibrary library, LogsSettingsStore s
         await _oneDownloadAtATime.WaitAsync(ct);
         try
         {
-            rawFight = await library.GetRawFightFileAsync(settings.CreateClient(), reportCode, fightId, context, ct);
+            rawFight = await library.GetRawFightFileAsync(await settings.CreateClientAsync(ct), reportCode, fightId, context, ct);
         }
         finally
         {

@@ -34,8 +34,8 @@ public sealed class CharacterImport(ReplayLibrary library, LogsSettingsStore set
                 .FirstOrDefault(e => e?["type"]?.GetValue<string>() == "combatantinfo" && e["sourceID"]?.GetValue<int>() == playerId)
                 ?.AsObject();
         }
-        var client = settings.CreateClient()
-            ?? throw new FellowshipLogsException("Set your FellowshipLogs API client ID and secret to import characters.");
+        var client = await settings.CreateClientAsync(ct)
+            ?? throw new FellowshipLogsException("Sign in with FellowshipLogs to import characters.");
         progress?.Report("Reading the character from FellowshipLogs");
         return await client.GetCombatantInfoAsync(reportCode, fightId, playerId, ct);
     }

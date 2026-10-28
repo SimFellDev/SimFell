@@ -28,6 +28,8 @@ public static class MauiProgram
         string dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FellowshipSim");
         builder.Services.AddSimFellUI(dataDirectory).AddSimFellDesktopShell();
         builder.Services.AddSingleton<IDataFolder>(new DesktopDataFolder(dataDirectory));
+        // Signing in to FellowshipLogs opens the browser; the way back comes to this computer.
+        builder.Services.AddSingleton<ISignInLauncher>(new LoopbackSignInLauncher(url => Launcher.Default.OpenAsync(new Uri(url))));
         builder.Services.AddSingleton<ISimEngine, LocalSimEngine>();
         builder.Services.AddSingleton<ReviewPages>();
         builder.Services.AddSingleton<IReviewPages>(s => s.GetRequiredService<ReviewPages>());

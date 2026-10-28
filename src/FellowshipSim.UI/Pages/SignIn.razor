@@ -1,0 +1,36 @@
+@page "/signin"
+@using FellowshipSim.Logs
+@inject LogsSignIn LogsSignIn
+@inject NavigationManager Navigation
+@* Where FellowshipLogs sends the browser app back after a sign-in: it completes the sign-in, then goes back to the page it began on. *@
+
+<PageTitle>Sign in - SimFell</PageTitle>
+
+<Card>
+    @if (_error is { } error)
+    {
+        <Message Kind="MessageKind.Error">@error</Message>
+        <LogsSignInPrompt />
+    }
+    else
+    {
+        <p class="hint">Signing you in to FellowshipLogs…</p>
+    }
+</Card>
+
+@code {
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            string back = await LogsSignIn.CompleteAsync(new Uri(Navigation.Uri));
+            Navigation.NavigateTo(back, replace: true);
+        }
+        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException)
+        {
+            _error = e.Message;
+        }
+    }
+}

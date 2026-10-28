@@ -59,11 +59,13 @@ public static partial class SimWorker
 
     /// <summary>
     /// Downloads fight <paramref name="fightId"/> of report <paramref name="reportCode"/> from FellowshipLogs with the
-    /// visitor's API client and replays player <paramref name="playerId"/>: a <see cref="ReviewReply"/> as JSON. The fight
+    /// signed-in user's token (<paramref name="accessToken"/>), else a developer's API client, and replays player
+    /// <paramref name="playerId"/>: a <see cref="ReviewReply"/> as JSON. The fight
     /// stays in this worker, never in the page's memory, and goes when the replay ends.
     /// </summary>
     [JSExport]
-    public static async Task<string> ReviewFight(string reportCode, int fightId, int playerId, string clientId, string clientSecret, int callId)
+    public static async Task<string> ReviewFight(string reportCode, int fightId, int playerId, string accessToken, string clientId,
+        string clientSecret, int callId)
     {
         var progress = new ProgressTo(callId);
         ReviewReply reply;
@@ -71,7 +73,8 @@ public static partial class SimWorker
         {
             using var http = new HttpClient();
             progress.Report("Downloading the fight from FellowshipLogs");
-            var raw = await new FellowshipLogsClient(http, clientId, clientSecret).DownloadFightAsync(reportCode, fightId, progress);
+            var client = accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken) : new FellowshipLogsClient(http, clientId, clientSecret);
+            var raw = await client.DownloadFightAsync(reportCode, fightId, progress);
             progress.Report("Replaying the fight");
             reply = new ReviewReply(ReplayReview.Run(raw, playerId, progress: progress), null);
         }

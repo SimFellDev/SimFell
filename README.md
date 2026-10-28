@@ -16,9 +16,12 @@ SimFell runs in three ways. They share the same engine:
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - The [Aspire CLI](https://aspire.dev), to run the web app
 - The .NET MAUI workload (`dotnet workload install maui`), to build the desktop app
-- A FellowshipLogs API client ID and secret, to download fights (developers only for now: FellowshipLogs' terms keep a
-  client to its owner, so no page of the app takes one). Put it in `settings.json` at the repository's root, which git
-  ignores: `{ "FELLOWSHIPLOGS_CLIENT_ID": "...", "FELLOWSHIPLOGS_CLIENT_SECRET": "..." }`. Every app's build copies it in
+- To download fights, a FellowshipLogs account: **Sign in with FellowshipLogs** (top bar, or the Import cards) signs you in
+  with SimFell's public API client (OAuth with PKCE, no secret), and your requests spend your own FellowshipLogs points
+  first. The browser app comes back to `/signin`; the desktop and local apps open your browser and catch the way back on
+  `http://127.0.0.1:47213/signin`. A developer can instead put an API client of their own in `settings.json` at the
+  repository's root, which git ignores: `{ "FELLOWSHIPLOGS_CLIENT_ID": "...", "FELLOWSHIPLOGS_CLIENT_SECRET": "..." }`.
+  Every app's build copies it in
 
 ## Build
 
@@ -93,9 +96,8 @@ runs on a server. Sims spread over web workers, one per core but the page's (up 
 its own, and a sim gives the same result as on the desktop app. Its files stay in the browser (IndexedDB): builds and
 action lists, settings, the newest 20 sims and the newest 10 reviews; a replay downloads its fight on a worker and keeps
 only the review. Builds and action lists
-also download as `.simc` files. It takes no FellowshipLogs API client from its visitors (FellowshipLogs' terms keep a
-client to its owner), so the deployed site imports and replays no fights. Locally its build takes the repository's
-`settings.json` as its `wwwroot/appsettings.json`.
+also download as `.simc` files. Visitors sign in with their own FellowshipLogs account to import and replay fights; it
+takes no API client from them. Locally its build takes the repository's `settings.json` as its `wwwroot/appsettings.json`.
 
 ```
 dotnet run --project src/FellowshipSim.Web

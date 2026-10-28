@@ -1,0 +1,44 @@
+@using FellowshipSim.Logs
+@implements IDisposable
+@inject LogsSignIn LogsSignIn
+@inject NavigationManager Navigation
+@* The FellowshipLogs account in the top bar: sign in, or who is signed in and sign out. Nothing in an app without a sign-in. *@
+@if (LogsSignIn.CanSignIn)
+{
+    @if (LogsSignIn.SignedIn)
+    {
+        <span class="account">
+            <span class="dot" aria-hidden="true"></span>
+            FellowshipLogs
+            <button type="button" class="link-button" @onclick="LogsSignIn.SignOut">Sign out</button>
+        </span>
+    }
+    else
+    {
+        <button type="button" class="secondary-button" data-tooltip="@(_error ?? "Sign in to import fights and run replays with your own FellowshipLogs account")"
+                @onclick="SignInAsync">Sign in with FellowshipLogs</button>
+    }
+}
+
+@code {
+    private string? _error;
+
+    protected override void OnInitialized() => LogsSignIn.Changed += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task SignInAsync()
+    {
+        _error = null;
+        try
+        {
+            await LogsSignIn.SignInAsync(Navigation.ToBaseRelativePath(Navigation.Uri));
+        }
+        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or InvalidOperationException)
+        {
+            _error = e.Message;
+        }
+    }
+
+    public void Dispose() => LogsSignIn.Changed -= OnChanged;
+}

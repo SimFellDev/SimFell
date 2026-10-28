@@ -40,6 +40,7 @@
     @switch (State.Tab)
     {
         case SimTab.Import:
+            <LogsSignInPrompt Purpose="to import a hero from a log" />
             <ImportCard Title="Import Hero" PickHint="Pick a player, then Import to use their build." OnPlayer="ImportPlayerAsync" />
             <Card Title="Import a .simc profile">
                 <p class="hint">Load a <code>.simc</code> file or paste its text. Its build goes to the Hero tab, and its action list, if it has one, to Advanced.</p>

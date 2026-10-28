@@ -7,18 +7,23 @@ namespace FellowshipSim.Logs;
 
 /// <summary>
 /// Client for the FellowshipLogs GraphQL API (https://www.fellowshiplogs.com). Authenticates with an API client's ID and
-/// secret (client-credentials OAuth) and caches the access token until shortly before it expires.
+/// secret (client-credentials OAuth) and caches the access token until shortly before it expires; or, made with
+/// <see cref="ForUser"/>, as a signed-in user, whose requests spend their own points first.
 /// </summary>
 public sealed class FellowshipLogsClient
 {
     public const string TokenUrl = "https://www.fellowshiplogs.com/oauth/token";
     public const string ApiUrl = "https://www.fellowshiplogs.com/api/v2/client";
 
+    /// <summary>The API for a signed-in user's token.</summary>
+    public const string UserApiUrl = "https://www.fellowshiplogs.com/api/v2/user";
+
     private readonly HttpClient _http;
     private readonly string _clientId;
     private readonly string _clientSecret;
     private string? _token;
     private DateTime _tokenExpires;
+    private readonly string _apiUrl = ApiUrl;
 
     public FellowshipLogsClient(HttpClient http, string clientId, string clientSecret)
     {
@@ -27,11 +32,23 @@ public sealed class FellowshipLogsClient
         _clientSecret = clientSecret;
     }
 
+    /// <summary>A client that asks as the signed-in user whose token is <paramref name="accessToken"/>.</summary>
+    public static FellowshipLogsClient ForUser(HttpClient http, string accessToken) => new(http, accessToken);
+
+    private FellowshipLogsClient(HttpClient http, string accessToken)
+    {
+        _http = http;
+        _clientId = _clientSecret = "";
+        _token = accessToken;
+        _tokenExpires = DateTime.MaxValue;
+        _apiUrl = UserApiUrl;
+    }
+
     /// <summary>Runs a GraphQL query and returns its <c>data</c> object; GraphQL errors are thrown.</summary>
     public async Task<JsonNode> QueryAsync(string query, object? variables = null, CancellationToken ct = default)
     {
         var token = await GetTokenAsync(ct);
-        using var request = new HttpRequestMessage(HttpMethod.Post, ApiUrl)
+        using var request = new HttpRequestMessage(HttpMethod.Post, _apiUrl)
         {
             Content = new StringContent(JsonSerializer.Serialize(new { query, variables }), Encoding.UTF8, "application/json")
         };
