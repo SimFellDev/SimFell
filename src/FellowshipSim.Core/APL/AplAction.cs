@@ -113,6 +113,16 @@ public sealed record AplVariable(string Name, AplVariableOp Op, IAplExpression? 
     public const string OpKey = "op";
     public const string DefaultKey = "default";
 
+    /// <summary>The op's meaning in the condition reference.</summary>
+    public static string Description(AplVariableOp op) => op switch
+    {
+        AplVariableOp.Set => "The variable becomes the value. The op of a variable action with no op.",
+        AplVariableOp.Add => "The value is added to the variable.",
+        AplVariableOp.Sub => "The value is taken away from the variable.",
+        AplVariableOp.Reset => "The variable goes back to its default. It needs no value.",
+        _ => throw new ArgumentOutOfRangeException(nameof(op), op, null)
+    };
+
     public override string ToString() =>
         $"{NameKey}={Name}" + (Value != null ? $",{ValueKey}={Value}" : "") + $",{OpKey}={Op.ToString().ToLowerInvariant()}";
 }

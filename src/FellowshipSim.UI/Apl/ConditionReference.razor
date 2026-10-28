@@ -1,0 +1,124 @@
+@using FellowshipSim.Core.APL
+@using FellowshipSim.Core.APL.Expressions
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@*
+    The condition reference, a modal dialog <see cref="Open"/> shows: every part of an action line and every value a condition
+    reads, each with its name in the editor and its meaning. Escape, Close and a click outside the dialog close it.
+*@
+<dialog @ref="_dialog" class="reference" aria-labelledby="apl-reference-title">
+    <div class="head">
+        <h2 id="apl-reference-title">Condition reference</h2>
+        <form method="dialog">
+            <button type="submit" class="secondary-button">Close</button>
+        </form>
+    </div>
+    <div class="body">
+        <p class="hint">
+            A condition is true when its value is not 0.
+            &lt;aura&gt;, &lt;ability&gt; and &lt;name&gt; are names as action lists write them: lower case, _ for each space, and no punctuation (Winter's Blessing is winters_blessing).
+        </p>
+        @foreach (var section in Sections)
+        {
+            <h3 id="@($"apl-reference-{section.Id}")">@section.Title</h3>
+            @if (section.Hint != null)
+            {
+                <p class="hint">@section.Hint</p>
+            }
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="syntax">Written</th>
+                            <th class="label">Name in the editor</th>
+                            <th>Meaning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (syntax, doc) in section.Rows)
+                        {
+                            <tr @key="syntax">
+                                <td class="syntax"><code>@syntax</code></td>
+                                <td class="label">@doc.Label</td>
+                                <td class="description">@doc.Description</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</dialog>
+
+@code {
+    private ElementReference _dialog;
+    private IJSObjectReference? _module;
+
+    public async Task Open()
+    {
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/apl/conditionReference.js");
+            await _module.InvokeVoidAsync("open", _dialog);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone.
+        }
+    }
+
+    private sealed record Section(string Id, string Title, string? Hint, IReadOnlyList<(string Syntax, AplDoc Doc)> Rows);
+
+    private static readonly IReadOnlyList<Section> Sections = Build();
+
+    private static IReadOnlyList<Section> Build()
+    {
+        return
+        [
+            new("action-line", "Action lines", null, AplActionOptions.All),
+            new("operators", "Operators", "Prefixes bind tightest, then *, % and %%, then + and -, then comparisons, then and, then or. Parentheses group.",
+            [
+                .. Enum.GetValues<UnaryOperator>().Select(op => (op.Symbol() + "x", op.Doc())),
+                .. Enum.GetValues<BinaryOperator>().Select(op => ($"a {op.Symbol()} b", op.Doc())),
+            ]),
+            new("scopes", "Scopes", null,
+            [
+                .. PropertyExpression.Scopes.Keys.Select(scope =>
+                    ($"{scope}.<{(scope is PropertyExpression.CooldownScope or PropertyExpression.ActionScope ? "ability" : "aura")}>.<property>",
+                        PropertyExpression.ScopeDocs[scope])),
+                ($"{PropertyExpression.ActiveDotScope}.<aura>", PropertyExpression.ScopeDocs[PropertyExpression.ActiveDotScope]),
+                ($"{PropertyExpression.VariableScope}.<name>", PropertyExpression.ScopeDocs[PropertyExpression.VariableScope]),
+                .. PropertyExpression.BuildScopes.Select(scope => ($"{scope.Key}.<name>", scope.Value.Doc)),
+            ]),
+            new("aura", "Buff, debuff and dot properties", "buff reads the hero; debuff and dot read the current target.",
+                Properties(PropertyExpression.BuffScope, "aura")),
+            new("cooldown", "Cooldown properties", null, Properties(PropertyExpression.CooldownScope, "ability")),
+            new("action", "Action properties", null, Properties(PropertyExpression.ActionScope, "ability")),
+            new("action-values", ConditionBuilder.ThisAction.Label, ConditionBuilder.ThisAction.Description,
+                [.. PropertyExpression.ActionValues.Keys.Select(path => (path, PropertyExpression.ActionValueDoc(path)!))]),
+            new("resources", "Resources", ConditionBuilder.Resource.Description,
+            [
+                ("<resource>", PropertyExpression.ResourceCurrent),
+                (PropertyExpression.ResourcePrefix + "<resource>", PropertyExpression.ResourceCurrent),
+                ("<resource>" + PropertyExpression.DeficitSuffix, PropertyExpression.ResourceDeficit),
+            ]),
+            new("fight-values", "Fight values", ConditionBuilder.FightValue.Description,
+                [.. PropertyExpression.Named.Select(named => (named.Key, named.Value.Doc))]),
+        ];
+    }
+
+    private static IReadOnlyList<(string Syntax, AplDoc Doc)> Properties(string scope, string name) =>
+        [.. PropertyExpression.Scopes[scope].Select(property => ($"{scope}.<{name}>.{property}", PropertyExpression.PropertyDoc(scope, property)!))];
+}

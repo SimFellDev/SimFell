@@ -37,39 +37,52 @@ public static class ConditionBuilder
     public static IReadOnlyList<ConditionKind> Kinds(AplVocabulary v, IReadOnlyList<string> variables)
     {
         var scopeNames = v.ScopeNames;
+        var activeDot = PropertyExpression.ScopeDocs[PropertyExpression.ActiveDotScope];
+        var variable = PropertyExpression.ScopeDocs[PropertyExpression.VariableScope];
         return
         [
-            .. v.Scopes.Select(scope => new ConditionKind(scope.Key, scope.Key switch
-            {
-                PropertyExpression.BuffScope => "Buff",
-                PropertyExpression.DebuffScope => "Debuff on target",
-                PropertyExpression.DotScope => "Dot on target",
-                PropertyExpression.CooldownScope => "Cooldown",
-                PropertyExpression.ActionScope => "Action",
-                _ => scope.Key,
-            }, scope.Key switch
+            .. v.Scopes.Select(scope => new ConditionKind(scope.Key, PropertyExpression.ScopeDocs[scope.Key].Label, scope.Key switch
             {
                 PropertyExpression.BuffScope => AplTokenKind.Buff,
                 PropertyExpression.DebuffScope or PropertyExpression.DotScope => AplTokenKind.Debuff,
                 PropertyExpression.CooldownScope or PropertyExpression.ActionScope => AplTokenKind.Cooldown,
                 _ => AplTokenKind.Named,
-            }, scopeNames[scope.Key], scope.Value.ToList())),
-            new ConditionKind(ResourceKind, "Resource", AplTokenKind.Resource, v.Resources, [CurrentProperty, DeficitProperty]),
-            new ConditionKind(NamedKind, "Fight value", AplTokenKind.Named, v.Named.Select(n => new AplName(n, n)).ToList()),
-            new ConditionKind(ActionValueKind, "This action", AplTokenKind.Named, v.ActionValues.Select(n => new AplName(n, n)).ToList()),
-            .. v.BuildNames.Select(scope => new ConditionKind(scope.Key, scope.Key switch
-            {
-                PropertyExpression.TalentScope => "Talent",
-                PropertyExpression.BlessingScope => "Blessing",
-                PropertyExpression.LegendaryScope => "Legendary",
-                PropertyExpression.WeaponTraitScope => "Weapon trait",
-                PropertyExpression.WeaponScope => "Weapon",
-                _ => scope.Key,
-            }, AplTokenKind.Named, scope.Value, MatchesStart: scope.Key == PropertyExpression.WeaponScope)),
-            new ConditionKind(PropertyExpression.ActiveDotScope, "Enemies with debuff", AplTokenKind.Debuff, v.Auras),
-            new ConditionKind(PropertyExpression.VariableScope, "Variable", AplTokenKind.Named, variables.Select(n => new AplName(n, n)).ToList()),
+            }, scopeNames[scope.Key], scope.Value.ToList(), Description: PropertyExpression.ScopeDocs[scope.Key].Description)),
+            new ConditionKind(ResourceKind, Resource.Label, AplTokenKind.Resource, v.Resources, [CurrentProperty, DeficitProperty], Description: Resource.Description),
+            new ConditionKind(NamedKind, FightValue.Label, AplTokenKind.Named,
+                v.Named.Select(n => Described(n, PropertyExpression.Named[n].Doc)).ToList(),
+                Description: FightValue.Description),
+            new ConditionKind(ActionValueKind, ThisAction.Label, AplTokenKind.Named,
+                v.ActionValues.Select(n => Described(n, PropertyExpression.ActionValueDoc(n)!)).ToList(),
+                Description: ThisAction.Description),
+            .. v.BuildNames.Select(scope => new ConditionKind(scope.Key, PropertyExpression.BuildScopes[scope.Key].Doc.Label, AplTokenKind.Named, scope.Value,
+                MatchesStart: scope.Key == PropertyExpression.WeaponScope, Description: PropertyExpression.BuildScopes[scope.Key].Doc.Description)),
+            new ConditionKind(PropertyExpression.ActiveDotScope, activeDot.Label, AplTokenKind.Debuff, v.Auras, Description: activeDot.Description),
+            new ConditionKind(PropertyExpression.VariableScope, variable.Label, AplTokenKind.Named, variables.Select(n => new AplName(n, n)).ToList(),
+                Description: variable.Description),
         ];
     }
+
+    private static AplName Described(string slug, AplDoc doc) => new(slug, doc.Label, doc.Description);
+
+    /// <summary>The resource kind: each resource by its name, or after "resource.".</summary>
+    public static readonly AplDoc Resource = new("Resource", "One of the hero's resources, written as its name alone or after resource.");
+
+    /// <summary>The fight value kind: the values in <see cref="PropertyExpression.Named"/>.</summary>
+    public static readonly AplDoc FightValue = new("Fight value", "A value of the fight or the hero, written as its whole path.");
+
+    /// <summary>The kind of an action's own values: the values in <see cref="PropertyExpression.ActionValues"/>.</summary>
+    public static readonly AplDoc ThisAction = new("This action", "A value of the action's own ability, written with no scope.");
+
+    /// <summary>The doc of a property of a kind: a scope's property, or a resource's current amount or deficit; null for any other.</summary>
+    public static AplDoc? PropertyDoc(string kind, string property) => kind == ResourceKind
+        ? property switch
+        {
+            CurrentProperty => PropertyExpression.ResourceCurrent,
+            DeficitProperty => PropertyExpression.ResourceDeficit,
+            _ => null,
+        }
+        : PropertyExpression.PropertyDoc(kind, property);
 
     /// <summary>The names of the variables the lists' variable actions set, in order of their first action.</summary>
     public static IReadOnlyList<string> Variables(IEnumerable<ActionList> lists) =>

@@ -68,7 +68,7 @@ public abstract class BoundExpression
     private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
         if (p.PropertyPath == "time") return new BoundTime();
-        if (PropertyExpression.Named.TryGetValue(p.PropertyPath, out var named)) return new BoundNamed(hero, named);
+        if (PropertyExpression.Named.TryGetValue(p.PropertyPath, out var named)) return new BoundNamed(hero, named.Value);
         if (hero.FindResource(p.ResourceName) is { } resource)
         {
             var state = hero.Resources.Get(resource);
@@ -93,7 +93,7 @@ public abstract class BoundExpression
                 return variables != null ? new BoundVariable(variables.Slot(p.Name!)) : new BoundConstant(0.0);
             case { } scope when PropertyExpression.BuildScopes.TryGetValue(scope, out var has):
                 // The build does not change once the hero is built.
-                return new BoundConstant(has(hero, p.Name!) ? 1.0 : 0.0);
+                return new BoundConstant(has.Value(hero, p.Name!) ? 1.0 : 0.0);
             default:
                 return new BoundConstant(0.0);
         }

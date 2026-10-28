@@ -18,7 +18,9 @@
                 <p class="hint">
                     Each time the hero can act, they cast the first action from the top of the default list with a ready ability and
                     a true condition. Run action list and Call action list run the actions of another list.
+                    <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
                 </p>
+                <ConditionReference @ref="_reference" />
                 <div class="row toolbar">
                     <label class="field">
                         Hero
@@ -79,6 +81,7 @@
 @code {
     private SavedActionLists _savedLists = null!;
     private ElementReference _root, _nameInput, _newListInput;
+    private ConditionReference _reference = null!;
     private IJSObjectReference? _module, _drag;
     // The lists and vocabulary the action-list text is written for, and the write waiting for its delay.
     private IReadOnlyList<ActionList>? _writtenLists;

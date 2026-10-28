@@ -1,0 +1,132 @@
+@using FellowshipSim.Core.APL
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@*
+    Button with a builder term's property by its label. While open, a list of the kind's properties by label, each with its
+    path and meaning as its tooltip. valuePicker.js moves the list's selection; a pick runs here.
+*@
+<span class="picker">
+    <button @ref="_button" type="button" class="value" aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
+            data-tooltip="@Describe(Value)" @onclick="Toggle">
+        @Label(Value)
+    </button>
+    @if (_open)
+    {
+        <div @ref="_popup" class="popup">
+            <ul @ref="_list" id="@($"{_id}-list")" role="listbox" aria-label="Properties" tabindex="-1">
+                @for (int i = 0; i < Properties.Count; i++)
+                {
+                    string property = Properties[i];
+                    <li @key="property" id="@($"{_id}-{i}")" role="option" data-picked="@(property == Value)"
+                        data-tooltip="@Describe(property)" data-tooltip-direction="right"
+                        @onmousedown="() => Pick(property)" @onmousedown:preventDefault>@Label(property)</li>
+                }
+            </ul>
+        </div>
+    }
+</span>
+
+@code {
+    private static int s_count;
+
+    [Parameter, EditorRequired] public IReadOnlyList<string> Properties { get; set; } = [];
+
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>The doc of a property, or null for one the condition reference does not describe.</summary>
+    [Parameter, EditorRequired] public Func<string, AplDoc?> Doc { get; set; } = null!;
+
+    [Parameter] public EventCallback<string> OnPick { get; set; }
+
+    private readonly string _id = $"property-picker-{Interlocked.Increment(ref s_count)}";
+    private ElementReference _button, _popup, _list;
+    private IJSObjectReference? _module, _handle;
+    private DotNetObjectReference<PropertyPicker>? _self;
+    private bool _open, _attach, _focus;
+
+    private string Label(string? property) => property == null ? "" : Doc(property)?.Label ?? property;
+
+    private string? Describe(string? property) => property != null && Doc(property) is { } doc ? $"{property}: {doc.Description}" : null;
+
+    private async Task Toggle()
+    {
+        if (_open)
+        {
+            await Close(false);
+            return;
+        }
+        _open = true;
+        _attach = true;
+    }
+
+    private async Task Pick(string property)
+    {
+        await Detach();
+        _open = false;
+        _focus = true;
+        await OnPick.InvokeAsync(property);
+    }
+
+    /// <summary>Closes the list. <paramref name="focusButton"/> focuses the button: on Escape, and on a click outside every control.</summary>
+    [JSInvokable]
+    public async Task Close(bool focusButton)
+    {
+        if (!_open) return;
+        await Detach();
+        _open = false;
+        _focus = focusButton;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (_attach && _open)
+            {
+                _attach = false;
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/apl/valuePicker.js");
+                _self ??= DotNetObjectReference.Create(this);
+                _handle = await _module.InvokeAsync<IJSObjectReference>("open", _button, _popup, null, _list, _self);
+            }
+            if (_focus)
+            {
+                _focus = false;
+                await _button.FocusAsync();
+            }
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The page closed, or the button left it.
+        }
+    }
+
+    private async Task Detach()
+    {
+        if (_handle is not { } handle) return;
+        _handle = null;
+        try
+        {
+            await handle.InvokeVoidAsync("dispose");
+            await handle.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone, and the listeners with it.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Detach();
+        try
+        {
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone.
+        }
+        _self?.Dispose();
+    }
+}

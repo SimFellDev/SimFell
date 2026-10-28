@@ -109,16 +109,6 @@
   background: color-mix(in srgb, var(--tok-operator) 16%, transparent);
 }
 
-.property {
-  field-sizing: content;
-}
-
-@supports not (field-sizing: content) {
-  .property {
-    width: 120px;
-  }
-}
-
 .comparison {
   width: 58px;
   color: var(--tok-operator);

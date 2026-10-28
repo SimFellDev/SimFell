@@ -329,13 +329,8 @@
         }
         if (path == null || _kinds.FirstOrDefault(k => k.Id == path.Kind) is not { Properties: { } kindProperties }) return;
         IReadOnlyList<string> properties = path.Property != null && !kindProperties.Contains(path.Property) ? [path.Property, .. kindProperties] : kindProperties;
-        <select @key="@($"{key}:property")" aria-label="Property" class="property" value="@path.Property"
-                @onchange="e => update(t => t.Path = ConditionBuilder.JoinPath(Vocabulary, path with { Property = (string?)e.Value }))">
-            @foreach (string p in properties)
-            {
-                <option @key="p" value="@p">@p</option>
-            }
-        </select>
+        <PropertyPicker @key="@($"{key}:property")" Properties="properties" Value="@path.Property" Doc="p => ConditionBuilder.PropertyDoc(path.Kind, p)"
+                        OnPick="p => update(t => t.Path = ConditionBuilder.JoinPath(Vocabulary, path with { Property = p }))" />
     }
 
     /// <summary>

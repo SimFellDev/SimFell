@@ -8,7 +8,7 @@
 *@
 <span class="picker">
     <button @ref="_button" type="button" class="value @ButtonClass" aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
-            data-tooltip="@_title" @onclick="Toggle">
+            data-tooltip="@(_title ?? PickedDescription)" @onclick="Toggle">
         @if (Value == null)
         {
             @("Pick a value")
@@ -41,14 +41,15 @@
                 @foreach (var kind in Kinds.Where(k => k.Names.Count > 0))
                 {
                     <li @key="kind.Id" class="kind" role="presentation">
-                        <div class="kind-head" role="presentation"><span class="swatch" style="@KindColour(kind)"></span>@kind.Label</div>
+                        <div class="kind-head" role="presentation" data-tooltip="@kind.Description" data-tooltip-direction="right"><span class="swatch" style="@KindColour(kind)"></span>@kind.Label</div>
                         <ul role="group" aria-label="@kind.Label">
                             @foreach (var n in kind.Names)
                             {
                                 string label = ConditionBuilder.NameLabel(kind, n);
                                 var pick = new ValuePick(kind.Id, n.Slug);
                                 <li @key="n.Slug" id="@($"{_id}-{option++}")" role="option" data-search="@($"{label} {n.Slug}".ToLowerInvariant())"
-                                    data-picked="@(pick == Value)" @onmousedown="() => Pick(pick)" @onmousedown:preventDefault>
+                                    data-picked="@(pick == Value)" data-tooltip="@Describe(n)" data-tooltip-direction="right"
+                                    @onmousedown="() => Pick(pick)" @onmousedown:preventDefault>
                                     <span style="@KindColour(kind)">@label</span>
                                 </li>
                             }
@@ -114,6 +115,14 @@
     private static string KindColour(ConditionKind kind) => $"color: var(--kind-{kind.Id})";
 
     private string ButtonClass => Value == null ? "empty" : _title != null ? "unlisted" : "";
+
+    /// <summary>A name's path and meaning, for a name the condition reference describes.</summary>
+    private static string? Describe(AplName name) => name.Description is { } description ? $"{name.Slug}: {description}" : null;
+
+    private string? PickedDescription =>
+        Value is { Name: { } slug } && Kinds.FirstOrDefault(k => k.Id == Value.Kind)?.Names.FirstOrDefault(n => n.Slug == slug) is { } name
+            ? Describe(name)
+            : null;
 
     protected override void OnParametersSet() => _title = Unlisted();
 

@@ -8,8 +8,8 @@ using Superpower.Model;
 
 namespace FellowshipSim.Core.APL;
 
-/// <summary>A name an action list can use: its action-list form (<see cref="Slug"/>) and the game's name.</summary>
-public sealed record AplName(string Slug, string Name);
+/// <summary>A name an action list can use: its action-list form (<see cref="Slug"/>), the game's name, and its meaning where the condition reference has one.</summary>
+public sealed record AplName(string Slug, string Name, string? Description = null);
 
 /// <summary>A <c>target_if</c> selection: its value, its prefix in action lists ("min"), and its label in the editor.</summary>
 public sealed record AplTargetSelectionName(AplTargetSelection Selection, string Prefix, string Label);
