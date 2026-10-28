@@ -1,8 +1,5 @@
-@using Microsoft.Extensions.DependencyInjection
 @inject LogsSettingsStore Settings
-@inject Visitor Visitor
-@inject IServiceProvider Services
-@* Whether the app has FellowshipLogs API access. No page takes a client (FellowshipLogs' terms keep it to its owner). *@
+@* Whether the app has FellowshipLogs API access. No page takes a client: for now only developers set one. *@
 <Card Title="FellowshipLogs API access">
     <p class="hint">
         Fights are downloaded from
@@ -17,34 +14,4 @@
     {
         <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights.</Message>
     }
-    @* An app on its owner's computer reads the client from settings.json in its data folder, which opens rather than shows. *@
-    @if (_dataFolder != null && Settings.ReadsSettingsFile && Visitor.OwnsDataFolder)
-    {
-        <div class="row">
-            <span class="hint">The client comes from settings.json in SimFell's data folder.</span>
-            <button type="button" class="secondary-button" @onclick="OpenFolderAsync">Open folder</button>
-        </div>
-        <Message Kind="_statusKind">@_status</Message>
-    }
 </Card>
-
-@code {
-    private string _status = "";
-    private MessageKind _statusKind;
-    // Registered only by an app on its user's own computer.
-    private IDataFolder? _dataFolder;
-
-    protected override void OnInitialized() => _dataFolder = Services.GetService<IDataFolder>();
-
-    private async Task OpenFolderAsync()
-    {
-        try
-        {
-            await _dataFolder!.OpenAsync();
-        }
-        catch (Exception e)
-        {
-            (_status, _statusKind) = ($"The folder did not open: {e.Message}", MessageKind.Error);
-        }
-    }
-}

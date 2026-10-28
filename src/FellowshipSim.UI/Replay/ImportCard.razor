@@ -6,7 +6,6 @@
     <form class="row" @onsubmit="LoadAsync">
         <input placeholder="FellowshipLogs report link or code" autocomplete="off" required @bind="State.Link" />
         <button type="submit">Load report</button>
-        <button type="button" class="secondary-button" @onclick="OnEditSettings">API settings</button>
     </form>
     <Message Kind="State.Status.Kind">@State.Status.Text</Message>
     <div>
@@ -76,8 +75,6 @@
     [Parameter] public string Title { get; set; } = "Import a fight";
 
     [Parameter] public bool Busy { get; set; }
-
-    [Parameter] public EventCallback OnEditSettings { get; set; }
 
     [Parameter] public EventCallback<ReviewTarget> OnReplay { get; set; }
 

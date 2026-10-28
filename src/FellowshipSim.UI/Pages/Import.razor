@@ -18,7 +18,7 @@
     <Message Kind="MessageKind.Error">This app has no FellowshipLogs API access, so it downloads no fights. Fights downloaded before still replay.</Message>
 }
 
-<ImportCard Busy="Busy" OnEditSettings="() => Views.ShowPage(AppPage.Setup)" OnReplay="StartReview" />
+<ImportCard Busy="Busy" OnReplay="StartReview" />
 
 <Card Title="Replay" Hidden="State.ReviewJob == null && State.StartError == null">
     @if (State.StartError != null)

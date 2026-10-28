@@ -21,6 +21,8 @@ public static class MauiProgram
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
         builder.Configuration.AddUserSecrets(typeof(MauiProgram).Assembly);
+        // A developer's FellowshipLogs API client: the repository's settings.json, copied beside the app by its build.
+        builder.Configuration.AddJsonFile(Path.Combine(AppContext.BaseDirectory, "settings.json"), optional: true);
         builder.Configuration.AddEnvironmentVariables();
 
         string dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FellowshipSim");

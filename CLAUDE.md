@@ -89,7 +89,9 @@ or the desktop app).
   `title` (`TooltipTests`).
 - **FellowshipSim.Service** is the web app: a Blazor Web App (Interactive Server) hosting FellowshipSim.UI. Its
   `RemoteSimEngine` calls the engine server. It serves a review's files at `/reviews` to the visitor who ran it alone.
-  Its FellowshipLogs credentials come from the host's environment, the `simfell` user secrets in development, or `data/settings.json`.
+  Its FellowshipLogs credentials come from the host's environment, the `simfell` user secrets in development, or the
+  repository's git-ignored `settings.json`, which the desktop, web and browser apps' builds copy in. No page takes or saves
+  them: for now only developers set an API client.
 - **FellowshipSim.Desktop** is a .NET MAUI Blazor Hybrid app (`net10.0-windows10.0.19041.0`, `net10.0-maccatalyst`)
   hosting FellowshipSim.UI, with `LocalSimEngine` in-process and the data folder in local application data. Review
   pages come from a WebView2 virtual host on Windows and a URL scheme handler on Mac Catalyst.

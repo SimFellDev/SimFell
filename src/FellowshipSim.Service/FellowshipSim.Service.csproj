@@ -23,4 +23,10 @@
     <ProjectReference Include="..\FellowshipSim.ServiceDefaults\FellowshipSim.ServiceDefaults.csproj" />
   </ItemGroup>
 
+  <!-- A developer's FellowshipLogs API client: the repository's git-ignored settings.json, read as configuration. A
+       build without one (a release, the deploy) has no client. -->
+  <ItemGroup>
+    <None Include="..\..\settings.json" Link="settings.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\settings.json')" />
+  </ItemGroup>
+
 </Project>

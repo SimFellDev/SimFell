@@ -16,8 +16,9 @@ SimFell runs in three ways. They share the same engine:
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - The [Aspire CLI](https://aspire.dev), to run the web app
 - The .NET MAUI workload (`dotnet workload install maui`), to build the desktop app
-- A FellowshipLogs API client ID and secret, to download fights (your own: FellowshipLogs' terms keep a client to its
-  owner, so no page of the app takes one)
+- A FellowshipLogs API client ID and secret, to download fights (developers only for now: FellowshipLogs' terms keep a
+  client to its owner, so no page of the app takes one). Put it in `settings.json` at the repository's root, which git
+  ignores: `{ "FELLOWSHIPLOGS_CLIENT_ID": "...", "FELLOWSHIPLOGS_CLIENT_SECRET": "..." }`. Every app's build copies it in
 
 ## Build
 
@@ -59,7 +60,7 @@ dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID ... --id simfell
 dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_SECRET ... --id simfell
 ```
 
-Without either, the app reads `data/settings.json`. **Setup** shows whether API access is set up.
+Without either, the app reads the repository's `settings.json` (see above).
 
 To download and replay a fight:
 
@@ -75,8 +76,7 @@ dotnet run --project src/FellowshipSim.Desktop -c Release -f net10.0-windows10.0
 
 On macOS, use the target framework `net10.0-maccatalyst`. Its data folder is `FellowshipSim` in your local application
 data (`%LOCALAPPDATA%\FellowshipSim` on Windows). The data folder is yours alone: every review in it is listed, and
-Its FellowshipLogs client ID and secret come from `settings.json` there, which you write yourself
-(`{ "ClientId": "...", "ClientSecret": "..." }`); **Setup** shows whether API access is set up and opens the folder.
+Its FellowshipLogs client ID and secret come from the repository's `settings.json` (see above).
 
 The desktop app has the same pages as the web app, each as a tab. Starting a sim opens its tab, which shows its progress
 and then its result. A replay started from **Import** opens its review page in a tab when it finishes. Picking a result
@@ -94,9 +94,8 @@ its own, and a sim gives the same result as on the desktop app. Its files stay i
 action lists, settings, the newest 20 sims and the newest 10 reviews; a replay downloads its fight on a worker and keeps
 only the review. Builds and action lists
 also download as `.simc` files. It takes no FellowshipLogs API client from its visitors (FellowshipLogs' terms keep a
-client to its owner), so the deployed site imports and replays no fights. To use your own locally, put it in
-`src/FellowshipSim.Web/wwwroot/appsettings.json` (git-ignored) as `FELLOWSHIPLOGS_CLIENT_ID` and
-`FELLOWSHIPLOGS_CLIENT_SECRET`.
+client to its owner), so the deployed site imports and replays no fights. Locally its build takes the repository's
+`settings.json` as its `wwwroot/appsettings.json`.
 
 ```
 dotnet run --project src/FellowshipSim.Web

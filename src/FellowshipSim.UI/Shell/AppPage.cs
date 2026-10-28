@@ -14,10 +14,13 @@ public sealed record AppPage(string Title, Type Component)
     public static readonly AppPage AplEditor = new("APL Editor", typeof(Pages.ActionLists));
     public static readonly AppPage Setup = new("Settings", typeof(Pages.Setup));
 
-    /// <summary>The menu, in order. The first page opens when the app starts.</summary>
-    public static IReadOnlyList<AppPage> All { get; } = [Sim, LogReplay, AplEditor, Setup];
+    /// <summary>
+    /// The menu, in order. The first page opens when the app starts. <see cref="Setup"/> is out of it for now: only
+    /// developers set an API client (the repository's git-ignored settings.json).
+    /// </summary>
+    public static IReadOnlyList<AppPage> All { get; } = [Sim, LogReplay, AplEditor];
 
-    /// <summary>The sections of the web app's top bar; <see cref="Setup"/> opens from the FellowshipLogs status (ApiStatus).</summary>
+    /// <summary>The sections of the web app's top bar.</summary>
     public static IReadOnlyList<AppPage> Sections { get; } = [Sim, LogReplay, AplEditor];
 
     /// <summary>Address of the page relative to the base address, from the component's first <c>@page</c> template.</summary>

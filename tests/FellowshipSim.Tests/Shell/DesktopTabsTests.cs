@@ -110,6 +110,6 @@ public class DesktopTabsTests
     [Fact]
     public void Each_Page_Route_Comes_From_Its_Page_Directive()
     {
-        Assert.Equal(["", "replay", "apl", "setup"], AppPage.All.Select(p => p.Route));
+        Assert.Equal(["", "replay", "apl"], AppPage.All.Select(p => p.Route));
     }
 }
