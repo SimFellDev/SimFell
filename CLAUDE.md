@@ -31,7 +31,7 @@ dotnet test -c Release
 # one test class or method
 dotnet test tests/FellowshipSim.Tests -c Release --filter "FullyQualifiedName~AplParserTests"
 
-# one hero's current-patch fights from FellowshipLogs into data/fights (credentials from the environment or the simfell user secrets)
+# one hero's current-patch fights from FellowshipLogs into data/fights (credentials from the environment or the SimFell user secrets)
 dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 
 # one hero's accuracy over those fights, saved as data/accuracy/<Hero>/<label>.txt (docs/REPLAY_ACCURACY.md)
@@ -89,7 +89,7 @@ or the desktop app).
   `title` (`TooltipTests`).
 - **FellowshipSim.Service** is the web app: a Blazor Web App (Interactive Server) hosting FellowshipSim.UI. Its
   `RemoteSimEngine` calls the engine server. It serves a review's files at `/reviews` to the visitor who ran it alone.
-  Its FellowshipLogs credentials come from the host's environment, the `simfell` user secrets in development, or the
+  Its FellowshipLogs credentials come from the host's environment, the `SimFell` user secrets in development, or the
   repository's git-ignored `settings.json`, which the desktop, web and browser apps' builds copy in. No page takes or saves
   them. A user signs in instead (`LogsSignIn`, OAuth with PKCE in `FellowshipLogsSignIn` against SimFell's public client,
   configuration key `FELLOWSHIPLOGS_SIGNIN_CLIENT_ID` from the same sources; the release and deploy workflows write it to

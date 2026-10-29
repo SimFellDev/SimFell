@@ -6,6 +6,7 @@
     launcher is a few KB and needs nothing installed.
   -->
   <PropertyGroup>
+    <UserSecretsId>SimFell</UserSecretsId>
     <TargetFramework>net48</TargetFramework>
     <OutputType>WinExe</OutputType>
     <AssemblyName>SimFell</AssemblyName>

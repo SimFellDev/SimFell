@@ -8,7 +8,7 @@ public sealed record LogsCredentials(string ClientId, string ClientSecret);
 
 /// <summary>
 /// The FellowshipLogs API credentials: the configuration keys FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET
-/// (the host's environment, the <c>simfell</c> user secrets, or in development the repository's git-ignored
+/// (the host's environment, the <c>SimFell</c> user secrets, or in development the repository's git-ignored
 /// <c>settings.json</c>, which each app's build copies in). No page takes or saves them: for now only developers set an
 /// API client (FellowshipLogs' terms keep one to its owner). A user signed in to FellowshipLogs (<see cref="LogsSignIn"/>)
 /// comes first: their requests spend their own points.

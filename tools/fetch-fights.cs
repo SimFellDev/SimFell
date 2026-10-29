@@ -7,12 +7,13 @@
 //
 //     dotnet run tools/fetch-fights.cs -- --hero Rime [--count 12] [--max-per-player 2] [--pages 10]
 //
-// Credentials are FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET, from the environment or the simfell user
-// secrets (dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID <id> --id simfell).
+// Credentials are FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET, from the environment or the SimFell user
+// secrets (dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID <id> --id SimFell).
 #:project ../src/FellowshipSim.Logs/FellowshipSim.Logs.csproj
 #:package Microsoft.Extensions.Configuration.EnvironmentVariables@10.0.13
 #:package Microsoft.Extensions.Configuration.UserSecrets@10.0.13
 #:property PublishAot=false
+#:property UserSecretsId=SimFell
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -44,7 +45,7 @@ var credentials = Credentials();
 if (credentials == null)
 {
     Console.Error.WriteLine("No FellowshipLogs credentials: set FELLOWSHIPLOGS_CLIENT_ID and FELLOWSHIPLOGS_CLIENT_SECRET " +
-                            "in the environment or with dotnet user-secrets set <key> <value> --id simfell.");
+                            "in the environment or with dotnet user-secrets set <key> <value> --id SimFell.");
     return 1;
 }
 

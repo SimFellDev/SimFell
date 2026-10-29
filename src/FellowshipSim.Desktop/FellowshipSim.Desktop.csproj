@@ -2,6 +2,7 @@
 
   <!-- Each OS builds its own target: Windows on Windows, Mac Catalyst on macOS. -->
   <PropertyGroup>
+    <UserSecretsId>SimFell</UserSecretsId>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0-windows10.0.19041.0</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-maccatalyst</TargetFrameworks>
     <OutputType>Exe</OutputType>

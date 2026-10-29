@@ -59,11 +59,11 @@ $env:FELLOWSHIPLOGS_CLIENT_ID = "..."; $env:FELLOWSHIPLOGS_CLIENT_SECRET = "..."
 export FELLOWSHIPLOGS_CLIENT_ID=... FELLOWSHIPLOGS_CLIENT_SECRET=...
 ```
 
-In development, the web app, the desktop app and `tools/fetch-fights.cs` also read them from the `simfell` user secrets:
+In development, the web app, the desktop app and `tools/fetch-fights.cs` also read them from the `SimFell` user secrets:
 
 ```
-dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID ... --id simfell
-dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_SECRET ... --id simfell
+dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_ID ... --id SimFell
+dotnet user-secrets set FELLOWSHIPLOGS_CLIENT_SECRET ... --id SimFell
 ```
 
 Without either, the app reads the repository's `settings.json` (see above).
