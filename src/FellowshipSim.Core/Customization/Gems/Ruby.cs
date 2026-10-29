@@ -54,7 +54,11 @@ public class Ruby : Gem
         }
     }
 
-    /// <summary>The situational auras follow the active nodes of slots 1 and 5 (a rank, or a node reached or lost in a fight, or back to the bound ones).</summary>
+    /// <summary>
+    /// The situational auras follow the active nodes of slots 1 and 5 (a rank, or a node reached or lost in a fight, or back to the bound ones).
+    /// Dev: this keeps the lists only. In a fight the aura of a rank passes to the new rank only if it was up (<see cref="Gem.ChangePower"/>), as the
+    /// buff needs health or a boss the engine does not track: a replay's log gives a node reached in a fight its aura.
+    /// </summary>
     protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
     {
         foreach (int slot in new[] { 1, 5 })
@@ -64,10 +68,6 @@ public class Ruby : Gem
             if (old == next) continue;
             if (old != null) hero.SituationalAuras.Remove(old);
             if (next != null) hero.SituationalAuras.Add(next);
-            // In a fight the aura follows at once (a new fight applies the list as it starts).
-            if (now is not { } time) continue;
-            if (old != null) hero.Auras.Remove(old, time);
-            if (next != null) hero.Auras.Apply(hero.Register(next), time);
         }
     }
 

@@ -21,11 +21,8 @@ public static class StepFights
     public static StepDriver Rime(double haste = 0, int enemies = 1, int[]? talents = null, int seed = 1, double crit = 0, double spirit = 0)
     {
         var build = new CharacterBuild { Name = "Test Rime", Hero = "Rime", PrimaryStat = 1000 };
-        build.SheetPercents["haste"] = haste;
-        build.SheetPercents["crit"] = crit;
-        build.SheetPercents["spirit"] = spirit;
         if (talents != null) build.Talents.AddRange(talents);
-        return new StepDriver(HeroImporter.Import(build), seed, enemies);
+        return new StepDriver(StatPins.Import(build, haste, crit, spirit), seed, enemies);
     }
 
 
@@ -41,13 +38,9 @@ public static class StepFights
         double mainStat = 1000, double expertise = 0, int weaponAbilityId = 0, int[]? legendaries = null)
     {
         var build = new CharacterBuild { Name = "Test Elarion", Hero = "Elarion", PrimaryStat = mainStat, WeaponAbilityId = weaponAbilityId };
-        build.SheetPercents["expertise"] = expertise;
-        build.SheetPercents["haste"] = haste;
-        build.SheetPercents["crit"] = crit;
-        build.SheetPercents["spirit"] = spirit;
         if (talents != null) build.Talents.AddRange(talents);
         if (legendaries != null) build.LegendaryItemIds.AddRange(legendaries);
-        return new StepDriver(HeroImporter.Import(build), seed, enemies);
+        return new StepDriver(StatPins.Import(build, haste, crit, spirit, expertise), seed, enemies);
     }
 
     public static Core.Heroes.Elarion.Elarion ElarionOf(this StepDriver driver) => (Core.Heroes.Elarion.Elarion)driver.Hero;
@@ -63,13 +56,9 @@ public static class StepFights
         double mainStat = 1000, double expertise = 0, int[]? legendaries = null)
     {
         var build = new CharacterBuild { Name = "Test Ardeos", Hero = "Ardeos", PrimaryStat = mainStat };
-        build.SheetPercents["haste"] = haste;
-        build.SheetPercents["crit"] = crit;
-        build.SheetPercents["spirit"] = spirit;
-        build.SheetPercents["expertise"] = expertise;
         if (talents != null) build.Talents.AddRange(talents);
         if (legendaries != null) build.LegendaryItemIds.AddRange(legendaries);
-        return new StepDriver(HeroImporter.Import(build), seed, enemies);
+        return new StepDriver(StatPins.Import(build, haste, crit, spirit, expertise), seed, enemies);
     }
 
     public static Core.Heroes.Ardeos.Ardeos ArdeosOf(this StepDriver driver) => (Core.Heroes.Ardeos.Ardeos)driver.Hero;
@@ -82,13 +71,9 @@ public static class StepFights
         double mainStat = 1000, double expertise = 0, int[]? legendaries = null)
     {
         var build = new CharacterBuild { Name = "Test Mara", Hero = "Mara", PrimaryStat = mainStat };
-        build.SheetPercents["haste"] = haste;
-        build.SheetPercents["crit"] = crit;
-        build.SheetPercents["spirit"] = spirit;
-        build.SheetPercents["expertise"] = expertise;
         if (talents != null) build.Talents.AddRange(talents);
         if (legendaries != null) build.LegendaryItemIds.AddRange(legendaries);
-        return new StepDriver(HeroImporter.Import(build), seed, enemies);
+        return new StepDriver(StatPins.Import(build, haste, crit, spirit, expertise), seed, enemies);
     }
 
     public static Core.Heroes.Mara.Mara MaraOf(this StepDriver driver) => (Core.Heroes.Mara.Mara)driver.Hero;
@@ -102,13 +87,9 @@ public static class StepFights
         double mainStat = 1000, double expertise = 0, int[]? legendaries = null)
     {
         var build = new CharacterBuild { Name = "Test Gunde", Hero = "Gunde", PrimaryStat = mainStat };
-        build.SheetPercents["haste"] = haste;
-        build.SheetPercents["crit"] = crit;
-        build.SheetPercents["spirit"] = spirit;
-        build.SheetPercents["expertise"] = expertise;
         if (talents != null) build.Talents.AddRange(talents);
         if (legendaries != null) build.LegendaryItemIds.AddRange(legendaries);
-        return new StepDriver(HeroImporter.Import(build), seed, enemies);
+        return new StepDriver(StatPins.Import(build, haste, crit, spirit, expertise), seed, enemies);
     }
 
     public static Core.Heroes.Gunde.Gunde GundeOf(this StepDriver driver) => (Core.Heroes.Gunde.Gunde)driver.Hero;
@@ -122,13 +103,9 @@ public static class StepFights
         double mainStat = 1000, double expertise = 0, int[]? legendaries = null)
     {
         var build = new CharacterBuild { Name = "Test Tariq", Hero = "Tariq", PrimaryStat = mainStat };
-        build.SheetPercents["haste"] = haste;
-        build.SheetPercents["crit"] = crit;
-        build.SheetPercents["spirit"] = spirit;
-        build.SheetPercents["expertise"] = expertise;
         if (talents != null) build.Talents.AddRange(talents);
         if (legendaries != null) build.LegendaryItemIds.AddRange(legendaries);
-        return new StepDriver(HeroImporter.Import(build), seed, enemies);
+        return new StepDriver(StatPins.Import(build, haste, crit, spirit, expertise), seed, enemies);
     }
 
     public static Core.Heroes.Tariq.Tariq TariqOf(this StepDriver driver) => (Core.Heroes.Tariq.Tariq)driver.Hero;

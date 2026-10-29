@@ -34,7 +34,7 @@ public class GemLivePower
     /// <summary>
     /// Player: when a gem's power changes in a fight, you have the nodes of the new power: the stats are those of a hero who had that power all along.
     /// Dev: main stat, haste, crit (also against a full-health enemy), crit power, Expertise and Spirit of a hero bound at <c>from</c> and changed to
-    /// <c>to</c> at 5s, against a hero bound at <c>to</c> (at 5s too), for changes that cross no flat rating node (150 and 800: see
+    /// <c>to</c> at 5s (a Ruby node reached in the fight gets its aura applied, as a replay's log does), against a hero bound at <c>to</c> (at 5s too), for changes that cross no flat rating node (150 and 800: see
     /// <see cref="A_Rating_Node_Reached_In_A_Fight_Adds_Its_Rating"/>). The cooldown, Spirit cost and Spirit Points maximum are in their own tests.
     /// </summary>
     [Theory]
@@ -43,7 +43,12 @@ public class GemLivePower
     {
         var changed = GemFights.Fight(hero, color, from);
         changed.Wait(5);
+        var before = changed.TheGem().Nodes;
         changed.TheGem().ChangePower(to, changed.Now);
+        // Ruby's situational buffs (health, boss) are not guessed: a node reached in a fight gets its aura as the log gives it in a replay.
+        if (color == GemColor.Ruby)
+            foreach (var node in changed.TheGem().Nodes.Where(n => n.Grants != null && before.All(b => b.Slot != n.Slot)))
+                changed.Hero.Auras.Apply(node.Grants!, changed.Now);
         var fresh = GemFights.Fight(hero, color, to);
         fresh.Wait(5);
         Assert.Equal(fresh.ActiveNodes(), changed.ActiveNodes());

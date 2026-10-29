@@ -236,8 +236,8 @@ public class RelicPassives
     [MemberData(nameof(Heroes))]
     public void Gilded_Broach_Gives_5_Percent_Main_Stat(GearHero hero)
     {
-        var plain = hero.Fight(new GearLoadout { Sheet = false });
-        var f = hero.Fight(new GearLoadout { Sheet = false, Relics = [RelicFights.OrbOfSanguineRestoration] });
+        var plain = hero.Fight(new GearLoadout());
+        var f = hero.Fight(new GearLoadout { Relics = [RelicFights.OrbOfSanguineRestoration] });
         Assert.Equal(plain.MainStat() * 1.05, f.MainStat(), 3);
     }
 
@@ -249,8 +249,8 @@ public class RelicPassives
     [MemberData(nameof(Heroes))]
     public void Gilded_Broach_Raises_Damage_By_5_Percent(GearHero hero)
     {
-        double with = RelicFights.UnitHit(hero, new GearLoadout { Sheet = false, Relics = [RelicFights.OrbOfSanguineRestoration] });
-        double without = RelicFights.UnitHit(hero, new GearLoadout { Sheet = false });
+        double with = RelicFights.UnitHit(hero, new GearLoadout { Relics = [RelicFights.OrbOfSanguineRestoration] });
+        double without = RelicFights.UnitHit(hero, new GearLoadout());
         Assert.Equal(1.05, with / without, 3);
     }
 

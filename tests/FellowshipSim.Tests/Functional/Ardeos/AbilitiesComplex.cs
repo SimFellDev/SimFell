@@ -41,14 +41,15 @@ public class ArdeosAbilitiesComplex
     /// <summary>
     /// Player: with the Devouring Flame legendary, enemies take 7% more damage from you for each Engulfing Flames on them, Detonate included.
     /// Dev: a Searing Blaze and an Engulfing Flames then a Detonate, with and without the legendary; the ratio is 1.07 with it. (Season 4
-    /// value; the Python sim, season 2, has 8%.)
+    /// value; the Python sim, season 2, has 8%.) Any legendary also gives Mote of Creation's +10% Main Stat, so the hero without one has 1100
+    /// Main Stat to compare like with like.
     /// </summary>
     [Fact]
     public void Devouring_Flame_Raises_Detonate_Damage_By_7_Percent_Per_Engulfing_Flames()
     {
         double Hit(int[]? legendaries)
         {
-            var f = StepFights.Ardeos(legendaries: legendaries);
+            var f = StepFights.Ardeos(legendaries: legendaries, mainStat: legendaries == null ? 1100 : 1000);
             f.Cast<SearingBlaze>();
             f.Cast<EngulfingFlames>();
             f.Hero.Resources.Get(Ardeos.Cinders).Current = 100;

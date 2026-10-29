@@ -15,8 +15,11 @@ namespace FellowshipSim.Tests.Functional;
 /// <summary>What a bare test hero wears for the gear tests; everything is empty or zero by default.</summary>
 public sealed class GearLoadout
 {
-    /// <summary>Whether the build has a character sheet (its percentages include what gems and passives give); false builds the hero from gear and gem power alone.</summary>
-    public bool Sheet { get; init; } = true;
+    /// <summary>
+    /// Whether the build is a character sheet (its percentages replace the base and already include what gems and passives give, so the engine adds
+    /// none of it). False, the default, gives the percentages as <see cref="StatPins"/> bonuses and gear works as on any hero.
+    /// </summary>
+    public bool Sheet { get; init; }
     public double Haste { get; init; }
     public double Crit { get; init; }
     public double Spirit { get; init; }
@@ -78,7 +81,8 @@ public sealed record GearHero(string Name, MainStat MainStat, Type Basic, Type C
         foreach (var (color, power) in loadout.Gems) build.GemPower[color] = power;
         if (loadout.Relics.Length > 0) build.Relic1ItemId = loadout.Relics[0];
         if (loadout.Relics.Length > 1) build.Relic2ItemId = loadout.Relics[1];
-        return new StepDriver(HeroImporter.Import(build), loadout.Seed, loadout.Enemies);
+        var hero = loadout.Sheet ? HeroImporter.Import(build) : StatPins.Import(build, loadout.Haste, loadout.Crit, loadout.Spirit, loadout.Expertise);
+        return new StepDriver(hero, loadout.Seed, loadout.Enemies);
     }
 
     /// <summary>The hero's ability of <paramref name="type"/>.</summary>

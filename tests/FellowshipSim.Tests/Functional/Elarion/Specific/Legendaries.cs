@@ -110,12 +110,13 @@ public class ElarionLegendaries
     /// <summary>
     /// Player: each Shimmer stack makes you deal 8% more damage to the enemy, up to 3 stacks.
     /// Dev: a Highwind Arrow's first hit on an enemy with 1 stack against one with none: 1.08; with 2: 1.16; a third application makes
-    /// 3 stacks. (The game data's text; the Python sim's earlier game version had 10% up to 2.)
+    /// 3 stacks. (The game data's text; the Python sim's earlier game version had 10% up to 2.) Any legendary also gives Mote of Creation's
+    /// +10% Main Stat, so the reference hero without one has 1100 Main Stat to compare like with like.
     /// </summary>
     [Fact]
     public void Each_Shimmer_Stack_Raises_Damage_By_8_Percent_Up_To_3_Stacks()
     {
-        var plain = StepFights.Elarion();
+        var plain = StepFights.Elarion(mainStat: 1100);
         plain.Cast<HighwindArrow>();
         double reference = plain.Damage("Highwind Arrow")[0].Value;
 

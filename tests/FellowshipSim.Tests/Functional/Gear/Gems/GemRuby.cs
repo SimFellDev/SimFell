@@ -78,6 +78,57 @@ public class GemRuby
             Assert.Equal(1000.0, GemFights.Fight(hero, Color, power, sheet: true).Main(), 1e-6);
     }
 
+    /// <summary>The auras of Might of the Minotaur and Blessing of the Conqueror at both ranks, and the power that unlocks each rank.</summary>
+    public static IEnumerable<object[]> SituationalRanks() =>
+        from hero in GearFights.Heroes
+        from rank in new (double Low, double High, int NodeLow, int NodeHigh)[] { (80, 600, 0, 5), (450, 1500, 4, 9) }
+        select new object[] { hero, rank.Low, rank.High, rank.NodeLow, rank.NodeHigh };
+
+    /// <summary>
+    /// Player: when the gem's power raises a situational node (Might of the Minotaur or Blessing of the Conqueror) to its next rank, the new rank is
+    /// up if the old one was up.
+    /// Dev: bound at the rank I power and raised to the rank II power at 5s; the new aura is up and the old one gone, and the stats are those of a hero
+    /// bound at rank II.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(SituationalRanks))]
+    public void A_Rank_Change_Keeps_A_Situational_Buff_That_Is_Up(GearHero hero, double low, double high, int nodeLow, int nodeHigh)
+    {
+        var (oldAura, newAura) = (Ruby.AllNodes[nodeLow].Grants!, Ruby.AllNodes[nodeHigh].Grants!);
+        var f = GemFights.Fight(hero, Color, low);
+        f.Wait(5);
+        Assert.True(f.Hero.Auras.HasAura(oldAura, f.Now));
+        f.TheGem().ChangePower(high, f.Now);
+        Assert.False(f.Hero.Auras.HasAura(oldAura, f.Now));
+        Assert.True(f.Hero.Auras.HasAura(newAura, f.Now));
+        var fresh = GemFights.Fight(hero, Color, high);
+        fresh.Wait(5);
+        Assert.Equal(fresh.Main(), f.Main(), 1e-9);
+    }
+
+    /// <summary>
+    /// Player: when the gem's power raises a situational node to its next rank while its buff is off (Might of the Minotaur below 80% health), the
+    /// new rank is off too: the power change does not bring the buff back.
+    /// Dev: bound at the rank I power, the aura removed as the log would at 5s, then raised to the rank II power: neither aura is up, and the stats are
+    /// those of a hero bound at rank II with its aura removed.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(SituationalRanks))]
+    public void A_Rank_Change_Does_Not_Bring_Back_A_Situational_Buff_That_Is_Off(GearHero hero, double low, double high, int nodeLow, int nodeHigh)
+    {
+        var (oldAura, newAura) = (Ruby.AllNodes[nodeLow].Grants!, Ruby.AllNodes[nodeHigh].Grants!);
+        var f = GemFights.Fight(hero, Color, low);
+        f.Wait(5);
+        f.Hero.Auras.Remove(oldAura, f.Now);
+        f.TheGem().ChangePower(high, f.Now);
+        Assert.False(f.Hero.Auras.HasAura(oldAura, f.Now));
+        Assert.False(f.Hero.Auras.HasAura(newAura, f.Now));
+        var fresh = GemFights.Fight(hero, Color, high);
+        fresh.Wait(5);
+        fresh.Hero.Auras.Remove(newAura, fresh.Now);
+        Assert.Equal(fresh.Main(), f.Main(), 1e-9);
+    }
+
     /// <summary>
     /// Player: Might of the Minotaur applies only while you are above 80% health.
     /// Dev: not testable: the engine does not track the hero's health and keeps the node up from the start of the fight.
