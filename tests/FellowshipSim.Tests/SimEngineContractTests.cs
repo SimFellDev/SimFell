@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
+using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
 
@@ -91,6 +92,26 @@ public class SimEngineContractTests
         AssertRoundTrip(result);
         AssertRoundTrip(new SimStreamLine(Progress: progress.Reports[0]), SimStreamLine.Json);
         AssertRoundTrip(new SimStreamLine(Result: result), SimStreamLine.Json);
+    }
+
+    [Fact]
+    public async Task A_Dungeon_Sim_Request_From_Json_Has_The_Result_Of_The_Request()
+    {
+        var settings = new SimSettings(Iterations: 10, DurationSeconds: DefaultDungeons.Default.LengthSeconds, DegreeOfParallelism: 1,
+            Dungeon: DefaultDungeons.Default);
+        var sent = JsonSerializer.Deserialize<SimSettings>(JsonSerializer.Serialize(settings, Web), Web)!;
+
+        Assert.Equal(settings.Dungeon!.Format(), sent.Dungeon!.Format());
+        var result = await _engine.SimulateAsync(SimcProfile.Parse(Profile), settings);
+        Assert.Equal(JsonSerializer.Serialize(result, Web), JsonSerializer.Serialize(await _engine.SimulateAsync(SimcProfile.Parse(Profile), sent), Web));
+        Assert.True(result.BossDps > 0);
+    }
+
+    [Fact]
+    public async Task A_Dungeon_With_A_Segment_Of_No_Length_Is_Refused()
+    {
+        var dungeon = new DungeonProfile("Broken", [new DungeonSegment(DungeonSegmentKind.Boss, 0)]);
+        await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(SimcProfile.Parse(Profile), new SimSettings(1, 10, Dungeon: dungeon)));
     }
 
     [Fact]

@@ -72,6 +72,27 @@ public class SimulationContext
 
     /// <summary>How early an ability may come off the global cooldown (a replay allows server-frame and latency slack).</summary>
     public double GlobalCooldownToleranceSeconds { get; set; }
+
+    /// <summary>The time the fight ends; <see cref="SimTime.Infinite"/> when it has no set end.</summary>
+    public SimTime FightEnd { get; set; } = SimTime.Infinite;
+
+    /// <summary>True during a boss or council segment of a dungeon, or a training mob fight against a boss.</summary>
+    public bool Boss { get; set; }
+
+    /// <summary>True during the final boss segment of a dungeon.</summary>
+    public bool FinalBoss { get; set; }
+
+    /// <summary>True during a trash pull of a dungeon.</summary>
+    public bool Trash { get; set; }
+
+    /// <summary>The start of the next trash pull of a dungeon; <see cref="SimTime.Infinite"/> when none follows.</summary>
+    public SimTime NextTrashAt { get; set; } = SimTime.Infinite;
+
+    /// <summary>The start of the next boss or council segment of a dungeon; <see cref="SimTime.Infinite"/> when none follows.</summary>
+    public SimTime NextBossAt { get; set; } = SimTime.Infinite;
+
+    /// <summary>Raised as an enemy first enters the fight.</summary>
+    public event Action<EnemyTarget>? EnemySpawned;
     public SimulationRng Rng { get; } = new();
     public IOutcomeSource Outcomes { get; set; }
 
@@ -145,6 +166,7 @@ public class SimulationContext
             _enemies.Add(enemy);
             enemy.SleepChanged = () => _activeEnemies = null;
             _activeEnemies = null;
+            EnemySpawned?.Invoke(enemy);
         }
         return enemy;
     }

@@ -1,0 +1,172 @@
+.hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+
+.toolbar {
+  align-items: center;
+}
+
+.toolbar input {
+  flex: 1 1 200px;
+}
+
+.toolbar button {
+  min-height: 40px;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+}
+
+.confirm span {
+  flex: 1 1 260px;
+}
+
+.delete {
+  color: var(--bad);
+}
+
+/* A row per segment, the columns of every row lined up under the heading row. */
+.segments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.segment {
+  display: grid;
+  grid-template-columns: 24px minmax(110px, 1.2fr) minmax(64px, 0.6fr) minmax(64px, 0.6fr) minmax(72px, 0.7fr) 72px minmax(120px, 2fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.segment.heading {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.num {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.segment select,
+.segment input:not([type="checkbox"]) {
+  width: 100%;
+  min-width: 0;
+}
+
+.segment input[type="number"] {
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.segment input[type="number"]::-webkit-outer-spin-button,
+.segment input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.segment input:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.final {
+  display: flex;
+  justify-content: center;
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.field-error {
+  margin-top: 10px;
+}
+
+.adds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.add {
+  min-height: 0;
+  padding: 8px 14px;
+  border: 1px dashed #3a3a40;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--heading);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.add:hover {
+  border-color: var(--accent);
+}
+
+.count {
+  margin-left: auto;
+}
+
+.adds + .hint {
+  margin: 10px 0 0;
+}
+
+.text {
+  margin-top: 14px;
+}
+
+.text summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.text textarea {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  font: 13px/1.5 var(--code-font);
+  resize: vertical;
+}
+
+/* Narrow: the heading row goes, and each segment wraps its fields under its number and kind. */
+@media (max-width: 860px) {
+  .segment.heading {
+    display: none;
+  }
+
+  .segment {
+    grid-template-columns: 24px repeat(4, minmax(0, 1fr));
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .segment select {
+    grid-column: 2 / -1;
+  }
+
+  .segment input[list] {
+    grid-column: 2 / -2;
+  }
+}

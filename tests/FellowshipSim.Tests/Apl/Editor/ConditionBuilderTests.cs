@@ -16,7 +16,7 @@ public class ConditionBuilderTests
     [InlineData("not (worb < 2) or buff.chill.up and cooldown.ice_comet.ready")]
     [InlineData("active_enemies > 2 and (buff.chill.stack = 3 or not (worb != 0.5))")]
     [InlineData("worb > -1")]
-    [InlineData("(active_enemies - active_dot.chill) >= 1 and worb % 2 >= raid_event.adds.count")]
+    [InlineData("(active_enemies - active_dot.chill) >= 1 and worb % 2 >= dungeon_event.adds.count")]
     [InlineData("cooldown.ice_comet.full_recharge_time <= (gcd.max * 3 + worb * 0.4) or not (worb - 1)")]
     [InlineData("worb < spirit and 3")]
     [InlineData("a < b <= c and dot.x.remains - 100 * (target.time_to_die >= 15) - 100 * (target.time_to_die >= 24)")]

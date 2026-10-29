@@ -74,20 +74,21 @@ public class MonteCarloSeedTests
 
     /// <summary>
     /// Totals of fights 1-4 of each hero's default action list, captured again when sims began rolling crits and damage
-    /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance). Tariq's again once
+    /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance); Rime's, Gunde's, Mara's
+    /// and Tariq's again once dungeon_event.fight.remains and target.time_to_die read the fight's end. Tariq's again once
     /// Schism had bad luck protection.
     /// </summary>
     [Theory]
-    [InlineData("Rime", 120, 3, new[] { 2984198.1661979645, 3145794.8408500189, 2661851.3885713113, 2836533.0049490873 })]
-    [InlineData("Rime", 300, 1, new[] { 6705787.2345485082, 7314085.7586352471, 6334941.0215046722, 8102670.2122865114 })]
+    [InlineData("Rime", 120, 3, new[] { 2962161.4158089291, 3145794.8408500189, 2661851.3885713113, 2817501.4722939902 })]
+    [InlineData("Rime", 300, 1, new[] { 6859253.925934054, 7314085.7586352471, 6457222.2337612472, 8102670.2122865114 })]
     [InlineData("Ardeos", 120, 3, new[] { 2781099.1900238036, 3263932.7779190126, 2753135.9767431421, 3078553.5447283266 })]
     [InlineData("Ardeos", 300, 1, new[] { 4809649.3156830147, 5354771.8207936427, 4616929.8337775627, 4979340.0336285327 })]
-    [InlineData("Gunde", 120, 3, new[] { 5231343.5245357994, 4590847.8540571658, 4223152.3698340533, 4329063.9394007483 })]
-    [InlineData("Gunde", 300, 1, new[] { 7534076.4861704214, 7726959.867296705, 7001681.2487769658, 7386692.3111115517 })]
+    [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
+    [InlineData("Gunde", 300, 1, new[] { 7589315.0879662065, 7860490.4554016367, 7145894.9954196177, 7482946.3632446928 })]
     [InlineData("Mara", 120, 3, new[] { 2467303.3938331231, 2427106.282543866, 2020983.4777073066, 2580733.0113486159 })]
-    [InlineData("Mara", 300, 1, new[] { 5869212.4974295124, 5782715.2858590968, 5252603.5871274015, 5469205.2517229859 })]
+    [InlineData("Mara", 300, 1, new[] { 5869212.4974295124, 5910391.7861513905, 5311189.945330617, 5469205.2517229859 })]
     [InlineData("Tariq", 120, 3, new[] { 1871704.7378057118, 1982296.8520820616, 1800090.5274220684, 2190499.1747951428 })]
-    [InlineData("Tariq", 300, 1, new[] { 3633673.9892262942, 3697553.3553862288, 3459574.8320228425, 4050223.3304713112 })]
+    [InlineData("Tariq", 300, 1, new[] { 3673908.9642546247, 3705256.4997241483, 3479386.1051422935, 4039676.9705322459 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

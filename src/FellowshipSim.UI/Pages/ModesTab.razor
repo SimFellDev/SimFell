@@ -1,29 +1,37 @@
 @using System.Globalization
 @inject SimPageState State
-@* The Sim page's Modes tab: the fight, its settings, then Compare and Finder. *@
+@* The Sim page's Modes tab: the fight, its dungeon or training mobs, its settings, then Compare and Finder. *@
 <Card Title="Fight">
     <div class="choices" role="radiogroup" aria-label="Fight">
-        <label class="choice @(State.Mode == SimMode.SingleTarget ? "on" : "")">
-            <input type="radio" name="mode" checked="@(State.Mode == SimMode.SingleTarget)" @onchange="() => State.Mode = SimMode.SingleTarget" />
-            <strong>Single target</strong>
-            <span class="meta">One target for the whole fight.</span>
+        <label class="choice @(State.Mode == SimMode.Dungeon ? "on" : "")">
+            <input type="radio" name="mode" checked="@(State.Mode == SimMode.Dungeon)" @onchange="() => State.Mode = SimMode.Dungeon" />
+            <strong>Dungeon</strong>
+            <span class="meta">Trash pulls, bosses and councils in turn, each for its own length. The report adds the DPS to bosses.</span>
         </label>
-        <label class="choice @(State.Mode == SimMode.Aoe ? "on" : "")">
-            <input type="radio" name="mode" checked="@(State.Mode == SimMode.Aoe)" @onchange="() => State.Mode = SimMode.Aoe" />
-            <strong>AoE</strong>
-            <span class="meta">Several targets for the whole fight. The report adds the primary target's DPS.</span>
+        <label class="choice @(State.Mode == SimMode.TrainingMobs ? "on" : "")">
+            <input type="radio" name="mode" checked="@(State.Mode == SimMode.TrainingMobs)" @onchange="() => State.Mode = SimMode.TrainingMobs" />
+            <strong>Training mobs</strong>
+            <span class="meta">A number of training mobs for the whole fight. With more than one, the report adds the first mob's DPS.</span>
         </label>
     </div>
     <div class="fields">
-        <label class="field">
-            Duration (seconds)
-            <input type="number" min="1" step="any" @bind="State.DurationSeconds" />
-        </label>
-        @if (State.Mode == SimMode.Aoe)
+        @if (State.Mode == SimMode.Dungeon)
+        {
+            <div class="field">
+                Length
+                <span class="length">@N(State.Dungeon.LengthSeconds) s</span>
+            </div>
+        }
+        else
         {
             <label class="field">
-                Targets
-                <input type="number" min="2" step="1" @bind="State.AoeTargets" />
+                Duration (seconds)
+                <input type="number" min="1" step="any" @bind="State.DurationSeconds" />
+            </label>
+            <label class="field">
+                Training mobs
+                <input type="number" class="short" min="1" step="1"
+                       @bind:get="State.TrainingMobs" @bind:set="v => State.TrainingMobs = Math.Max(1, v)" />
             </label>
         }
         <div class="toggle-block">
@@ -41,15 +49,23 @@
     </div>
 </Card>
 
+@if (State.Mode == SimMode.Dungeon)
+{
+    <DungeonCard OnChanged="OnChanged" />
+}
+
 @* What else the fights have; more settings of the fight go here. *@
 <Card Title="Fight settings">
     <div class="fields">
-        <div class="toggle-block">
-            <label class="switch">
-                <input type="checkbox" @bind="State.Boss" />
-                <span>Boss fight</span>
-            </label>
-        </div>
+        @if (State.Mode == SimMode.TrainingMobs)
+        {
+            <div class="toggle-block">
+                <label class="switch">
+                    <input type="checkbox" @bind="State.Boss" />
+                    <span>The mobs are bosses</span>
+                </label>
+            </div>
+        }
         <div class="toggle-block">
             <label class="switch">
                 <input type="checkbox" @bind="State.StartWithSpirit" />
@@ -81,9 +97,9 @@
 
     private string LengthText()
     {
-        if (!State.VaryLength || State.LengthVariancePercent <= 0) return "Every fight lasts the duration.";
+        if (!State.VaryLength || State.LengthVariancePercent <= 0) return "Every fight lasts the same length.";
         double share = State.LengthVariancePercent / 100;
-        return $"Each fight lasts {N(State.DurationSeconds * (1 - share))} – {N(State.DurationSeconds * (1 + share))} s, so no build is tuned to one exact length.";
+        return $"Each fight lasts {N(State.FightSeconds * (1 - share))} – {N(State.FightSeconds * (1 + share))} s, so no build is tuned to one exact length.";
     }
 
     private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);

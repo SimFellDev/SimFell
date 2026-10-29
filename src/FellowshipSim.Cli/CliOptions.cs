@@ -1,4 +1,5 @@
 using System.Globalization;
+using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Engine;
 
@@ -21,8 +22,10 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
         Options:
           --profile <file>      Profile to simulate (required). A relative path is relative to the current directory.
           --iterations <n>      Fights (default {DefaultSettings.Iterations}).
-          --duration <seconds>  Length of each fight (default {DefaultSettings.DurationSeconds.ToString(CultureInfo.InvariantCulture)}).
-          --targets <n>         Targets in each fight (default {DefaultSettings.TargetCount}).
+          --duration <seconds>  Length of each fight of training mobs (default {DefaultSettings.DurationSeconds.ToString(CultureInfo.InvariantCulture)}).
+          --dungeon <name|file> Fights of a dungeon: a built-in one ({string.Join(", ", DefaultDungeons.Names)}) or a dungeon .simc file.
+                                Its segments set the length and the enemies. Without it, the fights are training mobs.
+          --targets <n>         Training mobs in each fight (default {DefaultSettings.TargetCount}).
           --seed <n>            Seed of the first fight; fight i has seed + i (default {DefaultSettings.FirstSeed}).
           --threads <n>         Most threads the fights use (default {MonteCarloSimulator.DefaultDegreeOfParallelism}, 80% of the logical processors).
           --format <text|json>  Result format on stdout (default text). json is the SimResult record.
@@ -54,6 +57,7 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
                 case "--profile": profile = value; break;
                 case "--iterations": settings = settings with { Iterations = Integer(name, value, min: 1) }; break;
                 case "--duration": settings = settings with { DurationSeconds = Seconds(name, value) }; break;
+                case "--dungeon": settings = settings with { Dungeon = Dungeon(value) }; break;
                 case "--targets": settings = settings with { TargetCount = Integer(name, value, min: 1) }; break;
                 case "--seed": settings = settings with { FirstSeed = Integer(name, value, min: int.MinValue) }; break;
                 case "--threads": settings = settings with { DegreeOfParallelism = Integer(name, value, min: 1) }; break;
@@ -69,7 +73,22 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
             }
         }
         if (string.IsNullOrWhiteSpace(profile)) throw new CliUsageException("--profile is required.");
+        if (settings.Dungeon is { } dungeon) settings = settings with { DurationSeconds = dungeon.LengthSeconds };
         return new CliOptions(profile, settings, format);
+    }
+
+    // The built-in dungeon of that name, or the dungeon in that file.
+    private static DungeonProfile Dungeon(string value)
+    {
+        try
+        {
+            var dungeon = DefaultDungeons.Read(value) is { } builtIn ? DungeonProfile.Parse(builtIn) : DungeonProfile.Load(value);
+            return dungeon.Problem() is { } problem ? throw new CliUsageException(problem) : dungeon;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
+        {
+            throw new CliUsageException($"--dungeon is a built-in dungeon or a dungeon file: {e.Message}");
+        }
     }
 
     private static int Integer(string name, string value, int min) =>

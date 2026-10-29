@@ -1,0 +1,7 @@
+# The dungeon a new sim starts with: three trash pulls, a boss between them, and a council of three as the final boss.
+dungeon=Default
+segment=trash,enemies=5,priority=1,length=60
+segment=trash,enemies=4,length=45
+segment=boss,length=60
+segment=trash,enemies=6,priority=2,length=60
+segment=council,enemies=3,length=75,final=1

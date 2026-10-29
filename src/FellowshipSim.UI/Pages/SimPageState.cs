@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
 using FellowshipSim.UI.Build;
 using FellowshipSim.UI.Services;
@@ -8,8 +9,8 @@ namespace FellowshipSim.UI.Pages;
 /// <summary>The Sim page's tabs.</summary>
 public enum SimTab { Import, Hero, Modes, Advanced }
 
-/// <summary>The fights a sim runs: one target, or several at once.</summary>
-public enum SimMode { SingleTarget, Aoe }
+/// <summary>The fights a sim runs: a dungeon's segments, or training mobs for the whole fight.</summary>
+public enum SimMode { Dungeon, TrainingMobs }
 
 /// <summary>What a sim runs besides its fight: the build alone, a list of builds and action lists, or a finder's variations.</summary>
 public enum SimExtra { None, Compare, Finder }
@@ -28,9 +29,6 @@ public sealed class CompareRow
 /// <summary>The Sim page's build, fight settings and messages, kept for the circuit or window while another page shows.</summary>
 public sealed class SimPageState
 {
-    /// <summary>The targets of an AoE sim at first.</summary>
-    public const int DefaultAoeTargets = 8;
-
     /// <summary>How far each fight's length varies at first: ±20%.</summary>
     public const double DefaultLengthVariancePercent = 20;
 
@@ -80,22 +78,42 @@ public sealed class SimPageState
 
     public MessageState ImportStatus { get; set; } = MessageState.None;
 
-    public SimMode Mode { get; set; } = SimMode.SingleTarget;
+    public SimMode Mode { get; set; } = SimMode.Dungeon;
 
     public int Iterations { get; set; } = 1000;
 
     public double DurationSeconds { get; set; } = 300;
 
-    public int AoeTargets { get; set; } = DefaultAoeTargets;
+    /// <summary>The training mobs of a training mob fight.</summary>
+    public int TrainingMobs { get; set; } = 1;
 
-    public int Targets => Mode == SimMode.SingleTarget ? 1 : AoeTargets;
+    /// <summary>The enemies of a training mob fight; a dungeon's segments set their own.</summary>
+    public int Targets => Mode == SimMode.TrainingMobs ? TrainingMobs : 1;
+
+    /// <summary>The dungeon of a dungeon fight.</summary>
+    public DungeonProfile Dungeon { get; set; } = DefaultDungeons.Default;
+
+    /// <summary>The dungeon picked, as kept/name ("builtin/Default", "own/Quick"); empty for one not saved yet.</summary>
+    public string DungeonValue { get; set; } = $"builtin/{DefaultDungeons.DefaultName}";
+
+    // The dungeon's text when it was last loaded or saved.
+    private string _cleanDungeon = DefaultDungeons.Default.Format();
+
+    /// <summary>True when the dungeon has changed since it was last loaded or saved.</summary>
+    public bool HasDungeonEdits => Dungeon.Format() != _cleanDungeon;
+
+    /// <summary>Marks the dungeon as loaded or saved.</summary>
+    public void MarkDungeonClean() => _cleanDungeon = Dungeon.Format();
+
+    /// <summary>A fight's length before variance: the dungeon's, or <see cref="DurationSeconds"/> for training mobs.</summary>
+    public double FightSeconds => Mode == SimMode.Dungeon ? Dungeon.LengthSeconds : DurationSeconds;
 
     /// <summary>True when each fight's length varies by <see cref="LengthVariancePercent"/>.</summary>
     public bool VaryLength { get; set; } = true;
 
     public double LengthVariancePercent { get; set; } = DefaultLengthVariancePercent;
 
-    /// <summary>True for fights against a boss: Ruby's Blessing of the Conqueror counts only then.</summary>
+    /// <summary>True when the training mobs are bosses: Ruby's Blessing of the Conqueror counts only then.</summary>
     public bool Boss { get; set; } = true;
 
     /// <summary>True when the hero starts each fight with <see cref="StartingSpirit"/> Spirit Points.</summary>

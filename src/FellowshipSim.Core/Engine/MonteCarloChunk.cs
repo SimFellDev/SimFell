@@ -43,6 +43,9 @@ public sealed class MonteCarloChunk
         /// <summary>Each aura, in the order the fights first met it.</summary>
         public List<AuraTotals> Auras { get; init; } = [];
         public double PrimaryDamage { get; init; }
+        public double BossDamage { get; init; }
+        public double BossSeconds { get; init; }
+        public double TargetSeconds { get; init; }
     }
 
     /// <summary>One of the first fights' damage each second, for the band of the damage over time.</summary>

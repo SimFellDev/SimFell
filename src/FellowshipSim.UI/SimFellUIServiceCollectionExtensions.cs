@@ -36,6 +36,7 @@ public static class SimFellUIServiceCollectionExtensions
         services.AddSingleton<ReportLookup>();
         services.AddSingleton<CharacterImport>();
         services.AddSingleton<ProfileStore>();
+        services.AddSingleton<DungeonStore>();
         services.TryAddSingleton<SimResultLibrary>();
         services.AddSingleton<VisitorReviews>();
         services.AddScoped<VisitorJobs>();

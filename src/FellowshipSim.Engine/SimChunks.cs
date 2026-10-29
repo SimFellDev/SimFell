@@ -29,6 +29,7 @@ public sealed class SimChunks
     /// </summary>
     public SimChunks(SimcProfile profile, SimSettings settings)
     {
+        CheckDungeon(settings);
         _simulator = NewSimulator(profile);
         _settings = settings;
     }
@@ -43,8 +44,13 @@ public sealed class SimChunks
 
     /// <summary>The sim's result from every one of its chunks, in chunk order.</summary>
     public static SimResult Combine(SimSettings settings, IReadOnlyList<MonteCarloChunk> chunks) =>
-        SimResult.From(MonteCarloSimulator.Combine(chunks, SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations,
-            settings.TargetCount));
+        SimResult.From(MonteCarloSimulator.Combine(chunks, SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations));
+
+    /// <summary>Throws <see cref="SimEngineException"/> when <paramref name="settings"/> has a dungeon whose segments are not valid.</summary>
+    public static void CheckDungeon(SimSettings settings)
+    {
+        if (settings.Dungeon?.Problem() is { } problem) throw new SimEngineException(problem);
+    }
 
     /// <summary>
     /// A simulator of <paramref name="profile"/>'s build casting by its action list; an action list it cannot run throws

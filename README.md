@@ -112,9 +112,56 @@ fine-grained token with "Contents: Read and write" on that repository alone.
 A profile is a `.simc` file: the hero, stats, talents, traits, blessings, gear and its `actions` lines, which are the
 action list. Keep profiles in `data/profiles/<Hero>/`.
 
-The **Sim** page loads a profile file or pasted text, sets iterations, fight duration and targets, and starts the sim.
+The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
 standard deviation, and DPS for each ability.
+
+### Fights
+
+The **Modes** tab has two kinds of fight:
+
+- **Dungeon**: the segments of a dungeon in turn. A segment is a trash pull, a boss, or a council of bosses at once,
+  each with its own length. Its enemies arrive as it starts, their health falls with its time, and they die as it ends.
+  The fight is as long as its segments, and the result adds the DPS to bosses. A new sim has the built-in `Default`
+  dungeon: three trash pulls, a boss and a council of three as the final boss, 300 s in all.
+- **Training mobs**: a number of training mobs for the whole duration. **The mobs are bosses** sets whether boss-only
+  effects (Ruby's Blessing of the Conqueror) count.
+
+The **Dungeon** card edits the segments: kind, enemies, priority targets (trash pulls), length, final boss (bosses and
+councils), and a creature whose Spirit Points the enemies give. **Save** writes `data/dungeons/<name>.simc` in the
+desktop app and `data/visitors/<visitor id>/dungeons/` in the web app. **Dungeon text** has the dungeon as text:
+
+```
+dungeon=Default
+segment=trash,enemies=5,priority=1,length=60
+segment=trash,enemies=4,length=45
+segment=boss,length=60
+segment=trash,enemies=6,priority=2,length=60
+segment=council,enemies=3,length=75,final=1
+```
+
+A segment's kind is `trash`, `boss` or `council`. Its options are `length` (seconds), `enemies` (trash and council),
+`priority` (trash), `final=1` (boss and council) and `creature` (in quotes when the name has a comma).
+
+Action lists read the fight with these values:
+
+| Value | What it reads |
+|---|---|
+| `dungeon_event.adds.exists` | 1 during a trash pull |
+| `dungeon_event.adds.count` | the trash pull's enemies in combat |
+| `dungeon_event.adds.in` | seconds until the next trash pull; 10000 when none follows |
+| `dungeon_event.boss.exists` | 1 during a boss or council, or with training mobs that are bosses |
+| `dungeon_event.boss.count` | the bosses in combat (3 in a council of three) |
+| `dungeon_event.boss.final` | 1 during the final boss |
+| `dungeon_event.boss.in` | seconds until the next boss or council; 10000 when none follows |
+| `dungeon_event.fight.remains` | seconds until the fight ends |
+| `target.is_boss` | 1 when the target is a boss |
+| `target.is_priority` | 1 when the target is a priority target of a trash pull |
+| `target.time_to_die` | seconds until the target's segment ends, or the training mob fight ends |
+
+A boss that is not the final boss is `dungeon_event.boss.exists&!dungeon_event.boss.final`. A list with
+`raid_event.<x>` reads it as `dungeon_event.<x>`, and `fight_remains` as `dungeon_event.fight.remains`; the editor
+shows and saves the new names.
 
 Each finished sim is saved in `data/results/` (the desktop app) or `data/visitors/<visitor id>/results/` (the web app),
 so it stays after a restart.
@@ -136,8 +183,9 @@ Its options are the following:
 
 - `--profile <file>`: the profile to sim (required)
 - `--iterations <n>`: fights (default 100)
-- `--duration <seconds>`: length of each fight (default 300)
-- `--targets <n>`: targets in each fight (default 1)
+- `--dungeon <name|file>`: fights of a dungeon, built in (`Default`) or a dungeon `.simc` file; its segments set the length and the enemies. Without it, the fights are training mobs
+- `--duration <seconds>`: length of each fight of training mobs (default 300)
+- `--targets <n>`: training mobs in each fight (default 1)
 - `--seed <n>`: seed of the first fight; fight i has seed + i (default 1)
 - `--threads <n>`: most threads the fights use (default 80% of the logical processors)
 - `--format <text|json>`: a text summary, or the `SimResult` record as JSON (default `text`)
@@ -229,7 +277,7 @@ Runs the engine tests and replays every downloaded fight, rewriting its review p
 | `src/FellowshipSim.Cli` | `simfell`, the command-line sim |
 | `tests/FellowshipSim.Tests` | Tests, including the free-dice runner |
 | `docs/` | [Adding a hero](docs/ADDING_A_HERO.md) |
-| `data/` | Your local data, not committed: `fights/` downloaded fights, `scripts/` replay scripts, `reviews/` all pages and results, `results/` finished sims, `apls/` saved action lists, `profiles/` `.simc` profiles, `settings.json`; for the web app, `visitors/` each visitor's sims, reviews and action lists, and `keys/` the visitor cookie keys |
+| `data/` | Your local data, not committed: `fights/` downloaded fights, `scripts/` replay scripts, `reviews/` all pages and results, `results/` finished sims, `apls/` saved action lists, `dungeons/` saved dungeons, `profiles/` `.simc` profiles, `settings.json`; for the web app, `visitors/` each visitor's sims, reviews, action lists and dungeons, and `keys/` the visitor cookie keys |
 
 Game values are constants at the top of each class. Rime (`src/FellowshipSim.Core/Heroes/Rime`) is the complete
 example; its `NOTES.md` lists what the combat logs showed.

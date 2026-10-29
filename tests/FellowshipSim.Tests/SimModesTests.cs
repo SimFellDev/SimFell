@@ -49,7 +49,7 @@ public class SimModesTests
         var hero = HeroImporter.Import(Rime());
         var ctx = new SimulationContext(hero);
         var enemy = ctx.AddEnemy(101, 1, "Training Mob 1", maxHealth: 1_000_000);
-        enemy.FollowTime(ctx, SimTime.FromSeconds(Seconds));
+        enemy.FollowTime(ctx, SimTime.Zero, SimTime.FromSeconds(Seconds));
         Assert.Equal(100, enemy.HealthPercent, 6);
         ctx.RunUntil(SimTime.FromSeconds(45));
         Assert.Equal(25, enemy.HealthPercent, 6);

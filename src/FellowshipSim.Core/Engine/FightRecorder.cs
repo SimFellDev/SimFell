@@ -110,20 +110,30 @@ internal sealed class FightRecorder
         for (; _spiritFilled < upTo; _spiritFilled++) _spirit[_spiritFilled] = _lastSpirit;
     }
 
-    /// <summary>Listens to the debuffs on the fight's targets.</summary>
+    /// <summary>
+    /// Listens to the debuffs on the fight's targets: those in it now, and each one entering it from now on. The first of
+    /// those in it now is the main target.
+    /// </summary>
     public void WatchTargets(SimulationContext ctx)
     {
-        foreach (var enemy in ctx.AllEnemies) Watch(enemy.Auras, onTarget: true);
         _primary = ctx.AllEnemies.FirstOrDefault();
+        foreach (var enemy in ctx.AllEnemies) Watch(enemy.Auras, onTarget: true);
+        ctx.EnemySpawned += enemy => Watch(enemy.Auras, onTarget: true);
     }
 
-    /// <summary>The fight's first target, whose damage is also added up on its own.</summary>
+    /// <summary>The fight's main target, whose damage is also added up on its own; null for a dungeon.</summary>
     private EnemyTarget? _primary;
 
-    /// <summary>Ends the fight at <paramref name="duration"/>: the auras still up count until then (or their expiry).</summary>
-    public void End(SimTime duration)
+    /// <summary>
+    /// Ends the fight at <paramref name="duration"/>: the auras still up count until then (or their expiry).
+    /// <paramref name="targetSeconds"/> is the seconds each enemy was in combat, summed, and <paramref name="bossSeconds"/>
+    /// the seconds of boss fighting.
+    /// </summary>
+    public void End(SimTime duration, double targetSeconds, double bossSeconds)
     {
         var tally = _tally!;
+        tally.TargetSeconds += targetSeconds;
+        tally.BossSeconds += bossSeconds;
         foreach (var state in _active.Values) Close(state, Earlier(state.Aura.ExpiresAt, duration));
         _active.Clear();
         int seconds = Math.Min(_spirit.Length, (int)Math.Ceiling(duration.TotalSeconds));
@@ -139,6 +149,7 @@ internal sealed class FightRecorder
         int second = Math.Clamp((int)hit.Timestamp.TotalSeconds, 0, _damage.Length - 1);
         _damage[second] += hit.Amount;
         if (ReferenceEquals(hit.Target, _primary)) _tally.PrimaryDamage += hit.Amount;
+        if (hit.Target is { IsBoss: true }) _tally.BossDamage += hit.Amount;
         if (!ReferenceEquals(hit.AbilityName, _lastName))
         {
             _lastName = hit.AbilityName;
@@ -333,6 +344,10 @@ internal sealed class FightRecorder
         public readonly Dictionary<(string Name, bool OnTarget), AuraTally> Auras = new();
         /// <summary>The damage to each fight's first target, added up.</summary>
         public double PrimaryDamage;
+        /// <summary>The damage to bosses and the seconds of boss fighting, each added up over the fights.</summary>
+        public double BossDamage, BossSeconds;
+        /// <summary>The seconds each enemy was in combat, added up over the fights and enemies.</summary>
+        public double TargetSeconds;
 
         public SourceTally Source(string name)
         {
@@ -361,6 +376,9 @@ internal sealed class FightRecorder
             if (other.Fights == 0) return;
             Fights += other.Fights;
             PrimaryDamage += other.PrimaryDamage;
+            BossDamage += other.BossDamage;
+            BossSeconds += other.BossSeconds;
+            TargetSeconds += other.TargetSeconds;
             if (DamageSum.Length == 0) DamageSum = new double[other.DamageSum.Length];
             for (int i = 0; i < other.DamageSum.Length; i++) DamageSum[i] += other.DamageSum[i];
             Band.AddRange(other.Band);
@@ -392,6 +410,9 @@ internal sealed class FightRecorder
                 a.Value.AtMaxSeconds, a.Value.GapSeconds, a.Value.Applications, a.Value.Refreshes, a.Value.Gaps, a.Value.MaxStacks,
                 a.Value.StackCap, a.Value.LogId)).ToList(),
             PrimaryDamage = PrimaryDamage,
+            BossDamage = BossDamage,
+            BossSeconds = BossSeconds,
+            TargetSeconds = TargetSeconds,
         };
 
         /// <summary>The totals of a chunk's form.</summary>
@@ -405,6 +426,9 @@ internal sealed class FightRecorder
                 SpiritFights = totals.SpiritFights,
                 SpiritMax = totals.SpiritMax,
                 PrimaryDamage = totals.PrimaryDamage,
+                BossDamage = totals.BossDamage,
+                BossSeconds = totals.BossSeconds,
+                TargetSeconds = totals.TargetSeconds,
             };
             tally.Band.AddRange(totals.Band.Select(b => (b.Fight, b.Damage)));
             tally.Samples.AddRange(totals.Samples.Select(s => (s.Fight, s.Damage,
@@ -455,7 +479,7 @@ internal sealed class FightRecorder
         /// Each buff and debuff, buffs first, longest up first. An aura up the whole of every fight from its single
         /// application (a passive) is left out, and so is an engine-internal one (no log ID, such as a marker on a target).
         /// </summary>
-        public List<BuffReport> Buffs(double seconds, int targets)
+        public List<BuffReport> Buffs(double seconds)
         {
             var typical = Typical()?.Spans;
             return Auras
@@ -465,7 +489,8 @@ internal sealed class FightRecorder
                 var (name, onTarget) = a.Key;
                 var t = a.Value;
                 double fights = Math.Max(1, Fights);
-                double span = fights * seconds * (onTarget ? Math.Max(1, targets) : 1);
+                // A debuff's uptime is over the time each enemy was in combat.
+                double span = onTarget && TargetSeconds > 0 ? TargetSeconds : fights * seconds;
                 return new BuffReport(name, onTarget, t.UpSeconds / span, t.Applications / fights, t.Refreshes / fights,
                     t.Applications > 0 ? t.UpSeconds / t.Applications : 0, t.UpSeconds > 0 ? t.StackSeconds / t.UpSeconds : 0,
                     t.MaxStacks, t.StackCap > 1 ? t.AtMaxSeconds / span : 0, t.Gaps > 0 ? t.GapSeconds / t.Gaps : 0, t.LogId,

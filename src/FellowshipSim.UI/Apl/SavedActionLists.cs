@@ -19,12 +19,16 @@ public sealed class SavedActionLists(ActionListStore store, ISimEngine engine, V
             .OrderBy(e => e.Hero).ThenBy(e => e.BuiltIn ? 0 : 1).ToList();
     }
 
-    /// <summary>A saved action list's text and actions. An unknown hero or list throws <see cref="KeyNotFoundException"/>.</summary>
+    /// <summary>
+    /// A saved action list's text, with old names replaced by the names they have now (<see cref="AplPaths"/>), and its
+    /// actions. An unknown hero or list throws <see cref="KeyNotFoundException"/>.
+    /// </summary>
     public async Task<SavedActionList> ReadAsync(ActionListEntry entry, CancellationToken ct = default)
     {
         string known = await HeroNamed(entry.Hero, ct) ?? throw new KeyNotFoundException($"No hero named {entry.Hero}.");
-        string text = (entry.BuiltIn ? DefaultActionLists.Read(known, entry.Name) : await store.ReadAsync(visitor, entry with { Hero = known }, ct))
-                      ?? throw new KeyNotFoundException($"No action list named {entry.Name}.");
+        string text = AplPaths.MigrateText(
+            (entry.BuiltIn ? DefaultActionLists.Read(known, entry.Name) : await store.ReadAsync(visitor, entry with { Hero = known }, ct))
+            ?? throw new KeyNotFoundException($"No action list named {entry.Name}."));
         try
         {
             return new SavedActionList(text, (await engine.ParseActionListAsync(text, ct)).Actions, null);

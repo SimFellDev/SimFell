@@ -68,6 +68,7 @@ public abstract class BoundExpression
     private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
         if (p.PropertyPath == "time") return new BoundTime();
+        if (PropertyExpression.Countdowns.TryGetValue(p.PropertyPath, out var end)) return new BoundCountdown(end);
         if (PropertyExpression.Named.TryGetValue(p.PropertyPath, out var named)) return new BoundNamed(hero, named.Value);
         if (hero.FindResource(p.ResourceName) is { } resource)
         {
@@ -334,6 +335,25 @@ internal sealed class BoundTime : BoundNumeric
     internal override bool IsLevel(SimulationContext ctx) => false;
     internal override TimeCurve Curve(SimulationContext ctx) => TimeCurve.Line(EvaluateNumeric(ctx), 0.001);
     internal override double NumericAt(SimulationContext ctx, SimTime time) => time.TotalSeconds;
+}
+
+/// <summary>
+/// The seconds until a time (<see cref="PropertyExpression.Countdowns"/>), falling a second per second; it breaks at that
+/// time, where an event starts the next segment or ends the fight. <see cref="PropertyExpression.NeverIn"/> when the time
+/// never comes.
+/// </summary>
+internal sealed class BoundCountdown(Func<SimulationContext, SimTime> end) : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => PropertyExpression.SecondsUntil(ctx, end(ctx));
+    internal override SimTime Until(SimulationContext ctx) => end(ctx);
+    internal override bool IsLevel(SimulationContext ctx) => end(ctx) == SimTime.Infinite;
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        IsLevel(ctx) ? TimeCurve.Constant(PropertyExpression.NeverIn) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
+    internal override double NumericAt(SimulationContext ctx, SimTime time)
+    {
+        var at = end(ctx);
+        return at == SimTime.Infinite ? PropertyExpression.NeverIn : (at - time).TotalSeconds;
+    }
 }
 
 /// <summary>The variables of one bound program, by name.</summary>

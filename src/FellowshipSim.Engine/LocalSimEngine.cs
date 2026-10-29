@@ -64,6 +64,7 @@ public sealed class LocalSimEngine : ISimEngine
         CancellationToken ct = default) =>
         Task.Run(() =>
         {
+            SimChunks.CheckDungeon(settings);
             var simulator = SimChunks.NewSimulator(profile);
             var result = simulator.Run(SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations, settings.TargetCount,
                 settings.FirstSeed, settings.DegreeOfParallelism,

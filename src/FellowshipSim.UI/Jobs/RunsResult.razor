@@ -82,6 +82,10 @@ else
                                 {
                                     <span data-tooltip="The DPS to the first target alone">@N(primary) main target</span>
                                 }
+                                @if (Boss && run.Result.BossDps is { } boss)
+                                {
+                                    <span data-tooltip="The DPS to bosses over the time of boss fighting">@N(boss) bosses</span>
+                                }
                             </td>
                             <td class="two @(isBase ? "same" : Class(run))">
                                 @if (isBase)
@@ -155,7 +159,10 @@ else
     private SimRun Best => Others.Where(r => Change(r) > 0).MaxBy(r => r.Result.MeanDps) ?? Base;
 
     // A column for the first target's DPS when the runs had more than one target.
-    private bool Primary => Runs.Any(r => r.Result.PrimaryTargetDps is { } p && p < r.Result.MeanDps * 0.999);
+    private bool Primary => Runs.Any(r => r.Result.PrimaryTargetDps is { } p && p > 0 && p < r.Result.MeanDps * 0.999);
+
+    // A column for the DPS to bosses when the runs were dungeon fights (with trash besides their bosses).
+    private bool Boss => Runs.Any(r => SimJobResult.HasBossDps(r.Result));
 
     // The hero on each row when the runs have more than one.
     private bool Heroes => Runs.Select(r => r.Hero).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1;

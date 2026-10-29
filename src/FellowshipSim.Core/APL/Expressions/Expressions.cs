@@ -43,14 +43,37 @@ public class PropertyExpression : IAplExpression
     /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last 30% of its duration.</summary>
     public const double RefreshableFraction = 0.3;
 
-    /// <summary>The sim's fights have no raid events: none exist, and the next one never comes.</summary>
-    public const double NoRaidEventIn = 10_000.0;
+    /// <summary>A countdown's value when its time never comes: no such segment follows, or the fight has no set end.</summary>
+    public const double NeverIn = 10_000.0;
 
-    /// <summary>The target's time to die in every fight.</summary>
-    public const double TargetTimeToDie = 60.0;
+    /// <summary>
+    /// Named values that count the seconds down to a time (<see cref="SecondsUntil"/>), by their path: they fall by a second
+    /// per second between events.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<SimulationContext, SimTime>> Countdowns { get; } =
+        new Dictionary<string, Func<SimulationContext, SimTime>>
+        {
+            ["target.time_to_die"] = ctx => ctx.Player.CurrentTarget is not { } target ? SimTime.Zero
+                : target.DiesAt != SimTime.Infinite ? target.DiesAt : ctx.FightEnd,
+            ["dungeon_event.fight.remains"] = ctx => ctx.FightEnd,
+            ["dungeon_event.adds.in"] = ctx => ctx.NextTrashAt,
+            ["dungeon_event.boss.in"] = ctx => ctx.NextBossAt,
+        };
 
-    /// <summary>The fight's remaining time in every fight.</summary>
-    public const double FightRemains = 100.0;
+    /// <summary>The seconds from now until <paramref name="end"/>; <see cref="NeverIn"/> when it never comes.</summary>
+    public static double SecondsUntil(SimulationContext ctx, SimTime end) =>
+        end == SimTime.Infinite ? NeverIn : (end - ctx.CurrentTime).TotalSeconds;
+
+    /// <summary>The enemies in combat that are bosses (or are not).</summary>
+    private static int CountActive(SimulationContext ctx, bool boss)
+    {
+        int count = 0;
+        foreach (var enemy in ctx.ActiveEnemies)
+        {
+            if (enemy.IsBoss == boss) count++;
+        }
+        return count;
+    }
 
     /// <summary>Values named by their whole path.</summary>
     public static IReadOnlyDictionary<string, AplDescribed<Func<Hero, SimulationContext, double>>> Named { get; } =
@@ -62,22 +85,34 @@ public class PropertyExpression : IAplExpression
                 (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0),
             ["target.health"] = new(new("Target health", "The current health of the target. 0 if there is no target."),
                 (_, ctx) => ctx.Player.CurrentTarget?.CurrentHealth ?? 0.0),
-            ["target.time_to_die"] = new(new("Target time to die", $"Seconds until the target dies. The value is {TargetTimeToDie} in every fight."),
-                (_, _) => TargetTimeToDie),
-            ["fight_remains"] = new(new("Fight time remaining", $"Seconds until the fight ends. The value is {FightRemains} in every fight."),
-                (_, _) => FightRemains),
+            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: the end of its dungeon segment, or the end of a training mob fight. 0 if there is no target."),
+                (_, ctx) => SecondsUntil(ctx, Countdowns["target.time_to_die"](ctx))),
+            ["target.is_boss"] = new(new("Target is a boss", "1 if the target is a boss. Otherwise 0."),
+                (_, ctx) => ctx.Player.CurrentTarget is { IsBoss: true } ? 1.0 : 0.0),
+            ["target.is_priority"] = new(new("Target is a priority target", "1 if the target is a priority target of a trash pull. Otherwise 0."),
+                (_, ctx) => ctx.Player.CurrentTarget is { IsPriority: true } ? 1.0 : 0.0),
             ["time"] = new(new("Fight time", "Seconds since the fight started."),
                 (_, ctx) => ctx.CurrentTime.TotalSeconds),
             ["gcd"] = new(new("Global cooldown", "The length of the global cooldown, in seconds. The value is the base global cooldown of the hero divided by (1 + haste). Example: a base of 1.5 at 25% haste gives 1.2. The value is the full length. It is not the time that remains on the current global cooldown."),
                 (hero, ctx) => Gcd(hero, ctx.CurrentTime)),
             ["gcd.max"] = new(new("Global cooldown (max)", "The same value as gcd: the length of the global cooldown, in seconds."),
                 (hero, ctx) => Gcd(hero, ctx.CurrentTime)),
-            ["raid_event.adds.exists"] = new(new("Adds exist", "1 if a wave of adds is active. The value is 0 in every fight."),
-                (_, _) => 0.0),
-            ["raid_event.adds.count"] = new(new("Adds count", "The number of adds in the current wave. The value is 0 in every fight."),
-                (_, _) => 0.0),
-            ["raid_event.adds.in"] = new(new("Adds in", $"Seconds until the next wave of adds. The value is {NoRaidEventIn} in every fight."),
-                (_, _) => NoRaidEventIn),
+            ["dungeon_event.adds.exists"] = new(new("Trash pull", "1 during a trash pull of a dungeon. Otherwise 0."),
+                (_, ctx) => ctx.Trash ? 1.0 : 0.0),
+            ["dungeon_event.adds.count"] = new(new("Trash enemies", "The number of enemies of the trash pull in combat. 0 if no trash pull is in progress."),
+                (_, ctx) => ctx.Trash ? CountActive(ctx, boss: false) : 0.0),
+            ["dungeon_event.adds.in"] = new(new("Next trash pull in", $"Seconds until the next trash pull of a dungeon starts. {NeverIn} if no trash pull follows."),
+                (_, ctx) => SecondsUntil(ctx, ctx.NextTrashAt)),
+            ["dungeon_event.boss.exists"] = new(new("Boss fight", "1 during a boss or council segment of a dungeon, or in a training mob fight against a boss. Otherwise 0. A boss that is not the final boss is dungeon_event.boss.exists & !dungeon_event.boss.final."),
+                (_, ctx) => ctx.Boss ? 1.0 : 0.0),
+            ["dungeon_event.boss.count"] = new(new("Bosses", "The number of bosses in combat. A council of three bosses gives 3."),
+                (_, ctx) => CountActive(ctx, boss: true)),
+            ["dungeon_event.boss.final"] = new(new("Final boss", "1 during the final boss segment of a dungeon. Otherwise 0."),
+                (_, ctx) => ctx.FinalBoss ? 1.0 : 0.0),
+            ["dungeon_event.boss.in"] = new(new("Next boss in", $"Seconds until the next boss or council segment of a dungeon starts. {NeverIn} if no boss follows."),
+                (_, ctx) => SecondsUntil(ctx, ctx.NextBossAt)),
+            ["dungeon_event.fight.remains"] = new(new("Fight time remaining", "Seconds until the fight ends."),
+                (_, ctx) => SecondsUntil(ctx, ctx.FightEnd)),
         };
 
     /// <summary>The hasted global cooldown, as <see cref="SimulationContext.BeginCast"/> sets it.</summary>
@@ -234,7 +269,7 @@ public class PropertyExpression : IAplExpression
 
     public PropertyExpression(string propertyPath)
     {
-        PropertyPath = propertyPath.Trim().ToLowerInvariant();
+        PropertyPath = AplPaths.Migrate(propertyPath.Trim().ToLowerInvariant());
         var parts = PropertyPath.Split('.');
         if (parts.Length >= 3 && parts[0] == DotScope)
         {

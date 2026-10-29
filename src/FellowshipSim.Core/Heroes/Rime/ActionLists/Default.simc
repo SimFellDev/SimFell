@@ -12,9 +12,9 @@ actions.talons=ice_blitz
 actions.talons+=/winters_blessing
 actions.talons+=/flight_of_the_navir
 actions.talons+=/cold_snap,if=cooldown.chronoshift.up&worb<5&!buff.glacial_assault.at_max_stacks
-actions.talons+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|fight_remains<=30)&(cooldown.cold_snap.charges=0|worb>=5)&target.time_to_die>=10
-actions.talons+=/wrath_of_winter,if=(target.time_to_die>=18|fight_remains<=20)&(buff.ice_blitz.up|spirit>=85)
-actions.talons+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
+actions.talons+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|dungeon_event.fight.remains<=30)&(cooldown.cold_snap.charges=0|worb>=5)&target.time_to_die>=10
+actions.talons+=/wrath_of_winter,if=(target.time_to_die>=18|dungeon_event.fight.remains<=20)&(buff.ice_blitz.up|spirit>=85)
+actions.talons+=/icicles_of_anzhyr,if=!dungeon_event.adds.exists|active_enemies%2>=dungeon_event.adds.count|dungeon_event.adds.in>=12
 actions.talons+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 actions.talons+=/bursting_ice
 actions.talons+=/talon_strike,if=buff.glacial_assault.at_max_stacks
@@ -33,9 +33,9 @@ actions.frostweaver=ice_blitz
 actions.frostweaver+=/winters_blessing,if=worb>=4
 actions.frostweaver+=/flight_of_the_navir
 actions.frostweaver+=/cold_snap,if=cooldown.chronoshift.up&worb<4&!buff.glacial_assault.at_max_stacks
-actions.frostweaver+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|fight_remains<=30)&(cooldown.cold_snap.charges=0|worb>=4)&target.time_to_die>=10
-actions.frostweaver+=/wrath_of_winter,if=(target.time_to_die>=18|fight_remains<=20)&(buff.ice_blitz.up|spirit>=85)
-actions.frostweaver+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
+actions.frostweaver+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|dungeon_event.fight.remains<=30)&(cooldown.cold_snap.charges=0|worb>=4)&target.time_to_die>=10
+actions.frostweaver+=/wrath_of_winter,if=(target.time_to_die>=18|dungeon_event.fight.remains<=20)&(buff.ice_blitz.up|spirit>=85)
+actions.frostweaver+=/icicles_of_anzhyr,if=!dungeon_event.adds.exists|active_enemies%2>=dungeon_event.adds.count|dungeon_event.adds.in>=12
 actions.frostweaver+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 actions.frostweaver+=/glacial_blast,if=buff.glacial_assault.at_max_stacks
 actions.frostweaver+=/bursting_ice,if=worb>=4
@@ -54,9 +54,9 @@ actions.soulfrost=ice_blitz
 actions.soulfrost+=/winters_blessing,if=worb>=4
 actions.soulfrost+=/flight_of_the_navir
 actions.soulfrost+=/cold_snap,if=cooldown.chronoshift.up&worb<4&!buff.glacial_assault.at_max_stacks&(!blessing.the_vehement|!buff.the_vehement.at_max_stacks|buff.frostwyrms_spite.up)
-actions.soulfrost+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|fight_remains<=30)&(cooldown.cold_snap.charges=0|worb>=4)&target.time_to_die>=10
-actions.soulfrost+=/wrath_of_winter,if=(target.time_to_die>=18|fight_remains<=20)&(buff.ice_blitz.up|spirit>=85)
-actions.soulfrost+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
+actions.soulfrost+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|dungeon_event.fight.remains<=30)&(cooldown.cold_snap.charges=0|worb>=4)&target.time_to_die>=10
+actions.soulfrost+=/wrath_of_winter,if=(target.time_to_die>=18|dungeon_event.fight.remains<=20)&(buff.ice_blitz.up|spirit>=85)
+actions.soulfrost+=/icicles_of_anzhyr,if=!dungeon_event.adds.exists|active_enemies%2>=dungeon_event.adds.count|dungeon_event.adds.in>=12
 actions.soulfrost+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 actions.soulfrost+=/glacial_blast,if=buff.glacial_assault.at_max_stacks
 actions.soulfrost+=/cold_snap,if=buff.frostwyrms_spite.up&(buff.winters_embrace.up|cooldown.bursting_ice.remains>gcd.max*2|target.time_to_die<=8)
@@ -75,13 +75,13 @@ actions.soulfrost+=/frost_bolt,if=!blessing.the_vehement|!buff.the_vehement.at_m
 
 # ---- Generic
 actions.variables=variable,name=will_spend_orbs,value=active_enemies>=3|talent.icy_talons|(action.frost_bolt.execute_time<=1.16|!talent.cascading_blitz|talent.bursting_swallows&talent.burstbolter&action.frost_bolt.execute_time<=1.25|talent.icy_flow&talent.burstbolter&talent.bursting_swallows&!talent.greater_glacial_blast&action.frost_bolt.execute_time<=1.36|!buff.ice_blitz.up),op=set
-actions.main=flight_of_the_navir,target_if=max:target.health,if=(target.time_to_die>=18|fight_remains<=20)
-actions.main+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
-actions.main+=/wrath_of_winter,target_if=max:target.health,if=(target.time_to_die>=28|fight_remains<=20|spirit.deficit<=10)&((!weapon.voidbringer|cooldown.voidbringers_touch.remains>45|spirit.deficit<=10)|!weapon_trait.visions_of_grandeur)&(buff.ice_blitz.up|spirit.deficit<=10)
-actions.main+=/winters_blessing,target_if=max:target.health,if=(target.time_to_die>=20|fight_remains<=20)&(worb>=2&!talent.icy_talons|worb>=4&talent.icy_talons)
+actions.main=flight_of_the_navir,target_if=max:target.health,if=(target.time_to_die>=18|dungeon_event.fight.remains<=20)
+actions.main+=/icicles_of_anzhyr,if=!dungeon_event.adds.exists|active_enemies%2>=dungeon_event.adds.count|dungeon_event.adds.in>=12
+actions.main+=/wrath_of_winter,target_if=max:target.health,if=(target.time_to_die>=28|dungeon_event.fight.remains<=20|spirit.deficit<=10)&((!weapon.voidbringer|cooldown.voidbringers_touch.remains>45|spirit.deficit<=10)|!weapon_trait.visions_of_grandeur)&(buff.ice_blitz.up|spirit.deficit<=10)
+actions.main+=/winters_blessing,target_if=max:target.health,if=(target.time_to_die>=20|dungeon_event.fight.remains<=20)&(worb>=2&!talent.icy_talons|worb>=4&talent.icy_talons)
 actions.main+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 actions.main+=/bursting_ice,target_if=max:target.health,if=refreshable&(!talent.icy_talons|worb>=4|legendary.skandis_decree|talent.harrowing_ice)
-actions.main+=/ice_blitz,target_if=max:target.health,if=(!talent.cascading_blitz&target.time_to_die>=18|target.time_to_die>=25|fight_remains<=60)&!buff.ice_blitz.up|!buff.the_philosopher.up&buff.winters_embrace.up
+actions.main+=/ice_blitz,target_if=max:target.health,if=(!talent.cascading_blitz&target.time_to_die>=18|target.time_to_die>=25|dungeon_event.fight.remains<=60)&!buff.ice_blitz.up|!buff.the_philosopher.up&buff.winters_embrace.up
 actions.main+=/cold_snap,target_if=max:target.health,if=buff.the_vehement.at_max_stacks&buff.winters_embrace.up&buff.frostwyrms_spite.up
 actions.main+=/cold_snap,target_if=max:target.health,if=full_recharge_time<=gcd.max*3&worb<5&(!buff.icy_flow.at_max_stacks|talent.icy_talons)&variable.will_spend_orbs
 actions.main+=/talon_strike,target_if=max:target.health,if=buff.winters_embrace.up&buff.glacial_assault.at_max_stacks

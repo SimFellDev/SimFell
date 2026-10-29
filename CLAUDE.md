@@ -116,7 +116,7 @@ The desktop app and the CLI run fights in-process, so they copy the engine serve
 on and concurrent GC off (Windows only on the desktop app, since Mac Catalyst has no server GC). Without them fights take
 about 2.5 times as long.
 
-`data/` is local and not committed: `fights/`, `scripts/`, `reviews/`, `results/`, `apls/`, `profiles/`, `settings.json`,
+`data/` is local and not committed: `fights/`, `scripts/`, `reviews/`, `results/`, `apls/`, `dungeons/`, `profiles/`, `settings.json`,
 and for the web app `visitors/` and `keys/` (the visitor cookie keys).
 
 ## Conventions

@@ -46,7 +46,7 @@ public class MonteCarloChunkTests
             .Select(i => workers[i % 2].RunChunk(i, duration, iterations, targets, firstSeed: 5, keepFightDamage: keepFightDamage))
             .Select(c => JsonSerializer.Deserialize<MonteCarloChunk>(JsonSerializer.Serialize(c, Json), Json)!)
             .ToList();
-        var combined = MonteCarloSimulator.Combine(chunks, duration, iterations, targets, keepFightDamage);
+        var combined = MonteCarloSimulator.Combine(chunks, duration, iterations, keepFightDamage);
 
         Assert.Equal(JsonSerializer.Serialize(whole, Json), JsonSerializer.Serialize(combined, Json));
     }

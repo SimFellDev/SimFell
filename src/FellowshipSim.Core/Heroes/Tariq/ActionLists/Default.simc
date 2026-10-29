@@ -20,5 +20,5 @@ actions+=/wild_swing
 actions.finishers=hammer_storm,if=buff.schism__hammer_storm.up&(buff.focused_wrath.up|active_enemies>=2&(buff.schism__hammer_storm.stack=2|buff.schism__hammer_storm.remains<=gcd.max*3))
 actions.finishers+=/skull_crusher,if=buff.schism__skull_crusher.up&(buff.schism__skull_crusher.stack=2|buff.schism__skull_crusher.remains<=gcd.max*3|buff.focused_wrath.up)
 actions.finishers+=/skull_crusher,if=talent.schism&fury>50
-actions.finishers+=/hammer_storm,if=active_enemies>=3&(fury>50|fight_remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
-actions.finishers+=/skull_crusher,if=active_enemies<3&(fury>50|fight_remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
+actions.finishers+=/hammer_storm,if=active_enemies>=3&(fury>50|dungeon_event.fight.remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
+actions.finishers+=/skull_crusher,if=active_enemies<3&(fury>50|dungeon_event.fight.remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)

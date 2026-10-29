@@ -10,7 +10,7 @@ actions+=/reign_in_blood
 actions+=/owed_in_blood,target_if=debuff.open_wounds.up,if=!buff.bloodcraze.up&buff.owed_in_blood.stack>=30&buff.reign_in_blood.up
 actions+=/sahrils_wrath,if=buff.spirit_of_heroism.up|spirit.deficit>=90
 actions+=/voidbringers_touch
-actions+=/slaughter,if=fight_remains<=10
+actions+=/slaughter,if=dungeon_event.fight.remains<=10
 actions+=/slaughter,if=talent.massacre&blessing.the_philosopher&(cooldown.heart_splitter.charges=0|active_enemies>2&!talent.oathshatter)&(!cooldown.grim_carve.up|active_enemies<3)
 actions+=/fated_strike,if=!cooldown.heart_splitter.up&active_enemies<3|active_enemies>3&!cooldown.grim_carve.up
 actions+=/blood_arc,if=active_enemies<3&cooldown.rupture.up&!buff.serrated_edge.up|active_enemies>3&cooldown.grim_carve.up

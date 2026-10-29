@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Core.Engine;
@@ -28,6 +29,8 @@ public class MonteCarloResult
     public SpiritTimeline? Spirit { get; init; }
     /// <summary>The first target's DPS: its damage in every fight over their lengths.</summary>
     public double PrimaryTargetDps { get; init; }
+    /// <summary>The DPS to bosses over the time of boss fighting in every fight; 0 when the fights had no enemies besides bosses, or no boss.</summary>
+    public double BossDps { get; init; }
 }
 
 /// <summary>
@@ -116,7 +119,7 @@ public class MonteCarloSimulator
             },
             worker => _idle.Add(worker));
         reporter?.Finish(iterations);
-        return Result(total, fightDamage, duration, iterations, targetCount);
+        return Result(total, fightDamage, duration, iterations);
     }
 
     /// <summary>
@@ -156,7 +159,7 @@ public class MonteCarloSimulator
     /// <see cref="Run"/> with the same arguments.
     /// </summary>
     public static MonteCarloResult Combine(IReadOnlyList<MonteCarloChunk> chunks, SimTime duration, int iterations,
-        int targetCount = 1, bool keepFightDamage = false)
+        bool keepFightDamage = false)
     {
         if (chunks.Count != ChunkCount(iterations) || chunks.Where((c, i) => c.Index != i).Any())
         {
@@ -165,7 +168,7 @@ public class MonteCarloSimulator
         var total = new Totals();
         foreach (var chunk in chunks) total.Merge(Totals.From(chunk));
         double[]? fightDamage = keepFightDamage ? chunks.SelectMany(c => c.FightDamage).ToArray() : null;
-        return Result(total, fightDamage, duration, iterations, targetCount);
+        return Result(total, fightDamage, duration, iterations);
     }
 
     // The fights of one chunk on one worker. A kept fight's damage goes in its place in fightDamage.
@@ -188,7 +191,7 @@ public class MonteCarloSimulator
         return totals;
     }
 
-    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations, int targetCount)
+    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations)
     {
         // The fights' mean length: every fight's, or the duration for a run of none.
         double totalSeconds = total.Count > 0 ? total.LengthSum / total.Count : Math.Max(1.0, duration.TotalSeconds);
@@ -211,10 +214,12 @@ public class MonteCarloSimulator
             DurationSeconds = totalSeconds,
             Timeline = total.Report.Timeline(),
             Abilities = total.Report.Abilities(totalSeconds),
-            Buffs = total.Report.Buffs(totalSeconds, targetCount),
+            Buffs = total.Report.Buffs(totalSeconds),
             Casts = total.Report.Casts(),
             Spirit = total.Report.Spirit(),
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
+            // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.
+            BossDps = total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999 ? total.Report.BossDamage / total.Report.BossSeconds : 0,
         };
     }
 
@@ -238,21 +243,55 @@ public class MonteCarloSimulator
         worker.Recorder.Begin(fight, seconds, totals.Report);
         hero.BeginFight(ctx);
         if (options.StartingSpirit > 0) hero.GainResource(Hero.SpiritPoints, options.StartingSpirit, ctx);
-        if (!options.Boss) foreach (var aura in hero.BossAuras) hero.Auras.Remove(aura, SimTime.Zero);
+        ctx.FightEnd = duration;
 
-        // Populate enemies
-        for (int i = 1; i <= targetCount; i++)
+        double targetSeconds, bossSeconds;
+        if (options.Dungeon is { } dungeon)
         {
-            var enemy = ctx.AddEnemy(100 + i, i, $"Training Mob {i}", maxHealth: 100_000_000);
-            if (options.HealthFollowsTime) enemy.FollowTime(ctx, duration);
+            // A dungeon has no main target: its enemies come and go.
+            worker.Recorder.WatchTargets(ctx);
+            (targetSeconds, bossSeconds) = DungeonFight(worker, ctx, dungeon, duration);
         }
-        ctx.Player.CurrentTarget = ctx.AllEnemies.First();
-        worker.Recorder.WatchTargets(ctx);
+        else
+        {
+            if (!options.Boss) foreach (var aura in hero.BossAuras) hero.Auras.Remove(aura, SimTime.Zero);
+            ctx.Boss = options.Boss;
+            for (int i = 1; i <= targetCount; i++)
+            {
+                var enemy = ctx.AddEnemy(100 + i, i, $"Training Mob {i}", maxHealth: TrainingMobHealth);
+                enemy.IsBoss = options.Boss;
+                if (options.HealthFollowsTime) enemy.FollowTime(ctx, SimTime.Zero, duration);
+            }
+            ctx.Player.CurrentTarget = ctx.AllEnemies.First();
+            worker.Recorder.WatchTargets(ctx);
+            RunUntil(worker, ctx, duration);
+            targetSeconds = targetCount * duration.TotalSeconds;
+            bossSeconds = options.Boss ? duration.TotalSeconds : 0;
+        }
 
-        // Main loop: whenever the hero is free to act, run the first ready APL action, then let the
-        // event queue carry time forward to the next decision point.
+        hero.Auras.FinalizeUptimes(duration);
+        worker.Recorder.End(duration, targetSeconds, bossSeconds);
+
+        foreach (var (ability, dmg) in ctx.AbilityDamage)
+        {
+            totals.AbilityDamage.TryGetValue(ability, out double cur);
+            totals.AbilityDamage[ability] = cur + dmg;
+        }
+        return ctx.TotalDamage;
+    }
+
+    /// <summary>The health of every enemy a sim adds; it falls with time, so its size only sets damage-to-health ratios.</summary>
+    private const double TrainingMobHealth = 100_000_000;
+
+    /// <summary>
+    /// The hero acts until <paramref name="end"/>: whenever they are free to act, the first ready APL action runs, then the
+    /// event queue carries time forward to the next decision point.
+    /// </summary>
+    private static void RunUntil(Worker worker, SimulationContext ctx, SimTime end)
+    {
+        var hero = worker.Hero;
         bool castsDuringGcd = hero.Abilities.Any(a => a.UsableDuringGcd);
-        while (ctx.CurrentTime < duration)
+        while (ctx.CurrentTime < end)
         {
             bool acted = IsFreeToAct(hero, ctx, castsDuringGcd) && worker.Program.TryAct(ctx);
 
@@ -269,18 +308,89 @@ public class MonteCarloSimulator
                 var decision = acted ? ctx.CurrentTime : worker.Program.NextDecision(ctx);
                 if (decision < next) next = decision;
             }
-            ctx.RunUntil(next < duration ? next : duration);
+            ctx.RunUntil(next < end ? next : end);
         }
+    }
 
-        hero.Auras.FinalizeUptimes(duration);
-        worker.Recorder.End(duration);
-
-        foreach (var (ability, dmg) in ctx.AbilityDamage)
+    /// <summary>
+    /// The segments of <paramref name="dungeon"/> in turn over a fight of <paramref name="duration"/>, each taking its share
+    /// of it. A segment's enemies arrive as it starts, with health falling to none at its end, and die as it ends (but for
+    /// the last segment's, as the fight ends). The hero's boss auras are on in boss and council segments. Returns the
+    /// seconds every enemy was in combat, summed, and the seconds of boss and council segments.
+    /// </summary>
+    private static (double TargetSeconds, double BossSeconds) DungeonFight(Worker worker, SimulationContext ctx, DungeonProfile dungeon,
+        SimTime duration)
+    {
+        var hero = worker.Hero;
+        var segments = dungeon.Segments;
+        double scale = duration.TotalSeconds / dungeon.LengthSeconds;
+        var starts = new SimTime[segments.Count + 1];
+        double elapsed = 0;
+        for (int i = 0; i < segments.Count; i++)
         {
-            totals.AbilityDamage.TryGetValue(ability, out double cur);
-            totals.AbilityDamage[ability] = cur + dmg;
+            starts[i] = SimTime.FromSeconds(elapsed * scale);
+            elapsed += segments[i].LengthSeconds;
         }
-        return ctx.TotalDamage;
+        starts[^1] = duration;
+
+        double targetSeconds = 0, bossSeconds = 0;
+        bool bossAuras = true;
+        var enemies = new List<EnemyTarget>();
+        for (int i = 0; i < segments.Count; i++)
+        {
+            var segment = segments[i];
+            SimTime start = starts[i], end = starts[i + 1];
+            double seconds = (end - start).TotalSeconds;
+            targetSeconds += segment.EnemyCount * seconds;
+            if (segment.IsBoss) bossSeconds += seconds;
+
+            ctx.Boss = segment.IsBoss;
+            ctx.FinalBoss = segment.IsBoss && segment.Final;
+            ctx.Trash = !segment.IsBoss;
+            ctx.NextTrashAt = NextStart(segments, starts, i, boss: false);
+            ctx.NextBossAt = NextStart(segments, starts, i, boss: true);
+            if (bossAuras != segment.IsBoss)
+            {
+                bossAuras = segment.IsBoss;
+                foreach (var aura in hero.BossAuras)
+                {
+                    if (bossAuras) hero.Auras.Apply(aura, start);
+                    else hero.Auras.Remove(aura, start);
+                }
+            }
+
+            // A trash pull's priority targets come after its other enemies, so the hero starts on one of the others.
+            enemies.Clear();
+            int count = segment.EnemyCount;
+            for (int slot = 1; slot <= count; slot++)
+            {
+                bool priority = segment.Kind == DungeonSegmentKind.Trash && slot > count - segment.Priority;
+                string name = segment.Creature ?? (segment.IsBoss ? $"Boss {slot}" : priority ? $"Priority Mob {slot}" : $"Trash Mob {slot}");
+                var enemy = ctx.AddEnemy(1000 + i, slot, name, maxHealth: TrainingMobHealth);
+                enemy.IsBoss = segment.IsBoss;
+                enemy.IsPriority = priority;
+                enemy.FollowTime(ctx, start, end);
+                enemies.Add(enemy);
+            }
+            ctx.Player.CurrentTarget = enemies[0];
+
+            RunUntil(worker, ctx, end);
+            if (i < segments.Count - 1)
+            {
+                foreach (var enemy in enemies) ctx.RemoveEnemy(enemy, defeated: true);
+            }
+        }
+        return (targetSeconds, bossSeconds);
+    }
+
+    // The start of the first trash (or boss) segment after segment i; infinite when none follows.
+    private static SimTime NextStart(IReadOnlyList<DungeonSegment> segments, SimTime[] starts, int i, bool boss)
+    {
+        for (int j = i + 1; j < segments.Count; j++)
+        {
+            if (segments[j].IsBoss == boss) return starts[j];
+        }
+        return SimTime.Infinite;
     }
 
     // While the global cooldown runs, a hero with an ability usable during it acts too: the others refuse

@@ -23,11 +23,30 @@ public class AplLanguageTests
     [InlineData("legendary.frostwyrms_spite", true, 0.0)]
     [InlineData("weapon.voidbringer", true, 0.0)]
     [InlineData("weapon_trait.visions_of_grandeur", true, 0.0)]
+    [InlineData("dungeon_event.adds.exists", true, 0.0)]
+    [InlineData("dungeon_event.adds.in>=12", true, 1.0)]
     [InlineData("raid_event.adds.exists", true, 0.0)]
     [InlineData("raid_event.adds.in>=12", true, 1.0)]
-    public void Build_Parts_And_Raid_Events_Read_The_Same_Bound_And_Interpreted(string text, bool icyTalons, double expected)
+    public void Build_Parts_And_Dungeon_Events_Read_The_Same_Bound_And_Interpreted(string text, bool icyTalons, double expected)
     {
         var (hero, ctx) = Fight(icyTalons ? [IcyTalons.TalentId] : []);
+        var expression = AplParser.ParseExpression(text);
+        Assert.Equal(expected, expression.EvaluateNumeric(hero, ctx));
+        Assert.Equal(expected, BoundExpression.Bind(expression, hero).EvaluateNumeric(ctx));
+    }
+
+    [Theory]
+    [InlineData("dungeon_event.boss.exists", false, false, 0.0)]
+    [InlineData("raid_event.boss.exists", true, false, 1.0)]
+    [InlineData("raid_event.boss.final", true, false, 0.0)]
+    [InlineData("dungeon_event.boss.final", true, true, 1.0)]
+    [InlineData("dungeon_event.boss.exists&!dungeon_event.boss.final", true, false, 1.0)]
+    [InlineData("dungeon_event.boss.exists&!dungeon_event.boss.final", true, true, 0.0)]
+    [InlineData("dungeon_event.boss.exists&!dungeon_event.boss.final", false, false, 0.0)]
+    public void Boss_Conditions_Read_The_Fight(string text, bool boss, bool finalBoss, double expected)
+    {
+        var (hero, ctx) = Fight([]);
+        (ctx.Boss, ctx.FinalBoss) = (boss, finalBoss);
         var expression = AplParser.ParseExpression(text);
         Assert.Equal(expected, expression.EvaluateNumeric(hero, ctx));
         Assert.Equal(expected, BoundExpression.Bind(expression, hero).EvaluateNumeric(ctx));
