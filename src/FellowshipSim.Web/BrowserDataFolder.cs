@@ -8,8 +8,9 @@ namespace FellowshipSim.Web;
 /// computer; storage.js keeps a copy of each file in the browser's IndexedDB. The copies come back at start
 /// (<see cref="RestoreAsync"/>), and a changed or removed file is copied every couple of seconds (<see cref="KeepSaving"/>).
 /// The browser keeps the newest <see cref="KeptSims"/> sims (<see cref="FellowshipSim.UI.Services.SimResultLibrary.Keep"/>)
-/// and <see cref="KeptReviews"/> reviews. It keeps no downloaded fight and no replay script (<see cref="NotKept"/>): a
-/// fight is hundreds of MB once read, so a sim worker downloads and replays it (<see cref="WorkerFightReviewer"/>).
+/// and <see cref="KeptReviews"/> reviews. It keeps no downloaded fight and no replay script here (<see cref="NotKept"/>): a
+/// fight is hundreds of MB once read, so a sim worker downloads and replays it (<see cref="WorkerFightReviewer"/>), and
+/// keeps the newest fights in a store of its own that the page never loads (sim/fights.js).
 /// </summary>
 public sealed class BrowserDataFolder(IJSRuntime js)
 {

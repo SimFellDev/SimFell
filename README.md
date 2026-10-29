@@ -94,8 +94,8 @@ names every open result tab, selects or closes one, and closes them all.
 The browser app is the same app as a static site: every sim and replay runs on the visitor's own computer, and nothing
 runs on a server. Sims spread over web workers, one per core but the page's (up to 16); each worker is a .NET runtime of
 its own, and a sim gives the same result as on the desktop app. Its files stay in the browser (IndexedDB): builds and
-action lists, settings, the newest 20 sims and the newest 10 reviews; a replay downloads its fight on a worker and keeps
-only the review. Builds and action lists
+action lists, settings, the newest 20 sims and the newest 10 reviews. A replay downloads its fight on a worker, which keeps
+the newest 5 fights in the browser's storage apart from the page, so replaying one again spends no FellowshipLogs points. Builds and action lists
 also download as `.simc` files. Visitors sign in with their own FellowshipLogs account to import and replay fights; it
 takes no API client from them. Locally its build takes the repository's `settings.json` as its `wwwroot/appsettings.json`.
 
