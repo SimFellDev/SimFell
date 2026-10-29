@@ -121,7 +121,6 @@
                     <span>@label</span>
                 }</div>
             </div>
-            <p class="hint">Spirit Points at the start of each second. The gold line is the fight nearest the mean damage (of the first 100): it climbs with the regeneration and Spirit Refunds and drops at each Spirit ability. The mean is over the fights still going at that second.</p>
         </section>
     }
 
@@ -174,7 +173,6 @@
                         </tr>
                     </tbody>
                 </table>
-                <p class="hint">Each value is the mean over the fights. Casts show "–" for damage no cast of its own starts (procs, legendary and glyph hits).</p>
             }
             else
             {
@@ -201,29 +199,73 @@
             <div class="card-head">
                 <h3>Cast sequence</h3>
                 <span class="legend">One typical fight · @N(casts.Count) casts</span>
+                <span class="sequence-switches">
+                    <label class="switch" data-tooltip="Every cast as a line of text with its time, so the page's search finds a spell">
+                        <input type="checkbox" @bind="_castList" />
+                        <span>List mode</span>
+                    </label>
+                    @if (_castList)
+                    {
+                        <label class="switch" data-tooltip="When each buff on the hero and each debuff on a target starts and ends, in the same fight">
+                            <input type="checkbox" @bind="_castListAuras" />
+                            <span>Buffs and debuffs</span>
+                        </label>
+                    }
+                </span>
             </div>
-            <div class="casts">
-                @foreach (var window in _allCasts ? windows : windows.Take(ShownCastWindows))
-                {
-                    <div @key="window.Key" class="cast-row">
-                        <span class="cast-time">@Clock(window.Key * CastWindowSeconds)</span>
-                        <ol class="cast-list">
-                            @foreach (var cast in window)
-                            {
-                                <li data-tooltip="@($"{cast.Name} at {Clock(cast.Time, tenths: true)}")">
-                                    <GameIcon Url="@BuildCatalog.IconUrl(cast.Id, cast.Name)" Size="30" />
-                                    <span>@cast.Time.ToString("0.0", CultureInfo.CurrentCulture)</span>
-                                </li>
-                            }
-                        </ol>
-                    </div>
-                }
-            </div>
-            @if (windows.Count > ShownCastWindows)
+            @if (_castList)
             {
-                <button type="button" class="link-button" @onclick="() => _allCasts = !_allCasts">@(_allCasts ? "Show the first minute" : $"Show the whole fight ({N(casts.Count)} casts)")</button>
+                <div class="table-wrap cast-table">
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>@(_castListAuras ? "Cast, buff or debuff" : "Cast")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in SequenceRows(casts))
+                            {
+                                <tr class="@(row.Kind == null ? null : "aura-row")">
+                                    <td class="time">@Clock(row.Time, tenths: true)</td>
+                                    <td class="name">
+                                        <GameIcon Url="@BuildCatalog.IconUrl(row.IconId, row.Name)" Size="22" />
+                                        <span>@row.Name</span>
+                                        @if (row.Kind != null)
+                                        {
+                                            <span class="meta">@row.Kind</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
-            <p class="hint">The fight nearest the mean damage, of the first 100; each cast at the time it finished, in seconds. Hover an icon for its name.</p>
+            else
+            {
+                <div class="casts">
+                    @foreach (var window in _allCasts ? windows : windows.Take(ShownCastWindows))
+                    {
+                        <div @key="window.Key" class="cast-row">
+                            <span class="cast-time">@Clock(window.Key * CastWindowSeconds)</span>
+                            <ol class="cast-list">
+                                @foreach (var cast in window)
+                                {
+                                    <li data-tooltip="@($"{cast.Name} at {Clock(cast.Time, tenths: true)}")">
+                                        <GameIcon Url="@BuildCatalog.IconUrl(cast.Id, cast.Name)" Size="30" />
+                                        <span>@cast.Time.ToString("0.0", CultureInfo.CurrentCulture)</span>
+                                    </li>
+                                }
+                            </ol>
+                        </div>
+                    }
+                </div>
+                @if (windows.Count > ShownCastWindows)
+                {
+                    <button type="button" class="link-button" @onclick="() => _allCasts = !_allCasts">@(_allCasts ? "Show the first minute" : $"Show the whole fight ({N(casts.Count)} casts)")</button>
+                }
+            }
         </section>
     }
 
@@ -232,7 +274,6 @@
         <section class="card">
             <h3>Buffs</h3>
             <div class="table-wrap">@AuraTable(buffs, "Buff")</div>
-            <p class="hint">On the hero, per fight, averaged over the fights; the timeline is one typical fight (of the first 100, the one nearest the mean damage). Buffs up for the whole fight from the start (passives) are left out.</p>
         </section>
     }
 
@@ -241,7 +282,6 @@
         <section class="card">
             <h3>Debuffs</h3>
             <div class="table-wrap">@AuraTable(debuffs, "Debuff")</div>
-            <p class="hint">On the targets, per fight, averaged over the fights; uptime is per target, and the timeline (one typical fight) is when any target had it. The engine's own markers are left out.</p>
         </section>
     }
 </div>
@@ -256,6 +296,39 @@
     private const int ShownCastWindows = 2;
 
     private bool _allCasts;
+
+    /// <summary>The cast sequence as a list of lines (time, icon, name) a page search can find; with the buffs and debuffs.</summary>
+    private bool _castList, _castListAuras;
+
+    /// <summary>A line of the list: a cast (<see cref="Kind"/> null), or a buff or debuff starting or ending.</summary>
+    private sealed record SequenceRow(double Time, string Name, int IconId, string? Kind);
+
+    /// <summary>
+    /// The list's lines in time order: the casts, then (when asked for) each buff's and debuff's starts and ends in the same
+    /// typical fight. An end at the fight's end is the fight ending, not the aura, so it has no line.
+    /// </summary>
+    private IEnumerable<SequenceRow> SequenceRows(IReadOnlyList<CastReport> casts)
+    {
+        var rows = casts.Select(c => new SequenceRow(c.Time, c.Name, c.Id, null)).ToList();
+        if (_castListAuras)
+        {
+            foreach (var aura in Result.Buffs ?? [])
+            {
+                var spans = aura.Spans ?? [];
+                string kind = aura.OnTarget ? "debuff" : "buff";
+                for (int i = 0; i + 1 < spans.Count; i += 2)
+                {
+                    rows.Add(new SequenceRow(spans[i], aura.Name, aura.LogId, $"{kind} gained"));
+                    if (spans[i + 1] < Result.DurationSeconds - FightEndSeconds) rows.Add(new SequenceRow(spans[i + 1], aura.Name, aura.LogId, $"{kind} faded"));
+                }
+            }
+        }
+        // A cast before the auras it starts at the same moment.
+        return rows.OrderBy(r => r.Time).ThenBy(r => r.Kind != null);
+    }
+
+    /// <summary>An aura ending this close to the fight's end ended with the fight.</summary>
+    private const double FightEndSeconds = 0.05;
 
     private static string Clock(double seconds, bool tenths = false) =>
         $"{(int)seconds / 60}:{(tenths ? (seconds % 60).ToString("00.0", CultureInfo.CurrentCulture) : ((int)seconds % 60).ToString("00", CultureInfo.CurrentCulture))}";

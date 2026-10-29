@@ -319,10 +319,6 @@
   background: var(--accent);
 }
 
-.hint {
-  margin: 0;
-}
-
 /* The cast sequence: a row per 30 seconds, its start time, then each cast's icon with its time under it. */
 .casts {
   display: flex;
@@ -372,4 +368,43 @@
   color: var(--muted);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+/* The cast sequence's switches: list mode, and the buffs and debuffs in it. */
+.sequence-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sequence-switches .switch {
+  gap: 8px;
+}
+
+/* List mode: the whole fight as lines of text, scrolling under its heading. */
+.cast-table {
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.cast-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.cast-table th,
+.cast-table td {
+  text-align: left;
+}
+
+.cast-table td.time {
+  width: 1%;
+  color: var(--muted);
+}
+
+.cast-table .aura-row td.name {
+  color: var(--muted);
 }
