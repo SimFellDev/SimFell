@@ -15,8 +15,8 @@
     </div>
     <div class="body">
         <p class="hint">
-            A condition is true when its value is not 0.
-            &lt;aura&gt;, &lt;ability&gt; and &lt;name&gt; are names as action lists write them: lower case, _ for each space, and no punctuation (Winter's Blessing is winters_blessing).
+            A condition is true if its value is not 0.
+            &lt;aura&gt;, &lt;ability&gt; and &lt;name&gt; are names in action-list form: lower case, _ for each space, and no punctuation. Example: Winter's Blessing is winters_blessing.
         </p>
         @foreach (var section in Sections)
         {
@@ -88,7 +88,7 @@
         return
         [
             new("action-line", "Action lines", null, AplActionOptions.All),
-            new("operators", "Operators", "Prefixes bind tightest, then *, % and %%, then + and -, then comparisons, then and, then or. Parentheses group.",
+            new("operators", "Operators", "Operators apply in this order: prefixes, then *, % and %%, then + and -, then comparisons, then and, then or. Parentheses change the order.",
             [
                 .. Enum.GetValues<UnaryOperator>().Select(op => (op.Symbol() + "x", op.Doc())),
                 .. Enum.GetValues<BinaryOperator>().Select(op => ($"a {op.Symbol()} b", op.Doc())),
@@ -102,7 +102,7 @@
                 ($"{PropertyExpression.VariableScope}.<name>", PropertyExpression.ScopeDocs[PropertyExpression.VariableScope]),
                 .. PropertyExpression.BuildScopes.Select(scope => ($"{scope.Key}.<name>", scope.Value.Doc)),
             ]),
-            new("aura", "Buff, debuff and dot properties", "buff reads the hero; debuff and dot read the current target.",
+            new("aura", "Buff, debuff and dot properties", "buff refers to the hero. debuff and dot refer to the current target.",
                 Properties(PropertyExpression.BuffScope, "aura")),
             new("cooldown", "Cooldown properties", null, Properties(PropertyExpression.CooldownScope, "ability")),
             new("action", "Action properties", null, Properties(PropertyExpression.ActionScope, "ability")),

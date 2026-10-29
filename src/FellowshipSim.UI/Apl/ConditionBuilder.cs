@@ -66,13 +66,13 @@ public static class ConditionBuilder
     private static AplName Described(string slug, AplDoc doc) => new(slug, doc.Label, doc.Description);
 
     /// <summary>The resource kind: each resource by its name, or after "resource.".</summary>
-    public static readonly AplDoc Resource = new("Resource", "One of the hero's resources, written as its name alone or after resource.");
+    public static readonly AplDoc Resource = new("Resource", "A resource of the hero. Write its name alone or after resource.");
 
     /// <summary>The fight value kind: the values in <see cref="PropertyExpression.Named"/>.</summary>
-    public static readonly AplDoc FightValue = new("Fight value", "A value of the fight or the hero, written as its whole path.");
+    public static readonly AplDoc FightValue = new("Fight value", "A value of the fight or of the hero. Write its full path.");
 
     /// <summary>The kind of an action's own values: the values in <see cref="PropertyExpression.ActionValues"/>.</summary>
-    public static readonly AplDoc ThisAction = new("This action", "A value of the action's own ability, written with no scope.");
+    public static readonly AplDoc ThisAction = new("This action", "A value of the ability of this action. Write it with no scope.");
 
     /// <summary>The doc of a property of a kind: a scope's property, or a resource's current amount or deficit; null for any other.</summary>
     public static AplDoc? PropertyDoc(string kind, string property) => kind == ResourceKind

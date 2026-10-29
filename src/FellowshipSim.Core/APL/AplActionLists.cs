@@ -18,8 +18,8 @@ public static class AplListActions
 
     /// <summary>The list action's meaning in the condition reference.</summary>
     public static string Description(this AplListAction action) => action == AplListAction.Run
-        ? "Runs the named list. The actions after this one do not run."
-        : "Runs the named list, then the next action when nothing in the list was cast.";
+        ? "Runs the named list. The actions after this action do not run."
+        : "Runs the named list. If the list casts nothing, the next action runs.";
 
     /// <summary>The list action written <paramref name="name"/>, or null for an ability.</summary>
     public static AplListAction? Parse(string name) => name switch

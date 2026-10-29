@@ -57,6 +57,6 @@ public class ConditionDocsTests
         var doc = PropertyExpression.ActionValueDoc("charges_fractional")!;
 
         Assert.Equal(PropertyExpression.PropertyDoc(PropertyExpression.CooldownScope, "charges_fractional")!.Label, doc.Label);
-        Assert.StartsWith("cooldown.<this action>.charges_fractional: ", doc.Description);
+        Assert.StartsWith("The same value as cooldown.<this action>.charges_fractional. ", doc.Description);
     }
 }

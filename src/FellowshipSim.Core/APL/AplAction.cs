@@ -116,10 +116,10 @@ public sealed record AplVariable(string Name, AplVariableOp Op, IAplExpression? 
     /// <summary>The op's meaning in the condition reference.</summary>
     public static string Description(AplVariableOp op) => op switch
     {
-        AplVariableOp.Set => "The variable becomes the value. The op of a variable action with no op.",
-        AplVariableOp.Add => "The value is added to the variable.",
-        AplVariableOp.Sub => "The value is taken away from the variable.",
-        AplVariableOp.Reset => "The variable goes back to its default. It needs no value.",
+        AplVariableOp.Set => "The variable becomes the value. A variable action with no op uses set.",
+        AplVariableOp.Add => "Adds the value to the variable.",
+        AplVariableOp.Sub => "Subtracts the value from the variable.",
+        AplVariableOp.Reset => "Sets the variable back to its default. This op needs no value.",
         _ => throw new ArgumentOutOfRangeException(nameof(op), op, null)
     };
 

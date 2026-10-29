@@ -8,16 +8,16 @@ public static class AplActionOptions
     public static IReadOnlyList<(string Syntax, AplDoc Doc)> All { get; } =
     [
         ($"{AplActionLine.ListPrefix}+=/<ability>", new("Action", $"Casts the ability. Each decision starts at the top of the {AplActionLine.DefaultList} list.")),
-        ($"{AplActionLine.ListPrefix}.<list>+=/<ability>", new("Action in a list", "An action of the named list.")),
-        ($"{AplActionLine.ConditionKey}=<expression>", new("Condition", "The action runs only while the expression is true (not 0).")),
+        ($"{AplActionLine.ListPrefix}.<list>+=/<ability>", new("Action in a list", "An action in the named list.")),
+        ($"{AplActionLine.ConditionKey}=<expression>", new("Condition", "The action runs only if the expression is true (not 0).")),
         .. Enum.GetValues<AplTargetSelection>().Select(s =>
             ($"{AplActionLine.TargetIfKey}={AplTargetIf.Prefix(s)}:<expression>", new AplDoc(AplTargetIf.Label(s), AplTargetIf.Description(s)))),
         .. Enum.GetValues<AplListAction>().Select(a =>
             ($"{a.Name()},{AplActionLine.ListNameKey}=<list>", new AplDoc(a == AplListAction.Run ? "Run action list" : "Call action list", a.Description()))),
-        ($"{AplVariable.ActionName},{AplVariable.NameKey}=<name>", new("Variable", $"Changes the variable {PropertyExpression.VariableScope}.<name> and casts nothing.")),
-        ($"{AplVariable.ValueKey}=<expression>", new("Variable value", "The value the variable action uses.")),
+        ($"{AplVariable.ActionName},{AplVariable.NameKey}=<name>", new("Variable", $"Changes the variable {PropertyExpression.VariableScope}.<name>. It does not cast an ability.")),
+        ($"{AplVariable.ValueKey}=<expression>", new("Variable value", "The value that the variable action uses.")),
         .. Enum.GetValues<AplVariableOp>().Select(op =>
             ($"{AplVariable.OpKey}={op.ToString().ToLowerInvariant()}", new AplDoc($"Variable op: {op.ToString().ToLowerInvariant()}", AplVariable.Description(op)))),
-        ($"{AplVariable.DefaultKey}=<number>", new("Variable default", "The variable's value at the start of each fight. 0 when the action has no default.")),
+        ($"{AplVariable.DefaultKey}=<number>", new("Variable default", "The value of the variable at the start of each fight. 0 if the action has no default.")),
     ];
 }
