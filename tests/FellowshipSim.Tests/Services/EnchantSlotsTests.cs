@@ -123,8 +123,8 @@ public class EnchantSlotsTests
     }
 
     /// <summary>
-    /// neteX's Banshee's Cunning (Cf7npHNzRmALFJQy fight 1): 6 + 6 + 10 rating on three items and one weapon tree point,
-    /// 23 rating. On its item a stat enchant fills a slot per 6 rating, rounded up: 1 + 1 + 2 + 1 = 5 (the summed rating
+    /// neteX's Banshee's Cunning (Cf7npHNzRmALFJQy fight 1): 6 + 6 + 10 rating on three items and one weapon tree point
+    /// (6 rating), 28 rating. On its item a stat enchant fills a slot per 6 rating, rounded up: 1 + 1 + 2 + 1 = 5 (the summed rating
     /// over 6 would give 4). A 12-rating item fills two.
     /// </summary>
     private const string Combatant = """
@@ -146,7 +146,7 @@ public class EnchantSlotsTests
         var editor = new BuildEditor(build);
         var banshee = StatEnchant.Find(67)!;
         var sphinx = StatEnchant.Find(68)!;
-        Assert.Equal(23, editor.StatEnchantRating(banshee.Id));
+        Assert.Equal(28, editor.StatEnchantRating(banshee.Id));
         Assert.Equal(5, editor.StatEnchantCount(banshee.Id));
         Assert.Equal(12, editor.StatEnchantRating(sphinx.Id));
         Assert.Equal(2, editor.StatEnchantCount(sphinx.Id));

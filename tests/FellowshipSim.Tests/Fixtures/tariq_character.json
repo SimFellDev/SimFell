@@ -1,20 +1,14 @@
 {
   "Name": "[OLK] Shadowkeel",
   "Hero": "Tariq",
-  "PrimaryStat": 254,
-  "Stamina": 358,
+  "PrimaryStat": 154,
+  "Stamina": 258,
   "MaxHealth": 24638,
   "Armor": 674,
   "CritRating": 169,
   "HasteRating": 130,
   "ExpertiseRating": 140,
   "SpiritRating": 147,
-  "SheetPercents": {
-    "crit": 0.3079,
-    "haste": 0.2034,
-    "expertise": 0.2175,
-    "spirit": 0.2274
-  },
   "Talents": [
     75,
     441,
@@ -35,12 +29,12 @@
     {
       "Id": 65,
       "Rank": 4,
-      "Name": "Behemoth\u0027s Might  / Jotunn\u0027s Guille / Titan\u0027s Cunning"
+      "Name": "Behemoth's Might  / Jotunn's Guille / Titan's Cunning"
     },
     {
       "Id": 70,
       "Rank": 4,
-      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+      "Name": "Manticore's Might / Basilisk's Guille / Spider's Cunning"
     },
     {
       "Id": 48,
@@ -75,22 +69,22 @@
     {
       "Id": 69,
       "Rank": 4,
-      "Name": "Ursa\u0027s Might / Wolf\u0027s Guille / Vampire\u0027s Cunning"
+      "Name": "Ursa's Might / Wolf's Guille / Vampire's Cunning"
     },
     {
       "Id": 66,
       "Rank": 4,
-      "Name": "Sun\u0027s Might / Star\u0027s Guille / Moon\u0027s Cunning "
+      "Name": "Sun's Might / Star's Guille / Moon's Cunning "
     },
     {
       "Id": 68,
       "Rank": 4,
-      "Name": "Gryphon\u0027s Might / Phoenix\u0027s Guille / Sphinx\u0027s Cunning"
+      "Name": "Gryphon's Might / Phoenix's Guille / Sphinx's Cunning"
     },
     {
       "Id": 67,
       "Rank": 4,
-      "Name": "Revenant\u0027s Might / Wraith\u0027s Guille / Banshee\u0027s Cunning"
+      "Name": "Revenant's Might / Wraith's Guille / Banshee's Cunning"
     },
     {
       "Id": 42,

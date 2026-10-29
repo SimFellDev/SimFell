@@ -1,19 +1,13 @@
 {
   "Name": "sww",
   "Hero": "Rime",
-  "PrimaryStat": 342,
-  "Stamina": 635,
+  "PrimaryStat": 242,
+  "Stamina": 535,
   "Armor": 539,
   "CritRating": 141,
   "HasteRating": 161,
   "ExpertiseRating": 100,
   "SpiritRating": 127,
-  "SheetPercents": {
-    "crit": 0.289,
-    "haste": 0.2473,
-    "expertise": 0.1784,
-    "spirit": 0.2991
-  },
   "Talents": [
     38,
     189,

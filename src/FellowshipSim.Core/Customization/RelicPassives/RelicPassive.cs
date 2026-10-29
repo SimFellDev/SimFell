@@ -14,8 +14,7 @@ public abstract class RelicPassive
     public abstract IReadOnlyList<RelicItem> Items { get; }
 
     /// <summary>
-    /// Multiplier on every gem colour's power (Covetous Greed). A character sheet's gem power already includes it, so it
-    /// applies only to stats that are not from a sheet.
+    /// Multiplier on every gem colour's power (Covetous Greed), applied to the gear's when the build is imported.
     /// </summary>
     public virtual double GemPowerMultiplier => 1.0;
 

@@ -32,25 +32,16 @@ public static class HeroImporter
         var hero = Catalog.CreateHero(build.Hero);
         hero.Name = build.Name;
 
-        // Base stats: ratings from gear, and the character sheet's percentages when the build comes from a log
-        // (they already include passive bonuses such as gem nodes).
-        hero.Stats.PrimaryStat = build.PrimaryStat;
-        hero.Stats.Stamina = build.Stamina;
+        // Base stats: the gear's, with the hero's base Main Stat and Stamina and the stat enchants' ratings; every other
+        // bonus adds to them as it binds.
+        hero.Stats.PrimaryStat = build.PrimaryStat + StatBlock.BasePrimaryStat;
+        hero.Stats.Stamina = build.Stamina + StatBlock.BaseStamina;
         if (build.MaxHealth > 0) hero.Stats.LoggedMaxHealth = build.MaxHealth;
         hero.Stats.Armor = build.Armor;
-        // Stat enchants add their rating to gear's; a character sheet already counts them.
-        bool sheet = build.SheetPercents.Count > 0;
-        hero.Stats.CritRating = build.CritRating + (sheet ? 0 : build.EnchantRating(StatType.CritRating));
-        hero.Stats.HasteRating = build.HasteRating + (sheet ? 0 : build.EnchantRating(StatType.HasteRating));
-        hero.Stats.ExpertiseRating = build.ExpertiseRating + (sheet ? 0 : build.EnchantRating(StatType.ExpertiseRating));
-        hero.Stats.SpiritRating = build.SpiritRating + (sheet ? 0 : build.EnchantRating(StatType.SpiritRating));
-        if (sheet)
-        {
-            hero.Stats.SheetCritChance = build.SheetPercents.GetValueOrDefault("crit");
-            hero.Stats.SheetHaste = build.SheetPercents.GetValueOrDefault("haste");
-            hero.Stats.SheetExpertise = build.SheetPercents.GetValueOrDefault("expertise");
-            hero.Stats.SheetSpirit = build.SheetPercents.GetValueOrDefault("spirit");
-        }
+        hero.Stats.CritRating = build.CritRating + build.EnchantRating(StatType.CritRating);
+        hero.Stats.HasteRating = build.HasteRating + build.EnchantRating(StatType.HasteRating);
+        hero.Stats.ExpertiseRating = build.ExpertiseRating + build.EnchantRating(StatType.ExpertiseRating);
+        hero.Stats.SpiritRating = build.SpiritRating + build.EnchantRating(StatType.SpiritRating);
 
         hero.Initialize();
         hero.Abilities.AddRange(CommonAbilities.For(hero));
@@ -73,17 +64,26 @@ public static class HeroImporter
             hero.UnmodeledFeatures.Add($"Stat enchant {entry.Name ?? entry.Id.ToString()}");
         }
 
-        // The relic passives before gems: Covetous Greed raises every gem colour's power (already in a sheet's gem power).
+        // The relic passives before gems: Covetous Greed raises every gem colour's power, rounded down (combat logs: 350
+        // Topaz is 437).
         hero.Relic1 = BindRelic(hero, build.Relic1ItemId);
         hero.Relic2 = BindRelic(hero, build.Relic2ItemId);
 
+        double gemPowerMultiplier = hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
         foreach (var (color, power) in build.GemPower)
         {
             var gem = Gem.Create(color);
-            gem.Power = hero.Stats.UsesSheetValues ? power : power * hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
+            gem.Power = Math.Floor(power * gemPowerMultiplier);
             hero.Gems.Add(gem);
             gem.Bind(hero);
             hero.UnmodeledFeatures.AddRange(gem.UnmodeledNodes.Select(n => $"Gem node: {n}"));
+        }
+        // Gem power over the cap raises Main Stat and Stamina.
+        double overcap = Gem.OvercapBonusPerPower * hero.Gems.Sum(g => Math.Max(0.0, g.Power - Gem.OvercapPower));
+        if (overcap > 0)
+        {
+            hero.PassiveAuras.Add(AuraDef.Internal("Gem power overcap", 0, 1, StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + overcap)));
+            hero.Stats.StaminaMultiplier *= 1.0 + overcap;
         }
 
         foreach (var entry in build.Glyphs)
@@ -129,9 +129,6 @@ public static class HeroImporter
                 legendary.Bind(hero);
             }
             hero.PassiveAuras.Add(LegendaryStats.StrandOfEternity);
-            // A logged Main Stat already includes Mote of Creation. It adds to the same sum as Rising Spirit, so it comes out
-            // of the sheet and applies as its aura.
-            if (hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat /= 1.0 + LegendaryStats.MoteOfCreationPrimaryStat;
             hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
         }
 

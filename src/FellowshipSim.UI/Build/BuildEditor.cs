@@ -5,12 +5,13 @@ using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using CoreCatalog = FellowshipSim.Core.Catalog;
+using Hero = FellowshipSim.Core.Domain.Hero;
 
 namespace FellowshipSim.UI.Build;
 
 /// <summary>
-/// The changes the build editor makes to a <see cref="CharacterBuild"/>. A rating set by hand replaces the log's
-/// character-sheet percentage of its stat (<see cref="CharacterBuild.SheetPercents"/>).
+/// The changes the build editor makes to a <see cref="CharacterBuild"/>: the gear's raw stats, with the totals a sim
+/// starts from beside them. Editing a stat clears an old profile's mark (<see cref="CharacterBuild.StatsFromOldProfile"/>).
 /// </summary>
 public sealed class BuildEditor(CharacterBuild build)
 {
@@ -18,21 +19,11 @@ public sealed class BuildEditor(CharacterBuild build)
 
     public BuildCatalog Catalog => BuildCatalog.For(Build.Hero);
 
-    /// <summary>The main stat every hero has before gear (per the user); the editor takes the gear's bonus over it.</summary>
-    public const double BaseMainStat = 100;
-
     /// <summary>The rated stats in the in-game character sheet's order.</summary>
     public static IReadOnlyList<RatedStat> InGameOrder { get; } = [RatedStat.Crit, RatedStat.Expertise, RatedStat.Haste, RatedStat.Spirit];
 
     /// <summary>A new build of <paramref name="hero"/> with nothing picked.</summary>
-    public static CharacterBuild NewBuild(string hero) => new() { Hero = hero, Name = "New build", PrimaryStat = BaseMainStat };
-
-    /// <summary>The main stat over <see cref="BaseMainStat"/>: what the gear adds.</summary>
-    public double MainStatBonus
-    {
-        get => Math.Max(0, Build.PrimaryStat - BaseMainStat);
-        set => Build.PrimaryStat = BaseMainStat + Math.Max(0, value);
-    }
+    public static CharacterBuild NewBuild(string hero) => new() { Hero = hero, Name = "New build" };
 
     public int PointsLeft => Catalog.PointsLeft(Build.Talents);
 
@@ -67,8 +58,26 @@ public sealed class BuildEditor(CharacterBuild build)
         _ => Build.SpiritRating,
     };
 
-    /// <summary>The stat's rating with the stat enchants' rating: what the sim and the character sheet count.</summary>
-    public double TotalRating(RatedStat stat) => Rating(stat) + Build.EnchantRating(RatingType(stat));
+    /// <summary>The stat's rating as a sim starts with it: the gear's, the stat enchants', the gem nodes' and the sigils'.</summary>
+    public double TotalRating(RatedStat stat)
+    {
+        var hero = Totals;
+        var type = RatingType(stat);
+        double rating = stat switch
+        {
+            RatedStat.Crit => hero.Stats.CritRating,
+            RatedStat.Haste => hero.Stats.HasteRating,
+            RatedStat.Expertise => hero.Stats.ExpertiseRating,
+            _ => hero.Stats.SpiritRating,
+        };
+        return rating + hero.Auras.Fold(type, 0.0, SimTime.Zero);
+    }
+
+    /// <summary>The main stat as a sim starts with it: the gear's, the base, and every bonus.</summary>
+    public double TotalMainStat => Totals.PrimaryAttribute(SimTime.Zero);
+
+    /// <summary>Stamina as a sim starts with it.</summary>
+    public double TotalStamina => Totals.Stats.TotalStamina;
 
     public void SetRating(RatedStat stat, double rating)
     {
@@ -80,48 +89,56 @@ public sealed class BuildEditor(CharacterBuild build)
             case RatedStat.Expertise: Build.ExpertiseRating = rating; break;
             default: Build.SpiritRating = rating; break;
         }
-        Build.SheetPercents.Remove(Key(stat));
+        Build.StatsFromOldProfile = false;
     }
 
-    /// <summary>
-    /// The stat's character-sheet percentage (a fraction): the log's when the build came from one, otherwise its rating's
-    /// with the stat enchants' rating; then the gem nodes' bonus to it, as the sim adds it.
-    /// </summary>
-    public double Percent(RatedStat stat) =>
-        (Build.SheetPercents.TryGetValue(Key(stat), out double sheet) ? sheet
-            : BasePercent(stat) + StatDiminishingReturns.FromRating(Rating(stat) + Build.EnchantRating(RatingType(stat))))
-        + GemBonus(stat);
-
-    private string? _gemBonusesFor;
-    private StatBlock? _gemBonuses;
-
-    /// <summary>
-    /// The percentage the build's gems add to <paramref name="stat"/>: its gems bound to a hero as <see cref="HeroImporter"/>
-    /// binds them. The gem power is the character sheet's (Covetous Greed included), as a sim's profile reads it. Worked
-    /// out again only when the gems change.
-    /// </summary>
-    private double GemBonus(RatedStat stat)
+    /// <summary>Sets the gear's main stat.</summary>
+    public void SetPrimaryStat(double value)
     {
-        string key = $"{Build.Hero}|{string.Join(",", Build.GemPower.OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Value}"))}";
-        if (key != _gemBonusesFor)
-        {
-            var hero = CoreCatalog.CreateHero(Build.Hero);
-            foreach (var (color, power) in Build.GemPower)
-            {
-                var gem = FellowshipSim.Core.Customization.Gems.Gem.Create(color);
-                gem.Power = power;
-                gem.Bind(hero);
-            }
-            _gemBonuses = hero.Stats;
-            _gemBonusesFor = key;
-        }
+        Build.PrimaryStat = Math.Max(0, value);
+        Build.StatsFromOldProfile = false;
+    }
+
+    /// <summary>Sets the gear's Stamina.</summary>
+    public void SetStamina(double value)
+    {
+        Build.Stamina = Math.Max(0, value);
+        Build.StatsFromOldProfile = false;
+    }
+
+    /// <summary>The stat's character-sheet percentage (a fraction), as a sim starts with it.</summary>
+    public double Percent(RatedStat stat)
+    {
+        var hero = Totals;
         return stat switch
         {
-            RatedStat.Crit => _gemBonuses!.BonusCritChance,
-            RatedStat.Haste => _gemBonuses!.BonusHaste,
-            RatedStat.Expertise => _gemBonuses!.BonusExpertise,
-            _ => _gemBonuses!.BonusSpirit,
+            RatedStat.Crit => hero.CritChance(SimTime.Zero),
+            RatedStat.Haste => hero.GetHaste(SimTime.Zero),
+            RatedStat.Expertise => hero.Expertise(SimTime.Zero),
+            _ => hero.SpiritPercent(SimTime.Zero),
         };
+    }
+
+    private string? _totalsFor;
+    private Hero? _totals;
+
+    /// <summary>
+    /// The build imported as a sim imports it (<see cref="HeroImporter"/>), at the start of a fight: the one place its
+    /// totals come from. Worked out again only when the build changes.
+    /// </summary>
+    private Hero Totals
+    {
+        get
+        {
+            string key = System.Text.Json.JsonSerializer.Serialize(Build);
+            if (key != _totalsFor || _totals == null)
+            {
+                _totals = HeroImporter.Import(Build);
+                _totals.ResetForIteration();
+                _totalsFor = key;
+            }
+            return _totals;
+        }
     }
 
     private static StatType RatingType(RatedStat stat) => stat switch
@@ -132,28 +149,17 @@ public sealed class BuildEditor(CharacterBuild build)
         _ => StatType.SpiritRating,
     };
 
-    private static RatedStat StatOf(StatType rating) => rating switch
-    {
-        StatType.CritRating => RatedStat.Crit,
-        StatType.HasteRating => RatedStat.Haste,
-        StatType.ExpertiseRating => RatedStat.Expertise,
-        _ => RatedStat.Spirit,
-    };
-
     /// <summary>The rating the build's stat enchant <paramref name="id"/> adds to each of its stats; 0 when it has none.</summary>
     public double StatEnchantRating(int id) => Build.StatEnchants.FirstOrDefault(e => e.Id == id)?.Rank ?? 0;
 
     /// <summary>
-    /// Sets the rating a stat enchant adds. Its two stats leave the log's character sheet (which counted the old enchant)
-    /// for their ratings, which are without enchants, plus the enchants.
+    /// Sets the rating a stat enchant adds to each of its two stats (the gear's ratings are without it).
     /// </summary>
     public void SetStatEnchantRating(StatEnchant enchant, double rating)
     {
         int value = (int)Math.Max(0, Math.Round(rating));
         // A rating set by hand leaves the log's count of the enchant: it counts as its rating over 6.
         Build.StatEnchantCounts.Remove(enchant.Id);
-        Build.SheetPercents.Remove(Key(StatOf(enchant.FirstRating)));
-        Build.SheetPercents.Remove(Key(StatOf(enchant.SecondRating)));
         int at = Build.StatEnchants.FindIndex(e => e.Id == enchant.Id);
         if (value == 0)
         {
@@ -163,8 +169,8 @@ public sealed class BuildEditor(CharacterBuild build)
         else Build.StatEnchants.Add(new BuildEntry(enchant.Id, value));
     }
 
-    /// <summary>True when <see cref="Percent"/> is the log's character sheet, which counts gem nodes too.</summary>
-    public bool PercentFromLog(RatedStat stat) => Build.SheetPercents.ContainsKey(Key(stat));
+    /// <summary>True when the stats came from an old profile and likely count bonuses twice.</summary>
+    public bool StatsFromOldProfile => Build.StatsFromOldProfile;
 
     /// <summary>The weapon's ability ID, or null for no weapon.</summary>
     public int? Weapon
@@ -188,22 +194,14 @@ public sealed class BuildEditor(CharacterBuild build)
     public int? Relic1
     {
         get => Build.Relic1ItemId == 0 ? null : Build.Relic1ItemId;
-        set
-        {
-            Build.Relic1ItemId = value ?? 0;
-            RecountGemPower();
-        }
+        set => Build.Relic1ItemId = value ?? 0;
     }
 
     /// <summary>The item ID of the relic in slot 2, or null for no relic.</summary>
     public int? Relic2
     {
         get => Build.Relic2ItemId == 0 ? null : Build.Relic2ItemId;
-        set
-        {
-            Build.Relic2ItemId = value ?? 0;
-            RecountGemPower();
-        }
+        set => Build.Relic2ItemId = value ?? 0;
     }
 
     /// <summary>Relics a build wears: <see cref="Relic1"/> and <see cref="Relic2"/>.</summary>
@@ -311,7 +309,7 @@ public sealed class BuildEditor(CharacterBuild build)
     /// <summary>How many of gem <paramref name="gemId"/> are socketed.</summary>
     public int SocketedCount(int gemId) => Build.SocketedGemIds.Count(id => id == gemId);
 
-    /// <summary>A colour's gem power as the character sheet shows it.</summary>
+    /// <summary>A colour's gem power from the gear, before the relics' multiplier.</summary>
     public double Gem(GemColor color) => Build.GemPower.GetValueOrDefault(color);
 
     public void SetGem(GemColor color, double power)
@@ -329,7 +327,7 @@ public sealed class BuildEditor(CharacterBuild build)
         var sockets = Enumerable.Range(0, GemItem.Sockets).Select(i => Socket(i)?.Id).ToArray();
         sockets[socket] = gemId is { } id && GemItem.Find(id) != null ? id : null;
         Build.SocketedGemIds = sockets.OfType<int>().ToList();
-        RecountGemPower(always: true);
+        RecountGemPower();
     }
 
     /// <summary>The gear's gem power bonuses of <paramref name="color"/> (<see cref="GemItem.GearBonusPower"/> each).</summary>
@@ -342,22 +340,19 @@ public sealed class BuildEditor(CharacterBuild build)
         if (count > current) count = Math.Min(count, current + Room(EnchantSlot.Gems));
         if (count > 0) Build.GearGemBonuses[color] = count;
         else Build.GearGemBonuses.Remove(color);
-        RecountGemPower(always: true);
+        RecountGemPower();
     }
 
     /// <summary>True when the build says where its gem power comes from (sockets or gear bonuses).</summary>
     public bool HasGemSources => Build.SocketedGemIds.Count > 0 || Build.GearGemBonuses.Count > 0;
 
     /// <summary>
-    /// Works out each colour's gem power from the sockets and gear bonuses, times the relics' multiplier (Covetous Greed).
-    /// A relic change on a build that does not say where its gem power comes from keeps the totals it has.
+    /// Works out each colour's gem power from the sockets and gear bonuses, before the relics' multiplier (the engine
+    /// applies Covetous Greed).
     /// </summary>
-    private void RecountGemPower(bool always = false)
+    private void RecountGemPower()
     {
-        if (!always && !HasGemSources) return;
-        double multiplier = new[] { Build.Relic1ItemId, Build.Relic2ItemId }
-            .Select(CoreCatalog.RelicPassiveOfItem).OfType<RelicPassive>().Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
-        Build.GemPower = GemItem.PowerByColor(Build.SocketedGemIds, Build.GearGemBonuses, multiplier);
+        Build.GemPower = GemItem.PowerByColor(Build.SocketedGemIds, Build.GearGemBonuses, 1.0);
     }
 
     public int AugmentationRank(int id) => Build.Augmentations.FirstOrDefault(a => a.Id == id)?.Rank ?? 0;

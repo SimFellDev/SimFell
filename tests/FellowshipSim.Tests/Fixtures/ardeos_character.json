@@ -1,20 +1,14 @@
 {
-  "Name": "-\u7384-",
+  "Name": "-玄-",
   "Hero": "Ardeos",
-  "PrimaryStat": 336,
-  "Stamina": 641,
+  "PrimaryStat": 236,
+  "Stamina": 541,
   "MaxHealth": 35647,
   "Armor": 544,
   "CritRating": 136,
   "HasteRating": 141,
   "ExpertiseRating": 61,
   "SpiritRating": 187,
-  "SheetPercents": {
-    "crit": 0.2619,
-    "haste": 0.219,
-    "expertise": 0.0976,
-    "spirit": 0.2813
-  },
   "Talents": [
     146,
     150,
@@ -33,7 +27,7 @@
     {
       "Id": 42,
       "Rank": 3,
-      "Name": "Hunter\u0027s Focus"
+      "Name": "Hunter's Focus"
     },
     {
       "Id": 47,

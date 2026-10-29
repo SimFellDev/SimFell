@@ -36,11 +36,15 @@ public class Topaz : Gem
             case 4: // Feline Grace: Haste.
                 hero.Stats.BonusHaste += node.Value("HasteBonus");
                 return true;
+            case 2: // Thief's Alacrity: flat Stamina and Haste rating.
+                hero.Stats.HasteRating += node.Value("HasteBonus");
+                hero.Stats.Stamina += node.Value("StaminaBonus");
+                return true;
             case 5: // Blessing of the Virtuoso: "You retain X Haste from Spirit of Heroism while it is not active."
                 hero.PassiveAuras.Add(node.Grants!);
                 BindVirtuoso(hero, node);
                 return true;
-            default: // Thief's Alacrity (rating, in the logged ratings) and Rogue's Resurgence (healing).
+            default: // Rogue's Resurgence (healing).
                 return true;
         }
     }

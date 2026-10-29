@@ -16,17 +16,14 @@ public sealed class BuildEditorTests : IDisposable
     private readonly string _data = Path.Combine(Path.GetTempPath(), $"simfell-profiles-{Guid.NewGuid():N}");
 
     [Fact]
-    public void The_Main_Stat_Is_Typed_As_The_Bonus_Over_The_Base_100()
+    public void The_Main_Stat_Is_The_Gears_And_Its_Total_Adds_The_Base_100()
     {
         var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
-        Assert.Equal(0, editor.MainStatBonus);
-        editor.MainStatBonus = 130;
-        Assert.Equal(230, editor.Build.PrimaryStat);
-        editor.MainStatBonus = -5;
-        Assert.Equal(BuildEditor.BaseMainStat, editor.Build.PrimaryStat);
-        // A log's main stat is the total.
-        editor.Build.PrimaryStat = 1650;
-        Assert.Equal(1550, editor.MainStatBonus);
+        Assert.Equal(0, editor.Build.PrimaryStat);
+        Assert.Equal(StatBlock.BasePrimaryStat, editor.TotalMainStat);
+        editor.Build.PrimaryStat = 130;
+        Assert.Equal(230, editor.TotalMainStat);
+        Assert.Equal(StatBlock.BaseStamina, editor.TotalStamina);
     }
 
     [Fact]
@@ -63,16 +60,15 @@ public sealed class BuildEditorTests : IDisposable
     }
 
     [Fact]
-    public void A_Rating_Set_By_Hand_Replaces_The_Logs_Sheet_Percentage()
+    public void Editing_A_Stat_Clears_An_Old_Profiles_Mark()
     {
         var build = BuildEditor.NewBuild("Rime");
-        build.SheetPercents["crit"] = 0.30;
+        build.StatsFromOldProfile = true;
         var editor = new BuildEditor(build);
-        Assert.Equal(0.30, editor.Percent(RatedStat.Crit));
-        Assert.True(editor.PercentFromLog(RatedStat.Crit));
+        Assert.True(editor.StatsFromOldProfile);
 
         editor.SetRating(RatedStat.Crit, 500);
-        Assert.False(editor.PercentFromLog(RatedStat.Crit));
+        Assert.False(editor.StatsFromOldProfile);
         Assert.Equal(StatBlock.BaseCritChance + StatDiminishingReturns.FromRating(500), editor.Percent(RatedStat.Crit));
     }
 
@@ -82,13 +78,14 @@ public sealed class BuildEditorTests : IDisposable
         var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
         double crit = editor.Percent(RatedStat.Crit);
 
+        // Killer Instinct adds 2% and Berserker's Zeal 8 crit rating.
         editor.SetGem(GemColor.Amethyst, 300);
-        Assert.Equal(crit + 0.02, editor.Percent(RatedStat.Crit), 6);
+        Assert.Equal(crit + 0.02 + StatDiminishingReturns.FromRating(8), editor.Percent(RatedStat.Crit), 6);
+        Assert.Equal(8, editor.TotalRating(RatedStat.Crit));
         editor.SetGem(GemColor.Amethyst, 1250);
-        Assert.Equal(crit + 0.06, editor.Percent(RatedStat.Crit), 6);
         // The sim reads the build through its profile.
         var simmed = HeroImporter.Import(SimcProfile.Parse(new SimcProfile(editor.Build, "").Format()).Build);
-        Assert.Equal(simmed.Stats.CritPercent, editor.Percent(RatedStat.Crit), 4);
+        Assert.Equal(simmed.Stats.CritPercent, editor.Percent(RatedStat.Crit), 9);
     }
 
     [Fact]

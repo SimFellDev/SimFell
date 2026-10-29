@@ -1,20 +1,14 @@
 {
   "Name": "Culex",
   "Hero": "Mara",
-  "PrimaryStat": 307,
-  "Stamina": 461,
+  "PrimaryStat": 207,
+  "Stamina": 361,
   "MaxHealth": 29052,
   "Armor": 610,
   "CritRating": 233,
   "HasteRating": 82,
   "ExpertiseRating": 114,
   "SpiritRating": 268,
-  "SheetPercents": {
-    "crit": 0.3912,
-    "haste": 0.1306,
-    "expertise": 0.1795,
-    "spirit": 0.3868
-  },
   "Talents": [
     586,
     422,
@@ -38,12 +32,12 @@
     {
       "Id": 69,
       "Rank": 4,
-      "Name": "Ursa\u0027s Might / Wolf\u0027s Guille / Vampire\u0027s Cunning"
+      "Name": "Ursa's Might / Wolf's Guille / Vampire's Cunning"
     },
     {
       "Id": 67,
       "Rank": 4,
-      "Name": "Revenant\u0027s Might / Wraith\u0027s Guille / Banshee\u0027s Cunning"
+      "Name": "Revenant's Might / Wraith's Guille / Banshee's Cunning"
     },
     {
       "Id": 5,
@@ -58,17 +52,17 @@
     {
       "Id": 66,
       "Rank": 4,
-      "Name": "Sun\u0027s Might / Star\u0027s Guille / Moon\u0027s Cunning "
+      "Name": "Sun's Might / Star's Guille / Moon's Cunning "
     },
     {
       "Id": 65,
       "Rank": 4,
-      "Name": "Behemoth\u0027s Might  / Jotunn\u0027s Guille / Titan\u0027s Cunning"
+      "Name": "Behemoth's Might  / Jotunn's Guille / Titan's Cunning"
     },
     {
       "Id": 70,
       "Rank": 4,
-      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+      "Name": "Manticore's Might / Basilisk's Guille / Spider's Cunning"
     },
     {
       "Id": 39,

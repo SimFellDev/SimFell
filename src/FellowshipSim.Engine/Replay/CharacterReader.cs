@@ -8,58 +8,48 @@ using FellowshipSim.Core.Import;
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// Reads the build a fight was played with from the player's combatantinfo event: character-sheet stats, and talents,
-/// augmentations, glyphs, gem powers, relic passive, legendary items and weapon by game ID.
+/// Reads the build a fight was played with from the player's combatantinfo event: the gear's own stats, and talents,
+/// augmentations, glyphs, gem sources, relic passive, legendary items and weapon by game ID.
 /// <para>
-/// Base percentages are derived from the logged ratings: every hero has 5% base Critical Strike and no base Spirit, and
-/// ratings convert at 0.16% per point through the diminishing-returns curve. Percentage bonuses from gem nodes and set
-/// bonuses are added by their own classes.
+/// The stats are the gear's raw ones, each item's listed attributes summed, before the hero's base stats, stat
+/// enchants, gem nodes, sigils and relics, which the engine adds as it imports the build. The combatantinfo totals
+/// (crit, strength, ...) include them all, so they are no input here.
 /// </para>
 /// </summary>
 public static class CharacterReader
 {
-    public const double PercentPerRating = 0.0016;
-    public const double BaseCrit = 0.05;
-    public const double BaseSpirit = 0.0;
     public const int MaxAugmentationRank = 4;
 
-    private static readonly double[] Breakpoints = [0.10, 0.15, 0.20, 0.25];
-    private static readonly double[] Multipliers = [1.0, 0.98, 0.96 * 0.98, 0.94 * 0.96 * 0.98, 0.92 * 0.94 * 0.96 * 0.98];
-
-    /// <summary>Gem colours in the order the build lists them.</summary>
-    private static readonly GemColor[] GemOrder = [GemColor.Sapphire, GemColor.Amethyst, GemColor.Emerald, GemColor.Ruby, GemColor.Diamond, GemColor.Topaz];
+    /// <summary>The names logs give the gear's stat attributes.</summary>
+    private const string CritAttribute = "Critical Strike", HasteAttribute = "Haste", ExpertiseAttribute = "Expertise",
+        SpiritAttribute = "Spirit", StaminaAttribute = "Stamina";
+    private static readonly string[] PrimaryAttributes = ["Strength", "Agility", "Intellect"];
 
     public static CharacterBuild FromCombatantInfo(JsonObject combatant, string playerName, string hero)
     {
-        var gemPower = GemOrder.ToDictionary(c => c, c => Num(combatant[c.ToString().ToLowerInvariant()]));
-
-        // ---- Base percentages from the ratings (gem and set percentage bonuses are added by their classes).
-        double crit = BaseCrit + Diminishing(Num(combatant["crit"]) * PercentPerRating);
-        double haste = Diminishing(Num(combatant["haste"]) * PercentPerRating);
-        double expertise = Diminishing(Num(combatant["expertise"]) * PercentPerRating);
-        double spirit = BaseSpirit + Diminishing(Num(combatant["spirit"]) * PercentPerRating);
-        static double Sheet(double value) => Math.Round(value * 10000) / 10000.0;
+        // The gear's own stats: every attribute each item lists.
+        var gear = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in combatant["gear"]?.AsArray() ?? [])
+        {
+            foreach (var attribute in item?["attributes"]?.AsArray() ?? [])
+            {
+                if (Str(attribute?["name"]) is { } name) gear[name] = gear.GetValueOrDefault(name) + Num(attribute?["value"]);
+            }
+        }
 
         var build = new CharacterBuild
         {
             Name = playerName,
             Hero = hero,
-            // Only the hero's own primary stat is non-zero.
-            PrimaryStat = new[] { "strength", "agility", "intellect" }.Max(k => Num(combatant[k])),
-            Stamina = Num(combatant["stamina"]),
+            // Only the hero's own primary stat is on their gear.
+            PrimaryStat = PrimaryAttributes.Max(gear.GetValueOrDefault),
+            Stamina = gear.GetValueOrDefault(StaminaAttribute),
             MaxHealth = Num(combatant["health"]),
             Armor = Num(combatant["armor"]),
-            CritRating = Num(combatant["crit"]),
-            HasteRating = Num(combatant["haste"]),
-            ExpertiseRating = Num(combatant["expertise"]),
-            SpiritRating = Num(combatant["spirit"]),
-            SheetPercents = new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["crit"] = Sheet(crit),
-                ["haste"] = Sheet(haste),
-                ["expertise"] = Sheet(expertise),
-                ["spirit"] = Sheet(spirit),
-            },
+            CritRating = gear.GetValueOrDefault(CritAttribute),
+            HasteRating = gear.GetValueOrDefault(HasteAttribute),
+            ExpertiseRating = gear.GetValueOrDefault(ExpertiseAttribute),
+            SpiritRating = gear.GetValueOrDefault(SpiritAttribute),
         };
 
         // Talents: talent ID + 2,000,000.
@@ -122,10 +112,12 @@ public static class CharacterReader
             int id = (int)Num(t?["id"]);
             int points = (int)Num(t?["points"]);
             if (points <= 0) continue;
-            // The weapon tree has a node per stat enchant (65 to 70); each point adds 1 to that enchant (per the user).
+            // The weapon tree has a node per stat enchant (65 to 70); each point is one more slot of that enchant, 6 rating
+            // to each of its stats (combat logs: the combatantinfo ratings are the gear's, the enchants' and the gem nodes'
+            // with 6 per point; at 1 per point every build with a point fell 5 short).
             if (id >= LogIds.AugmentationOffset && StatEnchant.Find(id - LogIds.AugmentationOffset) != null)
             {
-                AddRank(statEnchants, id - LogIds.AugmentationOffset, points, null);
+                AddRank(statEnchants, id - LogIds.AugmentationOffset, points * (int)StatEnchantSlotRating, null);
                 statEnchantCounts[id - LogIds.AugmentationOffset] = statEnchantCounts.GetValueOrDefault(id - LogIds.AugmentationOffset) + points;
             }
             else if (id >= LogIds.AugmentationOffset) AddRank(augmentations, id - LogIds.AugmentationOffset, points, null, cap: true);
@@ -136,16 +128,8 @@ public static class CharacterReader
         build.Glyphs.AddRange(glyphs.Select(b => new BuildEntry(b.Id, b.Rank, b.Name)));
         build.StatEnchants.AddRange(statEnchants.Select(e => new BuildEntry(e.Id, e.Rank, e.Name)));
         foreach (var (id, count) in statEnchantCounts) build.StatEnchantCounts[id] = count;
-        // A build's ratings are without its stat enchants. UNVERIFIED: the logged ratings are taken to count the enchants
-        // (they are the gear's totals); no log has confirmed it.
-        build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
-        build.HasteRating = Math.Max(0, build.HasteRating - build.EnchantRating(StatType.HasteRating));
-        build.ExpertiseRating = Math.Max(0, build.ExpertiseRating - build.EnchantRating(StatType.ExpertiseRating));
-        build.SpiritRating = Math.Max(0, build.SpiritRating - build.EnchantRating(StatType.SpiritRating));
-        foreach (var colour in GemOrder)
-        {
-            if (gemPower[colour] != 0) build.GemPower[colour] = gemPower[colour];
-        }
+        // The gem power of the sockets and the gear's bonuses, before the relics' multiplier (Covetous Greed).
+        foreach (var (color, power) in GemItem.PowerByColor(build.SocketedGemIds, build.GearGemBonuses, 1.0)) build.GemPower[color] = power;
         return build;
     }
 
@@ -165,25 +149,6 @@ public static class CharacterReader
         int total = list[i].Rank + rank;
         list[i] = (id, cap ? Math.Min(MaxAugmentationRank, total) : total, list[i].Name ?? name);
     }
-
-    /// <summary>A rating percentage after diminishing returns (the same curve as the engine's StatDiminishingReturns).</summary>
-    public static double Diminishing(double unmitigated)
-    {
-        if (unmitigated <= Breakpoints[0]) return unmitigated;
-        double result = Breakpoints[0], remaining = unmitigated - result, current = result;
-        for (int i = 1; i < Breakpoints.Length; i++)
-        {
-            double previous = current;
-            current += (Breakpoints[i] - Breakpoints[i - 1]) / Multipliers[i];
-            double segment = current - previous;
-            if (remaining <= segment) return result + remaining * Multipliers[i];
-            result += segment * Multipliers[i];
-            remaining -= segment;
-        }
-        return result + remaining * Multipliers[^1];
-    }
-
-    /// <summary>The bonus of the highest unlocked node of a gem whose name starts with <paramref name="namePrefix"/>.</summary>
 
     private static string? Str(JsonNode? n) => n is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 

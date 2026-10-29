@@ -139,12 +139,15 @@ public static class StatDiminishingReturns
 }
 
 /// <summary>
-/// A hero's base stats. Ratings and primary attribute come from gear; the character-sheet percentages,
-/// when known (imported from a log), already include passive bonuses and are used as the base percentages.
+/// A hero's base stats. Ratings, primary attribute and Stamina start from the gear's (with the hero's base) and every
+/// bonus adds to them as it binds.
 /// </summary>
 public class StatBlock
 {
     public const double BaseCritChance = 0.05;
+    /// <summary>Every hero's base Main Stat and Stamina (game data hero baseAttributes: 100 each for all 12 heroes).</summary>
+    public const double BasePrimaryStat = 100;
+    public const double BaseStamina = 100;
     /// <summary>
     /// Every hero's base Spirit: none. (The 10% once assumed here was Oracle's Foresight II + Death's Grasp, which nearly
     /// every logged build has; Xue, with only the gem, matches at 6%.)
@@ -157,14 +160,19 @@ public class StatBlock
     /// </summary>
     public const double HealthPerStamina = 56.0;
 
-    /// <summary>The primary stat (Intellect, Strength or Agility) from the character sheet.</summary>
+    /// <summary>The primary stat (Intellect, Strength or Agility): the gear's and the base, with the flat bonuses.</summary>
     public double PrimaryStat { get; set { field = value; Version++; } }
     public double Stamina { get; set; } = 635;
+    /// <summary>Multiplier on <see cref="Stamina"/> (Titan's Blood, the gem power overcap).</summary>
+    public double StaminaMultiplier { get; set; } = 1.0;
     public double Armor { get; set; } = 539;
+
+    /// <summary>Stamina with its multipliers.</summary>
+    public double TotalStamina => Stamina * StaminaMultiplier;
 
     /// <summary>Maximum health: the logged value when known, else estimated from Stamina.</summary>
     public double? LoggedMaxHealth { get; set; }
-    public double MaxHealth => LoggedMaxHealth ?? Stamina * HealthPerStamina;
+    public double MaxHealth => LoggedMaxHealth ?? TotalStamina * HealthPerStamina;
 
     public double CritRating { get; set { field = value; Version++; } }
     public double HasteRating { get; set { field = value; Version++; } }
@@ -177,36 +185,24 @@ public class StatBlock
     public double BonusExpertise { get; set { field = value; Version++; } }
     public double BonusSpirit { get; set { field = value; Version++; } }
 
-    /// <summary>Base percentages from the log's ratings; when set they replace the derived base percentages.</summary>
-    public double? SheetCritChance { get; set { field = value; Version++; } }
-    public double? SheetHaste { get; set { field = value; Version++; } }
-    public double? SheetExpertise { get; set { field = value; Version++; } }
-    public double? SheetSpirit { get; set { field = value; Version++; } }
-
-    /// <summary>
-    /// True when the stats come from a log. Its primary stat already includes always-on primary stat bonuses (gem nodes),
-    /// so those apply only when this is false; percentage bonuses always apply (the log has only ratings).
-    /// </summary>
-    public bool UsesSheetValues => SheetCritChance.HasValue;
-
     public double DerivedCritChance => BaseCritChance + StatDiminishingReturns.FromRating(CritRating);
     public double DerivedHaste => StatDiminishingReturns.FromRating(HasteRating);
     public double DerivedExpertise => StatDiminishingReturns.FromRating(ExpertiseRating);
     public double DerivedSpirit => BaseSpirit + StatDiminishingReturns.FromRating(SpiritRating);
 
-    public double CritPercent => (SheetCritChance ?? DerivedCritChance) + BonusCritChance;
-    public double HastePercent => (SheetHaste ?? DerivedHaste) + BonusHaste;
-    public double ExpertisePercent => (SheetExpertise ?? DerivedExpertise) + BonusExpertise;
-    public double SpiritPercent => (SheetSpirit ?? DerivedSpirit) + BonusSpirit;
+    public double CritPercent => DerivedCritChance + BonusCritChance;
+    public double HastePercent => DerivedHaste + BonusHaste;
+    public double ExpertisePercent => DerivedExpertise + BonusExpertise;
+    public double SpiritPercent => DerivedSpirit + BonusSpirit;
 
     public double CooldownReductionPct { get; set; }
 
-    /// <summary>Changes whenever the primary stat, a rating, a bonus percentage or a sheet percentage is set.</summary>
+    /// <summary>Changes whenever the primary stat, a rating or a bonus percentage is set.</summary>
     public int Version { get; private set; }
 
     /// <summary>
     /// Percentage for a rating stat after <paramref name="extraRating"/> more rating, keeping the base
-    /// percentage (sheet or derived) and adding only the diminishing-returns-adjusted difference.
+    /// percentage and adding only the diminishing-returns-adjusted difference.
     /// </summary>
     public static double WithExtraRating(double basePercent, double baseRating, double extraRating) =>
         extraRating == 0

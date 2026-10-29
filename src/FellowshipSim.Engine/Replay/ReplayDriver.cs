@@ -586,8 +586,8 @@ public sealed class ReplayDriver
     /// <summary>
     /// Situational auras (<see cref="Hero.SituationalAuras"/>) depend on what the engine does not simulate, so the replay
     /// gives the hero each one exactly when the log does. One whose first logged event is a loss was up as the fight began.
-    /// One on the Main Stat with no logged event was up the whole fight: the character sheet's Main Stat holds it (Might
-    /// of the Minotaur, taken out of the sheet as the hero is built), and it drops only below 80% health. A gem's
+    /// One on the Main Stat with no logged event was up the whole fight (Might of the Minotaur: it drops only below 80%
+    /// health, and the log's starting Main Stat includes it). A gem's
     /// situational nodes are followed at both ranks.
     /// </summary>
     private void FollowSituationalAuras()

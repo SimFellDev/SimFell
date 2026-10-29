@@ -2,8 +2,7 @@ namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
 /// Sigil 39: "Your Spirit Rating is increased by 7 / 11 / 17 / 23. Whenever you trigger a Spirit Refund your Main Stat is
-/// increased by 1.5% / 2.6% / 3.7% / 4.8% for 4 seconds." (effect 2078; the logged Spirit rating already includes the
-/// rating)
+/// increased by 1.5% / 2.6% / 3.7% / 4.8% for 4 seconds." (effect 2078)
 /// </summary>
 public class WillfulMomentum : Sigil
 {
@@ -21,7 +20,7 @@ public class WillfulMomentum : Sigil
 
     public override void Bind(Hero hero)
     {
-        if (!hero.Stats.UsesSheetValues) hero.Stats.SpiritRating += ForRank(SpiritRatingByRank);
+        hero.Stats.SpiritRating += ForRank(SpiritRatingByRank);
         var buff = Buff.WithModifiers(StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + ForRank(MainStatByRank)));
         hero.OnSpiritRefund += (_, _, ctx) => hero.Auras.Apply(buff, ctx.CurrentTime);
     }

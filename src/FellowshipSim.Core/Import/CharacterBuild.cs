@@ -6,7 +6,7 @@ namespace FellowshipSim.Core.Import;
 public sealed record BuildEntry(int Id, int Rank = 1, string? Name = null);
 
 /// <summary>
-/// A hero's build by game IDs: character-sheet stats, talents, augmentations, glyphs, gem powers, relic passive, legendary items
+/// A hero's build by game IDs: the gear's raw stats, talents, augmentations, glyphs, gem powers, relic passive, legendary items
 /// and weapon. FellowshipSim.Logs builds it from a combat log; it can also be written or edited by hand.
 /// <see cref="HeroImporter"/> turns it into a hero ready to simulate.
 /// </summary>
@@ -17,7 +17,7 @@ public class CharacterBuild
     /// <summary>The hero's name, e.g. "Rime" (its class in Heroes/).</summary>
     public string Hero { get; set; } = "";
 
-    // ---- character sheet
+    // ---- the gear's raw stats (the engine adds the base stats and every bonus)
     public double PrimaryStat { get; set; }
     public double Stamina { get; set; }
     /// <summary>Maximum health (the log's combatantinfo); 0 when unknown.</summary>
@@ -29,10 +29,10 @@ public class CharacterBuild
     public double SpiritRating { get; set; }
 
     /// <summary>
-    /// Character-sheet percentages ("crit", "haste", "expertise", "spirit") as logged. When set, they are used as the
-    /// hero's base percentages (they already include passive bonuses such as gem nodes).
+    /// True when the stats came from a profile written before builds held the gear's raw stats: its percentages became
+    /// ratings as they were, and its stats likely count bonuses the engine adds again. Editing a stat clears it.
     /// </summary>
-    public Dictionary<string, double> SheetPercents { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public bool StatsFromOldProfile { get; set; }
 
     // ---- build, by game ID
     /// <summary>Talent IDs, in the order they were picked.</summary>
@@ -40,7 +40,7 @@ public class CharacterBuild
     /// <summary>Aspects, sigils and protective enchants.</summary>
     public List<BuildEntry> Augmentations { get; set; } = new();
     public List<BuildEntry> Glyphs { get; set; } = new();
-    /// <summary>Each colour's gem power as the character sheet shows it (the relics' multiplier included).</summary>
+    /// <summary>Each colour's gem power from the gear: its sockets and bonuses, before the relics' multiplier.</summary>
     public Dictionary<GemColor, double> GemPower { get; set; } = new();
     /// <summary>
     /// Where the gem power comes from, when known: the gem IDs in the gear's sockets (up to
@@ -51,7 +51,7 @@ public class CharacterBuild
     public Dictionary<GemColor, int> GearGemBonuses { get; set; } = new();
     /// <summary>
     /// Stat enchants: the enchant's ID (65 to 70) and the rating it adds to each of its two stats, summed over the items
-    /// that have it. The ratings above are without them; a character sheet's percentages include them.
+    /// that have it. The ratings above are without them; the engine adds them.
     /// </summary>
     public List<BuildEntry> StatEnchants { get; set; } = new();
     /// <summary>

@@ -2,6 +2,7 @@
 @using Microsoft.JSInterop
 @using FellowshipSim.Core.Customization.Gems
 @using FellowshipSim.Core.Import
+@using FellowshipSim.Core.Engine
 @using FellowshipSim.Core.Customization.ProtectiveEnchants
 @using FellowshipSim.Core.Customization.RelicPassives
 @inject ISimEngine Engine
@@ -101,35 +102,39 @@
             <h3 class="section">Character sheet</h3>
             <div class="sheet">
                 <span class="sheet-label">Main stat</span>
-                <strong>@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</strong>
+                <strong>@Editor.TotalMainStat.ToString("N0", CultureInfo.CurrentCulture)</strong>
                 @foreach (var stat in BuildEditor.InGameOrder)
                 {
-                    <span class="sheet-label" data-tooltip="@SheetNote(stat)">@StatName(stat)</span>
+                    <span class="sheet-label">@StatName(stat)</span>
                     <strong class="percent">@Editor.Percent(stat).ToString("P2", CultureInfo.CurrentCulture)</strong>
                 }
             </div>
             <h3 class="section">Stats</h3>
-            @* Gear: the stats typed in, as the gear gives them. Total: with what the game adds (the base main stat, the stat enchants). *@
+            @if (Editor.StatsFromOldProfile)
+            {
+                <p class="field-warning">These stats come from a profile saved before an update and are likely incorrect: they may count bonuses twice. Import the character again, or enter the gear's own stats.</p>
+            }
+            @* Gear: the stats typed in, as the gear gives them. Total: what a sim starts with (the base stats, stat enchants, gem nodes, sigils). *@
             <div class="ratings">
                 <div class="stat-group">
                     <span>Primary</span>
                     <span class="rating">
                         <span class="column" data-tooltip="The stats the gear gives">Gear</span>
-                        <span class="total" data-tooltip="With the base main stat and the stat enchants">Total</span>
+                        <span class="total" data-tooltip="What a sim starts with: the gear's, the base stats, the stat enchants, the gem nodes and the sigils">Total</span>
                     </span>
                 </div>
                 <label>
                     Stamina
                     <span class="rating">
-                        <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Build.Stamina = Math.Max(0, v))" />
-                        <span class="total"></span>
+                        <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Editor.SetStamina(v))" />
+                        <span class="total" data-tooltip="Total Stamina: the base, the gear's and the gem nodes'">@Editor.TotalStamina.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
                 </label>
-                <label data-tooltip="@($"The gear's main stat; the total adds the base {BuildEditor.BaseMainStat:0}")">
+                <label data-tooltip="@($"The gear's main stat; the total adds the base {StatBlock.BasePrimaryStat:0} and every bonus")">
                     Main stat
                     <span class="rating">
-                        <input type="number" min="0" step="1" aria-label="Main stat from gear" @bind:get="Editor.MainStatBonus" @bind:set="v => Set(() => Editor.MainStatBonus = v)" />
-                        <span class="total" data-tooltip="@($"Total main stat: the base {BuildEditor.BaseMainStat:0} and the gear's")">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
+                        <input type="number" min="0" step="1" aria-label="Main stat from gear" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Editor.SetPrimaryStat(v))" />
+                        <span class="total" data-tooltip="Total main stat: the base, the gear's and every bonus">@Editor.TotalMainStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
                 </label>
                 <div class="stat-group">
@@ -137,11 +142,11 @@
                 </div>
                 @foreach (var stat in BuildEditor.InGameOrder)
                 {
-                    <label @key="stat" data-tooltip="@SheetNote(stat)">
+                    <label @key="stat">
                         @StatName(stat)
                         <span class="rating">
                             <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
-                            <span class="total" data-tooltip="Total rating: the gear's and the stat enchants'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
+                            <span class="total" data-tooltip="Total rating: the gear's, the stat enchants', the gem nodes' and the sigils'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
                         </span>
                     </label>
                 }
@@ -602,7 +607,6 @@
     // The rating's percentage is the log's character sheet until the rating changes.
     private static string StatName(RatedStat stat) => stat == RatedStat.Crit ? "Critical strike" : stat.ToString();
 
-    private string? SheetNote(RatedStat stat) => Editor.PercentFromLog(stat) ? "From the log's character sheet until you change the rating" : null;
 
     // A copy of the build, not saved yet, named after it.
     private Task Duplicate()

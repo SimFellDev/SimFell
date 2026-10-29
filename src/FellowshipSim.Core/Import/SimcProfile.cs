@@ -12,13 +12,18 @@ namespace FellowshipSim.Core.Import;
 
 /// <summary>
 /// A character profile in simc style: one <c>key=value</c> per line, names as action-list names ("winters_blessing").
-/// Stats are exact percentages; each rating is the one that gives its percentage. With percentages, <c>gems</c> is the
-/// character sheet's gem power (Covetous Greed included).
+/// Stats are the gear's raw ones: Main Stat, Stamina and ratings as the items list them, without the hero's base stats,
+/// stat enchants (<c>stat_enchants</c> lists those), gem nodes, sigils or relics, which the engine adds; <c>gems</c> is
+/// the sockets' and gear bonuses' gem power, without Covetous Greed. A profile written before gives the ratings as the
+/// character sheet's percentages (<c>crit=30%</c>), and its Main Stat and gem power with their bonuses: it reads as it
+/// is, each percentage as the rating that gives it, and is marked (<c>stats_from_old_profile=true</c>) as likely wrong
+/// until its stats are edited.
 /// <code>
 /// rime="sww"
-/// primary_stat=300
-/// crit=30%
-/// haste=24%
+/// primary_stat=161
+/// stamina=306
+/// crit_rating=89
+/// haste_rating=71
 /// talents=avalanche/coalescing_frost/...
 /// aspects=martial_initiative:2/...
 /// sigils=hunters_focus:1/...
@@ -43,6 +48,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
     {
         var build = new CharacterBuild();
         var actions = new StringBuilder();
+        var percents = new HashSet<string>();
         Hero? hero = null;
         int lineNumber = 0;
         foreach (string raw in text.Split('\n'))
@@ -70,7 +76,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     hero = Catalog.CreateHero(heroName);
                     continue;
                 }
-                Read(build, hero, key, value);
+                Read(build, hero, key, value, percents);
             }
             catch (FormatException e)
             {
@@ -78,35 +84,41 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             }
         }
         if (hero == null) throw new FormatException("The profile has no hero line.");
-        // The ratings read from the percentages count the stat enchants; a build's ratings are without them.
-        build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
-        build.HasteRating = Math.Max(0, build.HasteRating - build.EnchantRating(StatType.HasteRating));
-        build.ExpertiseRating = Math.Max(0, build.ExpertiseRating - build.EnchantRating(StatType.ExpertiseRating));
-        build.SpiritRating = Math.Max(0, build.SpiritRating - build.EnchantRating(StatType.SpiritRating));
+        // The ratings read from percentages count the stat enchants; a build's ratings are without them.
+        if (percents.Contains("crit")) build.CritRating = Math.Max(0, build.CritRating - build.EnchantRating(StatType.CritRating));
+        if (percents.Contains("haste")) build.HasteRating = Math.Max(0, build.HasteRating - build.EnchantRating(StatType.HasteRating));
+        if (percents.Contains("expertise")) build.ExpertiseRating = Math.Max(0, build.ExpertiseRating - build.EnchantRating(StatType.ExpertiseRating));
+        if (percents.Contains("spirit")) build.SpiritRating = Math.Max(0, build.SpiritRating - build.EnchantRating(StatType.SpiritRating));
+        if (percents.Count > 0) build.StatsFromOldProfile = true;
         return new SimcProfile(build, actions.ToString());
     }
 
-    private static void Read(CharacterBuild build, Hero hero, string key, string value)
+    private static void Read(CharacterBuild build, Hero hero, string key, string value, HashSet<string> percents)
     {
         switch (key)
         {
             case "primary_stat": build.PrimaryStat = Number(value); break;
             case "stamina": build.Stamina = Number(value); break;
             case "armor": build.Armor = Number(value); break;
+            case "crit_rating": build.CritRating = Number(value); break;
+            case "haste_rating": build.HasteRating = Number(value); break;
+            case "expertise_rating": build.ExpertiseRating = Number(value); break;
+            case "spirit_rating": build.SpiritRating = Number(value); break;
+            case "stats_from_old_profile": build.StatsFromOldProfile = value == "true"; break;
             case "crit":
-                build.SheetPercents["crit"] = Percent(value);
+                percents.Add("crit");
                 build.CritRating = StatDiminishingReturns.ToRating(Percent(value) - StatBlock.BaseCritChance);
                 break;
             case "haste":
-                build.SheetPercents["haste"] = Percent(value);
+                percents.Add("haste");
                 build.HasteRating = StatDiminishingReturns.ToRating(Percent(value));
                 break;
             case "expertise":
-                build.SheetPercents["expertise"] = Percent(value);
+                percents.Add("expertise");
                 build.ExpertiseRating = StatDiminishingReturns.ToRating(Percent(value));
                 break;
             case "spirit":
-                build.SheetPercents["spirit"] = Percent(value);
+                percents.Add("spirit");
                 build.SpiritRating = StatDiminishingReturns.ToRating(Percent(value) - StatBlock.BaseSpirit);
                 break;
             case "talents":
@@ -188,14 +200,11 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         s.AppendLine($"primary_stat={Text(build.PrimaryStat)}");
         if (build.Stamina > 0) s.AppendLine($"stamina={Text(build.Stamina)}");
         if (build.Armor > 0) s.AppendLine($"armor={Text(build.Armor)}");
-        // The log's character sheet when there is one, otherwise the percentages of the ratings with the stat enchants'.
-        double Sheet(string stat, double baseValue, double rating, StatType ratingType) =>
-            build.SheetPercents.TryGetValue(stat, out double sheet) ? sheet
-                : baseValue + StatDiminishingReturns.FromRating(rating + build.EnchantRating(ratingType));
-        s.AppendLine($"crit={PercentText(Sheet("crit", StatBlock.BaseCritChance, build.CritRating, StatType.CritRating))}");
-        s.AppendLine($"haste={PercentText(Sheet("haste", 0, build.HasteRating, StatType.HasteRating))}");
-        s.AppendLine($"expertise={PercentText(Sheet("expertise", 0, build.ExpertiseRating, StatType.ExpertiseRating))}");
-        s.AppendLine($"spirit={PercentText(Sheet("spirit", StatBlock.BaseSpirit, build.SpiritRating, StatType.SpiritRating))}");
+        s.AppendLine($"crit_rating={Text(build.CritRating)}");
+        s.AppendLine($"haste_rating={Text(build.HasteRating)}");
+        s.AppendLine($"expertise_rating={Text(build.ExpertiseRating)}");
+        s.AppendLine($"spirit_rating={Text(build.SpiritRating)}");
+        if (build.StatsFromOldProfile) s.AppendLine("stats_from_old_profile=true");
         if (build.Talents.Count > 0)
         {
             s.AppendLine($"talents={string.Join('/', build.Talents.Select(id => AplNames.Slug(Catalog.CreateTalent(id)?.Name ?? throw new InvalidOperationException($"Talent {id} is not modeled"))))}");
@@ -327,6 +336,4 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
     }
 
     private static string Text(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
-
-    private static string PercentText(double fraction) => $"{Text(Math.Round(fraction * 100, 2))}%";
 }

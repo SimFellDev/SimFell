@@ -33,23 +33,25 @@ public class Ruby : Gem
         switch (node.Slot)
         {
             case 1: // Might of the Minotaur: Main Stat while above 80% health (situational: the engine does not track your health).
-                // A logged Main Stat already includes it. Combat logs (Rime's combatantinfo in the 15 fights of
-                // docs/accuracy/rime-accuracy-v1.md): Intellect over (hero baseAttributes Intellect 100 + gear Intellect +
+                // Combat logs (Rime's combatantinfo in the 15 fights of docs/accuracy/rime-accuracy-v1.md): Intellect over (hero baseAttributes Intellect 100 + gear Intellect +
                 // Champion's Heart + Stoic's Teachings) is 1.100 without Ruby (GWChJ8P7tn6fHgV3 #20, #22: Mote of
                 // Creation, effect 3085), 1.122-1.126 with node 296 (4Ln6PQZCRzc7Wpta #77, D1fBhVPkwYKXWbpr #1,
                 // N18KtgP3rvpYGm24 #27, XNpG3AYWM8rq2zwx #19) and 1.165 with node 297 (NhBnFXmy3bJg9Cav #32, #33); the
                 // aura's first logged event is its removal in every such fight, so it was up as the fight began.
-                if (hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat /= 1.0 + node.Value("PrimaryStatIncrease");
                 hero.SituationalAuras.Add(node.Grants!);
                 return true;
             case 5: // Blessing of the Conqueror: damage while in combat with a boss (situational; a sim's fight may have none).
                 hero.SituationalAuras.Add(node.Grants!);
                 hero.BossAuras.Add(node.Grants!);
                 return true;
-            case 2: // Champion's Heart: flat Main Stat (a logged Main Stat already includes it).
-                if (!hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat += node.Value("PrimaryStatBonus");
+            case 2: // Champion's Heart: flat Main Stat and Stamina.
+                hero.Stats.PrimaryStat += node.Value("PrimaryStatBonus");
+                hero.Stats.Stamina += node.Value("StaminaBonus");
                 return true;
-            default: // Unyielding Vitality (healing) and Titan's Blood (Stamina) do not affect damage.
+            case 4: // Titan's Blood: Stamina.
+                hero.Stats.StaminaMultiplier *= 1.0 + node.Value("StaminaIncrease");
+                return true;
+            default: // Unyielding Vitality (healing) does not affect damage.
                 return true;
         }
     }

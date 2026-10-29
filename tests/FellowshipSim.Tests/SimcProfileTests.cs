@@ -11,10 +11,10 @@ public class SimcProfileTests
     private const string Profile = """
         rime="sww"
         primary_stat=300
-        crit=30%
-        haste=24%
-        expertise=0%
-        spirit=0%
+        crit_rating=153
+        haste_rating=148
+        expertise_rating=0
+        spirit_rating=0
         talents=avalanche/coalescing_frost/cold_shower/chilling_finesse/cascading_blitz/bursting_swallows/soulfrost_torrent/supreme_torrent/wisdom_of_the_north
         aspects=martial_initiative:2
         sigils=hunters_focus:1
@@ -45,8 +45,26 @@ public class SimcProfileTests
         Assert.Contains(SoulfrostTorrent.TalentId, profile.Build.Talents);
         Assert.Equal([FrostwyrmsSpite.HelmItemId], profile.Build.LegendaryItemIds);
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent") || f.StartsWith("Legendary"));
+        Assert.Equal(StatDiminishingReturns.FromRating(148), hero.Stats.HastePercent, 9);
+        Assert.Equal(StatBlock.BaseCritChance + StatDiminishingReturns.FromRating(153), hero.Stats.CritPercent, 9);
+    }
+
+    [Fact]
+    public void An_Old_Percentage_Profile_Reads_As_It_Is_And_Is_Marked()
+    {
+        // Each percentage reads as the rating that gives it; the Main Stat as the gear's.
+        var profile = SimcProfile.Parse("rime=\"x\"\nprimary_stat=300\ncrit=30%\nhaste=24%");
+        Assert.True(profile.Build.StatsFromOldProfile);
+        var hero = HeroImporter.Import(profile.Build);
         Assert.Equal(0.24, hero.Stats.HastePercent, 6);
         Assert.Equal(0.30, hero.Stats.CritPercent, 6);
+        Assert.Equal(300 + StatBlock.BasePrimaryStat, hero.Stats.PrimaryStat);
+
+        // It is written as ratings, still marked.
+        var written = profile.Format();
+        Assert.DoesNotContain("%", written);
+        Assert.Contains("stats_from_old_profile=true", written);
+        Assert.True(SimcProfile.Parse(written).Build.StatsFromOldProfile);
     }
 
     [Fact]

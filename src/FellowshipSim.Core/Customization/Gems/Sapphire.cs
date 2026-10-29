@@ -35,7 +35,9 @@ public class Sapphire : Gem
                 hero.AddMaxSpiritPoints(node.Value("SpiritPointsBonus"));
                 hero.SpiritOfHeroismAuras.Add(hero.Register(node.Grants!));
                 return true;
-            case 2: // Mystic's Intuition: flat Stamina/Spirit rating (in the sheet ratings).
+            case 2: // Mystic's Intuition: flat Stamina and Spirit rating.
+                hero.Stats.SpiritRating += node.Value("SpiritBonus");
+                hero.Stats.Stamina += node.Value("StaminaBonus");
                 return true;
             case 4: // Oracle's Foresight: Spirit.
                 hero.Stats.BonusSpirit += node.Value("SpiritBonus");

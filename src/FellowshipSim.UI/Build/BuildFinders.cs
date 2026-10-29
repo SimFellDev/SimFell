@@ -86,9 +86,9 @@ public static class BuildFinders
 
     private static List<BuildVariant> Gems(CharacterBuild build, FinderRanks ranks)
     {
-        // The power a sim gives each colour: the build's, times the relics' multiplier unless it is a sheet's.
+        // The power a sim gives each colour: the build's, times the relics' multiplier.
         var hero = HeroImporter.Import(build);
-        double multiplier = hero.Stats.UsesSheetValues ? 1.0 : hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
+        double multiplier = hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
         var variants = new List<BuildVariant>();
         foreach (var color in BuildCatalog.GemColors)
         {

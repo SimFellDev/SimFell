@@ -1,20 +1,14 @@
 {
   "Name": "ruru",
   "Hero": "Elarion",
-  "PrimaryStat": 303,
-  "Stamina": 532,
+  "PrimaryStat": 203,
+  "Stamina": 432,
   "MaxHealth": 32231,
   "Armor": 675,
   "CritRating": 90,
   "HasteRating": 165,
   "ExpertiseRating": 139,
   "SpiritRating": 246,
-  "SheetPercents": {
-    "crit": 0.1931,
-    "haste": 0.2527,
-    "expertise": 0.2161,
-    "spirit": 0.3581
-  },
   "Talents": [
     124,
     203,
@@ -40,7 +34,7 @@
     {
       "Id": 69,
       "Rank": 4,
-      "Name": "Ursa\u0027s Might / Wolf\u0027s Guille / Vampire\u0027s Cunning"
+      "Name": "Ursa's Might / Wolf's Guille / Vampire's Cunning"
     },
     {
       "Id": 34,
@@ -50,22 +44,22 @@
     {
       "Id": 70,
       "Rank": 4,
-      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+      "Name": "Manticore's Might / Basilisk's Guille / Spider's Cunning"
     },
     {
       "Id": 42,
       "Rank": 1,
-      "Name": "Hunter\u0027s Focus"
+      "Name": "Hunter's Focus"
     },
     {
       "Id": 68,
       "Rank": 4,
-      "Name": "Gryphon\u0027s Might / Phoenix\u0027s Guille / Sphinx\u0027s Cunning"
+      "Name": "Gryphon's Might / Phoenix's Guille / Sphinx's Cunning"
     },
     {
       "Id": 67,
       "Rank": 4,
-      "Name": "Revenant\u0027s Might / Wraith\u0027s Guille / Banshee\u0027s Cunning"
+      "Name": "Revenant's Might / Wraith's Guille / Banshee's Cunning"
     },
     {
       "Id": 39,

@@ -1,20 +1,14 @@
 {
   "Name": "Culex",
   "Hero": "Gunde",
-  "PrimaryStat": 332,
-  "Stamina": 536,
+  "PrimaryStat": 232,
+  "Stamina": 436,
   "MaxHealth": 30610,
   "Armor": 598,
   "CritRating": 78,
   "HasteRating": 253,
   "ExpertiseRating": 86,
   "SpiritRating": 128,
-  "SheetPercents": {
-    "crit": 0.1743,
-    "haste": 0.3672,
-    "expertise": 0.1368,
-    "spirit": 0.2006
-  },
   "Talents": [
     750,
     751,
@@ -35,7 +29,7 @@
     {
       "Id": 42,
       "Rank": 4,
-      "Name": "Hunter\u0027s Focus"
+      "Name": "Hunter's Focus"
     },
     {
       "Id": 51,

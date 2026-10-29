@@ -57,11 +57,11 @@ public class Diamond : Gem
                     // Harmonious Soul expires, you lose 1 stack."
                 BindHarmoniousSoul(hero, node);
                 return true;
-            case 2: // Stoic's Teachings: flat Main Stat (a logged Main Stat already includes it) and Armor.
-                if (!hero.Stats.UsesSheetValues) hero.Stats.PrimaryStat += node.Value("PrimaryStatBonus");
+            case 2: // Stoic's Teachings: flat Main Stat and Armor.
+                hero.Stats.PrimaryStat += node.Value("PrimaryStatBonus");
                 return true;
-            case 4: // Ancient's Wisdom: Main Stat (a logged Main Stat already includes it).
-                if (!hero.Stats.UsesSheetValues) hero.PassiveAuras.Add(node.Grants!);
+            case 4: // Ancient's Wisdom: Main Stat.
+                hero.PassiveAuras.Add(node.Grants!);
                 return true;
             default: // Tranquil Resolve (defensive) and Blessing of the Artisan (Relic cooldowns) do not affect damage.
                 return true;

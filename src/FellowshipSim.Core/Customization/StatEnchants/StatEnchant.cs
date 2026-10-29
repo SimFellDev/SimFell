@@ -6,9 +6,8 @@ namespace FellowshipSim.Core.Customization.StatEnchants;
 /// A stat enchant (new in 0.5.0.0; datamine "enchant" records, ItemTrait.TraitCategory.StatEnchant): each rank adds 1
 /// rating to each of two stats, up to <see cref="MaxRankPerItem"/> on one item. One ID per pair of stats, named after the
 /// main stat of the item it is on (Strength "Might", Agility "Guile", Intellect "Cunning"). Combat logs list it among an
-/// item's augmentations (ID + 3,000,000) with its rank. A character sheet's ratings already include them (combat logs:
-/// the engine's crit chance from the logged ratings matches the log's crit rate within a point for players with up to six
-/// enchants).
+/// item's augmentations (ID + 3,000,000) with its rank. The log's combatantinfo ratings include them; a build's ratings
+/// are the gear's without them.
 /// </summary>
 public sealed record StatEnchant(int Id, string StrengthName, string AgilityName, string IntellectName, StatType FirstRating, StatType SecondRating)
 {

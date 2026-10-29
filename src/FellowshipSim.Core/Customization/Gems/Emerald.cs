@@ -38,7 +38,9 @@ public class Emerald : Gem
             case 1: // First Strike: Expertise for 15s when dealing damage to an enemy for the first time.
                 BindFirstStrike(hero, node);
                 return true;
-            case 2: // Vanguard's Resolve: flat Stamina/Expertise rating (in the sheet ratings).
+            case 2: // Vanguard's Resolve: flat Stamina and Expertise rating.
+                hero.Stats.ExpertiseRating += node.Value("ExpertiseBonus");
+                hero.Stats.Stamina += node.Value("StaminaBonus");
                 return true;
             case 4: // Tactician's Accumen: Expertise.
                 hero.Stats.BonusExpertise += node.Value("ExpertiseBonus");
