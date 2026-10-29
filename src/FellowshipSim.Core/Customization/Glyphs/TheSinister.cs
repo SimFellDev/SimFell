@@ -1,3 +1,5 @@
+using FellowshipSim.Core.Heroes.Rime.Abilities;
+
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
@@ -7,7 +9,8 @@ namespace FellowshipSim.Core.Customization.Glyphs;
 /// same multiple of a normal pulse with the glyph as without it (crit over normal, log against engine: Slick at rank 4
 /// 0.830 = 1/1.20, Loreuxe at rank 1 0.951 = 1/1.05; 4Ln6PQZCRzc7Wpta fights 77 and 78, jHDC613ZzbTYR8wW fight 18), and
 /// crit less often than the engine's chance with the glyph's (Slick 56.4% against 60.7%, Loreuxe 45.2% against 47.3%);
-/// their Freezing Torrent ticks have it (crit over normal 1.013, 0.997).
+/// their Freezing Torrent ticks have it (crit over normal 1.013, 0.997). UNVERIFIED for Tariq's Heavy Strike and Chain
+/// Lightning: no downloaded log has the glyph on Tariq.
 /// </summary>
 public class TheSinister : Glyph
 {
@@ -21,7 +24,8 @@ public class TheSinister : Glyph
 
     public override void Bind(Hero hero)
     {
-        foreach (var ability in hero.Abilities.Where(a => a.Category == AbilityCategory.Core && a.DamageLogId == a.Id))
+        // Every Core ability but Bursting Ice, whose pulses the logs show without the glyph.
+        foreach (var ability in hero.Abilities.Where(a => a.Category == AbilityCategory.Core && a is not BurstingIce))
         {
             ability.CritChanceBonus += ForRank(CritChanceByRank);
             ability.CritPowerMultiplier *= 1.0 + ForRank(CritPowerByRank);
