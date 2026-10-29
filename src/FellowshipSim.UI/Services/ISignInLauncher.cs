@@ -10,10 +10,11 @@ namespace FellowshipSim.UI.Services;
 public interface ISignInLauncher
 {
     /// <summary>
-    /// Starts a sign-in from the page at <paramref name="returnTo"/>. Returns the user's token when the sign-in completes
-    /// in this call; null when the page goes to FellowshipLogs and the sign-in completes where it comes back.
+    /// Starts a sign-in to SimFell's client <paramref name="clientId"/> from the page at <paramref name="returnTo"/>.
+    /// Returns the user's token when the sign-in completes in this call; null when the page goes to FellowshipLogs and the
+    /// sign-in completes where it comes back.
     /// </summary>
-    Task<LogsUserToken?> SignInAsync(HttpClient http, string returnTo, CancellationToken ct);
+    Task<LogsUserToken?> SignInAsync(HttpClient http, string clientId, string returnTo, CancellationToken ct);
 
     /// <summary>The sign-in this host started and sent the page away for, taken (so it completes once); null when none.</summary>
     Task<PendingSignIn?> TakePendingAsync();

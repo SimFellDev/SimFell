@@ -5,6 +5,9 @@
 # Run it by hand: Actions > Deploy web app > Run workflow. It needs the secret SIMFELL_PAGES: a fine-grained token with
 # "Contents: Read and write" on SimFellDev/simfelldev.github.io alone. That repository's Pages settings serve its main
 # branch, from the root.
+#
+# Its job runs in the environment "web", which has the secret FELLOWSHIPLOGS_SIGNIN_CLIENT_ID: SimFell's public
+# FellowshipLogs API client for signing users in, registered for https://simfelldev.github.io/signin.
 name: Deploy web app
 
 on:
@@ -17,11 +20,20 @@ jobs:
   deploy:
     name: Build and publish
     runs-on: ubuntu-latest
+    environment: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      # The client ID is in the published site (its appsettings.json), never in the repository.
+      - name: Write the sign-in client to settings.json
+        env:
+          CLIENT_ID: ${{ secrets.FELLOWSHIPLOGS_SIGNIN_CLIENT_ID }}
+        run: |
+          if [ -z "$CLIENT_ID" ]; then echo "::error::The environment web has no secret FELLOWSHIPLOGS_SIGNIN_CLIENT_ID."; exit 1; fi
+          printf '{ "FELLOWSHIPLOGS_SIGNIN_CLIENT_ID": "%s" }\n' "$CLIENT_ID" > settings.json
 
       # Ahead-of-time compiled: sims run about three times as fast as interpreted, for a larger first download.
       - name: Install the WebAssembly tools

@@ -19,8 +19,11 @@ SimFell runs in three ways. They share the same engine:
 - To download fights, a FellowshipLogs account: **Sign in with FellowshipLogs** (top bar, or the Import cards) signs you in
   with SimFell's public API client (OAuth with PKCE, no secret), and your requests spend your own FellowshipLogs points
   first. The browser app comes back to `/signin`; the desktop and local apps open your browser and catch the way back on
-  `http://127.0.0.1:47213/signin`. A developer can instead put an API client of their own in `settings.json` at the
-  repository's root, which git ignores: `{ "FELLOWSHIPLOGS_CLIENT_ID": "...", "FELLOWSHIPLOGS_CLIENT_SECRET": "..." }`.
+  `http://127.0.0.1:47213/signin`. The public client's ID is the configuration key `FELLOWSHIPLOGS_SIGNIN_CLIENT_ID`,
+  and an app without it has no sign-in. The release and deploy workflows take it from the secret of that name in their
+  GitHub environments (`release`, `web`). A developer puts it in `settings.json` at the repository's root, which git
+  ignores, with an API client of their own if they have one:
+  `{ "FELLOWSHIPLOGS_SIGNIN_CLIENT_ID": "...", "FELLOWSHIPLOGS_CLIENT_ID": "...", "FELLOWSHIPLOGS_CLIENT_SECRET": "..." }`.
   Every app's build copies it in
 
 ## Build
@@ -97,7 +100,8 @@ its own, and a sim gives the same result as on the desktop app. Its files stay i
 action lists, settings, the newest 20 sims and the newest 10 reviews. A replay downloads its fight on a worker, which keeps
 the newest 5 fights in the browser's storage apart from the page, so replaying one again spends no FellowshipLogs points. Builds and action lists
 also download as `.simc` files. Visitors sign in with their own FellowshipLogs account to import and replay fights; it
-takes no API client from them. Locally its build takes the repository's `settings.json` as its `wwwroot/appsettings.json`.
+takes no API client from them. Its build takes the repository's `settings.json` as its `wwwroot/appsettings.json`, its
+only configuration (a browser has no environment or user secrets).
 
 ```
 dotnet run --project src/FellowshipSim.Web
@@ -105,7 +109,8 @@ dotnet run --project src/FellowshipSim.Web
 
 The **Deploy web app** workflow (Actions, run by hand) publishes it ahead-of-time compiled to
 https://simfelldev.github.io, from the public SimFellDev/simfelldev.github.io. It needs the secret `SIMFELL_PAGES`, a
-fine-grained token with "Contents: Read and write" on that repository alone.
+fine-grained token with "Contents: Read and write" on that repository alone, and the secret
+`FELLOWSHIPLOGS_SIGNIN_CLIENT_ID` in the environment `web`.
 
 ## Sim a profile
 

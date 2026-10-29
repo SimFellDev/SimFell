@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FellowshipSim.Logs;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FellowshipSim.UI.Services;
@@ -8,20 +9,23 @@ namespace FellowshipSim.UI.Services;
 /// The user signed in to FellowshipLogs (<see cref="FellowshipLogsSignIn"/>): their token, in <c>signin.json</c> in the
 /// data folder (in the browser app, the browser's storage), renewed from its refresh token as it expires. Their requests
 /// spend their own FellowshipLogs points first. The host's <see cref="ISignInLauncher"/> runs the sign-in itself; without
-/// one, there is none (<see cref="CanSignIn"/>).
+/// one, or without SimFell's sign-in client in the configuration (<see cref="LogsSettingsStore.SignInClientIdKey"/>), there is
+/// none (<see cref="CanSignIn"/>).
 /// </summary>
-public sealed class LogsSignIn(ReplayLibrary library, IHttpClientFactory httpClients, IServiceProvider services)
+public sealed class LogsSignIn(ReplayLibrary library, IHttpClientFactory httpClients, IConfiguration configuration, IServiceProvider services)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerOptions.Web) { WriteIndented = true };
 
     private ISignInLauncher? Launcher => services.GetService<ISignInLauncher>();
+
+    private string? ClientId => configuration[LogsSettingsStore.SignInClientIdKey] is { } id && !string.IsNullOrWhiteSpace(id) ? id : null;
 
     private HttpClient Http => httpClients.CreateClient(LogsSettingsStore.HttpClientName);
 
     private string TokenPath => Path.Combine(library.DataDirectory, "signin.json");
 
     /// <summary>True when the host can sign a user in.</summary>
-    public bool CanSignIn => Launcher != null;
+    public bool CanSignIn => Launcher != null && ClientId != null;
 
     /// <summary>True while a user is signed in (their token may have to be renewed before use).</summary>
     public bool SignedIn => Load() != null;
@@ -35,8 +39,8 @@ public sealed class LogsSignIn(ReplayLibrary library, IHttpClientFactory httpCli
     /// </summary>
     public async Task SignInAsync(string returnTo, CancellationToken ct = default)
     {
-        var launcher = Launcher ?? throw new InvalidOperationException("This app has no FellowshipLogs sign-in.");
-        if (await launcher.SignInAsync(Http, returnTo, ct) is { } token) Save(token);
+        if (Launcher is not { } launcher || ClientId is not { } clientId) throw new InvalidOperationException("This app has no FellowshipLogs sign-in.");
+        if (await launcher.SignInAsync(Http, clientId, returnTo, ct) is { } token) Save(token);
     }
 
     /// <summary>
@@ -52,7 +56,7 @@ public sealed class LogsSignIn(ReplayLibrary library, IHttpClientFactory httpCli
         {
             throw new FellowshipLogsException("This sign-in did not start here. Sign in again.");
         }
-        Save(await FellowshipLogsSignIn.ExchangeAsync(Http, code, pending.Verifier, pending.Redirect, ct));
+        Save(await FellowshipLogsSignIn.ExchangeAsync(Http, ClientId ?? throw new FellowshipLogsException("This app has no FellowshipLogs sign-in."), code, pending.Verifier, pending.Redirect, ct));
         return pending.ReturnTo;
     }
 
@@ -61,11 +65,11 @@ public sealed class LogsSignIn(ReplayLibrary library, IHttpClientFactory httpCli
     {
         if (Load() is not { } token) return null;
         if (!token.IsExpired) return token.AccessToken;
-        if (token.RefreshToken is { } refresh)
+        if (token.RefreshToken is { } refresh && ClientId is { } clientId)
         {
             try
             {
-                var renewed = await FellowshipLogsSignIn.RefreshAsync(Http, refresh, ct);
+                var renewed = await FellowshipLogsSignIn.RefreshAsync(Http, clientId, refresh, ct);
                 Save(renewed);
                 return renewed.AccessToken;
             }

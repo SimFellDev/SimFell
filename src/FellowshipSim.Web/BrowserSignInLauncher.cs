@@ -14,14 +14,14 @@ public sealed class BrowserSignInLauncher(IJSRuntime js, NavigationManager navig
 {
     private const string Key = "simfell.signin";
 
-    public async Task<LogsUserToken?> SignInAsync(HttpClient http, string returnTo, CancellationToken ct)
+    public async Task<LogsUserToken?> SignInAsync(HttpClient http, string clientId, string returnTo, CancellationToken ct)
     {
         string verifier = FellowshipLogsSignIn.NewVerifier(), state = FellowshipLogsSignIn.NewState();
         string redirect = navigation.BaseUri.StartsWith("http://127.0.0.1:5000/", StringComparison.Ordinal)
             ? FellowshipLogsSignIn.LocalSiteRedirect
             : FellowshipLogsSignIn.SiteRedirect;
         await js.InvokeVoidAsync("sessionStorage.setItem", ct, Key, JsonSerializer.Serialize(new PendingSignIn(verifier, state, redirect, returnTo)));
-        navigation.NavigateTo(FellowshipLogsSignIn.AuthorizeUri(redirect, verifier, state), forceLoad: true);
+        navigation.NavigateTo(FellowshipLogsSignIn.AuthorizeUri(clientId, redirect, verifier, state), forceLoad: true);
         return null;
     }
 

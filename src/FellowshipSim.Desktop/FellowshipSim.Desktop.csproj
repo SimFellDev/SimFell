@@ -49,8 +49,8 @@
     <ProjectReference Include="..\FellowshipSim.UI\FellowshipSim.UI.csproj" />
   </ItemGroup>
 
-  <!-- A developer's FellowshipLogs API client: the repository's git-ignored settings.json, read as configuration. A
-       build without one (a release, the deploy) has no client. -->
+  <!-- The repository's git-ignored settings.json, read as configuration: SimFell's sign-in client (the release workflow
+       writes it from a secret) and a developer's FellowshipLogs API client. A build without one has no sign-in. -->
   <ItemGroup>
     <None Include="..\..\settings.json" Link="settings.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\settings.json')" />
   </ItemGroup>

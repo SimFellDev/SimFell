@@ -47,7 +47,7 @@ public static class ServiceApp
             ApplicationName = typeof(ServiceApp).Assembly.GetName().Name,
             ContentRootPath = localArgs ? AppContext.BaseDirectory : null,
         });
-        // A developer's FellowshipLogs API client: the repository's settings.json, copied beside the app by its build.
+        // SimFell's sign-in client and a developer's FellowshipLogs API client: the repository's settings.json, copied beside the app by its build.
         builder.Configuration.AddJsonFile(Path.Combine(AppContext.BaseDirectory, "settings.json"), optional: true);
         configure?.Invoke(builder);
         bool local = IsLocal(builder.Configuration);

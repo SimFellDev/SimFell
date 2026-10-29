@@ -91,8 +91,9 @@ or the desktop app).
   `RemoteSimEngine` calls the engine server. It serves a review's files at `/reviews` to the visitor who ran it alone.
   Its FellowshipLogs credentials come from the host's environment, the `simfell` user secrets in development, or the
   repository's git-ignored `settings.json`, which the desktop, web and browser apps' builds copy in. No page takes or saves
-  them. A user signs in instead (`LogsSignIn`, OAuth with PKCE against SimFell's public client in
-  `FellowshipLogsSignIn`): the host's `ISignInLauncher` runs it (the browser app's page goes to FellowshipLogs and back to
+  them. A user signs in instead (`LogsSignIn`, OAuth with PKCE in `FellowshipLogsSignIn` against SimFell's public client,
+  configuration key `FELLOWSHIPLOGS_SIGNIN_CLIENT_ID` from the same sources; the release and deploy workflows write it to
+  `settings.json` from the secret of that name in their environments `release` and `web`): the host's `ISignInLauncher` runs it (the browser app's page goes to FellowshipLogs and back to
   `/signin`; the desktop and local apps' `LoopbackSignInLauncher` catches the way back on 127.0.0.1:47213), the token
   sits in the data folder's `signin.json`, and a signed-in user's requests go first and spend their own points.
 - **FellowshipSim.Desktop** is a .NET MAUI Blazor Hybrid app (`net10.0-windows10.0.19041.0`, `net10.0-maccatalyst`)

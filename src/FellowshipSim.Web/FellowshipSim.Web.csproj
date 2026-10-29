@@ -27,8 +27,9 @@
     <TrimmerRootAssembly Include="FellowshipSim.UI" />
   </ItemGroup>
 
-  <!-- A developer's FellowshipLogs API client: the repository's git-ignored settings.json becomes wwwroot/appsettings.json,
-       which Blazor reads as configuration. A build without one (the deploy) has no client. -->
+  <!-- The repository's git-ignored settings.json becomes wwwroot/appsettings.json, which Blazor reads as configuration:
+       SimFell's sign-in client (the deploy workflow writes it from a secret) and a developer's FellowshipLogs API client.
+       A build without one has no sign-in. -->
   <Target Name="DeveloperSettings" BeforeTargets="BeforeBuild">
     <Copy SourceFiles="..\..\settings.json" DestinationFiles="wwwroot\appsettings.json" Condition="Exists('..\..\settings.json')" />
     <Delete Files="wwwroot\appsettings.json" Condition="!Exists('..\..\settings.json')" />

@@ -18,6 +18,9 @@ public sealed class LogsSettingsStore(IHttpClientFactory httpClients, IConfigura
     public const string ClientIdKey = "FELLOWSHIPLOGS_CLIENT_ID";
     public const string ClientSecretKey = "FELLOWSHIPLOGS_CLIENT_SECRET";
 
+    /// <summary>SimFell's public API client for signing users in (<see cref="FellowshipLogsSignIn"/>); no secret.</summary>
+    public const string SignInClientIdKey = "FELLOWSHIPLOGS_SIGNIN_CLIENT_ID";
+
     /// <summary>Name of the <see cref="HttpClient"/> of FellowshipLogs requests.</summary>
     public const string HttpClientName = "fellowshiplogs";
 

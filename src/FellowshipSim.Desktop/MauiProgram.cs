@@ -21,7 +21,7 @@ public static class MauiProgram
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
         builder.Configuration.AddUserSecrets(typeof(MauiProgram).Assembly);
-        // A developer's FellowshipLogs API client: the repository's settings.json, copied beside the app by its build.
+        // SimFell's sign-in client and a developer's FellowshipLogs API client: the repository's settings.json, copied beside the app by its build.
         builder.Configuration.AddJsonFile(Path.Combine(AppContext.BaseDirectory, "settings.json"), optional: true);
         builder.Configuration.AddEnvironmentVariables();
 

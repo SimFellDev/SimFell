@@ -15,7 +15,7 @@ public sealed class LoopbackSignInLauncher(Func<string, Task> openBrowser) : ISi
     /// <summary>How long a sign-in waits for the browser to come back.</summary>
     public static readonly TimeSpan Wait = TimeSpan.FromMinutes(5);
 
-    public async Task<LogsUserToken?> SignInAsync(HttpClient http, string returnTo, CancellationToken ct)
+    public async Task<LogsUserToken?> SignInAsync(HttpClient http, string clientId, string returnTo, CancellationToken ct)
     {
         string verifier = FellowshipLogsSignIn.NewVerifier(), state = FellowshipLogsSignIn.NewState();
         var listener = new TcpListener(IPAddress.Loopback, FellowshipLogsSignIn.LoopbackPort);
@@ -29,7 +29,7 @@ public sealed class LoopbackSignInLauncher(Func<string, Task> openBrowser) : ISi
         }
         try
         {
-            await openBrowser(FellowshipLogsSignIn.AuthorizeUri(FellowshipLogsSignIn.LoopbackRedirect, verifier, state));
+            await openBrowser(FellowshipLogsSignIn.AuthorizeUri(clientId, FellowshipLogsSignIn.LoopbackRedirect, verifier, state));
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(Wait);
             while (true)
@@ -50,7 +50,7 @@ public sealed class LoopbackSignInLauncher(Func<string, Task> openBrowser) : ISi
                     : "SimFell did not sign you in. You can close this tab and try again.", timeout.Token);
                 if (!ours) continue;
                 if (!done) throw new FellowshipLogsException(query.GetValueOrDefault("error") == "access_denied" ? "Signing in was cancelled." : "FellowshipLogs did not sign you in.");
-                return await FellowshipLogsSignIn.ExchangeAsync(http, query["code"], verifier, FellowshipLogsSignIn.LoopbackRedirect, ct);
+                return await FellowshipLogsSignIn.ExchangeAsync(http, clientId, query["code"], verifier, FellowshipLogsSignIn.LoopbackRedirect, ct);
             }
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
