@@ -1,6 +1,6 @@
 @using FellowshipSim.Core.APL
 @*
-    One action of a list: its head (grip, number and title, move, duplicate and delete buttons), the summary of its condition and
+    One action of a list: its head (grip, number, title and comment, move, duplicate and delete buttons), the summary of its condition and
     target, and its details while it is open. An action moves within its own list. Dropping on an action puts the dragged
     one in its place: above it when dragged up, below it when dragged down.
 *@
@@ -18,7 +18,16 @@
             <Icon Shape="IconShape.Chevron" Class="chevron" />
             <span class="number">@(Index + 1)</span>
             <span class="ability">@ActionListModel.ActionTitle(Vocabulary, Action)</span>
+            @if (!Open && !string.IsNullOrWhiteSpace(Action.Comment))
+            {
+                <span class="comment">@CommentLine</span>
+            }
         </button>
+        @if (Open)
+        {
+            <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Comment" spellcheck="true"
+                      @bind="CommentText" @bind:event="oninput"></textarea>
+        }
         <button type="button" class="icon-button move" data-tooltip="Move up" aria-label="Move up" disabled="@(Index == 0)"
                 @onclick="() => Editor.MoveAction(List.Name, Index, Index - 1)">
             <Icon Shape="IconShape.Up" />
@@ -63,6 +72,17 @@
     private bool _dragging;
     // Drag enters and leaves of the item and its children: the item is under the drag while more have entered than left.
     private int _entered;
+
+    private string CommentText
+    {
+        get => Action.Comment ?? "";
+        set => Editor.ChangeAction(Action.Key, a => a with { Comment = value });
+    }
+
+    // The comment's lines on the closed head, one after another.
+    private string CommentLine => string.Join(" ", (Action.Comment ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+    private int CommentRows => Math.Max(1, CommentText.Split('\n').Length);
 
     private bool CanDrop => DragFrom != null && DragFrom.List == List.Name && DragFrom.Index != Index;
 

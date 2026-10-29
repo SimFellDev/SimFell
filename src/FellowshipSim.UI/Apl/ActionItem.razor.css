@@ -70,7 +70,35 @@
 }
 
 .ability {
+  flex: none;
   font-weight: 600;
+}
+
+/* The comment: muted italic after the title, on one line while the action is closed and a field while it is open. */
+.comment {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+span.comment {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action.open .toggle {
+  flex: none;
+}
+
+textarea.comment {
+  padding: 4px 8px;
+  resize: none;
+  line-height: 1.4;
+  /* As tall as its wrapped lines; a WebView without field-sizing has a row per line. */
+  field-sizing: content;
 }
 
 .move:hover:not(:disabled) {

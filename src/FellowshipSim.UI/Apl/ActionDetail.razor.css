@@ -27,11 +27,6 @@
   max-width: 100%;
 }
 
-.detail .comment {
-  width: 100%;
-  resize: vertical;
-}
-
 .detail .arguments {
   width: 100%;
   font: 13px/1.5 var(--code-font);
