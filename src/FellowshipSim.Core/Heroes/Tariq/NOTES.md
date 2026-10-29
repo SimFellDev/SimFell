@@ -21,6 +21,21 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
   legendary's text; the effect's says 20).
 - **Leap Smash:** +40% crit chance of its own (placeholder constant `Talent.IncreasedCriticalChance.AddedCrit`). It
   crits 72-86% of the time against 35-44% for Face Breaker.
+- **Crack the Sky and Heavy Strike:** Thunder Call: Heavy Strike's lightning (1779) does not gain Crack the Sky's +20%
+  crit chance, though the tooltip says all lightning damage does. In 4 fights with the talent (wv4ZLFxN8zGTW6M9 fight 7,
+  JW7pzaBxMd9bNCZK fight 112, NjMn2cahDP9fWBA7 fight 39, qVtpywQ9B6RCab3A fight 5; 2,252 hits each side) the lightning
+  crits 44.5% against 43.3% for the same casts' physical hits, while Chain Lightning crits 56-68% and Raging Currents
+  51-75%. This is a developer bug in the game (reported by a player); the engine models the game's current behaviour in
+  Heavy Strike's class alone until the game fixes it. Whether Skull Crusher's and Hammer Storm's lightning gain the
+  talent is not known: they share their damage IDs with the physical hits.
+- **The Motherload:** each other enemy a Chain Lightning hits adds about +50% to its later hits, not the tooltip's +65%
+  (q3y7pWgXrjN2dftw fight 12: the median non-crit hit by bounce in 182 clean 9-hit chains is 1 + 0.49 times the first).
+  The game data has only the tooltip. Taken as a developer bug the engine models (UNVERIFIED, one fight): free dice of
+  the fight go from 126.9% of the log's Chain Lightning damage to 107.2%.
+- **Free Chain Lightning:** Ace of Spades' and Blood & Thunder's land their first hit 0.50s after the hit or cast that
+  procced them (0.30s after a cast). Ace of Spades' starts on the enemy the proccing hit struck; Blood & Thunder's mostly
+  on another (26 of 34). Bounces land on the server frame at or after each 0.05s from the first hit, 2 and 1 frames
+  apart in turn (q3y7pWgXrjN2dftw fight 12).
 - **Them Bones:** grievous Skull Crusher crits come with the thunder bolt as well as the physical hit.
 - **Wild Swing:** never crits. Enemies avoid 27 of its 388 hits (3-10% a fight; 22 misses, log hit type 0, and 5
   dodges, type 7; no damage), and no other Tariq hit.
@@ -91,6 +106,6 @@ expected.
 
 ## Not yet checked against a log
 
-Left Hand Path, Blood & Thunder, The Motherload, Thunderstruck, Pneuma, Kill Em All, Ace of Spades, Killing in the Name
-and Thundering Vortex are built from their tooltips and the game data (marked `UNVERIFIED` in their files). Crack the
-Sky is in fight 31 alone, Sledgehammer in fights 4 and 30 alone.
+Left Hand Path, Pneuma, Kill Em All, Killing in the Name and Thundering Vortex are built from their tooltips and the
+game data (marked `UNVERIFIED` in their files). Blood & Thunder, The Motherload, Thunderstruck and Ace of Spades are in
+q3y7pWgXrjN2dftw fight 12 alone. Sledgehammer is in fights 4 and 30 alone.

@@ -139,10 +139,14 @@ public sealed class LogOutcomeSource : IOutcomeSource
         }
         if (preferred != null)
         {
+            // The preferred enemy's log hit landing now; else the log hit nearest the expected landing, the preferred
+            // enemy's on a tie. A later hit on the preferred enemy belongs to a later hit (Chain
+            // Lightning's bounces land 0.05s apart).
+            double now = ctx.CurrentTime.TotalSeconds;
             var unitRef = new UnitRef(preferred.Id, preferred.InstanceId);
-            if (_hits.HasUnclaimed(damageLogId, unitRef, ctx.CurrentTime.TotalSeconds, _options)) return preferred;
-            var other = _hits.NextUnclaimedTarget(damageLogId, ctx.CurrentTime.TotalSeconds, _options);
-            return (other == null ? null : ctx.FindEnemy(other.Id, other.Instance)) ?? preferred;
+            if (_hits.HasUnclaimed(damageLogId, unitRef, now - PeriodicEffect.ServerFrameSeconds, now + PeriodicEffect.ServerFrameSeconds)) return preferred;
+            var next = _hits.NextUnclaimedTarget(damageLogId, now, _options, prefer: unitRef);
+            return (next == null ? null : ctx.FindEnemy(next.Id, next.Instance)) ?? preferred;
         }
         // Hits on the current target are left for hits that can only go there (e.g. Cascading Blitz swallows share the ID).
         var current = ctx.Player.CurrentTarget;
@@ -430,8 +434,9 @@ public sealed class LogOutcomeSource : IOutcomeSource
         int logId = evidence.LogId;
         var hit = _hits.Peek(logId, now + evidence.MinDelaySeconds - _options.SameTickSeconds, now + _options.SameTickSeconds + evidence.DelaySeconds,
             h => Free(h) && (evidence.HitTypes == null || (h.HitType is { } type && evidence.HitTypes.Contains(type)))
-                 && (target == null || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId))
-                 && (evidence.StackLossLogId == 0 || LostStackAt(evidence.StackLossLogId, h.Target, h.Time) == evidence.StackLoss));
+                 && (target == null || evidence.AnyEnemy || (h.Target.Id == target.Id && h.Target.Instance == target.InstanceId))
+                 && (evidence.StackLossLogId == 0 || LostStackAt(evidence.StackLossLogId, h.Target, h.Time) == evidence.StackLoss)
+                 && (evidence.QuietBeforeSeconds == 0.0 || _hits.Peek(logId, h.Time - evidence.QuietBeforeSeconds, h.Time - _options.SameTickSeconds, _ => true) == null));
         if (hit == null) return false;
         if (evidence.ReservesHit)
         {
@@ -448,7 +453,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         double previous = hit.Time;
         for (int k = 1; k <= evidence.FollowingHits; k++)
         {
-            var following = _hits.Peek(logId, previous + 0.75 * evidence.FollowingSpacingSeconds, previous + 1.5 * evidence.FollowingSpacingSeconds, Free);
+            var following = _hits.Peek(logId, previous + 0.75 * evidence.FollowingSpacingSeconds - evidence.FollowingSlackSeconds,
+                previous + 1.5 * evidence.FollowingSpacingSeconds + evidence.FollowingSlackSeconds, Free);
             if (following == null) break;
             _claimedDamageEvidence.Add(following);
             previous = following.Time;
@@ -522,7 +528,7 @@ public sealed class HitLedger
         foreach (var h in list)
         {
             if (h.Time < engineTime - options.HitEarlySeconds) continue;
-            if (h.Time > engineTime + options.HitLateSeconds) break;
+            if (h.Time > engineTime + options.LateSecondsOf(logId)) break;
             if (_matched.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, owner)) continue;
             _matched.Add(h);
             return h;
@@ -641,14 +647,14 @@ public sealed class HitLedger
         queue.Enqueue(h);
     }
 
-    /// <summary>True when the log has a hit with <paramref name="logId"/> on <paramref name="unit"/> in the travel window that is still free.</summary>
-    public bool HasUnclaimed(int logId, UnitRef unit, double engineTime, ReplayOptions options)
+    /// <summary>True when the log has a hit with <paramref name="logId"/> on <paramref name="unit"/> from <paramref name="from"/> to <paramref name="to"/> that is still free.</summary>
+    public bool HasUnclaimed(int logId, UnitRef unit, double from, double to)
     {
         if (!_byKey.TryGetValue((logId, unit.Id, unit.Instance), out var list)) return false;
         foreach (var h in list)
         {
-            if (h.Time < engineTime - options.HitEarlySeconds) continue;
-            if (h.Time > engineTime + options.HitLateSeconds) break;
+            if (h.Time < from) continue;
+            if (h.Time > to) break;
             if (!_matched.Contains(h) && !_targetChoices.Contains(h) && !_dealt.Contains(h)) return true;
         }
         return false;
@@ -679,20 +685,24 @@ public sealed class HitLedger
     /// <summary>
     /// For a hit that picks its own target: the free log hit with <paramref name="logId"/> landing closest to the release
     /// plus the ID's typical travel time; hits on <paramref name="avoid"/> (the hero's current target) are only taken
-    /// when clearly closer, as hits that can only go there share the ID.
+    /// when clearly closer, as hits that can only go there share the ID; hits on <paramref name="prefer"/> win a tie
+    /// (within <see cref="ReplayOptions.SameTickSeconds"/>).
     /// </summary>
-    public UnitRef? NextUnclaimedTarget(int logId, double engineTime, ReplayOptions options, UnitRef? avoid = null)
+    public UnitRef? NextUnclaimedTarget(int logId, double engineTime, ReplayOptions options, UnitRef? avoid = null, UnitRef? prefer = null)
     {
         if (!_byAbility.TryGetValue(logId, out var list)) return null;
-        double expected = engineTime + TypicalTravel(logId, options);
+        // An ID that does not travel (its own late window) lands at the engine's time; learning a travel time from it
+        // would carry one mispairing into the next.
+        double expected = engineTime + (options.HitLateSecondsById.ContainsKey(logId) ? 0.0 : TypicalTravel(logId, options));
         LogDamage? best = null;
         double bestScore = double.MaxValue;
         foreach (var h in list)
         {
             if (h.Time < engineTime - options.HitEarlySeconds) continue;
-            if (h.Time > engineTime + options.HitLateSeconds) break;
+            if (h.Time > engineTime + options.LateSecondsOf(logId)) break;
             if (_matched.Contains(h) || _targetChoices.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, null)) continue;
-            double score = Math.Abs(h.Time - expected) + (avoid != null && h.Target == avoid ? options.AvoidedTargetPenaltySeconds : 0.0);
+            double score = Math.Abs(h.Time - expected) + (avoid != null && h.Target == avoid ? options.AvoidedTargetPenaltySeconds : 0.0)
+                           - (prefer != null && h.Target == prefer ? options.SameTickSeconds : 0.0);
             if (score < bestScore)
             {
                 best = h;
@@ -757,7 +767,7 @@ public sealed class HitLedger
         {
             var first = group[0];
             if (first.Time < engineTime - options.HitEarlySeconds) continue;
-            if (first.Time > engineTime + options.HitLateSeconds) break;
+            if (first.Time > engineTime + options.LateSecondsOf(logId)) break;
             if (_claimedGroups.Contains(first) || group.Any(h => OwnedByOther(h, null) || _dealt.Contains(h))) continue;
             double distance = Math.Abs(first.Time - engineTime);
             bool looksPartial = GroupRatio(group, options) < options.PartialTickRatio;

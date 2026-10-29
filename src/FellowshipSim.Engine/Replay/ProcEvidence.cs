@@ -32,8 +32,9 @@ public static class ProcEvidence
     /// <paramref name="DelaySeconds"/> after the roll (e.g. a projectile's travel), and not before
     /// <paramref name="MinDelaySeconds"/>. With <paramref name="StackJump"/>, the proof is instead that debuff on the
     /// proc's enemy gaining that many stacks at once. With <paramref name="FollowingHits"/>, the proc deals that many more
-    /// hits with the ID, every <paramref name="FollowingSpacingSeconds"/> after the first: they belong to that proc and are
-    /// no proof of another. With <paramref name="Resource"/>, the proof is instead that resource jumping by
+    /// hits with the ID, every <paramref name="FollowingSpacingSeconds"/> after the first (each up to
+    /// <paramref name="FollowingSlackSeconds"/> off, for spacing the log rounds to whole server frames): they belong to that
+    /// proc and are no proof of another. With <paramref name="Resource"/>, the proof is instead that resource jumping by
     /// <paramref name="ResourceGain"/> between two of the log's readings around the roll, beyond what
     /// <paramref name="ResourceRegenPerSecond"/> regenerates between them. With <paramref name="HitTypes"/>, only a hit of
     /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%). With
@@ -43,12 +44,14 @@ public static class ProcEvidence
     /// hits on other enemies in the same server frame are proof of other procs. With
     /// <paramref name="NotCausedByAbilityId"/>, an aura gain the log names that ability as the cause of is no proof (it is
     /// that ability's own grant). With <paramref name="EnemyDebuffApplied"/>, the proof is instead that debuff of the
-    /// player's applied or refreshed on the proc's enemy.
+    /// player's applied or refreshed on the proc's enemy. With <paramref name="AnyEnemy"/>, a hit on any enemy is proof,
+    /// not only on the proc's. With <paramref name="QuietBeforeSeconds"/>, a hit is proof only when no other hit with the ID
+    /// landed that long before it (the first hit of a chain, not a bounce of another).
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
-        int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
+        int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, double FollowingSlackSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
         double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
-        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false);
+        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false, bool AnyEnemy = false, double QuietBeforeSeconds = 0.0);
 
     public static readonly Evidence[] All =
     [
@@ -117,9 +120,18 @@ public static class ProcEvidence
         new(ThemBones.ProcKey, SkullCrusher.AbilityId, DelaySeconds: 0.1, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
         // A Wild Swing the enemy avoids is a miss or a dodge, neither dealing damage.
         new(WildSwing.AvoidedProcKey, WildSwing.AbilityId, DelaySeconds: 0.05, HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
-        // A free Chain Lightning's first hit comes 0.30s after the proc.
-        new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
-        new(AceOfSpades.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId), DelaySeconds: 0.4, MinDelaySeconds: 0.2),
+        // A free Chain Lightning's first hit is logged 0.50s after the proc (the engine's 0.30s after a cast). Its bounces
+        // (every 0.05s, logged 1 or 2 server frames apart, so a chain's first hit has none 0.1s before it) are no proof of
+        // another. Ace of Spades' chain starts on the enemy the proccing hit struck; Blood & Thunder's mostly elsewhere (26
+        // of 34 not on Heavy Strike's target; q3y7pWgXrjN2dftw fight 12).
+        new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId),
+            DelaySeconds: 0.55, MinDelaySeconds: 0.45,
+            FollowingHits: ChainLightning.Hits + Thunderstruck.ExtraBounces - 1, FollowingSpacingSeconds: ChainLightning.BounceSeconds,
+            FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, AnyEnemy: true, QuietBeforeSeconds: 0.1),
+        new(AceOfSpades.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId),
+            DelaySeconds: 0.55, MinDelaySeconds: 0.45,
+            FollowingHits: ChainLightning.Hits + Thunderstruck.ExtraBounces - 1, FollowingSpacingSeconds: ChainLightning.BounceSeconds,
+            FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
 
         // Mara
         // 10 Energy at once (Fc8v6yWxD14GQMnV fight 19: 172 jumps of 8-12 Energy right after a poison hit, regeneration aside).

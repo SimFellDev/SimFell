@@ -4,8 +4,9 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
 /// Talent 675: "Each time your Skull Crusher and Hammer Storm deals damage to an enemy you have a Chance (3.0 PPM) to
-/// cast a free Chain Lightning at them. Your Chain Lightning now has 2 charges." UNVERIFIED: no combat log has this
-/// talent; the free Chain Lightning is taken to need no Thunder Call.
+/// cast a free Chain Lightning at them. Your Chain Lightning now has 2 charges." Combat logs (q3y7pWgXrjN2dftw fight
+/// 12): about 55 free chains, as 3 PPM expects, each starting 0.50s after the hit on that hit's enemy. UNVERIFIED: the
+/// free Chain Lightning is taken to need no Thunder Call.
 /// </summary>
 public class AceOfSpades : Talent
 {

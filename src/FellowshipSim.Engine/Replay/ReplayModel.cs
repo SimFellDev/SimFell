@@ -88,6 +88,17 @@ public class ReplayOptions
     public double HitEarlySeconds { get; set; } = 0.15;
     /// <summary>A log hit may land this long after the engine hit (projectile travel).</summary>
     public double HitLateSeconds { get; set; } = 2.0;
+    /// <summary>
+    /// Damage IDs that do not travel, with how late their log hits may land instead of <see cref="HitLateSeconds"/>: a
+    /// longer window lets an engine hit with no log hit of its own take a later cast's. Combat logs (q3y7pWgXrjN2dftw fight
+    /// 12): Chain Lightning lands at the engine's time, a free one's chain 0.2s later (0.50s after the proc, not 0.30s).
+    /// </summary>
+    public Dictionary<int, double> HitLateSecondsById { get; set; } = new()
+    {
+        [Core.Domain.LogIds.Effect(Core.Heroes.Tariq.Abilities.ChainLightning.DamageEffectId)] = 0.25,
+    };
+    /// <summary>How late a log hit with damage ID <paramref name="logId"/> may land after the engine hit.</summary>
+    public double LateSecondsOf(int logId) => HitLateSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitLateSeconds;
     /// <summary>Log hits with the same damage ID landing within this window belong to one multi-target hit.</summary>
     /// <remarks>
     /// Combat logs (Y4wpb2f3gc8LqJDX fight 25, Gunde): a pulse on 20-27 enemies is logged over up to 9ms; separate pulses

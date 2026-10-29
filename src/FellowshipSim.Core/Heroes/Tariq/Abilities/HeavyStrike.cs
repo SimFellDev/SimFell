@@ -49,10 +49,13 @@ public class HeavyStrike : TariqAbility
         DealDamage(ctx, target);
         DealAoeDamage(ctx, ctx.ActiveEnemiesExcept(target), damageMultiplier: CleaveCoefficient / Coefficient,
             overrideId: LogIds.Effect(CleaveEffectId));
+        // Crack the Sky's lightning crit chance is left out. Combat logs (4 Tariq fights with the talent, 2,252 hits): the
+        // lightning crits 44.5% against 43.3% for the same casts' physical hits, while Chain Lightning and Raging Currents
+        // gain the +20%. This models the game's current behaviour, a developer bug, until the game fixes it.
         if (hero.IsCharged(ctx.CurrentTime))
         {
             DealAoeDamage(ctx, WildSwing.AreaAround(ctx, target), damageMultiplier: LightningCoefficient / Coefficient,
-                overrideName: LightningName, overrideId: LogIds.Effect(LightningEffectId), extraCritChance: hero.LightningCritChance);
+                overrideName: LightningName, overrideId: LogIds.Effect(LightningEffectId));
         }
         Struck?.Invoke(ctx, target);
     }
