@@ -40,7 +40,7 @@ else
 
     <section class="card">
         <div class="card-head">
-            <h3>@Heading</h3>
+            <h3>Sim Results</h3>
             <span class="legend"><i class="gain"></i>Better <i class="same"></i>Too close to call <i class="loss"></i>Worse <span data-tooltip="Each sim is many random fights, so its DPS wobbles a little. The thin line around a bar is how far chance alone could move it.">· thin line: how far chance could move it</span></span>
         </div>
         <div class="scroll">
@@ -137,9 +137,6 @@ else
 @code {
     /// <summary>The runs, the first the baseline.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<SimRun> Runs { get; set; } = [];
-
-    /// <summary>What the runs try, over the table.</summary>
-    [Parameter] public string Heading { get; set; } = "Runs";
 
     /// <summary>The run whose report shows in place of the runs; null for the runs.</summary>
     [Parameter] public SimRun? Report { get; set; }

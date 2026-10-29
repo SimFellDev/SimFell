@@ -57,16 +57,6 @@
         _ => kind.ToString(),
     };
 
-    /// <summary>What the finder tries, as a heading for its results.</summary>
-    public static string Heading(FinderKind kind, FinderRanks ranks) => kind switch
-    {
-        FinderKind.Aspects or FinderKind.Sigils or FinderKind.Glyphs =>
-            $"Each {kind.ToString().ToLowerInvariant().TrimEnd('s')} {(ranks == FinderRanks.MaxRank ? "at max rank" : "one rank higher")}",
-        FinderKind.Relics => "Every pair of relics",
-        FinderKind.Gems => ranks == FinderRanks.EveryRank ? "Each gem colour at each node above it" : "Each gem colour at its next node",
-        _ => "Each talent that fits the points left",
-    };
-
     private string Describe(FinderKind kind) => kind switch
     {
         FinderKind.Aspects => "Each aspect one rank higher, or at max rank.",

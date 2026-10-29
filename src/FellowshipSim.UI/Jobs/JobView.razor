@@ -28,7 +28,7 @@
         case { Status: SimJobStatus.Done, Result: SavedSim sim }:
             if (sim.Runs is { Count: > 0 } runs)
             {
-                <RunsResult Runs="runs" Heading="@(sim.RunsHeading ?? "Runs")" @bind-Report="_report" />
+                <RunsResult Runs="runs" @bind-Report="_report" />
             }
             else
             {

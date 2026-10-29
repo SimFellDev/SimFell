@@ -355,7 +355,7 @@
                 : (await _savedLists.ReadAsync(list)).Text;
             runs.Add(Plan(row.Saved?.Name ?? $"{build.Name} (current)", listName, build, listName, row.ListValue, listText));
         }
-        Enqueue($"Compare: {CompareCard.Runs(runs.Count)}, {TargetsText()}, {N(State.DurationSeconds)} s", "Builds and action lists", runs);
+        Enqueue($"Compare: {CompareCard.Runs(runs.Count)}, {TargetsText()}, {N(State.DurationSeconds)} s", runs);
     }
 
     private void StartFinder()
@@ -369,12 +369,11 @@
         string listText = ActionListText();
         var runs = new List<PlannedRun> { Plan("Current build", State.Build.Name, State.Build, ActionListName(), State.ActionListValue, listText) };
         runs.AddRange(variants.Select(v => Plan(v.Label, v.Detail, v.Build, ActionListName(), State.ActionListValue, listText)));
-        Enqueue($"{FinderCard.Title(State.Finder)} finder: {State.Build.Name} ({State.Build.Hero}), {CompareCard.Runs(runs.Count)}, {TargetsText()}",
-            FinderCard.Heading(State.Finder, State.FinderRanks), runs);
+        Enqueue($"{FinderCard.Title(State.Finder)} finder: {State.Build.Name} ({State.Build.Hero}), {CompareCard.Runs(runs.Count)}, {TargetsText()}", runs);
     }
 
     // Queues the runs as one job: each run's sim in turn, saved together with the first as the baseline.
-    private void Enqueue(string title, string heading, IReadOnlyList<PlannedRun> runs)
+    private void Enqueue(string title, IReadOnlyList<PlannedRun> runs)
     {
         var settings = Settings();
         var first = SimcProfile.Parse(runs[0].ProfileText);
@@ -391,7 +390,7 @@
                 done.Add(new SimRun(run.Label, run.Detail, run.Hero, run.ListName, run.ListValue, run.ProfileText, result));
             }
             var saved = new SavedSim(c.Job.Id, title, done[0].Hero, first.Build.Name, done[0].Profile, settings.TargetCount, done[0].Result,
-                DateTime.UtcNow, done, heading);
+                DateTime.UtcNow, done);
             await results.SaveAsync(visitor, saved, CancellationToken.None);
             return saved;
         }, first);
