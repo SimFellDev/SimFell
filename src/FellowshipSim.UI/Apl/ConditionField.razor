@@ -147,12 +147,13 @@
             string rowKey = $"{key}:{at}";
             Task Update(Action<ConditionRow> patch) => updateRows(rows => patch(rows[at]));
             Task Delete() => updateRows(rows => rows.RemoveAt(at));
+            Task Duplicate() => updateRows(rows => rows.Insert(at + 1, rows[at].Clone()));
             if (item.Items is not { } inner)
             {
-                RenderValueRow(__builder, item, rowKey, at, depth, nested, Update, Delete);
+                RenderValueRow(__builder, item, rowKey, at, depth, nested, Update, Duplicate, Delete);
                 continue;
             }
-            @* A group's join, 'not' and chevron are on its top edge, and its delete button on the top right. *@
+            @* A group's join, 'not' and chevron are on its top edge, and its duplicate and delete buttons on the top right. *@
             <div @key="rowKey" class="group @(item.Collapsed ? "closed" : null)">
                 <div class="group-start">
                     <button type="button" class="chevron-button" aria-expanded="@(item.Collapsed ? "false" : "true")"
@@ -171,6 +172,7 @@
                     @{ RenderNot(__builder, item.Not, () => Update(r => r.Not = !item.Not)); }
                 </div>
                 <div class="group-end">
+                    @{ RenderDuplicate(__builder, "Duplicate group", Duplicate); }
                     @{ RenderDelete(__builder, "Delete group", Delete); }
                 </div>
                 @if (item.Collapsed)
@@ -187,7 +189,7 @@
     }
 
     private void RenderValueRow(RenderTreeBuilder __builder, ConditionRow item, string key, int index, int depth, bool nested,
-        Func<Action<ConditionRow>, Task> update, Func<Task> delete)
+        Func<Action<ConditionRow>, Task> update, Func<Task> duplicate, Func<Task> delete)
     {
         <div @key="key" class="condition-row">
             @{ RenderRowStart(__builder, item.Join, item.Not, index, depth, nested, join => update(r => r.Join = join), () => update(r => r.Not = !item.Not)); }
@@ -195,6 +197,7 @@
             <div class="fields">
                 @{ RenderSides(__builder, item, key, update, null); }
             </div>
+            @{ RenderDuplicate(__builder, "Duplicate condition", duplicate); }
             @{ RenderDelete(__builder, "Delete condition", delete); }
         </div>
     }
@@ -407,6 +410,14 @@
     private void RenderNot(RenderTreeBuilder __builder, bool not, Func<Task> toggleNot)
     {
         <button type="button" class="not" aria-pressed="@(not ? "true" : "false")" @onclick="toggleNot">not</button>
+    }
+
+    /// <summary>A button that inserts a copy of the row or group after it.</summary>
+    private void RenderDuplicate(RenderTreeBuilder __builder, string label, Func<Task> onClick)
+    {
+        <button type="button" class="icon-button duplicate" data-tooltip="@label" aria-label="@label" @onclick="onClick">
+            <Icon Shape="IconShape.Duplicate" />
+        </button>
     }
 
     private void RenderDelete(RenderTreeBuilder __builder, string label, Func<Task> onClick)

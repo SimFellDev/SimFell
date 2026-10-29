@@ -25,4 +25,7 @@ public sealed record EditorAction(
     public static EditorAction From(AplDocumentAction action) => new(
         Interlocked.Increment(ref _nextKey), action.Ability, action.Condition, action.TargetSelection, action.TargetExpression,
         action.Comment, action.Arguments, action.ActionList);
+
+    /// <summary>An action with a new key and the fields of this action.</summary>
+    public EditorAction Duplicate() => this with { Key = Interlocked.Increment(ref _nextKey) };
 }

@@ -115,9 +115,18 @@
   font-family: var(--code-font);
 }
 
+.duplicate,
 .remove {
-  margin-left: auto;
   border-color: transparent;
+}
+
+.duplicate {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.duplicate:hover {
+  color: var(--text);
 }
 
 .operator {
@@ -137,7 +146,7 @@
 }
 
 
-/* A group is a tinted box; its chevron, join and 'not' are on its top-left edge, its delete button on the top-right edge.
+/* A group is a tinted box; its chevron, join and 'not' are on its top-left edge, its duplicate and delete buttons on the top-right edge.
    A nested box is on its parent's tint, one step deeper in gold. Every border is an even 1px on all four sides. */
 .group {
   position: relative;
@@ -202,6 +211,7 @@
   background: color-mix(in srgb, var(--tok-operator) 16%, var(--input));
 }
 
+.group-end .duplicate,
 .group-end .remove {
   display: inline-flex;
   align-items: center;
@@ -209,6 +219,11 @@
   color: var(--muted);
 }
 
+.group-end .duplicate:hover {
+  color: var(--text);
+}
+
+.group-end .duplicate ::deep .icon,
 .group-end .remove ::deep .icon {
   width: 12px;
   height: 12px;

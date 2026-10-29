@@ -1,6 +1,6 @@
 @using FellowshipSim.Core.APL
 @*
-    One action of a list: its head (grip, number and title, move and delete buttons), the summary of its condition and
+    One action of a list: its head (grip, number and title, move, duplicate and delete buttons), the summary of its condition and
     target, and its details while it is open. An action moves within its own list. Dropping on an action puts the dragged
     one in its place: above it when dragged up, below it when dragged down.
 *@
@@ -26,6 +26,10 @@
         <button type="button" class="icon-button move" data-tooltip="Move down" aria-label="Move down" disabled="@(Index == List.Actions.Count - 1)"
                 @onclick="() => Editor.MoveAction(List.Name, Index, Index + 1)">
             <Icon Shape="IconShape.Down" />
+        </button>
+        <button type="button" class="icon-button move" data-tooltip="Duplicate action" aria-label="Duplicate action"
+                @onclick="() => Editor.DuplicateAction(List.Name, Index)">
+            <Icon Shape="IconShape.Duplicate" />
         </button>
         <button type="button" class="icon-button danger-button" data-tooltip="Delete action" aria-label="Delete action"
                 @onclick="() => Editor.RemoveAction(List.Name, Index)">

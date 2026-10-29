@@ -106,6 +106,16 @@ public sealed class ActionListEditor(ISimEngine engine)
         Changed?.Invoke();
     }
 
+    /// <summary>Inserts a copy of the action after it. The copy is open when the action is open.</summary>
+    public void DuplicateAction(string listName, int index)
+    {
+        var action = Lists.First(l => l.Name == listName).Actions[index];
+        var copy = action.Duplicate();
+        UpdateList(listName, actions => [.. actions.Take(index + 1), copy, .. actions.Skip(index + 1)]);
+        if (_open.Contains(action.Key)) _open.Add(copy.Key);
+        Changed?.Invoke();
+    }
+
     public void RemoveAction(string listName, int index)
     {
         int key = Lists.First(l => l.Name == listName).Actions[index].Key;

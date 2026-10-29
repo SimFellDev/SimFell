@@ -9,4 +9,5 @@ public enum IconShape
     Up,
     Down,
     Grip,
+    Duplicate,
 }

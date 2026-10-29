@@ -5,7 +5,7 @@ using FellowshipSim.UI.Shared;
 
 namespace FellowshipSim.Tests.Apl.Editor;
 
-/// <summary>The editor's changes to its lists: adding, moving, renaming and removing.</summary>
+/// <summary>The editor's changes to its lists: adding, moving, duplicating, renaming and removing.</summary>
 public class ActionListEditorTests
 {
     private readonly AplVocabulary _v = EditorVocabulary.Create();
@@ -62,6 +62,22 @@ public class ActionListEditorTests
         editor.MoveAction(_v.DefaultList, 0, -1);
         editor.MoveAction(_v.DefaultList, 2, 3);
         Assert.Equal(["b", "c", "a"], editor.Lists[0].Actions.Select(a => a.Ability));
+    }
+
+    [Fact]
+    public void A_duplicate_is_inserted_after_its_action_with_a_new_key()
+    {
+        var editor = Loaded(new AplDocumentAction("a"), new AplDocumentAction("b", Condition: "fury > 50"), new AplDocumentAction("c"));
+        var action = editor.Lists[0].Actions[1];
+        editor.Toggle(action.Key);
+
+        editor.DuplicateAction(_v.DefaultList, 1);
+
+        var actions = editor.Lists[0].Actions;
+        Assert.Equal(["a", "b", "b", "c"], actions.Select(a => a.Ability));
+        Assert.Equal(action with { Key = actions[2].Key }, actions[2]);
+        Assert.NotEqual(action.Key, actions[2].Key);
+        Assert.Contains(actions[2].Key, editor.Open);
     }
 
     [Fact]
