@@ -3,15 +3,15 @@
 @* The Sim page's Modes tab: the fight, its dungeon or training mobs, its settings, then Compare and Finder. *@
 <Card Title="Fight">
     <div class="choices" role="radiogroup" aria-label="Fight">
-        <label class="choice @(State.Mode == SimMode.Dungeon ? "on" : "")">
-            <input type="radio" name="mode" checked="@(State.Mode == SimMode.Dungeon)" @onchange="() => State.Mode = SimMode.Dungeon" />
-            <strong>Dungeon</strong>
-            <span class="meta">Trash pulls and boss pulls in sequence. Each pull ends when its enemies die. The report also shows the DPS to bosses.</span>
-        </label>
         <label class="choice @(State.Mode == SimMode.TrainingMobs ? "on" : "")">
             <input type="radio" name="mode" checked="@(State.Mode == SimMode.TrainingMobs)" @onchange="() => State.Mode = SimMode.TrainingMobs" />
             <strong>Training mobs</strong>
             <span class="meta">Training mobs for the full fight. With two or more mobs, the report also shows the DPS to the first mob.</span>
+        </label>
+        <label class="choice @(State.Mode == SimMode.Dungeon ? "on" : "")">
+            <input type="radio" name="mode" checked="@(State.Mode == SimMode.Dungeon)" @onchange="() => State.Mode = SimMode.Dungeon" />
+            <strong>Dungeon</strong>
+            <span class="meta">Trash pulls and boss pulls in sequence. Each pull ends when its enemies die. The report also shows the DPS to bosses.</span>
         </label>
     </div>
     <div class="fields">

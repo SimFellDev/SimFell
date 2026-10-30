@@ -81,7 +81,7 @@ public sealed class SimPageState
 
     public MessageState ImportStatus { get; set; } = MessageState.None;
 
-    public SimMode Mode { get; set; } = SimMode.Dungeon;
+    public SimMode Mode { get; set; } = SimMode.TrainingMobs;
 
     public int Iterations { get; set; } = 1000;
 
