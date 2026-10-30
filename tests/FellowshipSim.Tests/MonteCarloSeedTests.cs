@@ -74,19 +74,20 @@ public class MonteCarloSeedTests
 
     /// <summary>
     /// Totals of fights 1-4 of each hero's default action list, captured after Rime replay accuracy v1 (#8); the other
-    /// heroes' again with their lists from FellowSimc's SimC lists.
+    /// heroes' again with their lists from FellowSimc's SimC lists. Re-pinned for the engine fixes of the functional tests branch (cooldown rates,
+    /// Detonate and Cinders, Event Horizon, Skylit Grace, Brave Machinations and Nature's Fury, weapon cooldowns, gems, Amethyst Splinters).
     /// </summary>
     [Theory]
-    [InlineData("Rime", 120, 3, new[] { 3072594.4512320277, 2891268.419831695, 2808136.9763237652, 2959378.6551024965 })]
-    [InlineData("Rime", 300, 1, new[] { 8235288.5393681824, 8212400.8833039831, 7839422.1447150335, 8972097.1966243163 })]
-    [InlineData("Ardeos", 120, 3, new[] { 2664123.4368716525, 3186253.7689828207, 2832069.665811948, 3178390.6998665412 })]
-    [InlineData("Ardeos", 300, 1, new[] { 5270082.6568430839, 5111775.9837692417, 4852006.796720189, 5073453.5734296059 })]
+    [InlineData("Rime", 120, 3, new[] { 3072594.4512320277, 2891268.419831695, 3064480.4096245281, 2959378.6551024965 })]
+    [InlineData("Rime", 300, 1, new[] { 7932641.1848282842, 8212400.8833039831, 7497932.6960335923, 8972097.1966243163 })]
+    [InlineData("Ardeos", 120, 3, new[] { 3178854.3626358607, 3015413.6128822458, 3185682.0778475194, 3177669.8038768875 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4936513.4543811502, 4833849.5613626326, 4455490.0538597442, 4831046.3185050916 })]
     [InlineData("Gunde", 120, 3, new[] { 4249690.0869354261, 4420362.5168073159, 4321510.3556000302, 4574701.5092196791 })]
     [InlineData("Gunde", 300, 1, new[] { 6861027.1777992975, 6757379.5672820788, 7042020.9264418846, 7284342.3034589784 })]
-    [InlineData("Mara", 120, 3, new[] { 2271725.7231351733, 2098336.747418792, 2465790.0111058084, 2635860.3467395119 })]
-    [InlineData("Mara", 300, 1, new[] { 4888488.5381329022, 5070630.7347939191, 5700120.8941466082, 5554122.0079662129 })]
-    [InlineData("Tariq", 120, 3, new[] { 2052950.4947410417, 1734670.2676573573, 1910001.0717739458, 1844814.9616255078 })]
-    [InlineData("Tariq", 300, 1, new[] { 3535217.5392981456, 3340397.0137782535, 3256625.6694165505, 3863316.0118745202 })]
+    [InlineData("Mara", 120, 3, new[] { 2310180.6123624993, 2117118.5577164143, 2362270.4404721106, 2636468.8278212529 })]
+    [InlineData("Mara", 300, 1, new[] { 4896400.2174366862, 5123015.2697632769, 5710790.6310998807, 5730826.6926729493 })]
+    [InlineData("Tariq", 120, 3, new[] { 2052950.4947410417, 1734670.2676573573, 1910001.0717739458, 1597080.5579660365 })]
+    [InlineData("Tariq", 300, 1, new[] { 3535217.5392981456, 3230726.0350537631, 3256625.6694165505, 3547927.9140148927 })]
     public void Each_Seed_Gives_The_Totals_Of_Rime_Accuracy_V1(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

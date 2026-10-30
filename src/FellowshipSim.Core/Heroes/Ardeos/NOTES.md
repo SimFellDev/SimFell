@@ -21,8 +21,10 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
   7 Fire Ball ticks, some in Wildfire).
 - **Incinerate's stacks:** a tick at 8 stacks is 3.1 times one at 1 stack: stack n deals 1 + 0.3 (n - 1) times the base
   (fight 7).
-- **Cinders:** a tick at a faster rate generates less, so an effect generates the same Cinders per second: Engulfing
-  Flames ticks give 3.85 Cinders, and 2.94 in Wildfire, 3.85 / 1.3 (fight 7). Fire Ball ticks generate 2 times the
+- **Cinders:** a tick's Cinders are the nominal ones divided by (1 + haste) (the in-game formula), so haste leaves the
+  Cinders per second alone, and Wildfire's faster ticks keep their full Cinders (an Engulfing Flames under Wildfire gives
+  more than 30). Fight 7 logged Engulfing Flames ticks of 3.85 Cinders, and 2.94 in Wildfire (3.85 / 1.3): that fits a
+  division by Wildfire's rate too, which the engine no longer does; to check against the logs. Fire Ball ticks generate 2 times the
   falloff of the Fire Ball that applied them (deltas of 1.17-1.43). The tooltip gives this a 50% chance, but replays
   of all 5 fights refuse the fewest Detonates for want of Cinders when every tick generates.
 

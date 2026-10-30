@@ -37,10 +37,8 @@ public class Chronoshift : Ability
         ChannelTicksOnStart = true;
         ChannelPartialFinalTick = true;
         AoeTargetThreshold = TargetThreshold;
-        // Chronoshift's own cooldown recovers at 8x while channeling too (per the user).
-        OwnRecoveryAuraLogIds.Add(_barrier.LogId);
-        // The barrier's CooldownRecovery 8 joins the recovery pool while channeling (+7: cooldowns tick at 8x),
-        // and leaves it when the channel ends or is stopped.
+        // The barrier's CooldownRecovery 8 joins the hero's recovery pool while channeling (+7: other cooldowns tick at 8x) and leaves it when
+        // the channel ends or is stopped. Chronoshift's own cooldown is fixed at 180s (a weapon ability's cooldown runs at normal speed).
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

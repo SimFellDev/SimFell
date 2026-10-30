@@ -56,6 +56,39 @@ public class Ruby : Gem
         }
     }
 
+    /// <summary>
+    /// The situational auras follow the active nodes of slots 1 and 5 (a rank, or a node reached or lost in a fight, or back to the bound ones).
+    /// In a fight a node's aura that was up passes to the slot's new rank, and one that was off stays off (<see cref="Gem.ChangePower"/>). Here a slot
+    /// that had no node and now has its first (rank 0 to rank 1) gets its aura if it is Might of the Minotaur (always: health is not modeled).
+    /// Blessing of the Conqueror stays off: the engine has no boss in combat to ask (TODO: turn it on against a boss once it does). A replay's log
+    /// gives the same auras their events.
+    /// </summary>
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
+    {
+        foreach (int slot in new[] { 1, 5 })
+        {
+            var old = before.FirstOrDefault(n => n.Slot == slot)?.Grants;
+            var next = NodeInSlot(slot)?.Grants;
+            if (old == next) continue;
+            if (old != null)
+            {
+                hero.SituationalAuras.Remove(old);
+                if (slot == 5) hero.BossAuras.Remove(old);
+            }
+            if (next != null)
+            {
+                hero.SituationalAuras.Add(next);
+                if (slot == 5) hero.BossAuras.Add(next);
+            }
+            if (now is not { } time || old != null || next == null) continue;
+            // TODO: Might of the Minotaur is up above 80% health. The engine does not model the hero's health, so it is taken as high; once
+            // it is, check the health here (and when it crosses 80%) instead of turning the aura on.
+            // TODO: Blessing of the Conqueror (slot 5) is up while an enemy in combat is a boss. It stays off here until the engine can tell a boss
+            // (the boss flag of an enemy): then turn it on at rank 0 to rank 1 when one is in combat.
+            if (slot == 1) hero.Auras.Apply(hero.Register(next), time);
+        }
+    }
+
     protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
     {
         2 => [StatModifier.Add(StatType.PrimaryAttribute, node.Value("PrimaryStatBonus"))],
