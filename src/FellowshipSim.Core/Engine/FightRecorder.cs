@@ -28,6 +28,8 @@ internal sealed class FightRecorder
     private List<CastReport>? _casts;
     /// <summary>When each cast still going started: a cast is listed at its start, once it completes.</summary>
     private readonly Dictionary<Ability, double> _castStarts = new(ReferenceEqualityComparer.Instance);
+    /// <summary>This fight's hits in order, while <see cref="KeepFight"/> holds; null otherwise.</summary>
+    private List<HitReport>? _hits;
     private readonly Hero _hero;
     /// <summary>This fight's Spirit Points at the start of each second, filled up to <see cref="_spiritFilled"/>.</summary>
     private double[] _spirit = [];
@@ -74,6 +76,12 @@ internal sealed class FightRecorder
         Watch(hero.Auras, onTarget: false);
     }
 
+    /// <summary>True when the fights begun from now keep their casts and hits (<see cref="Fight"/>).</summary>
+    public bool KeepFight { get; set; }
+
+    /// <summary>The last fight's casts and hits in order, when <see cref="KeepFight"/> held as it began.</summary>
+    public RolledFight Fight => new(_casts?.ToList() ?? [], _hits?.ToList() ?? []);
+
     /// <summary>Starts fight <paramref name="fight"/> (its index in the run), <paramref name="seconds"/> long, added to <paramref name="tally"/>.</summary>
     public void Begin(int fight, int seconds, Tally tally)
     {
@@ -85,8 +93,9 @@ internal sealed class FightRecorder
         _active.Clear();
         _lastEnd.Clear();
         _spans = fight < SpanFights ? new() : null;
-        _casts = fight < SpanFights ? new() : null;
         _castStarts.Clear();
+        _casts = fight < SpanFights || KeepFight ? new() : null;
+        _hits = KeepFight ? new() : null;
         if (_spirit.Length == seconds) Array.Clear(_spirit);
         else _spirit = new double[seconds];
         _spiritFilled = 0;
@@ -156,8 +165,11 @@ internal sealed class FightRecorder
             _lastName = hit.AbilityName;
             _lastSource = _tally.Source(hit.AbilityName);
         }
+        _hits?.Add(new HitReport(hit.Timestamp.TotalSeconds, hit.AbilityName, hit.AbilityId, hit.Amount, hit.IsCrit));
         var source = _lastSource!;
         if (source.Id == 0) source.Id = hit.AbilityId;
+        // A hit under another name than its ability's is part of that ability.
+        if (source.Group == null && hit.AbilityGroup is { } group && group != hit.AbilityName) source.Group = group;
         source.Damage += hit.Amount;
         source.Hits++;
         source.Crits += hit.CritChance >= 0 ? hit.CritChance : hit.IsCrit ? 1.0 : 0.0;
@@ -269,10 +281,13 @@ internal sealed class FightRecorder
         public long Casts, Hits;
         /// <summary>The damage log ID of the first hit.</summary>
         public int Id;
+        /// <summary>The ability this source is part of, when its hits have another name than the ability (Thunder Call: Hammer Storm of Hammer Storm).</summary>
+        public string? Group;
 
         public void Add(SourceTally other)
         {
             if (Id == 0) Id = other.Id;
+            Group ??= other.Group;
             Damage += other.Damage;
             Casts += other.Casts;
             Hits += other.Hits;
@@ -416,7 +431,7 @@ internal sealed class FightRecorder
             SpiritSum = UpToLongest(SpiritSum),
             SpiritFights = UpToLongest(SpiritFights),
             SpiritMax = SpiritMax,
-            Sources = Sources.Select(s => new MonteCarloChunk.SourceTotals(s.Key, s.Value.Damage, s.Value.Crits, s.Value.Casts, s.Value.Hits, s.Value.Id)).ToList(),
+            Sources = Sources.Select(s => new MonteCarloChunk.SourceTotals(s.Key, s.Value.Damage, s.Value.Crits, s.Value.Casts, s.Value.Hits, s.Value.Id, s.Value.Group)).ToList(),
             Auras = Auras.Select(a => new MonteCarloChunk.AuraTotals(a.Key.Name, a.Key.OnTarget, a.Value.UpSeconds, a.Value.StackSeconds,
                 a.Value.AtMaxSeconds, a.Value.GapSeconds, a.Value.Applications, a.Value.Refreshes, a.Value.Gaps, a.Value.MaxStacks,
                 a.Value.StackCap, a.Value.LogId)).ToList(),
@@ -451,7 +466,7 @@ internal sealed class FightRecorder
                 s.Spans.ToDictionary(a => (a.Name, a.OnTarget), a => a.Spans), s.Casts, s.Spirit)));
             foreach (var s in totals.Sources)
             {
-                tally.Sources[s.Name] = new SourceTally { Damage = s.Damage, Crits = s.Crits, Casts = s.Casts, Hits = s.Hits, Id = s.Id };
+                tally.Sources[s.Name] = new SourceTally { Damage = s.Damage, Crits = s.Crits, Casts = s.Casts, Hits = s.Hits, Id = s.Id, Group = s.Group };
             }
             foreach (var a in totals.Auras)
             {
@@ -479,18 +494,25 @@ internal sealed class FightRecorder
                 rolling, Percentile(bandRolling, seconds, 0.05), Percentile(bandRolling, seconds, 0.95), RollingSeconds);
         }
 
-        /// <summary>Each damage source, most damage first; values are means per fight.</summary>
-        public List<AbilityReport> Abilities(double seconds) => Sources
-            .Where(s => s.Value.Damage > 0)
-            .OrderByDescending(s => s.Value.Damage)
-            .Select(s =>
-            {
-                var t = s.Value;
-                double fights = Math.Max(1, Fights);
-                return new AbilityReport(s.Key, t.Damage / fights, t.Damage / fights / seconds, t.Casts / fights, t.Hits / fights,
-                    t.Hits > 0 ? t.Crits / t.Hits : 0, t.Hits > 0 ? t.Damage / t.Hits : 0, t.Id);
-            })
-            .ToList();
+        /// <summary>
+        /// Each damage source, most damage first; values are means per fight. An ability whose hits all have other names
+        /// is there with its casts and no damage, for the sources that are part of it.
+        /// </summary>
+        public List<AbilityReport> Abilities(double seconds)
+        {
+            var groups = Sources.Where(s => s.Value.Damage > 0 && s.Value.Group != null).Select(s => s.Value.Group!).ToHashSet();
+            return Sources
+                .Where(s => s.Value.Damage > 0 || groups.Contains(s.Key))
+                .OrderByDescending(s => s.Value.Damage)
+                .Select(s =>
+                {
+                    var t = s.Value;
+                    double fights = Math.Max(1, Fights);
+                    return new AbilityReport(s.Key, t.Damage / fights, t.Damage / fights / seconds, t.Casts / fights, t.Hits / fights,
+                        t.Hits > 0 ? t.Crits / t.Hits : 0, t.Hits > 0 ? t.Damage / t.Hits : 0, t.Id, t.Group);
+                })
+                .ToList();
+        }
 
         /// <summary>
         /// Each buff and debuff, buffs first, longest up first. An aura up the whole of every fight from its single
@@ -518,6 +540,9 @@ internal sealed class FightRecorder
             .ThenByDescending(b => b.Uptime)
             .ToList();
         }
+
+        /// <summary>The typical fight's index in the run, or null for a run of no sampled fight.</summary>
+        public int? TypicalFight() => Typical()?.Fight;
 
         /// <summary>The typical fight's casts, in order.</summary>
         public List<CastReport> Casts() => Typical()?.Casts ?? [];

@@ -9,6 +9,7 @@
 @inject ActionListStore Store
 @inject Visitor Visitor
 @inject CharacterImport Characters
+@inject IDungeonImport Dungeons
 @inject IAppViews Views
 @inject SimResultLibrary Results
 @inject ProfileStore Profiles
@@ -43,8 +44,9 @@
     @switch (State.Tab)
     {
         case SimTab.Import:
-            <LogsSignInPrompt Purpose="to import a hero from a log" />
-            <ImportCard Title="Import Hero" PickHint="Pick a player, then Import to use their build." BuildOnlyHeroes="true" OnPlayer="ImportPlayerAsync" />
+            <LogsSignInPrompt Purpose="to import a hero or a dungeon from a log" />
+            <ImportCard Title="Import from a log" PickHint="Pick a player, switch on their build, the fight's dungeon with their hero share, or both, then Import."
+                        BuildOnlyHeroes="true" OnImport="ImportFromLogAsync" />
             <Card Title="Import a .simc profile or share link">
                 <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, and a profile's action list, if it has one, to Advanced.</p>
                 <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
@@ -251,25 +253,44 @@
         }
     }
 
-    private async Task ImportPlayerAsync(PickedPlayer picked)
+    // The build, then the dungeon, of the player picked; the build's tab shows when it is imported, else the dungeon's.
+    private async Task ImportFromLogAsync(LogImport import)
     {
-        State.ImportStatus = new MessageState($"Reading {picked.Player.Name}'s character...");
-        StateHasChanged();
+        var picked = import.Picked;
+        var progress = new Progress<string>(m => { State.ImportStatus = new MessageState($"{m}..."); InvokeAsync(StateHasChanged); });
+        bool built = false;
         try
         {
-            var progress = new Progress<string>(m => { State.ImportStatus = new MessageState($"{m}..."); InvokeAsync(StateHasChanged); });
-            var build = await Characters.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player, progress);
-            UseBuild(build, $"{picked.Player.Name}'s {picked.Player.Hero} in {picked.Fight.Name}");
-            if (!picked.CurrentPatch)
+            if (import.Build)
             {
-                State.ImportStatus = State.BuildStatus = new MessageState(
-                    $"{State.ImportStatus.Text} This log is from before patch {FellowshipSim.Logs.GamePatch.Current.Name}: check its talents, traits and blessings.",
-                    MessageKind.Warning);
+                State.ImportStatus = new MessageState($"Reading {picked.Player.Name}'s character...");
+                StateHasChanged();
+                var build = await Characters.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player, progress);
+                UseBuild(build);
+                if (!picked.CurrentPatch)
+                {
+                    string oldPatch = $"This log is from before patch {FellowshipSim.Logs.GamePatch.Current.Name}: check its talents, traits and blessings.";
+                    State.BuildStatus = new MessageState(State.BuildStatus.Text.Length > 0 ? $"{State.BuildStatus.Text} {oldPatch}" : oldPatch, MessageKind.Warning);
+                }
+                built = true;
             }
+            if (import.Dungeon)
+            {
+                State.ImportStatus = new MessageState($"Reading the dungeon of {picked.Fight.Name}...");
+                StateHasChanged();
+                var dungeon = await Dungeons.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player.Id, progress);
+                // A saved dungeon's name is a file name.
+                State.Dungeon = dungeon with { Name = ActionListStore.ValidName(dungeon.Name, "Imported dungeon") };
+                State.DungeonEditor.CloseAll();
+                State.DungeonValue = "";
+                State.Mode = SimMode.Dungeon;
+                State.Tab = import.Build ? SimTab.Hero : SimTab.Modes;
+            }
+            State.ImportStatus = MessageState.None;
         }
         catch (Exception e)
         {
-            State.ImportStatus = MessageState.Error(e.Message);
+            State.ImportStatus = MessageState.Error(built ? $"The build is imported. The dungeon: {e.Message}" : e.Message);
         }
     }
 
@@ -293,17 +314,19 @@
         {
             if (BuildShareLink.TryRead(State.ProfileText) is { } shared)
             {
-                UseBuild(shared, "the share link");
+                UseBuild(shared);
                 return Task.CompletedTask;
             }
             var profile = SimcProfile.Parse(State.ProfileText);
+            // The build first: a build of another hero puts in that hero's list, and the profile's own list replaces it.
+            UseBuild(profile.Build);
             if (profile.ActionList.Trim().Length > 0)
             {
                 State.ActionListText = profile.ActionList;
                 State.ActionListName = "the profile's list";
                 State.ActionListValue = "";
             }
-            UseBuild(profile.Build, profile.ActionList.Trim().Length > 0 ? "the profile, with its action list" : "the profile");
+            State.ImportStatus = MessageState.None;
         }
         catch (FormatException e)
         {
@@ -312,7 +335,7 @@
         return Task.CompletedTask;
     }
 
-    private void UseBuild(CharacterBuild build, string from) => State.UseBuild(build, from);
+    private void UseBuild(CharacterBuild build) => State.UseBuild(build);
 
     // The fights every run of a sim has.
     private SimSettings Settings() => new(State.Iterations, State.FightSeconds, State.Targets,

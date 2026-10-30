@@ -1,9 +1,14 @@
-/* A sim's report: tiles, two charts over the fight, then the damage and buff tables. */
+/* A sim's report: tiles, the charts over the fight, then the damage and buff tables. */
 .report {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: 12px;
+}
+
+.save-bar {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .tiles {
@@ -233,6 +238,46 @@
   margin-right: 8px;
 }
 
+/* An ability with sources under other names: the whole name opens its sources, which show indented under it. */
+.group-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-table td.name .group-toggle ::deep .chevron,
+.chevron-space {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+
+.chevron-space {
+  display: inline-block;
+}
+
+.report-table td.name .group-toggle ::deep .chevron {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.report-table td.name .group-toggle.open ::deep .chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.report-table tr.part td.name {
+  padding-left: 48px;
+  color: var(--muted);
+}
+
 .report-table td.name .meta {
   margin-left: 6px;
   font-size: 11px;
@@ -407,4 +452,19 @@
 
 .cast-table .aura-row td.name {
   color: var(--muted);
+}
+
+/* A line's hits: each one's damage, a critical hit in bold and the warning colour. One line high, for the list's virtualization. */
+.cast-table td.hits {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cast-table .hit + .hit {
+  margin-left: 10px;
+}
+
+.cast-table .hit.crit {
+  color: var(--warn);
+  font-weight: 700;
 }

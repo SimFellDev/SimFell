@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
@@ -30,11 +31,11 @@ public static partial class SimWorker
     [JSExport]
     public static void Finish(int runId) => Runs.Remove(runId);
 
-    /// <summary>A sim's result from every one of its chunks, in chunk order, as JSON.</summary>
+    /// <summary>A sim's result from every one of its chunks, in chunk order, with its typical fight's hits, as JSON.</summary>
     [JSExport]
-    public static string Combine(string settingsJson, string[] chunksJson) =>
-        JsonSerializer.Serialize(SimChunks.Combine(Read<SimSettings>(settingsJson), chunksJson.Select(Read<MonteCarloChunk>).ToList()),
-            SimChunks.Json);
+    public static string Combine(string profileJson, string settingsJson, string[] chunksJson) =>
+        JsonSerializer.Serialize(new SimChunks(Read<SimcProfile>(profileJson), Read<SimSettings>(settingsJson))
+            .Combine(chunksJson.Select(Read<MonteCarloChunk>).ToList()), SimChunks.Json);
 
     /// <summary>
     /// Replays player <paramref name="playerId"/> of a raw fight: a <see cref="ReviewReply"/> as JSON, with the review's files
@@ -82,6 +83,54 @@ public static partial class SimWorker
         catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
+        }
+        return JsonSerializer.Serialize(reply, SimChunks.Json);
+    }
+
+    /// <summary>
+    /// Reads the dungeon of fight <paramref name="fightId"/> of report <paramref name="reportCode"/> with player
+    /// <paramref name="playerId"/>'s hero share: a <see cref="DungeonReply"/> as JSON. The fight is
+    /// <paramref name="keptFight"/>, the one the browser keeps, or else downloaded as <see cref="ReviewFight"/> does and kept.
+    /// A fight kept without its pulls gets them from FellowshipLogs and is kept again.
+    /// </summary>
+    [JSExport]
+    public static async Task<string> ReadDungeonFight(string reportCode, int fightId, int playerId, string keptFight, string accessToken,
+        string clientId, string clientSecret, int callId)
+    {
+        var progress = new ProgressTo(callId);
+        DungeonReply reply;
+        try
+        {
+            using var http = new HttpClient();
+            FellowshipLogsClient Client() =>
+                accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken)
+                : clientId.Length > 0 ? new FellowshipLogsClient(http, clientId, clientSecret)
+                : throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
+            JsonObject raw;
+            if (keptFight.Length > 0)
+            {
+                raw = JsonNode.Parse(keptFight)!.AsObject();
+            }
+            else
+            {
+                var client = Client();
+                progress.Report("Downloading the fight from FellowshipLogs");
+                raw = await client.DownloadFightAsync(reportCode, fightId, progress);
+                await SaveFight(reportCode, fightId, raw.ToJsonString());
+            }
+            if (!DungeonReader.HasPulls(raw))
+            {
+                var client = Client();
+                progress.Report("Downloading the fight's pulls from FellowshipLogs");
+                await client.AddDungeonPullsAsync(raw);
+                await SaveFight(reportCode, fightId, raw.ToJsonString());
+            }
+            progress.Report("Reading the dungeon");
+            reply = new DungeonReply(DungeonReader.FromRawFight(raw, playerId).Format(), null);
+        }
+        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
+        {
+            reply = new DungeonReply(null, e.Message);
         }
         return JsonSerializer.Serialize(reply, SimChunks.Json);
     }

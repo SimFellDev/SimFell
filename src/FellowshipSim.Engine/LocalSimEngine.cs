@@ -67,7 +67,7 @@ public sealed class LocalSimEngine : ISimEngine
             SimChunks.CheckDungeon(settings);
             var simulator = SimChunks.NewSimulator(profile);
             var result = simulator.Run(SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations, settings.TargetCount,
-                settings.FirstSeed, settings.DegreeOfParallelism,
+                settings.FirstSeed, settings.DegreeOfParallelism, rollTypicalFight: true,
                 progress: progress == null ? null : completed => progress.Report(new SimProgress(completed, settings.Iterations)),
                 cancellationToken: ct, fight: settings.Fight);
             return SimResult.From(result);

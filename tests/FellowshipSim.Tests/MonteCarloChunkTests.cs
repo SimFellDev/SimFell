@@ -38,7 +38,7 @@ public class MonteCarloChunkTests
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rime_character.json")))!;
         var duration = SimTime.FromSeconds(60);
         var whole = new MonteCarloSimulator(build, AplParser.ParseScript(Apl))
-            .Run(duration, iterations, targets, firstSeed: 5, degreeOfParallelism: 4, keepFightDamage: keepFightDamage);
+            .Run(duration, iterations, targets, firstSeed: 5, degreeOfParallelism: 4, keepFightDamage: keepFightDamage, rollTypicalFight: true);
 
         // Two "workers", each with its own simulator, take the chunks in turn.
         var workers = new[] { new MonteCarloSimulator(build, AplParser.ParseScript(Apl)), new MonteCarloSimulator(build, AplParser.ParseScript(Apl)) };
@@ -47,8 +47,19 @@ public class MonteCarloChunkTests
             .Select(c => JsonSerializer.Deserialize<MonteCarloChunk>(JsonSerializer.Serialize(c, Json), Json)!)
             .ToList();
         var combined = MonteCarloSimulator.Combine(chunks, duration, iterations, keepFightDamage);
+        // A combined run's typical fight is rolled again, as SimChunks.Combine has it.
+        var rolled = workers[1].RollFight(combined.TypicalFight!.Value, duration, targets, firstSeed: 5);
 
-        Assert.Equal(JsonSerializer.Serialize(whole, Json), JsonSerializer.Serialize(combined, Json));
+        Assert.Equal(JsonSerializer.Serialize(whole.Hits, Json), JsonSerializer.Serialize(rolled.Hits, Json));
+        Assert.Equal(JsonSerializer.Serialize(whole.Casts, Json), JsonSerializer.Serialize(rolled.Casts, Json));
+        var wholeJson = JsonSerializer.SerializeToNode(whole, Json)!.AsObject();
+        var combinedJson = JsonSerializer.SerializeToNode(combined, Json)!.AsObject();
+        foreach (string rolledPart in new[] { "hits", "casts" })
+        {
+            wholeJson.Remove(rolledPart);
+            combinedJson.Remove(rolledPart);
+        }
+        Assert.Equal(wholeJson.ToJsonString(), combinedJson.ToJsonString());
     }
 
     [Fact]

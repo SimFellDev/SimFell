@@ -23,8 +23,15 @@ public class MonteCarloResult
     public IReadOnlyList<AbilityReport> Abilities { get; init; } = [];
     /// <summary>Each buff on the hero and debuff on the targets, as means per fight.</summary>
     public IReadOnlyList<BuffReport> Buffs { get; init; } = [];
-    /// <summary>The casts of one typical fight (the sampled fight nearest the mean damage), in order.</summary>
+    /// <summary>
+    /// The casts of one typical fight (the sampled fight nearest the mean damage), in order: rolled
+    /// (<see cref="MonteCarloSimulator.RollFight"/>) for a run asked to roll it, and as the run fought it otherwise.
+    /// </summary>
     public IReadOnlyList<CastReport> Casts { get; init; } = [];
+    /// <summary>The typical fight's index in the run (its seed is the first seed plus it), or null for a run of no fights.</summary>
+    public int? TypicalFight { get; init; }
+    /// <summary>The rolled typical fight's hits, in order (<see cref="MonteCarloSimulator.RollFight"/>). Empty for a run not asked to roll it.</summary>
+    public IReadOnlyList<HitReport> Hits { get; init; } = [];
     /// <summary>The hero's Spirit Points over the fight.</summary>
     public SpiritTimeline? Spirit { get; init; }
     /// <summary>The first target's DPS: its damage in every fight over their lengths.</summary>
@@ -79,10 +86,12 @@ public class MonteCarloSimulator
     /// </para>
     /// <paramref name="fight"/> sets each fight's length, the targets' health and the starting Spirit
     /// (<see cref="FightOptions.Default"/> when null). A fight's DPS is its damage over its own length.
+    /// <paramref name="rollTypicalFight"/> fights the typical fight once more with dice (<see cref="RollFight"/>) for the
+    /// result's casts and hits; the hero's events hear that fight too.
     /// </summary>
     public MonteCarloResult Run(SimTime duration, int iterations = 100, int targetCount = 1, int firstSeed = 1,
         int? degreeOfParallelism = null, bool keepFightDamage = false, Action<int>? progress = null,
-        CancellationToken cancellationToken = default, FightOptions? fight = null)
+        CancellationToken cancellationToken = default, FightOptions? fight = null, bool rollTypicalFight = false)
     {
         fight ??= FightOptions.Default;
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
@@ -119,7 +128,9 @@ public class MonteCarloSimulator
             },
             worker => _idle.Add(worker));
         reporter?.Finish(iterations);
-        return Result(total, fightDamage, duration, iterations);
+        int? typical = total.Report.TypicalFight();
+        return Result(total, fightDamage, duration, iterations,
+            rollTypicalFight && typical is { } t ? RollFight(t, duration, targetCount, firstSeed, fight) : null);
     }
 
     /// <summary>
@@ -191,7 +202,30 @@ public class MonteCarloSimulator
         return totals;
     }
 
-    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations)
+    /// <summary>
+    /// Fight <paramref name="fight"/> of a run with these arguments again, with its seed: its casts and hits. A run's fights
+    /// keep no hits, since the typical fight is known only once every fight is done.
+    /// </summary>
+    public RolledFight RollFight(int fight, SimTime duration, int targetCount = 1, int firstSeed = 1, FightOptions? options = null)
+    {
+        options ??= FightOptions.Default;
+        var worker = _idle.TryTake(out var idle) ? idle : NewWorker();
+        try
+        {
+            int seconds = (int)Math.Ceiling(Math.Max(1.0, options.LongestLength(duration).TotalSeconds));
+            worker.Recorder.KeepFight = true;
+            Fight(worker, options.Length(duration, firstSeed + fight), targetCount, firstSeed + fight, fight, seconds, options, new Totals());
+            return worker.Recorder.Fight;
+        }
+        finally
+        {
+            worker.Recorder.KeepFight = false;
+            _idle.Add(worker);
+        }
+    }
+
+    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations,
+        RolledFight? rolled = null)
     {
         // The fights' mean length: every fight's, or the duration for a run of none.
         double totalSeconds = total.Count > 0 ? total.LengthSum / total.Count : Math.Max(1.0, duration.TotalSeconds);
@@ -215,7 +249,9 @@ public class MonteCarloSimulator
             Timeline = total.Report.Timeline(),
             Abilities = total.Report.Abilities(totalSeconds),
             Buffs = total.Report.Buffs(totalSeconds),
-            Casts = total.Report.Casts(),
+            Casts = rolled?.Casts ?? total.Report.Casts(),
+            TypicalFight = total.Report.TypicalFight(),
+            Hits = rolled?.Hits ?? [],
             Spirit = total.Report.Spirit(),
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
             // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.

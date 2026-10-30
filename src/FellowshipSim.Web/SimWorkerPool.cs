@@ -92,6 +92,26 @@ public sealed class SimWorkerPool(IJSRuntime js)
         }
     }
 
+    /// <summary>
+    /// Reads the dungeon of a fight on a worker with player <paramref name="playerId"/>'s hero share, downloading the fight
+    /// as <see cref="ReviewFightAsync"/> does when the browser does not keep it; the worker's <see cref="DungeonReply"/> JSON.
+    /// </summary>
+    public async Task<string> DungeonFightAsync(string reportCode, int fightId, int playerId, string? accessToken, LogsCredentials? credentials,
+        IProgress<string>? progress)
+    {
+        var pool = await PoolAsync();
+        using var sink = DotNetObjectReference.Create(new Sink(null, progress));
+        try
+        {
+            return await pool.InvokeAsync<string>("dungeonFight", CancellationToken.None, reportCode, fightId, playerId,
+                accessToken ?? "", credentials?.ClientId ?? "", credentials?.ClientSecret ?? "", sink);
+        }
+        catch (JSException e)
+        {
+            throw new SimEngineException(Reason(e));
+        }
+    }
+
     // The first line of a worker's error, without the JS error's own prefix.
     private static string Reason(JSException e)
     {

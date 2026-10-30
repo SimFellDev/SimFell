@@ -42,9 +42,16 @@ public sealed class SimChunks
         _simulator.RunChunk(chunk, SimTime.FromSeconds(_settings.DurationSeconds), _settings.Iterations, _settings.TargetCount,
             _settings.FirstSeed, cancellationToken: ct, fight: _settings.Fight);
 
-    /// <summary>The sim's result from every one of its chunks, in chunk order.</summary>
-    public static SimResult Combine(SimSettings settings, IReadOnlyList<MonteCarloChunk> chunks) =>
-        SimResult.From(MonteCarloSimulator.Combine(chunks, SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations));
+    /// <summary>The sim's result from every one of its chunks, in chunk order, with its typical fight rolled as <see cref="MonteCarloSimulator.Run"/> has it.</summary>
+    public SimResult Combine(IReadOnlyList<MonteCarloChunk> chunks)
+    {
+        var duration = SimTime.FromSeconds(_settings.DurationSeconds);
+        var combined = MonteCarloSimulator.Combine(chunks, duration, _settings.Iterations);
+        var result = SimResult.From(combined);
+        if (combined.TypicalFight is not { } typical) return result;
+        var rolled = _simulator.RollFight(typical, duration, _settings.TargetCount, _settings.FirstSeed, _settings.Fight);
+        return result with { Casts = rolled.Casts, Hits = rolled.Hits };
+    }
 
     /// <summary>Throws <see cref="SimEngineException"/> when <paramref name="settings"/> has a dungeon that is not valid.</summary>
     public static void CheckDungeon(SimSettings settings)

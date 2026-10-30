@@ -89,6 +89,12 @@
   border-top: 1px solid var(--border);
 }
 
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .import-button {
   min-height: 40px;
   padding: 8px 22px;

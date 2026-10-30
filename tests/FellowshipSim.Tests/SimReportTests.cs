@@ -12,10 +12,10 @@ public class SimReportTests
     private const int Seconds = 60;
     private const int Fights = 50;
 
-    private static MonteCarloResult Run(int targets = 1) =>
+    private static MonteCarloResult Run(int targets = 1, bool rollTypicalFight = false) =>
         new MonteCarloSimulator(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, CritRating = 400 },
                 AplParser.ParseScript("actions=bursting_ice\nactions+=/frost_bolt"))
-            .Run(SimTime.FromSeconds(Seconds), Fights, targets, degreeOfParallelism: 2);
+            .Run(SimTime.FromSeconds(Seconds), Fights, targets, degreeOfParallelism: 2, rollTypicalFight: rollTypicalFight);
 
     [Fact]
     public void The_Timeline_Ends_At_The_Mean_Damage_Inside_Its_Band()
@@ -62,6 +62,22 @@ public class SimReportTests
         // One fight's casts: about as many as a fight's mean.
         double meanCasts = result.Abilities.Sum(a => a.Casts);
         Assert.InRange(casts.Count, meanCasts * 0.8, meanCasts * 1.2 + 2);
+    }
+
+    [Fact]
+    public void The_Hits_Are_The_Typical_Fights_Hits_In_Order()
+    {
+        var result = Run(rollTypicalFight: true);
+        var hits = result.Hits;
+        Assert.NotEmpty(hits);
+        for (int i = 1; i < hits.Count; i++) Assert.True(hits[i].Time >= hits[i - 1].Time);
+        Assert.InRange(hits[^1].Time, 0, Seconds);
+        Assert.Contains(hits, h => h.Crit);
+        Assert.Contains(hits, h => !h.Crit);
+        Assert.All(hits, h => Assert.True(h.Amount > 0));
+        // The fight run again is the typical fight: each Frost Bolt cast hits once, the last one perhaps after the fight ends.
+        int bolts = result.Casts.Count(c => c.Name == "Frost Bolt");
+        Assert.InRange(hits.Count(h => h.Name == "Frost Bolt"), bolts - 1, bolts);
     }
 
     [Fact]

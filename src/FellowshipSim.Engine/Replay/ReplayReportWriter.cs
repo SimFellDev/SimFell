@@ -252,9 +252,9 @@ button.state{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--
         sb.Append($"<div class=\"panel\"><div class=\"muted\">Engine vs log</div><strong>{(logTotal > 0 ? engTotal / logTotal - 1 : 0):+0.0%;-0.0%;0.0%}</strong> over {duration:F0}s</div></div>");
 
         sb.Append("<div class=\"panel\"><div class=\"legend\"><span><i style=\"background:var(--log)\"></i>Log</span><span><i style=\"background:var(--engine)\"></i>Engine</span></div>");
-        sb.Append("<strong>Damage done over time</strong>");
+        sb.Append("<strong>Damage done</strong>");
         Chart(sb, Cumulative(logBins), Cumulative(engBins), duration);
-        sb.Append($"<strong>DPS over time</strong> <span class=\"muted\">({DpsWindowSeconds:F0}s rolling average)</span>");
+        sb.Append($"<strong>DPS</strong> <span class=\"muted\">({DpsWindowSeconds:F0}s)</span>");
         Chart(sb, Rolling(logBins), Rolling(engBins), duration);
         sb.Append("</div>");
 

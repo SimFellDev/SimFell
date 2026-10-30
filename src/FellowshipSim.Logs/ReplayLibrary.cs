@@ -76,21 +76,48 @@ public sealed class ReplayLibrary
         return JsonNode.Parse(await File.ReadAllTextAsync(path, ct))!.AsObject();
     }
 
-    /// <summary>The path of the fight's raw events, downloaded from FellowshipLogs the first time.</summary>
+    /// <summary>
+    /// The path of the fight's raw events, downloaded from FellowshipLogs the first time. One download runs at a time, so
+    /// two callers of one fight (a replay and a dungeon import) download it once.
+    /// </summary>
     public async Task<string> GetRawFightFileAsync(FellowshipLogsClient? client, string reportCode, int fightId,
         IProgress<string>? progress = null, CancellationToken ct = default)
     {
         string path = RawFightPath(reportCode, fightId);
-        if (File.Exists(path))
+        await _oneDownloadAtATime.WaitAsync(ct);
+        try
         {
-            progress?.Report("Using the downloaded fight");
+            if (File.Exists(path))
+            {
+                progress?.Report("Using the downloaded fight");
+                return path;
+            }
+            if (client == null) throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
+            progress?.Report("Downloading the fight from FellowshipLogs");
+            var raw = await client.DownloadFightAsync(reportCode, fightId, progress, ct);
+            await File.WriteAllTextAsync(path, raw.ToJsonString(), ct);
             return path;
         }
-        if (client == null) throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
-        progress?.Report("Downloading the fight from FellowshipLogs");
-        var raw = await client.DownloadFightAsync(reportCode, fightId, progress, ct);
-        await File.WriteAllTextAsync(path, raw.ToJsonString(), ct);
-        return path;
+        finally
+        {
+            _oneDownloadAtATime.Release();
+        }
+    }
+
+    private readonly SemaphoreSlim _oneDownloadAtATime = new(1, 1);
+
+    /// <summary>Writes a downloaded fight's raw events back, as <see cref="GetRawFightAsync"/> reads them.</summary>
+    public async Task SaveRawFightAsync(string reportCode, int fightId, JsonObject raw, CancellationToken ct = default)
+    {
+        await _oneDownloadAtATime.WaitAsync(ct);
+        try
+        {
+            await File.WriteAllTextAsync(RawFightPath(reportCode, fightId), raw.ToJsonString(), ct);
+        }
+        finally
+        {
+            _oneDownloadAtATime.Release();
+        }
     }
 
     /// <summary>Writes a review's replay script, page, summary, text and hits.</summary>

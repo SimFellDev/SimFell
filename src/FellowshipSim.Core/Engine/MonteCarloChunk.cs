@@ -58,7 +58,7 @@ public sealed class MonteCarloChunk
 
     public sealed record AuraSpans(string Name, bool OnTarget, List<double> Spans);
 
-    public sealed record SourceTotals(string Name, double Damage, double Crits, long Casts, long Hits, int Id);
+    public sealed record SourceTotals(string Name, double Damage, double Crits, long Casts, long Hits, int Id, string? Group = null);
 
     public sealed record AuraTotals(string Name, bool OnTarget, double UpSeconds, double StackSeconds, double AtMaxSeconds,
         double GapSeconds, long Applications, long Refreshes, long Gaps, int MaxStacks, int StackCap, int LogId);

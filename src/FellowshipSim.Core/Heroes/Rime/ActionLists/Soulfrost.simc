@@ -57,3 +57,6 @@ actions.soulfrost+=/cold_snap,if=worb<5&!buff.glacial_assault.at_max_stacks&(!bl
 # Nature's Fury is a weapon the engine does not have yet.
 # actions.soulfrost+=/natures_fury
 actions.soulfrost+=/frost_bolt,if=!blessing.the_vehement|!buff.the_vehement.at_max_stacks
+# At the most stacks of The Vehement, Cold Snap and Frost Bolt above wait for Frostwyrm's Spite. With nothing else to
+# cast, Frost Bolt goes anyway: a dungeon fight stops while the hero casts nothing.
+actions.soulfrost+=/frost_bolt

@@ -30,7 +30,7 @@
         {
             if (BuildShareLink.TryRead(Navigation.Uri) is { } build)
             {
-                State.UseBuild(build, $"the share link ({build.Name})");
+                State.UseBuild(build);
                 Views.ShowPage(AppPage.Sim);
                 return;
             }

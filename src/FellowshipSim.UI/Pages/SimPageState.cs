@@ -37,8 +37,21 @@ public sealed class SimPageState
 
     public SimTab Tab { get; set; } = SimTab.Hero;
 
-    /// <summary>The build being edited.</summary>
-    public BuildEditor Editor { get; set; } = new(BuildEditor.NewBuild("Rime"));
+    /// <summary>
+    /// The build being edited. A build of another hero puts in that hero's action list: the one last picked for them,
+    /// else their default list.
+    /// </summary>
+    public BuildEditor Editor
+    {
+        get => _editor;
+        set
+        {
+            _editor = value;
+            if (!value.Build.Hero.Equals(_actionListHero, StringComparison.OrdinalIgnoreCase)) SwapActionList(value.Build.Hero);
+        }
+    }
+
+    private BuildEditor _editor = new(BuildEditor.NewBuild("Rime"));
 
     public CharacterBuild Build => Editor.Build;
 
@@ -62,17 +75,18 @@ public sealed class SimPageState
     public void DiscardBuildEdits() => Editor = new BuildEditor(SimcProfile.Parse(_cleanProfile).Build);
 
     /// <summary>
-    /// Edits <paramref name="build"/> from now on (a build imported <paramref name="from"/> somewhere), without what the
-    /// engine does not have, and shows the Hero tab.
+    /// Edits <paramref name="build"/> from now on, without what the engine does not have, and shows the Hero tab. A
+    /// warning names what the engine does not have.
     /// </summary>
-    public void UseBuild(CharacterBuild build, string from)
+    public void UseBuild(CharacterBuild build)
     {
         var removed = BuildEditor.RemoveUnknown(build);
         Editor = new BuildEditor(build);
         SavedName = "";
         MarkBuildClean();
-        ImportStatus = MessageState.Ok($"Using the build of {from}." + (removed.Count > 0 ? $" Left out (not in the engine): {string.Join(", ", removed)}." : ""));
-        BuildStatus = ImportStatus;
+        BuildStatus = removed.Count > 0
+            ? new MessageState($"Left out (not in the engine): {string.Join(", ", removed)}.", MessageKind.Warning)
+            : MessageState.None;
         Tab = SimTab.Hero;
     }
 
@@ -153,6 +167,19 @@ public sealed class SimPageState
 
     /// <summary>The text of the action list picked; null for the hero's built-in default list.</summary>
     public string? ActionListText { get; set; }
+
+    // The hero whose action list is picked, and the list last picked for each other hero.
+    private string _actionListHero = "Rime";
+    private readonly Dictionary<string, (string Value, string Name, string? Text)> _heroActionLists = new(StringComparer.OrdinalIgnoreCase);
+
+    private void SwapActionList(string hero)
+    {
+        _heroActionLists[_actionListHero] = (ActionListValue, ActionListName, ActionListText);
+        (ActionListValue, ActionListName, ActionListText) = _heroActionLists.TryGetValue(hero, out var last)
+            ? last
+            : ($"builtin/{hero}/{Core.APL.DefaultActionLists.DefaultName}", Core.APL.DefaultActionLists.DefaultName, null);
+        _actionListHero = hero;
+    }
 
     public MessageState Status { get; set; } = MessageState.None;
 

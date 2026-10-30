@@ -543,10 +543,6 @@
         State.SavedName = "";
         State.MarkBuildClean();
         State.BuildStatus = MessageState.None;
-        // Another hero runs its own default list.
-        State.ActionListValue = $"builtin/{hero}/{FellowshipSim.Core.APL.DefaultActionLists.DefaultName}";
-        State.ActionListName = FellowshipSim.Core.APL.DefaultActionLists.DefaultName;
-        State.ActionListText = null;
         try
         {
             await LoadSavedListAsync(force: true);

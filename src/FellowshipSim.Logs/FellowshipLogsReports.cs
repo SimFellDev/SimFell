@@ -30,7 +30,10 @@ public static class FellowshipLogsReports
           reportData {
             report(code: $code) {
               startTime
-              fights(fightIDs: $fightIDs) { id startTime endTime name friendlyPlayers enemyNPCs { id gameID instanceCount } }
+              fights(fightIDs: $fightIDs) {
+                id startTime endTime name friendlyPlayers enemyNPCs { id gameID instanceCount }
+                dungeonPulls { id name startTime endTime enemyNPCs { id gameID minimumInstanceID maximumInstanceID } }
+              }
               masterData {
                 actors { id gameID name type subType petOwner }
                 abilities { gameID name type icon }
@@ -55,6 +58,18 @@ public static class FellowshipLogsReports
     private const string FightTimesQuery = """
         query($code: String!, $fightIDs: [Int]!) {
           reportData { report(code: $code) { fights(fightIDs: $fightIDs) { startTime endTime } } }
+        }
+        """;
+
+    private const string DungeonPullsQuery = """
+        query($code: String!, $fightIDs: [Int]!) {
+          reportData {
+            report(code: $code) {
+              fights(fightIDs: $fightIDs) {
+                dungeonPulls { id name startTime endTime enemyNPCs { id gameID minimumInstanceID maximumInstanceID } }
+              }
+            }
+          }
         }
         """;
 
@@ -90,6 +105,21 @@ public static class FellowshipLogsReports
         }, ct))["reportData"]?["report"]?["events"]?["data"]?.AsArray();
         return data?.FirstOrDefault(e => e?["type"]?.GetValue<string>() == "combatantinfo" && e["sourceID"]?.GetValue<int>() == playerId)
             ?.DeepClone().AsObject();
+    }
+
+    /// <summary>
+    /// Adds the fight's FellowshipLogs pulls to a raw fight downloaded without them (<c>fight.dungeonPulls</c>, as
+    /// <see cref="DownloadFightAsync"/> has them).
+    /// </summary>
+    public static async Task AddDungeonPullsAsync(this FellowshipLogsClient client, JsonObject raw, CancellationToken ct = default)
+    {
+        var fight = raw["fight"]!.AsObject();
+        string reportCode = raw["report_code"]!.GetValue<string>();
+        int fightId = fight["id"]!.GetValue<int>();
+        var pulls = (await client.QueryAsync(DungeonPullsQuery, new { code = reportCode, fightIDs = new[] { fightId } }, ct))
+            ["reportData"]?["report"]?["fights"]?.AsArray().FirstOrDefault()?["dungeonPulls"]
+            ?? throw new FellowshipLogsException($"Fight {fightId} is not in report '{reportCode}'.");
+        fight["dungeonPulls"] = pulls.DeepClone();
     }
 
     public static async Task<ReportSummary> GetSummaryAsync(this FellowshipLogsClient client, string reportCode, CancellationToken ct = default)

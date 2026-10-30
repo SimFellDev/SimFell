@@ -114,7 +114,7 @@ action list. Keep profiles in `data/profiles/<Hero>/`.
 
 The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
-standard deviation, and DPS for each ability.
+standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file.
 
 ### Fights
 
@@ -136,7 +136,25 @@ pull duration, the final boss, another pull it takes in with that pull's trigger
 comment, a count (trash), a name, Spirit Points, hit points, priority, and an interrupt ability with its cooldown and cast
 time. A new pull's name is the lowest whole number no pull has. Renaming a pull renames it in every `chain_with` and
 `pull_with`. **Save** writes `data/dungeons/<name>.simc` in the desktop app and `data/visitors/<visitor id>/dungeons/` in
-the web app. **Dungeon text** has the dungeon as text:
+the web app.
+
+**Import from a log** on the **Import** tab imports the player picked: their build with **Build** on, the
+dungeon of the run (with their hero share) with **Dungeon** on, and both at once with both on. The dungeon import
+downloads the fight as a replay does (`Engine/Replay/DungeonReader`):
+
+- The enemies are the ones the party damaged and killed. Each has its hit points from its log health at the run's
+  difficulty, and its Spirit Points from game data.
+- The pulls are FellowshipLogs' pulls of the fight, numbered as FellowshipLogs lists them. Each enemy is in the pull it
+  died in, and a pull in which no enemy died is left out. A pull's downtime is the time since the pull before it
+  ended.
+- An enemy arrives at its first hit with the party in its pull, and enemies arriving within 5 seconds of each other are a
+  wave. A pull's later waves (`pull.<pull>_<n>`) join the wave before them through `pull_with` at their log offset, so
+  the enemies in combat at once are the log's.
+- An enemy's interrupt ability is the ability of its name the party interrupted most, with its cooldown and cast time from
+  the log.
+- The hero share is the player's damage to those enemies over their health.
+
+**Dungeon text** has the dungeon as text:
 
 ```
 # Cithrel's Fall, two trash pulls before the first boss.
