@@ -235,7 +235,7 @@
     private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
     private string TargetsText() => State.Mode == SimMode.Dungeon ? $"dungeon {State.Dungeon.Name}"
-        : State.TrainingMobs == 1 ? "1 training mob" : $"{State.TrainingMobs} training mobs";
+        : State.TrainingDummies == 1 ? "1 training dummy" : $"{State.TrainingDummies} training dummies";
 
     private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
 
@@ -333,7 +333,7 @@
         }
         if (State.Iterations < 1 || State.FightSeconds <= 0 || State.Targets < 1)
         {
-            State.Status = MessageState.Error("Iterations and training mobs are at least 1, and the duration is above 0 seconds.");
+            State.Status = MessageState.Error("Iterations and training dummies are at least 1, and the duration is above 0 seconds.");
             return;
         }
         if (State.Mode == SimMode.Dungeon && State.Dungeon.Problem() is { } problem)

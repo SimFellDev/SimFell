@@ -1,12 +1,12 @@
 @using System.Globalization
 @inject SimPageState State
-@* The Sim page's Modes tab: the fight, its dungeon or training mobs, its settings, then Compare and Finder. *@
+@* The Sim page's Modes tab: the fight, its dungeon or training dummies, its settings, then Compare and Finder. *@
 <Card Title="Fight">
     <div class="choices" role="radiogroup" aria-label="Fight">
-        <label class="choice @(State.Mode == SimMode.TrainingMobs ? "on" : "")">
-            <input type="radio" name="mode" checked="@(State.Mode == SimMode.TrainingMobs)" @onchange="() => State.Mode = SimMode.TrainingMobs" />
-            <strong>Training mobs</strong>
-            <span class="meta">Training mobs for the full fight. With two or more mobs, the report also shows the DPS to the first mob.</span>
+        <label class="choice @(State.Mode == SimMode.TrainingDummies ? "on" : "")">
+            <input type="radio" name="mode" checked="@(State.Mode == SimMode.TrainingDummies)" @onchange="() => State.Mode = SimMode.TrainingDummies" />
+            <strong>Training dummies</strong>
+            <span class="meta">Training dummies for the full fight. With two or more dummies, the report also shows the DPS to the first dummy.</span>
         </label>
         <label class="choice @(State.Mode == SimMode.Dungeon ? "on" : "")">
             <input type="radio" name="mode" checked="@(State.Mode == SimMode.Dungeon)" @onchange="() => State.Mode = SimMode.Dungeon" />
@@ -29,9 +29,9 @@
                 <input type="number" min="1" step="any" @bind="State.DurationSeconds" />
             </label>
             <label class="field">
-                Training mobs
+                Training dummies
                 <input type="number" class="short" min="1" step="1"
-                       @bind:get="State.TrainingMobs" @bind:set="v => State.TrainingMobs = Math.Max(1, v)" />
+                       @bind:get="State.TrainingDummies" @bind:set="v => State.TrainingDummies = Math.Max(1, v)" />
             </label>
         }
         <div class="toggle-block">
@@ -39,7 +39,7 @@
                 <input type="checkbox" @bind="State.VaryLength" />
                 <span data-tooltip="@(State.Mode == SimMode.Dungeon ? DungeonLengthTip : null)">Vary the fight length</span>
             </label>
-            @if (State.Mode == SimMode.TrainingMobs && State.VaryLength && State.LengthVariancePercent > 0)
+            @if (State.Mode == SimMode.TrainingDummies && State.VaryLength && State.LengthVariancePercent > 0)
             {
                 <span class="meta">@LengthText()</span>
             }
@@ -60,12 +60,12 @@
 @* What else the fights have; more settings of the fight go here. *@
 <Card Title="Fight settings">
     <div class="fields">
-        @if (State.Mode == SimMode.TrainingMobs)
+        @if (State.Mode == SimMode.TrainingDummies)
         {
             <div class="toggle-block">
                 <label class="switch">
                     <input type="checkbox" @bind="State.Boss" />
-                    <span>The mobs are bosses</span>
+                    <span>The dummies are bosses</span>
                 </label>
             </div>
         }
@@ -100,7 +100,7 @@
 
     private const string DungeonLengthTip = "In a dungeon, this changes only the pull duration of enemies with no hit points.";
 
-    /// <summary>The training mobs' fight length range.</summary>
+    /// <summary>The training dummies' fight length range.</summary>
     private string LengthText()
     {
         double share = State.LengthVariancePercent / 100;

@@ -21,7 +21,7 @@ public class FrostweaversWrathTests
             Talents = [IcyTalons.TalentId, FrostweaversWrath.TalentId],
         });
         var ctx = new SimulationContext(hero);
-        var target = ctx.AddEnemy(101, 1, "Training Mob 1", maxHealth: 100_000_000);
+        var target = ctx.AddEnemy(101, 1, "Training Dummy 1", maxHealth: 100_000_000);
         hero.CurrentTarget = target;
         hero.Resources.Get(Rime.WinterOrbsResource).Current = Rime.MaxWinterOrbs;
         if (withStack) hero.Auras.Apply(FrostweaversWrath.Buff, ctx.CurrentTime);

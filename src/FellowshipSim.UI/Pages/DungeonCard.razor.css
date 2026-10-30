@@ -70,6 +70,10 @@
   width: 90px;
 }
 
+.field select {
+  width: 140px;
+}
+
 /* A field its switch has turned off: the label dimmed, and the number greyed out with no box to type in. */
 .field.off {
   opacity: 0.5;

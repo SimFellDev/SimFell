@@ -76,7 +76,7 @@ public class SimulationContext
     /// <summary>The time the fight ends; <see cref="SimTime.Infinite"/> when it has no set end.</summary>
     public SimTime FightEnd { get; set; } = SimTime.Infinite;
 
-    /// <summary>True while a dungeon boss is in combat, or in a training mob fight against a boss.</summary>
+    /// <summary>True while a dungeon boss is in combat, or in a training dummy fight against a boss.</summary>
     public bool Boss { get; set; }
 
     /// <summary>True while the final boss of a dungeon is in combat.</summary>

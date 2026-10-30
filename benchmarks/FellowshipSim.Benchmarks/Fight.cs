@@ -8,7 +8,7 @@ namespace FellowshipSim.Benchmarks;
 
 /// <summary>
 /// The Rime fight every benchmark uses: the test fixture's character (tests/FellowshipSim.Tests/Fixtures/rime_character.json)
-/// with the action list in Fixtures/rime.simc, against training mobs.
+/// with the action list in Fixtures/rime.simc, against training dummies.
 /// </summary>
 public static class Fight
 {
@@ -52,7 +52,7 @@ public static class Fight
 
     public static Hero NewHero() => HeroImporter.Import(Build);
 
-    /// <summary>A new fight on <paramref name="hero"/> against <paramref name="targets"/> training mobs, set up as <see cref="MonteCarloSimulator"/> sets up each fight.</summary>
+    /// <summary>A new fight on <paramref name="hero"/> against <paramref name="targets"/> training dummies, set up as <see cref="MonteCarloSimulator"/> sets up each fight.</summary>
     public static SimulationContext Start(Hero hero, int targets)
     {
         var ctx = new SimulationContext(hero);
@@ -60,7 +60,7 @@ public static class Fight
         hero.BeginFight(ctx);
         for (int i = 1; i <= targets; i++)
         {
-            ctx.AddEnemy(100 + i, i, $"Training Mob {i}", maxHealth: 100_000_000);
+            ctx.AddEnemy(100 + i, i, $"Training Dummy {i}", maxHealth: 100_000_000);
         }
         ctx.Player.CurrentTarget = ctx.AllEnemies.First();
         return ctx;
@@ -95,7 +95,7 @@ public static class Fight
         }
     }
 
-    /// <summary>A hero <see cref="MidFight"/> into a fight against <paramref name="targets"/> training mobs.</summary>
+    /// <summary>A hero <see cref="MidFight"/> into a fight against <paramref name="targets"/> training dummies.</summary>
     public static (Hero Hero, SimulationContext Context, AplActionLists Actions) AtMidFight(int targets)
     {
         var hero = NewHero();

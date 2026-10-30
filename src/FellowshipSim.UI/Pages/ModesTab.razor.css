@@ -90,7 +90,7 @@
   font-size: 14px;
 }
 
-/* The dungeon's pull count, shown where the duration field is for training mobs. */
+/* The dungeon's pull count, shown where the duration field is for training dummies. */
 .length {
   display: flex;
   align-items: center;

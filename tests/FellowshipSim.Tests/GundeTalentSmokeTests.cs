@@ -68,7 +68,7 @@ public class GundeTalentSmokeTests(ITestOutputHelper output)
         var hero = (Gunde)Import([.. BaseTalents, SunderedFlesh.TalentId]);
         var ctx = new SimulationContext(hero);
         hero.ResetForIteration();
-        var enemy = ctx.AddEnemy(100, 1, "Training Mob", maxHealth: 1_000);
+        var enemy = ctx.AddEnemy(100, 1, "Training Dummy", maxHealth: 1_000);
         hero.CurrentTarget = enemy;
         hero.Rend.Apply(ctx, enemy, 5_000);
         Assert.Equal(0.0, enemy.CurrentHealth);

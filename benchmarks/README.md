@@ -7,7 +7,7 @@ Monte Carlo is the workload the engine is tuned for: gear and talent comparisons
 iterations. Free dice is an accuracy check against logged fights, so it has one benchmark: a single run.
 
 The fight is the test fixture's Rime (`tests/FellowshipSim.Tests/Fixtures/rime_character.json`) with the action list in
-`FellowshipSim.Benchmarks/Fixtures/rime.simc`, against training mobs. The benchmarks run with server GC, not
+`FellowshipSim.Benchmarks/Fixtures/rime.simc`, against training dummies. The benchmarks run with server GC, not
 concurrent, as the tests and the server do.
 
 The action list that idles is `rime.simc` without Frost Bolt, the action that is always ready. The hero is then free

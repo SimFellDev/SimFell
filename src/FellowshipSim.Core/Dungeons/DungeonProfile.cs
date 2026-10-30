@@ -4,19 +4,19 @@ using System.Text;
 namespace FellowshipSim.Core.Dungeons;
 
 /// <summary>
-/// A dungeon fight: its pulls, the hero's share of the party's damage in percent, the time limit in seconds and the Eternal
-/// level. In simc style, one <c>key=value</c> per line:
+/// A dungeon fight: its pulls, the hero's share of the party's damage in percent, the time limit in seconds and the
+/// difficulty, an Eternal level (0 for Base). In simc style, one <c>key=value</c> per line:
 /// <code>
 /// dungeon=Default
 /// difficulty=10
 /// hero_share=37.5
 /// time_limit=1800
-/// pull.1=/count=5,name=Imp,spirit_points=3,hit_points=900000
-/// pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=3000000,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
+/// pull.1=/count=5,name=Imp,spirit_points=3,hit_points=7857
+/// pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=11546,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
 /// pull.ghouls=/pull_duration=45,downtime=20
 /// pull.ghouls+=/count=4,name=Ghoul
 /// pull.last_boss=/final=1,pull_with=ghouls,offset_pct=50
-/// pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
+/// pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
 /// </code>
 /// A pull has a name of letters, digits and '_'. Pulls run in the order of their <c>pull.X=/</c> lines.
 /// Lines starting with '#' are comments. A comment above a <c>pull.X+=/</c> enemy group line belongs to that group
@@ -42,14 +42,14 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     /// <summary>The Eternal level of a dungeon whose text names none.</summary>
     public const int DefaultDifficulty = 10;
 
-    /// <summary>The Eternal level of an enemy group's hit points.</summary>
-    public const int BaseDifficulty = 1;
+    /// <summary>The difficulty's health and damage scale; null when <see cref="Difficulty"/> is no Eternal level.</summary>
+    public DifficultyLevel? Level => DifficultyScaling.At(Difficulty);
 
-    /// <summary>The growth of enemy health per Eternal level. UNVERIFIED: no combat log or game data record has confirmed it.</summary>
-    public const double HealthPerLevel = 1.08;
+    /// <summary>The enemies' health over their hit points, at <see cref="Difficulty"/>.</summary>
+    public double HealthScale => Level?.Health ?? throw new InvalidOperationException(Problem());
 
-    /// <summary>The enemies' health at <see cref="Difficulty"/> over their hit points.</summary>
-    public double HealthScale => Math.Pow(HealthPerLevel, Difficulty - BaseDifficulty);
+    /// <summary>The enemies' damage over their game data damage, at <see cref="Difficulty"/>.</summary>
+    public double DamageScale => Level?.Damage ?? throw new InvalidOperationException(Problem());
 
     /// <summary>The pull named <paramref name="name"/>, or null when there is none.</summary>
     public DungeonPull? Pull(string name) => Pulls.FirstOrDefault(p => p.Name == name);
@@ -115,7 +115,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         if (Pulls.Count == 0) return "A dungeon has at least one pull.";
         if (!(HeroShare > 0 && HeroShare <= 100)) return "The hero share is more than 0% and at most 100%.";
         if (!(TimeLimitSeconds > 0)) return "The time limit is more than 0 seconds.";
-        if (Difficulty < BaseDifficulty) return $"The difficulty is at least {BaseDifficulty}.";
+        if (Level == null) return $"The difficulty is an Eternal level from 0 (Base) to {DifficultyScaling.Levels[^1].Eternal}.";
         foreach (var pull in Pulls)
         {
             if (Pulls.Count(p => p.Name == pull.Name) > 1) return $"Pull {pull.Name}: two pulls have this name.";

@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Dungeons;
 
 /// <summary>
 /// <see cref="Count"/> enemies of one kind in a pull, each with the values here: <see cref="Name"/>, the
-/// <see cref="SpiritPoints"/> it is worth and <see cref="HitPoints"/> at <see cref="DungeonProfile.BaseDifficulty"/>. An enemy
+/// <see cref="SpiritPoints"/> it is worth and <see cref="HitPoints"/>, its game data health. An enemy
 /// with hit points dies from damage. An enemy without them has health falling over the pull's
 /// <see cref="DungeonPull.PullDurationSeconds"/>. A <see cref="Boss"/> group is one boss. <see cref="Priority"/> marks
 /// priority targets. <see cref="Cast"/> is the interruptible cast of each enemy. <see cref="Comment"/> is the '#' lines above

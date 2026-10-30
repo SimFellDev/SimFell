@@ -65,9 +65,13 @@
             <input type="number" min="1" step="any" @bind:get="State.Dungeon.TimeLimitSeconds" @bind:set="v => Change(State.Dungeon with { TimeLimitSeconds = v })" />
         </label>
         <label class="field">
-            Difficulty (Eternal level)
-            <input type="number" min="@DungeonProfile.BaseDifficulty" step="1" @bind:get="State.Dungeon.Difficulty"
-                   @bind:set="v => Change(State.Dungeon with { Difficulty = Math.Max(DungeonProfile.BaseDifficulty, v) })" />
+            Difficulty
+            <select @bind:get="State.Dungeon.Difficulty" @bind:set="v => Change(State.Dungeon with { Difficulty = v })">
+                @foreach (var level in DifficultyScaling.Levels)
+                {
+                    <option @key="level.Eternal" value="@level.Eternal">@level.Label</option>
+                }
+            </select>
         </label>
     </div>
 

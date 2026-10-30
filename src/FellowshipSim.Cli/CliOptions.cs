@@ -22,10 +22,10 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
         Options:
           --profile <file>      Profile to simulate (required). A relative path is relative to the current directory.
           --iterations <n>      Fights (default {DefaultSettings.Iterations}).
-          --duration <seconds>  Length of each fight of training mobs (default {DefaultSettings.DurationSeconds.ToString(CultureInfo.InvariantCulture)}).
+          --duration <seconds>  Length of each fight of training dummies (default {DefaultSettings.DurationSeconds.ToString(CultureInfo.InvariantCulture)}).
           --dungeon <name|file> Fights of a dungeon: a built-in one ({string.Join(", ", DefaultDungeons.Names)}) or a dungeon .simc file.
-                                Its pulls set the enemies, and its time limit the longest fight. Without it, the fights are training mobs.
-          --targets <n>         Training mobs in each fight (default {DefaultSettings.TargetCount}).
+                                Its pulls set the enemies, and its time limit the longest fight. Without it, the fights are training dummies.
+          --targets <n>         Training dummies in each fight (default {DefaultSettings.TargetCount}).
           --seed <n>            Seed of the first fight; fight i has seed + i (default {DefaultSettings.FirstSeed}).
           --threads <n>         Most threads the fights use (default {MonteCarloSimulator.DefaultDegreeOfParallelism}, 80% of the logical processors).
           --format <text|json>  Result format on stdout (default text). json is the SimResult record.

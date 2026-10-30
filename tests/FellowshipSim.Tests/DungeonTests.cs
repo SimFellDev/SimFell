@@ -19,7 +19,7 @@ public class DungeonTests
     private static CharacterBuild Build(string hero = "Rime") => JsonSerializer.Deserialize<CharacterBuild>(
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"{hero.ToLowerInvariant()}_character.json")))!;
 
-    private static DungeonProfile Dungeon(params DungeonPull[] pulls) => new("Test", DungeonProfile.DefaultHeroShare, 600, pulls, DungeonProfile.BaseDifficulty);
+    private static DungeonProfile Dungeon(params DungeonPull[] pulls) => new("Test", DungeonProfile.DefaultHeroShare, 600, pulls, DifficultyScaling.Base.Eternal);
 
     private static DungeonPull Trash(int number, int count, double hitPoints) => new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(count, "Trash Mob", 3, HitPoints: hitPoints)]);
 
@@ -77,12 +77,12 @@ public class DungeonTests
             .Run(SimTime.FromSeconds(dungeon.TimeLimitSeconds), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon))
             .Casts.Where(c => c.Name == "Frost Bolt").ToList();
 
-    // The hero's frost bolt damage per second on one target, from a training mob fight.
+    // The hero's frost bolt damage per second on one target, from a training dummy fight.
     private static readonly Lazy<double> Dps = new(() =>
         new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts)).Run(SimTime.FromSeconds(60), iterations: 1, degreeOfParallelism: 1).MeanDps);
 
     // Hit points the hero's share of takes about this many seconds of frost bolts.
-    private static double HitPointsFor(double seconds) => Math.Round(Dps.Value * seconds / (DungeonProfile.DefaultHeroShare / 100.0));
+    private static double HitPointsFor(double seconds) => Math.Round(Dps.Value * seconds / (DungeonProfile.DefaultHeroShare / 100.0) / DifficultyScaling.Base.Health);
 
     [Fact]
     public void The_Default_Dungeon_Reads_Back_From_Its_Text()
@@ -287,7 +287,7 @@ public class DungeonTests
     [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,chain_with=3\npull.2=/count=1,name=A,hit_points=1\npull.3=/count=1,name=A,hit_points=1,chain_with=2", "in a circle through pull_with and chain_with")]
     [InlineData("dungeon=X\nhero_share=0\npull.1=/count=1,name=A,hit_points=1", "The hero share is more than 0% and at most 100%.")]
     [InlineData("dungeon=X\ntime_limit=0\npull.1=/count=1,name=A,hit_points=1", "The time limit is more than 0 seconds.")]
-    [InlineData("dungeon=X\ndifficulty=0\npull.1=/count=1,name=A,hit_points=1", "The difficulty is at least 1.")]
+    [InlineData("dungeon=X\ndifficulty=33\npull.1=/count=1,name=A,hit_points=1", "The difficulty is an Eternal level from 0 (Base) to 32.")]
     public void A_Dungeon_Text_Names_What_Is_Wrong(string text, string problem)
     {
         var e = Assert.Throws<FormatException>(() => DungeonProfile.Parse(text));
@@ -363,11 +363,11 @@ public class DungeonTests
     [Fact]
     public void The_Heros_Share_Of_An_Enemys_Health_Holds_In_A_Fight()
     {
-        double hp = HitPointsFor(20);
+        double hp = HitPointsFor(20), health = hp * DifficultyScaling.Base.Health;
         var log = Fight(Dungeon(Boss(1, hp, final: true)), FrostBolts);
         double dealt = log.Hits.Where(h => h.Enemy.Id == 1001).Sum(h => h.Amount);
         double lastHit = log.Hits.Where(h => h.Enemy.Id == 1001).Max(h => h.Amount);
-        Assert.InRange(dealt, hp * 0.375, hp * 0.375 + lastHit);
+        Assert.InRange(dealt, health * 0.375, health * 0.375 + lastHit);
         // The fight ends as the boss dies, and its DPS is over its own length.
         Assert.Equal(log.DeathOf(1), log.Result.DurationSeconds, 3);
         Assert.InRange(log.Result.MeanDps, dealt / log.DeathOf(1) * 0.999, dealt / log.DeathOf(1) * 1.001);
@@ -448,6 +448,20 @@ public class DungeonTests
         // Pulls 1 and 3 are one pull, then pull 2.
         Assert.True(log.DeathOf(3) < log.FirstHitOn(2));
         Assert.True(log.DeathOf(1) < log.FirstHitOn(2));
+    }
+
+    [Fact]
+    public void An_Enemy_Has_Its_Hit_Points_Times_The_Difficulty_Health_Scale()
+    {
+        // Deathless Katrine: game data health 29,075.305, logged with 6,581,643 health at Eternal 27.
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Deathless Katrine", HitPoints: 29_075.305, Boss: true)], Final: true))
+            with { Difficulty = 27 };
+        Assert.Equal(226.36, dungeon.HealthScale);
+        Assert.Equal(175.45, dungeon.DamageScale);
+        var log = Fight(dungeon, FrostBolts);
+        Assert.Equal(6_581_643, log.Hits[0].Enemy.MaxHealth, 6_581_643 * 0.0001);
+        Assert.Equal(1.31, (dungeon with { Difficulty = 0 }).HealthScale);
+        Assert.Equal(["Base", "Eternal 1", "Eternal 32"], new[] { 0, 1, 32 }.Select(e => DifficultyScaling.At(e)!.Label));
     }
 
     [Fact]

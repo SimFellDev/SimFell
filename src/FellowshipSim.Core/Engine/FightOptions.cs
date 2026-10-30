@@ -3,13 +3,13 @@ using FellowshipSim.Core.Dungeons;
 namespace FellowshipSim.Core.Engine;
 
 /// <summary>
-/// How each fight of a sim runs. A fight is a <see cref="Dungeon"/>'s pulls, or training mobs for the whole sim duration
+/// How each fight of a sim runs. A fight is a <see cref="Dungeon"/>'s pulls, or training dummies for the whole sim duration
 /// when <see cref="Dungeon"/> is null. <see cref="LengthVariance"/> spreads a value over ± that share of it (0.2: 240 to
-/// 360 s of a 300 s sim), the same for a seed in every run: the training mobs' fight length, or a dungeon pull's
+/// 360 s of a 300 s sim), the same for a seed in every run: the training dummies' fight length, or a dungeon pull's
 /// <see cref="DungeonPull.PullDurationSeconds"/>. A dungeon fight lasts until its last pull ends, or to its time limit.
-/// <see cref="HealthFollowsTime"/> takes the training mobs from full health at the start to none at the fight's end,
+/// <see cref="HealthFollowsTime"/> takes the training dummies from full health at the start to none at the fight's end,
 /// whatever damage they take, so health-gated effects come at their share of the fight. <see cref="StartingSpirit"/> is the
-/// hero's Spirit Points as the fight starts. <see cref="Boss"/> is true for training mobs that are bosses: without one, the
+/// hero's Spirit Points as the fight starts. <see cref="Boss"/> is true for training dummies that are bosses: without one, the
 /// hero's <see cref="Domain.Hero.BossAuras"/> are off. In a dungeon they are on while a boss is in combat.
 /// <see cref="HeroShareVariance"/> spreads the dungeon's <see cref="DungeonProfile.HeroShare"/> over ± that share of it
 /// (0.2: 30 to 45% of 37.5%), a different share in each fight.
@@ -64,6 +64,6 @@ public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsT
         ? SimTime.FromSeconds(Dungeon.TimeLimitSeconds)
         : SimTime.FromSeconds(BaseSeconds(duration) * (1 + Math.Max(0, LengthVariance)));
 
-    /// <summary>A fight's length before variance: the dungeon's time limit, or <paramref name="duration"/> for training mobs.</summary>
+    /// <summary>A fight's length before variance: the dungeon's time limit, or <paramref name="duration"/> for training dummies.</summary>
     public double BaseSeconds(SimTime duration) => Dungeon?.TimeLimitSeconds ?? duration.TotalSeconds;
 }

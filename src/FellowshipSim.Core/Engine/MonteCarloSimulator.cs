@@ -261,7 +261,7 @@ public class MonteCarloSimulator
             ctx.Boss = options.Boss;
             for (int i = 1; i <= targetCount; i++)
             {
-                var enemy = ctx.AddEnemy(100 + i, i, $"Training Mob {i}", maxHealth: TrainingMobHealth);
+                var enemy = ctx.AddEnemy(100 + i, i, $"Training Dummy {i}", maxHealth: TrainingDummyHealth);
                 enemy.IsBoss = options.Boss;
                 if (options.HealthFollowsTime) enemy.FollowTime(ctx, SimTime.Zero, duration);
             }
@@ -283,8 +283,8 @@ public class MonteCarloSimulator
         return (ctx.TotalDamage, end);
     }
 
-    /// <summary>The health of every training mob; it falls with time, so its size only sets damage-to-health ratios.</summary>
-    private const double TrainingMobHealth = 100_000_000;
+    /// <summary>The health of every training dummy; it falls with time, so its size only sets damage-to-health ratios.</summary>
+    private const double TrainingDummyHealth = 100_000_000;
 
     /// <summary>
     /// The hero acts until <paramref name="end"/>: whenever they are free to act, the first ready APL action runs, then the

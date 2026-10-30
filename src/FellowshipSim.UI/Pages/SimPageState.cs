@@ -9,8 +9,8 @@ namespace FellowshipSim.UI.Pages;
 /// <summary>The Sim page's tabs.</summary>
 public enum SimTab { Import, Hero, Modes, Advanced }
 
-/// <summary>The fights a sim runs: a dungeon's pulls, or training mobs for the whole fight.</summary>
-public enum SimMode { Dungeon, TrainingMobs }
+/// <summary>The fights a sim runs: a dungeon's pulls, or training dummies for the whole fight.</summary>
+public enum SimMode { Dungeon, TrainingDummies }
 
 /// <summary>What a sim runs besides its fight: the build alone, a list of builds and action lists, or a finder's variations.</summary>
 public enum SimExtra { None, Compare, Finder }
@@ -81,17 +81,17 @@ public sealed class SimPageState
 
     public MessageState ImportStatus { get; set; } = MessageState.None;
 
-    public SimMode Mode { get; set; } = SimMode.TrainingMobs;
+    public SimMode Mode { get; set; } = SimMode.TrainingDummies;
 
     public int Iterations { get; set; } = 1000;
 
     public double DurationSeconds { get; set; } = 300;
 
-    /// <summary>The training mobs of a training mob fight.</summary>
-    public int TrainingMobs { get; set; } = 1;
+    /// <summary>The training dummies of a training dummy fight.</summary>
+    public int TrainingDummies { get; set; } = 1;
 
-    /// <summary>The enemies of a training mob fight; a dungeon's pulls set their own.</summary>
-    public int Targets => Mode == SimMode.TrainingMobs ? TrainingMobs : 1;
+    /// <summary>The enemies of a training dummy fight; a dungeon's pulls set their own.</summary>
+    public int Targets => Mode == SimMode.TrainingDummies ? TrainingDummies : 1;
 
     /// <summary>The dungeon of a dungeon fight.</summary>
     public DungeonProfile Dungeon { get; set; } = DefaultDungeons.Default;
@@ -111,7 +111,7 @@ public sealed class SimPageState
     /// <summary>Marks the dungeon as loaded or saved.</summary>
     public void MarkDungeonClean() => _cleanDungeon = Dungeon.Format();
 
-    /// <summary>A fight's length before variance: the dungeon's time limit, or <see cref="DurationSeconds"/> for training mobs.</summary>
+    /// <summary>A fight's length before variance: the dungeon's time limit, or <see cref="DurationSeconds"/> for training dummies.</summary>
     public double FightSeconds => Mode == SimMode.Dungeon ? Dungeon.TimeLimitSeconds : DurationSeconds;
 
     /// <summary>True when each fight's length varies by <see cref="LengthVariancePercent"/>.</summary>
@@ -124,7 +124,7 @@ public sealed class SimPageState
 
     public double HeroShareVariancePercent { get; set; } = DefaultHeroShareVariancePercent;
 
-    /// <summary>True when the training mobs are bosses: Ruby's Blessing of the Conqueror counts only then.</summary>
+    /// <summary>True when the training dummies are bosses: Ruby's Blessing of the Conqueror counts only then.</summary>
     public bool Boss { get; set; } = true;
 
     /// <summary>True when the hero starts each fight with <see cref="StartingSpirit"/> Spirit Points.</summary>

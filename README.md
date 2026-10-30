@@ -120,16 +120,16 @@ standard deviation, and DPS for each ability.
 
 The **Modes** tab has two kinds of fight:
 
+- **Training dummies** (the default): a number of training dummies for the whole duration. **The dummies are bosses**
+  sets whether boss-only effects (Ruby's Blessing of the Conqueror) count.
 - **Dungeon**: the pulls of a dungeon in turn, each until its enemies are dead, up to the dungeon's time limit. An enemy
   with hit points dies from damage: the hero deals the dungeon's hero share of it (37.5% by default) and the party the
   rest. An enemy without hit points has health falling over its pull's duration. Between pulls is downtime, with no
   enemies and no actions. The fight's DPS is over its whole length, downtime included, and the result adds the DPS to
-  bosses. A new sim has the built-in `Default` dungeon: Cithrel's Fall's creatures in four trash pulls and two bosses,
-  Cithrel the final boss.
-- **Training mobs**: a number of training mobs for the whole duration. **The mobs are bosses** sets whether boss-only
-  effects (Ruby's Blessing of the Conqueror) count.
+  bosses. The Dungeon card starts with the built-in `Default` dungeon: Cithrel's Fall's creatures in four trash pulls and
+  two bosses, Cithrel the final boss.
 
-The **Dungeon** card has a comment, the hero share, the time limit, the difficulty (Eternal level) and the pulls. **Vary
+The **Dungeon** card has a comment, the hero share, the time limit, the difficulty and the pulls. **Vary
 the hero share** gives each fight a hero share in a range: ± 20% by default, so 37.5% is 30 – 45%. Each pull has a
 comment and a name in its head, and opens to its name, its start (after downtime, or chained to another pull's end), its
 pull duration, the final boss, another pull it takes in with that pull's trigger, and its enemy groups. A group has a
@@ -145,27 +145,30 @@ difficulty=10
 hero_share=37.5
 time_limit=1800
 # Imps and their captain.
-pull.1=/count=5,name=Imp,spirit_points=3,hit_points=900000
+pull.1=/count=5,name=Imp,spirit_points=3,hit_points=7857
 # Big Cast is interruptible.
-pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=3000000,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
+pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=11546,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
 pull.2=/count=4,name=Ghoul
 pull.2+=/pull_duration=45,downtime=20
-pull.3=/count=3,name=Bat,spirit_points=2,hit_points=600000
+pull.3=/count=3,name=Bat,spirit_points=2,hit_points=3374
 pull.3+=/chain_with=2
 pull.last_boss=/final=1,downtime=30,pull_with=wisps,offset_pct=50
-pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
-pull.wisps=/count=2,name=Wisp,hit_points=500000
+pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
+pull.wisps=/count=2,name=Wisp,hit_points=15145
 ```
 
 A `#` line is a comment. A comment above a `pull.X+=/` enemy group line belongs to that group, a comment above any other
 pull line or after the last pull belongs to the pull, and any other comment belongs to the dungeon. A pull whose first
 group has a comment starts with its options line, or with an empty `pull.X=/` line.
 
-`pull.X=/` starts pull X and `pull.X+=/` adds a line to it. A pull name has letters, digits and `_`. A line is an enemy group (`count=`), a boss (`boss.N`;
-several make a council) or the pull's options. Group values: `count`, `name` (in quotes when it has a comma),
-`spirit_points` (each enemy's), `priority=1`, `hit_points` (at Eternal level 1; each level above multiplies health by
-1.08), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast is one cooldown after the enemy
-arrives). Pull options:
+`difficulty` is an Eternal level, 0 for Base. Each difficulty multiplies creature health and damage by the game's scale
+for it: 1.31 at Base, 58.26 at Eternal 10 and 351.49 at Eternal 32 for health.
+
+`pull.X=/` starts pull X and `pull.X+=/` adds a line to it. A pull name has letters, digits and `_`. A line is an enemy
+group (`count=`), a boss (`boss.N`; several make a council) or the pull's options. Group values: `count`, `name` (in
+quotes when it has a comma), `spirit_points` (each enemy's), `priority=1`, `hit_points` (the creature's game data
+health, before the difficulty scale), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast
+is one cooldown after the enemy arrives). Pull options:
 
 - `downtime`: seconds before the pull starts, after the pull before it ends.
 - `chain_with=X`: the pull starts as pull X ends, with no downtime.
@@ -185,14 +188,14 @@ Action lists read the fight with these values:
 | `dungeon_event.adds.exists` | 1 while a dungeon enemy that is not a boss is in combat |
 | `dungeon_event.adds.count` | the enemies in combat that are not bosses |
 | `dungeon_event.adds.in` | seconds until the next pull with enemies that are not bosses, an estimate; 10000 when none follows |
-| `dungeon_event.boss.exists` | 1 while a boss is in combat, or with training mobs that are bosses |
+| `dungeon_event.boss.exists` | 1 while a boss is in combat, or with training dummies that are bosses |
 | `dungeon_event.boss.count` | the bosses in combat (3 in a council of three) |
 | `dungeon_event.boss.final` | 1 while the final boss is in combat |
 | `dungeon_event.boss.in` | seconds until the next pull with a boss, an estimate; 10000 when none follows |
 | `dungeon_event.fight.remains` | seconds until the fight ends, an estimate in a dungeon |
 | `target.is_boss` | 1 when the target is a boss |
 | `target.is_priority` | 1 when the target is a priority target |
-| `target.time_to_die` | seconds until the target dies, from its health loss so far, its pull duration, or the training mob fight's end |
+| `target.time_to_die` | seconds until the target dies, from its health loss so far, its pull duration, or the training dummy fight's end |
 | `target.casting` | 1 when the target is casting an interruptible ability |
 | `target.cast.remains` | seconds until the target's cast ends; 0 when it is not casting |
 
@@ -222,9 +225,9 @@ Its options are the following:
 
 - `--profile <file>`: the profile to sim (required)
 - `--iterations <n>`: fights (default 100)
-- `--dungeon <name|file>`: fights of a dungeon, built in (`Default`) or a dungeon `.simc` file; its segments set the length and the enemies. Without it, the fights are training mobs
-- `--duration <seconds>`: length of each fight of training mobs (default 300)
-- `--targets <n>`: training mobs in each fight (default 1)
+- `--dungeon <name|file>`: fights of a dungeon, built in (`Default`) or a dungeon `.simc` file; its pulls set the enemies and its time limit the longest fight. Without it, the fights are training dummies
+- `--duration <seconds>`: length of each fight of training dummies (default 300)
+- `--targets <n>`: training dummies in each fight (default 1)
 - `--seed <n>`: seed of the first fight; fight i has seed + i (default 1)
 - `--threads <n>`: most threads the fights use (default 80% of the logical processors)
 - `--format <text|json>`: a text summary, or the `SimResult` record as JSON (default `text`)
