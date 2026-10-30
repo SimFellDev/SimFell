@@ -35,6 +35,9 @@ public abstract class Ability
     public int MaxCharges { get; protected set; } = 1;
     public bool IgnoresGcd { get; protected set; } = false;
 
+    /// <summary>True for an interrupt: it ends a casting target's cast (<see cref="SimulationContext.Interrupt"/>).</summary>
+    public bool Interrupts { get; protected set; }
+
     /// <summary>
     /// Whether this ability can be cast while the global cooldown runs. Unlike <see cref="IgnoresGcd"/> it still waits for
     /// a cast or channel to end and starts its own global cooldown.

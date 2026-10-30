@@ -1,21 +1,15 @@
 @using System.Globalization
 @using FellowshipSim.Core.Dungeons
-@using FellowshipSim.Core.Enemies
 @using Microsoft.JSInterop
 @inject SimPageState State
 @inject DungeonStore Store
 @inject Visitor Visitor
 @inject IJSRuntime JS
 @*
-    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, then a row per segment in fight order
-    (kind, enemies, priority targets, length, final boss, creature), and its profile text.
+    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, the hero share, time limit and
+    difficulty, then its pulls in number order, each built as an action of the action-list editor, and its profile text.
 *@
 <Card Title="Dungeon">
-    <p class="hint">
-        Each row is one segment of the fight, in order. Its enemies arrive as it starts and die as it ends, their health
-        falling with its time. Action lists read the segment through dungeon_event.adds, dungeon_event.boss, target.is_boss and
-        target.is_priority.
-    </p>
     <div class="row toolbar">
         <input aria-label="Dungeon name" placeholder="Dungeon name" autocomplete="off"
                @bind:get="State.Dungeon.Name" @bind:set="v => Change(State.Dungeon with { Name = v.Trim() })" />
@@ -44,79 +38,45 @@
     }
     <Message Kind="_status.Kind">@_status.Text</Message>
 
-    <div class="segments" role="table" aria-label="Segments">
-        <div class="segment heading" role="row">
-            <span role="columnheader">#</span>
-            <span role="columnheader">Kind</span>
-            <span role="columnheader">Enemies</span>
-            <span role="columnheader">Priority</span>
-            <span role="columnheader">Length (s)</span>
-            <span role="columnheader">Final boss</span>
-            <span role="columnheader">Creature</span>
-            <span role="columnheader"></span>
-        </div>
-        @for (int i = 0; i < Segments.Count; i++)
+    <div class="fields">
+        <label class="field">
+            Hero share (%)
+            <input type="number" min="1" max="100" step="any" @bind:get="State.Dungeon.HeroShare" @bind:set="v => Change(State.Dungeon with { HeroShare = v })" />
+        </label>
+        <label class="field">
+            Time limit (s)
+            <input type="number" min="1" step="any" @bind:get="State.Dungeon.TimeLimitSeconds" @bind:set="v => Change(State.Dungeon with { TimeLimitSeconds = v })" />
+        </label>
+        <label class="field">
+            Difficulty (Eternal level)
+            <input type="number" min="@DungeonProfile.BaseDifficulty" step="1" @bind:get="State.Dungeon.Difficulty"
+                   @bind:set="v => Change(State.Dungeon with { Difficulty = Math.Max(DungeonProfile.BaseDifficulty, v) })" />
+        </label>
+    </div>
+
+    <ol class="pulls">
+        @for (int i = 0; i < Pulls.Count; i++)
         {
             int index = i;
-            var s = Segments[i];
-            <div class="segment" role="row">
-                <span class="num">@(index + 1)</span>
-                <select aria-label="Kind of segment @(index + 1)" @bind:get="s.Kind" @bind:set="v => ChangeKind(index, v)">
-                    <option value="@DungeonSegmentKind.Trash">Trash pull</option>
-                    <option value="@DungeonSegmentKind.Boss">Boss</option>
-                    <option value="@DungeonSegmentKind.Council">Council</option>
-                </select>
-                <input type="number" min="1" step="1" aria-label="Enemies of segment @(index + 1)" disabled="@(s.Kind == DungeonSegmentKind.Boss)"
-                       @bind:get="s.EnemyCount" @bind:set="v => Set(index, s with { Enemies = Math.Max(1, v), Priority = Math.Min(s.Priority, Math.Max(1, v)) })" />
-                <input type="number" min="0" max="@s.Enemies" step="1" aria-label="Priority targets of segment @(index + 1)"
-                       disabled="@(s.Kind != DungeonSegmentKind.Trash)"
-                       @bind:get="s.Priority" @bind:set="v => Set(index, s with { Priority = Math.Clamp(v, 0, s.Enemies) })" />
-                <input type="number" min="1" step="any" aria-label="Length of segment @(index + 1)"
-                       @bind:get="s.LengthSeconds" @bind:set="v => Set(index, s with { LengthSeconds = v })" />
-                <label class="final">
-                    <input type="checkbox" aria-label="Segment @(index + 1) is the final boss" disabled="@(!s.IsBoss)"
-                           @bind:get="s.Final" @bind:set="v => Set(index, s with { Final = v })" />
-                </label>
-                <input list="dungeon-creatures" placeholder="None" spellcheck="false" autocomplete="off" aria-label="Creature of segment @(index + 1)"
-                       @bind:get="CreatureOf(s)" @bind:set="v => Set(index, s with { Creature = string.IsNullOrWhiteSpace(v) ? null : v.Trim() })" />
-                <span class="end">
-                    <button type="button" class="icon-button" data-tooltip="Move up" aria-label="Move segment @(index + 1) up" disabled="@(index == 0)"
-                            @onclick="() => Move(index, index - 1)">
-                        <Icon Shape="IconShape.Up" />
-                    </button>
-                    <button type="button" class="icon-button" data-tooltip="Move down" aria-label="Move segment @(index + 1) down" disabled="@(index == Segments.Count - 1)"
-                            @onclick="() => Move(index, index + 1)">
-                        <Icon Shape="IconShape.Down" />
-                    </button>
-                    <button type="button" class="icon-button" data-tooltip="Duplicate segment" aria-label="Duplicate segment @(index + 1)"
-                            @onclick="() => Insert(index + 1, s)">
-                        <Icon Shape="IconShape.Duplicate" />
-                    </button>
-                    <button type="button" class="icon-button danger-button" data-tooltip="Delete segment" aria-label="Delete segment @(index + 1)"
-                            disabled="@(Segments.Count == 1)" @onclick="() => Remove(index)">
-                        <Icon Shape="IconShape.Bin" />
-                    </button>
-                </span>
-            </div>
+            var pull = Pulls[i];
+            <PullItem @key="index" Pull="pull" Pulls="Pulls" Index="index" Open="Editor.Open.Contains(pull.Number)" DragFrom="Editor.DragFrom"
+                      OnChange="p => ChangePulls(ps => ps.Select(x => x.Number == p.Number ? p : x).ToList())"
+                      OnToggle="() => Editor.Toggle(pull.Number)"
+                      OnMove="m => ChangePulls(ps => Editor.Move(ps, m.From, m.To))"
+                      OnDuplicate="() => ChangePulls(ps => Editor.Insert(ps, index + 1, pull with { Join = null }))"
+                      OnDelete="() => ChangePulls(ps => Editor.Remove(ps, index))"
+                      OnDrag="from => Editor.DragFrom = from" />
         }
-    </div>
-    <datalist id="dungeon-creatures">
-        @foreach (string creature in Creatures)
-        {
-            <option @key="creature" value="@creature" />
-        }
-    </datalist>
+    </ol>
     @if (State.Dungeon.Problem() is { } problem)
     {
         <p class="field-error">@problem</p>
     }
     <div class="adds">
-        <button type="button" class="add" @onclick="() => Insert(Segments.Count, new DungeonSegment(DungeonSegmentKind.Trash, 60, 5))">+ Trash pull</button>
-        <button type="button" class="add" @onclick="() => Insert(Segments.Count, new DungeonSegment(DungeonSegmentKind.Boss, 60))">+ Boss</button>
-        <button type="button" class="add" @onclick="() => Insert(Segments.Count, new DungeonSegment(DungeonSegmentKind.Council, 60, DungeonSegment.CouncilBosses))">+ Council</button>
-        <span class="meta count">@SegmentsText(Segments.Count) · @N(State.Dungeon.LengthSeconds) s</span>
+        <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewTrash)))">+ Trash pull</button>
+        <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewBoss)))">+ Boss pull</button>
+        <span class="meta count">@PullsText(Pulls.Count)</span>
     </div>
-    <p class="hint">A creature's enemies give its Spirit Points, as in the game. Without a creature they give none.</p>
 
     <details @key="_textKey" class="text" open="@_textOpen">
         <summary>Dungeon text</summary>
@@ -143,12 +103,9 @@
     private const string BuiltInValue = "builtin";
     private const string OwnValue = "own";
 
-    /// <summary>Every creature with a Spirit Point value, by name.</summary>
-    private static readonly IReadOnlyList<string> Creatures = CreatureSpiritPoints.ByName.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    private IReadOnlyList<DungeonPull> Pulls => State.Dungeon.Pulls;
 
-    private IReadOnlyList<DungeonSegment> Segments => State.Dungeon.Segments;
-
-    private static string CreatureOf(DungeonSegment segment) => segment.Creature ?? "";
+    private DungeonEditor Editor => State.DungeonEditor;
 
     private static string ValueOf(DungeonEntry entry) => $"{(entry.BuiltIn ? BuiltInValue : OwnValue)}/{entry.Name}";
 
@@ -156,8 +113,11 @@
 
     private bool CanDelete => Picked is { BuiltIn: false };
 
-    /// <summary>"Segment" or "segments" with the count.</summary>
-    private static string SegmentsText(int count) => $"{count} {(count == 1 ? "segment" : "segments")}";
+    /// <summary>"Pull" or "pulls" with the count.</summary>
+    private static string PullsText(int count) => $"{count} {(count == 1 ? "pull" : "pulls")}";
+
+    /// <summary>A new pull of one group, 20 seconds after the pull before it.</summary>
+    private static DungeonPull NewPull(EnemyGroup group) => new(0, [group], DowntimeSeconds: 20);
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,33 +145,8 @@
         return OnChanged.InvokeAsync();
     }
 
-    private Task ChangeSegments(Action<List<DungeonSegment>> change)
-    {
-        var segments = Segments.ToList();
-        change(segments);
-        return Change(State.Dungeon with { Segments = segments });
-    }
-
-    private Task Set(int index, DungeonSegment segment) => ChangeSegments(s => s[index] = segment);
-
-    private Task ChangeKind(int index, DungeonSegmentKind kind) => Set(index, Segments[index] with
-    {
-        Kind = kind,
-        Enemies = kind == DungeonSegmentKind.Council ? Math.Max(2, Segments[index].Enemies) : Segments[index].Enemies,
-        Priority = kind == DungeonSegmentKind.Trash ? Segments[index].Priority : 0,
-        Final = kind != DungeonSegmentKind.Trash && Segments[index].Final,
-    });
-
-    private Task Insert(int index, DungeonSegment segment) => ChangeSegments(s => s.Insert(index, segment));
-
-    private Task Remove(int index) => ChangeSegments(s => s.RemoveAt(index));
-
-    private Task Move(int from, int to) => ChangeSegments(s =>
-    {
-        var segment = s[from];
-        s.RemoveAt(from);
-        s.Insert(to, segment);
-    });
+    private Task ChangePulls(Func<IReadOnlyList<DungeonPull>, IReadOnlyList<DungeonPull>> change) =>
+        Change(State.Dungeon with { Pulls = change(Pulls) });
 
     private Task PickAsked(string value)
     {
@@ -229,6 +164,7 @@
         {
             string text = await Store.ReadAsync(Visitor, entry) ?? throw new KeyNotFoundException($"No dungeon named {entry.Name}.");
             State.Dungeon = DungeonProfile.Parse(text);
+            Editor.CloseAll();
             State.DungeonValue = ValueOf(entry);
             State.MarkDungeonClean();
             _text = State.Dungeon.Format();
@@ -302,8 +238,9 @@
         try
         {
             var dungeon = DungeonProfile.Parse(_text);
+            Editor.CloseAll();
             State.DungeonValue = "";
-            _textStatus = MessageState.Ok($"Loaded {SegmentsText(dungeon.Segments.Count)}.");
+            _textStatus = MessageState.Ok($"Loaded {PullsText(dungeon.Pulls.Count)}.");
             return Change(dungeon);
         }
         catch (FormatException e)

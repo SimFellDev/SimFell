@@ -9,7 +9,7 @@ namespace FellowshipSim.UI.Pages;
 /// <summary>The Sim page's tabs.</summary>
 public enum SimTab { Import, Hero, Modes, Advanced }
 
-/// <summary>The fights a sim runs: a dungeon's segments, or training mobs for the whole fight.</summary>
+/// <summary>The fights a sim runs: a dungeon's pulls, or training mobs for the whole fight.</summary>
 public enum SimMode { Dungeon, TrainingMobs }
 
 /// <summary>What a sim runs besides its fight: the build alone, a list of builds and action lists, or a finder's variations.</summary>
@@ -87,11 +87,14 @@ public sealed class SimPageState
     /// <summary>The training mobs of a training mob fight.</summary>
     public int TrainingMobs { get; set; } = 1;
 
-    /// <summary>The enemies of a training mob fight; a dungeon's segments set their own.</summary>
+    /// <summary>The enemies of a training mob fight; a dungeon's pulls set their own.</summary>
     public int Targets => Mode == SimMode.TrainingMobs ? TrainingMobs : 1;
 
     /// <summary>The dungeon of a dungeon fight.</summary>
     public DungeonProfile Dungeon { get; set; } = DefaultDungeons.Default;
+
+    /// <summary>The pull builder's open pulls and the pull being dragged.</summary>
+    public DungeonEditor DungeonEditor { get; } = new();
 
     /// <summary>The dungeon picked, as kept/name ("builtin/Default", "own/Quick"); empty for one not saved yet.</summary>
     public string DungeonValue { get; set; } = $"builtin/{DefaultDungeons.DefaultName}";
@@ -105,8 +108,8 @@ public sealed class SimPageState
     /// <summary>Marks the dungeon as loaded or saved.</summary>
     public void MarkDungeonClean() => _cleanDungeon = Dungeon.Format();
 
-    /// <summary>A fight's length before variance: the dungeon's, or <see cref="DurationSeconds"/> for training mobs.</summary>
-    public double FightSeconds => Mode == SimMode.Dungeon ? Dungeon.LengthSeconds : DurationSeconds;
+    /// <summary>A fight's length before variance: the dungeon's time limit, or <see cref="DurationSeconds"/> for training mobs.</summary>
+    public double FightSeconds => Mode == SimMode.Dungeon ? Dungeon.TimeLimitSeconds : DurationSeconds;
 
     /// <summary>True when each fight's length varies by <see cref="LengthVariancePercent"/>.</summary>
     public bool VaryLength { get; set; } = true;

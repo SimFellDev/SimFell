@@ -43,7 +43,7 @@ public class PropertyExpression : IAplExpression
     /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last 30% of its duration.</summary>
     public const double RefreshableFraction = 0.3;
 
-    /// <summary>A countdown's value when its time never comes: no such segment follows, or the fight has no set end.</summary>
+    /// <summary>A countdown's value when its time never comes: no such pull follows, or the fight has no set end.</summary>
     public const double NeverIn = 10_000.0;
 
     /// <summary>
@@ -63,6 +63,10 @@ public class PropertyExpression : IAplExpression
     /// <summary>The seconds from now until <paramref name="end"/>; <see cref="NeverIn"/> when it never comes.</summary>
     public static double SecondsUntil(SimulationContext ctx, SimTime end) =>
         end == SimTime.Infinite ? NeverIn : (end - ctx.CurrentTime).TotalSeconds;
+
+    /// <summary>The seconds from <paramref name="time"/> until the end of the current target's cast; 0 when it is not casting.</summary>
+    public static double CastRemains(SimulationContext ctx, SimTime time) =>
+        ctx.Player.CurrentTarget is { IsCasting: true } target ? Math.Max(0.0, (target.CastEnd - time).TotalSeconds) : 0.0;
 
     /// <summary>The enemies in combat that are bosses (or are not).</summary>
     private static int CountActive(SimulationContext ctx, bool boss)
@@ -85,33 +89,37 @@ public class PropertyExpression : IAplExpression
                 (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0),
             ["target.health"] = new(new("Target health", "The current health of the target. 0 if there is no target."),
                 (_, ctx) => ctx.Player.CurrentTarget?.CurrentHealth ?? 0.0),
-            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: the end of its dungeon segment, or the end of a training mob fight. 0 if there is no target."),
+            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: from its health loss per second since it arrived, the end of its pull duration, or the end of a training mob fight. The end of the fight before a dungeon enemy with hit points takes damage. 0 if there is no target."),
                 (_, ctx) => SecondsUntil(ctx, Countdowns["target.time_to_die"](ctx))),
             ["target.is_boss"] = new(new("Target is a boss", "1 if the target is a boss. Otherwise 0."),
                 (_, ctx) => ctx.Player.CurrentTarget is { IsBoss: true } ? 1.0 : 0.0),
             ["target.is_priority"] = new(new("Target is a priority target", "1 if the target is a priority target of a trash pull. Otherwise 0."),
                 (_, ctx) => ctx.Player.CurrentTarget is { IsPriority: true } ? 1.0 : 0.0),
+            ["target.casting"] = new(new("Target is casting", "1 if the target is casting an interruptible ability. Otherwise 0."),
+                (_, ctx) => ctx.Player.CurrentTarget is { IsCasting: true } ? 1.0 : 0.0),
+            ["target.cast.remains"] = new(new("Target cast time remaining", "Seconds until the cast of the target ends. 0 if the target is not casting."),
+                (_, ctx) => CastRemains(ctx, ctx.CurrentTime)),
             ["time"] = new(new("Fight time", "Seconds since the fight started."),
                 (_, ctx) => ctx.CurrentTime.TotalSeconds),
             ["gcd"] = new(new("Global cooldown", "The length of the global cooldown, in seconds. The value is the base global cooldown of the hero divided by (1 + haste). Example: a base of 1.5 at 25% haste gives 1.2. The value is the full length. It is not the time that remains on the current global cooldown."),
                 (hero, ctx) => Gcd(hero, ctx.CurrentTime)),
             ["gcd.max"] = new(new("Global cooldown (max)", "The same value as gcd: the length of the global cooldown, in seconds."),
                 (hero, ctx) => Gcd(hero, ctx.CurrentTime)),
-            ["dungeon_event.adds.exists"] = new(new("Trash pull", "1 during a trash pull of a dungeon. Otherwise 0."),
+            ["dungeon_event.adds.exists"] = new(new("Trash pull", "1 while a dungeon enemy that is not a boss is in combat. Otherwise 0."),
                 (_, ctx) => ctx.Trash ? 1.0 : 0.0),
-            ["dungeon_event.adds.count"] = new(new("Trash enemies", "The number of enemies of the trash pull in combat. 0 if no trash pull is in progress."),
+            ["dungeon_event.adds.count"] = new(new("Trash enemies", "The number of dungeon enemies in combat that are not bosses. 0 if there are none."),
                 (_, ctx) => ctx.Trash ? CountActive(ctx, boss: false) : 0.0),
-            ["dungeon_event.adds.in"] = new(new("Next trash pull in", $"Seconds until the next trash pull of a dungeon starts. {NeverIn} if no trash pull follows."),
+            ["dungeon_event.adds.in"] = new(new("Next trash pull in", $"Seconds until the next pull of a dungeon with enemies that are not bosses starts, an estimate from the pulls so far. {NeverIn} if no such pull follows, or before damage gives an estimate."),
                 (_, ctx) => SecondsUntil(ctx, ctx.NextTrashAt)),
-            ["dungeon_event.boss.exists"] = new(new("Boss fight", "1 during a boss or council segment of a dungeon, or in a training mob fight against a boss. Otherwise 0. A boss that is not the final boss is dungeon_event.boss.exists & !dungeon_event.boss.final."),
+            ["dungeon_event.boss.exists"] = new(new("Boss fight", "1 while a dungeon boss is in combat, or in a training mob fight against a boss. Otherwise 0. A boss that is not the final boss is dungeon_event.boss.exists & !dungeon_event.boss.final."),
                 (_, ctx) => ctx.Boss ? 1.0 : 0.0),
             ["dungeon_event.boss.count"] = new(new("Bosses", "The number of bosses in combat. A council of three bosses gives 3."),
                 (_, ctx) => CountActive(ctx, boss: true)),
-            ["dungeon_event.boss.final"] = new(new("Final boss", "1 during the final boss segment of a dungeon. Otherwise 0."),
+            ["dungeon_event.boss.final"] = new(new("Final boss", "1 while the final boss of a dungeon is in combat. Otherwise 0."),
                 (_, ctx) => ctx.FinalBoss ? 1.0 : 0.0),
-            ["dungeon_event.boss.in"] = new(new("Next boss in", $"Seconds until the next boss or council segment of a dungeon starts. {NeverIn} if no boss follows."),
+            ["dungeon_event.boss.in"] = new(new("Next boss in", $"Seconds until the next pull of a dungeon with a boss starts, an estimate from the pulls so far. {NeverIn} if no boss follows, or before damage gives an estimate."),
                 (_, ctx) => SecondsUntil(ctx, ctx.NextBossAt)),
-            ["dungeon_event.fight.remains"] = new(new("Fight time remaining", "Seconds until the fight ends."),
+            ["dungeon_event.fight.remains"] = new(new("Fight time remaining", "Seconds until the fight ends. In a dungeon, an estimate from the pulls so far, at most the time to the time limit."),
                 (_, ctx) => SecondsUntil(ctx, ctx.FightEnd)),
         };
 

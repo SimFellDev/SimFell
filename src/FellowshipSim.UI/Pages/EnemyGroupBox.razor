@@ -1,0 +1,98 @@
+@using FellowshipSim.Core.Dungeons
+@*
+    One enemy group of a pull as a tinted box: its kind on the top-left edge, its duplicate and delete buttons on the
+    top-right edge, and its values.
+*@
+<div class="group">
+    <div class="group-start">
+        <span class="kind">@(Group.Boss ? "Boss" : "Enemy group")</span>
+    </div>
+    <div class="group-end">
+        <button type="button" data-tooltip="@(Group.Boss ? "Duplicate boss" : "Duplicate enemy group")"
+                aria-label="@(Group.Boss ? "Duplicate boss" : "Duplicate enemy group") @Group.Name" @onclick="OnDuplicate">
+            <Icon Shape="IconShape.Duplicate" />
+        </button>
+        <button type="button" class="danger-button" data-tooltip="@(Group.Boss ? "Delete boss" : "Delete enemy group")"
+                aria-label="@(Group.Boss ? "Delete boss" : "Delete enemy group") @Group.Name" disabled="@(!CanDelete)" @onclick="OnDelete">
+            <Icon Shape="IconShape.Bin" />
+        </button>
+    </div>
+    <div class="values">
+        @if (!Group.Boss)
+        {
+            <label class="value short">
+                Count
+                <input type="number" min="1" step="1" @bind:get="Group.Count" @bind:set="SetCount" />
+            </label>
+        }
+        <label class="value name">
+            Name
+            <input spellcheck="false" autocomplete="off" @bind:get="Group.Name" @bind:set="SetName" />
+        </label>
+        <label class="value short">
+            Spirit Points
+            <input type="number" min="0" step="any" @bind:get="Group.SpiritPoints" @bind:set="SetSpirit" />
+        </label>
+        <label class="value">
+            Hit points
+            <input type="number" min="1" step="any" placeholder="Follows time" @bind:get="Group.HitPoints" @bind:set="SetHitPoints" />
+        </label>
+        <label class="value check">
+            Priority
+            <input type="checkbox" @bind:get="Group.Priority" @bind:set="SetPriority" />
+        </label>
+        <label class="value name">
+            Interrupt ability
+            <input spellcheck="false" autocomplete="off" placeholder="None" @bind:get="Group.Cast?.Ability ?? string.Empty" @bind:set="SetAbility" />
+        </label>
+        <label class="value short">
+            Cooldown (s)
+            <input type="number" min="0" step="any" disabled="@(Group.Cast == null)"
+                   @bind:get="Group.Cast?.CooldownSeconds" @bind:set="SetCooldown" />
+        </label>
+        <label class="value short">
+            Cast time (s)
+            <input type="number" min="0" step="any" disabled="@(Group.Cast == null)"
+                   @bind:get="Group.Cast?.CastSeconds" @bind:set="SetCastTime" />
+        </label>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EnemyGroup Group { get; set; } = null!;
+
+    [Parameter] public EventCallback<EnemyGroup> OnChange { get; set; }
+
+    [Parameter] public EventCallback OnDuplicate { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary>False for a pull's only group.</summary>
+    [Parameter] public bool CanDelete { get; set; } = true;
+
+    /// <summary>The cooldown of a new interrupt ability, in seconds.</summary>
+    private const double NewCooldownSeconds = 20;
+
+    private Task SetCount(int count) => OnChange.InvokeAsync(Group with { Count = Math.Max(1, count) });
+
+    private Task SetName(string name) => OnChange.InvokeAsync(Group with { Name = name.Trim() });
+
+    private Task SetSpirit(double spirit) => OnChange.InvokeAsync(Group with { SpiritPoints = Math.Max(0, spirit) });
+
+    private Task SetHitPoints(double? hitPoints) => OnChange.InvokeAsync(Group with { HitPoints = hitPoints is > 0 ? hitPoints : null });
+
+    private Task SetPriority(bool priority) => OnChange.InvokeAsync(Group with { Priority = priority });
+
+    private Task SetAbility(string ability) => OnChange.InvokeAsync(Group with
+    {
+        Cast = string.IsNullOrWhiteSpace(ability) ? null
+            : Group.Cast is { } cast ? cast with { Ability = ability.Trim() }
+            : new EnemyCast(ability.Trim(), NewCooldownSeconds),
+    });
+
+    private Task SetCooldown(double? seconds) =>
+        Group.Cast is { } cast ? OnChange.InvokeAsync(Group with { Cast = cast with { CooldownSeconds = seconds ?? 0 } }) : Task.CompletedTask;
+
+    private Task SetCastTime(double? seconds) =>
+        Group.Cast is { } cast ? OnChange.InvokeAsync(Group with { Cast = cast with { CastSeconds = seconds ?? EnemyCast.DefaultCastSeconds } }) : Task.CompletedTask;
+}

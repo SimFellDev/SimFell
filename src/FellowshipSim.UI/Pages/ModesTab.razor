@@ -6,7 +6,7 @@
         <label class="choice @(State.Mode == SimMode.Dungeon ? "on" : "")">
             <input type="radio" name="mode" checked="@(State.Mode == SimMode.Dungeon)" @onchange="() => State.Mode = SimMode.Dungeon" />
             <strong>Dungeon</strong>
-            <span class="meta">Trash pulls, bosses and councils in turn, each for its own length. The report adds the DPS to bosses.</span>
+            <span class="meta">Pulls of trash and bosses in turn, each until its enemies die. The report adds the DPS to bosses.</span>
         </label>
         <label class="choice @(State.Mode == SimMode.TrainingMobs ? "on" : "")">
             <input type="radio" name="mode" checked="@(State.Mode == SimMode.TrainingMobs)" @onchange="() => State.Mode = SimMode.TrainingMobs" />
@@ -18,8 +18,8 @@
         @if (State.Mode == SimMode.Dungeon)
         {
             <div class="field">
-                Length
-                <span class="length">@N(State.Dungeon.LengthSeconds) s</span>
+                Pulls
+                <span class="length">@State.Dungeon.Pulls.Count</span>
             </div>
         }
         else
@@ -99,7 +99,8 @@
     {
         if (!State.VaryLength || State.LengthVariancePercent <= 0) return "Every fight lasts the same length.";
         double share = State.LengthVariancePercent / 100;
-        return $"Each fight lasts {N(State.FightSeconds * (1 - share))} – {N(State.FightSeconds * (1 + share))} s, so no build is tuned to one exact length.";
+        if (State.Mode == SimMode.Dungeon) return $"Each pull duration of enemies without hit points varies by ± {N(State.LengthVariancePercent)}%.";
+        return $"Each fight lasts {N(State.FightSeconds * (1 - share))} – {N(State.FightSeconds * (1 + share))} s.";
     }
 
     private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);

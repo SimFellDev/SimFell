@@ -1,0 +1,280 @@
+@using System.Globalization
+@using FellowshipSim.Core.Dungeons
+@*
+    One pull of a dungeon, built as an action of the action-list editor: its head (grip, number and summary, move,
+    duplicate and delete buttons), and its details while it is open: the start, the pull duration, the final boss, the pull
+    it takes in, and its enemy groups. Dropping on a pull puts the dragged one in its place.
+*@
+<li class="@ClassName"
+    @ondragenter="DragEnter" @ondragenter:preventDefault="CanDrop"
+    @ondragover:preventDefault="CanDrop"
+    @ondragleave="DragLeave"
+    @ondrop="Drop" @ondrop:preventDefault>
+    <div class="head">
+        <span class="grip" data-tooltip="Drag to reorder" draggable="true" data-grip @ondragstart="DragStart" @ondragend="DragEnd">
+            <Icon Shape="IconShape.Grip" />
+        </span>
+        <button type="button" class="toggle" aria-expanded="@(Open ? "true" : "false")" data-tooltip="@(Open ? "Collapse" : "Expand")"
+                @onclick="OnToggle">
+            <Icon Shape="IconShape.Chevron" Class="chevron" />
+            <span class="number">@Pull.Number</span>
+            <span class="kind">@(Pull.IsBoss ? "Boss" : "Trash")</span>
+            <span class="summary">@Summary</span>
+        </button>
+        <button type="button" class="icon-button move" data-tooltip="Move up" aria-label="Move pull @Pull.Number up" disabled="@(Index == 0)"
+                @onclick="() => OnMove.InvokeAsync((Index, Index - 1))">
+            <Icon Shape="IconShape.Up" />
+        </button>
+        <button type="button" class="icon-button move" data-tooltip="Move down" aria-label="Move pull @Pull.Number down" disabled="@(Index == Pulls.Count - 1)"
+                @onclick="() => OnMove.InvokeAsync((Index, Index + 1))">
+            <Icon Shape="IconShape.Down" />
+        </button>
+        <button type="button" class="icon-button move" data-tooltip="Duplicate pull" aria-label="Duplicate pull @Pull.Number"
+                @onclick="OnDuplicate">
+            <Icon Shape="IconShape.Duplicate" />
+        </button>
+        <button type="button" class="icon-button danger-button" data-tooltip="Delete pull" aria-label="Delete pull @Pull.Number"
+                disabled="@(Pulls.Count == 1)" @onclick="OnDelete">
+            <Icon Shape="IconShape.Bin" />
+        </button>
+    </div>
+    @if (Open)
+    {
+        <div class="detail">
+            <label for="@($"{Id}-start")">Start</label>
+            <div class="pair">
+                <select id="@($"{Id}-start")" value="@(Pull.ChainWith != null ? ChainStart : DowntimeStart)" @onchange="ChangeStart">
+                    <option value="@DowntimeStart">After downtime (s)</option>
+                    <option value="@ChainStart" disabled="@(Others.Count == 0)">Chain with</option>
+                </select>
+                @if (Pull.ChainWith is { } chain)
+                {
+                    <select aria-label="Pull @Pull.Number chains with" value="@chain"
+                            @onchange="e => Set(Pull with { ChainWith = int.Parse((string)e.Value!, CultureInfo.InvariantCulture) })">
+                        @foreach (var other in Others)
+                        {
+                            <option @key="other.Number" value="@other.Number">Pull @other.Number</option>
+                        }
+                    </select>
+                }
+                else
+                {
+                    <input type="number" min="0" step="any" aria-label="Downtime before pull @Pull.Number"
+                           @bind:get="Pull.DowntimeSeconds" @bind:set="v => Set(Pull with { DowntimeSeconds = Math.Max(0, v) })" />
+                }
+            </div>
+
+            <label for="@($"{Id}-duration")">Pull Duration (s)</label>
+            <input id="@($"{Id}-duration")" type="number" min="1" step="any" placeholder="@(NeedsDuration ? "Needed by enemies without hit points" : "None")"
+                   @bind:get="Pull.PullDurationSeconds" @bind:set="SetDuration" />
+
+            @if (Pull.IsBoss)
+            {
+                <label for="@($"{Id}-final")">Final boss</label>
+                <input id="@($"{Id}-final")" type="checkbox" class="check" @bind:get="Pull.Final" @bind:set="v => Set(Pull with { Final = v })" />
+            }
+
+            <label for="@($"{Id}-with")">Pull with</label>
+            <div class="pair">
+                <select id="@($"{Id}-with")" value="@(Pull.Join?.Pull.ToString(CultureInfo.InvariantCulture) ?? "")" @onchange="ChangeWith">
+                    <option value="">None</option>
+                    @foreach (var other in Others)
+                    {
+                        <option @key="other.Number" value="@other.Number">Pull @other.Number</option>
+                    }
+                </select>
+                @if (Pull.Join is { } join)
+                {
+                    <select aria-label="Trigger of pull @join.Pull joining" value="@TriggerOf(join)" @onchange="e => ChangeTrigger((string)e.Value!)">
+                        <option value="@StartTrigger">At the start</option>
+                        <option value="@OffsetTrigger">Offset (ms)</option>
+                        <option value="@HealthTrigger">Health %</option>
+                        <option value="@DeathsTrigger">After deaths</option>
+                        <option value="@TotalTrigger">After deaths (total)</option>
+                    </select>
+                    @if (TriggerOf(join) != StartTrigger)
+                    {
+                        <input aria-label="Trigger value" spellcheck="false" autocomplete="off"
+                               placeholder="@(TriggerOf(join) is DeathsTrigger or TotalTrigger ? "3 or 50%" : "")"
+                               @bind:get="TriggerValue(join)" @bind:set="SetTriggerValue" />
+                    }
+                }
+            </div>
+
+            <label class="wide">Enemies</label>
+            <div class="wide">
+                @for (int g = 0; g < Pull.Groups.Count; g++)
+                {
+                    int index = g;
+                    <EnemyGroupBox @key="index" Group="Pull.Groups[index]" CanDelete="Pull.Groups.Count > 1"
+                                   OnChange="group => SetGroups(groups => groups[index] = group)"
+                                   OnDuplicate="() => SetGroups(groups => groups.Insert(index + 1, groups[index]))"
+                                   OnDelete="() => SetGroups(groups => groups.RemoveAt(index))" />
+                }
+                <div class="adds">
+                    <button type="button" class="add" @onclick="() => SetGroups(groups => groups.Add(NewTrash))">+ Enemy group</button>
+                    <button type="button" class="add" @onclick="() => SetGroups(groups => groups.Add(NewBoss))">+ Boss</button>
+                </div>
+            </div>
+        </div>
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired] public DungeonPull Pull { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<DungeonPull> Pulls { get; set; } = [];
+
+    [Parameter] public int Index { get; set; }
+
+    [Parameter] public bool Open { get; set; }
+
+    /// <summary>The place of the pull being dragged; null when none is.</summary>
+    [Parameter] public int? DragFrom { get; set; }
+
+    [Parameter] public EventCallback<DungeonPull> OnChange { get; set; }
+
+    [Parameter] public EventCallback OnToggle { get; set; }
+
+    /// <summary>Moves a pull from a place to another.</summary>
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
+
+    [Parameter] public EventCallback OnDuplicate { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary>Sets the place of the pull being dragged; null when the drag ends.</summary>
+    [Parameter] public EventCallback<int?> OnDrag { get; set; }
+
+    /// <summary>The trash group of a new pull, and the one "+ Enemy group" adds.</summary>
+    public static readonly EnemyGroup NewTrash = new(5, "Trash Mob", 3, HitPoints: 2_000_000);
+
+    /// <summary>The boss of a new boss pull, and the one "+ Boss" adds.</summary>
+    public static readonly EnemyGroup NewBoss = new(1, "Boss", 45, HitPoints: 20_000_000, Boss: true);
+
+    private const string DowntimeStart = "downtime";
+    private const string ChainStart = "chain";
+    private const string StartTrigger = "start";
+    private const string OffsetTrigger = "offset_ms";
+    private const string HealthTrigger = "offset_pct";
+    private const string DeathsTrigger = "after_deaths";
+    private const string TotalTrigger = "after_deaths_total";
+
+    private bool _dragging;
+    // Drag enters and leaves of the item and its children: the item is under the drag while more have entered than left.
+    private int _entered;
+
+    private string Id => $"pull-{Pull.Number}";
+
+    private IReadOnlyList<DungeonPull> Others => Pulls.Where(p => p.Number != Pull.Number).ToList();
+
+    private bool NeedsDuration => Pull.Groups.Any(g => g.HitPoints == null);
+
+    /// <summary>The groups on one line: "Imp ×5, Ogre Captain".</summary>
+    private string Summary => string.Join(", ", Pull.Groups.Select(g => g.Count > 1 ? $"{g.Name} ×{g.Count}" : g.Name));
+
+    private bool CanDrop => DragFrom is { } from && from != Index;
+
+    private string? DropClass => !CanDrop || _entered <= 0 ? null : DragFrom < Index ? "drop-after" : "drop-before";
+
+    private string ClassName => string.Join(" ", new[] { "pull", Open ? "open" : null, _dragging ? "dragging" : null, DropClass }.OfType<string>());
+
+    protected override void OnParametersSet()
+    {
+        if (DragFrom == null) _entered = 0;
+    }
+
+    private Task Set(DungeonPull pull) => OnChange.InvokeAsync(pull);
+
+    private Task SetGroups(Action<List<EnemyGroup>> change)
+    {
+        var groups = Pull.Groups.ToList();
+        change(groups);
+        return Set(Pull with { Groups = groups, Final = Pull.Final && groups.Any(g => g.Boss) });
+    }
+
+    private Task SetDuration(double? seconds) => Set(Pull with { PullDurationSeconds = seconds is > 0 ? seconds : null });
+
+    private Task ChangeStart(ChangeEventArgs e) => (string?)e.Value == ChainStart && Others.Count > 0
+        ? Set(Pull with { ChainWith = Others.LastOrDefault(p => p.Number < Pull.Number)?.Number ?? Others[0].Number, DowntimeSeconds = 0 })
+        : Set(Pull with { ChainWith = null });
+
+    private Task ChangeWith(ChangeEventArgs e) => string.IsNullOrEmpty((string?)e.Value)
+        ? Set(Pull with { Join = null })
+        : Set(Pull with { Join = (Pull.Join ?? new PullJoin(0)) with { Pull = int.Parse((string)e.Value!, CultureInfo.InvariantCulture) } });
+
+    private static string TriggerOf(PullJoin join) =>
+        join.OffsetMs != null ? OffsetTrigger : join.OffsetPct != null ? HealthTrigger
+        : join.AfterDeaths != null ? DeathsTrigger : join.AfterDeathsTotal != null ? TotalTrigger : StartTrigger;
+
+    private static string TriggerValue(PullJoin join) =>
+        join.OffsetMs?.ToString(CultureInfo.InvariantCulture) ?? join.OffsetPct?.ToString(CultureInfo.InvariantCulture)
+        ?? join.AfterDeaths?.ToString() ?? join.AfterDeathsTotal?.ToString() ?? "";
+
+    private Task ChangeTrigger(string trigger)
+    {
+        var join = new PullJoin(Pull.Join!.Pull);
+        return Set(Pull with
+        {
+            Join = trigger switch
+            {
+                OffsetTrigger => join with { OffsetMs = 5000 },
+                HealthTrigger => join with { OffsetPct = 50 },
+                DeathsTrigger => join with { AfterDeaths = new DeathCount(1) },
+                TotalTrigger => join with { AfterDeathsTotal = new DeathCount(50, Percent: true) },
+                _ => join,
+            },
+        });
+    }
+
+    private Task SetTriggerValue(string text)
+    {
+        var join = Pull.Join!;
+        text = text.Trim();
+        try
+        {
+            return Set(Pull with
+            {
+                Join = TriggerOf(join) switch
+                {
+                    OffsetTrigger => join with { OffsetMs = double.Parse(text, CultureInfo.InvariantCulture) },
+                    HealthTrigger => join with { OffsetPct = double.Parse(text.TrimEnd('%'), CultureInfo.InvariantCulture) },
+                    DeathsTrigger => join with { AfterDeaths = DeathCount.Parse("after_deaths", text) },
+                    TotalTrigger => join with { AfterDeathsTotal = DeathCount.Parse("after_deaths_total", text) },
+                    _ => join,
+                },
+            });
+        }
+        catch (FormatException)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private void DragStart()
+    {
+        OnDrag.InvokeAsync(Index);
+        _dragging = true;
+    }
+
+    private void DragEnd()
+    {
+        OnDrag.InvokeAsync(null);
+        _dragging = false;
+    }
+
+    private void DragEnter()
+    {
+        if (CanDrop) _entered++;
+    }
+
+    private void DragLeave() => _entered = Math.Max(0, _entered - 1);
+
+    private async Task Drop()
+    {
+        _entered = 0;
+        var from = DragFrom;
+        await OnDrag.InvokeAsync(null);
+        if (from is { } f && f != Index) await OnMove.InvokeAsync((f, Index));
+    }
+}

@@ -103,7 +103,7 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
-        // A hit at an enemy that has left combat (its dungeon segment ended) misses, and rolls nothing.
+        // A hit at an enemy that has left combat (it died, or its pull duration ended) misses, and rolls nothing.
         if (hit.Target is { IsSleeping: true }) return new HitOutcome(false, Missed: true);
         // A forced crit rolls nothing: no crit and no spread.
         if (hit.ForcedCrit is { } forced) return new HitOutcome(forced);

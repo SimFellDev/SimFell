@@ -97,7 +97,7 @@ public class SimEngineContractTests
     [Fact]
     public async Task A_Dungeon_Sim_Request_From_Json_Has_The_Result_Of_The_Request()
     {
-        var settings = new SimSettings(Iterations: 10, DurationSeconds: DefaultDungeons.Default.LengthSeconds, DegreeOfParallelism: 1,
+        var settings = new SimSettings(Iterations: 10, DurationSeconds: DefaultDungeons.Default.TimeLimitSeconds, DegreeOfParallelism: 1,
             Dungeon: DefaultDungeons.Default);
         var sent = JsonSerializer.Deserialize<SimSettings>(JsonSerializer.Serialize(settings, Web), Web)!;
 
@@ -108,9 +108,9 @@ public class SimEngineContractTests
     }
 
     [Fact]
-    public async Task A_Dungeon_With_A_Segment_Of_No_Length_Is_Refused()
+    public async Task A_Dungeon_With_A_Pull_Of_No_Hit_Points_Is_Refused()
     {
-        var dungeon = new DungeonProfile("Broken", [new DungeonSegment(DungeonSegmentKind.Boss, 0)]);
+        var dungeon = new DungeonProfile("Broken", DungeonProfile.DefaultHeroShare, 600, [new DungeonPull(1, [new EnemyGroup(1, "Boss", HitPoints: 0, Boss: true)])]);
         await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(SimcProfile.Parse(Profile), new SimSettings(1, 10, Dungeon: dungeon)));
     }
 

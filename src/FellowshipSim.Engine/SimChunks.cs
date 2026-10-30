@@ -46,7 +46,7 @@ public sealed class SimChunks
     public static SimResult Combine(SimSettings settings, IReadOnlyList<MonteCarloChunk> chunks) =>
         SimResult.From(MonteCarloSimulator.Combine(chunks, SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations));
 
-    /// <summary>Throws <see cref="SimEngineException"/> when <paramref name="settings"/> has a dungeon whose segments are not valid.</summary>
+    /// <summary>Throws <see cref="SimEngineException"/> when <paramref name="settings"/> has a dungeon that is not valid.</summary>
     public static void CheckDungeon(SimSettings settings)
     {
         if (settings.Dungeon?.Problem() is { } problem) throw new SimEngineException(problem);

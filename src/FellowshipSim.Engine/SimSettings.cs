@@ -3,7 +3,7 @@ using FellowshipSim.Core.Dungeons;
 namespace FellowshipSim.Engine;
 
 /// <summary>
-/// A Monte Carlo sim's fights: <see cref="Iterations"/> fights of <see cref="Dungeon"/>'s segments, or, when it is null,
+/// A Monte Carlo sim's fights: <see cref="Iterations"/> fights of <see cref="Dungeon"/>'s pulls, or, when it is null,
 /// of <see cref="DurationSeconds"/> against <see cref="TargetCount"/> training mobs. Fight i has seed
 /// <see cref="FirstSeed"/> + i. <see cref="DegreeOfParallelism"/> is the most threads the fights use; null is
 /// <see cref="MonteCarloSimulator.DefaultDegreeOfParallelism"/>. <see cref="LengthVariance"/>,

@@ -256,6 +256,11 @@ public abstract class Hero : Actor
 
     internal void TriggerEnemyDefeated(SimulationContext ctx, EnemyTarget enemy) => OnEnemyDefeated?.Invoke(ctx, enemy);
 
+    /// <summary>Raised as the hero interrupts an enemy's cast, with the ability it was casting.</summary>
+    public event Action<SimulationContext, EnemyTarget, string>? OnInterrupt;
+
+    internal void TriggerInterrupt(SimulationContext ctx, EnemyTarget enemy, string ability) => OnInterrupt?.Invoke(ctx, enemy, ability);
+
     /// <summary>The hero applied a harmful effect that deals no damage of its own to an enemy (a debuff such as Bursting Ice's).</summary>
     public event Action<SimulationContext, EnemyTarget>? OnHarmfulEffectApplied;
 

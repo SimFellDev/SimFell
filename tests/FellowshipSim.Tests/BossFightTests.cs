@@ -9,7 +9,7 @@ namespace FellowshipSim.Tests;
 
 /// <summary>
 /// Ruby's Blessing of the Conqueror counts only in a fight against a boss: training mobs that are bosses, which they are
-/// unless told not, or a dungeon's boss and council segments. dungeon_event.boss.exists reads 1 only then.
+/// unless told not, or a dungeon's boss in combat. dungeon_event.boss.exists reads 1 only then.
 /// </summary>
 public class BossFightTests
 {
@@ -28,9 +28,10 @@ public class BossFightTests
         Assert.Equal(boss, Mean(null));
         Assert.Equal(1.05, boss / noBoss, 2);
 
-        double DungeonOf(DungeonSegmentKind kind) =>
-            Mean(new FightOptions(Dungeon: new DungeonProfile("One", [new DungeonSegment(kind, 60, kind == DungeonSegmentKind.Trash ? 1 : 3)])));
-        Assert.Equal(1.05, DungeonOf(DungeonSegmentKind.Boss) / DungeonOf(DungeonSegmentKind.Trash), 2);
+        // Health follows a 60 s pull duration, so each pull lasts as long as the training mobs.
+        double DungeonOf(EnemyGroup group) => Mean(new FightOptions(Dungeon: new DungeonProfile("One", DungeonProfile.DefaultHeroShare, 60,
+            [new DungeonPull(1, [group], PullDurationSeconds: 60)])));
+        Assert.Equal(1.05, DungeonOf(new EnemyGroup(1, "Boss", Boss: true)) / DungeonOf(new EnemyGroup(1, "Trash Mob")), 2);
     }
 
     [Fact]

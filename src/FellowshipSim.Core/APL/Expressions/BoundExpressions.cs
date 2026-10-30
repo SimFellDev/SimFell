@@ -68,6 +68,7 @@ public abstract class BoundExpression
     private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
         if (p.PropertyPath == "time") return new BoundTime();
+        if (p.PropertyPath == "target.cast.remains") return new BoundCastRemains();
         if (PropertyExpression.Countdowns.TryGetValue(p.PropertyPath, out var end)) return new BoundCountdown(end);
         if (PropertyExpression.Named.TryGetValue(p.PropertyPath, out var named)) return new BoundNamed(hero, named.Value);
         if (hero.FindResource(p.ResourceName) is { } resource)
@@ -339,7 +340,7 @@ internal sealed class BoundTime : BoundNumeric
 
 /// <summary>
 /// The seconds until a time (<see cref="PropertyExpression.Countdowns"/>), falling a second per second; it breaks at that
-/// time, where an event starts the next segment or ends the fight. <see cref="PropertyExpression.NeverIn"/> when the time
+/// time, where an event starts the next pull or ends the fight. <see cref="PropertyExpression.NeverIn"/> when the time
 /// never comes.
 /// </summary>
 internal sealed class BoundCountdown(Func<SimulationContext, SimTime> end) : BoundNumeric
@@ -354,6 +355,21 @@ internal sealed class BoundCountdown(Func<SimulationContext, SimTime> end) : Bou
         var at = end(ctx);
         return at == SimTime.Infinite ? PropertyExpression.NeverIn : (at - time).TotalSeconds;
     }
+}
+
+/// <summary>
+/// The seconds until the current target's cast ends, falling a second per second to 0 at its end, where an event ends the
+/// cast; 0 while the target is not casting.
+/// </summary>
+internal sealed class BoundCastRemains : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => PropertyExpression.CastRemains(ctx, ctx.CurrentTime);
+    internal override SimTime Until(SimulationContext ctx) =>
+        ctx.Player.CurrentTarget is { IsCasting: true } target ? target.CastEnd : SimTime.Infinite;
+    internal override bool IsLevel(SimulationContext ctx) => ctx.Player.CurrentTarget is not { IsCasting: true };
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        IsLevel(ctx) ? TimeCurve.Constant(0.0) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
+    internal override double NumericAt(SimulationContext ctx, SimTime time) => PropertyExpression.CastRemains(ctx, time);
 }
 
 /// <summary>The variables of one bound program, by name.</summary>

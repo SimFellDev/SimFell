@@ -120,44 +120,73 @@ standard deviation, and DPS for each ability.
 
 The **Modes** tab has two kinds of fight:
 
-- **Dungeon**: the segments of a dungeon in turn. A segment is a trash pull, a boss, or a council of bosses at once,
-  each with its own length. Its enemies arrive as it starts, their health falls with its time, and they die as it ends.
-  The fight is as long as its segments, and the result adds the DPS to bosses. A new sim has the built-in `Default`
-  dungeon: three trash pulls, a boss and a council of three as the final boss, 300 s in all.
+- **Dungeon**: the pulls of a dungeon in turn, each until its enemies are dead, up to the dungeon's time limit. An enemy
+  with hit points dies from damage: the hero deals the dungeon's hero share of it (37.5% by default) and the party the
+  rest. An enemy without hit points has health falling over its pull's duration. Between pulls is downtime, with no
+  enemies and no actions. The fight's DPS is over its whole length, downtime included, and the result adds the DPS to
+  bosses. A new sim has the built-in `Default` dungeon: Cithrel's Fall's creatures in four trash pulls and two bosses,
+  Cithrel the final boss.
 - **Training mobs**: a number of training mobs for the whole duration. **The mobs are bosses** sets whether boss-only
   effects (Ruby's Blessing of the Conqueror) count.
 
-The **Dungeon** card edits the segments: kind, enemies, priority targets (trash pulls), length, final boss (bosses and
-councils), and a creature whose Spirit Points the enemies give. **Save** writes `data/dungeons/<name>.simc` in the
-desktop app and `data/visitors/<visitor id>/dungeons/` in the web app. **Dungeon text** has the dungeon as text:
+The **Dungeon** card has the hero share, the time limit, the difficulty (Eternal level) and the pulls. Each pull opens to
+its start (after downtime, or chained to another pull's end), its pull duration, the final boss, another pull it takes in
+with that pull's trigger, and its enemy groups. A group has a count (trash), a name, Spirit Points, hit points, priority,
+and an interrupt ability with its cooldown and cast time. **Save** writes `data/dungeons/<name>.simc` in the desktop app
+and `data/visitors/<visitor id>/dungeons/` in the web app. **Dungeon text** has the dungeon as text:
 
 ```
 dungeon=Default
-segment=trash,enemies=5,priority=1,length=60
-segment=trash,enemies=4,length=45
-segment=boss,length=60
-segment=trash,enemies=6,priority=2,length=60
-segment=council,enemies=3,length=75,final=1
+difficulty=10
+hero_share=37.5
+time_limit=1800
+pull.1=/count=5,name=Imp,spirit_points=3,hit_points=900000
+pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=3000000,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
+pull.2=/count=4,name=Ghoul
+pull.2+=/pull_duration=45,downtime=20
+pull.3=/count=3,name=Bat,spirit_points=2,hit_points=600000
+pull.3+=/chain_with=2
+pull.4=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
+pull.4+=/final=1,downtime=30,pull_with=5,offset_pct=50
+pull.5=/count=2,name=Wisp,hit_points=500000
 ```
 
-A segment's kind is `trash`, `boss` or `council`. Its options are `length` (seconds), `enemies` (trash and council),
-`priority` (trash), `final=1` (boss and council) and `creature` (in quotes when the name has a comma).
+`pull.N=/` starts pull N and `pull.N+=/` adds a line to it. A line is an enemy group (`count=`), a boss (`boss.N`;
+several make a council) or the pull's options. Group values: `count`, `name` (in quotes when it has a comma),
+`spirit_points` (each enemy's), `priority=1`, `hit_points` (at Eternal level 1; each level above multiplies health by
+1.08), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast is one cooldown after the enemy
+arrives). Pull options:
+
+- `downtime`: seconds before the pull starts, after the pull before it ends.
+- `chain_with=X`: the pull starts as pull X ends, with no downtime.
+- `pull_with=X`: pull X's enemies join this pull, at its start or at one trigger: `offset_ms` after the start,
+  `offset_pct` (the pull's average health %), `after_deaths` (the pull's own enemies dead) or `after_deaths_total` (all
+  enemies of the combined pull dead). A death count is a number or a percent (`50%`).
+- `pull_duration`: seconds over which the health of enemies without hit points falls.
+- `final=1`: the pull's boss is the final boss.
+
+Pulls run in ascending number. A pull taken in by another runs with it, and a chained pull runs as the pull it names
+ends. Pull numbers need not be in order or contiguous. The fight's length variance varies each `pull_duration`.
 
 Action lists read the fight with these values:
 
 | Value | What it reads |
 |---|---|
-| `dungeon_event.adds.exists` | 1 during a trash pull |
-| `dungeon_event.adds.count` | the trash pull's enemies in combat |
-| `dungeon_event.adds.in` | seconds until the next trash pull; 10000 when none follows |
-| `dungeon_event.boss.exists` | 1 during a boss or council, or with training mobs that are bosses |
+| `dungeon_event.adds.exists` | 1 while a dungeon enemy that is not a boss is in combat |
+| `dungeon_event.adds.count` | the enemies in combat that are not bosses |
+| `dungeon_event.adds.in` | seconds until the next pull with enemies that are not bosses, an estimate; 10000 when none follows |
+| `dungeon_event.boss.exists` | 1 while a boss is in combat, or with training mobs that are bosses |
 | `dungeon_event.boss.count` | the bosses in combat (3 in a council of three) |
-| `dungeon_event.boss.final` | 1 during the final boss |
-| `dungeon_event.boss.in` | seconds until the next boss or council; 10000 when none follows |
-| `dungeon_event.fight.remains` | seconds until the fight ends |
+| `dungeon_event.boss.final` | 1 while the final boss is in combat |
+| `dungeon_event.boss.in` | seconds until the next pull with a boss, an estimate; 10000 when none follows |
+| `dungeon_event.fight.remains` | seconds until the fight ends, an estimate in a dungeon |
 | `target.is_boss` | 1 when the target is a boss |
-| `target.is_priority` | 1 when the target is a priority target of a trash pull |
-| `target.time_to_die` | seconds until the target's segment ends, or the training mob fight ends |
+| `target.is_priority` | 1 when the target is a priority target |
+| `target.time_to_die` | seconds until the target dies, from its health loss so far, its pull duration, or the training mob fight's end |
+| `target.casting` | 1 when the target is casting an interruptible ability |
+| `target.cast.remains` | seconds until the target's cast ends; 0 when it is not casting |
+
+Rime's Brain Freeze and Gunde's Jawbreaker interrupt a casting target. An uninterrupted cast has no effect.
 
 A boss that is not the final boss is `dungeon_event.boss.exists&!dungeon_event.boss.final`. A list with
 `raid_event.<x>` reads it as `dungeon_event.<x>`, and `fight_remains` as `dungeon_event.fight.remains`; the editor

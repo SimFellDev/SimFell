@@ -76,19 +76,19 @@ public class SimulationContext
     /// <summary>The time the fight ends; <see cref="SimTime.Infinite"/> when it has no set end.</summary>
     public SimTime FightEnd { get; set; } = SimTime.Infinite;
 
-    /// <summary>True during a boss or council segment of a dungeon, or a training mob fight against a boss.</summary>
+    /// <summary>True while a dungeon boss is in combat, or in a training mob fight against a boss.</summary>
     public bool Boss { get; set; }
 
-    /// <summary>True during the final boss segment of a dungeon.</summary>
+    /// <summary>True while the final boss of a dungeon is in combat.</summary>
     public bool FinalBoss { get; set; }
 
-    /// <summary>True during a trash pull of a dungeon.</summary>
+    /// <summary>True while a dungeon enemy that is not a boss is in combat.</summary>
     public bool Trash { get; set; }
 
-    /// <summary>The start of the next trash pull of a dungeon; <see cref="SimTime.Infinite"/> when none follows.</summary>
+    /// <summary>The estimated start of the next dungeon pull with enemies that are not bosses; <see cref="SimTime.Infinite"/> when none follows or no estimate is possible.</summary>
     public SimTime NextTrashAt { get; set; } = SimTime.Infinite;
 
-    /// <summary>The start of the next boss or council segment of a dungeon; <see cref="SimTime.Infinite"/> when none follows.</summary>
+    /// <summary>The estimated start of the next dungeon pull with a boss; <see cref="SimTime.Infinite"/> when none follows or no estimate is possible.</summary>
     public SimTime NextBossAt { get; set; } = SimTime.Infinite;
 
     /// <summary>Raised as an enemy first enters the fight.</summary>
@@ -142,7 +142,13 @@ public class SimulationContext
     /// Advances the clock to <paramref name="time"/>, firing every queued event due on the way in time order (the hero's
     /// aura expiries among them). This is the only way simulation time moves forward.
     /// </summary>
-    public void RunUntil(SimTime time)
+    public void RunUntil(SimTime time) => RunUntil(time, null);
+
+    /// <summary>
+    /// Advances the clock as <see cref="RunUntil(SimTime)"/> does, and stops right after an event once <paramref name="stop"/>
+    /// holds, the clock at that event. Returns true when it stopped there.
+    /// </summary>
+    public bool RunUntil(SimTime time, Func<bool>? stop)
     {
         while (Kernel.TryDequeueDue(time, out var ev))
         {
@@ -150,8 +156,10 @@ public class SimulationContext
             ev.HasFired = true;
             if (ev.Hit is { } hit) Land(hit);
             else ev.Action!(this);
+            if (stop != null && stop()) return true;
         }
         if (time > CurrentTime) CurrentTime = time;
+        return false;
     }
 
     // ------------------------------------------------------------------ enemies
@@ -189,6 +197,24 @@ public class SimulationContext
 
     /// <summary>Raised as an enemy dies or leaves combat, before it is removed (effects on it can still resolve).</summary>
     public event Action<SimulationContext, EnemyTarget>? EnemyDemising;
+
+    /// <summary>
+    /// Raised as damage takes health from an enemy dying from damage (<see cref="EnemyTarget.HeroShare"/>), with the
+    /// health lost, the party's damage included.
+    /// </summary>
+    public event Action<SimulationContext, EnemyTarget, double>? EnemyHurt;
+
+    /// <summary>
+    /// The hero interrupts <paramref name="enemy"/>'s cast: it ends with no effect, and <see cref="Hero.OnInterrupt"/> is
+    /// raised. Returns false when the enemy was not casting.
+    /// </summary>
+    public bool Interrupt(EnemyTarget enemy)
+    {
+        string? ability = enemy.CastAbility;
+        if (ability == null || !enemy.StopCast()) return false;
+        Player.TriggerInterrupt(this, enemy, ability);
+        return true;
+    }
 
     /// <summary>An enemy dies (<paramref name="defeated"/>) or leaves combat.</summary>
     public void RemoveEnemy(EnemyTarget enemy, bool defeated = false)
@@ -521,7 +547,19 @@ public class SimulationContext
         CollectionsMarshal.AsSpan(_damageByName)[slot].Damage += dealt;
         if (target != null && target.MaxHealth > 0)
         {
-            target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
+            if (target.HeroShare is { } share)
+            {
+                // The party deals the rest: the enemy loses the hit over the hero's share.
+                double before = target.CurrentHealth;
+                target.CurrentHealth = Math.Max(0.0, before - dealt / share);
+                if (target.CurrentHealth <= 0 && !target.DeathScheduled && !target.IsSleeping)
+                {
+                    target.DeathScheduled = true;
+                    Kernel.ScheduleAt(CurrentTime, c => c.RemoveEnemy(target, defeated: true), "Death");
+                }
+                if (before > target.CurrentHealth) EnemyHurt?.Invoke(this, target, before - target.CurrentHealth);
+            }
+            else target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
         }
         source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this, critChance));
     }

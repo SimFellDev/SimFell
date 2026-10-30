@@ -1,7 +1,19 @@
-# The dungeon a new sim starts with: three trash pulls, a boss between them, and a council of three as the final boss.
+# The dungeon a new sim starts with: Cithrel's Fall's creatures, their Spirit Points and casts from game data. Each enemy's
+# hit points are its game data health times one scale. UNVERIFIED: no combat log has confirmed the scale.
 dungeon=Default
-segment=trash,enemies=5,priority=1,length=60
-segment=trash,enemies=4,length=45
-segment=boss,length=60
-segment=trash,enemies=6,priority=2,length=60
-segment=council,enemies=3,length=75,final=1
+difficulty=10
+hero_share=37.5
+time_limit=1800
+pull.1=/count=4,name="Coldbrine Fiend",spirit_points=3,hit_points=275000
+pull.1+=/count=1,name="Eldrin Chronomancer",spirit_points=4,priority=1,hit_points=404000,interrupt_ability="Temporal Manipulation",cooldown=30,cast_time=2
+pull.2=/count=6,name="Ice Shardling",spirit_points=1,hit_points=118000
+pull.2+=/count=1,name="Glacial Colossus",spirit_points=6,hit_points=530000
+pull.2+=/chain_with=1
+pull.3=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=2241000
+pull.3+=/downtime=30
+pull.4=/count=4,name="Coldbrine Fiend",spirit_points=3,hit_points=275000
+pull.4+=/count=2,name="Eldrin Chronomancer",spirit_points=4,priority=1,hit_points=404000,interrupt_ability="Temporal Manipulation",cooldown=30,cast_time=2
+pull.4+=/downtime=20,pull_with=5,after_deaths=50%
+pull.5=/count=2,name="Glacial Colossus",spirit_points=6,hit_points=530000
+pull.6=/boss.1,name=Cithrel,spirit_points=45,hit_points=2126000
+pull.6+=/downtime=30,final=1

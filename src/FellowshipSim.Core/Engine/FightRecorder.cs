@@ -137,9 +137,10 @@ internal sealed class FightRecorder
         foreach (var state in _active.Values) Close(state, Earlier(state.Aura.ExpiresAt, duration));
         _active.Clear();
         int seconds = Math.Min(_spirit.Length, (int)Math.Ceiling(duration.TotalSeconds));
+        tally.LongestSeconds = Math.Max(tally.LongestSeconds, seconds);
         FillSpirit(seconds);
         tally.AddSpirit(_spirit, seconds, _spiritMax);
-        tally.AddFight(_fight, _damage, _spans, _casts, _spans != null ? _spirit[..seconds] : null);
+        tally.AddFight(_fight, _damage, seconds, _spans, _casts, _spans != null ? _spirit[..seconds] : null);
         _tally = null;
     }
 
@@ -348,6 +349,8 @@ internal sealed class FightRecorder
         public double BossDamage, BossSeconds;
         /// <summary>The seconds each enemy was in combat, added up over the fights and enemies.</summary>
         public double TargetSeconds;
+        /// <summary>The whole seconds of the longest fight: the timeline ends there.</summary>
+        public int LongestSeconds;
 
         public SourceTally Source(string name)
         {
@@ -361,14 +364,18 @@ internal sealed class FightRecorder
             return aura;
         }
 
-        public void AddFight(int fight, double[] damage, Dictionary<(string Name, bool OnTarget), List<double>>? spans, List<CastReport>? casts,
-            double[]? spirit)
+        /// <summary>
+        /// Adds a fight's damage each second, <paramref name="seconds"/> of them up to its end; the band keeps those seconds
+        /// alone.
+        /// </summary>
+        public void AddFight(int fight, double[] damage, int seconds, Dictionary<(string Name, bool OnTarget), List<double>>? spans,
+            List<CastReport>? casts, double[]? spirit)
         {
             Fights++;
             if (spans != null) Samples.Add((fight, damage.Sum(), spans, casts ?? [], spirit ?? []));
-            if (DamageSum.Length != damage.Length) DamageSum = new double[damage.Length];
+            if (DamageSum.Length < damage.Length) Array.Resize(ref DamageSum, damage.Length);
             for (int i = 0; i < damage.Length; i++) DamageSum[i] += damage[i];
-            if (fight < BandFights) Band.Add((fight, Array.ConvertAll(damage, d => (float)d)));
+            if (fight < BandFights) Band.Add((fight, Array.ConvertAll(damage[..Math.Min(seconds, damage.Length)], d => (float)d)));
         }
 
         public void Merge(Tally other)
@@ -379,7 +386,8 @@ internal sealed class FightRecorder
             BossDamage += other.BossDamage;
             BossSeconds += other.BossSeconds;
             TargetSeconds += other.TargetSeconds;
-            if (DamageSum.Length == 0) DamageSum = new double[other.DamageSum.Length];
+            LongestSeconds = Math.Max(LongestSeconds, other.LongestSeconds);
+            if (DamageSum.Length < other.DamageSum.Length) Array.Resize(ref DamageSum, other.DamageSum.Length);
             for (int i = 0; i < other.DamageSum.Length; i++) DamageSum[i] += other.DamageSum[i];
             Band.AddRange(other.Band);
             Samples.AddRange(other.Samples);
@@ -394,16 +402,19 @@ internal sealed class FightRecorder
             foreach (var ((name, onTarget), aura) in other.Auras) Aura(name, onTarget).Add(aura);
         }
 
-        /// <summary>These totals in a chunk's form (<see cref="MonteCarloChunk.Report"/>).</summary>
+        /// <summary>
+        /// These totals in a chunk's form (<see cref="MonteCarloChunk.Report"/>). The seconds after the longest fight's end
+        /// are all 0 and stay behind, so a dungeon's chunk is the length of its fights, not of its time limit.
+        /// </summary>
         public MonteCarloChunk.ReportTotals ToTotals() => new()
         {
             Fights = Fights,
-            DamageSum = DamageSum,
+            DamageSum = UpToLongest(DamageSum),
             Band = Band.Select(b => new MonteCarloChunk.BandFight(b.Fight, b.Damage)).ToList(),
             Samples = Samples.Select(s => new MonteCarloChunk.SampleFight(s.Fight, s.Damage,
                 s.Spans.Select(a => new MonteCarloChunk.AuraSpans(a.Key.Name, a.Key.OnTarget, a.Value)).ToList(), s.Casts, s.Spirit)).ToList(),
-            SpiritSum = SpiritSum,
-            SpiritFights = SpiritFights,
+            SpiritSum = UpToLongest(SpiritSum),
+            SpiritFights = UpToLongest(SpiritFights),
             SpiritMax = SpiritMax,
             Sources = Sources.Select(s => new MonteCarloChunk.SourceTotals(s.Key, s.Value.Damage, s.Value.Crits, s.Value.Casts, s.Value.Hits, s.Value.Id)).ToList(),
             Auras = Auras.Select(a => new MonteCarloChunk.AuraTotals(a.Key.Name, a.Key.OnTarget, a.Value.UpSeconds, a.Value.StackSeconds,
@@ -413,7 +424,11 @@ internal sealed class FightRecorder
             BossDamage = BossDamage,
             BossSeconds = BossSeconds,
             TargetSeconds = TargetSeconds,
+            LongestSeconds = LongestSeconds,
         };
+
+        private T[] UpToLongest<T>(T[] perSecond) =>
+            LongestSeconds > 0 && LongestSeconds < perSecond.Length ? perSecond[..LongestSeconds] : perSecond;
 
         /// <summary>The totals of a chunk's form.</summary>
         public static Tally From(MonteCarloChunk.ReportTotals totals)
@@ -429,6 +444,7 @@ internal sealed class FightRecorder
                 BossDamage = totals.BossDamage,
                 BossSeconds = totals.BossSeconds,
                 TargetSeconds = totals.TargetSeconds,
+                LongestSeconds = totals.LongestSeconds,
             };
             tally.Band.AddRange(totals.Band.Select(b => (b.Fight, b.Damage)));
             tally.Samples.AddRange(totals.Samples.Select(s => (s.Fight, s.Damage,
@@ -452,12 +468,13 @@ internal sealed class FightRecorder
         /// <summary>The run's damage over time: the mean of every fight, and the band's 5th and 95th percentiles.</summary>
         public SimTimeline Timeline()
         {
-            int seconds = DamageSum.Length;
-            double[] mean = DamageSum.Select(d => Fights == 0 ? 0 : d / Fights).ToArray();
+            // The seconds up to the longest fight's end: a dungeon's fights end before its time limit.
+            int seconds = LongestSeconds > 0 ? Math.Min(LongestSeconds, DamageSum.Length) : DamageSum.Length;
+            double[] mean = DamageSum.Take(seconds).Select(d => Fights == 0 ? 0 : d / Fights).ToArray();
             var cumulative = Cumulative(mean);
             var rolling = Rolling(mean);
-            var bandCumulative = Band.Select(b => Cumulative(Array.ConvertAll(b.Damage, d => (double)d))).ToList();
-            var bandRolling = Band.Select(b => Rolling(Array.ConvertAll(b.Damage, d => (double)d))).ToList();
+            var bandCumulative = Band.Select(b => Cumulative(Seconds(b.Damage, seconds))).ToList();
+            var bandRolling = Band.Select(b => Rolling(Seconds(b.Damage, seconds))).ToList();
             return new SimTimeline(cumulative, Percentile(bandCumulative, seconds, 0.05), Percentile(bandCumulative, seconds, 0.95),
                 rolling, Percentile(bandRolling, seconds, 0.05), Percentile(bandRolling, seconds, 0.95), RollingSeconds);
         }
@@ -528,6 +545,14 @@ internal sealed class FightRecorder
                 }
             }
             return merged;
+        }
+
+        // A band fight's damage over the first seconds; it has none after its end.
+        private static double[] Seconds(float[] damage, int seconds)
+        {
+            var result = new double[seconds];
+            for (int i = 0; i < Math.Min(seconds, damage.Length); i++) result[i] = damage[i];
+            return result;
         }
 
         private static double[] Cumulative(double[] perSecond)

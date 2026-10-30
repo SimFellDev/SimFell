@@ -2,7 +2,9 @@
 # The four lists are the same as Talons.simc, Frostweaver.simc, Soulfrost.simc and Generic.simc.
 actions.precombat=snapshot_stats
 actions.precombat+=/frost_bolt
-actions=run_action_list,name=talons,if=talent.icy_talons
+# Interrupt a casting target.
+actions=brain_freeze,if=target.casting
+actions+=/run_action_list,name=talons,if=talent.icy_talons
 actions+=/run_action_list,name=frostweaver,if=talent.frostweavers_wrath
 actions+=/run_action_list,name=soulfrost,if=talent.soulfrost_torrent
 actions+=/run_action_list,name=main

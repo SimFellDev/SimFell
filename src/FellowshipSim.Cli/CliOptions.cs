@@ -24,7 +24,7 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
           --iterations <n>      Fights (default {DefaultSettings.Iterations}).
           --duration <seconds>  Length of each fight of training mobs (default {DefaultSettings.DurationSeconds.ToString(CultureInfo.InvariantCulture)}).
           --dungeon <name|file> Fights of a dungeon: a built-in one ({string.Join(", ", DefaultDungeons.Names)}) or a dungeon .simc file.
-                                Its segments set the length and the enemies. Without it, the fights are training mobs.
+                                Its pulls set the enemies, and its time limit the longest fight. Without it, the fights are training mobs.
           --targets <n>         Training mobs in each fight (default {DefaultSettings.TargetCount}).
           --seed <n>            Seed of the first fight; fight i has seed + i (default {DefaultSettings.FirstSeed}).
           --threads <n>         Most threads the fights use (default {MonteCarloSimulator.DefaultDegreeOfParallelism}, 80% of the logical processors).
@@ -73,7 +73,7 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
             }
         }
         if (string.IsNullOrWhiteSpace(profile)) throw new CliUsageException("--profile is required.");
-        if (settings.Dungeon is { } dungeon) settings = settings with { DurationSeconds = dungeon.LengthSeconds };
+        if (settings.Dungeon is { } dungeon) settings = settings with { DurationSeconds = dungeon.TimeLimitSeconds };
         return new CliOptions(profile, settings, format);
     }
 

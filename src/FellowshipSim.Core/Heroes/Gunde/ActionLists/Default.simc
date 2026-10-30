@@ -5,6 +5,8 @@
 actions.precombat=snapshot_stats
 # Swing the weapon whenever the swing timer allows.
 actions=attack
+# Interrupt a casting target.
+actions+=/jawbreaker,if=target.casting
 actions+=/bloodbound_spirit,if=buff.reign_in_blood.up
 actions+=/reign_in_blood
 actions+=/owed_in_blood,target_if=debuff.open_wounds.up,if=!buff.bloodcraze.up&buff.owed_in_blood.stack>=30&buff.reign_in_blood.up

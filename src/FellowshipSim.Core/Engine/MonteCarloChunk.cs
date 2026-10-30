@@ -46,6 +46,8 @@ public sealed class MonteCarloChunk
         public double BossDamage { get; init; }
         public double BossSeconds { get; init; }
         public double TargetSeconds { get; init; }
+        /// <summary>The whole seconds of the longest fight.</summary>
+        public int LongestSeconds { get; init; }
     }
 
     /// <summary>One of the first fights' damage each second, for the band of the damage over time.</summary>
