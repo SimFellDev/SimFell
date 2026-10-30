@@ -24,8 +24,10 @@ internal sealed class FightRecorder
     private readonly Dictionary<(AuraContainer Owner, string Key), SimTime> _lastEnd = new();
     /// <summary>This fight's aura spans (start and end seconds in turn), by name and side; null for a fight not sampled.</summary>
     private Dictionary<(string Name, bool OnTarget), List<double>>? _spans;
-    /// <summary>This fight's casts in order; null for a fight not sampled.</summary>
+    /// <summary>This fight's casts in the order they started; null for a fight not sampled.</summary>
     private List<CastReport>? _casts;
+    /// <summary>When each cast still going started: a cast is listed at its start, once it completes.</summary>
+    private readonly Dictionary<Ability, double> _castStarts = new(ReferenceEqualityComparer.Instance);
     private readonly Hero _hero;
     /// <summary>This fight's Spirit Points at the start of each second, filled up to <see cref="_spiritFilled"/>.</summary>
     private double[] _spirit = [];
@@ -45,11 +47,23 @@ internal sealed class FightRecorder
             if (resource == Hero.SpiritPoints) SpiritChanged(now);
         };
         hero.OnDamageDealt += OnHit;
+        hero.OnCastStarted += (ability, _, now) =>
+        {
+            if (_casts != null) _castStarts[ability] = now.TotalSeconds;
+        };
         hero.OnCastCompleted += (ability, _, now) =>
         {
             if (_tally == null) return;
             _tally.Source(ability.Name).Casts++;
-            _casts?.Add(new CastReport(now.TotalSeconds, ability.Name, ability.Id));
+            if (_casts != null)
+            {
+                // At its start, so a cast with a cast time comes before what was used as it finished (an off-GCD
+                // ability, a channel beginning).
+                double start = _castStarts.Remove(ability, out double started) ? started : now.TotalSeconds;
+                int at = _casts.Count;
+                while (at > 0 && _casts[at - 1].Time > start) at--;
+                _casts.Insert(at, new CastReport(start, ability.Name, ability.Id));
+            }
             // A Spirit ability takes its Spirit Points from the pool with no event of its own.
             if (_hero.ResourceAmount(Hero.SpiritPoints) != _lastSpirit) SpiritChanged(now);
         };
@@ -72,6 +86,7 @@ internal sealed class FightRecorder
         _lastEnd.Clear();
         _spans = fight < SpanFights ? new() : null;
         _casts = fight < SpanFights ? new() : null;
+        _castStarts.Clear();
         if (_spirit.Length == seconds) Array.Clear(_spirit);
         else _spirit = new double[seconds];
         _spiritFilled = 0;
