@@ -131,9 +131,9 @@ The **Modes** tab has two kinds of fight:
 
 The **Dungeon** card has a comment, the hero share, the time limit, the difficulty (Eternal level) and the pulls. **Vary
 the hero share** gives each fight a hero share in a range: ± 20% by default, so 37.5% is 30 – 45%. Each pull has a
-comment in its head and opens to its start (after downtime, or chained to another pull's end), its pull duration, the final boss, another pull it takes in
-with that pull's trigger, and its enemy groups. A group has a count (trash), a name, Spirit Points, hit points, priority,
-and an interrupt ability with its cooldown and cast time. **Save** writes `data/dungeons/<name>.simc` in the desktop app
+comment in its head and opens to its start (after downtime, or chained to another pull's end), its pull duration, the
+final boss, another pull it takes in with that pull's trigger, and its enemy groups. A group has a comment, a count
+(trash), a name, Spirit Points, hit points, priority, and an interrupt ability with its cooldown and cast time. **Save** writes `data/dungeons/<name>.simc` in the desktop app
 and `data/visitors/<visitor id>/dungeons/` in the web app. **Dungeon text** has the dungeon as text:
 
 ```
@@ -142,8 +142,9 @@ dungeon=Default
 difficulty=10
 hero_share=37.5
 time_limit=1800
-# The Ogre Captain casts Big Cast: interrupt it.
+# Imps and their captain.
 pull.1=/count=5,name=Imp,spirit_points=3,hit_points=900000
+# Big Cast is interruptible.
 pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=3000000,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
 pull.2=/count=4,name=Ghoul
 pull.2+=/pull_duration=45,downtime=20
@@ -154,8 +155,11 @@ pull.4+=/final=1,downtime=30,pull_with=5,offset_pct=50
 pull.5=/count=2,name=Wisp,hit_points=500000
 ```
 
-A `#` line is a comment. It belongs to the pull of the line below it, a comment after the last pull to the last pull,
-and any other comment to the dungeon. `pull.N=/` starts pull N and `pull.N+=/` adds a line to it. A line is an enemy group (`count=`), a boss (`boss.N`;
+A `#` line is a comment. A comment above a `pull.N+=/` enemy group line belongs to that group, a comment above any other
+pull line or after the last pull belongs to the pull, and any other comment belongs to the dungeon. A pull whose first
+group has a comment starts with its options line, or with an empty `pull.N=/` line.
+
+`pull.N=/` starts pull N and `pull.N+=/` adds a line to it. A line is an enemy group (`count=`), a boss (`boss.N`;
 several make a council) or the pull's options. Group values: `count`, `name` (in quotes when it has a comma),
 `spirit_points` (each enemy's), `priority=1`, `hit_points` (at Eternal level 1; each level above multiplies health by
 1.08), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast is one cooldown after the enemy

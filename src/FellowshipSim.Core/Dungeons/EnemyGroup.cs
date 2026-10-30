@@ -5,7 +5,8 @@ namespace FellowshipSim.Core.Dungeons;
 /// <see cref="SpiritPoints"/> it is worth and <see cref="HitPoints"/> at <see cref="DungeonProfile.BaseDifficulty"/>. An enemy
 /// with hit points dies from damage. An enemy without them has health falling over the pull's
 /// <see cref="DungeonPull.PullDurationSeconds"/>. A <see cref="Boss"/> group is one boss. <see cref="Priority"/> marks
-/// priority targets. <see cref="Cast"/> is the interruptible cast of each enemy.
+/// priority targets. <see cref="Cast"/> is the interruptible cast of each enemy. <see cref="Comment"/> is the '#' lines above
+/// the group's line.
 /// </summary>
 public sealed record EnemyGroup(
     int Count,
@@ -14,7 +15,8 @@ public sealed record EnemyGroup(
     bool Priority = false,
     double? HitPoints = null,
     bool Boss = false,
-    EnemyCast? Cast = null)
+    EnemyCast? Cast = null,
+    string? Comment = null)
 {
     /// <summary>The problem with the group's values, or null when they are valid.</summary>
     public string? Problem() => this switch

@@ -133,7 +133,7 @@ public class DungeonTests
     }
 
     [Fact]
-    public void Comments_Read_Back_With_Their_Pull_Or_The_Dungeon()
+    public void Comments_Read_Back_With_Their_Group_Pull_Or_Dungeon()
     {
         const string text = """
             # Line one of the dungeon.
@@ -143,15 +143,22 @@ public class DungeonTests
             # The imps first.
             #
             pull.1=/count=5,name=Imp,hit_points=900000
+            # The ogre casts.
+            pull.1+=/count=1,name=Ogre,hit_points=900000
             # Pull 1's options.
             pull.1+=/downtime=5
-            pull.2=/count=3,name=Bat,hit_points=600000
+            pull.2=/
+            # The bats.
+            pull.2+=/count=3,name=Bat,hit_points=600000
             # After the last pull.
             """;
         var dungeon = DungeonProfile.Parse(text);
         Assert.Equal("Line one of the dungeon.\nLine two of the dungeon.", dungeon.Comment);
         Assert.Equal("The imps first.\n\nPull 1's options.", dungeon.Pull(1)!.Comment);
+        Assert.Null(dungeon.Pull(1)!.Groups[0].Comment);
+        Assert.Equal("The ogre casts.", dungeon.Pull(1)!.Groups[1].Comment);
         Assert.Equal("After the last pull.", dungeon.Pull(2)!.Comment);
+        Assert.Equal("The bats.", dungeon.Pull(2)!.Groups[0].Comment);
         Assert.Equal("""
             # Line one of the dungeon.
             # Line two of the dungeon.
@@ -161,10 +168,14 @@ public class DungeonTests
             time_limit=1800
             # The imps first.
             # Pull 1's options.
-            pull.1=/count=5,name=Imp,hit_points=900000
-            pull.1+=/downtime=5
+            pull.1=/downtime=5
+            pull.1+=/count=5,name=Imp,hit_points=900000
+            # The ogre casts.
+            pull.1+=/count=1,name=Ogre,hit_points=900000
             # After the last pull.
-            pull.2=/count=3,name=Bat,hit_points=600000
+            pull.2=/
+            # The bats.
+            pull.2+=/count=3,name=Bat,hit_points=600000
 
             """.Replace("\r\n", "\n"), dungeon.Format());
         Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
@@ -214,6 +225,7 @@ public class DungeonTests
         Assert.Equal(5, dungeon.Pulls.Count);
         Assert.NotNull(dungeon.Comment);
         Assert.NotNull(dungeon.Pull(1)!.Comment);
+        Assert.NotNull(dungeon.Pull(1)!.Groups[1].Comment);
     }
 
     [Theory]

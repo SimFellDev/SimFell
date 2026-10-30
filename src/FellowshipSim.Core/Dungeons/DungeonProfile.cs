@@ -18,8 +18,10 @@ namespace FellowshipSim.Core.Dungeons;
 /// pull.3=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
 /// pull.3+=/final=1,pull_with=2,offset_pct=50
 /// </code>
-/// Lines starting with '#' are comments. A comment belongs to the pull of the line below it (<see cref="DungeonPull.Comment"/>),
-/// a comment after the last pull to the last pull, and any other comment to the dungeon (<see cref="Comment"/>).
+/// Lines starting with '#' are comments. A comment above a <c>pull.N+=/</c> enemy group line belongs to that group
+/// (<see cref="EnemyGroup.Comment"/>), a comment above any other pull line or after the last pull to the pull
+/// (<see cref="DungeonPull.Comment"/>), and any other comment to the dungeon (<see cref="Comment"/>). A pull's text starts
+/// with its options line when it has options, or with an empty <c>pull.N=/</c> line when its first group has a comment.
 /// <c>pull.N=/</c> starts pull N and <c>pull.N+=/</c> adds a line to it. A line is
 /// an enemy group (<c>count=</c>), a boss (<c>boss.N</c>) or the pull's options; a group line can also have pull options.
 /// Group values: <c>count</c>, <c>name</c>, <c>spirit_points</c>, <c>priority</c>, <c>hit_points</c>,
@@ -190,9 +192,12 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                         if (!append && pulls.ContainsKey(number)) throw new FormatException($"pull {number} starts twice");
                         if (!append) pulls[number] = new PullText();
                         lastPull = pulls[number];
-                        lastPull.Comment.AddRange(comment);
-                        comment.Clear();
+                        int groups = lastPull.Groups.Count;
                         ParsePullLine(lastPull, value.StartsWith('/') ? value[1..] : value);
+                        if (append && lastPull.Groups.Count > groups && comment.Count > 0)
+                            lastPull.Groups[^1] = lastPull.Groups[^1] with { Comment = JoinComment(comment) };
+                        else lastPull.Comment.AddRange(comment);
+                        comment.Clear();
                         break;
                 }
             }
@@ -249,6 +254,8 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
 
     private static void ParsePullLine(PullText pull, string value)
     {
+        // An empty pull.N=/ line: the start of a pull whose first group has a comment.
+        if (value.Trim().Length == 0) return;
         var parts = SplitOptions(value);
         bool boss = parts[0].StartsWith("boss.", StringComparison.Ordinal);
         if (boss)
@@ -318,10 +325,17 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         foreach (var pull in Pulls.OrderBy(p => p.Number))
         {
             AppendComment(text, pull.Comment);
+            var options = PullOptions(pull);
             bool first = true;
+            if (options.Count > 0 || pull.Groups is [{ Comment: { } c }, ..] && !string.IsNullOrWhiteSpace(c))
+            {
+                text.Append("pull.").Append(N(pull.Number)).Append("=/").Append(string.Join(',', options)).Append('\n');
+                first = false;
+            }
             int boss = 0;
             foreach (var g in pull.Groups)
             {
+                if (!first) AppendComment(text, g.Comment);
                 text.Append("pull.").Append(N(pull.Number)).Append(first ? "=/" : "+=/");
                 first = false;
                 if (g.Boss) text.Append("boss.").Append(N(++boss));
@@ -338,22 +352,27 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                 }
                 text.Append('\n');
             }
-            var options = new List<string>();
-            if (pull.PullDurationSeconds is { } duration) options.Add($"pull_duration={N(duration)}");
-            if (pull.DowntimeSeconds != 0) options.Add($"downtime={N(pull.DowntimeSeconds)}");
-            if (pull.ChainWith is { } chain) options.Add($"chain_with={N(chain)}");
-            if (pull.Final) options.Add("final=1");
-            if (pull.Join is { } join)
-            {
-                options.Add($"pull_with={N(join.Pull)}");
-                if (join.OffsetMs is { } ms) options.Add($"offset_ms={N(ms)}");
-                if (join.OffsetPct is { } pct) options.Add($"offset_pct={N(pct)}");
-                if (join.AfterDeaths is { } deaths) options.Add($"after_deaths={deaths}");
-                if (join.AfterDeathsTotal is { } total) options.Add($"after_deaths_total={total}");
-            }
-            if (options.Count > 0) text.Append("pull.").Append(N(pull.Number)).Append(first ? "=/" : "+=/").Append(string.Join(',', options)).Append('\n');
         }
         return text.ToString();
+    }
+
+    // The pull options of a pull's text.
+    private static List<string> PullOptions(DungeonPull pull)
+    {
+        var options = new List<string>();
+        if (pull.PullDurationSeconds is { } duration) options.Add($"pull_duration={N(duration)}");
+        if (pull.DowntimeSeconds != 0) options.Add($"downtime={N(pull.DowntimeSeconds)}");
+        if (pull.ChainWith is { } chain) options.Add($"chain_with={N(chain)}");
+        if (pull.Final) options.Add("final=1");
+        if (pull.Join is { } join)
+        {
+            options.Add($"pull_with={N(join.Pull)}");
+            if (join.OffsetMs is { } ms) options.Add($"offset_ms={N(ms)}");
+            if (join.OffsetPct is { } pct) options.Add($"offset_pct={N(pct)}");
+            if (join.AfterDeaths is { } deaths) options.Add($"after_deaths={deaths}");
+            if (join.AfterDeathsTotal is { } total) options.Add($"after_deaths_total={total}");
+        }
+        return options;
     }
 
     // A line's options: split at each comma outside quotes.

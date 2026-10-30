@@ -47,6 +47,21 @@
   border-color: var(--accent);
 }
 
+/* The group's comment: muted italic above the values, as tall as its lines. */
+.comment {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  resize: none;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.4;
+  /* As tall as its wrapped lines; a WebView without field-sizing has a row per line. */
+  field-sizing: content;
+}
+
 /* The values fill the box's width: as many columns as fit, each at least 120px. */
 .values {
   display: grid;
