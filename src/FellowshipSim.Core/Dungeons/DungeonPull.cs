@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Dungeons;
 /// Pull <see cref="Number"/> of a dungeon: its enemy <see cref="Groups"/>. It starts <see cref="DowntimeSeconds"/> after the
 /// pull before it ends, or as pull <see cref="ChainWith"/> ends. <see cref="Join"/> takes another pull's enemies in.
 /// <see cref="PullDurationSeconds"/> is the time over which the health of enemies without hit points falls.
-/// <see cref="Final"/> marks the dungeon's final boss.
+/// <see cref="Final"/> marks the dungeon's final boss. <see cref="Comment"/> is the '#' lines above the pull.
 /// </summary>
 public sealed record DungeonPull(
     int Number,
@@ -13,7 +13,8 @@ public sealed record DungeonPull(
     double DowntimeSeconds = 0,
     int? ChainWith = null,
     bool Final = false,
-    PullJoin? Join = null)
+    PullJoin? Join = null,
+    string? Comment = null)
 {
     /// <summary>True when a group is a boss.</summary>
     public bool IsBoss => Groups.Any(g => g.Boss);

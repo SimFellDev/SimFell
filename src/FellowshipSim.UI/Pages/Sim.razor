@@ -321,7 +321,8 @@
         HealthFollowsTime: true,
         StartingSpirit: State.StartWithSpirit ? State.StartingSpirit : 0,
         Boss: State.Boss,
-        Dungeon: State.Mode == SimMode.Dungeon ? State.Dungeon : null);
+        Dungeon: State.Mode == SimMode.Dungeon ? State.Dungeon : null,
+        HeroShareVariance: State.VaryHeroShare ? State.HeroShareVariancePercent / 100 : 0);
 
     private async Task StartAsync()
     {

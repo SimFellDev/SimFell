@@ -1,7 +1,7 @@
 @using System.Globalization
 @using FellowshipSim.Core.Dungeons
 @*
-    One pull of a dungeon, built as an action of the action-list editor: its head (grip, number and summary, move,
+    One pull of a dungeon, built as an action of the action-list editor: its head (grip, number, comment and summary, move,
     duplicate and delete buttons), and its details while it is open: the start, the pull duration, the final boss, the pull
     it takes in, and its enemy groups. Dropping on a pull puts the dragged one in its place.
 *@
@@ -19,8 +19,20 @@
             <Icon Shape="IconShape.Chevron" Class="chevron" />
             <span class="number">@Pull.Number</span>
             <span class="kind">@(Pull.IsBoss ? "Boss" : "Trash")</span>
-            <span class="summary">@Summary</span>
+            @if (!Open)
+            {
+                @if (!string.IsNullOrWhiteSpace(Pull.Comment))
+                {
+                    <span class="comment">@CommentLine</span>
+                }
+                <span class="summary">@Summary</span>
+            }
         </button>
+        @if (Open)
+        {
+            <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Comment on pull @Pull.Number" spellcheck="true"
+                      @bind="CommentText" @bind:event="oninput"></textarea>
+        }
         <button type="button" class="icon-button move" data-tooltip="Move up" aria-label="Move pull @Pull.Number up" disabled="@(Index == 0)"
                 @onclick="() => OnMove.InvokeAsync((Index, Index - 1))">
             <Icon Shape="IconShape.Up" />
@@ -161,6 +173,17 @@
     private const string TotalTrigger = "after_deaths_total";
 
     private bool _dragging;
+
+    private string CommentText
+    {
+        get => Pull.Comment ?? "";
+        set => OnChange.InvokeAsync(Pull with { Comment = string.IsNullOrWhiteSpace(value) ? null : value });
+    }
+
+    // The comment's lines on the closed head, one after another.
+    private string CommentLine => string.Join(" ", (Pull.Comment ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+    private int CommentRows => Math.Max(1, CommentText.Split('\n').Length);
     // Drag enters and leaves of the item and its children: the item is under the drag while more have entered than left.
     private int _entered;
 

@@ -6,12 +6,12 @@
         <label class="choice @(State.Mode == SimMode.Dungeon ? "on" : "")">
             <input type="radio" name="mode" checked="@(State.Mode == SimMode.Dungeon)" @onchange="() => State.Mode = SimMode.Dungeon" />
             <strong>Dungeon</strong>
-            <span class="meta">Pulls of trash and bosses in turn, each until its enemies die. The report adds the DPS to bosses.</span>
+            <span class="meta">Trash pulls and boss pulls in sequence. Each pull ends when its enemies die. The report also shows the DPS to bosses.</span>
         </label>
         <label class="choice @(State.Mode == SimMode.TrainingMobs ? "on" : "")">
             <input type="radio" name="mode" checked="@(State.Mode == SimMode.TrainingMobs)" @onchange="() => State.Mode = SimMode.TrainingMobs" />
             <strong>Training mobs</strong>
-            <span class="meta">A number of training mobs for the whole fight. With more than one, the report adds the first mob's DPS.</span>
+            <span class="meta">Training mobs for the full fight. With two or more mobs, the report also shows the DPS to the first mob.</span>
         </label>
     </div>
     <div class="fields">
@@ -37,9 +37,12 @@
         <div class="toggle-block">
             <label class="switch">
                 <input type="checkbox" @bind="State.VaryLength" />
-                <span>Vary the fight length</span>
+                <span data-tooltip="@(State.Mode == SimMode.Dungeon ? DungeonLengthTip : null)">Vary the fight length</span>
             </label>
-            <span class="meta">@LengthText()</span>
+            @if (State.Mode == SimMode.TrainingMobs && State.VaryLength && State.LengthVariancePercent > 0)
+            {
+                <span class="meta">@LengthText()</span>
+            }
         </div>
         <label class="field @(State.VaryLength ? "" : "off")">
             By ± %
@@ -95,11 +98,12 @@
     /// <summary>The most Spirit a fight can start with: a build with Ancestral Surge - II holds 130.</summary>
     public const double MaxStartingSpirit = 130;
 
+    private const string DungeonLengthTip = "In a dungeon, this changes only the pull duration of enemies with no hit points.";
+
+    /// <summary>The training mobs' fight length range.</summary>
     private string LengthText()
     {
-        if (!State.VaryLength || State.LengthVariancePercent <= 0) return "Every fight lasts the same length.";
         double share = State.LengthVariancePercent / 100;
-        if (State.Mode == SimMode.Dungeon) return $"Each pull duration of enemies without hit points varies by ± {N(State.LengthVariancePercent)}%.";
         return $"Each fight lasts {N(State.FightSeconds * (1 - share))} – {N(State.FightSeconds * (1 + share))} s.";
     }
 

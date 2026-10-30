@@ -252,7 +252,7 @@ public class MonteCarloSimulator
         {
             // A dungeon has no main target: its enemies come and go.
             worker.Recorder.WatchTargets(ctx);
-            (end, targetSeconds, bossSeconds) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed),
+            (end, targetSeconds, bossSeconds) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed), options.HeroShare(seed),
                 (until, stop) => RunUntil(worker, ctx, until, stop)).Run();
         }
         else

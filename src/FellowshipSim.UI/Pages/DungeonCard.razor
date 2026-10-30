@@ -6,7 +6,7 @@
 @inject Visitor Visitor
 @inject IJSRuntime JS
 @*
-    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, the hero share, time limit and
+    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, its comment, the hero share and its variance, time limit and
     difficulty, then its pulls in number order, each built as an action of the action-list editor, and its profile text.
 *@
 <Card Title="Dungeon">
@@ -37,11 +37,28 @@
         </div>
     }
     <Message Kind="_status.Kind">@_status.Text</Message>
+    <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Dungeon comment" spellcheck="true"
+              @bind:get="State.Dungeon.Comment ?? string.Empty" @bind:set="SetComment" @bind:event="oninput"></textarea>
 
     <div class="fields">
         <label class="field">
             Hero share (%)
             <input type="number" min="1" max="100" step="any" @bind:get="State.Dungeon.HeroShare" @bind:set="v => Change(State.Dungeon with { HeroShare = v })" />
+        </label>
+        <div class="toggle-block">
+            <label class="switch">
+                <input type="checkbox" @bind="State.VaryHeroShare" />
+                <span>Vary the hero share</span>
+            </label>
+            @if (ShareText() is { } shareText)
+            {
+                <span class="meta">@shareText</span>
+            }
+        </div>
+        <label class="field @(State.VaryHeroShare ? "" : "off")">
+            By ± %
+            <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryHeroShare)"
+                   @bind:get="State.HeroShareVariancePercent" @bind:set="v => State.HeroShareVariancePercent = Math.Clamp(v, 0, 90)" />
         </label>
         <label class="field">
             Time limit (s)
@@ -75,7 +92,6 @@
     <div class="adds">
         <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewTrash)))">+ Trash pull</button>
         <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewBoss)))">+ Boss pull</button>
-        <span class="meta count">@PullsText(Pulls.Count)</span>
     </div>
 
     <details @key="_textKey" class="text" open="@_textOpen">
@@ -115,6 +131,18 @@
 
     /// <summary>"Pull" or "pulls" with the count.</summary>
     private static string PullsText(int count) => $"{count} {(count == 1 ? "pull" : "pulls")}";
+
+    private int CommentRows => Math.Max(1, (State.Dungeon.Comment ?? "").Split('\n').Length);
+
+    private Task SetComment(string comment) => Change(State.Dungeon with { Comment = string.IsNullOrWhiteSpace(comment) ? null : comment });
+
+    /// <summary>The hero share range of a fight; null when the share does not vary.</summary>
+    private string? ShareText()
+    {
+        if (!State.VaryHeroShare || State.HeroShareVariancePercent <= 0) return null;
+        double share = State.Dungeon.HeroShare, spread = State.HeroShareVariancePercent / 100;
+        return $"Each fight has a hero share of {N(share * (1 - spread))} – {N(Math.Min(100, share * (1 + spread)))}%.";
+    }
 
     /// <summary>A new pull of one group, 20 seconds after the pull before it.</summary>
     private static DungeonPull NewPull(EnemyGroup group) => new(0, [group], DowntimeSeconds: 20);

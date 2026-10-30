@@ -133,14 +133,87 @@ public class DungeonTests
     }
 
     [Fact]
+    public void Comments_Read_Back_With_Their_Pull_Or_The_Dungeon()
+    {
+        const string text = """
+            # Line one of the dungeon.
+            dungeon=X
+            # Line two of the dungeon.
+            hero_share=40
+            # The imps first.
+            #
+            pull.1=/count=5,name=Imp,hit_points=900000
+            # Pull 1's options.
+            pull.1+=/downtime=5
+            pull.2=/count=3,name=Bat,hit_points=600000
+            # After the last pull.
+            """;
+        var dungeon = DungeonProfile.Parse(text);
+        Assert.Equal("Line one of the dungeon.\nLine two of the dungeon.", dungeon.Comment);
+        Assert.Equal("The imps first.\n\nPull 1's options.", dungeon.Pull(1)!.Comment);
+        Assert.Equal("After the last pull.", dungeon.Pull(2)!.Comment);
+        Assert.Equal("""
+            # Line one of the dungeon.
+            # Line two of the dungeon.
+            dungeon=X
+            difficulty=10
+            hero_share=40
+            time_limit=1800
+            # The imps first.
+            # Pull 1's options.
+            pull.1=/count=5,name=Imp,hit_points=900000
+            pull.1+=/downtime=5
+            # After the last pull.
+            pull.2=/count=3,name=Bat,hit_points=600000
+
+            """.Replace("\r\n", "\n"), dungeon.Format());
+        Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
+    }
+
+    [Fact]
+    public void The_Hero_Share_Varies_In_Its_Range_Each_Fight()
+    {
+        var fight = new FightOptions(Dungeon: DefaultDungeons.Default, HeroShareVariance: 0.2);
+        var shares = Enumerable.Range(1, 200).Select(fight.HeroShare).ToList();
+        Assert.All(shares, s => Assert.InRange(s, 0.30, 0.45));
+        Assert.Equal(200, shares.Distinct().Count());
+        Assert.True(shares.Min() < 0.31 && shares.Max() > 0.44);
+        Assert.Equal(0.375, new FightOptions(Dungeon: DefaultDungeons.Default).HeroShare(7));
+        // At most all the damage: 90% ± 50% stops at 100%.
+        var high = new FightOptions(Dungeon: DefaultDungeons.Default with { HeroShare = 90 }, HeroShareVariance: 0.5);
+        var highShares = Enumerable.Range(1, 50).Select(high.HeroShare).ToList();
+        Assert.Contains(1.0, highShares);
+        Assert.All(highShares, s => Assert.InRange(s, 0.45, 1.0));
+    }
+
+    [Fact]
+    public void A_Fight_Uses_Its_Own_Hero_Share()
+    {
+        var dungeon = Dungeon(Boss(1, HitPointsFor(20), final: true));
+        var varied = new FightOptions(Dungeon: dungeon, HeroShareVariance: 0.2);
+        foreach (int seed in new[] { 3, 4 })
+        {
+            double share = varied.HeroShare(seed) * 100;
+            Assert.Equal(Duration(new FightOptions(Dungeon: dungeon with { HeroShare = share }), seed), Duration(varied, seed));
+        }
+        Assert.NotEqual(Duration(varied, 3), Duration(varied, 4));
+
+        double Duration(FightOptions fight, int seed) => new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts))
+            .Run(SimTime.FromSeconds(600), iterations: 1, firstSeed: seed, degreeOfParallelism: 1, fight: fight).DurationSeconds;
+    }
+
+    [Fact]
     public void The_Readme_Dungeon_Text_Is_A_Valid_Dungeon()
     {
         string readme = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "README.md")).Replace("\r\n", "\n");
-        int start = readme.IndexOf("```\ndungeon=Default\n", StringComparison.Ordinal) + 4;
+        int start = readme.IndexOf("\ndungeon=Default\n", StringComparison.Ordinal);
+        start = readme.LastIndexOf("```\n", start, StringComparison.Ordinal) + 4;
         string text = readme[start..readme.IndexOf("```", start, StringComparison.Ordinal)];
         var dungeon = DungeonProfile.Parse(text);
         Assert.Null(dungeon.Problem());
         Assert.Equal(5, dungeon.Pulls.Count);
+        Assert.NotNull(dungeon.Comment);
+        Assert.NotNull(dungeon.Pull(1)!.Comment);
     }
 
     [Theory]

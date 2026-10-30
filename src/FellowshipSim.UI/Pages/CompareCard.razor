@@ -11,7 +11,7 @@
         </label>
         @if (!On)
         {
-            <span class="meta">Off · turn on to sim several builds and action lists (turns Finder off)</span>
+            <span class="meta">Off. Enable Compare to sim two or more builds and action lists. This disables Finder.</span>
         }
     </div>
     <div class="body @(On ? "" : "off")" inert="@(!On)">
@@ -56,7 +56,6 @@
             <button type="button" class="add" disabled="@(_saved.Count == 0)" @onclick="AddEverySavedBuild">+ Every saved build</button>
             <button type="button" class="add" @onclick="AddEverySavedList">+ Every saved action list</button>
             <button type="button" class="clear" disabled="@(State.CompareRows.Count == 0)" @onclick="ClearAll">Clear all</button>
-            <span class="meta count">@Runs(State.CompareRows.Count)</span>
         </div>
     </div>
 </Card>

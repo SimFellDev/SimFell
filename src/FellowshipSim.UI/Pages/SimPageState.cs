@@ -32,6 +32,9 @@ public sealed class SimPageState
     /// <summary>How far each fight's length varies at first: ±20%.</summary>
     public const double DefaultLengthVariancePercent = 20;
 
+    /// <summary>How far each dungeon fight's hero share varies at first: ±20%, 30 to 45% of 37.5%.</summary>
+    public const double DefaultHeroShareVariancePercent = 20;
+
     public SimTab Tab { get; set; } = SimTab.Hero;
 
     /// <summary>The build being edited.</summary>
@@ -115,6 +118,11 @@ public sealed class SimPageState
     public bool VaryLength { get; set; } = true;
 
     public double LengthVariancePercent { get; set; } = DefaultLengthVariancePercent;
+
+    /// <summary>True when each dungeon fight's hero share varies by <see cref="HeroShareVariancePercent"/>.</summary>
+    public bool VaryHeroShare { get; set; } = true;
+
+    public double HeroShareVariancePercent { get; set; } = DefaultHeroShareVariancePercent;
 
     /// <summary>True when the training mobs are bosses: Ruby's Blessing of the Conqueror counts only then.</summary>
     public bool Boss { get; set; } = true;

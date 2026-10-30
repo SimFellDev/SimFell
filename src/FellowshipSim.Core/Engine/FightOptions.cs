@@ -11,9 +11,11 @@ namespace FellowshipSim.Core.Engine;
 /// whatever damage they take, so health-gated effects come at their share of the fight. <see cref="StartingSpirit"/> is the
 /// hero's Spirit Points as the fight starts. <see cref="Boss"/> is true for training mobs that are bosses: without one, the
 /// hero's <see cref="Domain.Hero.BossAuras"/> are off. In a dungeon they are on while a boss is in combat.
+/// <see cref="HeroShareVariance"/> spreads the dungeon's <see cref="DungeonProfile.HeroShare"/> over ± that share of it
+/// (0.2: 30 to 45% of 37.5%), a different share in each fight.
 /// </summary>
 public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0, bool Boss = true,
-    DungeonProfile? Dungeon = null)
+    DungeonProfile? Dungeon = null, double HeroShareVariance = 0)
 {
     public static readonly FightOptions Default = new();
 
@@ -29,16 +31,32 @@ public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsT
     }
 
     /// <summary>The share of its base value a varied value has in the fight with seed <paramref name="seed"/>: 1 ± <see cref="LengthVariance"/>.</summary>
-    public double VarianceScale(int seed)
+    public double VarianceScale(int seed) => LengthVariance <= 0 ? 1.0 : 1 + LengthVariance * (2 * Uniform(seed, 0) - 1);
+
+    /// <summary>
+    /// The dungeon's hero share in the fight with seed <paramref name="seed"/>, from 0 to 1: <see cref="DungeonProfile.HeroShare"/>
+    /// ± <see cref="HeroShareVariance"/> of it, at most all the damage.
+    /// </summary>
+    public double HeroShare(int seed)
     {
-        if (LengthVariance <= 0) return 1.0;
-        // SplitMix64 of the seed: a uniform share in [0, 1) that leaves the fight's own dice alone.
-        ulong z = unchecked((ulong)seed * 0x9E3779B97F4A7C15UL + 0x9E3779B97F4A7C15UL);
+        double share = (Dungeon?.HeroShare ?? DungeonProfile.DefaultHeroShare) / 100;
+        if (HeroShareVariance <= 0) return share;
+        return Math.Min(1.0, share * (1 + HeroShareVariance * (2 * Uniform(seed, HeroShareStream) - 1)));
+    }
+
+    // The hero share's own uniform stream, apart from the fight length's.
+    private const ulong HeroShareStream = 0xD1B54A32D192ED03UL;
+
+    /// <summary>
+    /// SplitMix64 of the seed in <paramref name="stream"/>: a uniform share in [0, 1) that leaves the fight's own dice alone.
+    /// </summary>
+    private static double Uniform(int seed, ulong stream)
+    {
+        ulong z = unchecked((ulong)seed * 0x9E3779B97F4A7C15UL + 0x9E3779B97F4A7C15UL) ^ stream;
         z = unchecked((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL);
         z = unchecked((z ^ (z >> 27)) * 0x94D049BB133111EBUL);
         z ^= z >> 31;
-        double u = (z >> 11) * (1.0 / (1UL << 53));
-        return 1 + LengthVariance * (2 * u - 1);
+        return (z >> 11) * (1.0 / (1UL << 53));
     }
 
     /// <summary>The longest fight of a sim of <paramref name="duration"/>: a dungeon's time limit.</summary>

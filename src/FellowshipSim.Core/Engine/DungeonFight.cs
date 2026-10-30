@@ -17,7 +17,7 @@ internal sealed class DungeonFight
     private readonly Hero _hero;
     private readonly SimulationContext _ctx;
     private readonly DungeonProfile _dungeon;
-    private readonly double _varianceScale;
+    private readonly double _varianceScale, _heroShare;
     private readonly Func<SimTime, Func<bool>, bool> _act;
     private readonly IReadOnlyList<RunPlan> _plans;
     private readonly SimTime _limit;
@@ -36,13 +36,15 @@ internal sealed class DungeonFight
     /// <summary>
     /// A fight of <paramref name="dungeon"/>: <paramref name="act"/> has the hero act until a time or until a condition
     /// holds, and returns true when the condition stopped it. <paramref name="varianceScale"/> scales each pull duration.
+    /// <paramref name="heroShare"/> (0 to 1) is the hero's share of the damage to enemies with hit points.
     /// </summary>
-    public DungeonFight(Hero hero, SimulationContext ctx, DungeonProfile dungeon, double varianceScale, Func<SimTime, Func<bool>, bool> act)
+    public DungeonFight(Hero hero, SimulationContext ctx, DungeonProfile dungeon, double varianceScale, double heroShare, Func<SimTime, Func<bool>, bool> act)
     {
         _hero = hero;
         _ctx = ctx;
         _dungeon = dungeon;
         _varianceScale = varianceScale;
+        _heroShare = heroShare;
         _act = act;
         _limit = SimTime.FromSeconds(dungeon.TimeLimitSeconds);
         var order = dungeon.RunOrder() ?? throw new ArgumentException(dungeon.Problem() ?? "The pulls refer to each other in a circle.", nameof(dungeon));
@@ -109,7 +111,7 @@ internal sealed class DungeonFight
                 if (hitPoints != null)
                 {
                     enemy.SpiritPointValue = group.SpiritPoints;
-                    enemy.FollowDamage(_ctx, _dungeon.HeroShare / 100.0);
+                    enemy.FollowDamage(_ctx, _heroShare);
                 }
                 else
                 {

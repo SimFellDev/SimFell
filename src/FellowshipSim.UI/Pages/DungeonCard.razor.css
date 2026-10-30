@@ -29,7 +29,22 @@
   color: var(--bad);
 }
 
-/* The hero share, time limit and difficulty, as the fields of the Fight card. */
+/* The dungeon's comment: muted italic, as tall as its lines. */
+.comment {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 4px 8px;
+  resize: none;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.4;
+  /* As tall as its wrapped lines; a WebView without field-sizing has a row per line. */
+  field-sizing: content;
+}
+
+/* The hero share and its variance, time limit and difficulty, as the fields of the Fight card. */
 .fields {
   display: flex;
   flex-wrap: wrap;
@@ -49,6 +64,33 @@
 .field input {
   width: 140px;
   text-align: right;
+}
+
+.field input.short {
+  width: 90px;
+}
+
+/* A field its switch has turned off: the label dimmed, and the number greyed out with no box to type in. */
+.field.off {
+  opacity: 0.5;
+}
+
+.field input:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.toggle-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-block .switch span {
+  color: var(--text);
+  font-size: 14px;
 }
 
 /* The pulls in number order, as the actions of an action list. */
@@ -88,9 +130,6 @@
   border-color: var(--accent);
 }
 
-.count {
-  margin-left: auto;
-}
 
 .text {
   margin-top: 14px;

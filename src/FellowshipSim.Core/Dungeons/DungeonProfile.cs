@@ -18,7 +18,9 @@ namespace FellowshipSim.Core.Dungeons;
 /// pull.3=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
 /// pull.3+=/final=1,pull_with=2,offset_pct=50
 /// </code>
-/// Lines starting with '#' are comments. <c>pull.N=/</c> starts pull N and <c>pull.N+=/</c> adds a line to it. A line is
+/// Lines starting with '#' are comments. A comment belongs to the pull of the line below it (<see cref="DungeonPull.Comment"/>),
+/// a comment after the last pull to the last pull, and any other comment to the dungeon (<see cref="Comment"/>).
+/// <c>pull.N=/</c> starts pull N and <c>pull.N+=/</c> adds a line to it. A line is
 /// an enemy group (<c>count=</c>), a boss (<c>boss.N</c>) or the pull's options; a group line can also have pull options.
 /// Group values: <c>count</c>, <c>name</c>, <c>spirit_points</c>, <c>priority</c>, <c>hit_points</c>,
 /// <c>interrupt_ability</c>, <c>cooldown</c> and <c>cast_time</c>. Pull options: <c>pull_duration</c>, <c>downtime</c>,
@@ -26,7 +28,7 @@ namespace FellowshipSim.Core.Dungeons;
 /// <c>after_deaths</c>, <c>after_deaths_total</c>). A name with a comma is quoted.
 /// </summary>
 public sealed record DungeonProfile(string Name, double HeroShare, double TimeLimitSeconds, IReadOnlyList<DungeonPull> Pulls,
-    int Difficulty = DungeonProfile.DefaultDifficulty)
+    int Difficulty = DungeonProfile.DefaultDifficulty, string? Comment = null)
 {
     /// <summary>The hero's share of the party's damage, in percent, of a dungeon whose text names none: the middle of 30-45%.</summary>
     public const double DefaultHeroShare = 37.5;
@@ -143,12 +145,20 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         double heroShare = DefaultHeroShare, timeLimit = DefaultTimeLimitSeconds;
         int difficulty = DefaultDifficulty;
         var pulls = new SortedDictionary<int, PullText>();
+        var dungeonComment = new List<string>();
+        var comment = new List<string>();
+        PullText? lastPull = null;
         int lineNumber = 0;
         foreach (string raw in text.Split('\n'))
         {
             lineNumber++;
             string line = raw.Trim();
-            if (line.Length == 0 || line.StartsWith('#')) continue;
+            if (line.Length == 0) continue;
+            if (line.StartsWith('#'))
+            {
+                comment.Add(line[1..].TrimStart());
+                continue;
+            }
             int eq = line.IndexOf('=');
             if (eq <= 0) throw Error(lineNumber, line, "expected key=value");
             string key = line[..eq].Trim();
@@ -179,7 +189,10 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                         if (append && !pulls.ContainsKey(number)) throw new FormatException($"pull {number} has no pull.{number}= line before this one");
                         if (!append && pulls.ContainsKey(number)) throw new FormatException($"pull {number} starts twice");
                         if (!append) pulls[number] = new PullText();
-                        ParsePullLine(pulls[number], value.StartsWith('/') ? value[1..] : value);
+                        lastPull = pulls[number];
+                        lastPull.Comment.AddRange(comment);
+                        comment.Clear();
+                        ParsePullLine(lastPull, value.StartsWith('/') ? value[1..] : value);
                         break;
                 }
             }
@@ -187,10 +200,14 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
             {
                 throw Error(lineNumber, line, e.Message);
             }
+            dungeonComment.AddRange(comment);
+            comment.Clear();
         }
+        (lastPull?.Comment ?? dungeonComment).AddRange(comment);
         if (string.IsNullOrWhiteSpace(name)) throw new FormatException("The dungeon has no dungeon=<name> line.");
         if (pulls.Count == 0) throw new FormatException("The dungeon has no pull line.");
-        var profile = new DungeonProfile(name, heroShare, timeLimit, pulls.Select(p => p.Value.Pull(p.Key)).ToList(), difficulty);
+        var profile = new DungeonProfile(name, heroShare, timeLimit, pulls.Select(p => p.Value.Pull(p.Key)).ToList(), difficulty,
+            JoinComment(dungeonComment));
         foreach (var (number, pull) in pulls)
         {
             if (pull.TriggerWithoutJoin) throw new FormatException($"Pull {number}: a trigger needs pull_with.");
@@ -210,11 +227,24 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         public int? PullWith;
         public double? OffsetMs, OffsetPct;
         public DeathCount? AfterDeaths, AfterDeathsTotal;
+        public readonly List<string> Comment = [];
 
         public bool TriggerWithoutJoin => PullWith == null && (OffsetMs != null || OffsetPct != null || AfterDeaths != null || AfterDeathsTotal != null);
 
         public DungeonPull Pull(int number) => new(number, Groups, PullDuration, Downtime, ChainWith, Final,
-            PullWith is { } with ? new PullJoin(with, OffsetMs, OffsetPct, AfterDeaths, AfterDeathsTotal) : null);
+            PullWith is { } with ? new PullJoin(with, OffsetMs, OffsetPct, AfterDeaths, AfterDeathsTotal) : null, JoinComment(Comment));
+    }
+
+    // A comment's lines as one text; null when there are none.
+    private static string? JoinComment(List<string> lines) => lines.Count > 0 ? string.Join("\n", lines) : null;
+
+    // A comment's '#' lines, its blank lines left out.
+    private static void AppendComment(StringBuilder text, string? comment)
+    {
+        foreach (string line in (comment ?? "").Split('\n').Select(c => c.TrimEnd()).Where(c => c.Length > 0))
+        {
+            text.Append("# ").Append(line).Append('\n');
+        }
     }
 
     private static void ParsePullLine(PullText pull, string value)
@@ -280,12 +310,14 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     public string Format()
     {
         var text = new StringBuilder();
+        AppendComment(text, Comment);
         text.Append("dungeon=").Append(Quote(Name)).Append('\n');
         text.Append("difficulty=").Append(N(Difficulty)).Append('\n');
         text.Append("hero_share=").Append(N(HeroShare)).Append('\n');
         text.Append("time_limit=").Append(N(TimeLimitSeconds)).Append('\n');
         foreach (var pull in Pulls.OrderBy(p => p.Number))
         {
+            AppendComment(text, pull.Comment);
             bool first = true;
             int boss = 0;
             foreach (var g in pull.Groups)
