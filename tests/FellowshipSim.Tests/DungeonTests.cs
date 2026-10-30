@@ -132,6 +132,17 @@ public class DungeonTests
         Assert.Contains("name=\"Ogre, Captain\"", dungeon.Format());
     }
 
+    [Fact]
+    public void The_Readme_Dungeon_Text_Is_A_Valid_Dungeon()
+    {
+        string readme = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "README.md")).Replace("\r\n", "\n");
+        int start = readme.IndexOf("```\ndungeon=Default\n", StringComparison.Ordinal) + 4;
+        string text = readme[start..readme.IndexOf("```", start, StringComparison.Ordinal)];
+        var dungeon = DungeonProfile.Parse(text);
+        Assert.Null(dungeon.Problem());
+        Assert.Equal(5, dungeon.Pulls.Count);
+    }
+
     [Theory]
     [InlineData("pull.1=/count=1,name=A,hit_points=1", "no dungeon=<name> line")]
     [InlineData("dungeon=X", "no pull line")]

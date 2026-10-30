@@ -49,7 +49,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     /// <summary>The pull <paramref name="number"/>, or null when there is none.</summary>
     public DungeonPull? Pull(int number) => Pulls.FirstOrDefault(p => p.Number == number);
 
-    /// <summary>The pull whose <c>pull_with</c> takes pull <paramref name="number"/> in, or null.</summary>
+    /// <summary>Host pull of pull <paramref name="number"/>: the pull with <c>pull_with</c> naming it; null when none names it.</summary>
     public DungeonPull? TakenInBy(int number) => Pulls.FirstOrDefault(p => p.Join?.Pull == number);
 
     /// <summary>

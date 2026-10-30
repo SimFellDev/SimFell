@@ -1,5 +1,9 @@
-# The dungeon a new sim starts with: Cithrel's Fall's creatures, their Spirit Points and casts from game data. Each enemy's
-# hit points are its game data health times one scale. UNVERIFIED: no combat log has confirmed the scale.
+# The dungeon a new sim starts with: Cithrel's Fall's creatures (game data dungeon 7), their Spirit Points and casts from
+# game data. Eldrin Chronomancer's Temporal Manipulation: cast time 2 s, cooldown 30 s (ability 64).
+# Each enemy's hit points are its game data health (creature "health") times 35, rounded to a thousand: Coldbrine Fiend
+# 7857.38 (creature 15), Eldrin Chronomancer 11546.15 (153), Glacial Colossus 15144.95 (154), Ice Shardling 3373.875
+# (152), Ancient Koros 64028.65 (169), Cithrel 60729.75 (170). UNVERIFIED: no combat log has confirmed the factor 35. It
+# sets the Rime fixture's pulls to 30-90 s.
 dungeon=Default
 difficulty=10
 hero_share=37.5
