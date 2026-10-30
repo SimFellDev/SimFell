@@ -1,21 +1,24 @@
 namespace FellowshipSim.Core.Dungeons;
 
 /// <summary>
-/// Pull <see cref="Number"/> of a dungeon: its enemy <see cref="Groups"/>. It starts <see cref="DowntimeSeconds"/> after the
+/// Pull <see cref="Name"/> of a dungeon: its enemy <see cref="Groups"/>. It starts <see cref="DowntimeSeconds"/> after the
 /// pull before it ends, or as pull <see cref="ChainWith"/> ends. <see cref="Join"/> takes another pull's enemies in.
 /// <see cref="PullDurationSeconds"/> is the time over which the health of enemies without hit points falls.
 /// <see cref="Final"/> marks the dungeon's final boss. <see cref="Comment"/> is the '#' lines above the pull.
 /// </summary>
 public sealed record DungeonPull(
-    int Number,
+    string Name,
     IReadOnlyList<EnemyGroup> Groups,
     double? PullDurationSeconds = null,
     double DowntimeSeconds = 0,
-    int? ChainWith = null,
+    string? ChainWith = null,
     bool Final = false,
     PullJoin? Join = null,
     string? Comment = null)
 {
+    /// <summary>True when <paramref name="name"/> is a pull name: letters, digits and '_'.</summary>
+    public static bool IsName(string name) => name.Length > 0 && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
+
     /// <summary>True when a group is a boss.</summary>
     public bool IsBoss => Groups.Any(g => g.Boss);
 
@@ -25,7 +28,7 @@ public sealed record DungeonPull(
     /// <summary>The problem with the pull's own values, or null when they are valid.</summary>
     public string? Problem()
     {
-        if (Number < 1) return "the pull number is at least 1";
+        if (!IsName(Name)) return "the pull name has letters, digits and '_' only";
         if (Groups.Count == 0) return "the pull has at least one enemy group";
         foreach (var group in Groups)
         {

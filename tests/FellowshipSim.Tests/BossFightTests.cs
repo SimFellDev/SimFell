@@ -30,7 +30,7 @@ public class BossFightTests
 
         // Health follows a 60 s pull duration, so each pull lasts as long as the training mobs.
         double DungeonOf(EnemyGroup group) => Mean(new FightOptions(Dungeon: new DungeonProfile("One", DungeonProfile.DefaultHeroShare, 60,
-            [new DungeonPull(1, [group], PullDurationSeconds: 60)])));
+            [new DungeonPull("1", [group], PullDurationSeconds: 60)])));
         Assert.Equal(1.05, DungeonOf(new EnemyGroup(1, "Boss", Boss: true)) / DungeonOf(new EnemyGroup(1, "Trash Mob")), 2);
     }
 

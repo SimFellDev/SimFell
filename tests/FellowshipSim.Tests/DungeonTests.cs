@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
@@ -20,10 +21,10 @@ public class DungeonTests
 
     private static DungeonProfile Dungeon(params DungeonPull[] pulls) => new("Test", DungeonProfile.DefaultHeroShare, 600, pulls, DungeonProfile.BaseDifficulty);
 
-    private static DungeonPull Trash(int number, int count, double hitPoints) => new(number, [new EnemyGroup(count, "Trash Mob", 3, HitPoints: hitPoints)]);
+    private static DungeonPull Trash(int number, int count, double hitPoints) => new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(count, "Trash Mob", 3, HitPoints: hitPoints)]);
 
     private static DungeonPull Boss(int number, double hitPoints, bool final = false) =>
-        new(number, [new EnemyGroup(1, "Boss", 45, HitPoints: hitPoints, Boss: true)], Final: final);
+        new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(1, "Boss", 45, HitPoints: hitPoints, Boss: true)], Final: final);
 
     // A cast is reported as it completes, so one begun before a pull ends can complete up to a cast time after it.
     private const double CastTime = 2.5;
@@ -97,6 +98,28 @@ public class DungeonTests
     }
 
     [Fact]
+    public void Named_Pulls_Run_In_The_Order_Of_The_Text()
+    {
+        const string text = """
+            dungeon=X
+            pull.first=/count=2,name=Imp,hit_points=900000
+            pull.last_boss=/downtime=25,final=0
+            pull.last_boss+=/boss.1,name=Koros,hit_points=4000000
+            pull.2=/count=1,name=Bat,hit_points=600000,chain_with=first,pull_with=adds_1,after_deaths=1
+            pull.adds_1=/count=2,name=Wisp,hit_points=500000
+            """;
+        var dungeon = DungeonProfile.Parse(text);
+        Assert.Equal(["first", "last_boss", "2", "adds_1"], dungeon.Pulls.Select(p => p.Name));
+        Assert.Equal(["first", "2", "last_boss"], dungeon.RunOrder()!.Select(p => p.Name));
+        Assert.Equal(new PullJoin("adds_1", AfterDeaths: new DeathCount(1)), dungeon.Pull("2")!.Join);
+        Assert.Equal(25, dungeon.Pull("last_boss")!.DowntimeSeconds);
+        Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
+        Assert.Equal("Pull first: two pulls have this name.", (dungeon with { Pulls = [.. dungeon.Pulls, dungeon.Pull("first")!] }).Problem());
+        Assert.Equal("Pull bad-name: the pull name has letters, digits and '_' only.",
+            (dungeon with { Pulls = [dungeon.Pull("first")! with { Name = "bad-name" }] }).Problem());
+    }
+
+    [Fact]
     public void A_Pull_Reads_Back_From_Its_Text()
     {
         const string text = """
@@ -117,17 +140,17 @@ public class DungeonTests
             pull.6+=/pull_with=5,after_deaths_total=2
             """;
         var dungeon = DungeonProfile.Parse(text);
-        Assert.Equal([1, 2, 3, 4, 5, 6], dungeon.Pulls.Select(p => p.Number));
+        Assert.Equal(["3", "1", "4", "2", "5", "6"], dungeon.Pulls.Select(p => p.Name));
         Assert.Equal(40, dungeon.HeroShare);
         Assert.Equal(900, dungeon.TimeLimitSeconds);
         Assert.Equal(12, dungeon.Difficulty);
-        var first = dungeon.Pull(1)!;
-        Assert.Equal(new PullJoin(4, OffsetPct: 50), first.Join);
+        var first = dungeon.Pull("1")!;
+        Assert.Equal(new PullJoin("4", OffsetPct: 50), first.Join);
         Assert.Equal(new EnemyGroup(1, "Ogre, Captain", 10, true, 3_000_000, false, new EnemyCast("Big Cast", 20, EnemyCast.DefaultCastSeconds)), first.Groups[1]);
-        Assert.True(dungeon.Pull(4)!.Final);
-        Assert.Equal(1, dungeon.Pull(2)!.ChainWith);
-        Assert.Equal(new DeathCount(50, Percent: true), dungeon.Pull(5)!.Join!.AfterDeaths);
-        Assert.Equal(new DeathCount(2), dungeon.Pull(6)!.Join!.AfterDeathsTotal);
+        Assert.True(dungeon.Pull("4")!.Final);
+        Assert.Equal("1", dungeon.Pull("2")!.ChainWith);
+        Assert.Equal(new DeathCount(50, Percent: true), dungeon.Pull("5")!.Join!.AfterDeaths);
+        Assert.Equal(new DeathCount(2), dungeon.Pull("6")!.Join!.AfterDeathsTotal);
         Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
         Assert.Contains("name=\"Ogre, Captain\"", dungeon.Format());
     }
@@ -154,11 +177,11 @@ public class DungeonTests
             """;
         var dungeon = DungeonProfile.Parse(text);
         Assert.Equal("Line one of the dungeon.\nLine two of the dungeon.", dungeon.Comment);
-        Assert.Equal("The imps first.\n\nPull 1's options.", dungeon.Pull(1)!.Comment);
-        Assert.Null(dungeon.Pull(1)!.Groups[0].Comment);
-        Assert.Equal("The ogre casts.", dungeon.Pull(1)!.Groups[1].Comment);
-        Assert.Equal("After the last pull.", dungeon.Pull(2)!.Comment);
-        Assert.Equal("The bats.", dungeon.Pull(2)!.Groups[0].Comment);
+        Assert.Equal("The imps first.\n\nPull 1's options.", dungeon.Pull("1")!.Comment);
+        Assert.Null(dungeon.Pull("1")!.Groups[0].Comment);
+        Assert.Equal("The ogre casts.", dungeon.Pull("1")!.Groups[1].Comment);
+        Assert.Equal("After the last pull.", dungeon.Pull("2")!.Comment);
+        Assert.Equal("The bats.", dungeon.Pull("2")!.Groups[0].Comment);
         Assert.Equal("""
             # Line one of the dungeon.
             # Line two of the dungeon.
@@ -224,8 +247,8 @@ public class DungeonTests
         Assert.Null(dungeon.Problem());
         Assert.Equal(5, dungeon.Pulls.Count);
         Assert.NotNull(dungeon.Comment);
-        Assert.NotNull(dungeon.Pull(1)!.Comment);
-        Assert.NotNull(dungeon.Pull(1)!.Groups[1].Comment);
+        Assert.NotNull(dungeon.Pull("1")!.Comment);
+        Assert.NotNull(dungeon.Pull("1")!.Groups[1].Comment);
     }
 
     [Theory]
@@ -233,7 +256,9 @@ public class DungeonTests
     [InlineData("dungeon=X", "no pull line")]
     [InlineData("dungeon=X\npull.1+=/count=1,name=A,hit_points=1", "pull 1 has no pull.1= line")]
     [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1\npull.1=/count=1,name=A,hit_points=1", "pull 1 starts twice")]
-    [InlineData("dungeon=X\npull.x=/count=1,name=A,hit_points=1", "'x' is not a pull number")]
+    [InlineData("dungeon=X\npull.x-y=/count=1,name=A,hit_points=1", "'x-y' is not a pull name")]
+    [InlineData("dungeon=X\npull.a=/count=1,name=A,hit_points=1,chain_with=b c", "'b c' is not a pull name")]
+    [InlineData("dungeon=X\npull.a=/count=1,name=A,hit_points=1,pull_with=b", "Pull a: pull_with names pull b, and there is no pull b.")]
     [InlineData("dungeon=X\npull.1=/name=A,hit_points=1", "an enemy group line starts with count= or boss.N")]
     [InlineData("dungeon=X\npull.1=/count=1,name=A,size=3", "'size' is not a pull option")]
     [InlineData("dungeon=X\npull.1=/boss.1,count=2,name=A", "a boss line is one boss")]
@@ -272,17 +297,17 @@ public class DungeonTests
     [Fact]
     public void Pulls_Run_In_Order_With_Each_Pull_Taken_In_And_Each_Chain_After_Its_Pull()
     {
-        var one = Trash(1, 1, 1) with { Join = new PullJoin(4) };
+        var one = Trash(1, 1, 1) with { Join = new PullJoin("4") };
         var dungeon = Dungeon(one, Trash(2, 1, 1), Trash(3, 1, 1), Trash(4, 1, 1), Trash(5, 1, 1));
-        Assert.Equal([1, 2, 3, 5], dungeon.RunOrder()!.Select(p => p.Number));
-        Assert.Equal([1, 4], dungeon.RunMembers(dungeon.Pull(1)!).Select(p => p.Number));
+        Assert.Equal(["1", "2", "3", "5"], dungeon.RunOrder()!.Select(p => p.Name));
+        Assert.Equal(["1", "4"], dungeon.RunMembers(dungeon.Pull("1")!).Select(p => p.Name));
 
         // Pull 2 chains to pull 4, inside pull 1's run.
-        var chained = dungeon with { Pulls = [one, Trash(2, 1, 1) with { ChainWith = 4 }, Trash(3, 1, 1), Trash(4, 1, 1), Trash(5, 1, 1)] };
-        Assert.Equal([1, 2, 3, 5], chained.RunOrder()!.Select(p => p.Number));
+        var chained = dungeon with { Pulls = [one, Trash(2, 1, 1) with { ChainWith = "4" }, Trash(3, 1, 1), Trash(4, 1, 1), Trash(5, 1, 1)] };
+        Assert.Equal(["1", "2", "3", "5"], chained.RunOrder()!.Select(p => p.Name));
         // Pull 1 chains to a later pull.
-        var later = Dungeon(Trash(1, 1, 1) with { ChainWith = 3 }, Trash(2, 1, 1), Trash(3, 1, 1));
-        Assert.Equal([2, 3, 1], later.RunOrder()!.Select(p => p.Number));
+        var later = Dungeon(Trash(1, 1, 1) with { ChainWith = "3" }, Trash(2, 1, 1), Trash(3, 1, 1));
+        Assert.Equal(["2", "3", "1"], later.RunOrder()!.Select(p => p.Name));
     }
 
     [Theory]
@@ -353,7 +378,7 @@ public class DungeonTests
     public void A_Chained_Pull_Starts_As_Its_Pull_Ends_And_A_Pull_After_Downtime_Waits()
     {
         double hp = HitPointsFor(8);
-        var log = Fight(Dungeon(Trash(1, 1, hp), Trash(2, 1, hp) with { ChainWith = 1 }, Trash(3, 1, hp) with { DowntimeSeconds = 20 }), FrostBolts);
+        var log = Fight(Dungeon(Trash(1, 1, hp), Trash(2, 1, hp) with { ChainWith = "1" }, Trash(3, 1, hp) with { DowntimeSeconds = 20 }), FrostBolts);
         Assert.InRange(log.FirstHitOn(2) - log.DeathOf(1), 0, CastTime);
         Assert.InRange(log.FirstHitOn(3) - log.DeathOf(2), 20, 20 + CastTime);
         Assert.DoesNotContain(log.Hits, h => h.Time > log.DeathOf(2) + 0.5 && h.Time < log.DeathOf(2) + 20);
@@ -376,7 +401,7 @@ public class DungeonTests
     [InlineData(true)]
     public void A_Pull_Joins_At_Its_Offset(bool boss)
     {
-        var host = (boss ? Boss(1, HitPointsFor(30)) : Trash(1, 1, HitPointsFor(30))) with { Join = new PullJoin(2, OffsetMs: 10_000) };
+        var host = (boss ? Boss(1, HitPointsFor(30)) : Trash(1, 1, HitPointsFor(30))) with { Join = new PullJoin("2", OffsetMs: 10_000) };
         var log = Fight(Dungeon(host, Trash(2, 1, HitPointsFor(3))), FrostBolts);
         var hostHits = log.Hits.Where(h => h.Enemy.Id == 1001).ToList();
         Assert.All(hostHits.Where(h => h.Time < 10), h => Assert.Equal(1, h.Active));
@@ -388,7 +413,7 @@ public class DungeonTests
     [InlineData(true)]
     public void A_Pull_Joins_As_The_Hosts_Health_Falls_To_Its_Percent(bool boss)
     {
-        var host = (boss ? Boss(1, HitPointsFor(20)) : Trash(1, 1, HitPointsFor(20))) with { Join = new PullJoin(2, OffsetPct: 50) };
+        var host = (boss ? Boss(1, HitPointsFor(20)) : Trash(1, 1, HitPointsFor(20))) with { Join = new PullJoin("2", OffsetPct: 50) };
         var log = Fight(Dungeon(host, Trash(2, 1, HitPointsFor(3))), FrostBolts);
         // The hit taking the host to 50% brings pull 2 in: the hero keeps the host as its target until it dies.
         var hostHits = log.Hits.Where(h => h.Enemy.Id == 1001).ToList();
@@ -402,9 +427,9 @@ public class DungeonTests
     public void A_Pull_Joins_After_Its_Deaths(bool boss)
     {
         var host = boss
-            ? new DungeonPull(1, [new EnemyGroup(1, "Boss", HitPoints: HitPointsFor(20), Boss: true), new EnemyGroup(2, "Add", HitPoints: HitPointsFor(3))],
-                Join: new PullJoin(2, AfterDeaths: new DeathCount(2)))
-            : Trash(1, 3, HitPointsFor(3)) with { Join = new PullJoin(2, AfterDeaths: new DeathCount(2)) };
+            ? new DungeonPull("1", [new EnemyGroup(1, "Boss", HitPoints: HitPointsFor(20), Boss: true), new EnemyGroup(2, "Add", HitPoints: HitPointsFor(3))],
+                Join: new PullJoin("2", AfterDeaths: new DeathCount(2)))
+            : Trash(1, 3, HitPointsFor(3)) with { Join = new PullJoin("2", AfterDeaths: new DeathCount(2)) };
         // The host has three enemies; the hero keeps a target until it dies.
         var log = Fight(Dungeon(host, Trash(2, 1, HitPointsFor(3))), FrostBolts);
         double secondDeath = log.Deaths.Where(d => d.Enemy.Id == 1001).Select(d => d.Time).Order().ElementAt(1);
@@ -418,7 +443,7 @@ public class DungeonTests
     public void A_Pull_Taken_In_By_A_Later_Pull_Runs_With_It()
     {
         var hp = HitPointsFor(4);
-        var dungeon = Dungeon(Trash(1, 1, hp) with { Join = new PullJoin(3) }, Trash(2, 1, hp), Trash(3, 1, hp));
+        var dungeon = Dungeon(Trash(1, 1, hp) with { Join = new PullJoin("3") }, Trash(2, 1, hp), Trash(3, 1, hp));
         var log = Fight(dungeon, FrostBolts);
         // Pulls 1 and 3 are one pull, then pull 2.
         Assert.True(log.DeathOf(3) < log.FirstHitOn(2));
@@ -428,7 +453,7 @@ public class DungeonTests
     [Fact]
     public void An_Enemy_Without_Hit_Points_Dies_At_Its_Pull_Duration()
     {
-        var dungeon = Dungeon(new DungeonPull(1, [new EnemyGroup(2, "Trash Mob", 3)], PullDurationSeconds: 30), Boss(2, HitPointsFor(5)));
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(2, "Trash Mob", 3)], PullDurationSeconds: 30), Boss(2, HitPointsFor(5)));
         var log = Fight(dungeon, FrostBolts);
         Assert.All(log.Deaths.Where(d => d.Enemy.Id == 1001), d => Assert.Equal(30, d.Time, 3));
         Assert.InRange(log.FirstHitOn(2), 30, 30 + 2 * CastTime);
@@ -439,7 +464,7 @@ public class DungeonTests
     [Fact]
     public void A_Pull_Duration_Varies_With_The_Length_Variance()
     {
-        var dungeon = Dungeon(new DungeonPull(1, [new EnemyGroup(1, "Trash Mob")], PullDurationSeconds: 30));
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob")], PullDurationSeconds: 30));
         var fight = new FightOptions(LengthVariance: 0.2, Dungeon: dungeon);
         var result = new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts))
             .Run(SimTime.FromSeconds(600), iterations: 1, firstSeed: 3, degreeOfParallelism: 1, fight: fight);
@@ -484,7 +509,7 @@ public class DungeonTests
     [InlineData("Gunde", "jawbreaker", "Jawbreaker", "attack")]
     public void An_Interrupt_Ends_A_Casting_Target(string heroName, string interrupt, string interruptName, string filler)
     {
-        var dungeon = Dungeon(new DungeonPull(1, [new EnemyGroup(1, "Caster", HitPoints: 1e12, Cast: new EnemyCast("Big Cast", 30, 2))]))
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Caster", HitPoints: 1e12, Cast: new EnemyCast("Big Cast", 30, 2))]))
             with { TimeLimitSeconds = 100 };
         int interrupts = 0;
         var casts = new List<double>();
@@ -548,7 +573,7 @@ public class DungeonTests
     public void Boss_And_Trash_Conditions_Follow_The_Enemies_In_Combat()
     {
         // The boss pull takes trash in at its start: both are in combat, then the boss alone.
-        var dungeon = Dungeon(Trash(1, 2, HitPointsFor(4)), Boss(2, HitPointsFor(10), final: true) with { Join = new PullJoin(3) }, Trash(3, 1, HitPointsFor(2)));
+        var dungeon = Dungeon(Trash(1, 2, HitPointsFor(4)), Boss(2, HitPointsFor(10), final: true) with { Join = new PullJoin("3") }, Trash(3, 1, HitPointsFor(2)));
         var log = Fight(dungeon, FrostBolts);
         Assert.All(log.Hits.Where(h => h.Enemy.Id == 1001), h => Assert.True(h.Trash && !h.Boss && !h.Final));
         Assert.All(log.Hits.Where(h => h.Enemy.Id == 1003), h => Assert.True(h.Trash && h.Boss && h.Final));

@@ -20,6 +20,8 @@ internal sealed class DungeonFight
     private readonly double _varianceScale, _heroShare;
     private readonly Func<SimTime, Func<bool>, bool> _act;
     private readonly IReadOnlyList<RunPlan> _plans;
+    // Each pull's enemy id: 1001 for the first pull of the dungeon text, 1002 for the second, and so on.
+    private readonly Dictionary<string, int> _enemyIds;
     private readonly SimTime _limit;
     private readonly Dictionary<EnemyTarget, Arrival> _arrivals = new(ReferenceEqualityComparer.Instance);
     private readonly Func<bool> _runEnded;
@@ -49,6 +51,7 @@ internal sealed class DungeonFight
         _limit = SimTime.FromSeconds(dungeon.TimeLimitSeconds);
         var order = dungeon.RunOrder() ?? throw new ArgumentException(dungeon.Problem() ?? "The pulls refer to each other in a circle.", nameof(dungeon));
         _plans = order.Select(root => new RunPlan(root, dungeon.RunMembers(root), dungeon.HealthScale, varianceScale)).ToList();
+        _enemyIds = dungeon.Pulls.Select((p, i) => (p.Name, Id: 1001 + i)).ToDictionary(x => x.Name, x => x.Id);
         _runEnded = () => _current is { Alive: 0 };
         ctx.EnemyDemising += Demising;
         ctx.EnemyHurt += Hurt;
@@ -105,7 +108,7 @@ internal sealed class DungeonFight
             for (int i = 0; i < group.Count; i++)
             {
                 double? hitPoints = group.HitPoints * _dungeon.HealthScale;
-                var enemy = _ctx.AddEnemy(1000 + pull.Number, ++slot, group.Name, maxHealth: hitPoints ?? TimeHealth);
+                var enemy = _ctx.AddEnemy(_enemyIds[pull.Name], ++slot, group.Name, maxHealth: hitPoints ?? TimeHealth);
                 enemy.IsBoss = group.Boss;
                 enemy.IsPriority = group.Priority;
                 if (hitPoints != null)

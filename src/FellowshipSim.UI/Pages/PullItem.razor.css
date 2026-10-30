@@ -63,7 +63,10 @@
   color: var(--accent);
 }
 
+/* The pull's name. */
 .number {
+  flex: none;
+  white-space: nowrap;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   min-width: 1.5em;
@@ -147,6 +150,15 @@ textarea.comment {
   justify-self: start;
   width: 260px;
   max-width: 100%;
+}
+
+.detail > .name input {
+  width: 260px;
+  max-width: 100%;
+}
+
+.detail > .name .field-error {
+  margin: 6px 0 0;
 }
 
 .detail > .check {

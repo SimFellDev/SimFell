@@ -47,11 +47,11 @@
   border-color: var(--accent);
 }
 
-/* The group's comment: muted italic above the values, as tall as its lines. */
+/* The group's comment: muted italic below the values, as tall as its lines. */
 .comment {
   display: block;
   width: 100%;
-  margin-bottom: 8px;
+  margin: 8px 0px;
   padding: 4px 8px;
   resize: none;
   color: var(--muted);

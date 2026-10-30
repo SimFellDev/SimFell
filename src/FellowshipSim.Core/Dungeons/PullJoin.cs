@@ -10,7 +10,7 @@ namespace FellowshipSim.Core.Dungeons;
 /// </list>
 /// With no trigger the enemies join as the pull starts. An untriggered join triggers as the pull's last enemy dies.
 /// </summary>
-public sealed record PullJoin(int Pull, double? OffsetMs = null, double? OffsetPct = null, DeathCount? AfterDeaths = null,
+public sealed record PullJoin(string Pull, double? OffsetMs = null, double? OffsetPct = null, DeathCount? AfterDeaths = null,
     DeathCount? AfterDeathsTotal = null)
 {
     /// <summary>The number of triggers set.</summary>

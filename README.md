@@ -131,10 +131,12 @@ The **Modes** tab has two kinds of fight:
 
 The **Dungeon** card has a comment, the hero share, the time limit, the difficulty (Eternal level) and the pulls. **Vary
 the hero share** gives each fight a hero share in a range: ± 20% by default, so 37.5% is 30 – 45%. Each pull has a
-comment in its head and opens to its start (after downtime, or chained to another pull's end), its pull duration, the
-final boss, another pull it takes in with that pull's trigger, and its enemy groups. A group has a comment, a count
-(trash), a name, Spirit Points, hit points, priority, and an interrupt ability with its cooldown and cast time. **Save** writes `data/dungeons/<name>.simc` in the desktop app
-and `data/visitors/<visitor id>/dungeons/` in the web app. **Dungeon text** has the dungeon as text:
+comment and a name in its head, and opens to its name, its start (after downtime, or chained to another pull's end), its
+pull duration, the final boss, another pull it takes in with that pull's trigger, and its enemy groups. A group has a
+comment, a count (trash), a name, Spirit Points, hit points, priority, and an interrupt ability with its cooldown and cast
+time. A new pull's name is the lowest whole number no pull has. Renaming a pull renames it in every `chain_with` and
+`pull_with`. **Save** writes `data/dungeons/<name>.simc` in the desktop app and `data/visitors/<visitor id>/dungeons/` in
+the web app. **Dungeon text** has the dungeon as text:
 
 ```
 # Cithrel's Fall, two trash pulls before the first boss.
@@ -150,16 +152,16 @@ pull.2=/count=4,name=Ghoul
 pull.2+=/pull_duration=45,downtime=20
 pull.3=/count=3,name=Bat,spirit_points=2,hit_points=600000
 pull.3+=/chain_with=2
-pull.4=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
-pull.4+=/final=1,downtime=30,pull_with=5,offset_pct=50
-pull.5=/count=2,name=Wisp,hit_points=500000
+pull.last_boss=/final=1,downtime=30,pull_with=wisps,offset_pct=50
+pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
+pull.wisps=/count=2,name=Wisp,hit_points=500000
 ```
 
-A `#` line is a comment. A comment above a `pull.N+=/` enemy group line belongs to that group, a comment above any other
+A `#` line is a comment. A comment above a `pull.X+=/` enemy group line belongs to that group, a comment above any other
 pull line or after the last pull belongs to the pull, and any other comment belongs to the dungeon. A pull whose first
-group has a comment starts with its options line, or with an empty `pull.N=/` line.
+group has a comment starts with its options line, or with an empty `pull.X=/` line.
 
-`pull.N=/` starts pull N and `pull.N+=/` adds a line to it. A line is an enemy group (`count=`), a boss (`boss.N`;
+`pull.X=/` starts pull X and `pull.X+=/` adds a line to it. A pull name has letters, digits and `_`. A line is an enemy group (`count=`), a boss (`boss.N`;
 several make a council) or the pull's options. Group values: `count`, `name` (in quotes when it has a comma),
 `spirit_points` (each enemy's), `priority=1`, `hit_points` (at Eternal level 1; each level above multiplies health by
 1.08), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast is one cooldown after the enemy
@@ -173,8 +175,8 @@ arrives). Pull options:
 - `pull_duration`: seconds over which the health of enemies without hit points falls.
 - `final=1`: the pull's boss is the final boss.
 
-Pulls run in ascending number. A pull taken in by another runs with it, and a chained pull runs as the pull it names
-ends. Pull numbers need not be in order or contiguous. The fight's length variance varies each `pull_duration`.
+Pulls run in the order of their `pull.X=/` lines. A pull taken in by another runs with it, and a chained pull runs as the
+pull it names ends. The fight's length variance varies each `pull_duration`.
 
 Action lists read the fight with these values:
 

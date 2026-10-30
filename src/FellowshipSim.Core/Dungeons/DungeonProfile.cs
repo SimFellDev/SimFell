@@ -13,16 +13,17 @@ namespace FellowshipSim.Core.Dungeons;
 /// time_limit=1800
 /// pull.1=/count=5,name=Imp,spirit_points=3,hit_points=900000
 /// pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=3000000,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
-/// pull.2=/count=4,name=Ghoul
-/// pull.2+=/pull_duration=45,downtime=20
-/// pull.3=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
-/// pull.3+=/final=1,pull_with=2,offset_pct=50
+/// pull.ghouls=/pull_duration=45,downtime=20
+/// pull.ghouls+=/count=4,name=Ghoul
+/// pull.last_boss=/final=1,pull_with=ghouls,offset_pct=50
+/// pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000
 /// </code>
-/// Lines starting with '#' are comments. A comment above a <c>pull.N+=/</c> enemy group line belongs to that group
+/// A pull has a name of letters, digits and '_'. Pulls run in the order of their <c>pull.X=/</c> lines.
+/// Lines starting with '#' are comments. A comment above a <c>pull.X+=/</c> enemy group line belongs to that group
 /// (<see cref="EnemyGroup.Comment"/>), a comment above any other pull line or after the last pull to the pull
 /// (<see cref="DungeonPull.Comment"/>), and any other comment to the dungeon (<see cref="Comment"/>). A pull's text starts
-/// with its options line when it has options, or with an empty <c>pull.N=/</c> line when its first group has a comment.
-/// <c>pull.N=/</c> starts pull N and <c>pull.N+=/</c> adds a line to it. A line is
+/// with its options line when it has options, or with an empty <c>pull.X=/</c> line when its first group has a comment.
+/// <c>pull.X=/</c> starts pull X and <c>pull.X+=/</c> adds a line to it. A line is
 /// an enemy group (<c>count=</c>), a boss (<c>boss.N</c>) or the pull's options; a group line can also have pull options.
 /// Group values: <c>count</c>, <c>name</c>, <c>spirit_points</c>, <c>priority</c>, <c>hit_points</c>,
 /// <c>interrupt_ability</c>, <c>cooldown</c> and <c>cast_time</c>. Pull options: <c>pull_duration</c>, <c>downtime</c>,
@@ -50,36 +51,37 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     /// <summary>The enemies' health at <see cref="Difficulty"/> over their hit points.</summary>
     public double HealthScale => Math.Pow(HealthPerLevel, Difficulty - BaseDifficulty);
 
-    /// <summary>The pull <paramref name="number"/>, or null when there is none.</summary>
-    public DungeonPull? Pull(int number) => Pulls.FirstOrDefault(p => p.Number == number);
+    /// <summary>The pull named <paramref name="name"/>, or null when there is none.</summary>
+    public DungeonPull? Pull(string name) => Pulls.FirstOrDefault(p => p.Name == name);
 
-    /// <summary>Host pull of pull <paramref name="number"/>: the pull with <c>pull_with</c> naming it; null when none names it.</summary>
-    public DungeonPull? TakenInBy(int number) => Pulls.FirstOrDefault(p => p.Join?.Pull == number);
+    /// <summary>Host pull of pull <paramref name="name"/>: the pull with <c>pull_with</c> naming it; null when none names it.</summary>
+    public DungeonPull? TakenInBy(string name) => Pulls.FirstOrDefault(p => p.Join?.Pull == name);
 
     /// <summary>
-    /// The pulls that run on their own, in the order they run: ascending, and each pull with <c>chain_with=X</c> right after
-    /// the run with pull X. A pull another pull takes in runs inside it. Null when a reference is circular.
+    /// The pulls that run on their own, in the order they run: the order of <see cref="Pulls"/>, and each pull with
+    /// <c>chain_with=X</c> right after the run with pull X. A pull another pull takes in runs inside it. Null when a
+    /// reference is circular.
     /// </summary>
     public IReadOnlyList<DungeonPull>? RunOrder()
     {
-        var roots = Pulls.Where(p => TakenInBy(p.Number) == null).OrderBy(p => p.Number).ToList();
+        var roots = Pulls.Where(p => TakenInBy(p.Name) == null).ToList();
         var order = new List<DungeonPull>();
-        var emitted = new HashSet<int>();
+        var emitted = new HashSet<string>();
 
         void Emit(DungeonPull root)
         {
             order.Add(root);
-            emitted.Add(root.Number);
+            emitted.Add(root.Name);
             var members = RunMembers(root);
             foreach (var chained in roots)
             {
-                if (chained.ChainWith is { } x && !emitted.Contains(chained.Number) && members.Any(m => m.Number == x)) Emit(chained);
+                if (chained.ChainWith is { } x && !emitted.Contains(chained.Name) && members.Any(m => m.Name == x)) Emit(chained);
             }
         }
 
         foreach (var root in roots)
         {
-            if (root.ChainWith == null && !emitted.Contains(root.Number)) Emit(root);
+            if (root.ChainWith == null && !emitted.Contains(root.Name)) Emit(root);
         }
         return order.Count == roots.Count && Pulls.All(p => RootOf(p) != null) ? order : null;
     }
@@ -98,10 +100,10 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     // The pull that runs on its own with pull's enemies in it; null when pull_with goes round in a circle.
     private DungeonPull? RootOf(DungeonPull pull)
     {
-        var seen = new HashSet<int>();
-        while (TakenInBy(pull.Number) is { } host)
+        var seen = new HashSet<string>();
+        while (TakenInBy(pull.Name) is { } host)
         {
-            if (!seen.Add(pull.Number)) return null;
+            if (!seen.Add(pull.Name)) return null;
             pull = host;
         }
         return pull;
@@ -116,26 +118,26 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         if (Difficulty < BaseDifficulty) return $"The difficulty is at least {BaseDifficulty}.";
         foreach (var pull in Pulls)
         {
-            if (Pulls.Count(p => p.Number == pull.Number) > 1) return $"Pull {pull.Number}: two pulls have this number.";
-            if (pull.Problem() is { } problem) return $"Pull {pull.Number}: {problem}.";
+            if (Pulls.Count(p => p.Name == pull.Name) > 1) return $"Pull {pull.Name}: two pulls have this name.";
+            if (pull.Problem() is { } problem) return $"Pull {pull.Name}: {problem}.";
         }
         foreach (var pull in Pulls)
         {
             if (pull.Join is { } join && ReferenceProblem(pull, join.Pull, "pull_with") is { } joinProblem) return joinProblem;
             if (pull.ChainWith is { } chain && ReferenceProblem(pull, chain, "chain_with") is { } chainProblem) return chainProblem;
-            int takers = Pulls.Count(p => p.Join?.Pull == pull.Number);
-            if (takers > 1) return $"Pull {pull.Number}: two pulls take it in with pull_with.";
-            if (takers == 1 && pull.ChainWith != null) return $"Pull {pull.Number}: a pull taken in with pull_with has no chain_with.";
+            int takers = Pulls.Count(p => p.Join?.Pull == pull.Name);
+            if (takers > 1) return $"Pull {pull.Name}: two pulls take it in with pull_with.";
+            if (takers == 1 && pull.ChainWith != null) return $"Pull {pull.Name}: a pull taken in with pull_with has no chain_with.";
             if (pull.Join is { AfterDeaths: { Percent: false } deaths } && deaths.Value > pull.EnemyCount)
-                return $"Pull {pull.Number}: after_deaths is at most the pull's {pull.EnemyCount} enemies.";
+                return $"Pull {pull.Name}: after_deaths is at most the pull's {pull.EnemyCount} enemies.";
         }
         if (RunOrder() == null) return "The pulls refer to each other in a circle through pull_with and chain_with.";
         return null;
     }
 
-    private string? ReferenceProblem(DungeonPull pull, int other, string key) =>
-        other == pull.Number ? $"Pull {pull.Number}: {key} names the pull itself."
-        : Pull(other) == null ? $"Pull {pull.Number}: {key} names pull {other}, and there is no pull {other}."
+    private string? ReferenceProblem(DungeonPull pull, string other, string key) =>
+        other == pull.Name ? $"Pull {pull.Name}: {key} names the pull itself."
+        : Pull(other) == null ? $"Pull {pull.Name}: {key} names pull {other}, and there is no pull {other}."
         : null;
 
     public static DungeonProfile Load(string path) => Parse(File.ReadAllText(path));
@@ -146,7 +148,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         string? name = null;
         double heroShare = DefaultHeroShare, timeLimit = DefaultTimeLimitSeconds;
         int difficulty = DefaultDifficulty;
-        var pulls = new SortedDictionary<int, PullText>();
+        var pulls = new OrderedDictionary<string, PullText>();
         var dungeonComment = new List<string>();
         var comment = new List<string>();
         PullText? lastPull = null;
@@ -183,15 +185,13 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                         break;
                     default:
                         if (!key.StartsWith("pull.", StringComparison.Ordinal))
-                            throw new FormatException($"'{key}' is not a dungeon option (dungeon, difficulty, hero_share, time_limit, pull.N)");
+                            throw new FormatException($"'{key}' is not a dungeon option (dungeon, difficulty, hero_share, time_limit, pull.X)");
                         bool append = key.EndsWith('+');
-                        string numberText = key[5..(append ? ^1 : ^0)];
-                        if (!int.TryParse(numberText, NumberStyles.None, CultureInfo.InvariantCulture, out int number) || number < 1)
-                            throw new FormatException($"'{numberText}' is not a pull number");
-                        if (append && !pulls.ContainsKey(number)) throw new FormatException($"pull {number} has no pull.{number}= line before this one");
-                        if (!append && pulls.ContainsKey(number)) throw new FormatException($"pull {number} starts twice");
-                        if (!append) pulls[number] = new PullText();
-                        lastPull = pulls[number];
+                        string pullName = PullName(key[5..(append ? ^1 : ^0)]);
+                        if (append && !pulls.ContainsKey(pullName)) throw new FormatException($"pull {pullName} has no pull.{pullName}= line before this one");
+                        if (!append && pulls.ContainsKey(pullName)) throw new FormatException($"pull {pullName} starts twice");
+                        if (!append) pulls[pullName] = new PullText();
+                        lastPull = pulls[pullName];
                         int groups = lastPull.Groups.Count;
                         ParsePullLine(lastPull, value.StartsWith('/') ? value[1..] : value);
                         if (append && lastPull.Groups.Count > groups && comment.Count > 0)
@@ -213,9 +213,9 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         if (pulls.Count == 0) throw new FormatException("The dungeon has no pull line.");
         var profile = new DungeonProfile(name, heroShare, timeLimit, pulls.Select(p => p.Value.Pull(p.Key)).ToList(), difficulty,
             JoinComment(dungeonComment));
-        foreach (var (number, pull) in pulls)
+        foreach (var (pullName, pull) in pulls)
         {
-            if (pull.TriggerWithoutJoin) throw new FormatException($"Pull {number}: a trigger needs pull_with.");
+            if (pull.TriggerWithoutJoin) throw new FormatException($"Pull {pullName}: a trigger needs pull_with.");
         }
         if (profile.Problem() is { } problem) throw new FormatException(problem);
         return profile;
@@ -227,16 +227,16 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         public readonly List<EnemyGroup> Groups = [];
         public double? PullDuration;
         public double Downtime;
-        public int? ChainWith;
+        public string? ChainWith;
         public bool Final;
-        public int? PullWith;
+        public string? PullWith;
         public double? OffsetMs, OffsetPct;
         public DeathCount? AfterDeaths, AfterDeathsTotal;
         public readonly List<string> Comment = [];
 
         public bool TriggerWithoutJoin => PullWith == null && (OffsetMs != null || OffsetPct != null || AfterDeaths != null || AfterDeathsTotal != null);
 
-        public DungeonPull Pull(int number) => new(number, Groups, PullDuration, Downtime, ChainWith, Final,
+        public DungeonPull Pull(string name) => new(name, Groups, PullDuration, Downtime, ChainWith, Final,
             PullWith is { } with ? new PullJoin(with, OffsetMs, OffsetPct, AfterDeaths, AfterDeathsTotal) : null, JoinComment(Comment));
     }
 
@@ -290,8 +290,8 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                 case "pull_duration": pull.PullDuration = Number(key, v); break;
                 case "downtime": pull.Downtime = Number(key, v); break;
                 case "final": pull.Final = Integer(key, v) != 0; break;
-                case "chain_with": pull.ChainWith = Integer(key, v); break;
-                case "pull_with": pull.PullWith = Integer(key, v); break;
+                case "chain_with": pull.ChainWith = PullName(v); break;
+                case "pull_with": pull.PullWith = PullName(v); break;
                 case "offset_ms": pull.OffsetMs = Number(key, v); break;
                 case "offset_pct": pull.OffsetPct = Number(key, v); break;
                 case "after_deaths": pull.AfterDeaths = DeathCount.Parse(key, v); break;
@@ -322,21 +322,21 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         text.Append("difficulty=").Append(N(Difficulty)).Append('\n');
         text.Append("hero_share=").Append(N(HeroShare)).Append('\n');
         text.Append("time_limit=").Append(N(TimeLimitSeconds)).Append('\n');
-        foreach (var pull in Pulls.OrderBy(p => p.Number))
+        foreach (var pull in Pulls)
         {
             AppendComment(text, pull.Comment);
             var options = PullOptions(pull);
             bool first = true;
             if (options.Count > 0 || pull.Groups is [{ Comment: { } c }, ..] && !string.IsNullOrWhiteSpace(c))
             {
-                text.Append("pull.").Append(N(pull.Number)).Append("=/").Append(string.Join(',', options)).Append('\n');
+                text.Append("pull.").Append(pull.Name).Append("=/").Append(string.Join(',', options)).Append('\n');
                 first = false;
             }
             int boss = 0;
             foreach (var g in pull.Groups)
             {
                 if (!first) AppendComment(text, g.Comment);
-                text.Append("pull.").Append(N(pull.Number)).Append(first ? "=/" : "+=/");
+                text.Append("pull.").Append(pull.Name).Append(first ? "=/" : "+=/");
                 first = false;
                 if (g.Boss) text.Append("boss.").Append(N(++boss));
                 else text.Append("count=").Append(N(g.Count));
@@ -362,11 +362,11 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         var options = new List<string>();
         if (pull.PullDurationSeconds is { } duration) options.Add($"pull_duration={N(duration)}");
         if (pull.DowntimeSeconds != 0) options.Add($"downtime={N(pull.DowntimeSeconds)}");
-        if (pull.ChainWith is { } chain) options.Add($"chain_with={N(chain)}");
+        if (pull.ChainWith is { } chain) options.Add($"chain_with={chain}");
         if (pull.Final) options.Add("final=1");
         if (pull.Join is { } join)
         {
-            options.Add($"pull_with={N(join.Pull)}");
+            options.Add($"pull_with={join.Pull}");
             if (join.OffsetMs is { } ms) options.Add($"offset_ms={N(ms)}");
             if (join.OffsetPct is { } pct) options.Add($"offset_pct={N(pct)}");
             if (join.AfterDeaths is { } deaths) options.Add($"after_deaths={deaths}");
@@ -405,6 +405,9 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     private static int Integer(string key, string value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n)
             ? n : throw new FormatException($"{key} is a whole number, not '{value}'");
+
+    private static string PullName(string value) =>
+        DungeonPull.IsName(value) ? value : throw new FormatException($"'{value}' is not a pull name (letters, digits and '_')");
 
     private static string Unquote(string value) => value.Length >= 2 && value[0] == '"' && value[^1] == '"' ? value[1..^1] : value;
 

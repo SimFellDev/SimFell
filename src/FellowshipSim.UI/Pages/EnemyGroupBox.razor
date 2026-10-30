@@ -1,7 +1,7 @@
 @using FellowshipSim.Core.Dungeons
 @*
     One enemy group of a pull as a tinted box: its kind on the top-left edge, its duplicate and delete buttons on the
-    top-right edge, its comment and its values.
+    top-right edge, its values and its comment.
 *@
 <div class="group">
     <div class="group-start">
@@ -17,8 +17,6 @@
             <Icon Shape="IconShape.Bin" />
         </button>
     </div>
-    <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Comment on @Group.Name" spellcheck="true"
-              @bind:get="Group.Comment ?? string.Empty" @bind:set="SetComment" @bind:event="oninput"></textarea>
     <div class="values">
         @if (!Group.Boss)
         {
@@ -58,6 +56,8 @@
                    @bind:get="Group.Cast?.CastSeconds" @bind:set="SetCastTime" />
         </label>
     </div>
+    <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Comment on @Group.Name" spellcheck="true"
+              @bind:get="Group.Comment ?? string.Empty" @bind:set="SetComment" @bind:event="oninput"></textarea>
 </div>
 
 @code {

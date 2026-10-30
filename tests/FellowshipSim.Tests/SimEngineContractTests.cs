@@ -110,7 +110,7 @@ public class SimEngineContractTests
     [Fact]
     public async Task A_Dungeon_With_A_Pull_Of_No_Hit_Points_Is_Refused()
     {
-        var dungeon = new DungeonProfile("Broken", DungeonProfile.DefaultHeroShare, 600, [new DungeonPull(1, [new EnemyGroup(1, "Boss", HitPoints: 0, Boss: true)])]);
+        var dungeon = new DungeonProfile("Broken", DungeonProfile.DefaultHeroShare, 600, [new DungeonPull("1", [new EnemyGroup(1, "Boss", HitPoints: 0, Boss: true)])]);
         await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(SimcProfile.Parse(Profile), new SimSettings(1, 10, Dungeon: dungeon)));
     }
 

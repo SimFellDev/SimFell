@@ -1,8 +1,8 @@
 @using System.Globalization
 @using FellowshipSim.Core.Dungeons
 @*
-    One pull of a dungeon, built as an action of the action-list editor: its head (grip, number, comment and summary, move,
-    duplicate and delete buttons), and its details while it is open: the start, the pull duration, the final boss, the pull
+    One pull of a dungeon, built as an action of the action-list editor: its head (grip, name, comment and summary, move,
+    duplicate and delete buttons), and its details while it is open: the name, the start, the pull duration, the final boss, the pull
     it takes in, and its enemy groups. Dropping on a pull puts the dragged one in its place.
 *@
 <li class="@ClassName"
@@ -17,7 +17,7 @@
         <button type="button" class="toggle" aria-expanded="@(Open ? "true" : "false")" data-tooltip="@(Open ? "Collapse" : "Expand")"
                 @onclick="OnToggle">
             <Icon Shape="IconShape.Chevron" Class="chevron" />
-            <span class="number">@Pull.Number</span>
+            <span class="number">@Pull.Name</span>
             <span class="kind">@(Pull.IsBoss ? "Boss" : "Trash")</span>
             @if (!Open)
             {
@@ -30,22 +30,22 @@
         </button>
         @if (Open)
         {
-            <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Comment on pull @Pull.Number" spellcheck="true"
+            <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Comment on pull @Pull.Name" spellcheck="true"
                       @bind="CommentText" @bind:event="oninput"></textarea>
         }
-        <button type="button" class="icon-button move" data-tooltip="Move up" aria-label="Move pull @Pull.Number up" disabled="@(Index == 0)"
+        <button type="button" class="icon-button move" data-tooltip="Move up" aria-label="Move pull @Pull.Name up" disabled="@(Index == 0)"
                 @onclick="() => OnMove.InvokeAsync((Index, Index - 1))">
             <Icon Shape="IconShape.Up" />
         </button>
-        <button type="button" class="icon-button move" data-tooltip="Move down" aria-label="Move pull @Pull.Number down" disabled="@(Index == Pulls.Count - 1)"
+        <button type="button" class="icon-button move" data-tooltip="Move down" aria-label="Move pull @Pull.Name down" disabled="@(Index == Pulls.Count - 1)"
                 @onclick="() => OnMove.InvokeAsync((Index, Index + 1))">
             <Icon Shape="IconShape.Down" />
         </button>
-        <button type="button" class="icon-button move" data-tooltip="Duplicate pull" aria-label="Duplicate pull @Pull.Number"
+        <button type="button" class="icon-button move" data-tooltip="Duplicate pull" aria-label="Duplicate pull @Pull.Name"
                 @onclick="OnDuplicate">
             <Icon Shape="IconShape.Duplicate" />
         </button>
-        <button type="button" class="icon-button danger-button" data-tooltip="Delete pull" aria-label="Delete pull @Pull.Number"
+        <button type="button" class="icon-button danger-button" data-tooltip="Delete pull" aria-label="Delete pull @Pull.Name"
                 disabled="@(Pulls.Count == 1)" @onclick="OnDelete">
             <Icon Shape="IconShape.Bin" />
         </button>
@@ -53,6 +53,15 @@
     @if (Open)
     {
         <div class="detail">
+            <label for="@($"{Id}-name")">Name</label>
+            <div class="name">
+                <input id="@($"{Id}-name")" spellcheck="false" autocomplete="off" @bind:get="Pull.Name" @bind:set="SetName" />
+                @if (_nameError != null)
+                {
+                    <p class="field-error">@_nameError</p>
+                }
+            </div>
+
             <label for="@($"{Id}-start")">Start</label>
             <div class="pair">
                 <select id="@($"{Id}-start")" value="@(Pull.ChainWith != null ? ChainStart : DowntimeStart)" @onchange="ChangeStart">
@@ -61,17 +70,17 @@
                 </select>
                 @if (Pull.ChainWith is { } chain)
                 {
-                    <select aria-label="Pull @Pull.Number chains with" value="@chain"
-                            @onchange="e => Set(Pull with { ChainWith = int.Parse((string)e.Value!, CultureInfo.InvariantCulture) })">
+                    <select aria-label="Pull @Pull.Name chains with" value="@chain"
+                            @onchange="e => Set(Pull with { ChainWith = (string)e.Value! })">
                         @foreach (var other in Others)
                         {
-                            <option @key="other.Number" value="@other.Number">Pull @other.Number</option>
+                            <option @key="other.Name" value="@other.Name">Pull @other.Name</option>
                         }
                     </select>
                 }
                 else
                 {
-                    <input type="number" min="0" step="any" aria-label="Downtime before pull @Pull.Number"
+                    <input type="number" min="0" step="any" aria-label="Downtime before pull @Pull.Name"
                            @bind:get="Pull.DowntimeSeconds" @bind:set="v => Set(Pull with { DowntimeSeconds = Math.Max(0, v) })" />
                 }
             </div>
@@ -88,11 +97,11 @@
 
             <label for="@($"{Id}-with")">Pull with</label>
             <div class="pair">
-                <select id="@($"{Id}-with")" value="@(Pull.Join?.Pull.ToString(CultureInfo.InvariantCulture) ?? "")" @onchange="ChangeWith">
+                <select id="@($"{Id}-with")" value="@(Pull.Join?.Pull ?? "")" @onchange="ChangeWith">
                     <option value="">None</option>
                     @foreach (var other in Others)
                     {
-                        <option @key="other.Number" value="@other.Number">Pull @other.Number</option>
+                        <option @key="other.Name" value="@other.Name">Pull @other.Name</option>
                     }
                 </select>
                 @if (Pull.Join is { } join)
@@ -158,6 +167,9 @@
     /// <summary>Sets the place of the pull being dragged; null when the drag ends.</summary>
     [Parameter] public EventCallback<int?> OnDrag { get; set; }
 
+    /// <summary>Renames the pull to a valid name no other pull has.</summary>
+    [Parameter] public EventCallback<string> OnRename { get; set; }
+
     /// <summary>The trash group of a new pull, and the one "+ Enemy group" adds.</summary>
     public static readonly EnemyGroup NewTrash = new(5, "Trash Mob", 3, HitPoints: 2_000_000);
 
@@ -173,6 +185,7 @@
     private const string TotalTrigger = "after_deaths_total";
 
     private bool _dragging;
+    private string? _nameError;
 
     private string CommentText
     {
@@ -187,9 +200,9 @@
     // Drag enters and leaves of the item and its children: the item is under the drag while more have entered than left.
     private int _entered;
 
-    private string Id => $"pull-{Pull.Number}";
+    private string Id => $"pull-{Pull.Name}";
 
-    private IReadOnlyList<DungeonPull> Others => Pulls.Where(p => p.Number != Pull.Number).ToList();
+    private IReadOnlyList<DungeonPull> Others => Pulls.Where(p => p.Name != Pull.Name).ToList();
 
     private bool NeedsDuration => Pull.Groups.Any(g => g.HitPoints == null);
 
@@ -216,15 +229,24 @@
         return Set(Pull with { Groups = groups, Final = Pull.Final && groups.Any(g => g.Boss) });
     }
 
+    private Task SetName(string name)
+    {
+        name = name.Trim();
+        _nameError = !DungeonPull.IsName(name) ? "A pull name has letters, digits and '_' only."
+            : Others.Any(p => p.Name == name) ? $"Another pull is named {name}."
+            : null;
+        return _nameError == null && name != Pull.Name ? OnRename.InvokeAsync(name) : Task.CompletedTask;
+    }
+
     private Task SetDuration(double? seconds) => Set(Pull with { PullDurationSeconds = seconds is > 0 ? seconds : null });
 
     private Task ChangeStart(ChangeEventArgs e) => (string?)e.Value == ChainStart && Others.Count > 0
-        ? Set(Pull with { ChainWith = Others.LastOrDefault(p => p.Number < Pull.Number)?.Number ?? Others[0].Number, DowntimeSeconds = 0 })
+        ? Set(Pull with { ChainWith = (Index > 0 ? Pulls[Index - 1] : Others[0]).Name, DowntimeSeconds = 0 })
         : Set(Pull with { ChainWith = null });
 
     private Task ChangeWith(ChangeEventArgs e) => string.IsNullOrEmpty((string?)e.Value)
         ? Set(Pull with { Join = null })
-        : Set(Pull with { Join = (Pull.Join ?? new PullJoin(0)) with { Pull = int.Parse((string)e.Value!, CultureInfo.InvariantCulture) } });
+        : Set(Pull with { Join = (Pull.Join ?? new PullJoin("")) with { Pull = (string)e.Value! } });
 
     private static string TriggerOf(PullJoin join) =>
         join.OffsetMs != null ? OffsetTrigger : join.OffsetPct != null ? HealthTrigger

@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 @*
     The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, its comment, the hero share and its variance, time limit and
-    difficulty, then its pulls in number order, each built as an action of the action-list editor, and its profile text.
+    difficulty, then its pulls in the order they run, each built as an action of the action-list editor, and its profile text.
 *@
 <Card Title="Dungeon">
     <div class="row toolbar">
@@ -76,9 +76,10 @@
         {
             int index = i;
             var pull = Pulls[i];
-            <PullItem @key="index" Pull="pull" Pulls="Pulls" Index="index" Open="Editor.Open.Contains(pull.Number)" DragFrom="Editor.DragFrom"
-                      OnChange="p => ChangePulls(ps => ps.Select(x => x.Number == p.Number ? p : x).ToList())"
-                      OnToggle="() => Editor.Toggle(pull.Number)"
+            <PullItem @key="index" Pull="pull" Pulls="Pulls" Index="index" Open="Editor.Open.Contains(pull.Name)" DragFrom="Editor.DragFrom"
+                      OnChange="p => ChangePulls(ps => ps.Select((x, at) => at == index ? p : x).ToList())"
+                      OnToggle="() => Editor.Toggle(pull.Name)"
+                      OnRename="name => ChangePulls(ps => Editor.Rename(ps, index, name))"
                       OnMove="m => ChangePulls(ps => Editor.Move(ps, m.From, m.To))"
                       OnDuplicate="() => ChangePulls(ps => Editor.Insert(ps, index + 1, pull with { Join = null }))"
                       OnDelete="() => ChangePulls(ps => Editor.Remove(ps, index))"
@@ -144,8 +145,8 @@
         return $"Each fight has a hero share of {N(share * (1 - spread))} – {N(Math.Min(100, share * (1 + spread)))}%.";
     }
 
-    /// <summary>A new pull of one group, 20 seconds after the pull before it.</summary>
-    private static DungeonPull NewPull(EnemyGroup group) => new(0, [group], DowntimeSeconds: 20);
+    /// <summary>A new pull of one group, 20 seconds after the pull before it; <see cref="DungeonEditor.Insert"/> names it.</summary>
+    private static DungeonPull NewPull(EnemyGroup group) => new("", [group], DowntimeSeconds: 20);
 
     protected override async Task OnInitializedAsync()
     {
