@@ -68,7 +68,7 @@
                     <summary>Action list text</summary>
                     <textarea spellcheck="false" rows="10" @bind="State.Text"></textarea>
                     <div class="row">
-                        <button type="button" class="secondary-button" @onclick="LoadText">Load this text into the editor</button>
+                        <button type="button" class="secondary-button" @onclick="LoadText">Import</button>
                         <button type="button" class="secondary-button" data-tooltip="Save the action list as a .simc file" @onclick="Download">Download</button>
                     </div>
                     <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>

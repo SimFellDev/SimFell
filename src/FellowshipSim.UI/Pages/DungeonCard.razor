@@ -103,7 +103,7 @@
         <summary>Dungeon text</summary>
         <textarea spellcheck="false" rows="8" @bind="_text"></textarea>
         <div class="row">
-            <button type="button" class="secondary-button" @onclick="LoadText">Load this text</button>
+            <button type="button" class="secondary-button" @onclick="LoadText">Import</button>
             <button type="button" class="secondary-button" data-tooltip="Save the dungeon as a .simc file" @onclick="Download">Download</button>
         </div>
         <Message Kind="_textStatus.Kind">@_textStatus.Text</Message>
