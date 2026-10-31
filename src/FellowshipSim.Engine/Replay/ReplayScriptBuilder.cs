@@ -355,6 +355,7 @@ public static class ReplayScriptBuilder
             ["fight_name"] = fight["name"]?.DeepClone(),
             ["fight_date"] = FightDate(raw),
             ["duration_s"] = Rel(fightEnd),
+            ["dungeon_modifiers"] = events.FirstOrDefault(e => Str(e["type"]) == "dungeonstart")?["affixes"]?.DeepClone() ?? new JsonArray(),
             ["player"] = new JsonObject { ["id"] = playerId, ["name"] = playerName, ["hero"] = hero },
             ["combatant_info"] = combatant?.DeepClone(),
             ["players"] = players,

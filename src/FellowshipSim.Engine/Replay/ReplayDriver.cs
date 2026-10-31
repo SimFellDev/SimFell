@@ -65,6 +65,7 @@ public sealed class ReplayDriver
         var build = script.Character ?? throw new InvalidOperationException("Replay script has no character.");
         var hero = HeroImporter.Import(build);
         ClassTuningHistory.Apply(hero, script.FightDate);
+        DungeonModifiers.Apply(hero, script.DungeonModifierIds);
         return hero;
     }
 
