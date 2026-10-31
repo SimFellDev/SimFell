@@ -1,7 +1,7 @@
 # Gunde's default action list: FellowSimc's SimC list (apl/gunde/gunde_apl.simc) in SimFell's names.
-# Left out: the Carrion Onslaught legendary (gone from the game), Earthbreaker (a weapon the engine does not have) and
-# the Rend stack checks (the engine does not show Rend to action lists): the Heart Splitter line at 200 Rend stacks goes,
-# and the Slaughter line keeps the rest of its condition.
+# Left out: the Carrion Onslaught legendary's lines (the engine did not have it when the list was made), Earthbreaker (a
+# weapon the engine does not have) and the Rend stack checks (the engine does not show Rend to action lists): the Heart
+# Splitter line at 200 Rend stacks goes, and the Slaughter line keeps the rest of its condition.
 actions.precombat=snapshot_stats
 # Swing the weapon whenever the swing timer allows.
 actions=attack

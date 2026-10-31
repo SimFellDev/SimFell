@@ -133,7 +133,7 @@ public sealed class BuildEditor(CharacterBuild build)
             string key = System.Text.Json.JsonSerializer.Serialize(Build);
             if (key != _totalsFor || _totals == null)
             {
-                _totals = HeroImporter.Import(Build);
+                _totals = HeroImporter.ImportForSheet(Build);
                 _totals.ResetForIteration();
                 _totalsFor = key;
             }
@@ -415,8 +415,9 @@ public sealed class BuildEditor(CharacterBuild build)
     public static IReadOnlyList<string> RemoveUnknown(CharacterBuild build)
     {
         var removed = new List<string>();
-        var tree = CoreCatalog.CreateHero(build.Hero).TalentTreeSlots.Select(s => s.TalentId).ToHashSet();
-        foreach (int id in build.Talents.Where(id => !tree.Contains(id) || CoreCatalog.CreateTalent(id) == null).ToList())
+        // A hero the engine does not have yet keeps every talent of its tree.
+        var tree = BuildHeroes.Create(build.Hero).TalentTreeSlots.Select(s => s.TalentId).ToHashSet();
+        foreach (int id in build.Talents.Where(id => !tree.Contains(id) || BuildHeroes.TalentName(build.Hero, id) == null).ToList())
         {
             build.Talents.Remove(id);
             removed.Add($"talent {id}");
@@ -441,12 +442,15 @@ public sealed class BuildEditor(CharacterBuild build)
             removed.Add($"relic item {build.Relic2ItemId}");
             build.Relic2ItemId = 0;
         }
-        foreach (int id in build.LegendaryItemIds.Where(id => CoreCatalog.CreateLegendary(build.Hero, id) == null).ToList())
+        // A legendary of the hero's the engine does not model stays: a sim lists it as not modeled.
+        foreach (int id in build.LegendaryItemIds.Where(id => BuildHeroes.LegendaryName(build.Hero, id) == null).ToList())
         {
             build.LegendaryItemIds.Remove(id);
             removed.Add($"legendary item {id}");
         }
-        if (build.WeaponAbilityId != 0 && CoreCatalog.CreateWeapon(build.WeaponAbilityId) == null)
+        // A weapon of the hero's the engine does not model stays: a sim lists it as not modeled.
+        if (build.WeaponAbilityId != 0 && CoreCatalog.CreateWeapon(build.WeaponAbilityId) == null
+            && GameHeroData.Weapons.GetValueOrDefault(build.Hero)?.ContainsKey(build.WeaponAbilityId) != true)
         {
             removed.Add($"weapon with ability {build.WeaponAbilityId}");
             build.WeaponAbilityId = 0;

@@ -27,9 +27,16 @@ public static class HeroImporter
         return relicPassive;
     }
 
-    public static Hero Import(CharacterBuild build)
+    public static Hero Import(CharacterBuild build) => Import(build, Catalog.CreateHero(build.Hero));
+
+    /// <summary>
+    /// The build as <see cref="Import"/> makes it, for a hero the engine does not have yet too (<see cref="BuildHeroes"/>):
+    /// its stats and gear for the build editor's character sheet, never a hero to simulate.
+    /// </summary>
+    public static Hero ImportForSheet(CharacterBuild build) => Import(build, BuildHeroes.Create(build.Hero));
+
+    private static Hero Import(CharacterBuild build, Hero hero)
     {
-        var hero = Catalog.CreateHero(build.Hero);
         hero.Name = build.Name;
 
         // Base stats: the gear's, with the hero's base Main Stat and Stamina and the stat enchants' ratings; every other

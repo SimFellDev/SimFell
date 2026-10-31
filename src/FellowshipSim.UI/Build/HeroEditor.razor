@@ -38,6 +38,10 @@
     {
         <Message Kind="State.BuildStatus.Kind">@State.BuildStatus.Text</Message>
     }
+    @if (BuildHeroes.IsBuildOnly(Build.Hero))
+    {
+        <Message Kind="MessageKind.Warning">@Build.Hero is not in the engine yet. You can make, save, export and share this build, but not sim it.</Message>
+    }
     @if (_exportOpen)
     {
         @* The build as a profile, the text Import reads; it follows the build while it shows. *@
@@ -105,12 +109,18 @@
                                     }
                                 </button>
                             }
-                            <span class="group">Not in the engine yet</span>
+                            <span class="group">Build Only: Not in Engine</span>
                             @foreach (string hero in BuildCatalog.GameHeroes.Where(h => !IsSupported(h)))
                             {
-                                <button @key="hero" type="button" role="option" class="hero-option" aria-selected="false" disabled>
+                                bool picked = hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
+                                <button @key="hero" type="button" role="option" class="hero-option @(picked ? "picked" : "")" aria-selected="@(picked ? "true" : "false")"
+                                        @onclick="() => PickHeroFromMenu(hero)">
                                     <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
                                     <span class="option-name">@hero</span>
+                                    @if (picked)
+                                    {
+                                        <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                                    }
                                 </button>
                             }
                         </div>
@@ -208,10 +218,6 @@
                                     @onclick="() => ToggleTalent(t)">
                                 <GameIcon Url="@t.Talent.IconUrl" Size="36" />
                                 <span class="name">@t.Talent.Name</span>
-                                @if (!t.Talent.Modeled)
-                                {
-                                    <span class="badge">not modeled</span>
-                                }
                             </button>
                         }
                     </div>
@@ -236,12 +242,14 @@
                 <div class="chips">
                     @foreach (var l in Catalog.Legendaries)
                     {
-                        bool picked = Editor.Legendary == l.Id;
+                        bool picked = Catalog.LegendaryOption(Editor.Legendary) == l.Id;
+                        // A build-only hero's legendaries are all not modeled: the hero's warning says so once.
+                        bool unmodeled = !l.Modeled && !BuildHeroes.IsBuildOnly(Build.Hero);
                         <button @key="l.Id" type="button" class="chip @(picked ? "picked" : "")" aria-pressed="@picked"
-                                data-tooltip="@(l.Modeled ? null : "Not modeled yet")" @onclick="() => Set(() => Editor.Legendary = picked ? null : l.Id)">
+                                data-tooltip="@(unmodeled ? "Not modeled yet" : null)" @onclick="() => Set(() => Editor.Legendary = picked ? null : l.Id)">
                             <GameIcon Url="@l.IconUrl" Size="24" />
                             @l.Name
-                            @if (!l.Modeled)
+                            @if (unmodeled)
                             {
                                 <span class="badge">not modeled</span>
                             }
@@ -487,7 +495,7 @@
             ? $"No slot left that takes {EnchantSlots.Name(slot)}: take off another enchant to make room"
             : $"No armor slot left for {EnchantSlots.Name(slot)}: stat enchants and gems fill the other pieces first, then armor";
 
-    private static string TalentTitle(TalentOption t) => $"{t.Slot.Code}: {t.Talent.Name}" + (t.Talent.Modeled ? "" : " (not modeled)");
+    private static string TalentTitle(TalentOption t) => $"{t.Slot.Code}: {t.Talent.Name}";
 
     private static string Roman(int row) => row switch { 1 => "I", 2 => "II", 3 => "III", 4 => "IV", 5 => "V", 6 => "VI", _ => row.ToString() };
 

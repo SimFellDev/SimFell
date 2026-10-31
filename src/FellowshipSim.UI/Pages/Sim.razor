@@ -33,7 +33,8 @@
     </nav>
     <div class="run">
         <span class="summary">@Summary()</span>
-        <button type="button" class="run-button" disabled="@(State.Extra == SimExtra.Compare && State.CompareRows.Count == 0)" @onclick="StartAsync">Run sim</button>
+        <button type="button" class="run-button" disabled="@((State.Extra == SimExtra.Compare && State.CompareRows.Count == 0) || BuildHeroes.IsBuildOnly(State.Build.Hero))"
+                data-tooltip="@(BuildHeroes.IsBuildOnly(State.Build.Hero) ? $"{State.Build.Hero} is not in the engine yet" : null)" @onclick="StartAsync">Run sim</button>
     </div>
 </div>
 <Message Kind="State.Status.Kind">@State.Status.Text</Message>
@@ -43,7 +44,7 @@
     {
         case SimTab.Import:
             <LogsSignInPrompt Purpose="to import a hero from a log" />
-            <ImportCard Title="Import Hero" PickHint="Pick a player, then Import to use their build." OnPlayer="ImportPlayerAsync" />
+            <ImportCard Title="Import Hero" PickHint="Pick a player, then Import to use their build." BuildOnlyHeroes="true" OnPlayer="ImportPlayerAsync" />
             <Card Title="Import a .simc profile or share link">
                 <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, and a profile's action list, if it has one, to Advanced.</p>
                 <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
@@ -322,6 +323,11 @@
 
     private async Task StartAsync()
     {
+        if (BuildHeroes.IsBuildOnly(State.Build.Hero))
+        {
+            State.Status = MessageState.Error($"{State.Build.Hero} is not in the engine yet: their builds can be made, saved and shared, but not simmed.");
+            return;
+        }
         if (State.Iterations < 1 || State.DurationSeconds <= 0 || State.Targets < 1)
         {
             State.Status = MessageState.Error("Iterations and targets are at least 1, and the duration is above 0 seconds.");

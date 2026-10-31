@@ -69,11 +69,11 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             {
                 if (hero == null)
                 {
-                    var heroName = Catalog.Heroes.Keys.FirstOrDefault(h => AplNames.Slug(h) == key)
+                    var heroName = BuildHeroes.Names.FirstOrDefault(h => AplNames.Slug(h) == key)
                                    ?? throw new FormatException("the first line names the hero: <hero>=\"<name>\"");
                     build.Hero = heroName;
                     build.Name = value.Trim('"');
-                    hero = Catalog.CreateHero(heroName);
+                    hero = BuildHeroes.Create(heroName);
                     continue;
                 }
                 Read(build, hero, key, value, percents);
@@ -122,7 +122,8 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                 build.SpiritRating = StatDiminishingReturns.ToRating(Percent(value) - StatBlock.BaseSpirit);
                 break;
             case "talents":
-                var tree = hero.TalentTreeSlots.Select(s => Catalog.CreateTalent(s.TalentId)).OfType<Talent>().Select(t => (t.Name, t.Id));
+                var tree = hero.TalentTreeSlots.Select(s => (Name: BuildHeroes.TalentName(build.Hero, s.TalentId), Id: s.TalentId))
+                    .Where(t => t.Name != null).Select(t => (t.Name!, t.Id));
                 foreach (string name in List(value)) build.Talents.Add(IdOf(name, tree, "talent"));
                 break;
             case "aspects": AddAugmentations<Aspect>(build, value, "aspect"); break;
@@ -177,13 +178,15 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             {
                 var options = Options(value);
                 int itemId = (int)Number(options.GetValueOrDefault("id") ?? throw new FormatException("a legendary is <power>,id=<item id>"));
-                var legendary = Catalog.CreateLegendary(build.Hero, itemId) ?? throw new FormatException($"no legendary item {itemId} for {build.Hero}");
-                if (AplNames.Slug(legendary.Name) != options[""]) throw new FormatException($"item {itemId} grants {AplNames.Slug(legendary.Name)}");
+                string legendary = BuildHeroes.LegendaryName(build.Hero, itemId) ?? throw new FormatException($"no legendary item {itemId} for {build.Hero}");
+                if (AplNames.Slug(legendary) != options[""]) throw new FormatException($"item {itemId} grants {AplNames.Slug(legendary)}");
                 build.LegendaryItemIds.Add(itemId);
                 break;
             }
             case "weapon":
+                // A weapon the engine does not model is named by its ability.
                 build.WeaponAbilityId = Catalog.AllWeapons.FirstOrDefault(w => AplNames.Slug(w.Name) == value)?.WeaponAbilityId
+                                        ?? GameHeroData.WeaponAbilityNames.Where(w => AplNames.Slug(w.Value) == value).Select(w => (int?)w.Key).FirstOrDefault()
                                         ?? throw new FormatException($"no weapon '{value}'");
                 break;
             default:
@@ -207,7 +210,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         if (build.StatsFromOldProfile) s.AppendLine("stats_from_old_profile=true");
         if (build.Talents.Count > 0)
         {
-            s.AppendLine($"talents={string.Join('/', build.Talents.Select(id => AplNames.Slug(Catalog.CreateTalent(id)?.Name ?? throw new InvalidOperationException($"Talent {id} is not modeled"))))}");
+            s.AppendLine($"talents={string.Join('/', build.Talents.Select(id => AplNames.Slug(BuildHeroes.TalentName(build.Hero, id) ?? throw new InvalidOperationException($"Talent {id} is not modeled"))))}");
         }
         var augmentations = build.Augmentations
             .Select(a => (Entry: a, Augmentation: Catalog.CreateAugmentation(a.Id, a.Rank) ?? throw new InvalidOperationException($"Augmentation {a.Id} is not in the catalog")))
@@ -248,13 +251,14 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         RelicLine(s, "relic2", build.Relic2ItemId);
         foreach (int itemId in build.LegendaryItemIds)
         {
-            var legendary = Catalog.CreateLegendary(build.Hero, itemId) ?? throw new InvalidOperationException($"Legendary item {itemId} is not in the catalog");
-            s.AppendLine($"legendary={AplNames.Slug(legendary.Name)},id={itemId}");
+            string legendary = BuildHeroes.LegendaryName(build.Hero, itemId) ?? throw new InvalidOperationException($"Legendary item {itemId} is not in the catalog");
+            s.AppendLine($"legendary={AplNames.Slug(legendary)},id={itemId}");
         }
         if (build.WeaponAbilityId != 0)
         {
-            var weapon = Catalog.CreateWeapon(build.WeaponAbilityId) ?? throw new InvalidOperationException($"Weapon ability {build.WeaponAbilityId} is not in the catalog");
-            s.AppendLine($"weapon={AplNames.Slug(weapon.Name)}");
+            string weapon = Catalog.CreateWeapon(build.WeaponAbilityId)?.Name ?? GameHeroData.WeaponAbilityNames.GetValueOrDefault(build.WeaponAbilityId)
+                            ?? throw new InvalidOperationException($"Weapon ability {build.WeaponAbilityId} is not in the catalog");
+            s.AppendLine($"weapon={AplNames.Slug(weapon)}");
         }
         if (ActionList.Length > 0)
         {

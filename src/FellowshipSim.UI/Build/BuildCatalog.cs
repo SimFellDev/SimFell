@@ -8,6 +8,7 @@ using FellowshipSim.Core.Customization.Sigils;
 using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Domain;
+using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.UI.Build;
 
@@ -20,28 +21,53 @@ public sealed class BuildCatalog
     /// <summary>The highest rank of an augmentation or glyph the datamine gives none for.</summary>
     public const int DefaultMaxRank = 4;
 
+    /// <summary>
+    /// Every hero's legendary items in the order the editor shows them: head, chest and legs (the datamine's item records
+    /// 5899 Head, 5898 Chest, 5900 Legs, the same IDs for every hero).
+    /// </summary>
+    public static readonly int[] LegendarySlotOrder = [5899, 5898, 5900];
+
     private static readonly ConcurrentDictionary<string, BuildCatalog> Heroes = new(StringComparer.OrdinalIgnoreCase);
 
     private BuildCatalog(string hero)
     {
         Hero = hero;
-        Talents = Catalog.CreateHero(hero).TalentTreeSlots
+        // The engine's hero, or the game's for one it does not have yet: its talents are all not modeled.
+        var heroClass = BuildHeroes.Create(hero);
+        Talents = heroClass.TalentTreeSlots
             .Select(slot => new TalentOption(slot, Catalog.CreateTalent(slot.TalentId) is { } talent
-                ? new BuildOption(talent.Id, talent.Name, GameIcons.Talents.GetValueOrDefault(talent.Id))
-                : new BuildOption(slot.TalentId, $"Talent {slot.TalentId}", GameIcons.Talents.GetValueOrDefault(slot.TalentId), Modeled: false)))
+                // A talent the engine knows by its combat-log ID (Macabre Stratagem) has its icon by name.
+                ? new BuildOption(talent.Id, talent.Name, GameIcons.Talents.GetValueOrDefault(talent.Id) ?? GameIcons.Names.GetValueOrDefault(talent.Name))
+                : new BuildOption(slot.TalentId, GameHeroData.TalentNames.GetValueOrDefault(slot.TalentId, $"Talent {slot.TalentId}"),
+                    GameIcons.Talents.GetValueOrDefault(slot.TalentId), Modeled: false)))
             .ToList();
-        // The hero's own weapons (four each in the game).
-        Weapons = Catalog.AllWeapons
-            .Where(w => !GameIcons.WeaponHeroes.TryGetValue(w.WeaponAbilityId, out var heroes) || heroes.Contains(hero, StringComparer.OrdinalIgnoreCase))
-            .Select(w =>new BuildOption(w.WeaponAbilityId, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.WeaponAbilityId)))
+        // The hero's own weapons (four each in the game), by the hero's item names; a name the datamine gives two of the
+        // hero's weapons (Rime's An'zhyr staff is a second "Void-touched Conduit") is the engine's weapon's, else its ability's.
+        var weapons = GameHeroData.Weapons.GetValueOrDefault(hero) ?? new Dictionary<int, string>();
+        Weapons = weapons
+            .Select(w => (Id: w.Key, Name: weapons.Values.Count(n => n == w.Value) == 1
+                ? w.Value
+                : Catalog.CreateWeapon(w.Key)?.Name ?? GameHeroData.WeaponAbilityNames.GetValueOrDefault(w.Key, w.Value)))
+            .Select(w => new BuildOption(w.Id, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.Id), Modeled: Catalog.CreateWeapon(w.Id) != null))
             .OrderBy(o => o.Name).ToList();
-        Legendaries = Catalog.GearTypes(hero).Where(t => typeof(Legendary).IsAssignableFrom(t) && !t.IsAbstract)
-            .Select(t => (Legendary)Activator.CreateInstance(t)!)
-            .Where(l => l.ItemIds.Count > 0)
-            // The power's icon, else the hero's legendary item's.
-            .Select(l => new BuildOption(l.ItemIds[0], l.Name,
-                GameIcons.LegendaryPowers.GetValueOrDefault(l.LegendaryPowerId) ?? GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{l.ItemIds[0]}"), l.IsModeled))
-            .OrderBy(o => o.Name).ToList();
+        // The hero's legendaries as the game has them, one per legendary item, each the engine's when it models it; an
+        // engine legendary none of whose items the datamine gives the hero comes by its first item.
+        var gameLegendaries = GameHeroData.Legendaries.GetValueOrDefault(hero) ?? new Dictionary<int, string>();
+        var engineLegendaries = Catalog.Legendaries(hero).Where(l => l.ItemIds.Count > 0).ToList();
+        var legendaries = gameLegendaries.Select(l => (Item: l.Key, Name: l.Value, Engine: Catalog.CreateLegendary(hero, l.Key)))
+            .Concat(engineLegendaries.Where(e => !e.ItemIds.Any(gameLegendaries.ContainsKey)).Select(e => (Item: e.ItemIds[0], e.Name, Engine: (Legendary?)e)))
+            .ToList();
+        // The hero's legendary item's icon, else the first of its other items' with one, else the power's.
+        Legendaries = legendaries
+            .Select(l => new BuildOption(l.Item, l.Engine?.Name ?? l.Name,
+                GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{l.Item}")
+                ?? l.Engine?.ItemIds.Select(id => GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{id}")).FirstOrDefault(icon => icon != null)
+                ?? (l.Engine is { } engine ? GameIcons.LegendaryPowers.GetValueOrDefault(engine.LegendaryPowerId) : null),
+                l.Engine?.IsModeled == true))
+            .OrderBy(o => Array.IndexOf(LegendarySlotOrder, o.Id) is >= 0 and var slot ? slot : LegendarySlotOrder.Length)
+            .ThenBy(o => o.Name).ToList();
+        _legendaryOfItem = legendaries.SelectMany(l => (l.Engine?.ItemIds ?? []).Append(l.Item).Select(id => (Item: id, Option: l.Item)))
+            .DistinctBy(x => x.Item).ToDictionary(x => x.Item, x => x.Option);
         Relics = Catalog.AllRelicPassives
             .SelectMany(r => r.Items.Select(i => new RelicOption(i.Id, i.Name, r.Name)))
             .OrderBy(o => o.Name).ToList();
@@ -52,7 +78,7 @@ public sealed class BuildCatalog
         Aspects = OfKind<Aspect>();
         Sigils = OfKind<Sigil>();
         ProtectiveEnchants = OfKind<ProtectiveEnchant>();
-        var mainStat = Catalog.CreateHero(hero).MainStat;
+        var mainStat = heroClass.MainStat;
         StatEnchants = StatEnchant.All
             .Select(e => new StatEnchantOption(e, e.NameFor(mainStat)))
             .ToList();
@@ -61,7 +87,7 @@ public sealed class BuildCatalog
             .OrderBy(o => o.Name).ToList();
     }
 
-    /// <summary>The catalog of <paramref name="hero"/> (a name in <see cref="Catalog.Heroes"/>).</summary>
+    /// <summary>The catalog of <paramref name="hero"/> (a name in <see cref="BuildHeroes.Names"/>).</summary>
     public static BuildCatalog For(string hero) => Heroes.GetOrAdd(hero, h => new BuildCatalog(h));
 
     public string Hero { get; }
@@ -72,6 +98,12 @@ public sealed class BuildCatalog
     public IReadOnlyList<BuildOption> Weapons { get; }
 
     public IReadOnlyList<BuildOption> Legendaries { get; }
+
+    // Each legendary's option (its item ID) by every item ID it comes on: a saved Vexira's Venom can be the old wristbands, 5225.
+    private readonly Dictionary<int, int> _legendaryOfItem;
+
+    /// <summary>The ID of the <see cref="Legendaries"/> option that legendary item <paramref name="itemId"/> is, or null.</summary>
+    public int? LegendaryOption(int? itemId) => itemId is { } id && _legendaryOfItem.TryGetValue(id, out int option) ? option : null;
 
     public IReadOnlyList<RelicOption> Relics { get; }
 

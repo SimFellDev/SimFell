@@ -1,5 +1,6 @@
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Gunde;
@@ -83,18 +84,38 @@ public class GundeTalentSmokeTests(ITestOutputHelper output)
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
     }
 
-    private static Hero Import(IEnumerable<int> talentIds)
+    /// <summary>
+    /// Carrion Onslaught (Northlander's Wraps): Owed in Blood's casts grant it and Blood Arc deals more than with Bloody
+    /// Mess (Northlander's Helm), which leaves Blood Arc alone; both bring the same legendary stats.
+    /// </summary>
+    [Fact]
+    public void Carrion_Onslaught_Raises_Blood_Arc_Damage()
+    {
+        var (without, _, _) = Run(BaseTalents, 1, legendaryItemIds: [BloodyMess.HelmItemId]);
+        var (with, hero, gained) = Run(BaseTalents, 1, legendaryItemIds: [CarrionOnslaught.WrapsItemId]);
+        Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Legendary"));
+        double before = without.AbilityDpsBreakdown.GetValueOrDefault("Blood Arc");
+        double after = with.AbilityDpsBreakdown.GetValueOrDefault("Blood Arc");
+        output.WriteLine($"Carrion Onslaught: {gained.GetValueOrDefault(CarrionOnslaught.EffectName)} gains, Blood Arc {before:N0} -> {after:N0} DPS, total {without.MeanDps:N0} -> {with.MeanDps:N0}");
+        Assert.True(gained.GetValueOrDefault(CarrionOnslaught.EffectName) > 0);
+        Assert.True(after > before, $"Blood Arc {before:N0} -> {after:N0} DPS");
+    }
+
+    private static Hero Import(IEnumerable<int> talentIds, int[]? legendaryItemIds = null)
     {
         // The Gunde from Y4wpb2f3gc8LqJDX fight 25 (Culex), as the replay imported it.
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "gunde_character.json")))!;
         build.Talents = talentIds.ToList();
+        // The fixture's legendary unless others are given.
+        if (legendaryItemIds != null) build.LegendaryItemIds = [.. legendaryItemIds];
         return HeroImporter.Import(build);
     }
 
-    private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets, int iterations = 10)
+    private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets, int iterations = 10,
+        int[]? legendaryItemIds = null)
     {
-        var hero = Import(talentIds);
+        var hero = Import(talentIds, legendaryItemIds);
         var gained = new Dictionary<string, int>();
         hero.Auras.OnGained += (aura, _, _) => gained[aura.Def.Name] = gained.GetValueOrDefault(aura.Def.Name) + 1;
         // One thread: the simulator builds one hero, the one above.

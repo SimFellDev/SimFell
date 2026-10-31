@@ -47,6 +47,14 @@ unless noted. Only the two Y4wpb2f3gc8LqJDX fights (22 September 2026) are from 
 - **Owed in Blood:** stacks last 90s (45s before patch 0.4.5.0). A pickup at 150 stacks is logged as a refresh with no
   stacks. A replay follows the log's stacks; a sim picks up every feather 0.5s after it appears.
 
+## Legendaries
+
+- **Carrion Onslaught** (Northlander's Wraps, item 5900; cnjfpzmD7ZXakMFH fight 33). The datamine's item names talent 765
+  and no power; the logs show Carrion Onslaught. Owed in Blood's cast grants effect 3256 (one stack) as it consumes its
+  stacks. The next Blood Arc deals 1.2 + 0.02 per stack consumed times its damage (the replay's Blood Arc damage: 1.006
+  of the log's with it, 0.866 without), and swaps 3256 for effect 3257 with a stack per Blood Feather to drop, a third
+  of the stacks consumed (84 -> 28, 51 -> 17, 80 -> 27). It drops 10 at once and 10 more every 2s.
+
 ## Not yet checked against a log
 
 - Ancestral Instinct, Murder of Crows, Raven's Precision, Bloodcraze, Sundered Flesh and Massacre are built from their

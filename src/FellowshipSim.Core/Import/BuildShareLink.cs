@@ -75,8 +75,8 @@ public static class BuildShareLink
         if (end >= 0) rest = rest[..end];
         var parts = rest.Split('.', 3);
         if (parts.Length < 2) throw new FormatException("The share link has no build after its hero.");
-        string hero = Catalog.Heroes.Keys.FirstOrDefault(h => h.Equals(parts[0], StringComparison.OrdinalIgnoreCase))
-                      ?? throw new FormatException($"The share link's hero \"{parts[0]}\" is not one the engine has.");
+        string hero = BuildHeroes.Find(parts[0])
+                      ?? throw new FormatException($"The share link's hero \"{parts[0]}\" is not a hero of the game.");
         var build = FromCode(parts[1]);
         build.Hero = hero;
         build.Name = parts.Length == 3 && parts[2].Length > 0 ? Uri.UnescapeDataString(parts[2]) : hero;

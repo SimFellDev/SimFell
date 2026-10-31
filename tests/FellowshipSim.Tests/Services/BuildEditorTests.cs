@@ -56,6 +56,77 @@ public sealed class BuildEditorTests : IDisposable
     }
 
     [Fact]
+    public void Every_Engine_Heros_Talents_And_Legendaries_Have_Icons()
+    {
+        foreach (string hero in Catalog.Heroes.Keys)
+        {
+            var catalog = BuildCatalog.For(hero);
+            Assert.All(catalog.Talents, t => Assert.True(t.Talent.Icon != null, $"{hero}: {t.Talent.Name}"));
+            Assert.All(catalog.Legendaries, l => Assert.True(l.Icon != null, $"{hero}: {l.Name}"));
+        }
+    }
+
+    /// <summary>
+    /// Every legendary item the datamine gives an engine hero is one of the hero's legendaries, so an imported build keeps
+    /// it.
+    /// </summary>
+    [Fact]
+    public void Every_Legendary_Item_Of_An_Engine_Hero_Is_Its_Legendary()
+    {
+        foreach (string key in GameIcons.LegendaryItems.Keys)
+        {
+            string hero = key.Split(':')[0];
+            if (!Catalog.HasHero(hero)) continue;
+            Assert.True(Catalog.CreateLegendary(hero, int.Parse(key.Split(':')[1])) != null, key);
+        }
+    }
+
+    /// <summary>Every hero has the game's three legendaries, head, chest and legs, each with its legendary item's icon.</summary>
+    [Fact]
+    public void Every_Hero_Has_Its_Legendaries_With_Item_Icons()
+    {
+        foreach (string hero in BuildHeroes.Names)
+        {
+            var legendaries = BuildCatalog.For(hero).Legendaries;
+            // Head, chest, legs.
+            Assert.Equal([5899, 5898, 5900], legendaries.Select(l => l.Id));
+            Assert.All(legendaries, l => Assert.Equal(GameIcons.LegendaryItems[$"{hero}:{l.Id}"], l.Icon));
+        }
+        Assert.Contains(BuildCatalog.For("Ardeos").Legendaries, l => l.Name == "Fire Toad" && l.Modeled);
+        Assert.Contains(BuildCatalog.For("Gunde").Legendaries, l => l.Name == "Carrion Onslaught" && l.Modeled);
+        Assert.All(BuildCatalog.For("Aeona").Legendaries, l => Assert.False(l.Modeled));
+    }
+
+    [Fact]
+    public void A_Legendary_The_Engine_Does_Not_Model_Stays_In_The_Build()
+    {
+        var build = new CharacterBuild { Hero = "Sylvie", Name = "Bloom", PrimaryStat = 161, LegendaryItemIds = [5898] };
+
+        string profile = new SimcProfile(build, "").Format();
+        Assert.Contains("legendary=unyielding_bloom,id=5898", profile);
+        Assert.Equal([5898], SimcProfile.Parse(profile).Build.LegendaryItemIds);
+        Assert.Empty(BuildEditor.RemoveUnknown(build));
+        Assert.Equal(5898, BuildCatalog.For("Sylvie").LegendaryOption(5898));
+    }
+
+    /// <summary>
+    /// A legendary worn on any of its items shows as picked: Lil Angst's Vexira's Venom is item 5900 (mfcJd8T6Mvw4zQqB fight
+    /// 37), its option; a build saved with the old wrist item 5225 shows the same option.
+    /// </summary>
+    [Fact]
+    public void A_Legendary_On_Any_Of_Its_Items_Is_Its_Option()
+    {
+        var catalog = BuildCatalog.For("Mara");
+        var vexiras = Assert.Single(catalog.Legendaries, l => l.Name == "Vexira's Venom");
+
+        Assert.Equal(5900, vexiras.Id);
+        Assert.Equal(vexiras.Id, catalog.LegendaryOption(5900));
+        Assert.Equal(vexiras.Id, catalog.LegendaryOption(5225));
+        Assert.Null(catalog.LegendaryOption(null));
+        Assert.Null(catalog.LegendaryOption(1));
+    }
+
+    [Fact]
     public void Talents_Cost_Their_Rows_Points_And_Stop_At_The_Budget()
     {
         var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));

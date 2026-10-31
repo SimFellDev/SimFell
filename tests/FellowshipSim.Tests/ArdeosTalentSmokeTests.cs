@@ -1,5 +1,6 @@
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Ardeos;
@@ -83,12 +84,34 @@ public class ArdeosTalentSmokeTests(ITestOutputHelper output)
         Assert.True(gained.GetValueOrDefault("Apocalyptic Surge") > 0);
     }
 
-    private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets, int iterations = 10)
+    /// <summary>
+    /// Fire Toad (Pyromancer Helm) turns frogs into toads: Fire Frogs deal more, on one target and on many, than with
+    /// Explosivo (Pyromancer Robe), which leaves frogs alone; both legendaries bring the same legendary stats.
+    /// </summary>
+    [Fact]
+    public void Fire_Toad_Raises_Fire_Frogs_Damage()
+    {
+        foreach (int targets in new[] { 1, 8 })
+        {
+            var (without, _, _) = Run(BaseTalents, targets, legendaryItemIds: [Explosivo.HelmItemId]);
+            var (with, hero, _) = Run(BaseTalents, targets, legendaryItemIds: [FireToad.HelmItemId]);
+            Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Legendary"));
+            double before = without.AbilityDpsBreakdown.GetValueOrDefault("Fire Frogs");
+            double after = with.AbilityDpsBreakdown.GetValueOrDefault("Fire Frogs");
+            output.WriteLine($"Fire Toad on {targets} target(s): Fire Frogs {before:N0} -> {after:N0} DPS, total {without.MeanDps:N0} -> {with.MeanDps:N0}");
+            Assert.True(after > before * 1.2, $"Fire Frogs {before:N0} -> {after:N0} DPS on {targets} target(s)");
+        }
+    }
+
+    private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets, int iterations = 10,
+        int[]? legendaryItemIds = null)
     {
         // The Ardeos from yMAZVJL9hTpFjqbC fight 7, as the replay imported it.
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "ardeos_character.json")))!;
         build.Talents = talentIds.ToList();
+        // The fixture's legendary unless others are given.
+        if (legendaryItemIds != null) build.LegendaryItemIds = [.. legendaryItemIds];
         var hero = HeroImporter.Import(build);
         var gained = new Dictionary<string, int>();
         hero.Auras.OnGained += (aura, _, _) => gained[aura.Def.Name] = gained.GetValueOrDefault(aura.Def.Name) + 1;

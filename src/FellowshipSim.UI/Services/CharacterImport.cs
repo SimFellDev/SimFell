@@ -21,7 +21,7 @@ public sealed class CharacterImport(ReplayLibrary library, LogsSettingsStore set
     {
         var combatant = await CombatantInfoAsync(reportCode, fightId, player.Id, progress, ct)
             ?? throw new InvalidOperationException($"Fight {fightId} has no character information for {player.Name}.");
-        return CharacterReader.FromCombatantInfo(combatant, player.Name, player.Hero);
+        return CharacterReader.FromCombatantInfo(combatant, player.Name, BuildHeroes.Find(player.Hero) ?? player.Hero);
     }
 
     private async Task<System.Text.Json.Nodes.JsonObject?> CombatantInfoAsync(string reportCode, int fightId, int playerId,
