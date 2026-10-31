@@ -58,6 +58,49 @@ public sealed class SimResultLibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Favorite_Is_Never_Dropped_For_Newer_Sims()
+    {
+        var kept = new SimResultLibrary(_store) { Keep = 2 };
+        var day = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc);
+        await kept.SaveAsync(A, Sim("fav", day) with { Favorite = true });
+        foreach (int i in Enumerable.Range(1, 3)) await kept.SaveAsync(A, Sim($"s{i}", day.AddDays(i)));
+
+        Assert.Equal(["s3", "s2", "fav"], (await kept.ListAsync(A)).Select(s => s.Id));
+    }
+
+    [Fact]
+    public async Task A_Sim_Is_Renamed_Favorited_And_Deleted()
+    {
+        var sim = Sim("a1", DateTime.UtcNow);
+        await _results.SaveAsync(A, sim);
+
+        await _results.UpdateAsync(A, SavedSimSummary.Of(sim) with { Title = "renamed", Favorite = true });
+        var read = await _results.GetAsync(A, "a1");
+        Assert.Equal("renamed", read?.Title);
+        Assert.True(read?.Favorite);
+
+        await _results.UpdateAsync(B, SavedSimSummary.Of(sim) with { Title = "theirs" });
+        Assert.Empty(await _results.ListAsync(B));
+
+        await _results.DeleteAsync(B, "a1");
+        Assert.NotNull(await _results.GetAsync(A, "a1"));
+        await _results.DeleteAsync(A, "a1");
+        Assert.Empty(await _results.ListAsync(A));
+        Assert.Empty(Directory.GetFiles(Path.Combine(_data, "visitors", A.Id, "results")));
+    }
+
+    [Fact]
+    public async Task A_Sim_Saved_Before_Summaries_Lists_And_Gets_Its_Summary()
+    {
+        var sim = Sim("old", new DateTime(2026, 10, 22, 0, 0, 0, DateTimeKind.Utc));
+        await _store.WriteAsync(A.Key("results/old.json"), System.Text.Json.JsonSerializer.Serialize(sim, System.Text.Json.JsonSerializerOptions.Web));
+
+        var listed = Assert.Single(await _results.ListAsync(A));
+        Assert.Equal(SavedSimSummary.Of(sim), listed);
+        Assert.True(File.Exists(Path.Combine(_data, "visitors", A.Id, "results", "old.summary.json")));
+    }
+
+    [Fact]
     public async Task A_Visitor_Reads_Only_Their_Own_Sims()
     {
         await _results.SaveAsync(A, Sim("a-sim", DateTime.UtcNow));

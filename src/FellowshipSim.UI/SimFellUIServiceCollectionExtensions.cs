@@ -17,7 +17,7 @@ public static class SimFellUIServiceCollectionExtensions
     /// <see cref="LogsSettingsStore"/>, <see cref="ActionListStore"/>, the <see cref="SimJobQueue"/> with
     /// <paramref name="jobs"/>, <see cref="ReviewJobs"/>, <see cref="ReportLookup"/>, <see cref="SimResultLibrary"/>,
     /// <see cref="VisitorReviews"/>, a <see cref="DiskBlobStore"/> in the data folder when the host registered no
-    /// <see cref="IBlobStore"/> (and a <see cref="SimResultLibrary"/> that keeps every sim when it registered none), and for one circuit or window the <see cref="VisitorJobs"/> and each page's state. The host
+    /// <see cref="IBlobStore"/> (and a <see cref="SimResultLibrary"/> keeping its default when it registered none), and for one circuit or window the <see cref="VisitorJobs"/> and each page's state. The host
     /// registers the <see cref="Engine.ISimEngine"/>, the <see cref="IReviewPages"/>, the <see cref="Visitor"/> and its
     /// shell with <see cref="AddSimFellWebShell"/> or <see cref="AddSimFellDesktopShell"/>.
     /// </summary>

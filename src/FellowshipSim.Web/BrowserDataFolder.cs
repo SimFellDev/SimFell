@@ -7,16 +7,14 @@ namespace FellowshipSim.Web;
 /// every store that reads and writes the folder (reviews, settings, builds, action lists, sims) runs as it does on a
 /// computer; storage.js keeps a copy of each file in the browser's IndexedDB. The copies come back at start
 /// (<see cref="RestoreAsync"/>), and a changed or removed file is copied every couple of seconds (<see cref="KeepSaving"/>).
-/// The browser keeps the newest <see cref="KeptSims"/> sims (<see cref="FellowshipSim.UI.Services.SimResultLibrary.Keep"/>)
-/// and <see cref="KeptReviews"/> reviews. It keeps no downloaded fight and no replay script here (<see cref="NotKept"/>): a
+/// The browser keeps the newest <see cref="FellowshipSim.UI.Services.SimResultLibrary.DefaultKeep"/> sims besides the
+/// favorites, as every app does, and <see cref="KeptReviews"/> reviews. It keeps no downloaded fight and no replay script here (<see cref="NotKept"/>): a
 /// fight is hundreds of MB once read, so a sim worker downloads and replays it (<see cref="WorkerFightReviewer"/>), and
 /// keeps the newest fights in a store of its own that the page never loads (sim/fights.js).
 /// </summary>
 public sealed class BrowserDataFolder(IJSRuntime js)
 {
     public const string Root = "/simfell";
-
-    public const int KeptSims = 20;
 
     /// <summary>Reviews kept: each page is several MB, all of it in the page's memory.</summary>
     public const int KeptReviews = 10;
