@@ -74,7 +74,7 @@ public class MonteCarloSeedTests
 
     /// <summary>
     /// Totals of fights 1-4 of each hero's default action list, captured after Rime replay accuracy v1 (#8); the other
-    /// heroes' again with their lists from FellowSimc's SimC lists. Re-pinned for the engine fixes of the functional tests branch (cooldown rates,
+    /// heroes' again with their lists from FellowSimc's SimC lists. Re-pinned for the engine fixes of the functional tests branch (cooldown rates, the 31/30 and 29/30 global cooldown of Detonate,
     /// Detonate and Cinders, Event Horizon, Skylit Grace, Brave Machinations and Nature's Fury, weapon cooldowns, gems, Amethyst Splinters).
     /// </summary>
     [Theory]

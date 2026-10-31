@@ -132,6 +132,7 @@ public static class HeroImporter
             hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
         }
 
+        hero.FinalizeBuild();
         return hero;
     }
 }

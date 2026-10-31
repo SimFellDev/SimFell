@@ -231,7 +231,7 @@ public abstract class Ability
     {
         // As ResolveCast with an effect, without making a delegate for each cast.
         var outer = CurrentCast;
-        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source);
+        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source, ctx);
         try
         {
             Execute(ctx, target);
@@ -246,7 +246,7 @@ public abstract class Ability
     protected void ResolveCast(SimulationContext ctx, EnemyTarget target, object? source, Action effect)
     {
         var outer = CurrentCast;
-        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source);
+        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source, ctx);
         try
         {
             effect();

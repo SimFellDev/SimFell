@@ -35,8 +35,8 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
   an Incinerate effect that had ended). The hits crit on their own, and the effects keep ticking.
 - The hits take no multiplier of their own: the effects' damage already has every damage bonus. The logged Detonate
   damage over the replay's is 0.98-1.07 of the same ratio for the effects it detonates (five fights, mean 1.03).
-- Detonate's global cooldown is 29 server frames (0.967s), not hasted. Across the five fights, 896 Detonates in a row
-  come 0.96-0.97s apart at every haste from 0.2 to 1.3. The other instants take the hero's 1.5s global cooldown, hasted.
+- Detonate's global cooldown is not hasted: 31 server frames (1.033s), or 29 (0.967s) when a legendary item is worn (its +10%
+  cooldown recovery; in game). Across the five fights, 896 Detonates in a row come 0.96-0.97s apart at every haste from 0.2 to 1.3. The other instants take the hero's 1.5s global cooldown, hasted.
 - On many enemies the server sends the hits one frame at a time, so they queue up and land up to several seconds late
   (fight 7: 89 hits in the 5.1s after the last cast of a pull).
 

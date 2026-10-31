@@ -361,9 +361,9 @@ public abstract class Hero : Actor
     }
 
     /// <summary>Lets talents add to a cast about to resolve (<see cref="OnCastResolving"/>); see <see cref="Ability.ResolveCast(SimulationContext, EnemyTarget, object?)"/>.</summary>
-    public CastBonus PrepareCast(Ability ability, EnemyTarget? target, SimTime now, object? source = null)
+    public CastBonus PrepareCast(Ability ability, EnemyTarget? target, SimTime now, object? source = null, SimulationContext? ctx = null)
     {
-        var cast = new CastBonus(ability, target, now, source);
+        var cast = new CastBonus(ability, target, now, source, ctx);
         OnCastResolving?.Invoke(cast);
         return cast;
     }
@@ -658,6 +658,12 @@ public abstract class Hero : Actor
     }
 
     public abstract void Initialize();
+
+    /// <summary>
+    /// The last step of building the hero (<see cref="Import.HeroImporter"/>), once its talents, gear and legendaries are bound: what
+    /// depends on the whole build is set here (Ardeos: the global cooldown a legendary item shortens).
+    /// </summary>
+    public virtual void FinalizeBuild() { }
     public abstract void ResetForIteration();
 
     public Ability? GetAbility(string name) =>

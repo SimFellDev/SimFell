@@ -5,11 +5,14 @@ namespace FellowshipSim.Core.Domain;
 /// critically strikes" checks <see cref="Ability"/>, uses up its buff and adds to <see cref="CritChance"/>. Every hit the
 /// ability deals while the cast resolves gets what was added.
 /// </summary>
-public sealed class CastBonus(Ability ability, EnemyTarget? target, SimTime time, object? source)
+public sealed class CastBonus(Ability ability, EnemyTarget? target, SimTime time, object? source, SimulationContext? ctx = null)
 {
     public Ability Ability { get; } = ability;
     public EnemyTarget? Target { get; } = target;
     public SimTime Time { get; } = time;
+
+    /// <summary>The fight the cast is in (for effects that keep state between casts and forget it in a new fight).</summary>
+    public SimulationContext? SimContext { get; } = ctx;
 
     /// <summary>What cast it for free (e.g. the talent whose proc it is), or null for a cast the hero made.</summary>
     public object? Source { get; } = source;
