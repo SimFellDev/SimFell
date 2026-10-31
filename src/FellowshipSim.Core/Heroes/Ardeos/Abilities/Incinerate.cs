@@ -18,12 +18,18 @@ public class Incinerate : ArdeosAbility
     public const double TargetThreshold = 8;
     public const double ExtensionSeconds = 1.5;
 
+    /// <summary>Game data globalCooldown 1, hasted (against 1.5 for Fire Ball).</summary>
+    public const double GlobalCooldown = 1.0;
+
     public IncinerateDot Dot { get; }
 
     public Incinerate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
     {
         BaseCoefficient = Coefficient;
         CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        GlobalCooldownSeconds = GlobalCooldown;
+        // UNVERIFIED: castable while the global cooldown runs (in-game play); the codex record has no flag for it.
+        UsableDuringGcd = true;
         SetChannel(ChannelSeconds, TickPeriodSeconds);
         // Combat logs: the first hits come one server frame after the channel starts (yMAZVJL9hTpFjqbC fight 7).
         ChannelTicksOnStart = true;

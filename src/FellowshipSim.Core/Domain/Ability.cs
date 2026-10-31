@@ -36,6 +36,12 @@ public abstract class Ability
     public bool IgnoresGcd { get; protected set; } = false;
 
     /// <summary>
+    /// Whether this ability can be cast while the global cooldown runs. Unlike <see cref="IgnoresGcd"/> it still waits for
+    /// a cast or channel to end and starts its own global cooldown.
+    /// </summary>
+    public bool UsableDuringGcd { get; protected set; }
+
+    /// <summary>
     /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
     /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
     /// </summary>

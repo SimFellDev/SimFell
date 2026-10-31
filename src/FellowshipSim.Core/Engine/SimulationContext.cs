@@ -231,7 +231,7 @@ public class SimulationContext
         if (!ability.IgnoresGcd)
         {
             double left = (hero.GlobalCooldownEndTime - CurrentTime).TotalSeconds;
-            if (left > GlobalCooldownToleranceSeconds && !force)
+            if (left > GlobalCooldownToleranceSeconds && !force && !ability.UsableDuringGcd)
             {
                 return CastAttempt.Rejected($"on global cooldown ({left:F2}s remaining)");
             }

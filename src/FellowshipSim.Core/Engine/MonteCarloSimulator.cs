@@ -251,15 +251,23 @@ public class MonteCarloSimulator
 
         // Main loop: whenever the hero is free to act, run the first ready APL action, then let the
         // event queue carry time forward to the next decision point.
+        bool castsDuringGcd = hero.Abilities.Any(a => a.UsableDuringGcd);
         while (ctx.CurrentTime < duration)
         {
-            bool acted = IsFreeToAct(hero, ctx) && worker.Program.TryAct(ctx);
+            bool acted = IsFreeToAct(hero, ctx, castsDuringGcd) && worker.Program.TryAct(ctx);
 
             var next = NextDecisionTime(hero);
             if (!acted && next <= ctx.CurrentTime)
             {
                 // Nothing was cast: decide again at the next event or when something the action list reads changes.
                 next = worker.Program.NextDecision(ctx);
+            }
+            else if (castsDuringGcd && OnGcdOnly(hero, ctx))
+            {
+                // An ability usable during the global cooldown can go now, after the cast that started it, or once it
+                // becomes ready before the global cooldown ends.
+                var decision = acted ? ctx.CurrentTime : worker.Program.NextDecision(ctx);
+                if (decision < next) next = decision;
             }
             ctx.RunUntil(next < duration ? next : duration);
         }
@@ -275,8 +283,14 @@ public class MonteCarloSimulator
         return ctx.TotalDamage;
     }
 
-    private static bool IsFreeToAct(Hero hero, SimulationContext ctx) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime >= hero.GlobalCooldownEndTime;
+    // While the global cooldown runs, a hero with an ability usable during it acts too: the others refuse
+    // (SimulationContext.Activate).
+    private static bool IsFreeToAct(Hero hero, SimulationContext ctx, bool castsDuringGcd) =>
+        hero.CurrentCast == null && hero.CurrentChannel == null && (castsDuringGcd || ctx.CurrentTime >= hero.GlobalCooldownEndTime);
+
+    // The hero is held by the global cooldown alone.
+    private static bool OnGcdOnly(Hero hero, SimulationContext ctx) =>
+        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime < hero.GlobalCooldownEndTime;
 
     private static SimTime NextDecisionTime(Hero hero)
     {
