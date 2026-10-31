@@ -10,6 +10,19 @@
   color: var(--bad);
 }
 
+/* The accent button, as Run sim and Use this profile are: sharing a build is a feature to notice. At the toolbar's end,
+   apart from the rest. */
+.toolbar .share-button {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-button svg {
+  flex: none;
+}
+
 /* Over the bottom of the window, the width of the page's content, while the build has changes not saved. */
 .unsaved {
   position: fixed;
@@ -803,6 +816,13 @@
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
   resize: vertical;
+}
+
+.export input.share-link {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
 }
 
 /* A gear card's count: the armor's (or all gear's) with the room left, and the weapon's tree under it. */

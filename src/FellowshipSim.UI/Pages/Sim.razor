@@ -2,6 +2,7 @@
 @using System.Globalization
 @using FellowshipSim.Core.APL
 @using FellowshipSim.Core.Import
+@using Microsoft.JSInterop
 @inject ISimEngine Engine
 @inject VisitorJobs Jobs
 @inject SimPageState State
@@ -11,6 +12,7 @@
 @inject IAppViews Views
 @inject SimResultLibrary Results
 @inject ProfileStore Profiles
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Sim - SimFell</PageTitle>
@@ -42,8 +44,8 @@
         case SimTab.Import:
             <LogsSignInPrompt Purpose="to import a hero from a log" />
             <ImportCard Title="Import Hero" PickHint="Pick a player, then Import to use their build." OnPlayer="ImportPlayerAsync" />
-            <Card Title="Import a .simc profile">
-                <p class="hint">Load a <code>.simc</code> file or paste its text. Its build goes to the Hero tab, and its action list, if it has one, to Advanced.</p>
+            <Card Title="Import a .simc profile or share link">
+                <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, and a profile's action list, if it has one, to Advanced.</p>
                 <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
                 <textarea class="profile" rows="10" spellcheck="false" placeholder='rime="name"' @bind="State.ProfileText"></textarea>
                 <div class="row actions">
@@ -70,7 +72,7 @@
                     </label>
                     <label>
                         Threads (of @MaxThreads)
-                        <input type="number" min="1" max="@MaxThreads" step="1" @bind:get="State.Threads" @bind:set="v => State.Threads = Math.Clamp(v, 1, MaxThreads)" />
+                        <input type="number" min="1" max="@MaxThreads" step="1" @bind:get="State.Threads" @bind:set="SetThreadsAsync" />
                     </label>
                 </div>
             </Card>
@@ -128,6 +130,42 @@
         catch (Exception e)
         {
             State.Status = MessageState.Error(e.Message);
+        }
+    }
+
+    /// <summary>The browser's storage key of the visitor's threads.</summary>
+    private const string ThreadsKey = "sim-threads";
+
+    // The threads the browser keeps, read once for the circuit or window; the default when it has none or its storage is
+    // unavailable.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || State.ThreadsRestored) return;
+        State.ThreadsRestored = true;
+        try
+        {
+            if (int.TryParse(await JS.InvokeAsync<string?>("localStorage.getItem", ThreadsKey), out int threads))
+            {
+                State.Threads = Math.Clamp(threads, 1, MaxThreads);
+                StateHasChanged();
+            }
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The default stays.
+        }
+    }
+
+    private async Task SetThreadsAsync(int threads)
+    {
+        State.Threads = Math.Clamp(threads, 1, MaxThreads);
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", ThreadsKey, State.Threads.ToString(CultureInfo.InvariantCulture));
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The choice lasts until the page reloads.
         }
     }
 
@@ -251,6 +289,11 @@
     {
         try
         {
+            if (BuildShareLink.TryRead(State.ProfileText) is { } shared)
+            {
+                UseBuild(shared, "the share link");
+                return Task.CompletedTask;
+            }
             var profile = SimcProfile.Parse(State.ProfileText);
             if (profile.ActionList.Trim().Length > 0)
             {
@@ -267,16 +310,7 @@
         return Task.CompletedTask;
     }
 
-    private void UseBuild(CharacterBuild build, string from)
-    {
-        var removed = BuildEditor.RemoveUnknown(build);
-        State.Editor = new BuildEditor(build);
-        State.SavedName = "";
-        State.MarkBuildClean();
-        State.ImportStatus = MessageState.Ok($"Using the build of {from}." + (removed.Count > 0 ? $" Left out (not in the engine): {string.Join(", ", removed)}." : ""));
-        State.BuildStatus = State.ImportStatus;
-        State.Tab = SimTab.Hero;
-    }
+    private void UseBuild(CharacterBuild build, string from) => State.UseBuild(build, from);
 
     // The fights every run of a sim has.
     private SimSettings Settings() => new(State.Iterations, State.DurationSeconds, State.Targets,

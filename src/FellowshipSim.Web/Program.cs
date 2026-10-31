@@ -22,8 +22,10 @@ builder.Services.AddSingleton(s => new SimResultLibrary(s.GetRequiredService<IBl
 builder.Services.AddSimFellUI(BrowserDataFolder.Root).AddSimFellWebShell();
 
 var host = builder.Build();
-// A sim's threads are the sim workers: one per core but the page's.
-SimThreads.Available = SimThreads.Default = await host.Services.GetRequiredService<SimWorkerPool>().SizeAsync();
+// A sim's threads are the sim workers: one per core but the page's. A new sim takes half the cores.
+var pool = host.Services.GetRequiredService<SimWorkerPool>();
+SimThreads.Available = await pool.SizeAsync();
+SimThreads.Default = Math.Min(SimThreads.Available, SimThreads.HalfOf(await pool.CoresAsync()));
 var data = host.Services.GetRequiredService<BrowserDataFolder>();
 await data.RestoreAsync();
 data.KeepSaving();

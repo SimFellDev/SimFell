@@ -60,7 +60,22 @@ public sealed class SimPageState
     /// <summary>Puts back the build as it was last loaded, saved or started anew.</summary>
     public void DiscardBuildEdits() => Editor = new BuildEditor(SimcProfile.Parse(_cleanProfile).Build);
 
-    /// <summary>A .simc profile pasted on the Import tab.</summary>
+    /// <summary>
+    /// Edits <paramref name="build"/> from now on (a build imported <paramref name="from"/> somewhere), without what the
+    /// engine does not have, and shows the Hero tab.
+    /// </summary>
+    public void UseBuild(CharacterBuild build, string from)
+    {
+        var removed = BuildEditor.RemoveUnknown(build);
+        Editor = new BuildEditor(build);
+        SavedName = "";
+        MarkBuildClean();
+        ImportStatus = MessageState.Ok($"Using the build of {from}." + (removed.Count > 0 ? $" Left out (not in the engine): {string.Join(", ", removed)}." : ""));
+        BuildStatus = ImportStatus;
+        Tab = SimTab.Hero;
+    }
+
+    /// <summary>A .simc profile or a build's share link pasted on the Import tab.</summary>
     public string ProfileText { get; set; } = "";
 
     public MessageState ImportStatus { get; set; } = MessageState.None;
@@ -96,8 +111,11 @@ public sealed class SimPageState
 
     public FinderRanks FinderRanks { get; set; } = FinderRanks.NextRank;
 
-    /// <summary>Threads a sim runs on: at first <see cref="SimThreads.Default"/>.</summary>
+    /// <summary>Threads a sim runs on: at first <see cref="SimThreads.Default"/>, until the browser's stored choice is read.</summary>
     public int Threads { get; set; } = SimThreads.Default;
+
+    /// <summary>The browser's stored choice of <see cref="Threads"/> has been read (once for the circuit or window).</summary>
+    public bool ThreadsRestored { get; set; }
 
     /// <summary>The action list picked, as kept/hero/name; empty for one that came with an imported profile.</summary>
     public string ActionListValue { get; set; } = $"builtin/Rime/{Core.APL.DefaultActionLists.DefaultName}";

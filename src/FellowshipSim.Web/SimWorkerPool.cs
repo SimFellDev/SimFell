@@ -20,6 +20,9 @@ public sealed class SimWorkerPool(IJSRuntime js)
     /// <summary>The workers a sim can use: the cores but the page's, up to the pool's most.</summary>
     public async Task<int> SizeAsync() => await (await PoolAsync()).InvokeAsync<int>("size");
 
+    /// <summary>The browser's logical processors.</summary>
+    public async Task<int> CoresAsync() => await (await PoolAsync()).InvokeAsync<int>("cores");
+
     /// <summary>
     /// Runs a sim's <paramref name="chunkCount"/> chunks on up to <paramref name="workers"/> workers (all when null) and
     /// returns its result's JSON. <paramref name="chunkDone"/> hears the count of chunks done as each completes.
