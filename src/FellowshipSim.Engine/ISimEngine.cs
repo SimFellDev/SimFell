@@ -1,4 +1,5 @@
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
 using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Engine;
@@ -47,4 +48,12 @@ public interface ISimEngine
     /// </summary>
     Task<SimResult> SimulateAsync(SimcProfile profile, SimSettings settings, IProgress<SimProgress>? progress = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// The first fight of a sim of <paramref name="profile"/> with <paramref name="settings"/> (seed
+    /// <see cref="SimSettings.FirstSeed"/>), with every decision of its action list: the hero and enemies, each step's
+    /// values and the cast. It travels as JSON in <see cref="SimChunks.Json"/>. An action list outside the grammar, or
+    /// naming an ability the hero does not have, throws <see cref="SimEngineException"/>.
+    /// </summary>
+    Task<AplFightTrace> TraceFightAsync(SimcProfile profile, SimSettings settings, CancellationToken ct = default);
 }

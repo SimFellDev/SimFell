@@ -6,7 +6,7 @@ namespace FellowshipSim.UI.Services;
 /// A finished sim as saved in the data folder: its job's ID and title, the profile it ran, its settings and its DPS. A
 /// compare or finder sim also has <see cref="Runs"/>, the first of them the baseline; <see cref="Profile"/> and
 /// <see cref="Result"/> are then that first run's. A <see cref="Favorite"/> stays when a library that keeps some drops
-/// the oldest.
+/// the oldest. <see cref="Settings"/> are the sim's settings, null for a sim saved before they were kept.
 /// </summary>
 public sealed record SavedSim(
     string Id,
@@ -18,7 +18,8 @@ public sealed record SavedSim(
     SimResult Result,
     DateTime CreatedAt,
     IReadOnlyList<SimRun>? Runs = null,
-    bool Favorite = false);
+    bool Favorite = false,
+    SimSettings? Settings = null);
 
 /// <summary>
 /// One run of a compare or finder sim: what it ran (<see cref="Label"/>, then <see cref="Detail"/>), its hero, its action

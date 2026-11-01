@@ -210,6 +210,7 @@ public static class AplParser
             }
 
             if (action == null) continue;
+            action.LineNumber = lineNumber;
             if (!lists.TryGetValue(syntax.List, out var actions))
             {
                 lists[syntax.List] = actions = [];

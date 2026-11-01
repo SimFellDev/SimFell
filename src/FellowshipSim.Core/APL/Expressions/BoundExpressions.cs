@@ -382,6 +382,9 @@ internal sealed class BoundVariables
 
     public BoundVariableSlot Slot(string name) =>
         _slots.TryGetValue(name, out var slot) ? slot : _slots[name] = new BoundVariableSlot();
+
+    /// <summary>Each variable by name.</summary>
+    public IEnumerable<KeyValuePair<string, BoundVariableSlot>> Slots => _slots;
 }
 
 /// <summary>

@@ -1,0 +1,95 @@
+.step {
+  margin-left: calc(var(--depth) * 20px);
+  border-left: 2px solid var(--border);
+}
+
+.step.cast {
+  border-left-color: var(--accent);
+  background: var(--selected);
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-weight: normal;
+}
+
+.line:hover:not(:disabled) {
+  background: var(--row-hover);
+}
+
+.line:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.number {
+  color: var(--muted);
+  font: 12px var(--code-font);
+  text-align: right;
+}
+
+.text {
+  font: 13px/1.5 var(--code-font);
+  overflow-wrap: anywhere;
+}
+
+.outcome {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.cast .outcome {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.passed .outcome {
+  color: var(--text);
+}
+
+.detail {
+  padding: 4px 10px 10px calc(3ch + 20px);
+}
+
+.candidates {
+  margin: 4px 0 10px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.candidates caption {
+  text-align: left;
+  color: var(--muted);
+  font: 12px var(--code-font);
+  padding-bottom: 4px;
+}
+
+.candidates th,
+.candidates td {
+  padding: 2px 16px 2px 0;
+  text-align: left;
+}
+
+.candidates th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.candidates .value {
+  font-family: var(--code-font);
+}
+
+.candidates .picked td {
+  color: var(--heading);
+}

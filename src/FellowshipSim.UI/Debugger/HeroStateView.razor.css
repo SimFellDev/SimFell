@@ -1,0 +1,47 @@
+.state {
+  min-width: 0;
+}
+
+.heading {
+  margin: 14px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.heading:first-child {
+  margin-top: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  padding: 2px 12px 2px 0;
+  text-align: left;
+  font-weight: normal;
+}
+
+td {
+  padding: 2px 0;
+  text-align: right;
+  font-family: var(--code-font);
+  white-space: nowrap;
+}
+
+.waiting td {
+  color: var(--muted);
+}
+
+.enemy {
+  margin-bottom: 10px;
+}
+
+.name {
+  margin: 0 0 4px;
+}

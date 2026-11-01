@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine.Replay;
 using FellowshipSim.Engine.Services;
@@ -71,5 +72,13 @@ public sealed class LocalSimEngine : ISimEngine
                 progress: progress == null ? null : completed => progress.Report(new SimProgress(completed, settings.Iterations)),
                 cancellationToken: ct, fight: settings.Fight);
             return SimResult.From(result);
+        }, ct);
+
+    public Task<AplFightTrace> TraceFightAsync(SimcProfile profile, SimSettings settings, CancellationToken ct = default) =>
+        Task.Run(() =>
+        {
+            SimChunks.CheckDungeon(settings);
+            return SimChunks.NewSimulator(profile).TraceFight(0, SimTime.FromSeconds(settings.DurationSeconds), settings.TargetCount,
+                settings.FirstSeed, settings.Fight);
         }, ct);
 }

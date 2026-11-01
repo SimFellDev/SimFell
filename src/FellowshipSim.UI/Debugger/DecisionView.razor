@@ -1,0 +1,84 @@
+@inject AplDebuggerState State
+@* The decision on show: the controls to step through the fight, the action lines it read and the hero at its time. *@
+@if (State.Trace is { } trace && State.Decision is { } decision)
+{
+    <Card Title="Decisions" Count="@($"{State.Index + 1} / {trace.Decisions.Count}")" CountTitle="Decision on show, of the fight's decisions">
+        <div class="stepper" tabindex="0" aria-label="Decision controls; the left and right arrow keys step" @onkeydown="OnKey">
+            <div class="row buttons">
+                <button type="button" class="secondary-button" disabled="@(State.Index == 0)" @onclick="() => State.Go(0)">First</button>
+                <button type="button" class="secondary-button" disabled="@(State.NextCast(-1) == null)" @onclick="() => GoCast(-1)">Previous cast</button>
+                <button type="button" class="secondary-button" disabled="@(State.Index == 0)" @onclick="() => State.Go(State.Index - 1)">Previous</button>
+                <button type="button" disabled="@(State.Index == trace.Decisions.Count - 1)" @onclick="() => State.Go(State.Index + 1)">Next</button>
+                <button type="button" class="secondary-button" disabled="@(State.NextCast(1) == null)" @onclick="() => GoCast(1)">Next cast</button>
+                <button type="button" class="secondary-button" disabled="@(State.Index == trace.Decisions.Count - 1)" @onclick="() => State.Go(trace.Decisions.Count - 1)">Last</button>
+            </div>
+            <label class="go-to">
+                Go to (s or m:ss)
+                <input type="text" inputmode="decimal" placeholder="2:18" @bind="_time" @bind:event="oninput" @onkeydown="OnTimeKey" @onkeydown:stopPropagation />
+            </label>
+            <input class="slider" type="range" min="0" max="@(trace.Decisions.Count - 1)" aria-label="Decision"
+                   @bind:get="State.Index" @bind:set="State.Go" @bind:event="oninput" />
+        </div>
+        <p class="summary">
+            <span class="time">@AplValues.Seconds(decision.Time)</span>
+            @if (decision.Cast is { } cast)
+            {
+                <span>Casts <strong>@cast</strong>@(decision.Target is { } target ? $" at {target}" : "")</span>
+            }
+            else
+            {
+                <span class="meta">Casts nothing: the next decision is at the next event or change.</span>
+            }
+            <span class="meta">@trace.Hero, @State.TraceBuild</span>
+        </p>
+        <div class="layout">
+            <section class="steps" aria-label="Action lines read">
+                <h3 class="heading">Action lines read</h3>
+                @for (int i = 0; i < decision.Steps.Count; i++)
+                {
+                    var step = decision.Steps[i];
+                    <StepRow @key="(State.Index, i)" Step="step" Line="trace.Lines[step.Line]" Open="State.IsOpen(step.Line)"
+                             OnToggle="() => State.Toggle(step.Line)" />
+                }
+                @if (decision.Steps.Count == 0)
+                {
+                    <p class="meta">No action line was read.</p>
+                }
+            </section>
+            <HeroStateView Value="decision.State" />
+        </div>
+    </Card>
+}
+
+@code {
+    private string _time = "";
+
+    // Seconds ("138", "138.5") or minutes and seconds ("2:18").
+    private static double? Seconds(string text)
+    {
+        var parts = text.Trim().Split(':');
+        var c = System.Globalization.CultureInfo.InvariantCulture;
+        if (parts.Length == 1 && double.TryParse(parts[0], c, out double s)) return s;
+        if (parts.Length == 2 && int.TryParse(parts[0], c, out int m) && double.TryParse(parts[1], c, out double ms)) return m * 60 + ms;
+        return null;
+    }
+
+    private void OnTimeKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && Seconds(_time) is { } seconds) State.GoToTime(seconds);
+    }
+
+    private void GoCast(int direction)
+    {
+        if (State.NextCast(direction) is { } index) State.Go(index);
+    }
+
+    private void OnKey(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowLeft": State.Go(State.Index - 1); break;
+            case "ArrowRight": State.Go(State.Index + 1); break;
+        }
+    }
+}

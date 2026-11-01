@@ -58,6 +58,11 @@ public sealed class DesktopTabs : IAppViews
 
     public void ShowPage(AppPage page) => Select(_tabs.First(t => t.Page == page));
 
+    public void ShowDebugger() => Open(new DesktopTab(DebuggerKey, DesktopTabKind.Debugger, AppPage.AplDebugger.Title));
+
+    // The APL Debugger has one tab.
+    private const string DebuggerKey = "debugger";
+
     public void ShowJob(SimJob job) => Open(new DesktopTab(JobKey(job.Id), DesktopTabKind.Job, job.Title, Job: job));
 
     public void ShowSavedSim(SavedSim sim) => Open(new DesktopTab(JobKey(sim.Id), DesktopTabKind.Job, sim.Title, SavedSim: sim));

@@ -9,11 +9,11 @@
     </div>
     @if (Sim.Runs is { Count: > 0 } runs)
     {
-        <RunsResult Runs="runs" @bind-Report="_report" />
+        <RunsResult Runs="runs" Settings="Sim.Settings" @bind-Report="_report" />
     }
     else
     {
-        <SimJobResult Result="Sim.Result" Title="@Sim.Title" />
+        <SimJobResult Result="Sim.Result" Title="@Sim.Title" Profile="@Sim.Profile" Settings="Sim.Settings" />
     }
 </Card>
 

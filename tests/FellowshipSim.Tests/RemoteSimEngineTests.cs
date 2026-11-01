@@ -121,6 +121,18 @@ public sealed class RemoteSimEngineTests : IAsyncLifetime
         var profile = SimcProfile.Parse(Profile) with { ActionList = "actions+=/not_an_ability\n" };
         var e = await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(profile, new SimSettings(1, 10)));
         Assert.Contains("not_an_ability", e.Message);
+        e = await Assert.ThrowsAsync<SimEngineException>(() => _engine.TraceFightAsync(profile, new SimSettings(1, 10)));
+        Assert.Contains("not_an_ability", e.Message);
+    }
+
+    [Fact]
+    public async Task A_Traced_Fight_Is_The_Engines()
+    {
+        var settings = new SimSettings(Iterations: 1, DurationSeconds: 30, TargetCount: 2);
+        var local = await _local.TraceFightAsync(SimcProfile.Parse(Profile), settings);
+        var remote = await _engine.TraceFightAsync(SimcProfile.Parse(Profile), settings);
+
+        Assert.Equal(JsonSerializer.Serialize(local, SimChunks.Json), JsonSerializer.Serialize(remote, SimChunks.Json));
     }
 
     [Fact]

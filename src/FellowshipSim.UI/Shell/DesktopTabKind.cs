@@ -7,4 +7,7 @@ public enum DesktopTabKind
     Page,
     Job,
     Review,
+
+    /// <summary>The APL Debugger, opened from a sim result or the APL Editor.</summary>
+    Debugger,
 }

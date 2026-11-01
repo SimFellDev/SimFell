@@ -57,6 +57,26 @@ public sealed class SimController(ISimEngine engine, ILogger<SimController> log)
         await WriteLine(last, ct);
     }
 
+    /// <summary>
+    /// The first fight of a sim of the request's profile with every decision of its action list, as JSON in
+    /// <see cref="SimChunks.Json"/>. A request with no duration, or an action list the engine cannot run, is refused (400).
+    /// </summary>
+    [HttpPost("sims/trace")]
+    public async Task<IActionResult> Trace([FromBody] SimRequest request, CancellationToken ct)
+    {
+        if (request.Settings.DurationSeconds <= 0) return BadRequest(new { error = "A fight needs a duration above 0 seconds." });
+        try
+        {
+            var trace = await engine.TraceFightAsync(request.Profile, request.Settings, ct);
+            return Content(JsonSerializer.Serialize(trace, SimChunks.Json), "application/json");
+        }
+        catch (SimEngineException e)
+        {
+            return BadRequest(new { error = e.Message });
+        }
+    }
+
+
     private async Task WriteLine(SimStreamLine line, CancellationToken ct)
     {
         await Response.Body.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(line, SimStreamLine.Json), ct);

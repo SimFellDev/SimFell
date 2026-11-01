@@ -142,10 +142,12 @@ code {
   font-size: 13px;
 }
 
-/* The APL Editor is up to 1760px wide. Scoped CSS keeps class names, so the rule reaches MainLayout's main and
-   DesktopShell's content. Each selector has an element name, so its specificity is higher than the scoped max-width
-   rule. */
+/* The APL Editor and the APL Debugger are up to 1760px wide. Scoped CSS keeps class names, so the rule reaches
+   MainLayout's main and DesktopShell's content. Each selector has an element name, so its specificity is higher than the
+   scoped max-width rule. */
 main.main:has(.apl-editor),
-div.content:has(.apl-editor) {
+div.content:has(.apl-editor),
+main.main:has(.apl-debugger),
+div.content:has(.apl-debugger) {
   max-width: min(1760px, 100%);
 }

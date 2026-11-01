@@ -1,0 +1,62 @@
+@* One action line a decision read: its line, its outcome, and when open its condition's values and target_if candidates. *@
+<div class="step @OutcomeClass" style="--depth: @Step.Depth">
+    <button type="button" class="line" aria-expanded="@Open" disabled="@(!HasDetail)" @onclick="OnToggle">
+        <span class="number">@Line.LineNumber</span>
+        <code class="text">@Line.Text</code>
+        <span class="outcome">@AplValues.Outcome(Step)</span>
+    </button>
+    @if (Open && HasDetail)
+    {
+        <div class="detail">
+            @if (Step.TargetIf is { } targetIf)
+            {
+                <table class="candidates">
+                    <caption>target_if=@targetIf.Selection.ToString().ToLowerInvariant(): @(targetIf.Picked ?? "no enemy")</caption>
+                    <thead>
+                        <tr><th scope="col">Enemy</th><th scope="col">Value</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var candidate in targetIf.Candidates)
+                        {
+                            <tr class="@(candidate.Enemy == targetIf.Picked ? "picked" : "")">
+                                <td>@candidate.Enemy</td>
+                                <td class="value">@AplValues.Of(candidate.Value)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (Step.Condition is { } condition)
+            {
+                <NodeTree Nodes="[condition]" />
+            }
+            else if (Step.Target is { } target)
+            {
+                <p class="meta">No condition. Target: @target</p>
+            }
+            @if (Step.Refusal is { } refusal)
+            {
+                <p class="meta">Refused: @refusal</p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public AplStepTrace Step { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AplTraceLine Line { get; set; } = null!;
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback OnToggle { get; set; }
+
+    private bool HasDetail => Step.Condition != null || Step.TargetIf != null || Step.Target != null || Step.Refusal != null;
+
+    private string OutcomeClass => Step.Outcome switch
+    {
+        AplStepOutcome.Cast => "cast",
+        AplStepOutcome.ListEntered or AplStepOutcome.VariableSet => "passed",
+        _ => "skipped",
+    };
+}

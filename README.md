@@ -295,6 +295,27 @@ Both take an `if` like any other action. A list the decision is already in is sk
 `run_action_list` has a warning until it has an action that is always ready: an ability with no cooldown and no cast
 requirement (Frost Bolt for Rime), with no condition or target.
 
+## Debug an action list
+
+The **APL Debugger** fights one fight of a build with an action list and keeps every decision. Two buttons open it:
+
+- **Replay in debugger** on a sim result fights the sim's typical fight again: the run's build and action list, the
+  sim's settings, and the typical fight's seed. The message says whether the fight's casts are the typical fight's. A
+  sim saved before sims kept their settings has the button off; run it again to replay it.
+- **Debug** in the APL Editor opens the list as it is in the editor, unsaved edits included. **Player profile** picks
+  the build: the Sim page's build of the list's hero, a saved build or a new build. The **Fight** and **Fight settings**
+  cards are the Sim page's Modes tab's, with settings of their own. **Fight settings** also has the **Seed**: any 32-bit
+  integer, 1 at first, and **Randomise** picks one from the current time. **Run fight** fights the first fight of a sim
+  with that seed.
+
+Each decision shows its time, the ability it cast and its target, and the action lines it read in order, indented for
+each list entered. Each line has its outcome: **Cast**, **Condition false**, **Not ready** (a cooldown, a resource or a
+cast already running), **No target**, **Cast refused**, a variable's value, or a list **Entered**. A line opens to show
+its condition as a tree of expressions with each one's value, and its `target_if` value at each enemy. A side of
+`&` or `|` the decision never read shows as not read. A **Cast refused** line opens to the engine's reason, such as the
+global cooldown. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and
+each enemy's health and debuffs, before the cast. **Previous** and **Next** (or the arrow keys) step one decision;
+**Previous cast** and **Next cast** step to the next decision that cast, and **Go to** (seconds or `m:ss`, then Enter) shows the last decision at or before that time.
 ## The two checks
 
 - **Exact replay** (the review pages): every crit, proc, target, landing time, damage amount and periodic tick time is

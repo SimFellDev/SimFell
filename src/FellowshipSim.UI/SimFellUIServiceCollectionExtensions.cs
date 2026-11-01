@@ -46,6 +46,7 @@ public static class SimFellUIServiceCollectionExtensions
         services.AddScoped<ImportPageState>();
         services.AddScoped<LogReplayState>();
         services.AddScoped<ActionListsState>();
+        services.AddScoped<Debugger.AplDebuggerState>();
         return services;
     }
 

@@ -3,9 +3,12 @@
 @using FellowshipSim.UI.Build
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject AplDebuggerState Debugger
+@inject IAppViews Views
 @* A done sim's report: its DPS, each damage source, and each buff and debuff. Save keeps it as its own HTML file. *@
 <div @ref="_report" class="report">
     <div class="save-bar" data-save-skip>
+        <button type="button" class="secondary-button" disabled="@(!CanReplay)" data-tooltip="@ReplayTip" @onclick="ReplayInDebugger">Replay in debugger</button>
         <button type="button" class="secondary-button" data-tooltip="Save this sim's report as an HTML file" @onclick="SaveAsync">Save as HTML</button>
     </div>
     <div class="tiles">
@@ -327,6 +330,26 @@
 
     /// <summary>The sim's title: the saved file's name and heading.</summary>
     [Parameter] public string Title { get; set; } = "Sim";
+
+    /// <summary>The profile the sim ran, for Replay in debugger.</summary>
+    [Parameter] public string? Profile { get; set; }
+
+    /// <summary>The sim's settings, for Replay in debugger; null for a sim saved before they were kept.</summary>
+    [Parameter] public SimSettings? Settings { get; set; }
+
+    private bool CanReplay => Profile != null && Settings != null && Result.TypicalFight != null;
+
+    private string ReplayTip => CanReplay
+        ? "Step through this sim's typical fight in the APL Debugger, decision by decision"
+        : "This sim was saved before sims kept their settings. Run it again to replay its typical fight.";
+
+    // The sim's typical fight in the APL Debugger.
+    private void ReplayInDebugger()
+    {
+        if (!CanReplay) return;
+        Debugger.OpenSimFight(Title, Profile!, Settings!, Result);
+        Views.ShowDebugger();
+    }
 
     private ElementReference _report;
 

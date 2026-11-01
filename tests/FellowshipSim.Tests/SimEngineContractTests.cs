@@ -119,6 +119,27 @@ public class SimEngineContractTests
     {
         var profile = SimcProfile.Parse(Profile) with { ActionList = "actions+=/not_an_ability\n" };
         await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(profile, new SimSettings(1, 10)));
+        await Assert.ThrowsAsync<SimEngineException>(() => _engine.TraceFightAsync(profile, new SimSettings(1, 10)));
+    }
+
+    [Fact]
+    public async Task A_Sims_Typical_Fight_Is_Traced_Again_From_Its_Seed()
+    {
+        var profile = SimcProfile.Parse(Profile);
+        var settings = new SimSettings(Iterations: 40, DurationSeconds: 90, TargetCount: 8, DegreeOfParallelism: 2, LengthVariance: 0.2);
+        var result = await _engine.SimulateAsync(profile, settings);
+        int typical = result.TypicalFight!.Value;
+
+        var trace = await _engine.TraceFightAsync(profile, settings with { Iterations = 1, FirstSeed = settings.FirstSeed + typical });
+        Assert.Equal(result.Casts, trace.Casts);
+    }
+
+    [Fact]
+    public async Task A_Traced_Fight_Reads_Back_From_Its_Json()
+    {
+        var trace = await _engine.TraceFightAsync(SimcProfile.Parse(Profile), new SimSettings(Iterations: 1, DurationSeconds: 30, TargetCount: 2));
+        Assert.NotEmpty(trace.Decisions);
+        AssertRoundTrip(trace, SimChunks.Json);
     }
 
     [Fact]

@@ -5,6 +5,8 @@
 @inject Visitor Visitor
 @inject IJSRuntime JS
 @inject ActionListsState State
+@inject AplDebuggerState Debugger
+@inject IAppViews Views
 @* Visual action-list editor: one section per action list, each with its actions in priority order. *@
 <Card>
     <div @ref="_root" class="apl-editor">
@@ -43,6 +45,7 @@
                     <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
                     <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
                     <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" data-tooltip="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
+                    <button type="button" class="secondary-button" data-tooltip="Step through one fight of this action list in the APL Debugger, with a build and a fight picked there" @onclick="DebugAsync">Debug</button>
                 </div>
                 @if (_pending is { } pending)
                 {
@@ -249,6 +252,28 @@
     {
         if (State.Editor.AddList(State.NewList.Trim())) State.NewList = "";
         else await _newListInput.FocusAsync();
+    }
+
+    // The action list as it is now, edits included, in the APL Debugger.
+    private async Task DebugAsync()
+    {
+        if (State.Editor.Vocabulary is not { } v) return;
+        var lists = State.Editor.Lists;
+        try
+        {
+            var written = await Engine.WriteActionListAsync(ActionListModel.DocumentActions(lists));
+            if (written.Text == null)
+            {
+                State.Editor.SetStatus(MessageState.Error(ActionListModel.ErrorText(v, lists, written.Errors)));
+                return;
+            }
+            Debugger.OpenActionList(v.Hero, State.Name.Trim().Length > 0 ? State.Name.Trim() : "Unsaved list", written.Text);
+            Views.ShowDebugger();
+        }
+        catch (Exception e) when (e is SimEngineException or HttpRequestException)
+        {
+            State.Editor.SetStatus(MessageState.Error(e.Message));
+        }
     }
 
     private Task Download() =>

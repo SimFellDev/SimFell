@@ -11,7 +11,7 @@
         <strong>@shown.Label</strong>
         <span class="meta">@shown.Detail</span>
     </div>
-    <SimJobResult Result="shown.Result" Title="@shown.Label" />
+    <SimJobResult Result="shown.Result" Title="@shown.Label" Profile="@shown.Profile" Settings="Settings" />
 }
 else
 {
@@ -144,6 +144,9 @@ else
 
     /// <summary>The run whose report shows in place of the runs; null for the runs.</summary>
     [Parameter] public SimRun? Report { get; set; }
+
+    /// <summary>The sim's settings, every run's; null for a sim saved before they were kept.</summary>
+    [Parameter] public SimSettings? Settings { get; set; }
 
     [Parameter] public EventCallback<SimRun?> ReportChanged { get; set; }
 

@@ -1,0 +1,240 @@
+@page "/apl-debugger"
+@using System.Globalization
+@using FellowshipSim.Core.Import
+@implements IDisposable
+@inject ISimEngine Engine
+@inject AplDebuggerState State
+@inject ProfileStore Profiles
+@inject Visitor Visitor
+@inject SimPageState SimPage
+
+<PageTitle>APL Debugger - SimFell</PageTitle>
+
+<SectionContent SectionName="@MainLayout.SubtitleSection">
+    Step through one fight's decisions: each action line's values and the ability cast
+</SectionContent>
+
+<div class="apl-debugger">
+    @switch (State.Source)
+    {
+        case AplDebuggerSource.None:
+            <Card Title="APL Debugger">
+                <p class="hint">
+                    A sim result's Replay in debugger opens the sim's typical fight. The APL Editor's Debug opens its action list, for a
+                    build and a fight picked here.
+                </p>
+            </Card>
+            break;
+
+        case AplDebuggerSource.SimFight:
+            <Card>
+                <div class="head">
+                    <span class="kind">Typical fight</span>
+                    <h2 class="title">@State.SimTitle</h2>
+                </div>
+                <p class="meta fight">@SimFightText()</p>
+                @if (State.Status.Text.Length > 0)
+                {
+                    <Message Kind="State.Status.Kind">@State.Status.Text</Message>
+                }
+            </Card>
+            break;
+
+        case AplDebuggerSource.ActionList:
+            <Card>
+                <div class="head">
+                    <span class="kind">Action list</span>
+                    <h2 class="title">@State.ListName (@State.Hero)</h2>
+                    <button type="button" class="run-button" disabled="@_running" @onclick="RunListAsync">@(_running ? "Running..." : "Run fight")</button>
+                </div>
+                @if (State.Status.Text.Length > 0)
+                {
+                    <Message Kind="State.Status.Kind">@State.Status.Text</Message>
+                }
+            </Card>
+            <Card Title="Player profile">
+                <label class="build">
+                    Build
+                    <select @bind:get="State.BuildValue" @bind:set="PickBuildAsync">
+                        @if (SimPageHasHero)
+                        {
+                            <option value="@SimValue">Sim page build: @SimPage.Build.Name</option>
+                        }
+                        @foreach (var saved in State.Builds.Where(b => b.Hero.Equals(State.Hero, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name</option>
+                        }
+                        <option value="@NewValue">New build</option>
+                    </select>
+                </label>
+                <pre class="profile">@BuildProfile()</pre>
+            </Card>
+            <FightCards State="State.Fight" OnChanged="StateHasChanged">
+                <MoreSettings>
+                    <div class="seed">
+                        <label class="field" data-tooltip="The first fight of a sim with this seed: the fight's length and every roll of the dice depend on it">
+                            Seed
+                            <input type="number" min="@int.MinValue" max="@int.MaxValue" step="1" @bind="State.Seed" />
+                        </label>
+                        <button type="button" class="secondary-button" data-tooltip="A random seed, from the current time" @onclick="RandomiseSeed">Randomise</button>
+                    </div>
+                </MoreSettings>
+            </FightCards>
+            break;
+    }
+
+    @if (State.Trace != null)
+    {
+        <div @ref="_decisions" tabindex="-1" class="decisions">
+            <DecisionView />
+        </div>
+    }
+</div>
+
+@code {
+    private const string SimValue = "sim";
+    private const string NewValue = "new";
+
+    private bool _running;
+    private ElementReference _decisions;
+    private bool _focusDecisions;
+
+    private static string SavedValue(ProfileEntry saved) => $"saved/{saved.Name}";
+
+    // The Sim page's build is the action list's hero's.
+    private bool SimPageHasHero => SimPage.Build.Hero.Equals(State.Hero, StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Opened += OnOpened;
+        await TakeOpenedAsync();
+    }
+
+    // The desktop app keeps this page in its tab: a fight given to it while it shows is taken at once.
+    private void OnOpened() => _ = InvokeAsync(async () =>
+    {
+        await TakeOpenedAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => State.Opened -= OnOpened;
+
+    // The saved builds and the build to pick for an action list; a sim's typical fight is traced.
+    private async Task TakeOpenedAsync()
+    {
+        if (State.Source == AplDebuggerSource.ActionList)
+        {
+            try
+            {
+                State.Builds = (await Profiles.ListAsync(Visitor, [State.Hero])).ToList();
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                State.Status = MessageState.Error(e.Message);
+            }
+            if (State.BuildValue.Length == 0)
+            {
+                var first = State.Builds.FirstOrDefault(b => b.Hero.Equals(State.Hero, StringComparison.OrdinalIgnoreCase));
+                await PickBuildAsync(SimPageHasHero ? SimValue : first != null ? SavedValue(first) : NewValue);
+            }
+        }
+        if (State.RunPending)
+        {
+            State.RunPending = false;
+            await RunSimFightAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusDecisions || State.Trace == null) return;
+        _focusDecisions = false;
+        // Focus scrolls the decisions into view under the settings.
+        await _decisions.FocusAsync();
+    }
+
+    private string SimFightText()
+    {
+        if (State.SimProfile is not { } profile || State.SimSettings is not { } settings) return "";
+        string enemies = settings.Dungeon is { } dungeon ? $"dungeon {dungeon.Name}"
+            : settings.TargetCount == 1 ? "1 training dummy" : $"{settings.TargetCount} training dummies";
+        string length = State.Trace is { } trace ? $", {trace.FightSeconds.ToString("0.#", CultureInfo.CurrentCulture)} s" : "";
+        return $"{profile.Build.Name} ({profile.Build.Hero}), {enemies}{length}, seed {settings.FirstSeed}.";
+    }
+
+    private async Task PickBuildAsync(string value)
+    {
+        State.BuildValue = value;
+        State.SavedBuild = null;
+        if (!value.StartsWith("saved/", StringComparison.Ordinal)) return;
+        try
+        {
+            string? text = await Profiles.ReadAsync(Visitor, new ProfileEntry(State.Hero, value["saved/".Length..]));
+            State.SavedBuild = text == null ? null : SimcProfile.Parse(text).Build;
+            if (State.SavedBuild == null) State.Status = MessageState.Error("That build is no longer saved.");
+        }
+        catch (Exception e) when (e is IOException or FormatException)
+        {
+            State.Status = MessageState.Error(e.Message);
+        }
+    }
+
+    /// <summary>The picked build: the Sim page's as it is now, a saved one, or a new build of the hero.</summary>
+    private CharacterBuild? Build() => State.BuildValue switch
+    {
+        SimValue when SimPageHasHero => SimPage.Build,
+        NewValue => BuildEditor.NewBuild(State.Hero),
+        _ => State.SavedBuild,
+    };
+
+    // Any int32, from a generator seeded with the current Unix time in milliseconds.
+    private void RandomiseSeed() =>
+        State.Seed = (int)new Random(unchecked((int)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())).NextInt64(int.MinValue, (long)int.MaxValue + 1);
+
+    private string BuildProfile() => Build() is { } build ? new SimcProfile(build, "").Format() : "";
+
+    private async Task RunListAsync()
+    {
+        if (Build() is not { } build)
+        {
+            State.Status = MessageState.Error("Pick a build.");
+            return;
+        }
+        if (State.Fight.Mode == SimMode.Dungeon && State.Fight.Dungeon.Problem() is { } problem)
+        {
+            State.Status = MessageState.Error(problem);
+            return;
+        }
+        await RunAsync(new SimcProfile(build, State.ListText), State.Fight.FightSettings(1, 1, State.Seed), null);
+    }
+
+    private Task RunSimFightAsync() => State.SimProfile is { } profile && State.SimSettings is { } settings
+        ? RunAsync(profile, settings, State.SimResult)
+        : Task.CompletedTask;
+
+    // Traces one fight; a sim's typical fight checks its casts against the sim's.
+    private async Task RunAsync(SimcProfile profile, SimSettings settings, SimResult? sim)
+    {
+        _running = true;
+        State.Status = new MessageState("Fighting the fight...");
+        StateHasChanged();
+        try
+        {
+            var trace = await Engine.TraceFightAsync(profile, settings);
+            State.Show(trace, profile.Build.Name);
+            string counts = $"{trace.Decisions.Count} decisions and {trace.Decisions.Count(d => d.Cast != null)} casts in {trace.FightSeconds:0.#} s.";
+            State.Status = sim?.Casts is not { Count: > 0 } typical ? MessageState.Ok(counts)
+                : trace.Casts.SequenceEqual(typical) ? MessageState.Ok($"{counts} Its casts are the sim's typical fight's.")
+                : new MessageState($"{counts} Its casts differ from the sim's typical fight's: the engine has changed since the sim ran.", MessageKind.Warning);
+            _focusDecisions = State.Source == AplDebuggerSource.ActionList;
+        }
+        catch (Exception e) when (e is SimEngineException or FormatException or HttpRequestException)
+        {
+            State.Status = MessageState.Error(e.Message);
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+}

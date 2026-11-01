@@ -9,6 +9,8 @@ public class AplAction
     /// <summary>Target selection of the cast; null keeps the hero's current target.</summary>
     public AplTargetIf? TargetIf { get; init; }
     public string RawLine { get; init; } = string.Empty;
+    /// <summary>The line's number in its action-list text, from 1; 0 for an action not read from a text.</summary>
+    public int LineNumber { get; internal set; }
     /// <summary>Set for <c>run_action_list</c> and <c>call_action_list</c>, which run <see cref="ListName"/>.</summary>
     public AplListAction? ListAction { get; init; }
     public string? ListName { get; init; }

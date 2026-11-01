@@ -14,6 +14,9 @@ public sealed record AppPage(string Title, Type Component)
     public static readonly AppPage AplEditor = new("APL Editor", typeof(Pages.ActionLists));
     public static readonly AppPage Setup = new("Settings", typeof(Pages.Setup));
 
+    /// <summary>The APL Debugger: out of the menu, opened from a sim result or the APL Editor (<see cref="IAppViews.ShowDebugger"/>).</summary>
+    public static readonly AppPage AplDebugger = new("APL Debugger", typeof(Debugger.AplDebuggerPage));
+
     /// <summary>
     /// The menu, in order. The first page opens when the app starts. <see cref="Setup"/> is out of it for now: only
     /// developers set an API client (the repository's git-ignored settings.json).
