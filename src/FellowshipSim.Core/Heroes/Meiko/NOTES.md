@@ -42,7 +42,7 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
   and the next builder comes 1.0s or more after it.
 - **Stone Shield:** 5 hits on every enemy, 0.04, 0.27, 0.50, 0.77 and 1.00s after the cast, though the tooltip says 4.
 - **Spirited Vortex:** a hit on every enemy at the cast, then every hasted 2s for 30s.
-- **Shatter Earth:** the slam lands 0.27-0.37s after the cast; the quake ticks every hasted second from there.
+- **Shatter Earth:** the slam is 0.27-0.37s after the cast; the quake ticks every hasted second from there.
 - **Twin Souls: Army of One:** the Sibling of Wind strikes one enemy at the cast and every 0.25s after, not hasted, for
   20s: 80 strikes, not the tooltip's 40 (7,649 strikes in 98 casts).
 - **Auto attacks:** a 1.9s swing shortened by Haste.
@@ -58,34 +58,34 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 
 | Fight | Hits matched | Damage of log |
 |---|---|---|
-| 2NwV9b6jdhFnzXJk fight 2 | 97.0% | 99.0% |
-| 3M2vWr8taxVfTQFY fight 53 | 97.9% | 98.9% |
-| 7Zmfx9gq6HjvThzc fight 1 | 94.9% | 98.4% |
-| 7Zmfx9gq6HjvThzc fight 2 | 96.3% | 99.2% |
-| BWFTRPJkz24QLjxM fight 2 | 97.2% | 99.3% |
-| DYL3Ph6Fkgp8jVbw fight 1 | 98.0% | 100.9% |
-| fXyzwGcQkTrLD34R fight 4 | 95.7% | 98.2% |
-| GXFz3pZ94aQr2chV fight 3 | 95.6% | 100.0% |
-| gZdryvDb9th8XxqM fight 5 | 95.4% | 99.4% |
-| Hzc78X3TFPvMVnhb fight 3 | 96.6% | 99.5% |
-| kYCNMwGW6cRKngr2 fight 2 | 96.6% | 99.5% |
-| P1yMmDGAWhnHNXTQ fight 16 | 96.3% | 100.5% |
-| PFtrX9RZJxmv1QfT fight 2 | 96.2% | 99.4% |
-| PrW4639VM7hYFD2g fight 13 | 96.8% | 100.8% |
-| VTghN4MvYn73PW9k fight 1 | 96.1% | 98.7% |
-| xPntaRwjmCWcqVfg fight 3 | 96.2% | 98.7% |
+| 2NwV9b6jdhFnzXJk fight 2 | 97.6% | 99.8% |
+| 3M2vWr8taxVfTQFY fight 53 | 99.0% | 100.6% |
+| 7Zmfx9gq6HjvThzc fight 1 | 95.4% | 99.1% |
+| 7Zmfx9gq6HjvThzc fight 2 | 96.9% | 100.2% |
+| BWFTRPJkz24QLjxM fight 2 | 97.3% | 99.5% |
+| DYL3Ph6Fkgp8jVbw fight 1 | 98.3% | 100.6% |
+| fXyzwGcQkTrLD34R fight 4 | 95.7% | 97.8% |
+| GXFz3pZ94aQr2chV fight 3 | 96.5% | 101.2% |
+| gZdryvDb9th8XxqM fight 5 | 95.5% | 99.3% |
+| Hzc78X3TFPvMVnhb fight 3 | 96.7% | 99.4% |
+| kYCNMwGW6cRKngr2 fight 2 | 96.7% | 99.5% |
+| P1yMmDGAWhnHNXTQ fight 16 | 97.0% | 100.9% |
+| PFtrX9RZJxmv1QfT fight 2 | 96.5% | 99.8% |
+| PrW4639VM7hYFD2g fight 13 | 96.9% | 100.4% |
+| VTghN4MvYn73PW9k fight 1 | 96.7% | 99.0% |
+| xPntaRwjmCWcqVfg fight 3 | 96.3% | 99.0% |
 
 Al'zerac's Shackle is the largest source of unmatched hits: 6,761 of its 54,746 Slow ticks find no engine tick.
 
 ## Known gaps
 
-- **The quake** ticks on every enemy at once; the game ticks each enemy on its own timer from the moment it is in
-  the area. 3,260 of its 21,392 logged ticks find no engine tick (89.5% of its damage in an exact replay).
-- **Free dice** come in at 90.5% of the logs' damage. The players time Rising Storm and Lashing Stormkick to the
-  Stormfall their refunds gave back. With the refunds at random on the logged casts, a free-dice run consumes 12% fewer
+- **The quake** has a timer of its own on each enemy the slam struck. An enemy in the area after the slam has no quake
+  ticks in the engine: 2,326 of the 21,392 logged ticks find no engine tick (92.6% of its damage in an exact replay).
+- **Free dice** come in at 90.4% of the logs' damage, from free-dice variance in the game's own mechanics. The players
+  time Rising Storm and Lashing Stormkick to the Stormfall their refunds gave back. With the refunds at random on the logged casts, a free-dice run consumes 12% fewer
   Stormfall charges (1,942 against 2,208 over 16 fights), and Warden of the Temple enhances 21% fewer Double Palm
   Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of 3,145 rolls against 769 expected. Lashing
-  Stormkick (84.7%) and Spirited Vortex (87.6%) have most of the gap. In 5 fights Meiko has Storm's Fury (effect 2699,
+  Stormkick (84.6%) and Spirited Vortex (87.6%) have most of the gap. In 5 fights Meiko has Storm's Fury (effect 2699,
   +20% Critical Strike chance for 20 seconds, from Storm Shield: Lightning Strike), and the log's crits are 4.6-5.7
   points above the engine's crit chance on every ability. Al'zerac's Shackle: Slow's log/engine ratio is 0.974
   with Twin Souls: Army of One up and 1.070 without it.
