@@ -37,9 +37,10 @@ public sealed class XavianDot(Xavian owner, int effectId, string name, double pe
 
     /// <summary>
     /// Puts <paramref name="damage"/> on <paramref name="target"/> over the duration. On an enemy that has the effect, the
-    /// damage left (the old tick times the time left over the period) joins the new damage and the duration restarts.
-    /// Combat logs (XyGpcHjNaAzgk7mW fight 20, Sunburn refreshes 39.621-69.472): the old tick's share of the new one is
-    /// 0.44-0.55, against 0.43-0.55 from the time left.
+    /// damage left (the old tick times the time left over the period) joins the new damage, the duration restarts and the
+    /// ticks keep their timing. Combat logs (XyGpcHjNaAzgk7mW fight 20, Sunburn refreshes 39.621-69.472): the old tick's
+    /// share of the new one is 0.44-0.55, against 0.43-0.55 from the time left; the tick after a refresh is a period after
+    /// the tick before it (49.440, refresh 49.803, 50.538).
     /// </summary>
     public void Apply(SimulationContext ctx, EnemyTarget target, double damage)
     {
@@ -48,9 +49,17 @@ public sealed class XavianDot(Xavian owner, int effectId, string name, double pe
         var now = ctx.CurrentTime;
         double ticksPerDuration = DurationSeconds / PeriodSeconds;
         double left = 0.0;
-        if (_active.Remove(target, out var old))
+        if (_active.TryGetValue(target, out var old))
         {
             left = Math.Max(0.0, (old.End - now).TotalSeconds) / PeriodSeconds * old.PerTick;
+            if (old.Effect != null && old.Effect.Refresh(ctx, DurationSeconds))
+            {
+                old.PerTick = (damage + left) / ticksPerDuration;
+                old.End = now + SimTime.FromSeconds(DurationSeconds);
+                target.Auras.Apply(Debuff, now);
+                return;
+            }
+            _active.Remove(target);
             old.Effect?.Stop(ctx);
         }
         else
