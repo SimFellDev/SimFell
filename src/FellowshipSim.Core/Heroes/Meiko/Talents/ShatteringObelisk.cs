@@ -6,8 +6,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// 65% Health, 30% Health, and finally upon being destroyed. If Sibling of Earth expires due to its duration, it deals 15% of
 /// any remaining health it has. ... Damage is reduced beyond 1 targets." The pulse is the Sibling of Earth's ability 1551,
 /// effect 2261 (Magic.Wind). A pulse comes from damage the Sibling of Earth takes, so it is a defensive proc: a replay deals
-/// it where the log has its hit, and a sim never. Its amount is 15% of that damage, which the engine does not have, so the
-/// pulse's base damage is 0 and an exact replay takes the log's amount.
+/// it where the log has its hit, and a sim never. Its amount is 15% of that damage. The engine does not have that damage,
+/// so the pulse's base damage is 0 and an exact replay takes the log's amount.
 /// UNVERIFIED: no combat log has the talent, so the pulse's log ID (effect 2261) is unconfirmed.
 /// </summary>
 public class ShatteringObelisk : Talent
