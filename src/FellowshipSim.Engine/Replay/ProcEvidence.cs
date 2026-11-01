@@ -181,6 +181,10 @@ public static class ProcEvidence
         // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
         new(Core.Heroes.Xavian.Abilities.Attack.AvoidedProcKey, Core.Heroes.Xavian.Abilities.Attack.AbilityId, DelaySeconds: 0.05,
             HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
+        // A Parry's Counter-Attack, Hallowed Shield stack and Vanguard of Vengeance stack (defensive procs).
+        new(VanguardOfVengeance.CounterAttackProcKey, LogIds.Effect(VanguardOfVengeance.CounterAttackEffectId)),
+        new(VanguardOfVengeance.StackProcKey, VanguardOfVengeance.Buff.LogId),
+        new(HallowedShield.ProcKey, HallowedShield.Buff.LogId),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
