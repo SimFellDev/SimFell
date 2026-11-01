@@ -185,6 +185,8 @@ public static class ProcEvidence
         new(VanguardOfVengeance.CounterAttackProcKey, LogIds.Effect(VanguardOfVengeance.CounterAttackEffectId)),
         new(VanguardOfVengeance.StackProcKey, VanguardOfVengeance.Buff.LogId),
         new(HallowedShield.ProcKey, HallowedShield.Buff.LogId),
+        // Solaris: the hits of one overheal (a defensive proc).
+        new(Xavian.SolarisProcKey, Xavian.SolarisLogId),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
