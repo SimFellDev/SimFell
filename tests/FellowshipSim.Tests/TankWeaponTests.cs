@@ -1,4 +1,5 @@
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.Customization.Aspects;
 using FellowshipSim.Core.Customization.WeaponAbilities;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
@@ -25,6 +26,32 @@ public class TankWeaponTests
         Assert.True(freeze.All(f => f.Time <= explodes.Time));
         Assert.InRange(slow.Count, 7, 8);
         Assert.True(slow.All(s => s.Time > explodes.Time && s.Time <= explodes.Time + AlzeracsShackle.SlowSeconds + 0.1));
+    }
+
+    [Fact]
+    public void Brave_Machinations_Raises_The_Crit_Chance_Of_Shackles_Ticks()
+    {
+        double SlowCritRate(List<BuildEntry> augmentations)
+        {
+            var hero = HeroImporter.Import(new CharacterBuild
+            {
+                Hero = "Rime", PrimaryStat = 1000, WeaponAbilityId = AlzeracsShackle.AbilityId, Augmentations = augmentations,
+            });
+            int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId), ticks = 0, crits = 0;
+            hero.OnDamageDealt += (in dmg) =>
+            {
+                if (dmg.AbilityId != slowId) return;
+                ticks++;
+                if (dmg.IsCrit) crits++;
+            };
+            new MonteCarloSimulator(() => hero, AplParser.ParseScript("actions=alzeracs_shackle\nactions+=/frost_bolt"))
+                .Run(SimTime.FromSeconds(25), 400, 1, degreeOfParallelism: 1);
+            return (double)crits / ticks;
+        }
+
+        double without = SlowCritRate([]);
+        double with = SlowCritRate([new BuildEntry(BraveMachinations.AspectId, 4)]);
+        Assert.InRange(with - without, BraveMachinations.CritChanceByRank[3] - 0.05, BraveMachinations.CritChanceByRank[3] + 0.05);
     }
 
     [Fact]

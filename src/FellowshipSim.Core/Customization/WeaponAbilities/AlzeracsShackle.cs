@@ -14,6 +14,8 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// - Slow (effect 65, "Al'zerac's Shackle: Slow") lasts 15s (the effect record's duration; the tooltip's 12 is wrong) and
 ///   ticks every 2s shortened by Haste, with a partial final tick. A new explosion on a slowed enemy restarts the
 ///   duration and the tick period, with no tick at the refresh (36 refreshes: the next tick comes one period after it).
+/// - Freeze and Slow ticks have the weapon ability's crit chance bonus (Brave Machinations): over the 19 Xavian fights,
+///   Shackle hits crit 79-96% with Brave Machinations at rank 4, 55-63% at rank 1, and 31% without it.
 /// </summary>
 public class AlzeracsShackle : Ability
 {
@@ -89,7 +91,7 @@ public class AlzeracsShackle : Ability
         target.Auras.Apply(Freeze, ctx.CurrentTime);
         PeriodicEffect? freeze = null;
         freeze = PeriodicEffect.BeginHasted(ctx, Owner, FreezeName, FreezeSeconds, FreezeTickSeconds, tickOnStart: false, partialFinalTick: true,
-            onTick: (c, fraction) => _freezeTick.DealDamage(c, target, damageMultiplier: fraction),
+            onTick: (c, fraction) => _freezeTick.DealDamage(c, target, damageMultiplier: fraction, extraCritChance: CritChanceBonus),
             onEnd: (c, clipped) =>
             {
                 if (_freezes.GetValueOrDefault(target) == freeze) _freezes.Remove(target);
@@ -120,7 +122,7 @@ public class AlzeracsShackle : Ability
         enemy.Auras.Apply(Slow, ctx.CurrentTime);
         PeriodicEffect? slow = null;
         slow = PeriodicEffect.BeginHasted(ctx, Owner, SlowName, SlowSeconds, SlowTickSeconds, tickOnStart: false, partialFinalTick: true,
-            onTick: (c, fraction) => _slowTick.DealDamage(c, enemy, damageMultiplier: fraction),
+            onTick: (c, fraction) => _slowTick.DealDamage(c, enemy, damageMultiplier: fraction, extraCritChance: CritChanceBonus),
             onEnd: (c, clipped) =>
             {
                 if (_slows.GetValueOrDefault(enemy) != slow) return;
