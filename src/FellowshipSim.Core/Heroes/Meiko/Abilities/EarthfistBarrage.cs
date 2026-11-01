@@ -56,7 +56,7 @@ public class EarthfistBarrage : MeikoFinisher
 
     protected override void Strike(SimulationContext ctx, EnemyTarget target)
     {
-        bool earthfall = Meiko.ConsumeCharge(RisingEarth.Earthfall, ctx);
+        bool earthfall = Meiko.ConsumeCharge(RisingEarth.Earthfall, ctx, refundAfterSeconds: ChannelSeconds);
         _channelMultiplier = (earthfall ? EarthfallMultiplier : 1.0) * CastDamageMultiplier;
         _strikes = 0;
         // Combat logs (27 fights): the next Combo Builder comes 1.0s or more after the cast, so the global cooldown lasts to

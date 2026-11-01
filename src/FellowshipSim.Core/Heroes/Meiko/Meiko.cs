@@ -151,19 +151,26 @@ public sealed class Meiko : Hero
     /// <summary>
     /// Consumes a <paramref name="charge"/> (Stormfall or Earthfall), when Meiko holds one. Hero 13's Spirit text: a Spirit
     /// Refund on the consumption gives the charge back and Rising Spirit. Its Spirit Armor and stone for Stone Shield change
-    /// no damage.
-    /// Combat logs (16 fights): 544 of 2,232 Stormfall consumptions came back with Rising Spirit, and none of 958 Earthfall
-    /// consumptions did, so the engine rolls a Spirit Refund on Stormfall alone. Returns whether a charge was consumed.
+    /// no damage. The refund's roll is <paramref name="refundAfterSeconds"/> after the consumption.
+    /// Combat logs (16 fights): 544 of 2,232 Stormfall consumptions came back with Rising Spirit at the consumption, and 189
+    /// of 937 Earthfall consumptions came back with Rising Spirit 1.0s after the Earthfist Barrage cast (its channel's end).
+    /// Returns whether a charge was consumed.
     /// </summary>
-    public bool ConsumeCharge(AuraDef charge, SimulationContext ctx)
+    public bool ConsumeCharge(AuraDef charge, SimulationContext ctx, double refundAfterSeconds = 0.0)
     {
         var now = ctx.CurrentTime;
         if (!Auras.HasAura(charge, now)) return false;
         Auras.ConsumeStack(charge, now);
         ChargeConsumed?.Invoke(ctx, charge);
-        if (charge != RisingStorm.Stormfall || !TriggerSpiritRefund(null, 0.0, ctx)) return true;
-        ctx.Schedule(SimTime.FromSeconds(ChargeRefundDelaySeconds), c => Auras.Apply(charge, c.CurrentTime), "Spirit Refund");
+        if (refundAfterSeconds > 0.0) ctx.Schedule(SimTime.FromSeconds(refundAfterSeconds), c => RefundCharge(charge, c), "Spirit Refund");
+        else RefundCharge(charge, ctx);
         return true;
+    }
+
+    private void RefundCharge(AuraDef charge, SimulationContext ctx)
+    {
+        if (!TriggerSpiritRefund(null, 0.0, ctx)) return;
+        ctx.Schedule(SimTime.FromSeconds(ChargeRefundDelaySeconds), c => Auras.Apply(charge, c.CurrentTime), "Spirit Refund");
     }
 
     public override void ResetForIteration()
