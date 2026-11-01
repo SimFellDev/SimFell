@@ -83,10 +83,12 @@ Al'zerac's Shackle is the largest source of unmatched hits: 6,761 of its 54,746 
   the area. 3,260 of its 21,392 logged ticks find no engine tick (89.5% of its damage in an exact replay).
 - **Free dice** come in at 89.7% of the logs' damage. The players time Rising Storm and Lashing Stormkick to the
   Stormfall their refunds gave back. With the refunds at random on the logged casts, a free-dice run consumes 12% fewer
-  Stormfall charges (1,929 against 2,194 over 16 fights) at the same refund rate, and Warden of the Temple enhances 27%
-  fewer Double Palm Strikes (290 against 397). Lashing Stormkick (84.6%) and Spirited Vortex (87.5%) have most of the
-  gap. In 5 fights the log's crits are 5-6 points above the engine's crit chance on every ability, and Al'zerac's
-  Shackle crits 56% of the time against the engine's 22%.
+  Stormfall charges (1,942 against 2,208 over 16 fights), and Warden of the Temple enhances 21% fewer Double Palm
+  Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of 3,145 rolls against 769 expected. Lashing
+  Stormkick (84.6%) and Spirited Vortex (87.5%) have most of the gap. In 5 fights Meiko has Storm's Fury (effect 2699,
+  +20% Critical Strike chance for 20 seconds, from Storm Shield: Lightning Strike), and the log's crits are 4.6-5.7
+  points above the engine's crit chance on every ability. Al'zerac's Shackle: Slow crits 56% of the time against the
+  engine's 22%.
 - **Damage alone:** the engine simulates the damage Meiko deals, not damage taken, mitigation or healing. Shattering
   Obelisk's pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a replay deals one at each
   pulse hit in the log, and a sim never. No log has the talent.
