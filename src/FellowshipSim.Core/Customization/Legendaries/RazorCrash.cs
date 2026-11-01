@@ -51,7 +51,11 @@ public class RazorCrash : Legendary
         };
     }
 
-    /// <summary>Razor Shrapnel's hits: a set amount, the share of the first hit's damage.</summary>
+    /// <summary>
+    /// Razor Shrapnel's hits: the share of the first hit's damage, times Helena's multipliers against each enemy hit
+    /// (Aftershock). UNVERIFIED: in the 18 fights of patch 0.5.0.0, log hits are 1.15 times the engine's with the
+    /// multipliers, and 1.19 without them.
+    /// </summary>
     private sealed class RazorShrapnel : Ability
     {
         public RazorShrapnel(Helena owner) : base(owner, LogIds.Effect(ShrapnelEffectId), "Razor Shrapnel") =>

@@ -18,7 +18,10 @@ public class Shockwave : HelenaAbility
     public const int DamageEffectId = 1272;
     public const int SlowEffectId = 1270;
     public const double SlowSeconds = 5.0;
-    /// <summary>Toughness per cast, as a share of 770% of Strength (game data Warmaster.Toughness.MeleeAoeSlow.StrengthScalerPerHit).</summary>
+    /// <summary>
+    /// Toughness per cast, as a share of 770% of Strength (game data Warmaster.Toughness.MeleeAoeSlow.StrengthScalerPerHit).
+    /// UNVERIFIED: the game data names it per hit; the engine gives it once per cast.
+    /// </summary>
     public const double ToughnessShare = 0.25;
     public const double ShieldsUpReductionSeconds = 6.0;
 

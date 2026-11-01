@@ -16,8 +16,9 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 
 - Each reduction is twice the seconds its tooltip names. With the tooltips' seconds the replay finds Shockwave on cooldown
   at 427 of its logged casts, Shield Throw at 338 and Shield Slam at 274; with twice them at 0, 0 and 199.
-- A Spirit Refund on a Veteran of War cast doubles that cast's reductions again (hero 22 spiritAbility). Without it the
-  replay finds Shield Throw on cooldown at 218 casts, 12.3s early at the most common.
+- Shield Throw is on cooldown at a logged cast only in 2 fights, 1p7AXmHfwV9CYMxR fight 30 and xkGbdm8aNDwTcgjF fight 2,
+  both with The Best Defense, which resets it. A Spirit Refund doubling its cast's reductions again, as hero 22
+  spiritAbility reads, changes no count.
 - Rising Spirit (effect 3115) comes with each Spirit Refund and stacks to 10, as for every hero.
 
 ## Abilities
@@ -29,14 +30,15 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 - Sweeping Strike's hits lose damage as sqrt(1/N): v8rhNxVc3PwDqzBA fight 4 @ 12.823 strikes 15 enemies, and each hit
   is 0.93-1.08 of the engine's sqrt(1/15) share. Its bleed ticks are effect 1276.
 - Charge is cast up to 1.1s into a global cooldown.
-- Razor Shrapnel (effect 2357) deals 40% of the Shield Throw hit that set it off, in that hit's server frame, and never
+- Razor Shrapnel (effect 2357) deals 40% of the Shield Throw hit that triggered it, in that hit's server frame, and never
   crits (3,260 hits).
 
 ## Talents
 
 - Aftershock: Helena's hits on an enemy with the debuff (effect 2428) deal 1.19-1.23 times what they deal without it, as
   the game data's IncomingDamageScaler 1.2 says, against the tooltip's 30%.
-- Siegebreaker with Martial Command: every hit of Helena's deals about 0.93 of the engine's damage while Siegebreaker is
-  up (17 fights, 0.91-0.98 per fight), Shield Slam, Shield Throw and Shockwave as much as the others.
-- The Best Defense (effect 1231) comes 389 times in 7 fights, each time from a block.
+- Siegebreaker with Martial Command, as log damage over the engine's on hits with no Aftershock (17 fights):
+  Shockwave 0.92, Shield Slam 0.94, Shield Throw 0.94, Attack 0.92, Power Strike 0.92, bleed 0.92, Charge 0.91,
+  Measured Strike 0.98, Sweeping Strike 1.17 and Emerald Judgement 1.18; outside Siegebreaker each is 0.98-1.03.
+- The Best Defense (effect 1231) comes 389 times in 7 fights.
 - Second Wind (effect 1215) comes 176 times in 4 fights; its build-up is effect 1214.

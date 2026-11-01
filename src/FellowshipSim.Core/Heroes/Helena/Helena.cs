@@ -29,7 +29,9 @@ public sealed class Helena : Hero
     /// <summary>
     /// Veteran of War takes twice the seconds each tooltip names off its targets. Combat logs (18 fights of patch
     /// 0.5.0.0): with the tooltips' seconds the replay finds Shockwave on cooldown at 427 of its logged casts, Shield Throw at
-    /// 338 and Shield Slam at 274; with twice them at 0, 0 and 199.
+    /// 338 and Shield Slam at 274; with twice them at 0, 0 and 199. A Spirit Refund on the cast changes none of them: with
+    /// its reductions doubled again (as hero 22 spiritAbility reads) or not, Shield Throw is on cooldown only in the 2
+    /// fights where The Best Defense resets it (1p7AXmHfwV9CYMxR fight 30, xkGbdm8aNDwTcgjF fight 2).
     /// </summary>
     public const double VeteranOfWarTooltipMultiplier = 2.0;
 
@@ -38,12 +40,6 @@ public sealed class Helena : Hero
     /// doubled" (effect 2192).
     /// </summary>
     public const double SiegebreakerVeteranOfWarMultiplier = 2.0;
-
-    /// <summary>
-    /// A Spirit Refund doubles the Veteran of War reductions of the ability that triggered it (hero 22 spiritAbility:
-    /// "whenever you use an ability that interacts with your Veteran of War, causing the cooldown reduction to be doubled").
-    /// </summary>
-    public const double SpiritRefundVeteranOfWarMultiplier = 2.0;
 
     /// <summary>Helena's talent tree, as in game (game data talent-slot records, hero Helena).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
@@ -62,20 +58,9 @@ public sealed class Helena : Hero
 
     /// <summary>
     /// Multipliers on every Veteran of War reduction of one cast, read as the cast resolves (Punishing Strikes). Siegebreaker
-    /// and the Spirit Refund are in <see cref="VeteranOfWar"/> itself.
+    /// is in <see cref="VeteranOfWar"/> itself.
     /// </summary>
     public List<Func<SimulationContext, HelenaAbility, double>> VeteranOfWarMultipliers { get; } = new();
-
-    /// <summary>Shares of Armor added to it while they hold (Gleaming Shield), added together.</summary>
-    public List<Func<SimTime, double>> ArmorBonuses { get; } = new();
-
-    /// <summary>Armor now: the logged or built Armor with <see cref="ArmorBonuses"/>.</summary>
-    public double Armor(SimTime now)
-    {
-        double bonus = 0.0;
-        foreach (var b in ArmorBonuses) bonus += b(now);
-        return Stats.Armor * (1.0 + bonus);
-    }
 
     /// <summary>A Veteran of War source cast took time off its targets' cooldowns.</summary>
     public event Action<SimulationContext, HelenaAbility>? VeteranOfWarApplied;
@@ -123,7 +108,7 @@ public sealed class Helena : Hero
 
     /// <summary>
     /// Veteran of War: <paramref name="source"/>'s cast takes its reductions off its targets' cooldowns, doubled while
-    /// Siegebreaker is up and by a Spirit Refund the cast triggers, and by <see cref="VeteranOfWarMultipliers"/>.
+    /// Siegebreaker is up, and by <see cref="VeteranOfWarMultipliers"/>. The cast rolls its Spirit Refund.
     /// </summary>
     internal void VeteranOfWar(SimulationContext ctx, HelenaAbility source)
     {
@@ -132,7 +117,7 @@ public sealed class Helena : Hero
         double multiplier = VeteranOfWarTooltipMultiplier;
         if (Auras.HasAura(Siegebreaker.Buff, now)) multiplier *= SiegebreakerVeteranOfWarMultiplier;
         foreach (var bonus in VeteranOfWarMultipliers) multiplier *= bonus(ctx, source);
-        if (TriggerSpiritRefund(null, 0.0, ctx)) multiplier *= SpiritRefundVeteranOfWarMultiplier;
+        TriggerSpiritRefund(null, 0.0, ctx);
         foreach (var (target, seconds) in source.VeteranOfWarReductions)
         {
             if (AbilityOfType(target) is { } ability) CooldownOf(ability).Reduce(SimTime.FromSeconds(seconds * multiplier), now);
