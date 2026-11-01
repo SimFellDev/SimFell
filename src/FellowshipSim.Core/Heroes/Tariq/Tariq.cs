@@ -79,13 +79,14 @@ public sealed class Tariq : Hero
     protected override void OnFightBegins(SimulationContext ctx)
     {
         if (FuryPerSecond <= 0) return;
-        // Bloodline (talent 76, effect 2424): 1% of maximum Fury every hasted second in combat (see Bloodline).
+        // Bloodline (talent 76, effect 2424): 1% of maximum Fury every second in combat, not hasted (see Bloodline).
+        var period = SimTime.FromSeconds(Bloodline.PeriodSeconds);
         void Regen(SimulationContext c)
         {
             if (c.ActiveEnemies.Count > 0) GainFury(FuryPerSecond, c);
-            HastedTimer.Start(c, this, Bloodline.PeriodSeconds, Regen, Bloodline.TalentName);
+            c.Schedule(period, Regen, Bloodline.TalentName);
         }
-        HastedTimer.Start(ctx, this, Bloodline.PeriodSeconds, Regen, Bloodline.TalentName);
+        ctx.Schedule(period, Regen, Bloodline.TalentName);
     }
 
     public override void ResetForIteration() => ResetCombatState();

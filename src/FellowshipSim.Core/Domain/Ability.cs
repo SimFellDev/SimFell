@@ -97,6 +97,11 @@ public abstract class Ability
     public bool ChannelPartialFinalTick { get; protected set; } = false;
     /// <summary>The partial final tick comes even when less than a server frame of a period is left (Freezing Torrent).</summary>
     public bool ChannelFinalTickAlways { get; protected set; } = false;
+    /// <summary>
+    /// A cast can be queued during the channel and fires as it ends, as after a cast time (Hammer Storm); other channels
+    /// end with nothing queued, and the player reacts (<see cref="Engine.ReactionDelays"/>).
+    /// </summary>
+    public bool ChannelQueuesNextCast { get; protected set; } = false;
 
     /// <summary>Unhasted seconds between ticks of the channel starting now (abilities whose tick rate a buff changes override this).</summary>
     public virtual double ChannelTickPeriodFor(SimulationContext ctx) => ChannelTickPeriodSeconds;

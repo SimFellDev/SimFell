@@ -96,6 +96,28 @@ public class SimulationContext
     public SimulationRng Rng { get; } = new();
     public IOutcomeSource Outcomes { get; set; }
 
+    /// <summary>
+    /// The hero's delays to cast once a hold ends (<see cref="HoldEnds"/>); null for none, as in a replay, which casts at
+    /// the log's times.
+    /// </summary>
+    public ReactionDelays? Reactions { get; set; }
+
+    /// <summary>Until this time the hero is still reacting to the last hold's end, and casts nothing on the global cooldown.</summary>
+    public SimTime ReactionEndTime { get; private set; }
+    private SimTime _lastHoldEnd;
+
+    /// <summary>
+    /// The hero is held by <paramref name="hold"/> until <paramref name="end"/>: the first time a hold ending there is seen,
+    /// the hero's reaction to it is rolled (<see cref="IOutcomeSource.ReactionDelay"/>). A hold ending no later than one
+    /// already seen rolls nothing.
+    /// </summary>
+    public void HoldEnds(SimTime end, ReactionHold hold)
+    {
+        if (Reactions == null || end <= _lastHoldEnd) return;
+        _lastHoldEnd = end;
+        ReactionEndTime = end + Outcomes.ReactionDelay(hold, Reactions, this);
+    }
+
     public double TotalDamage { get; private set; }
 
     /// <summary>Damage dealt by name (a new dictionary of the totals so far, in the order the names first dealt damage).</summary>
@@ -285,6 +307,10 @@ public class SimulationContext
             if (left > GlobalCooldownToleranceSeconds && !force && !ability.UsableDuringGcd)
             {
                 return CastAttempt.Rejected($"on global cooldown ({left:F2}s remaining)");
+            }
+            if (CurrentTime < ReactionEndTime && !force && !ability.UsableDuringGcd)
+            {
+                return CastAttempt.Rejected($"reacting ({(ReactionEndTime - CurrentTime).TotalSeconds:F3}s remaining)");
             }
             StopChannel(hero);
             double gcd = ability.GlobalCooldownSeconds ?? hero.GlobalCooldownSeconds;

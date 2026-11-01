@@ -274,7 +274,7 @@ public class MonteCarloSimulator
         FightOptions options, Totals totals)
     {
         var hero = worker.Hero;
-        var ctx = new SimulationContext(hero);
+        var ctx = new SimulationContext(hero) { Reactions = options.ReactionDelays ? ReactionDelays.Measured : null };
         ctx.Rng.Seed(seed);
         hero.ResetForIteration();
         worker.Recorder.Begin(fight, seconds, totals.Report);
@@ -340,8 +340,9 @@ public class MonteCarloSimulator
         {
             if (stop != null && stop()) return true;
             bool acted = IsFreeToAct(hero, ctx, castsDuringGcd) && worker.Program.TryAct(ctx);
+            NoteHold(hero, ctx);
 
-            var next = NextDecisionTime(hero);
+            var next = NextDecisionTime(hero, ctx);
             if (!acted && next <= ctx.CurrentTime)
             {
                 // Nothing was cast: decide again at the next event or when something the action list reads changes.
@@ -359,18 +360,37 @@ public class MonteCarloSimulator
         return stop != null && stop();
     }
 
-    // While the global cooldown runs, a hero with an ability usable during it acts too: the others refuse
-    // (SimulationContext.Activate).
+    // While the global cooldown or the reaction to a hold runs, a hero with an ability usable during the global cooldown
+    // acts too: the others refuse (SimulationContext.Activate).
     private static bool IsFreeToAct(Hero hero, SimulationContext ctx, bool castsDuringGcd) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && (castsDuringGcd || ctx.CurrentTime >= hero.GlobalCooldownEndTime);
+        hero.CurrentCast == null && hero.CurrentChannel == null && (castsDuringGcd || ctx.CurrentTime >= GcdOrReactionEnd(hero, ctx));
 
-    // The hero is held by the global cooldown alone.
+    // The hero is held by the global cooldown, or the reaction to a hold, alone.
     private static bool OnGcdOnly(Hero hero, SimulationContext ctx) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime < hero.GlobalCooldownEndTime;
+        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime < GcdOrReactionEnd(hero, ctx);
 
-    private static SimTime NextDecisionTime(Hero hero)
+    private static SimTime GcdOrReactionEnd(Hero hero, SimulationContext ctx) =>
+        ctx.ReactionEndTime > hero.GlobalCooldownEndTime ? ctx.ReactionEndTime : hero.GlobalCooldownEndTime;
+
+    /// <summary>
+    /// The hold the hero is under now, the last to end of a channel, a cast and the global cooldown, so the reaction to it
+    /// is rolled once (<see cref="SimulationContext.HoldEnds"/>).
+    /// </summary>
+    private static void NoteHold(Hero hero, SimulationContext ctx)
     {
-        var next = hero.GlobalCooldownEndTime;
+        if (ctx.Reactions == null) return;
+        var (end, hold) = (hero.GlobalCooldownEndTime, ReactionHold.GlobalCooldown);
+        if (hero.CurrentCast is { } cast && cast.EndTime >= end) (end, hold) = (cast.EndTime, ReactionHold.CastTime);
+        if (hero.CurrentChannel is { } channel && channel.Ticks.End >= end)
+        {
+            (end, hold) = (channel.Ticks.End, channel.Ability.ChannelQueuesNextCast ? ReactionHold.CastTime : ReactionHold.Channel);
+        }
+        if (end > ctx.CurrentTime) ctx.HoldEnds(end, hold);
+    }
+
+    private static SimTime NextDecisionTime(Hero hero, SimulationContext ctx)
+    {
+        var next = GcdOrReactionEnd(hero, ctx);
         if (hero.CurrentCast != null && hero.CurrentCast.EndTime > next) next = hero.CurrentCast.EndTime;
         if (hero.CurrentChannel != null && hero.CurrentChannel.Ticks.End > next) next = hero.CurrentChannel.Ticks.End;
         return next;

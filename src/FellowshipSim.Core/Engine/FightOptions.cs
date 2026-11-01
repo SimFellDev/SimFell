@@ -12,10 +12,11 @@ namespace FellowshipSim.Core.Engine;
 /// hero's Spirit Points as the fight starts. <see cref="Boss"/> is true for training dummies that are bosses: without one, the
 /// hero's <see cref="Domain.Hero.BossAuras"/> are off. In a dungeon they are on while a boss is in combat.
 /// <see cref="HeroShareVariance"/> spreads the dungeon's <see cref="DungeonProfile.HeroShare"/> over ± that share of it
-/// (0.2: 30 to 45% of 37.5%), a different share in each fight.
+/// (0.2: 30 to 45% of 37.5%), a different share in each fight. With <see cref="ReactionDelays"/> the hero takes a player's
+/// time to cast once the global cooldown, a cast or a channel lets them (<see cref="Engine.ReactionDelays.Measured"/>).
 /// </summary>
 public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0, bool Boss = true,
-    DungeonProfile? Dungeon = null, double HeroShareVariance = 0)
+    DungeonProfile? Dungeon = null, double HeroShareVariance = 0, bool ReactionDelays = false)
 {
     public static readonly FightOptions Default = new();
 

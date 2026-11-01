@@ -146,6 +146,9 @@ public sealed class SimPageState
 
     public double StartingSpirit { get; set; } = 100;
 
+    /// <summary>True when the hero takes a player's time to cast once the global cooldown, a cast or a channel lets them.</summary>
+    public bool ReactionDelays { get; set; } = true;
+
     public SimExtra Extra { get; set; } = SimExtra.None;
 
     public List<CompareRow> CompareRows { get; } = [];

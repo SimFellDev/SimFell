@@ -110,12 +110,6 @@
   background: var(--heading);
 }
 
-.legend i.band {
-  height: 10px;
-  border-radius: 2px;
-  background: rgba(212, 175, 110, 0.18);
-}
-
 .legend i.spirit-mean {
   height: 2px;
   border-radius: 1px;
@@ -134,18 +128,40 @@
   column-gap: 8px;
 }
 
+/* Each value label centred on its grid line: the five quarters from the top to the bottom. */
 .chart .y {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
+  position: relative;
 }
 
+.chart .y span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.chart .y span:nth-child(1) { top: 0; }
+.chart .y span:nth-child(2) { top: 25%; }
+.chart .y span:nth-child(3) { top: 50%; }
+.chart .y span:nth-child(4) { top: 75%; }
+.chart .y span:nth-child(5) { top: 100%; }
+
+/* Each time label centred on its second (left set inline); the first starts at the left edge. */
 .chart .x {
   grid-column: 2;
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 15px;
   margin-top: 4px;
+}
+
+.chart .x span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.chart .x span:first-child {
+  transform: none;
 }
 
 .chart .y span,
@@ -167,11 +183,6 @@
   stroke: #1e1e22;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-}
-
-.chart .band {
-  fill: rgba(212, 175, 110, 0.18);
-  stroke: none;
 }
 
 .chart .mean {
@@ -460,8 +471,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* With the space between amounts, about 10px apart. */
 .cast-table .hit + .hit {
-  margin-left: 10px;
+  margin-left: 6px;
+}
+
+.cast-table .count {
+  color: var(--muted);
+  margin-right: 4px;
 }
 
 .cast-table .hit.crit {

@@ -89,6 +89,57 @@ public class DecisionTimingTests
         Assert.Equal([(markExpires!.Value, markExpires.Value)], runOut);
     }
 
+    [Fact]
+    public void A_Reaction_Delay_Is_Its_Median_At_A_Standard_Normal_Of_Zero()
+    {
+        // Box-Muller's z is 0 at u2 = 0.25 (cos(pi/2)).
+        Assert.Equal(171, ReactionDelays.Measured.Delay(ReactionHold.Channel, 0.5, 0.25).Milliseconds);
+        // A cast queued during the global cooldown or a cast time goes off as it ends.
+        Assert.Equal(SimTime.Zero, ReactionDelays.Measured.Delay(ReactionHold.GlobalCooldown, 0.9, 0.1));
+        Assert.Equal(SimTime.Zero, ReactionDelays.Measured.Delay(ReactionHold.CastTime, 0.9, 0.1));
+    }
+
+    [Fact]
+    public void With_Reaction_Delays_A_Cast_After_A_Channel_Comes_After_The_Channel_Ends()
+    {
+        var hero = HeroImporter.Import(Fixture());
+        var starts = CastStarts(hero);
+        var channelEnds = new List<SimTime>();
+        hero.OnChannelEnded += (_, _, now, clipped) => { if (!clipped) channelEnds.Add(now); };
+        Fight(hero, "actions+=/freezing_torrent\nactions+=/frost_bolt", seconds: 60, Reacting);
+
+        var ends = channelEnds.Where(end => starts.Any(s => s.At >= end)).ToList();
+        Assert.NotEmpty(ends);
+        Assert.All(ends, end => Assert.True(starts.First(s => s.At >= end).At > end));
+    }
+
+    [Fact]
+    public void With_Reaction_Delays_A_Cast_After_An_Instant_Comes_As_The_Global_Cooldown_Ends()
+    {
+        // The cast is queued during the global cooldown.
+        var hero = HeroImporter.Import(Fixture());
+        var starts = new List<(SimTime At, Ability Ability, double Haste)>();
+        hero.OnCastStarted += (ability, _, now) => starts.Add((now, ability, hero.GetHaste(now)));
+        Fight(hero, "actions+=/cold_snap\nactions+=/frost_bolt", seconds: 60, Reacting);
+
+        var afterInstants = starts.Zip(starts.Skip(1)).Where(p => p.First.Ability is ColdSnap).ToList();
+        Assert.NotEmpty(afterInstants);
+        Assert.All(afterInstants, p =>
+            Assert.Equal(p.First.At + SimTime.FromSeconds(hero.GlobalCooldownSeconds / (1.0 + p.First.Haste)), p.Second.At));
+    }
+
+    [Fact]
+    public void With_Reaction_Delays_A_Cast_After_A_Cast_Time_Comes_As_It_Completes()
+    {
+        // The ability queue: Hold's 10 s cast ends long after its global cooldown, and Strike follows at once.
+        var hero = Tester.Create();
+        var starts = CastStarts(hero);
+        Fight(hero, "actions+=/hold\nactions+=/strike", seconds: 12, Reacting);
+        Assert.Equal([("Hold", 0L), ("Strike", 10000L)], starts.Take(2).Select(s => (s.Ability.Name, s.At.Milliseconds)));
+    }
+
+    private static readonly FightOptions Reacting = new(ReactionDelays: true);
+
     private static List<(SimTime At, Ability Ability)> CastStarts(Hero hero)
     {
         var starts = new List<(SimTime, Ability)>();
@@ -96,10 +147,10 @@ public class DecisionTimingTests
         return starts;
     }
 
-    private static void Fight(Hero hero, string apl, int seconds, int targets = 1) =>
+    private static void Fight(Hero hero, string apl, int seconds, FightOptions? fight = null) =>
         // One thread: the simulator fights on the hero given.
         new MonteCarloSimulator(() => hero, AplParser.ParseScript(apl))
-            .Run(SimTime.FromSeconds(seconds), iterations: 1, targets, degreeOfParallelism: 1);
+            .Run(SimTime.FromSeconds(seconds), iterations: 1, 1, degreeOfParallelism: 1, fight: fight);
 
     private static CharacterBuild Fixture() => System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rime_character.json")))!;

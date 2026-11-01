@@ -65,9 +65,17 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
 
 - **Fury** is logged as resource type 2, a share of a maximum that follows Strength. The replay reads it as a share of
   100. Tariq loses none of it between pulls.
-- **Bloodline** and **Ride the Lightning** generate Fury on hasted ticks, Bloodline in combat alone (1p7AXmHfwV9CYMxR
-  fight 30: no Fury between pulls). Ride the Lightning's Fury comes in Raging
-  Tempest too (fight 31 @ 199.7: about 2.2 Fury a second, with Thunder Call gone).
+- **Bloodline** generates 1 Fury every second, not hasted (confirmed in game: 50 Fury over 50 seconds, in smaller
+  fractional ticks; the engine keeps one tick a second, as the game data has it), in combat alone (1p7AXmHfwV9CYMxR
+  fight 30: no Fury between pulls). The logs disagree: while Tariq casts nothing they show whole 1-Fury steps on a grid
+  of about 1 / (1 + haste) seconds (NhBnFXmy3bJg9Cav fight 6, 301.0-320.6: 25 Fury in 19.5s at about 27% haste; about
+  40 quiet stretches in 15 fights fit that grid and not a 1-second one, and it follows haste, not Strength). The in-game
+  timing overrules them: the logs' Fury is unreliable.
+- **Ride the Lightning** generates Fury on ticks hasted by the haste as Thunder Call is cast, for the whole buff
+  (confirmed in game). Its Fury comes in Raging Tempest too (fight 31 @ 199.7: about 2.2 Fury a second, with Thunder
+  Call gone).
+- **Kill Em All** never procs from Heavy Strike (confirmed in game; 3 fights with the talent: none of 537 Heavy Strikes,
+  where 10% would be about 54).
 - **Executioner's Grin** rolls on every cast, the weapon's too (fight 4 @ 66.7: Fated Strike).
 
 ## Replay matches
@@ -111,6 +119,6 @@ expected.
 
 ## Not yet checked against a log
 
-Left Hand Path, Pneuma, Kill Em All, Killing in the Name and Thundering Vortex are built from their tooltips and the
+Left Hand Path, Pneuma, Killing in the Name and Thundering Vortex are built from their tooltips and the
 game data (marked `UNVERIFIED` in their files). Blood & Thunder, The Motherload, Thunderstruck and Ace of Spades are in
 q3y7pWgXrjN2dftw fight 12 alone. Sledgehammer is in fights 4 and 30 alone.

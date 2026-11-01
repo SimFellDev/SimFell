@@ -76,6 +76,9 @@ public interface IOutcomeSource
 
     /// <summary>Called once a landed hit has been dealt and everything it triggered (procs, follow-up hits) has run.</summary>
     void HitFinished(SimulationContext ctx);
+
+    /// <summary>How long the hero takes to cast after <paramref name="hold"/> ends (<see cref="SimulationContext.Reactions"/>).</summary>
+    SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx);
 }
 
 /// <summary>
@@ -121,6 +124,9 @@ public class RandomOutcomeSource : IOutcomeSource
     public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => tick.Scheduled;
 
     public void HitFinished(SimulationContext ctx) { }
+
+    public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) =>
+        reactions.Delay(hold, _rng.NextDouble(), _rng.NextDouble());
 }
 
 /// <summary>The simulation's random numbers: xoshiro256** (Blackman and Vigna, 2018), seeded through SplitMix64.</summary>

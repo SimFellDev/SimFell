@@ -28,6 +28,8 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
           --targets <n>         Training dummies in each fight (default {DefaultSettings.TargetCount}).
           --seed <n>            Seed of the first fight; fight i has seed + i (default {DefaultSettings.FirstSeed}).
           --threads <n>         Most threads the fights use (default {MonteCarloSimulator.DefaultDegreeOfParallelism}, 80% of the logical processors).
+          --reactions <on|off>  A player's reaction time before the cast after a channel, as in the combat logs (default on).
+                                Off, the hero casts the moment a channel ends.
           --format <text|json>  Result format on stdout (default text). json is the SimResult record.
           -h, --help            This text.
 
@@ -61,6 +63,17 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
                 case "--targets": settings = settings with { TargetCount = Integer(name, value, min: 1) }; break;
                 case "--seed": settings = settings with { FirstSeed = Integer(name, value, min: int.MinValue) }; break;
                 case "--threads": settings = settings with { DegreeOfParallelism = Integer(name, value, min: 1) }; break;
+                case "--reactions":
+                    settings = settings with
+                    {
+                        ReactionDelays = value switch
+                        {
+                            "on" => true,
+                            "off" => false,
+                            _ => throw new CliUsageException($"--reactions is on or off, not '{value}'."),
+                        },
+                    };
+                    break;
                 case "--format":
                     format = value switch
                     {

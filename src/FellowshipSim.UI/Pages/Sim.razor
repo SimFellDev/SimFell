@@ -345,7 +345,8 @@
         StartingSpirit: State.StartWithSpirit ? State.StartingSpirit : 0,
         Boss: State.Boss,
         Dungeon: State.Mode == SimMode.Dungeon ? State.Dungeon : null,
-        HeroShareVariance: State.VaryHeroShare ? State.HeroShareVariancePercent / 100 : 0);
+        HeroShareVariance: State.VaryHeroShare ? State.HeroShareVariancePercent / 100 : 0,
+        ReactionDelays: State.ReactionDelays);
 
     private async Task StartAsync()
     {
