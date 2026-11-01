@@ -14,7 +14,7 @@ actions+=/shatter_earth
 actions+=/stone_stomp
 # Everlasting Spirit pulses as its buff runs out: a Serenity before then puts the pulse off.
 actions+=/serenity,if=legendary.everlasting_spirit&!buff.everlasting_spirit.up
-# Each weapon power Meiko can carry, used as soon as it is ready. Combat logs: Al'zerac's Shackle (13 players, 615
+# Each weapon power Meiko uses, cast as soon as it is ready. Combat logs: Al'zerac's Shackle (13 players, 615
 # casts) and Fated Strike (3 players, 59 casts) come between Combo Builders and auto attacks.
 actions+=/alzeracs_shackle
 actions+=/fated_strike
