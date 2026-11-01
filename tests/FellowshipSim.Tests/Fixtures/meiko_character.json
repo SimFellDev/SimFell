@@ -1,0 +1,127 @@
+{
+  "Name": "VeridisQuo \u2661",
+  "Hero": "Meiko",
+  "PrimaryStat": 150,
+  "Stamina": 356,
+  "MaxHealth": 45307,
+  "Armor": 912,
+  "CritRating": 50,
+  "HasteRating": 137,
+  "ExpertiseRating": 119,
+  "SpiritRating": 181,
+  "StatsFromOldProfile": false,
+  "Talents": [
+    96,
+    626,
+    106,
+    514,
+    107,
+    90,
+    91,
+    102,
+    103
+  ],
+  "Augmentations": [
+    {
+      "Id": 42,
+      "Rank": 4,
+      "Name": "Hunter\u0027s Focus"
+    },
+    {
+      "Id": 51,
+      "Rank": 4,
+      "Name": "Martial Initiative"
+    },
+    {
+      "Id": 4,
+      "Rank": 2,
+      "Name": "Seized Opportunity"
+    },
+    {
+      "Id": 48,
+      "Rank": 4,
+      "Name": "Brave Machinations"
+    },
+    {
+      "Id": 34,
+      "Rank": 1,
+      "Name": "Emerald Judgement"
+    },
+    {
+      "Id": 39,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 47,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 58,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 61,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 62,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Glyphs": [
+    {
+      "Id": 705,
+      "Rank": 4,
+      "Name": "The Monarch"
+    }
+  ],
+  "GemPower": {
+    "Emerald": 1200,
+    "Sapphire": 1200,
+    "Diamond": 1000
+  },
+  "SocketedGemIds": [
+    35,
+    35,
+    46,
+    46
+  ],
+  "GearGemBonuses": {
+    "Sapphire": 2,
+    "Diamond": 10,
+    "Emerald": 2
+  },
+  "StatEnchants": [
+    {
+      "Id": 70,
+      "Rank": 42,
+      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+    },
+    {
+      "Id": 66,
+      "Rank": 6,
+      "Name": null
+    },
+    {
+      "Id": 68,
+      "Rank": 6,
+      "Name": null
+    }
+  ],
+  "StatEnchantCounts": {
+    "70": 7,
+    "66": 1,
+    "68": 1
+  },
+  "Relic1ItemId": 5921,
+  "Relic2ItemId": 5926,
+  "LegendaryItemIds": [
+    5899
+  ],
+  "WeaponAbilityId": 152
+}
