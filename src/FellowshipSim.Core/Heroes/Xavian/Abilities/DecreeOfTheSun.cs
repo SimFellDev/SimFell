@@ -14,7 +14,7 @@ public class DecreeOfTheSun : XavianAbility
     /// <summary>Game data targetCountFalloff: effect 2561, threshold 8; maxTargets 20.</summary>
     public const double TargetThreshold = 8;
 
-    /// <summary>Effect 2557: immune to all damage for 3 seconds; the explosion comes as it ends.</summary>
+    /// <summary>Effect 2557: immune to all damage for 3 seconds; the explosion is at its end.</summary>
     public static readonly AuraDef Immunity = AuraDef.Effect(AbilityName, 2557, 3.0);
 
     /// <summary>Effect 2558: the 5 seconds after the immunity.</summary>

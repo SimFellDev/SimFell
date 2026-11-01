@@ -43,7 +43,7 @@ public class Invictus : Talent
     /// The damage as a shield goes up, on every enemy, losing damage as sqrt(1/N) over N enemies. It has the calculation
     /// preset FlatDamageHealingScaling (GE_Sune_Talent_SingleTargetAbsorb_AoeDamage_Damage; DT_EffectCalculationPresets:
     /// CanCrit false, DefaultSpread 0, ApplySourceDamageHealingMultipliers and ApplySourceExpertiseMultiplier true), so
-    /// Expertise raises it once more after the absorb. Combat logs (16 Xavian players, 2,000+ casts): every enemy takes the
+    /// Expertise increases it once more after the absorb. Combat logs (16 Xavian players, 2,000+ casts): every enemy takes the
     /// same amount, never a crit, sqrt(1/N) of it; log/engine 0.92-1.09 a fight.
     /// </summary>
     private sealed class SolarBurst : Ability

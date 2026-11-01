@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// <summary>
 /// Talent 568: "Your Omnistrike and Solar Blades abilities grant you 1 stack of Light's Oath for 30 seconds, stacking up
 /// to 8 times. When you have 8 stacks of Light's Oath, your next Shining Halo deals +100% increased damage." Effect 2655
-/// (30s, 8 stacks; its own text gives 200% more). UNVERIFIED: no combat log has this talent.
+/// (30s, 8 stacks; its own text has 200% more). UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class LightsOath : Talent
 {

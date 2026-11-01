@@ -30,14 +30,14 @@ public class XavianReplayTests(ITestOutputHelper output)
                     output.WriteLine($"{player.Name} {reportCode} fight {fightId}: no character information");
                     continue;
                 }
-                // XAVIAN_CHARACTER_JSON writes the imported character (the smoke tests' fixture comes from XyGpcHjNaAzgk7mW fight 20's).
+                // XAVIAN_CHARACTER_JSON writes the imported character (the smoke tests' fixture is XyGpcHjNaAzgk7mW fight 20's).
                 if (Environment.GetEnvironmentVariable("XAVIAN_CHARACTER_JSON") is { } characterFile)
                 {
                     File.WriteAllText(characterFile, System.Text.Json.JsonSerializer.Serialize(script.Character,
                         new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 }
                 // XAVIAN_PROFILE writes it as a .simc profile, less the augmentations and glyphs the catalog does not have
-                // (data/profiles/Xavian comes from XyGpcHjNaAzgk7mW fight 20's).
+                // (data/profiles/Xavian is XyGpcHjNaAzgk7mW fight 20's).
                 if (Environment.GetEnvironmentVariable("XAVIAN_PROFILE") is { } profileFile)
                 {
                     var build = script.Character!;

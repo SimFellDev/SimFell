@@ -26,7 +26,7 @@ public class Omnistrike : XavianAbility
 
     /// <summary>
     /// Sune.AoeMeleeDamageBoostAndManaRefundDebuff.ManaRefundBase 100 and ManaRefundPerAdditionalStack 50 (ability 1845's
-    /// text gives 50; effect 2664's text gives 40). UNVERIFIED.
+    /// text has 50; effect 2664's text has 40). UNVERIFIED.
     /// </summary>
     public const double SunstruckManaBase = 100;
     public const double SunstruckManaPerAdditionalStack = 50;
