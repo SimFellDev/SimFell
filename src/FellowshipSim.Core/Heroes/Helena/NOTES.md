@@ -50,3 +50,9 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 - Gleaming Shield: each stack of the buff (effect 3096, up to 10) adds 3% to the Armor Shield Slam's extra damage reads.
   With the stacks, Shield Slam's hits are 1.02 times the engine's (36,523 hits over 18 fights); with the build's Armor
   alone, 1.11.
+
+## Free dice
+
+- Free dice deals 102% of the log's damage over the 18 fights. Its hits on several enemies reach every enemy the log has
+  Helena hitting between two casts: Shield Throw bounces 5 times against the log's average of 3.5 hits per cast (free
+  dice 104.3% of the log), and Razor Shrapnel strikes up to 12 of them (127%).
