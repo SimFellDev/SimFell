@@ -16,6 +16,10 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 ///   duration and the tick period, with no tick at the refresh (36 refreshes: the next tick comes one period after it).
 /// - Freeze and Slow ticks have the weapon ability's crit chance bonus (Brave Machinations): over the 19 Xavian fights,
 ///   Shackle hits crit 79-96% with Brave Machinations at rank 4, 55-63% at rank 1, and 31% without it.
+/// - Freeze and Slow keep ticking on an enemy after its death until they run out (effects 63 and 65 have no
+///   RemoveOnDeath tag): over every tank fight, 23,007 of 208,854 Slow ticks and 117 of 8,722 Freeze ticks hit an enemy
+///   after its logged death. An enemy that dies frozen gives no explosion (60 of 74 such Freezes; in the other 14 the
+///   enemy died in the server frame of the explosion).
 /// </summary>
 public class AlzeracsShackle : Ability
 {
@@ -76,11 +80,6 @@ public class AlzeracsShackle : Ability
             _fight = ctx;
             _freezes.Clear();
             _slows.Clear();
-            ctx.EnemyDemising += (c, enemy) =>
-            {
-                if (_freezes.Remove(enemy, out var freeze)) freeze.Stop(c);
-                if (_slows.Remove(enemy, out var slow)) slow.Stop(c);
-            };
         }
         ctx.Schedule(SimTime.FromSeconds(FreezeLandSeconds), c => { if (!target.IsSleeping) Frost(c, target); }, FreezeName);
     }
@@ -96,7 +95,7 @@ public class AlzeracsShackle : Ability
             {
                 if (_freezes.GetValueOrDefault(target) == freeze) _freezes.Remove(target);
                 target.Auras.Remove(Freeze, c.CurrentTime);
-                if (!clipped) Explode(c, target);
+                if (!clipped && !target.IsSleeping) Explode(c, target);
             },
             damageLogId: _freezeTick.DamageLogId, target: target, damageOverTime: true);
         _freezes[target] = freeze;
