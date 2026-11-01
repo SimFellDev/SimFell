@@ -28,7 +28,18 @@ public sealed class Xavian : Hero
     /// </summary>
     public const double SpiritOfHeroismManaRegen = 6.0;
 
-    /// <summary>Hero 25 attribute MaxResources 3: the Swift Reprieval stacks held at most. UNVERIFIED.</summary>
+    /// <summary>
+    /// Effect 2662 "Spirit of Heroism" (GE_Sune_SpiritTriggeredBuff): "Haste is increased by 30%. Mana regeneration is
+    /// increased by 600%." Combat logs (16 Xavian players) give Xavian this effect from Decree of the Sun, never effect
+    /// 2253, and keep it 38s with Sapphire's Blessing of the Prophet - II (20s and 18s).
+    /// </summary>
+    public static readonly AuraDef SpiritOfHeroismBuff = AuraDef.Effect("Spirit of Heroism", 2662, SpiritOfHeroismSeconds,
+        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
+
+    /// <summary>
+    /// Hero 25 attribute MaxResources 3: the Swift Reprieval stacks held at most. Combat logs (XyGpcHjNaAzgk7mW fight 20,
+    /// gd6ByNrf81jc9aWw fight 3): 117 gains to 3 stacks, none past it.
+    /// </summary>
     public const int MaxSwiftReprievals = 3;
 
     public static readonly ResourceDef Mana = new("Mana", Max: MaxMana, Initial: MaxMana);
@@ -132,7 +143,7 @@ public sealed class Xavian : Hero
         var now = ctx.CurrentTime;
         double rate = ctx.ActiveEnemies.Count > 0 ? ManaRegenRate : OutOfCombatManaRegenRate;
         double perSecond = MaxMana * rate / ManaTickSeconds * (1.0 + SpiritPercent(now));
-        if (Auras.HasAura(SpiritOfHeroism, now)) perSecond *= SpiritOfHeroismManaRegen;
+        if (Auras.HasAura(SpiritOfHeroismBuff, now)) perSecond *= SpiritOfHeroismManaRegen;
         return perSecond;
     }
 

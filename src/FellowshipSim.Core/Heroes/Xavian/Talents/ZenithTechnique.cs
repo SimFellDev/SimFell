@@ -19,6 +19,6 @@ public class ZenithTechnique : Talent
     public override void Bind(Hero hero)
     {
         var halo = ((Xavian)hero).ShiningHalo;
-        hero.GetAbility<SkyCrash>()!.Landed += ctx => halo.Extend(ctx, ExtensionSeconds);
+        hero.GetAbility<SkyCrash>()!.Crashed += ctx => halo.Extend(ctx, ExtensionSeconds);
     }
 }

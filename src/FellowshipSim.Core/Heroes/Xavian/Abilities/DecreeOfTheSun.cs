@@ -46,6 +46,11 @@ public class DecreeOfTheSun : XavianAbility
         var hero = Xavian;
         hero.Resources.Consume(Hero.SpiritPoints, Math.Min(hero.SpiritAbilityCost, hero.ResourceAmount(Hero.SpiritPoints)));
         hero.ActivateSpiritOfHeroism(ctx);
+        // Xavian's Spirit of Heroism is his own effect, 2662: it takes the place of the shared one, with the same
+        // duration.
+        var now = ctx.CurrentTime;
+        hero.Auras.Remove(Hero.SpiritOfHeroism, now);
+        hero.Auras.Apply(Xavian.SpiritOfHeroismBuff.WithDuration(Hero.SpiritOfHeroismSeconds + hero.SpiritOfHeroismDurationBonus), now);
         var immunity = hero.Auras.Apply(Immunity, ctx.CurrentTime);
         ctx.ScheduleAt(immunity.ExpiresAt, c =>
         {

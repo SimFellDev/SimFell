@@ -24,6 +24,6 @@ public class SunsTouch : Talent
         var xavian = (Xavian)hero;
         var dot = new XavianDot(xavian, DotEffectId, TalentName, PeriodSeconds, DurationSeconds);
         hero.Register(dot.Debuff);
-        xavian.BrilliantFlash.Landed += (ctx, enemy, dealt) => dot.Apply(ctx, enemy, dealt * DamageShare);
+        xavian.BrilliantFlash.Dealt += (ctx, enemy, dealt) => dot.Apply(ctx, enemy, dealt * DamageShare);
     }
 }

@@ -14,11 +14,11 @@ public class SkyCrash : XavianAbility
     public const int Charges = 2;
     /// <summary>Game data targetCountFalloff: effect 2540, threshold 8; maxTargets 20.</summary>
     public const double TargetThreshold = 8;
-    /// <summary>Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 10.051): the crash lands 0.17s after the cast. UNVERIFIED.</summary>
-    public const double LandingSeconds = 0.17;
+    /// <summary>Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 10.051): the crash deals its damage 0.17s after the cast. UNVERIFIED.</summary>
+    public const double DamageDelaySeconds = 0.17;
 
-    /// <summary>Raised as Xavian lands (Tempered Descent, Zenith Technique).</summary>
-    public event Action<SimulationContext>? Landed;
+    /// <summary>Raised as the crash deals its damage (Tempered Descent, Zenith Technique).</summary>
+    public event Action<SimulationContext>? Crashed;
 
     public SkyCrash(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Movement)
     {
@@ -31,10 +31,10 @@ public class SkyCrash : XavianAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        ctx.Schedule(SimTime.FromSeconds(LandingSeconds), c =>
+        ctx.Schedule(SimTime.FromSeconds(DamageDelaySeconds), c =>
         {
             if (c.ActiveEnemies.Count > 0) DealAoeDamage(c, c.ActiveEnemies);
-            Landed?.Invoke(c);
+            Crashed?.Invoke(c);
         }, AbilityName);
     }
 }

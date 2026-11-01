@@ -35,7 +35,7 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
 - **Aura of Solace:** a pulse every 1.50s from the cast whatever the Haste, 10 Mana each.
 - **Sunburn:** a tick every 1.5s shortened by Haste, with a partial tick as it runs out (7 ticks of 593 and one of 342
   over 9.02s, XyGpcHjNaAzgk7mW fight 20 @ 74.748). A refresh keeps the tick timing.
-- **Sky Crash:** the crash lands 0.17s after the cast.
+- **Sky Crash:** the crash deals its damage 0.17s after the cast.
 
 ## Procs and resources
 

@@ -29,7 +29,7 @@ public class BrilliantFlash : XavianAbility
     public event Action<SimulationContext>? SwiftReprievalConsumed;
 
     /// <summary>Raised for each hit's damage, with its enemy (Sun's Touch).</summary>
-    public event Action<SimulationContext, EnemyTarget, double>? Landed;
+    public event Action<SimulationContext, EnemyTarget, double>? Dealt;
 
     public BrilliantFlash(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
@@ -67,7 +67,7 @@ public class BrilliantFlash : XavianAbility
             {
                 var enemy = struck[i];
                 double multiplier = enemy == target ? EnhancedMainTargetMultiplier : falloff;
-                DealDamage(ctx, enemy, multiplier, onLanded: (c, dealt) => Landed?.Invoke(c, enemy, dealt));
+                DealDamage(ctx, enemy, multiplier, onLanded: (c, dealt) => Dealt?.Invoke(c, enemy, dealt));
             }
             hero.GainMana(Xavian.MaxMana * EnhancedManaShare, ctx, target);
         }
@@ -75,7 +75,7 @@ public class BrilliantFlash : XavianAbility
         {
             hero.Auras.ConsumeStack(Xavian.SwiftReprieval, now);
             SwiftReprievalConsumed?.Invoke(ctx);
-            DealDamage(ctx, target, onLanded: (c, dealt) => Landed?.Invoke(c, target, dealt));
+            DealDamage(ctx, target, onLanded: (c, dealt) => Dealt?.Invoke(c, target, dealt));
         }
         if (hero.RollBrilliantSpirit(ctx)) hero.GainMana(BrilliantSpiritMana, ctx);
         Flashed?.Invoke(ctx, target);
