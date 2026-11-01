@@ -53,6 +53,6 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 
 ## Free dice
 
-- Free dice deals 106.9% of the log's damage over the 18 fights. Its hits on several enemies reach every enemy the log has
-  Helena hitting between two casts: Shield Throw bounces 5 times against the log's average of 3.5 hits per cast (free
-  dice 108.1% of the log), and Razor Shrapnel strikes up to 12 of them (128.3%).
+- Free dice's hits on several enemies reach every enemy the log has Helena hitting between two casts. Shield Throw
+  bounces 5 times against the log's average of 3.5 hits per cast (free dice 108.1% of the log), and Razor Shrapnel
+  strikes up to 12 of those enemies (128.7%).
