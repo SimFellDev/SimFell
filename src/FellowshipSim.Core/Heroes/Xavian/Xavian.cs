@@ -105,6 +105,25 @@ public sealed class Xavian : Hero
         Abilities.Add(new DecreeOfTheSun(this));
         Abilities.Add(new Taunt(this));
         Abilities.Add(new Interrupt(this));
+        AddDefensiveProc(SolarisProcKey, DealSolaris);
+    }
+
+    /// <summary>
+    /// Solaris (ability 1850, effect 2553; GE_Sune_OverhealToAoeDamage): Xavian's overhealing turned into damage on nearby
+    /// enemies. Overhealing triggers it, so it is a defensive proc: a replay deals it where the log has its hits, and a sim
+    /// never. The engine has no healing, so its base damage is 0 and an exact replay takes the log's amount. Combat logs (16
+    /// Xavian players, 74,327 hits): never a crit.
+    /// </summary>
+    public const int SolarisEffectId = 2553;
+    public const string SolarisProcKey = "solaris";
+    public static int SolarisLogId => LogIds.Effect(SolarisEffectId);
+
+    private void DealSolaris(SimulationContext ctx, EnemyTarget? _)
+    {
+        foreach (var enemy in ctx.Outcomes.SelectTargets(SolarisLogId, ctx.ActiveEnemies, ctx))
+        {
+            ctx.ApplyDamage(this, enemy, 0.0, SolarisLogId, "Solaris", canCrit: false, 0.0, 1.0);
+        }
     }
 
     public SolarBlades SolarBlades { get; private set; } = null!;
