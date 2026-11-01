@@ -57,8 +57,10 @@ public class SunStrike : XavianAbility
         DealDamage(ctx, target);
         _mainTarget = null;
         // Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 34.506): each nearby enemy's hit rolls its own crit, 15% of the main hit's
-        // power, losing damage as sqrt(3/N) over the N nearby enemies.
-        var nearby = ctx.Outcomes.SelectTargets(DamageLogId, ctx.ActiveEnemiesExcept(target), ctx);
+        // power, losing damage as sqrt(3/N) over the N nearby enemies (log splash/main 0.130 at N = 4, 0.079 at 10, 0.057 at
+        // 20; 0.15 x sqrt(3/N) is 0.130, 0.082 and 0.058). The main target shares the damage ID, so the splash leaves it out.
+        var struck = ctx.Outcomes.SelectTargets(DamageLogId, ctx.ActiveEnemiesExcept(target), ctx);
+        var nearby = struck.Contains(target) ? struck.Where(e => e != target).ToList() : struck;
         DealToEach(ctx, nearby, SplashTargetThreshold, SplashFraction);
         target.Auras.Apply(Sunstruck, ctx.CurrentTime, stacks: 1);
         Owner.TriggerHarmfulEffectApplied(ctx, target);

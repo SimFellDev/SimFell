@@ -36,6 +36,8 @@ public sealed class Xavian : Hero
     public static readonly AuraDef SpiritOfHeroismBuff = AuraDef.Effect("Spirit of Heroism", 2662, SpiritOfHeroismSeconds,
         modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
 
+    public override AuraDef SpiritOfHeroismAura => SpiritOfHeroismBuff;
+
     /// <summary>
     /// Hero 25 attribute MaxResources 3: the Swift Reprieval stacks held at most. Combat logs (XyGpcHjNaAzgk7mW fight 20,
     /// gd6ByNrf81jc9aWw fight 3): 117 gains to 3 stacks, none past it.
