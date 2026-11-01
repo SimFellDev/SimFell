@@ -9,8 +9,12 @@ actions+=/hold_the_line,if=cooldown.shield_slam.charges=0
 # Shields Up increases Toughness, which increases Greater Shockwave's damage; with High Command it reduces Hold the Line's
 # cooldown.
 actions+=/shields_up
+# Each weapon power Helena can carry, on cooldown: combat logs (19 fights, 19,897s) have 804 Al'zerac's Shackle casts,
+# one every 25s against its 30s cooldown.
+actions+=/alzeracs_shackle
+actions+=/zeraleths_hunger
+actions+=/sahrils_aegis
 actions+=/fated_strike
-actions+=/sahrils_wrath
 actions+=/shockwave
 actions+=/shield_slam
 actions+=/shield_throw
