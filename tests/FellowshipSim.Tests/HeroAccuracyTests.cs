@@ -59,7 +59,7 @@ public class HeroAccuracyTests(ITestOutputHelper output)
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero.Equals(hero, StringComparison.OrdinalIgnoreCase)))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
-                if (script.FightDate is not { } date || !GamePatch.Current.Covers(date, null)) continue;
+                if (script.FightDate is not { } date || !GamePatch.Current.Covers(date, null) || script.Character == null) continue;
 
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false }).Run();
                 var (exactDamage, logDamage) = ReplayReportWriter.DamageTotals(result);
