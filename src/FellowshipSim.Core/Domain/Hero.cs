@@ -191,6 +191,12 @@ public abstract class Hero : Actor
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
         modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
 
+    /// <summary>
+    /// Spirit of Heroism aura of this hero's Spirit ability: <see cref="SpiritOfHeroism"/>, or the hero's own where its
+    /// Spirit ability grants another effect.
+    /// </summary>
+    public virtual AuraDef SpiritOfHeroismAura => SpiritOfHeroism;
+
     /// <summary>A hit of the hero landed. Handlers run in the order they subscribed, with those of <see cref="OnDamageDealtBy"/> and <see cref="Ability.Hit"/>.</summary>
     public event DamageDealtHandler? OnDamageDealt
     {
@@ -498,7 +504,7 @@ public abstract class Hero : Actor
     /// <summary>Activates Spirit of Heroism and the auras that last while it does.</summary>
     public void ActivateSpiritOfHeroism(SimulationContext ctx)
     {
-        var heroism = SpiritOfHeroism.WithDuration(SpiritOfHeroismSeconds + SpiritOfHeroismDurationBonus);
+        var heroism = SpiritOfHeroismAura.WithDuration(SpiritOfHeroismAura.Duration.TotalSeconds + SpiritOfHeroismDurationBonus);
         var applied = Auras.Apply(heroism, ctx.CurrentTime);
         foreach (var aura in SpiritOfHeroismAuras) Auras.Apply(aura, ctx.CurrentTime);
         SpiritOfHeroismStarted?.Invoke(ctx);

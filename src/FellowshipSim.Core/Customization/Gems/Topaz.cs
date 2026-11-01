@@ -87,7 +87,7 @@ public class Topaz : Gem
         if (node.Slot == 1) BindAdrenalineRush(hero, node);
         if (node.Slot != 5) return;
         BindVirtuoso(hero, node);
-        if (!hero.Auras.HasAura(Hero.SpiritOfHeroism, now)) hero.Auras.Apply(node.Grants!, now);
+        if (!hero.Auras.HasAura(hero.SpiritOfHeroismAura, now)) hero.Auras.Apply(node.Grants!, now);
     }
 
     protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now) => SetRanks();
