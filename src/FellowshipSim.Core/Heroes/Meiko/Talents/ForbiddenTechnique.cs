@@ -76,10 +76,14 @@ public class ForbiddenTechnique : Talent
         };
     }
 
-    /// <summary>Forbidden Technique is on <paramref name="target"/> alone: one at a time.</summary>
+    /// <summary>
+    /// Forbidden Technique is on <paramref name="target"/> alone: one at a time. Combat logs (3M2vWr8taxVfTQFY fight 53): a
+    /// Double Palm Strike while one is active erupts the active one at once, 33 times within 0.05s of the strike.
+    /// </summary>
     private void Mark(SimulationContext ctx, Hero hero, EnemyTarget target, int eruptionId)
     {
         Follow(ctx);
+        if (_marked != null) Erupt(ctx, hero, _marked, eruptionId);
         _eruptions?.Stop(ctx);
         _marked?.Auras.Remove(Debuff, ctx.CurrentTime);
         _marked = target;
