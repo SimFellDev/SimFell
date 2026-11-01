@@ -289,6 +289,8 @@ public sealed class ReplayDriver
         var target = ResolveTarget(cmd.Target);
         if (target != null) _hero.CurrentTarget = target;
         else if (_hero.CurrentTarget is null or { IsSleeping: true }) _hero.CurrentTarget = _ctx.ActiveEnemies.FirstOrDefault()!;
+        // A cast the log records with no target (target -1) acts on the current target, as every cast in a sim does.
+        if (target == null && cmd.Target is null or { Id: <= 0 }) target = _hero.CurrentTarget;
 
         cancelFor.TryGetValue(cmd, out var end);
 
