@@ -1,0 +1,42 @@
+# Meiko's default action list. A combo's first builder picks the technique and its second the finisher: Wind Kick then
+# Earth Fist is Lashing Stormkick, then Spirit Palm Rising Storm; Earth Fist then Wind Kick is Earthfist Barrage, then
+# Spirit Palm Rising Earth; Spirit Palm then Wind Kick is Double Palm Strike, then Earth Fist Spirited Vortex. Each
+# finisher is used as soon as its combo is built. The technique the combo opened with is buff.kick_technique,
+# buff.fist_technique or buff.palm_technique.
+# The rotation keeps Spirited Vortex up, spends Warden of the Temple on Double Palm Strike, and spends Stormfall on
+# Lashing Stormkick and Earthfall on Earthfist Barrage: Earthfall first on fewer than 3 enemies, Stormfall first on more.
+actions.precombat=snapshot_stats
+# Swing the weapon whenever the swing timer allows.
+actions=attack
+actions+=/twin_souls_army_of_one
+actions+=/stone_shield
+actions+=/shatter_earth
+actions+=/stone_stomp
+# Everlasting Spirit pulses as its buff runs out: a Serenity before then puts the pulse off.
+actions+=/serenity,if=legendary.everlasting_spirit&!buff.everlasting_spirit.up
+actions+=/fated_strike
+actions+=/sahrils_wrath
+actions+=/voidbringers_touch
+
+# ---- Finishers: each is ready only once its combo is built.
+actions+=/double_palm_strike
+actions+=/spirited_vortex
+actions+=/earthfist_barrage
+actions+=/lashing_stormkick
+actions+=/rising_storm
+actions+=/rising_earth
+
+# ---- Second builder: the finisher wanted from the combo's technique.
+actions+=/earth_fist,if=buff.kick_technique.up&buff.stormfall.up
+actions+=/spirit_palm,if=buff.kick_technique.up
+actions+=/wind_kick,if=buff.fist_technique.up&buff.earthfall.up
+actions+=/spirit_palm,if=buff.fist_technique.up
+actions+=/earth_fist,if=buff.palm_technique.up&buff.spirited_vortex.remains<4
+actions+=/wind_kick,if=buff.palm_technique.up
+
+# ---- First builder: the technique wanted next.
+actions+=/spirit_palm,if=buff.spirited_vortex.remains<4|buff.warden_of_the_temple.stack=3|talent.forbidden_technique&debuff.forbidden_technique.remains<6
+actions+=/earth_fist,if=buff.earthfall.up&active_enemies<3
+actions+=/wind_kick,if=buff.stormfall.up
+actions+=/earth_fist,if=buff.earthfall.up|active_enemies<3
+actions+=/wind_kick
