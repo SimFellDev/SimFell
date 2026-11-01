@@ -40,6 +40,7 @@ public class PropertyExpression : IAplExpression
     public const string WeaponTraitScope = "weapon_trait";
     public const string VariableScope = "variable";
     public const string PrevScope = "prev";
+    public const string PrevGcdScope = "prev_gcd";
 
     /// <summary>The application of a debuff applied first: <c>debuff.&lt;name&gt;.oldest.&lt;property&gt;</c>.</summary>
     public const string OldestPick = "oldest";
@@ -246,6 +247,7 @@ public class PropertyExpression : IAplExpression
         [ActiveDotScope] = new("Enemies with debuff", "The number of enemies in combat that have the debuff."),
         [VariableScope] = new("Variable", "The value that a variable action set in this fight. Before a variable action sets it, the value is the default of the variable."),
         [PrevScope] = new("Previous action", "1 if the last ability the hero started to cast is this ability. Otherwise 0. 0 before the first cast of the fight."),
+        [PrevGcdScope] = new("Previous GCD action", "1 if the last ability the hero started to cast on the global cooldown is this ability. Otherwise 0. A cast off the global cooldown leaves it as it is. 0 before the first cast on the global cooldown."),
     };
 
     /// <summary>A resource's current amount, written as its name alone ("winter_orbs") or after <see cref="ResourcePrefix"/>.</summary>
@@ -328,7 +330,7 @@ public class PropertyExpression : IAplExpression
         {
             (Scope, Name, Property) = (parts[0], parts[1], parts[2]);
         }
-        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope or PrevScope))
+        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope or PrevScope or PrevGcdScope))
         {
             (Scope, Name) = (parts[0], parts[1]);
         }
@@ -376,6 +378,9 @@ public class PropertyExpression : IAplExpression
 
             case PrevScope:
                 return ctx.PreviousCast is { } previous && AplNames.NamesAbility(Name!, previous) ? 1.0 : 0.0;
+
+            case PrevGcdScope:
+                return ctx.PreviousGcdCast is { } previousGcd && AplNames.NamesAbility(Name!, previousGcd) ? 1.0 : 0.0;
 
             case ActiveDotScope:
                 return ctx.ActiveEnemies.Count(enemy => AuraLookup.On(hero, enemy, Name!, now) != null);

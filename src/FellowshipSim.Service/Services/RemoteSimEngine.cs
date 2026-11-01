@@ -48,6 +48,10 @@ public sealed class RemoteSimEngine : ISimEngine
         SendAsync<AplExpressionCheck>(HttpMethod.Post, $"apl/heroes/{Uri.EscapeDataString(hero)}/check",
             JsonContent.Create(new AplText(text), options: Json), ct, notFoundIsNull: true);
 
+    public Task<AplExpressionCheck?> CheckActionListAsync(string hero, string text, CancellationToken ct = default) =>
+        SendAsync<AplExpressionCheck>(HttpMethod.Post, $"apl/heroes/{Uri.EscapeDataString(hero)}/check-list",
+            JsonContent.Create(new AplText(text), options: Json), ct, notFoundIsNull: true);
+
     public async Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default) =>
         (await SendAsync<AplDocumentActions>(HttpMethod.Post, "apl/parse", JsonContent.Create(new AplText(text), options: Json), ct))!;
 

@@ -28,6 +28,11 @@ public sealed class LocalSimEngine : ISimEngine
             ? Task.Run<AplExpressionCheck?>(() => _vocabularies.For(hero).Check(text), ct)
             : Task.FromResult<AplExpressionCheck?>(null);
 
+    public Task<AplExpressionCheck?> CheckActionListAsync(string hero, string text, CancellationToken ct = default) =>
+        Catalog.HasHero(hero)
+            ? Task.Run<AplExpressionCheck?>(() => _vocabularies.For(hero).CheckList(text), ct)
+            : Task.FromResult<AplExpressionCheck?>(null);
+
     public Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default)
     {
         try

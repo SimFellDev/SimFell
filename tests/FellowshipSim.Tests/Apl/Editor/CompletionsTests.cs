@@ -9,7 +9,12 @@ public class CompletionsTests
 {
     private readonly AplVocabulary _v = EditorVocabulary.Create();
 
-    private static CaretPlace Caret(int at, double left = 0, double width = 600, bool focused = true) => new(at, left, 20, width, focused);
+    // The text with a pick written in place of the part at the caret, and the caret after it.
+    private static (string Text, int Caret) Accept(string text, int at, Completion item)
+    {
+        var (from, to) = CodeEdits.PartAt(text, at);
+        return (text[..from] + item.Written + text[to..], from + item.Written.Length);
+    }
 
     [Fact]
     public void Empty_word_lists_scopes_resources_named_values_prev_functions_and_operators_in_that_order()
@@ -21,6 +26,7 @@ public class CompletionsTests
             .Concat(_v.Resources.Select(r => r.Slug).Skip(1))
             .Concat(PropertyExpression.Named.Keys.Select(n => n.Split('.')[0]))
             .Append(PropertyExpression.PrevScope)
+            .Append(PropertyExpression.PrevGcdScope)
             .Concat(Enum.GetValues<AplFunction>().Select(f => f.Name()))
             .Concat(["and", "or", "not"])
             .Distinct()
@@ -59,6 +65,7 @@ public class CompletionsTests
         Assert.Equal(["remains", "refreshable"], Completions.For(_v, "dot.chill.newest.").Select(c => c.Text));
         Assert.DoesNotContain("oldest", Completions.For(_v, "buff.chill.").Select(c => c.Text));
         Assert.Equal(_v.Abilities.Select(a => a.Slug), Completions.For(_v, "prev.").Select(c => c.Text));
+        Assert.Equal(_v.Abilities.Select(a => a.Slug), Completions.For(_v, "prev_gcd.").Select(c => c.Text));
         Assert.Equal(AplTokenKind.Function, Completions.For(_v, "floo").Single().Node.Kind);
     }
 
@@ -77,43 +84,40 @@ public class CompletionsTests
     }
 
     [Fact]
-    public void A_list_opens_on_a_focused_word_and_stays_inside_the_field()
+    public void A_list_opens_on_a_word_and_covers_the_part_at_the_caret()
     {
-        Assert.Null(CodeEdits.Open(_v, "bu", Caret(2, focused: false), false));
-        Assert.Null(CodeEdits.Open(_v, "3", Caret(1), true));
-        Assert.Null(CodeEdits.Open(_v, "x and ", Caret(6), false));
-        Assert.Null(CodeEdits.Open(_v, "zzz", Caret(3), false));
+        Assert.Null(CodeEdits.Open(_v, "3", 1, true));
+        Assert.Null(CodeEdits.Open(_v, "x and ", 6, false));
+        Assert.Null(CodeEdits.Open(_v, "zzz", 3, false));
 
-        var always = CodeEdits.Open(_v, "x and ", Caret(6), true);
+        var always = CodeEdits.Open(_v, "x and ", 6, true);
         Assert.NotNull(always);
         Assert.Equal(Completions.For(_v, "").Count, always.Items.Count);
 
-        var list = CodeEdits.Open(_v, "bu", Caret(2, left: 500, width: 600), false)!;
-        Assert.Equal(0, list.Selected);
-        Assert.Equal(600 - CodeEdits.ListWidth, list.Left);
-        Assert.Equal(24, list.Top);
-        Assert.Equal(0, CodeEdits.Open(_v, "bu", Caret(2, left: 10, width: 100), false)!.Left);
+        var list = CodeEdits.Open(_v, "x and bufxy", 8, false)!;
+        Assert.Equal((6, 11), (list.From, list.To));
     }
 
     [Fact]
     public void A_list_reads_the_path_before_the_caret_only()
     {
-        var list = CodeEdits.Open(_v, "buff.ch and x", Caret(7), false)!;
+        var list = CodeEdits.Open(_v, "buff.ch and x", 7, false)!;
 
         Assert.Equal("chill", Assert.Single(list.Items).Text);
+        Assert.Equal((5, 7), (list.From, list.To));
     }
 
     [Fact]
     public void A_pick_replaces_the_part_at_the_caret_and_a_scope_is_written_with_its_dot()
     {
         var buff = Completions.For(_v, "bu").First();
-        Assert.Equal(("x and buff.", 11), CodeEdits.Accept("x and bu", 8, buff));
-        Assert.Equal(("buff. and y", 5), CodeEdits.Accept("bufxy and y", 2, buff));
+        Assert.Equal(("x and buff.", 11), Accept("x and bu", 8, buff));
+        Assert.Equal(("buff. and y", 5), Accept("bufxy and y", 2, buff));
 
         var chill = Completions.For(_v, "buff.c").First();
-        Assert.Equal(("buff.chill.", 11), CodeEdits.Accept("buff.c", 6, chill));
+        Assert.Equal(("buff.chill.", 11), Accept("buff.c", 6, chill));
 
         var orbs = Completions.For(_v, "winter").First();
-        Assert.Equal(("winter_orbs >= 3", 11), CodeEdits.Accept("wi >= 3", 2, orbs));
+        Assert.Equal(("winter_orbs >= 3", 11), Accept("wi >= 3", 2, orbs));
     }
 }

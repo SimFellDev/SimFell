@@ -62,7 +62,11 @@ public static class Completions
             Add([.. prefix, resource.Slug], AplTokenKind.Resource, resource.Name);
         }
         foreach (string named in v.Named) Add(named.Split('.'), AplTokenKind.Named);
-        foreach (var ability in v.Abilities) Add([PropertyExpression.PrevScope, ability.Slug], AplTokenKind.Cooldown, ability.Name);
+        foreach (var ability in v.Abilities)
+        {
+            Add([PropertyExpression.PrevScope, ability.Slug], AplTokenKind.Cooldown, ability.Name);
+            Add([PropertyExpression.PrevGcdScope, ability.Slug], AplTokenKind.Cooldown, ability.Name);
+        }
         foreach (var function in Enum.GetValues<AplFunction>()) Add([function.Name()], AplTokenKind.Function, function.Doc().Label);
         foreach (string word in Operators) Add([word], AplTokenKind.Operator);
         return root;

@@ -14,6 +14,7 @@ SimFell runs in three ways. They share the same engine:
 ## You need
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org) with npm: the build bundles the code editor (CodeMirror)
 - The [Aspire CLI](https://aspire.dev), to run the web app
 - The .NET MAUI workload (`dotnet workload install maui`), to build the desktop app
 - To download fights, a FellowshipLogs account: **Sign in with FellowshipLogs** (top bar, or the Import cards) signs you in
@@ -266,7 +267,8 @@ parentheses, then each **Function**, then `not` or `-` before the term; typing f
 as its first argument and shows each argument in its own box. The empty select after a value adds a term, a comparison, or inside
 parentheses an `and` or `or` row; an emptied operator or comparison removes its term or value. **Text** shows the
 condition as text. Typing a name, a `.` or Ctrl+Space lists the names that fit; Enter or Tab writes the one picked.
-**Action list text** has the text of the list. Text pasted there loads into the editor. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
+**Action list text** has the text of the list, coloured and completed as a condition is, with each name the hero does not have and the first line
+that does not parse marked. An edit there goes into the editor once it parses. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
 app, **Save** writes one of your own lists in `data/visitors/<visitor id>/apls/`, and **Saved** also lists the shared
 lists in `data/apls/`, marked "shared". A shared list loads into the editor, and saving it makes your own copy.
 
@@ -280,6 +282,8 @@ A target picks the enemy for the cast, written `target_if=` in the text:
 Conditions also have these values and functions:
 
 - `prev.<ability>`: 1 when the last cast the hero started is that ability (`prev.frost_bolt`)
+- `prev_gcd.<ability>`: 1 when the last cast the hero started on the global cooldown is that ability. A cast off the global
+  cooldown (Ice Blitz) leaves it as it is (`prev_gcd.frost_bolt`)
 - `debuff.<name>.oldest.remains` and `debuff.<name>.newest.remains` (and `.refreshable`): the application applied first or
   last, for a debuff whose every application runs on its own (`debuff.engulfing_flames.oldest.remains`)
 - `abs(x)`, `ceil(x)`, `floor(x)`, `round(x)`, `min(a, b, ...)` and `max(a, b, ...)`

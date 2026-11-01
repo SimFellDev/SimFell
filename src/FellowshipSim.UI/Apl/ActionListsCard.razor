@@ -69,9 +69,10 @@
                 </div>
                 <details @key="State.TextKey" class="text" open="@State.TextOpen">
                     <summary>Action list text</summary>
-                    <textarea spellcheck="false" rows="10" @bind="State.Text"></textarea>
+                    <div class="text-field">
+                        <CodeField Vocabulary="v" Lines="true" Value="@State.Text" OnChange="TextChanged" Placeholder="actions+=/ability,if=condition" />
+                    </div>
                     <div class="row">
-                        <button type="button" class="secondary-button" @onclick="LoadText">Import</button>
                         <button type="button" class="secondary-button" data-tooltip="Save the action list as a .simc file" @onclick="Download">Download</button>
                     </div>
                     <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>
@@ -90,6 +91,12 @@
     private IReadOnlyList<ActionList>? _writtenLists;
     private AplVocabulary? _writtenVocabulary;
     private CancellationTokenSource? _write;
+    // The read of the text waiting for its delay, and whether the editor is loading the lists read from the text.
+    private CancellationTokenSource? _read;
+    private bool _fromText;
+    // A text edit changes nothing else on the card, and the field renders itself: the card skips the render the edit's
+    // callback asks for, which on a long list would draw every action again.
+    private bool _keystroke;
 
     // The step waiting on the unsaved changes (open another hero, list or a new one), and a key that draws the pickers
     // anew so a cancelled pick shows the list still open.
@@ -111,10 +118,11 @@
     protected override async Task OnInitializedAsync()
     {
         // The state keeps the editor's lists from an earlier visit to the page; their text is written again in case the
-        // visit ended inside the write's delay.
+        // visit ended inside the write's delay. A text edit not in the lists yet is read again.
         if (State.Loaded)
         {
-            WriteText();
+            if (State.TextEdited) ReadLater(State.Text);
+            else WriteText();
             return;
         }
         try
@@ -130,6 +138,13 @@
         {
             State.Editor.SetStatus(MessageState.Error(e.Message));
         }
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (!_keystroke) return true;
+        _keystroke = false;
+        return false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -179,6 +194,14 @@
         _writtenLists = lists;
         _writtenVocabulary = v;
         _write?.Cancel();
+        // Lists read from the text are the text already. A text edit that does not parse stays, and goes into the lists in
+        // place of their changes once it parses.
+        if (_fromText) return;
+        if (State.TextEdited)
+        {
+            State.Editor.SetStatus(MessageState.Error("The action list text has an edit that does not parse. Fix it there: once it parses, it replaces the lists."));
+            return;
+        }
         _write = new CancellationTokenSource();
         _ = Write(v, lists, _write.Token);
     }
@@ -204,7 +227,8 @@
         }
         await InvokeAsync(() =>
         {
-            if (ct.IsCancellationRequested) return;
+            // A text edit not in the lists yet stays: the lists' text would write over it.
+            if (ct.IsCancellationRequested || State.TextEdited) return;
             if (text != null)
             {
                 State.Text = text;
@@ -279,22 +303,99 @@
     private Task Download() =>
         FileDownloads.SaveAsync(JS, State.Name.Trim().Length > 0 ? State.Name : State.Editor.Vocabulary?.Hero ?? "action list", ".simc", State.Text);
 
-    private async Task LoadText()
+    // The text goes into the lists 400 ms after the last edit, when it parses. A builder write waiting for its delay would
+    // write over the edit, so it stops.
+    private void TextChanged(string text)
     {
+        _keystroke = true;
+        ReadLater(text);
+    }
+
+    private void ReadLater(string text)
+    {
+        State.Text = text;
+        State.TextEdited = true;
+        _write?.Cancel();
+        _read?.Cancel();
+        _read = new CancellationTokenSource();
+        _ = Read(text, _read.Token);
+    }
+
+    /// <summary>Puts the text edit waiting for its delay into the lists; false, with the problem in the status, when it does not parse.</summary>
+    private async Task<bool> ReadTextNow()
+    {
+        _read?.Cancel();
+        string text = State.Text;
         try
         {
-            var result = await Engine.ParseActionListAsync(State.Text);
-            State.Editor.Load(State.Editor.Vocabulary!, result.Actions);
-            State.Editor.SetStatus(MessageState.Ok($"Loaded {result.Actions.Count} actions."));
+            var result = await Engine.ParseActionListAsync(text);
+            if (State.Text != text) return false;
+            LoadFromText(result);
+            return true;
         }
         catch (Exception e)
         {
             State.TextStatus = MessageState.Error(e.Message);
+            State.Editor.SetStatus(MessageState.Error($"Fix the action list text first. {e.Message}"));
+            return false;
         }
+    }
+
+    private void LoadFromText(AplDocumentActions result)
+    {
+        // The lists came from the text: writing them back would reformat the text being typed.
+        _fromText = true;
+        try
+        {
+            State.Editor.Replace(result.Actions);
+        }
+        finally
+        {
+            _fromText = false;
+        }
+        State.TextEdited = false;
+        State.TextStatus = MessageState.None;
+    }
+
+    private async Task Read(string text, CancellationToken ct)
+    {
+        AplDocumentActions? result = null;
+        MessageState? status = null;
+        try
+        {
+            await Task.Delay(400, ct);
+            result = await Engine.ParseActionListAsync(text, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception e)
+        {
+            // The field marks a parse error itself; any other failure names its own.
+            status = MessageState.Error($"{(e is SimEngineException ? "" : e.Message + " ")}The lists above keep the text's last version that parsed.");
+        }
+        await InvokeAsync(() =>
+        {
+            if (ct.IsCancellationRequested || State.Text != text) return;
+            if (result != null)
+            {
+                LoadFromText(result);
+                if (State.Editor.Status.Kind == MessageKind.Error) State.Editor.SetStatus(MessageState.None);
+            }
+            else
+            {
+                State.TextStatus = status!;
+            }
+            StateHasChanged();
+        });
     }
 
     private async Task PickSaved(string value)
     {
+        // Another list replaces the text, with any edit of it.
+        _read?.Cancel();
+        State.TextEdited = false;
         State.SelectedSaved = value;
         State.Editor.SetStatus(MessageState.None);
         if (value.Length == 0)
@@ -314,7 +415,8 @@
             State.Name = savedName;
             if (list.Error != null)
             {
-                State.Text = list.Text;
+                State.Text = list.Text.ReplaceLineEndings("\n");
+                State.TextEdited = true;
                 State.TextOpen = true;
                 State.TextKey++;
                 State.Editor.SetStatus(MessageState.Error($"The saved text does not parse: {list.Error}"));
@@ -405,6 +507,7 @@
             await _nameInput.FocusAsync();
             return;
         }
+        if (State.TextEdited && !await ReadTextNow()) return;
         var lists = State.Editor.Lists;
         try
         {
@@ -429,6 +532,7 @@
         State.Editor.Changed -= EditorChanged;
         State.Editor.ConditionModePicked -= StoreConditionMode;
         _write?.Cancel();
+        _read?.Cancel();
         try
         {
             if (_drag != null)

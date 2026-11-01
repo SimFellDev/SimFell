@@ -40,8 +40,11 @@ public sealed class ActionListsState(ISimEngine engine)
     /// <summary>The lists as last loaded or saved: every edit gives the editor new lists.</summary>
     public IReadOnlyList<ActionList>? CleanLists { get; set; }
 
-    /// <summary>True when the editor's lists have changed since they were last loaded or saved.</summary>
-    public bool HasEdits => !ReferenceEquals(Editor.Lists, CleanLists);
+    /// <summary>True when the text has an edit that is not in the editor's lists yet: it waits for its delay or does not parse.</summary>
+    public bool TextEdited { get; set; }
+
+    /// <summary>True when the editor's lists or the text have changed since they were last loaded or saved.</summary>
+    public bool HasEdits => !ReferenceEquals(Editor.Lists, CleanLists) || TextEdited;
 
     /// <summary>Marks the editor's lists as loaded or saved.</summary>
     public void MarkClean() => CleanLists = Editor.Lists;

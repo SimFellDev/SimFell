@@ -103,6 +103,7 @@
                 ($"{PropertyExpression.ActiveDotScope}.<aura>", PropertyExpression.ScopeDocs[PropertyExpression.ActiveDotScope]),
                 ($"{PropertyExpression.VariableScope}.<name>", PropertyExpression.ScopeDocs[PropertyExpression.VariableScope]),
                 ($"{PropertyExpression.PrevScope}.<ability>", PropertyExpression.ScopeDocs[PropertyExpression.PrevScope]),
+                ($"{PropertyExpression.PrevGcdScope}.<ability>", PropertyExpression.ScopeDocs[PropertyExpression.PrevGcdScope]),
                 .. PropertyExpression.BuildScopes.Select(scope => ($"{scope.Key}.<name>", scope.Value.Doc)),
             ]),
             new("aura", "Buff, debuff and dot properties", "buff refers to the hero. debuff and dot refer to the current target.",

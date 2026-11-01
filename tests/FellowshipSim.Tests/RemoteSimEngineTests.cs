@@ -72,6 +72,14 @@ public sealed class RemoteSimEngineTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_Action_List_Check_Is_The_Engines_And_No_Hero_Is_Null()
+    {
+        const string text = "# opener\nactions+=/frost_bolt,if=buff.ice_blitz.up\nactions+=/nothing,if=(";
+        Assert.Equal(Json(await _local.CheckActionListAsync("Rime", text)), Json(await _engine.CheckActionListAsync("Rime", text)));
+        Assert.Null(await _engine.CheckActionListAsync("Nobody", "actions+=/frost_bolt"));
+    }
+
+    [Fact]
     public async Task Parsed_Actions_And_Written_Text_Are_The_Engines()
     {
         string actionList = SimcProfile.Parse(Profile).ActionList;

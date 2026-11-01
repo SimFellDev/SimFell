@@ -24,6 +24,9 @@ public sealed class WorkerSimEngine(SimWorkerPool workers) : ISimEngine
     public Task<AplExpressionCheck?> CheckExpressionAsync(string hero, string text, CancellationToken ct = default) =>
         _local.CheckExpressionAsync(hero, text, ct);
 
+    public Task<AplExpressionCheck?> CheckActionListAsync(string hero, string text, CancellationToken ct = default) =>
+        _local.CheckActionListAsync(hero, text, ct);
+
     public Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default) => _local.ParseActionListAsync(text, ct);
 
     public Task<AplDocumentText> WriteActionListAsync(IReadOnlyList<AplDocumentAction> actions, CancellationToken ct = default) =>

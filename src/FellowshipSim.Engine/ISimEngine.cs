@@ -27,6 +27,12 @@ public interface ISimEngine
     /// </summary>
     Task<AplExpressionCheck?> CheckExpressionAsync(string hero, string text, CancellationToken ct = default);
 
+    /// <summary>
+    /// Tokens of the action list <paramref name="text"/> with their kinds for <paramref name="hero"/>, and its first line
+    /// outside the grammar; null when the engine has no such hero.
+    /// </summary>
+    Task<AplExpressionCheck?> CheckActionListAsync(string hero, string text, CancellationToken ct = default);
+
     /// <summary>The actions of an action list's text. Text outside the grammar throws <see cref="SimEngineException"/>.</summary>
     Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default);
 

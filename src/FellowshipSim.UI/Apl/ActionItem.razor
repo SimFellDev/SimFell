@@ -90,9 +90,27 @@
 
     private string ClassName => string.Join(" ", new[] { "action", Open ? "open" : null, _dragging ? "dragging" : null, DropClass }.OfType<string>());
 
+    // What the item last drew from its parameters. A list from the text renders every item again; an item whose action,
+    // place, state and lists read are as they were skips it. The lists matter to an open action's details and to a list
+    // action's warning.
+    private (EditorAction Action, int Index, bool Open, DragFrom? DragFrom, int Count, IReadOnlyList<ActionList>? Lists, AplVocabulary Vocabulary)? _drawn;
+    private bool _fromParent;
+
     protected override void OnParametersSet()
     {
         if (DragFrom == null) _entered = 0;
+        _fromParent = true;
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (!_fromParent) return true;
+        _fromParent = false;
+        bool readsLists = Open || ActionListModel.IsListAction(Vocabulary, Action);
+        var drawn = (Action, Index, Open, DragFrom, List.Actions.Count, readsLists ? Lists : null, Vocabulary);
+        if (_drawn == drawn) return false;
+        _drawn = drawn;
+        return true;
     }
 
     private void DragStart()

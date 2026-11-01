@@ -14,7 +14,7 @@ namespace FellowshipSim.Core.APL;
 public static class AplParser
 {
     // Actions that control the list rather than cast an ability.
-    private static readonly HashSet<string> SkippedActions = ["snapshot_stats"];
+    internal static readonly HashSet<string> SkippedActions = ["snapshot_stats"];
 
     private static readonly TextParser<TextSpan> Word = Span.WithAll(c => char.IsLetterOrDigit(c) || c is '_' or '.');
 

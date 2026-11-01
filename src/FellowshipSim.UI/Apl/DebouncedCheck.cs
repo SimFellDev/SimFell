@@ -3,9 +3,9 @@ namespace FellowshipSim.UI.Apl;
 /// <summary>
 /// A component's text once it has stayed the same for a delay (<see cref="Text"/>), and the engine's check of that text
 /// (<see cref="Result"/>). The first text is settled at once. <paramref name="dispatch"/> runs each change on the
-/// component's renderer and re-renders it.
+/// component's renderer and re-renders it. With <paramref name="list"/>, the text is a whole action list.
 /// </summary>
-public sealed class DebouncedCheck(ExpressionChecks checks, TimeSpan delay, Func<Action, Task> dispatch) : IDisposable
+public sealed class DebouncedCheck(ExpressionChecks checks, TimeSpan delay, Func<Action, Task> dispatch, bool list = false) : IDisposable
 {
     private string? _hero;
     private string? _latest;
@@ -66,7 +66,7 @@ public sealed class DebouncedCheck(ExpressionChecks checks, TimeSpan delay, Func
         int version = ++_version;
         string text = Text;
         if (string.IsNullOrWhiteSpace(text)) return;
-        var check = checks.Get(_hero!, text);
+        var check = list ? checks.GetList(_hero!, text) : checks.Get(_hero!, text);
         if (check.IsCompletedSuccessfully)
         {
             _result = new CheckedText(text, check.Result);

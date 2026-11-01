@@ -253,6 +253,12 @@ public class SimulationContext
     public Ability? PreviousCast { get; private set; }
 
     /// <summary>
+    /// The ability of the last cast started on the global cooldown in this fight (<c>prev_gcd.&lt;ability&gt;</c>); null before
+    /// the first. A cast with <see cref="Ability.IgnoresGcd"/> leaves it as it is.
+    /// </summary>
+    public Ability? PreviousGcdCast { get; private set; }
+
+    /// <summary>
     /// The ability activation running before the frame's timers (numbered, 0 when none): a haste change in it re-arms a
     /// damage over time's period with the time left measured from the frame before (<see cref="HastedTimer"/>).
     /// </summary>
@@ -290,6 +296,7 @@ public class SimulationContext
             double gcd = ability.GlobalCooldownSeconds ?? hero.GlobalCooldownSeconds;
             if (ability.GlobalCooldownScalesWithHaste ?? hero.GlobalCooldownScalesWithHaste) gcd /= 1.0 + hero.GetHaste(CurrentTime);
             hero.GlobalCooldownEndTime = CurrentTime + SimTime.FromSeconds(gcd);
+            PreviousGcdCast = ability;
         }
 
         var castTime = ability.GetAdjustedCastTime(CurrentTime);
@@ -594,6 +601,7 @@ public class SimulationContext
         CurrentTime = SimTime.Zero;
         _lastAbilityEnd = SimTime.FromSeconds(-1.0);
         PreviousCast = null;
+        PreviousGcdCast = null;
         Kernel.Clear();
         // The cleared queue lost the event of the hero's next aura expiry.
         Player.Auras.RunOutIn(this);

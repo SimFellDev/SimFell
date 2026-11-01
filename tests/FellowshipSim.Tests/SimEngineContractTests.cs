@@ -59,6 +59,16 @@ public class SimEngineContractTests
     }
 
     [Fact]
+    public async Task An_Action_List_Check_Reads_Back_From_Its_Json()
+    {
+        var check = (await _engine.CheckActionListAsync("Rime", "# opener\nactions+=/frost_bolt,if=buff.ice_blitz.up\nactions+=/nothing,if=("))!;
+        Assert.Contains(check.Tokens, t => t.Kind == AplTokenKind.Comment);
+        Assert.NotNull(check.Error);
+        AssertRoundTrip(check);
+        Assert.Null(await _engine.CheckActionListAsync("Nobody", "actions+=/frost_bolt"));
+    }
+
+    [Fact]
     public async Task Parsed_Actions_And_Written_Text_Read_Back_From_Their_Json()
     {
         var actions = await _engine.ParseActionListAsync(SimcProfile.Parse(Profile).ActionList);

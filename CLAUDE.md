@@ -88,7 +88,7 @@ or the desktop app).
   open list when the result tabs overflow). Both frames have `Jobs/ResultsSidebar`: the queue with live progress, then
   the saved sims and reviews. `Shell/AppPage` lists the menu pages; their routes come from each page's `@page`. Every
   link inside the app goes through `IAppViews`, since the desktop app has no router. Pages run in Interactive Server and in BlazorWebView, so no component uses `HttpContext` or static server
-  rendering. The action-list editor is in `Apl/`, with JS only for caret, drag and stored-mode work (`wwwroot/apl`);
+  rendering. The action-list editor is in `Apl/`, with JS only for the code editor (CodeMirror, from `tools/codemirror`), drag and stored-mode work (`wwwroot/apl`);
   `wwwroot/shell` scrolls the desktop result tabs. Every tooltip is the app's own: `data-tooltip="..."` for plain text,
   `Shared/Tooltip` for markup, both shown by `wwwroot/tooltip` in each frame's `Shared/TooltipLayer`; no element has a
   `title` (`TooltipTests`). The APL Debugger (`Debugger/`) is out of the menu: one fight from

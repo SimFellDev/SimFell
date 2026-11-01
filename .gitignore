@@ -16,3 +16,9 @@ BenchmarkDotNet.Artifacts/
 # terms keep a client to its owner)
 /settings.json
 src/FellowshipSim.Web/wwwroot/appsettings.json
+
+# The CodeMirror bundle's packages (tools/codemirror)
+node_modules/
+
+# The CodeMirror bundle, built by FellowshipSim.UI's build from tools/codemirror
+src/FellowshipSim.UI/wwwroot/lib/codemirror/
