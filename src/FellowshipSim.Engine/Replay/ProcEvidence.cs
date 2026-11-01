@@ -17,6 +17,9 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Rime.Talents;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
 using FellowshipSim.Core.Heroes.Tariq.Talents;
+using FellowshipSim.Core.Heroes.Xavian;
+using FellowshipSim.Core.Heroes.Xavian.Abilities;
+using FellowshipSim.Core.Heroes.Xavian.Talents;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -165,6 +168,19 @@ public static class ProcEvidence
         new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
         // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
         new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+
+        // Xavian
+        // A Swift Reprieval stack comes with the hit that rolled it (XyGpcHjNaAzgk7mW fight 20 @ 17.238).
+        new(SunStrike.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(BlindingSlash.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(Omnistrike.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(GoldenHour.ProcKey, GoldenHour.Buff.LogId),
+        new(SunsVerdict.ProcKey, SunsVerdict.Buff.LogId),
+        // Solar Glare takes Solar Blades past 100% crit chance: its hits are grievous crits.
+        new(SolarGlare.ProcKey, SolarBlades.AbilityId, DelaySeconds: 0.1, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+        // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
+        new(Core.Heroes.Xavian.Abilities.Attack.AvoidedProcKey, Core.Heroes.Xavian.Abilities.Attack.AbilityId, DelaySeconds: 0.05,
+            HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
