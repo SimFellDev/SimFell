@@ -170,11 +170,15 @@ public static class ProcEvidence
 
         // Helena
         // Each bounce of a Shield Throw is a hit on an enemy the shield has not hit yet, landing 0.03-0.2s after the hit
-        // before it (HrNZ6wQfFKGxybDR fight 1 @ 16.027).
-        new(ShieldThrow.BounceProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.4, ReservesHit: true),
-        // A Shield Throw's first hit lands 0.27-0.37s after the cast, the engine's 0.3s, with no hit of the shield in the 0.2s
-        // before it (the bounces of a throw are 0.03-0.2s apart).
-        new(ShieldThrow.FirstHitProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.1, MinDelaySeconds: -0.1, ReservesHit: true, QuietBeforeSeconds: 0.2),
+        // before it (HrNZ6wQfFKGxybDR fight 1 @ 16.027). A hit lands no earlier than the engine releases it, and the first
+        // hit is released up to 0.1s after the log's, so a bounce may be logged up to 0.1s before the engine's hit lands
+        // (1p7AXmHfwV9CYMxR fight 30 @ 80.282).
+        new(ShieldThrow.BounceProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.4, MinDelaySeconds: -0.1, ReservesHit: true),
+        // A Shield Throw's first hit, released 0.3s after the cast: a log hit of the shield from 0.15s before to 0.3s after the
+        // release (0.27-0.37s after the cast in HrNZ6wQfFKGxybDR fight 1 and v8rhNxVc3PwDqzBA fight 4),
+        // with no hit of the shield in the 0.2s before it (a throw's bounces are 0.03-0.2s apart). Over the 18 fights the
+        // window of -0.1 to 0.1s leaves 1,194 log hits of the shield unproduced, this one 592.
+        new(ShieldThrow.FirstHitProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.3, MinDelaySeconds: -0.15, ReservesHit: true, QuietBeforeSeconds: 0.2),
         // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
         new(FellowshipSim.Core.Heroes.Helena.Abilities.Attack.AvoidedProcKey, FellowshipSim.Core.Heroes.Helena.Abilities.Attack.AbilityId,
             DelaySeconds: 0.05, HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
