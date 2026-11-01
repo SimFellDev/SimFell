@@ -76,7 +76,7 @@ public class ForbiddenTechnique : Talent
         };
     }
 
-    /// <summary>Forbidden Technique moves to <paramref name="target"/>: one at a time.</summary>
+    /// <summary>Forbidden Technique is on <paramref name="target"/> alone: one at a time.</summary>
     private void Mark(SimulationContext ctx, Hero hero, EnemyTarget target, int eruptionId)
     {
         Follow(ctx);

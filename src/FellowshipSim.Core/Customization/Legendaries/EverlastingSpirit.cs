@@ -8,7 +8,7 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// pulse of energy onto all enemies around you, dealing 35% Agility damage. An additional 10% Agility damage is added for
 /// each stack of Serenity that was consumed." Effect 1510 (9 seconds) is the buff; the pulse is ability 1677, logged as
 /// effect 2450, with damage falloff beyond 5 targets. The game data's constants give AgilityCoefficient 0.35 and
-/// AgilityCoefficientMultiplierPerStack 0.4, which the tooltip's 10% per stack does not match; the engine takes the
+/// AgilityCoefficientMultiplierPerStack 0.4. The tooltip's 10% per stack differs from it; the engine takes the
 /// tooltip. UNVERIFIED: no combat log has the pulse.
 /// </summary>
 public class EverlastingSpirit : Legendary

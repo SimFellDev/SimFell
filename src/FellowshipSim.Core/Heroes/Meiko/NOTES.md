@@ -1,6 +1,6 @@
 # Meiko: what the logs showed
 
-How Meiko's mechanics were pinned down, beyond the tooltips. Each point is also a comment next to the code it shapes.
+Meiko's mechanics as the combat logs showed them, beyond the tooltips. Each point is also a comment next to its code.
 Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-fights.cs --hero Meiko` downloaded
 (October 2026) unless noted. Game values are from game data build 26320967.
 
@@ -80,7 +80,7 @@ The fights below 97% hits matched are the players with Al'zerac's Shackle, a wea
 ## Known gaps
 
 - **Al'zerac's Shackle** (weapon ability 152) is not in the engine.
-- **The quake** ticks on every enemy at once; the game ticks each enemy on its own timer from the moment it stands in
+- **The quake** ticks on every enemy at once; the game ticks each enemy on its own timer from the moment it is in
   the area. 3,282 of its 21,392 logged ticks find no engine tick (89% of its damage in an exact replay).
 - **Free dice** come in at 82% of the logs' damage. The players time Rising Storm and Lashing Stormkick to the Stormfall
   their refunds gave back; with the refunds at random, a free-dice run consumes 18% fewer Stormfall charges on the casts

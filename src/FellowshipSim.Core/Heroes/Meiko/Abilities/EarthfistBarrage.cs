@@ -59,7 +59,8 @@ public class EarthfistBarrage : MeikoFinisher
         bool earthfall = Meiko.ConsumeCharge(RisingEarth.Earthfall, ctx);
         _channelMultiplier = (earthfall ? EarthfallMultiplier : 1.0) * CastDamageMultiplier;
         _strikes = 0;
-        // Combat logs (27 fights): the next Combo Builder comes 1.0s or more after the cast; the channel holds them.
+        // Combat logs (27 fights): the next Combo Builder comes 1.0s or more after the cast, so the global cooldown lasts to
+        // the channel's end.
         var channelEnd = ctx.CurrentTime + SimTime.FromSeconds(ChannelSeconds);
         if (Owner.GlobalCooldownEndTime < channelEnd) Owner.GlobalCooldownEndTime = channelEnd;
     }

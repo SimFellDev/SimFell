@@ -109,8 +109,8 @@ public sealed class Meiko : Hero
     }
 
     /// <summary>
-    /// A Combo Builder joins the combo. A third builder pushes out the first: combat logs (27 fights) show the finisher of
-    /// the last two builders after 3 or more in a row (KKF: Lashing Stormkick 49 times).
+    /// A Combo Builder is added to the combo. After a third builder the combo is the last two: combat logs (27 fights) show
+    /// the finisher of the last two builders after 3 or more in a row (KKF: Lashing Stormkick 49 times).
     /// </summary>
     public void AddBuilder(Technique technique, SimulationContext ctx)
     {
