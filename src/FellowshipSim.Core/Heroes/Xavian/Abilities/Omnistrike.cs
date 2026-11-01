@@ -47,7 +47,7 @@ public class Omnistrike : XavianAbility
     {
         TriggerCooldown(ctx);
         var now = ctx.CurrentTime;
-        IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
+        var enemies = Area(ctx, target);
         if (enemies.Count > MaxTargets) enemies = enemies.Take(MaxTargets).ToList();
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, enemies, ctx);
 

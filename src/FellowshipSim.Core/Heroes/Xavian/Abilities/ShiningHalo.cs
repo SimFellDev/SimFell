@@ -26,11 +26,9 @@ public class ShiningHalo : XavianAbility
     public const double BrillianceSeconds = 2.0;
 
     /// <summary>
-    /// Effect 2569: "You take 20% reduced damage while standing in the Shining Halo" (IncomingDamageMultiplier x0.8). The
-    /// game keeps it while Xavian stands in the halo, so combat logs remove and apply it as he moves.
+    /// Effect 2569: up while Xavian stands in the halo, so combat logs remove and apply it as he moves.
     /// </summary>
-    public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, 2569,
-        modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 0.8));
+    public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, 2569);
 
     /// <summary>Seconds added to the halo's duration (Grand Halo).</summary>
     public double BonusDurationSeconds { get; set; }

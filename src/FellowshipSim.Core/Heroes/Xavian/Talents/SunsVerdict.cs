@@ -6,14 +6,15 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// Talent 583: "Your Brilliant Flare and Brilliant Flash has a 15% chance to grant you Sun's Verdict for 12 seconds. Sun's
 /// Verdict: Your next Sun Strike resets the cooldown of your Blinding Slash ability and causes your target and all enemies
 /// near it to be hit by Sun Beams from above, dealing 124% Strength magic damage to each of them." Effect 2648 (12s, 2
-/// stacks); the beams are effect 2647, targetCountFalloff threshold 8 (ability 1845). UNVERIFIED: no combat log has this
-/// talent.
+/// stacks); the beams are effect 2647, targetCountFalloff threshold 8 (ability 1845). The chance is the game data constant
+/// Sune.SingleTargetFillerMelee.Talent.AoeProcBuff.Proc.ProcChance 0.2, not the tooltip's 15%. UNVERIFIED: no combat log
+/// has this talent.
 /// </summary>
 public class SunsVerdict : Talent
 {
     public const int TalentId = 583;
     public const string TalentName = "Sun's Verdict";
-    public const double Chance = 0.15;
+    public const double Chance = 0.2;
     public const string ProcKey = "suns_verdict";
     public const int BuffEffectId = 2648;
     public const double BuffSeconds = 12.0;
@@ -57,7 +58,7 @@ public class SunsVerdict : Talent
 
         public void Strike(SimulationContext ctx, EnemyTarget target)
         {
-            IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
+            var enemies = Abilities.XavianAbility.Area(ctx, target);
             DealAoeDamage(ctx, enemies);
         }
 

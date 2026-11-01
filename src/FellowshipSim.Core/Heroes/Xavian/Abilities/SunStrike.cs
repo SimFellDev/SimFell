@@ -26,8 +26,8 @@ public class SunStrike : XavianAbility
     public const int SunstruckMaxStacks = 10;
     public static readonly AuraDef Sunstruck = AuraDef.Effect("Sunstruck", SunstruckEffectId, SunstruckSeconds, SunstruckMaxStacks);
 
-    /// <summary>Sunstruck stacks one cast applies (Gleaming Strikes: 2).</summary>
-    public int SunstruckStacks { get; set; } = 1;
+    /// <summary>Sunstruck stacks a crit on the main target adds (Gleaming Strikes: 1).</summary>
+    public int ExtraSunstruckOnCrit { get; set; }
 
     /// <summary>
     /// Raised as the cast resolves, before its hits (Sun's Verdict).
@@ -37,17 +37,30 @@ public class SunStrike : XavianAbility
     public SunStrike(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
     {
         BaseCoefficient = Coefficient;
+        Hit += (in DamageContext hit) =>
+        {
+            if (hit.IsCrit && ExtraSunstruckOnCrit > 0 && hit.Target is { } struck && struck == _mainTarget)
+            {
+                struck.Auras.Apply(Sunstruck, hit.Timestamp, stacks: ExtraSunstruckOnCrit);
+            }
+        };
     }
+
+    /// <summary>The cast's target while its main hit deals its damage.</summary>
+    private EnemyTarget? _mainTarget;
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
+        if (target is not { IsSleeping: false }) return;
         Striking?.Invoke(ctx, target);
+        _mainTarget = target;
         DealDamage(ctx, target);
+        _mainTarget = null;
         // Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 34.506): each nearby enemy's hit rolls its own crit, 15% of the main hit's
         // power, losing damage as sqrt(3/N) over the N nearby enemies.
         var nearby = ctx.Outcomes.SelectTargets(DamageLogId, ctx.ActiveEnemiesExcept(target), ctx);
         DealToEach(ctx, nearby, SplashTargetThreshold, SplashFraction);
-        target.Auras.Apply(Sunstruck, ctx.CurrentTime, stacks: SunstruckStacks);
+        target.Auras.Apply(Sunstruck, ctx.CurrentTime, stacks: 1);
         Owner.TriggerHarmfulEffectApplied(ctx, target);
         if (ctx.Outcomes.RollProc(ProcKey, SwiftReprievalChance, ctx)) Xavian.GrantSwiftReprieval(ctx);
         Xavian.RaiseOffensiveAbilityUsed(ctx, this);

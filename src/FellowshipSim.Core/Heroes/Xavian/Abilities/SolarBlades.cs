@@ -38,7 +38,7 @@ public class SolarBlades : XavianAbility
     {
         TriggerCooldown(ctx);
         PayMana(ctx);
-        IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
+        var enemies = Area(ctx, target);
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, enemies, ctx);
         // Combat logs (16 Xavian players, 27,127 hits): the main target takes its 200% whatever the count; every other
         // enemy loses damage as sqrt(5/N) over all N enemies struck, the main target counted (log/engine 0.99-1.01 at

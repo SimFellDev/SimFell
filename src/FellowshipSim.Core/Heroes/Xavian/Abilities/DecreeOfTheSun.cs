@@ -15,12 +15,10 @@ public class DecreeOfTheSun : XavianAbility
     public const double TargetThreshold = 8;
 
     /// <summary>Effect 2557: immune to all damage for 3 seconds; the explosion comes as it ends.</summary>
-    public static readonly AuraDef Immunity = AuraDef.Effect(AbilityName, 2557, 3.0,
-        modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 0.0));
+    public static readonly AuraDef Immunity = AuraDef.Effect(AbilityName, 2557, 3.0);
 
-    /// <summary>Effect 2558: 5 seconds of IncomingDamageMultiplier x0.5 after the immunity.</summary>
-    public static readonly AuraDef DamageReduction = AuraDef.Effect("Decree of the Sun: Reduction", 2558, 5.0,
-        modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 0.5));
+    /// <summary>Effect 2558: the 5 seconds after the immunity.</summary>
+    public static readonly AuraDef DamageReduction = AuraDef.Effect("Decree of the Sun: Reduction", 2558, 5.0);
 
     public DecreeOfTheSun(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
     {

@@ -25,7 +25,7 @@ public class RupturedDawn : XavianAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
+        var enemies = Area(ctx, target);
         DealAoeDamage(ctx, enemies);
         Xavian.RaiseOffensiveAbilityUsed(ctx, this);
     }

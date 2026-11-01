@@ -9,6 +9,12 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
 - **Damage IDs:** Sun Strike, Blinding Slash, Solar Blades, Omnistrike, Brilliant Flash, Shining Halo, Decree of the Sun,
   Sky Crash and Ruptured Dawn are logged under their ability IDs. Aura of Solace's pulses are effect 2669 (1002669),
   Sunburn 2660, Invictus 2721, Counter-Attack 2651 and Solaris 2553.
+- **Counter-Attack:** Xavian's Parry of an enemy's attack triggers it on that enemy (talent Vanguard of Vengeance). A
+  Hallowed Shield stack and a Vanguard of Vengeance stack come in the same server frame (XyGpcHjNaAzgk7mW fight 20 @
+  7.516 and 15.834).
+- **Solaris:** Xavian's overhealing triggers it on nearby enemies (GE_Sune_OverhealToAoeDamage,
+  Sune.OverhealToAoeDamage.OverhealingToDamageScaler). In XyGpcHjNaAzgk7mW fight 20 it comes 0.5s after a Brilliant
+  Flash (11.988 -> 12.492, 13.223 -> 13.730).
 - **Solar Blades:** the main target takes its 200% whatever the count. Every other enemy loses damage as sqrt(5/N) over
   all N enemies struck, the main target counted (log/engine 0.99-1.01 at every N from 2 to 17, 27,127 hits).
 - **Brilliant Flash, enhanced:** the main target takes 150% with no falloff. The other N enemies lose damage as

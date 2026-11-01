@@ -55,7 +55,7 @@ public class BrilliantFlash : XavianAbility
         if (enhanced)
         {
             hero.Auras.ConsumeStack(OmegaReprieval.Buff, now);
-            IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
+            var enemies = Area(ctx, target);
             var struck = ctx.Outcomes.SelectTargets(DamageLogId, enemies, ctx);
             // Combat logs (16 Xavian players, 1,932 enhanced casts): the main target takes the full 150%, and the other N
             // enemies lose damage as sqrt(3/N) over N alone (log/engine 1.14 at N = 3, 1.05 at N = 12 when the main target
@@ -75,7 +75,7 @@ public class BrilliantFlash : XavianAbility
         {
             hero.Auras.ConsumeStack(Xavian.SwiftReprieval, now);
             SwiftReprievalConsumed?.Invoke(ctx);
-            DealDamage(ctx, target, onLanded: (c, dealt) => Dealt?.Invoke(c, target, dealt));
+            if (target is { IsSleeping: false }) DealDamage(ctx, target, onLanded: (c, dealt) => Dealt?.Invoke(c, target, dealt));
         }
         if (hero.RollBrilliantSpirit(ctx)) hero.GainMana(BrilliantSpiritMana, ctx);
         Flashed?.Invoke(ctx, target);

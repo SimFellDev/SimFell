@@ -45,6 +45,10 @@ public abstract class XavianAbility : Ability
         }
     }
 
+    /// <summary>Every enemy in the fight; the target alone when the fight has none active; none without a target.</summary>
+    internal static IReadOnlyList<EnemyTarget> Area(SimulationContext ctx, EnemyTarget? target) =>
+        ctx.ActiveEnemies.Count > 0 ? ctx.ActiveEnemies : target is { IsSleeping: false } ? [target] : [];
+
     /// <summary>sqrt(T/N) beyond <paramref name="threshold"/> enemies, 1 at or below it.</summary>
     protected static double Falloff(int count, double threshold) =>
         threshold > 0 && count > threshold ? Math.Sqrt(threshold / count) : 1.0;

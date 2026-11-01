@@ -15,11 +15,10 @@ public class SolarShield : XavianAbility
     /// <summary>Game data cost 182 Mana.</summary>
     public const double Cost = 182;
 
-    /// <summary>Effect 2551: 8 seconds, IncomingDamageMultiplier x0.8 ("reduces damage taken").</summary>
+    /// <summary>Effect 2551: the shield, 8 seconds.</summary>
     public const int BuffEffectId = 2551;
     public const double BuffSeconds = 8.0;
-    public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, BuffSeconds,
-        modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 0.8));
+    public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, BuffSeconds);
 
     /// <summary>Multipliers on the next shield's absorb, read as it is cast (Hallowed Shield).</summary>
     public List<Func<SimulationContext, double>> AbsorbMultipliers { get; } = new();

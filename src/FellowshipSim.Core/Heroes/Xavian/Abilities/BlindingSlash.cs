@@ -37,7 +37,7 @@ public class BlindingSlash : XavianAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
+        var enemies = Area(ctx, target);
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, enemies, ctx);
         DealToEach(ctx, struck, TargetThreshold);
         for (int i = 0; i < struck.Count; i++) struck[i].Auras.Apply(Blinded, ctx.CurrentTime);

@@ -4,9 +4,9 @@ using FellowshipSim.Core.Heroes.Xavian.Talents;
 namespace FellowshipSim.Core.Heroes.Xavian;
 
 /// <summary>
-/// Xavian, the Light of Azamir. His abilities spend Mana, which regenerates. Sun Strike, Blinding Slash, Omnistrike and
-/// Solar Blades grant Swift Reprieval, which turns Brilliant Flare into the instant Brilliant Flash; Omega Reprieval does
-/// the same with an enhanced Flash. Abilities live in Abilities/, talents in Talents/.
+/// Xavian, the Light of Azamir. His abilities spend Mana. Mana regenerates. Sun Strike, Blinding Slash, Omnistrike and
+/// Solar Blades grant Swift Reprieval. With Swift Reprieval, Brilliant Flare turns into the instant Brilliant Flash; with
+/// Omega Reprieval, into an enhanced Flash. Abilities are in Abilities/, talents in Talents/.
 /// </summary>
 public sealed class Xavian : Hero
 {
