@@ -172,6 +172,17 @@ public static class ProcEvidence
         // Each bounce of a Shield Throw is a hit on an enemy the shield has not hit yet, landing 0.03-0.2s after the hit
         // before it (HrNZ6wQfFKGxybDR fight 1 @ 16.027).
         new(ShieldThrow.BounceProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.4, ReservesHit: true),
+        // A Shield Throw's first hit lands 0.27-0.37s after the cast, the engine's 0.3s, with no hit of the shield in the 0.2s
+        // before it (the bounces of a throw are 0.03-0.2s apart).
+        new(ShieldThrow.FirstHitProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.1, MinDelaySeconds: -0.1, ReservesHit: true, QuietBeforeSeconds: 0.2),
+        // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
+        new(FellowshipSim.Core.Heroes.Helena.Abilities.Attack.AvoidedProcKey, FellowshipSim.Core.Heroes.Helena.Abilities.Attack.AbilityId,
+            DelaySeconds: 0.05, HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
+        // Defensive procs (blocks and damage taken): each gain of the buff in the log, and each reflect hit.
+        new(TheBestDefense.ProcKey, TheBestDefense.Buff.LogId),
+        new(PunishingStrikes.ProcKey, PunishingStrikes.Buff.LogId),
+        new(SecondWind.ProcKey, SecondWind.Buff.LogId),
+        new(UnscarredSoul.ProcKey, LogIds.Effect(UnscarredSoul.ReflectEffectId), ReservesHit: true),
         // Hold the Line's own Empowered Shield Slam (the log names 975 as its cause) is no proof of Sword & Board's.
         new(SwordAndBoard.ProcKey, HoldTheLine.Empowered.LogId, NotCausedByAbilityId: HoldTheLine.AbilityId),
     ];
