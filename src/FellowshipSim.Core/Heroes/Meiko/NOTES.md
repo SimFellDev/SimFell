@@ -49,9 +49,10 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 
 ## Spirit Refunds
 
-- A Spirit Refund comes on Stormfall alone: 544 of 2,232 Stormfall consumptions came back 0.2s later with Rising Spirit,
-  and none of 958 Earthfall consumptions, though hero 13's Spirit text names both. The engine's Spirit / (1 + Spirit)
-  expects 552.
+- A Spirit Refund comes on both charges. 544 of 2,232 Stormfall consumptions had Rising Spirit at the consumption and
+  the Stormfall back 0.2s later; the engine's Spirit / (1 + Spirit) expects 552. Earthfist Barrage consumes Earthfall at
+  the cast, and its refund is at the channel's end: 189 of 937 Earthfall consumptions had Rising Spirit 1.0s after the
+  cast and the Earthfall back at 1.2s.
 
 ## Replay matches
 
@@ -59,32 +60,33 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 |---|---|---|
 | 2NwV9b6jdhFnzXJk fight 2 | 97.0% | 99.0% |
 | 3M2vWr8taxVfTQFY fight 53 | 97.9% | 98.9% |
-| 7Zmfx9gq6HjvThzc fight 1 | 77.0% | 94.2% |
-| 7Zmfx9gq6HjvThzc fight 2 | 75.8% | 94.0% |
-| BWFTRPJkz24QLjxM fight 2 | 76.8% | 93.5% |
+| 7Zmfx9gq6HjvThzc fight 1 | 94.9% | 98.4% |
+| 7Zmfx9gq6HjvThzc fight 2 | 96.3% | 99.2% |
+| BWFTRPJkz24QLjxM fight 2 | 97.2% | 99.3% |
 | DYL3Ph6Fkgp8jVbw fight 1 | 98.0% | 100.9% |
-| fXyzwGcQkTrLD34R fight 4 | 87.7% | 96.6% |
-| GXFz3pZ94aQr2chV fight 3 | 72.8% | 94.2% |
-| gZdryvDb9th8XxqM fight 5 | 72.7% | 93.4% |
-| Hzc78X3TFPvMVnhb fight 3 | 76.2% | 94.3% |
-| kYCNMwGW6cRKngr2 fight 2 | 73.6% | 93.4% |
-| P1yMmDGAWhnHNXTQ fight 16 | 74.8% | 95.0% |
-| PFtrX9RZJxmv1QfT fight 2 | 78.8% | 95.5% |
-| PrW4639VM7hYFD2g fight 13 | 73.3% | 93.7% |
-| VTghN4MvYn73PW9k fight 1 | 76.1% | 93.0% |
-| xPntaRwjmCWcqVfg fight 3 | 75.9% | 93.2% |
+| fXyzwGcQkTrLD34R fight 4 | 95.7% | 98.2% |
+| GXFz3pZ94aQr2chV fight 3 | 95.6% | 100.0% |
+| gZdryvDb9th8XxqM fight 5 | 95.4% | 99.4% |
+| Hzc78X3TFPvMVnhb fight 3 | 96.6% | 99.5% |
+| kYCNMwGW6cRKngr2 fight 2 | 96.6% | 99.5% |
+| P1yMmDGAWhnHNXTQ fight 16 | 96.3% | 100.5% |
+| PFtrX9RZJxmv1QfT fight 2 | 96.2% | 99.4% |
+| PrW4639VM7hYFD2g fight 13 | 96.8% | 100.8% |
+| VTghN4MvYn73PW9k fight 1 | 96.1% | 98.7% |
+| xPntaRwjmCWcqVfg fight 3 | 96.2% | 98.7% |
 
-The fights below 97% hits matched are the players with Al'zerac's Shackle, a weapon the engine does not have (its
-54,746 Slow hits, 4,207 hits and 2,350 Freeze hits are 5% of the logs' damage).
+Al'zerac's Shackle is the largest source of unmatched hits: 6,761 of its 54,746 Slow ticks find no engine tick.
 
 ## Known gaps
 
-- **Al'zerac's Shackle** (weapon ability 152) is not in the engine.
 - **The quake** ticks on every enemy at once; the game ticks each enemy on its own timer from the moment it is in
-  the area. 3,282 of its 21,392 logged ticks find no engine tick (89% of its damage in an exact replay).
-- **Free dice** come in at 82% of the logs' damage. The players time Rising Storm and Lashing Stormkick to the Stormfall
-  their refunds gave back; with the refunds at random, a free-dice run consumes 18% fewer Stormfall charges on the casts
-  of 7Zmfx9gq6HjvThzc fight 2 (79 against 96), with less Rising Spirit, Warden of the Temple and Double Palm Strike.
+  the area. 3,260 of its 21,392 logged ticks find no engine tick (89.5% of its damage in an exact replay).
+- **Free dice** come in at 89.7% of the logs' damage. The players time Rising Storm and Lashing Stormkick to the
+  Stormfall their refunds gave back. With the refunds at random on the logged casts, a free-dice run consumes 12% fewer
+  Stormfall charges (1,929 against 2,194 over 16 fights) at the same refund rate, and Warden of the Temple enhances 27%
+  fewer Double Palm Strikes (290 against 397). Lashing Stormkick (84.6%) and Spirited Vortex (87.5%) have most of the
+  gap. In 5 fights the log's crits are 5-6 points above the engine's crit chance on every ability, and Al'zerac's
+  Shackle crits 56% of the time against the engine's 22%.
 - **Damage alone:** the engine simulates the damage Meiko deals, not damage taken, mitigation or healing. Shattering
   Obelisk's pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a replay deals one at each
   pulse hit in the log, and a sim never. No log has the talent.
@@ -92,5 +94,5 @@ The fights below 97% hits matched are the players with Al'zerac's Shackle, a wea
 ## Not yet checked against a log
 
 Will of Stone and Everlasting Spirit are built from their tooltips and the game data (marked `UNVERIFIED` in their
-files). Forbidden Technique and Tectonic Impact are in 3M2vWr8taxVfTQFY fight 53
-alone.
+files). Forbidden Technique and Tectonic Impact are in 3M2vWr8taxVfTQFY fight 53 alone. There, a Double Palm Strike
+while Forbidden Technique is active erupts the active one at once (33 times), and 545 of its 549 eruption hits match.
