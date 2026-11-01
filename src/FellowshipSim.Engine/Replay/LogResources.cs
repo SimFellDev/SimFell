@@ -1,5 +1,6 @@
 using FellowshipSim.Core.Heroes.Ardeos;
 using FellowshipSim.Core.Heroes.Elarion;
+using FellowshipSim.Core.Heroes.Helena;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Rime;
 using FellowshipSim.Core.Heroes.Tariq;
@@ -48,5 +49,9 @@ public static class LogResources
         // Elarion: Focus as resource type 2, in hundredths; it carries over between pulls. Focus regenerates between the
         // engine's ticks, so it is compared within 3.
         new(Elarion.Focus, 2, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
+        // Helena: Toughness as resource type 3, a share of a maximum that follows Strength and the secondary stats (amount
+        // and maximum in hundredths); it carries over between pulls. Damage taken lowers it, which the engine does not
+        // simulate, so the replay takes the log's share before each cast.
+        new(Helena.Toughness, 3, Tolerance: 1.0, StartsFromLog: true, ShareOfMaximum: true),
     ];
 }
