@@ -13,6 +13,7 @@ using FellowshipSim.Core.Heroes.Gunde.Talents;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
 using FellowshipSim.Core.Heroes.Mara.Talents;
+using FellowshipSim.Core.Heroes.Meiko.Talents;
 using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Rime.Talents;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
@@ -134,6 +135,10 @@ public static class ProcEvidence
             DelaySeconds: 0.55, MinDelaySeconds: 0.45,
             FollowingHits: ChainLightning.Hits + Thunderstruck.ExtraBounces - 1, FollowingSpacingSeconds: ChainLightning.BounceSeconds,
             FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
+
+        // Meiko
+        // Perfect Storm's extra kick lands 0.40s after the Lashing Stormkick that procced it, on every enemy the kick struck.
+        new(PerfectStorm.ProcKey, PerfectStorm.DamageId, DelaySeconds: 0.45, MinDelaySeconds: 0.35),
 
         // Mara
         // 10 Energy at once (Fc8v6yWxD14GQMnV fight 19: 172 jumps of 8-12 Energy right after a poison hit, regeneration aside).
