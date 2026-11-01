@@ -86,7 +86,8 @@ The fights below 97% hits matched are the players with Al'zerac's Shackle, a wea
   their refunds gave back; with the refunds at random, a free-dice run consumes 18% fewer Stormfall charges on the casts
   of 7Zmfx9gq6HjvThzc fight 2 (79 against 96), with less Rising Spirit, Warden of the Temple and Double Palm Strike.
 - **Damage alone:** the engine simulates the damage Meiko deals, not damage taken, mitigation or healing. Shattering
-  Obelisk's pulses come from damage the Sibling of Earth takes and are not modeled; no log has the talent.
+  Obelisk's pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a replay deals one at each
+  pulse hit in the log, and a sim never. No log has the talent.
 
 ## Not yet checked against a log
 
