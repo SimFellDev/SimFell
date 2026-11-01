@@ -60,35 +60,30 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 |---|---|---|
 | 2NwV9b6jdhFnzXJk fight 2 | 97.6% | 99.8% |
 | 3M2vWr8taxVfTQFY fight 53 | 99.0% | 100.6% |
-| 7Zmfx9gq6HjvThzc fight 1 | 95.4% | 99.1% |
-| 7Zmfx9gq6HjvThzc fight 2 | 96.9% | 100.2% |
-| BWFTRPJkz24QLjxM fight 2 | 97.3% | 99.5% |
+| 7Zmfx9gq6HjvThzc fight 1 | 97.9% | 99.6% |
+| 7Zmfx9gq6HjvThzc fight 2 | 99.2% | 100.7% |
+| BWFTRPJkz24QLjxM fight 2 | 99.1% | 99.9% |
 | DYL3Ph6Fkgp8jVbw fight 1 | 98.3% | 100.6% |
-| fXyzwGcQkTrLD34R fight 4 | 95.7% | 97.8% |
-| GXFz3pZ94aQr2chV fight 3 | 96.5% | 101.2% |
-| gZdryvDb9th8XxqM fight 5 | 95.5% | 99.3% |
-| Hzc78X3TFPvMVnhb fight 3 | 96.7% | 99.4% |
-| kYCNMwGW6cRKngr2 fight 2 | 96.7% | 99.5% |
-| P1yMmDGAWhnHNXTQ fight 16 | 97.0% | 100.9% |
-| PFtrX9RZJxmv1QfT fight 2 | 96.5% | 99.8% |
-| PrW4639VM7hYFD2g fight 13 | 96.9% | 100.4% |
-| VTghN4MvYn73PW9k fight 1 | 96.7% | 99.0% |
-| xPntaRwjmCWcqVfg fight 3 | 96.3% | 99.0% |
-
-Al'zerac's Shackle is the largest source of unmatched hits: 6,761 of its 54,746 Slow ticks find no engine tick.
+| fXyzwGcQkTrLD34R fight 4 | 96.9% | 98.0% |
+| GXFz3pZ94aQr2chV fight 3 | 98.6% | 101.8% |
+| gZdryvDb9th8XxqM fight 5 | 98.8% | 100.0% |
+| Hzc78X3TFPvMVnhb fight 3 | 98.9% | 99.8% |
+| kYCNMwGW6cRKngr2 fight 2 | 98.6% | 99.9% |
+| P1yMmDGAWhnHNXTQ fight 16 | 99.1% | 101.3% |
+| PFtrX9RZJxmv1QfT fight 2 | 99.2% | 100.2% |
+| PrW4639VM7hYFD2g fight 13 | 99.6% | 101.0% |
+| VTghN4MvYn73PW9k fight 1 | 98.7% | 99.5% |
+| xPntaRwjmCWcqVfg fight 3 | 98.0% | 99.4% |
 
 ## Known gaps
 
 - **The quake** has a timer of its own on each enemy the slam struck. An enemy in the area after the slam has no quake
   ticks in the engine: 2,326 of the 21,392 logged ticks find no engine tick (92.6% of its damage in an exact replay).
-- **Free dice** come in at 90.4% of the logs' damage, from free-dice variance in the game's own mechanics. The players
-  time Rising Storm and Lashing Stormkick to the Stormfall their refunds gave back. With the refunds at random on the logged casts, a free-dice run consumes 12% fewer
-  Stormfall charges (1,942 against 2,208 over 16 fights), and Warden of the Temple enhances 21% fewer Double Palm
-  Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of 3,145 rolls against 769 expected. Lashing
-  Stormkick (84.6%) and Spirited Vortex (87.6%) have most of the gap. In 5 fights Meiko has Storm's Fury (effect 2699,
-  +20% Critical Strike chance for 20 seconds, from Storm Shield: Lightning Strike), and the log's crits are 4.6-5.7
-  points above the engine's crit chance on every ability. Al'zerac's Shackle: Slow's log/engine ratio is 0.974
-  with Twin Souls: Army of One up and 1.070 without it.
+- **Free dice** come in at 94.3% of the logs' damage, from free-dice variance in the game's own mechanics. The players
+  time Rising Storm and Lashing Stormkick to the Stormfall their refunds gave back. With the refunds at random on the
+  logged casts, a free-dice run consumes 12% fewer Stormfall charges (1,942 against 2,208 over 16 fights), and Warden
+  of the Temple enhances 21% fewer Double Palm Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of
+  3,145 rolls against 769 expected. Lashing Stormkick (87.9%) and Spirited Vortex (91.3%) have most of the gap.
 - **Damage alone:** the engine simulates the damage Meiko deals, not damage taken, mitigation or healing. Shattering
   Obelisk's pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a replay deals one at each
   pulse hit in the log, and a sim never. No log has the talent.
