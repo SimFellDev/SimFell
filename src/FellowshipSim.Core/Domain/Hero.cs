@@ -115,6 +115,20 @@ public abstract class Hero : Actor
     /// </summary>
     public List<AuraDef> SituationalAuras { get; } = new();
 
+    private readonly List<DefensiveProc> _defensiveProcs = new();
+
+    /// <summary>Procs of a block, parry, dodge, hit taken or heal: a replay fires them where the log proves them, a sim never.</summary>
+    public IReadOnlyList<DefensiveProc> DefensiveProcs => _defensiveProcs;
+
+    /// <summary>
+    /// Declares a proc of a block, parry, dodge, hit taken or heal. A sim never calls <paramref name="fire"/>. A replay
+    /// calls it at each proof of <paramref name="procKey"/> in the log (its proc evidence entry: an aura on the hero, or
+    /// the proc's hit), with the logged hit's enemy, or the current target for an aura. <paramref name="fire"/> deals the
+    /// proc's damage or does what else the proc does, e.g. Toughness from a block or a stack consumed on a dodge.
+    /// </summary>
+    public void AddDefensiveProc(string procKey, Action<SimulationContext, EnemyTarget?> fire) =>
+        _defensiveProcs.Add(new DefensiveProc(procKey, fire));
+
     /// <summary>
     /// The <see cref="SituationalAuras"/> up only in combat with a boss (Ruby's Blessing of the Conqueror): a sim without a
     /// boss (<see cref="Engine.FightOptions.Boss"/>) takes them off as each fight starts. A replay follows the log for them.
