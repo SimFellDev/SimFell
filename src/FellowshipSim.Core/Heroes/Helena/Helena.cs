@@ -62,6 +62,17 @@ public sealed class Helena : Hero
     /// </summary>
     public List<Func<SimulationContext, HelenaAbility, double>> VeteranOfWarMultipliers { get; } = new();
 
+    /// <summary>Shares of Armor added to it while they hold (Gleaming Shield), added together.</summary>
+    public List<Func<SimTime, double>> ArmorBonuses { get; } = new();
+
+    /// <summary>Armor now, for damage that reads it: the build's Armor with <see cref="ArmorBonuses"/>.</summary>
+    public double Armor(SimTime now)
+    {
+        double bonus = 0.0;
+        foreach (var b in ArmorBonuses) bonus += b(now);
+        return Stats.Armor * (1.0 + bonus);
+    }
+
     /// <summary>A Veteran of War source cast took time off its targets' cooldowns.</summary>
     public event Action<SimulationContext, HelenaAbility>? VeteranOfWarApplied;
 

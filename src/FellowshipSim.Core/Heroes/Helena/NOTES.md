@@ -47,5 +47,6 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 - Attack: 1,024 of 11,385 swings are a miss or a dodge (log hit types 0 and 7), a hit of no damage.
 - The Best Defense, Punishing Strikes, Second Wind and Unscarred Soul come from blocks, damage taken and attacks on
   Helena: a replay gives each one where the log has its buff or its hit.
-- Gleaming Shield: Shield Slam's hits are 1.11 times the engine's (36,523 hits over 18 fights). The engine adds 10% of the build's Armor;
-  in the game each stack of the buff (effect 3096, up to 10) adds 3% to that Armor.
+- Gleaming Shield: each stack of the buff (effect 3096, up to 10) adds 3% to the Armor Shield Slam's extra damage reads.
+  With the stacks, Shield Slam's hits are 1.02 times the engine's (36,523 hits over 18 fights); with the build's Armor
+  alone, 1.11.

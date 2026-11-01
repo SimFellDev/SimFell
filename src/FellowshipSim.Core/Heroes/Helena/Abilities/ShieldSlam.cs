@@ -30,7 +30,7 @@ public class ShieldSlam : HelenaAbility
     public static readonly AuraDef LingeringConcussion = AuraDef.Effect("Lingering Concussion", LingeringConcussionEffectId,
         LingeringConcussionSeconds, LingeringConcussionMaxStacks);
 
-    /// <summary>Share of the build's Armor (the profile's, or the log's combatant info) every hit adds to its damage (Gleaming Shield).</summary>
+    /// <summary>Share of Armor (<see cref="Helena.Armor"/>) every hit adds to its damage (Gleaming Shield).</summary>
     public double ArmorDamageShare { get; set; }
 
     /// <summary>Raised as the cast resolves, after its hits (Hold the Line's Empowered Shield Slam uses it up).</summary>
@@ -50,7 +50,7 @@ public class ShieldSlam : HelenaAbility
         double damage = base.BaseDamage(ctx, target, damageMultiplier);
         if (ArmorDamageShare <= 0) return damage;
         double strengthPart = BaseCoefficient * Owner.PrimaryAttribute(ctx.CurrentTime);
-        return damage * (strengthPart + ArmorDamageShare * Owner.Stats.Armor) / strengthPart;
+        return damage * (strengthPart + ArmorDamageShare * Helena.Armor(ctx.CurrentTime)) / strengthPart;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
@@ -61,7 +61,7 @@ public class ShieldSlam : HelenaAbility
         double falloff = targets.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / targets.Count) : 1.0;
         // Another enemy's hit is its 75.8% with the same flat Armor part as the main target's.
         double strength = Owner.PrimaryAttribute(now);
-        double armorPart = ArmorDamageShare * Owner.Stats.Armor;
+        double armorPart = ArmorDamageShare * Helena.Armor(now);
         double otherShare = (OtherEnemiesCoefficient * strength + armorPart) / (Coefficient * strength + armorPart);
         for (int i = 0; i < targets.Count; i++)
         {
