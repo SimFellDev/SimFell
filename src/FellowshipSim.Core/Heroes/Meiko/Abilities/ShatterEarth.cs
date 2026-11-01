@@ -38,8 +38,10 @@ public class ShatterEarth : MeikoAbility
         Slammed?.Invoke(ctx, target);
         ctx.Schedule(SimTime.FromSeconds(LeapSeconds), c =>
         {
-            DealAoeDamage(c, c.ActiveEnemies.Count == 0 && target is { IsSleeping: false } ? [target] : c.ActiveEnemies);
-            Quake.Begin(c);
+            var struck = c.Outcomes.SelectTargets(DamageLogId, c.ActiveEnemies.Count == 0 && target is { IsSleeping: false } ? [target] : c.ActiveEnemies, c);
+            double falloff = struck.Count > AoeTargetThreshold ? Math.Sqrt(AoeTargetThreshold / struck.Count) : 1.0;
+            for (int i = 0; i < struck.Count; i++) DealDamage(c, struck[i], falloff);
+            Quake.Begin(c, struck);
         }, AbilityName);
     }
 }

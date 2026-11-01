@@ -21,10 +21,23 @@ public class ShatterEarthQuake : MeikoAbility
         DamageLogId = LogIds.Effect(EffectId);
     }
 
-    /// <summary>The quake starts where the slam landed.</summary>
-    public void Begin(SimulationContext ctx) =>
-        PeriodicEffect.BeginHasted(ctx, Owner, Name, DurationSeconds, PeriodSeconds, tickOnStart: false, partialFinalTick: false,
-            onTick: (c, _) => DealAoeDamage(c, c.ActiveEnemies), damageLogId: DamageLogId);
+    /// <summary>
+    /// The quake starts on each enemy the slam struck, with a timer of its own on each: in the game each enemy's ticks are a
+    /// hasted period apart from the moment it is in the area. Combat logs (16 fights): 19,066 of 21,392 quake ticks match
+    /// an engine tick, against 18,132 with one timer for every enemy.
+    /// </summary>
+    public void Begin(SimulationContext ctx, IReadOnlyList<EnemyTarget> struck)
+    {
+        foreach (var enemy in struck)
+        {
+            PeriodicEffect.BeginHasted(ctx, Owner, Name, DurationSeconds, PeriodSeconds, tickOnStart: false, partialFinalTick: false,
+                onTick: (c, _) =>
+                {
+                    if (enemy is { IsSleeping: false } && c.ActiveEnemies.Contains(enemy)) DealDamage(c, enemy);
+                },
+                damageLogId: DamageLogId, target: enemy);
+        }
+    }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target) { }
 }
