@@ -24,6 +24,9 @@ public class ShieldThrow : HelenaAbility
     /// </summary>
     public const string BounceProcKey = "shield_throw_bounce";
 
+    /// <summary>The first hit on one enemy: a sim takes the cast's target, a replay the log's first hit.</summary>
+    public const string FirstHitProcKey = "shield_throw_first_hit";
+
     /// <summary>Multipliers on the first hit alone (Skull Cracker).</summary>
     public List<Func<SimulationContext, double>> FirstHitMultipliers { get; } = new();
 
@@ -49,8 +52,7 @@ public class ShieldThrow : HelenaAbility
         foreach (var multiplier in FirstHitMultipliers) firstMultiplier *= multiplier(ctx);
         ctx.Schedule(SimTime.FromSeconds(FirstHitSeconds), c =>
         {
-            var preferred = target is { IsSleeping: false } ? target : null;
-            if (c.Outcomes.ChooseTarget(DamageLogId, Enemies(c, target), c, preferred) is not { } first) return;
+            if (FirstTarget(c, target) is not { } first) return;
             var struck = new List<EnemyTarget> { first };
             DealDamage(c, first, damageMultiplier: firstMultiplier * castMultiplier, extraCritChance: castCrit, onLanded: (cc, dealt) =>
             {
@@ -60,6 +62,22 @@ public class ShieldThrow : HelenaAbility
         }, Name);
         ApplyVeteranOfWar(ctx);
         Thrown?.Invoke(ctx);
+    }
+
+    /// <summary>
+    /// The enemy the first hit strikes: the cast's target in a sim; in a replay the enemy of the log's first hit, which is
+    /// often another enemy than the cast's target. Each enemy, the cast's target first, rolls <see cref="FirstHitProcKey"/>
+    /// until one is the first hit's.
+    /// </summary>
+    private EnemyTarget? FirstTarget(SimulationContext ctx, EnemyTarget target)
+    {
+        if (target is { IsSleeping: false } && ctx.Outcomes.RollProc(FirstHitProcKey, 1.0, ctx, target)) return target;
+        var enemies = Enemies(ctx, target);
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            if (enemies[i] != target && ctx.Outcomes.RollProc(FirstHitProcKey, 1.0, ctx, enemies[i])) return enemies[i];
+        }
+        return null;
     }
 
     /// <summary>

@@ -37,8 +37,13 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 
 - Aftershock: Helena's hits on an enemy with the debuff (effect 2428) deal 1.19-1.23 times what they deal without it, as
   the game data's IncomingDamageScaler 1.2 says, against the tooltip's 30%.
-- Siegebreaker with Martial Command, as log damage over the engine's on hits with no Aftershock (17 fights):
+- Siegebreaker with Martial Command at the tooltip's 25%, as log damage over the engine's on hits with no Aftershock (17
+  fights):
   Shockwave 0.92, Shield Slam 0.94, Shield Throw 0.94, Attack 0.92, Power Strike 0.92, bleed 0.92, Charge 0.91,
-  Measured Strike 0.98, Sweeping Strike 1.17 and Emerald Judgement 1.18; outside Siegebreaker each is 0.98-1.03.
+  Measured Strike 0.98, Sweeping Strike 1.17 and Emerald Judgement 1.18; outside Siegebreaker each is 0.98-1.03. Effect
+  1239's DamageScale x1.15 gives 0.92 of x1.25.
 - The Best Defense (effect 1231) comes 389 times in 7 fights.
 - Second Wind (effect 1215) comes 176 times in 4 fights; its build-up is effect 1214.
+- Attack: 1,024 of 11,385 swings are a miss or a dodge (log hit types 0 and 7), a hit of no damage.
+- The Best Defense, Punishing Strikes, Second Wind and Unscarred Soul come from blocks, damage taken and attacks on
+  Helena: a replay gives each one where the log has its buff or its hit.
