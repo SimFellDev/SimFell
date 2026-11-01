@@ -19,7 +19,9 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// - Freeze and Slow take their damage, crit chance and crit power when applied, and the enemy's multipliers at each
 ///   tick. Slow ticks hold their size when a damage buff ends or starts during the Slow: Meiko's, as Twin Souls: Army of
 ///   One (+20%) falls, 1.005 of the ticks before (196 Slows) and, as it rises, 0.993 (73 Slows); Helena's, as Martial
-///   Initiative falls, 0.992 (2,490 Slows). UNVERIFIED: whether crit chance is taken at the application too.
+///   Initiative falls, 0.992 (2,490 Slows). UNVERIFIED: Freeze's numbers taken at the application (Meiko's Freezes
+///   with Army of One changing during them: 1.051 of the ticks before as it falls, 2 Freezes; 0.994 as it rises, 3
+///   Freezes), and crit chance taken at the application.
 /// - Freeze and Slow keep ticking on an enemy after its death until they run out (effects 63 and 65 have no
 ///   RemoveOnDeath tag): over every tank fight, 23,007 of 208,854 Slow ticks and 117 of 8,722 Freeze ticks hit an enemy
 ///   after its logged death. An enemy that dies frozen gives no explosion (60 of 74 such Freezes; in the other 14 the
