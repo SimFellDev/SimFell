@@ -22,6 +22,8 @@ public class ConditionBuilderTests
     [InlineData("a < b <= c and dot.x.remains - 100 * (target.time_to_die >= 15) - 100 * (target.time_to_die >= 24)")]
     [InlineData("-not worb + not -spirit * --3 and not not a")]
     [InlineData("(a or b) * 2 = 0 and (a and (b or c)) > 1")]
+    [InlineData("floor(dot.x.oldest.remains) < 3 and max(worb, spirit * 2, 1) >= 2 or not prev.frost_bolt")]
+    [InlineData("-abs(worb - 1) + min(a and b, (c or d)) * ceil(not x)")]
     public void Rows_write_the_text_they_were_read_from(string text)
     {
         var rows = ConditionRow.From(AplCondition.Rows(AplParser.ParseExpression(text)));
@@ -61,13 +63,16 @@ public class ConditionBuilderTests
 
     private static IAplExpression Expression(Random random, int depth)
     {
-        int pick = depth == 0 ? random.Next(2) : random.Next(6);
+        int pick = depth == 0 ? random.Next(2) : random.Next(7);
         return pick switch
         {
             0 => new PropertyExpression(GeneratedPaths[random.Next(GeneratedPaths.Length)]),
             1 => new ConstantExpression(new[] { 0, 1, 2.5, 100 }[random.Next(4)]),
             2 => new UnaryOpExpression(random.Next(2) == 0 ? UnaryOperator.Not : UnaryOperator.Minus, Expression(random, depth - 1)),
             3 => new GroupExpression(Expression(random, depth - 1)),
+            4 => random.Next(2) == 0
+                ? new FunctionExpression(AplFunction.Floor, [Expression(random, depth - 1)])
+                : new FunctionExpression(AplFunction.Max, [Expression(random, depth - 1), Expression(random, depth - 1)]),
             _ => new BinaryOpExpression(Expression(random, depth - 1), Enum.GetValues<BinaryOperator>()[random.Next(Enum.GetValues<BinaryOperator>().Length)],
                 Expression(random, depth - 1)),
         };
@@ -169,6 +174,7 @@ public class ConditionBuilderTests
             [
                 .. PropertyExpression.Scopes.Keys, ConditionBuilder.ResourceKind, ConditionBuilder.NamedKind, ConditionBuilder.ActionValueKind,
                 .. PropertyExpression.BuildScopes.Keys, PropertyExpression.ActiveDotScope, PropertyExpression.VariableScope,
+                PropertyExpression.PrevScope,
             ],
             kinds.Select(k => k.Id));
         Assert.Equal("Debuff on target", kinds.Single(k => k.Id == PropertyExpression.DebuffScope).Label);
@@ -295,6 +301,39 @@ public class ConditionBuilderTests
 
         ConditionBuilder.Apply(term, new ValuePick(ConditionBuilder.NumberKind), _v, kinds);
         Assert.Equal(("*", "!-", null, 0d, null), (term.Operator, term.Prefix, term.Path, term.Number, term.Items));
+    }
+
+    [Fact]
+    public void A_picked_function_takes_the_term_as_its_first_argument()
+    {
+        var kinds = ConditionBuilder.Kinds(_v, []);
+        var term = new ConditionTerm { Operator = "*", Prefix = "-", Path = "worb" };
+        var side = new[] { new ConditionTerm { Path = "a" }, term };
+
+        ConditionBuilder.Apply(term, new ValuePick(ConditionBuilder.FunctionKind, "floor"), _v, kinds);
+        Assert.Equal(("*", "-", "floor", null), (term.Operator, term.Prefix, term.Function, term.Path));
+        Assert.Equal("a * -floor(worb)", ConditionBuilder.Text(side));
+
+        // A function of two or more arguments adds 0 for each it lacks; one of one argument keeps the first.
+        ConditionBuilder.Apply(term, new ValuePick(ConditionBuilder.FunctionKind, "max"), _v, kinds);
+        Assert.Equal("a * -max(worb, 0)", ConditionBuilder.Text(side));
+        ConditionBuilder.Apply(term, new ValuePick(ConditionBuilder.FunctionKind, "abs"), _v, kinds);
+        Assert.Equal("a * -abs(worb)", ConditionBuilder.Text(side));
+
+        ConditionBuilder.Apply(term, new ValuePick(ConditionBuilder.NumberKind), _v, kinds);
+        Assert.Equal((null, null, 0d), (term.Function, term.Arguments, term.Number));
+
+        var row = ConditionBuilder.RowFor(new ValuePick(ConditionBuilder.FunctionKind, "min"), "and", false, _v, kinds);
+        Assert.Equal("min(0, 0)", ConditionBuilder.Text([row]));
+    }
+
+    [Fact]
+    public void A_function_with_an_empty_argument_is_left_out()
+    {
+        var term = new ConditionTerm { Function = "max", Arguments = [[new ConditionRow { Left = [new ConditionTerm { Path = "worb" }] }], [new ConditionRow { Left = [new ConditionTerm()] }]] };
+
+        Assert.False(ConditionBuilder.IsComplete(term));
+        Assert.Equal("a", ConditionBuilder.Text([new ConditionTerm { Path = "a" }, term]));
     }
 
     [Fact]

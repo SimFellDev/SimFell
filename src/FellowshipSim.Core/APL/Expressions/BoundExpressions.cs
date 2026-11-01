@@ -60,6 +60,7 @@ public abstract class BoundExpression
         UnaryOpExpression { Operator: UnaryOperator.Not } u => new BoundNot(Bind(u.Operand, hero, variables)),
         UnaryOpExpression { Operator: UnaryOperator.Minus } u => new BoundMinus(Bind(u.Operand, hero, variables)),
         BinaryOpExpression b => new BoundBinary(Bind(b.Left, hero, variables), b.Operator, Bind(b.Right, hero, variables)),
+        FunctionExpression f => new BoundFunction(f.Function, f.Arguments.Select(a => Bind(a, hero, variables)).ToArray()),
         PropertyExpression p => BindProperty(p, hero, variables),
         _ => throw new ArgumentException($"Unsupported APL expression: '{expression}'", nameof(expression)),
     };
@@ -81,7 +82,7 @@ public abstract class BoundExpression
             case PropertyExpression.BuffScope:
                 return new BoundAura(hero, debuff: false, p.Name!, BoundAura.PropertyOf(p.Property!));
             case PropertyExpression.DebuffScope:
-                return new BoundAura(hero, debuff: true, p.Name!, BoundAura.PropertyOf(p.Property!));
+                return new BoundAura(hero, debuff: true, p.Name!, BoundAura.PropertyOf(p.Property!), p.Pick);
             case PropertyExpression.CooldownScope:
                 // Cooldowns are kept under the ability's own name ("Cold Snap"), not its action-list name.
                 return BoundCooldown.For(hero, AplNames.FindAbility(hero, p.Name!), p.Name!, p.Property!);
@@ -89,6 +90,8 @@ public abstract class BoundExpression
                 var ability = AplNames.FindAbility(hero, p.Name!);
                 var read = PropertyExpression.ActionProperty(p.Property!);
                 return new BoundNamed(hero, (_, ctx) => read(ability, ctx.CurrentTime));
+            case PropertyExpression.PrevScope:
+                return AplNames.FindAbility(hero, p.Name!) is { } previous ? new BoundPrevious(previous) : new BoundConstant(0.0);
             case PropertyExpression.ActiveDotScope:
                 return new BoundActiveDot(hero, p.Name!);
             case PropertyExpression.VariableScope:
@@ -408,7 +411,8 @@ internal sealed class BoundVariable(BoundVariableSlot slot) : BoundEventValue
 /// keeps, <see cref="ITargetEffects"/>). It is found by its action-list name, as <see cref="PropertyExpression"/> finds it:
 /// several definitions can share a name (copies with another duration or source).
 /// </summary>
-internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.AuraProperty property) : BoundNumeric
+internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.AuraProperty property, TargetEffectPick pick = TargetEffectPick.All)
+    : BoundNumeric
 {
     public enum AuraProperty { Up, Down, Stack, AtMaxStacks, Remains, Refreshable }
 
@@ -433,7 +437,7 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
     {
         if (!debuff) return hero.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
         var target = ctx.Player.CurrentTarget;
-        return target == null ? null : AuraLookup.On(hero, target, slug, now);
+        return target == null ? null : AuraLookup.On(hero, target, slug, now, pick);
     }
 
     private double Read(TargetEffect? aura, SimTime now) => property switch
@@ -474,6 +478,12 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         var aura = Find(ctx, ctx.CurrentTime);
         return Read(aura is { } a && time >= a.ExpiresAt ? null : aura, time);
     }
+}
+
+/// <summary>The last cast started (<c>prev.&lt;ability&gt;</c>): 1 when it is <paramref name="ability"/>; it changes only in a cast.</summary>
+internal sealed class BoundPrevious(Ability ability) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => ctx.PreviousCast == ability ? 1.0 : 0.0;
 }
 
 /// <summary>

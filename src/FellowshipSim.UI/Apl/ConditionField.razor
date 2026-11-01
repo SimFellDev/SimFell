@@ -294,11 +294,15 @@
         return addRow?.Invoke(picked[JoinPick.Length..]) ?? Task.CompletedTask;
     }
 
-    /// <summary>A term's prefixes and value, then its property, its number, or its condition in parentheses.</summary>
+    /// <summary>
+    /// A term's prefixes and value, then its property, its number, its condition in parentheses, or each argument of its
+    /// function in parentheses.
+    /// </summary>
     private void RenderTerm(RenderTreeBuilder __builder, ConditionTerm term, string key, Func<Action<ConditionTerm>, Task> update)
     {
         var path = !string.IsNullOrEmpty(term.Path) ? ConditionBuilder.SplitPath(Vocabulary, term.Path) : null;
-        ValuePick? value = term.Items != null ? new ValuePick(ConditionBuilder.GroupKind)
+        ValuePick? value = term.Function != null ? new ValuePick(ConditionBuilder.FunctionKind, term.Function)
+            : term.Items != null ? new ValuePick(ConditionBuilder.GroupKind)
             : path != null ? new ValuePick(path.Kind, path.Name)
             : term.Number != null ? new ValuePick(ConditionBuilder.NumberKind)
             : null;
@@ -320,9 +324,18 @@
         }
         <ValuePicker @key="@($"{key}:value")" Vocabulary="Vocabulary" Kinds="_kinds" Value="value"
                      OnPick="pick => update(t => ConditionBuilder.Apply(t, pick, Vocabulary, _kinds))" />
+        if (term.Arguments is { } arguments)
+        {
+            for (int index = 0; index < arguments.Count; index++)
+            {
+                int at = index;
+                RenderParentheses(__builder, arguments[at], $"{key}:argument:{at}", update, t => t.Arguments![at]);
+            }
+            return;
+        }
         if (term.Items is { } items)
         {
-            RenderParentheses(__builder, items, key, update);
+            RenderParentheses(__builder, items, key, update, t => t.Items!);
             return;
         }
         if (path == null && term.Number is { } number)
@@ -338,11 +351,13 @@
 
     /// <summary>
     /// A condition in parentheses on a side of a row. One row with no 'not' shows on the side's line, and a join after its
-    /// last term adds a row; more rows show under the side, each on its own line.
+    /// last term adds a row; more rows show under the side, each on its own line. <paramref name="locate"/> finds the rows on a
+    /// copy of the term: its parentheses, or an argument of its function.
     /// </summary>
-    private void RenderParentheses(RenderTreeBuilder __builder, List<ConditionRow> items, string key, Func<Action<ConditionTerm>, Task> update)
+    private void RenderParentheses(RenderTreeBuilder __builder, List<ConditionRow> items, string key, Func<Action<ConditionTerm>, Task> update,
+        Func<ConditionTerm, List<ConditionRow>> locate)
     {
-        Task UpdateRows(Action<List<ConditionRow>> patch) => update(t => patch(t.Items!));
+        Task UpdateRows(Action<List<ConditionRow>> patch) => update(t => patch(locate(t)));
         if (items is [{ Items: null, Not: false } only])
         {
             <span @key="@($"{key}:terms")" class="term-group">

@@ -71,12 +71,13 @@ public sealed class Ardeos : Hero, ITargetEffects
 
     /// <summary>
     /// A damage over time effect on <paramref name="target"/>, as one: running until its last copy runs out, with the
-    /// stacks of every copy (Engulfing Flames runs as copies side by side).
+    /// stacks of every copy (Engulfing Flames runs as copies side by side). <see cref="TargetEffectPick.Oldest"/> and
+    /// <see cref="TargetEffectPick.Newest"/> read the copy applied first or last, with its own expiry and stacks.
     /// </summary>
-    public TargetEffect? FindOn(EnemyTarget target, string slug, SimTime now)
+    public TargetEffect? FindOn(EnemyTarget target, string slug, SimTime now, TargetEffectPick pick = TargetEffectPick.All)
     {
         var on = Dots.On(target);
-        DamageOverTime? effect = null;
+        DotInstance? picked = null;
         var expiresAt = SimTime.Zero;
         int stacks = 0;
         for (int i = 0; i < on.Count; i++)
@@ -85,13 +86,21 @@ public sealed class Ardeos : Hero, ITargetEffects
             if (!dot.IsActive || dot.ExpiresAt <= now) continue;
             if (!_dotSlugs.TryGetValue(dot.Effect, out var dotSlug)) _dotSlugs[dot.Effect] = dotSlug = APL.AplNames.Slug(dot.Effect.Name);
             if (dotSlug != slug) continue;
-            effect = dot.Effect;
             stacks += dot.Stacks;
             if (dot.ExpiresAt > expiresAt) expiresAt = dot.ExpiresAt;
+            if (picked == null
+                || (pick == TargetEffectPick.Oldest && dot.AppliedAt < picked.AppliedAt)
+                || (pick == TargetEffectPick.Newest && dot.AppliedAt >= picked.AppliedAt))
+            {
+                picked = dot;
+            }
         }
-        if (effect == null) return null;
+        if (picked == null) return null;
+        var effect = picked.Effect;
         int maxStacks = effect.Stacking == DotStacking.Concurrent ? int.MaxValue : effect.MaxStacks;
-        return new TargetEffect(expiresAt, stacks, maxStacks, SimTime.FromSeconds(effect.Duration));
+        return pick == TargetEffectPick.All
+            ? new TargetEffect(expiresAt, stacks, maxStacks, SimTime.FromSeconds(effect.Duration))
+            : new TargetEffect(picked.ExpiresAt, picked.Stacks, maxStacks, SimTime.FromSeconds(effect.Duration));
     }
 
     /// <summary>Whole Burning Embers held.</summary>

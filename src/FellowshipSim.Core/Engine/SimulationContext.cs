@@ -249,6 +249,9 @@ public class SimulationContext
         finally { AbilityActivation = outer; }
     }
 
+    /// <summary>The ability of the last cast started in this fight (<c>prev.&lt;ability&gt;</c>); null before the first.</summary>
+    public Ability? PreviousCast { get; private set; }
+
     /// <summary>
     /// The ability activation running before the frame's timers (numbered, 0 when none): a haste change in it re-arms a
     /// damage over time's period with the time left measured from the frame before (<see cref="HastedTimer"/>).
@@ -290,6 +293,7 @@ public class SimulationContext
         }
 
         var castTime = ability.GetAdjustedCastTime(CurrentTime);
+        PreviousCast = ability;
         hero.TriggerCastStarted(ability, target, CurrentTime);
 
         if (castTime == SimTime.Zero)
@@ -589,6 +593,7 @@ public class SimulationContext
     {
         CurrentTime = SimTime.Zero;
         _lastAbilityEnd = SimTime.FromSeconds(-1.0);
+        PreviousCast = null;
         Kernel.Clear();
         // The cleared queue lost the event of the hero's next aura expiry.
         Player.Auras.RunOutIn(this);

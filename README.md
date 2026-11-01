@@ -261,8 +261,9 @@ condition as rows: each row has its `and` or `or`, its `not`, and a value compar
 **Group** is a box of rows in parentheses; its chevron closes it to one line of its text, and **Close all groups** closes
 every group. Each value is terms joined by `+`, `-`, `*`, `%` or `%%`. Each term's picker lists the names by kind (buff,
 debuff, dot, cooldown, action, resource, fight value, value of the action itself, talent, blessing, legendary, weapon
-trait, weapon, enemies with a debuff, variable), then **Number** and **Group** for a condition in parentheses, then `not`
-or `-` before the term; typing filters the list. The empty select after a value adds a term, a comparison, or inside
+trait, weapon, enemies with a debuff, variable, previous action), then **Number** and **Group** for a condition in
+parentheses, then each **Function**, then `not` or `-` before the term; typing filters the list. A function takes the term
+as its first argument and shows each argument in its own box. The empty select after a value adds a term, a comparison, or inside
 parentheses an `and` or `or` row; an emptied operator or comparison removes its term or value. **Text** shows the
 condition as text. Typing a name, a `.` or Ctrl+Space lists the names that fit; Enter or Tab writes the one picked.
 **Action list text** has the text of the list. Text pasted there loads into the editor. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
@@ -275,6 +276,14 @@ A target picks the enemy for the cast, written `target_if=` in the text:
 - `target_if=debuff.<name>.down`: the first enemy where it is true; the action is skipped when there is none
 
 `target.*` and `debuff.*` in the action's `if` read the enemy picked.
+
+Conditions also have these values and functions:
+
+- `prev.<ability>`: 1 when the last cast the hero started is that ability (`prev.frost_bolt`)
+- `debuff.<name>.oldest.remains` and `debuff.<name>.newest.remains` (and `.refreshable`): the application applied first or
+  last, for a debuff whose every application runs on its own (`debuff.engulfing_flames.oldest.remains`)
+- `abs(x)`, `ceil(x)`, `floor(x)`, `round(x)`, `min(a, b, ...)` and `max(a, b, ...)`
+- decimal numbers (`1.5`, `.25`)
 
 Each decision starts at the default list (`actions+=/`). **Add action list** adds a named list (`actions.aoe+=/`), and an
 action's **Type** runs it:

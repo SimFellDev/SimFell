@@ -21,6 +21,9 @@
 .cooldown {
   color: var(--tok-cooldown);
 }
+.function {
+  color: var(--tok-function);
+}
 .unknown {
   color: var(--tok-unknown);
   text-decoration: underline wavy;

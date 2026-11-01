@@ -39,6 +39,19 @@ public class PropertyExpression : IAplExpression
     public const string WeaponScope = "weapon";
     public const string WeaponTraitScope = "weapon_trait";
     public const string VariableScope = "variable";
+    public const string PrevScope = "prev";
+
+    /// <summary>The application of a debuff applied first: <c>debuff.&lt;name&gt;.oldest.&lt;property&gt;</c>.</summary>
+    public const string OldestPick = "oldest";
+    /// <summary>The application of a debuff applied last: <c>debuff.&lt;name&gt;.newest.&lt;property&gt;</c>.</summary>
+    public const string NewestPick = "newest";
+
+    /// <summary>The properties one application of a debuff has, after <see cref="OldestPick"/> or <see cref="NewestPick"/>.</summary>
+    private static readonly string[] PickedProperties = ["remains", "refreshable"];
+
+    /// <summary>A debuff's properties: each aura property, then each picked application's ("oldest.remains").</summary>
+    private static IReadOnlyCollection<string> DebuffProperties =>
+        [.. AuraProperties.Keys, .. new[] { OldestPick, NewestPick }.SelectMany(pick => PickedProperties.Select(p => $"{pick}.{p}"))];
 
     /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last 30% of its duration.</summary>
     public const double RefreshableFraction = 0.3;
@@ -194,8 +207,8 @@ public class PropertyExpression : IAplExpression
         new Dictionary<string, IReadOnlyCollection<string>>
         {
             [BuffScope] = AuraProperties.Keys,
-            [DebuffScope] = AuraProperties.Keys,
-            [DotScope] = AuraProperties.Keys,
+            [DebuffScope] = DebuffProperties,
+            [DotScope] = DebuffProperties,
             [CooldownScope] = CooldownProperties.Keys,
             [ActionScope] = ActionProperties.Keys,
         };
@@ -232,6 +245,7 @@ public class PropertyExpression : IAplExpression
         [ActionScope] = new("Action", "The cast of an ability."),
         [ActiveDotScope] = new("Enemies with debuff", "The number of enemies in combat that have the debuff."),
         [VariableScope] = new("Variable", "The value that a variable action set in this fight. Before a variable action sets it, the value is the default of the variable."),
+        [PrevScope] = new("Previous action", "1 if the last ability the hero started to cast is this ability. Otherwise 0. 0 before the first cast of the fight."),
     };
 
     /// <summary>A resource's current amount, written as its name alone ("winter_orbs") or after <see cref="ResourcePrefix"/>.</summary>
@@ -243,9 +257,30 @@ public class PropertyExpression : IAplExpression
     /// <summary>The property's doc in a scope of <see cref="Scopes"/>; null for a scope or property not in it.</summary>
     public static AplDoc? PropertyDoc(string scope, string property) => scope switch
     {
-        BuffScope or DebuffScope or DotScope => AuraProperties.GetValueOrDefault(property)?.Doc,
+        BuffScope => AuraProperties.GetValueOrDefault(property)?.Doc,
+        DebuffScope or DotScope => PickedDoc(property) ?? AuraProperties.GetValueOrDefault(property)?.Doc,
         CooldownScope => CooldownProperties.GetValueOrDefault(property)?.Doc,
         ActionScope => ActionProperties.GetValueOrDefault(property)?.Doc,
+        _ => null,
+    };
+
+    /// <summary>The doc of a picked application's property ("oldest.remains"); null for any other property.</summary>
+    private static AplDoc? PickedDoc(string property)
+    {
+        var parts = property.Split('.');
+        if (parts.Length != 2 || PickOf(parts[0]) is not { } pick || !PickedProperties.Contains(parts[1])) return null;
+        string which = pick == TargetEffectPick.Oldest ? "oldest" : "newest";
+        string applied = pick == TargetEffectPick.Oldest ? "first" : "last";
+        var doc = AuraProperties[parts[1]].Doc;
+        return new AplDoc($"{doc.Label} ({which})",
+            $"{doc.Description} The value reads the application applied {applied}, for a debuff whose every application runs on its own (Engulfing Flames). For any other debuff, the same value as {parts[1]}.");
+    }
+
+    /// <summary>The application <paramref name="word"/> picks ("oldest"); null for any other word.</summary>
+    public static TargetEffectPick? PickOf(string word) => word switch
+    {
+        OldestPick => TargetEffectPick.Oldest,
+        NewestPick => TargetEffectPick.Newest,
         _ => null,
     };
 
@@ -274,12 +309,18 @@ public class PropertyExpression : IAplExpression
     public string? Name { get; }
     /// <summary>The property a scoped path reads ("stack"); null for a build part or a variable. A property its scope lacks reads as "up" or "ready".</summary>
     public string? Property { get; }
+    /// <summary>The application a debuff path reads (<see cref="OldestPick"/>, <see cref="NewestPick"/>); every application as one when not written.</summary>
+    public TargetEffectPick Pick { get; }
 
     public PropertyExpression(string propertyPath)
     {
         PropertyPath = AplPaths.Migrate(propertyPath.Trim().ToLowerInvariant());
         var parts = PropertyPath.Split('.');
-        if (parts.Length >= 3 && parts[0] == DotScope)
+        if (parts.Length == 4 && parts[0] is DotScope or DebuffScope && PickOf(parts[2]) is { } pick)
+        {
+            (Scope, Name, Pick, Property) = (DebuffScope, parts[1], pick, parts[3]);
+        }
+        else if (parts.Length >= 3 && parts[0] == DotScope)
         {
             (Scope, Name, Property) = (DebuffScope, parts[1], parts[2]);
         }
@@ -287,7 +328,7 @@ public class PropertyExpression : IAplExpression
         {
             (Scope, Name, Property) = (parts[0], parts[1], parts[2]);
         }
-        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope))
+        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope or PrevScope))
         {
             (Scope, Name) = (parts[0], parts[1]);
         }
@@ -331,7 +372,10 @@ public class PropertyExpression : IAplExpression
 
             case DebuffScope:
                 var target = ctx.Player.CurrentTarget;
-                return AuraProperty(Property!)(target == null ? null : AuraLookup.On(hero, target, Name!, now), now);
+                return AuraProperty(Property!)(target == null ? null : AuraLookup.On(hero, target, Name!, now, Pick), now);
+
+            case PrevScope:
+                return ctx.PreviousCast is { } previous && AplNames.NamesAbility(Name!, previous) ? 1.0 : 0.0;
 
             case ActiveDotScope:
                 return ctx.ActiveEnemies.Count(enemy => AuraLookup.On(hero, enemy, Name!, now) != null);
@@ -493,9 +537,9 @@ internal static class AuraLookup
     /// <summary>
     /// The effect <paramref name="slug"/> <paramref name="hero"/> keeps on <paramref name="enemy"/>
     /// (<see cref="ITargetEffects"/>: its own expiry, where the enemy's debuff that shows it has none), or else the aura of
-    /// that name on it; null when neither is on it.
+    /// that name on it; null when neither is on it. An aura has one application, so <paramref name="pick"/> reads it the same.
     /// </summary>
-    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now) =>
-        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now) is { } effect ? effect
+    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now, TargetEffectPick pick = TargetEffectPick.All) =>
+        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now, pick) is { } effect ? effect
         : enemy.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
 }

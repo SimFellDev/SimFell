@@ -98,6 +98,7 @@ public static class AplCondition
         _ when Number(expression) is { } value => new AplTerm(op, Number: value),
         PropertyExpression property => new AplTerm(op, Path: property.PropertyPath),
         GroupExpression group => new AplTerm(op, Items: Rows(group.Inner)),
+        FunctionExpression call => new AplTerm(op, Function: call.Function.Name(), Arguments: call.Arguments.Select(Rows).ToList()),
         UnaryOpExpression unary => Prefixed(unary.Operator, Term(unary.Operand, op)),
         _ => throw new ArgumentOutOfRangeException(nameof(expression), expression.GetType().Name, null)
     };

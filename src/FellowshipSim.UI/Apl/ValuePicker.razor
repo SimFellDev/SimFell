@@ -3,7 +3,7 @@
 @inject IJSRuntime JS
 @*
     Button with a builder term's value, in its kind's colour. While open, a searchable list of every kind's names, each kind
-    in its own colour, then Number and Group, then (on a term) each prefix. valuePicker.js filters the list and moves its
+    in its own colour, then Number and Group, then each math function, then (on a term) each prefix. valuePicker.js filters the list and moves its
     selection; a pick runs here.
 *@
 <span class="picker">
@@ -20,6 +20,10 @@
         else if (Value.Kind == ConditionBuilder.GroupKind)
         {
             @("Group")
+        }
+        else if (Value.Kind == ConditionBuilder.FunctionKind)
+        {
+            <TokenText Text="@(Value.Name ?? "")" Kind="AplTokenKind.Function" />
         }
         else if (Kinds.FirstOrDefault(k => k.Id == Value.Kind) is { } kind && kind.Names.FirstOrDefault(n => n.Slug == Value.Name) is { } name)
         {
@@ -64,6 +68,21 @@
                             var pick = new ValuePick(kindId);
                             <li @key="kindId" id="@($"{_id}-{option++}")" role="option" data-search="@label.ToLowerInvariant()" data-picked="@(pick == Value)"
                                 @onmousedown="() => Pick(pick)" @onmousedown:preventDefault>@label</li>
+                        }
+                    </ul>
+                </li>
+                <li @key="@("function")" class="kind" role="presentation">
+                    <div class="kind-head" role="presentation">Function</div>
+                    <ul role="group" aria-label="Function">
+                        @foreach (var function in Enum.GetValues<AplFunction>())
+                        {
+                            var doc = function.Doc();
+                            var pick = new ValuePick(ConditionBuilder.FunctionKind, function.Name());
+                            <li @key="function" id="@($"{_id}-{option++}")" role="option" data-search="@function.Name()" data-picked="@(pick == Value)"
+                                data-tooltip="@doc.Description" data-tooltip-direction="right"
+                                @onmousedown="() => Pick(pick)" @onmousedown:preventDefault>
+                                <TokenText Text="@doc.Label" Kind="AplTokenKind.Function" />
+                            </li>
                         }
                     </ul>
                 </li>

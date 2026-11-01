@@ -12,7 +12,7 @@ public class CompletionsTests
     private static CaretPlace Caret(int at, double left = 0, double width = 600, bool focused = true) => new(at, left, 20, width, focused);
 
     [Fact]
-    public void Empty_word_lists_scopes_resources_named_values_and_operators_in_that_order()
+    public void Empty_word_lists_scopes_resources_named_values_prev_functions_and_operators_in_that_order()
     {
         string resourceScope = PropertyExpression.ResourcePrefix.TrimEnd('.');
         var expected = PropertyExpression.Scopes.Keys
@@ -20,6 +20,8 @@ public class CompletionsTests
             .Append(resourceScope)
             .Concat(_v.Resources.Select(r => r.Slug).Skip(1))
             .Concat(PropertyExpression.Named.Keys.Select(n => n.Split('.')[0]))
+            .Append(PropertyExpression.PrevScope)
+            .Concat(Enum.GetValues<AplFunction>().Select(f => f.Name()))
             .Concat(["and", "or", "not"])
             .Distinct()
             .ToList();
@@ -48,6 +50,16 @@ public class CompletionsTests
         Assert.Equal(PropertyExpression.Scopes[PropertyExpression.CooldownScope],
             Completions.For(_v, "cooldown.ice_comet.").Select(c => c.Text));
         Assert.Empty(Completions.For(_v, "nothing."));
+    }
+
+    [Fact]
+    public void A_debuffs_application_and_a_previous_action_have_their_parts()
+    {
+        Assert.Contains("oldest", Completions.For(_v, "debuff.chill.").Select(c => c.Text));
+        Assert.Equal(["remains", "refreshable"], Completions.For(_v, "dot.chill.newest.").Select(c => c.Text));
+        Assert.DoesNotContain("oldest", Completions.For(_v, "buff.chill.").Select(c => c.Text));
+        Assert.Equal(_v.Abilities.Select(a => a.Slug), Completions.For(_v, "prev.").Select(c => c.Text));
+        Assert.Equal(AplTokenKind.Function, Completions.For(_v, "floo").Single().Node.Kind);
     }
 
     [Fact]

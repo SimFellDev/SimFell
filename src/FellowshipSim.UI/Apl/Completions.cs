@@ -13,7 +13,7 @@ public static class Completions
 
     /// <summary>
     /// Every path a condition can read, as a tree of its '.'-separated parts: scope, name, property; a resource, with or
-    /// without its prefix; a named value; and the words 'and', 'or' and 'not'. Each node has the kind its text is coloured by.
+    /// without its prefix; a named value; a previous action; each math function's name; and the words 'and', 'or' and 'not'. Each node has the kind its text is coloured by.
     /// </summary>
     public static CompletionNode TreeOf(AplVocabulary v) => Trees.GetValue(v, Build);
 
@@ -48,7 +48,7 @@ public static class Completions
             };
             foreach (var name in scopeNames[scope])
             {
-                foreach (string property in properties) Add([scope, name.Slug, property], kind);
+                foreach (string property in properties) Add([scope, name.Slug, .. property.Split('.')], kind);
                 if (root.Children.TryGetValue(scope, out var scopeNode) && scopeNode.Children.TryGetValue(name.Slug, out var nameNode))
                 {
                     nameNode.Detail = name.Name == name.Slug ? "" : name.Name;
@@ -62,6 +62,8 @@ public static class Completions
             Add([.. prefix, resource.Slug], AplTokenKind.Resource, resource.Name);
         }
         foreach (string named in v.Named) Add(named.Split('.'), AplTokenKind.Named);
+        foreach (var ability in v.Abilities) Add([PropertyExpression.PrevScope, ability.Slug], AplTokenKind.Cooldown, ability.Name);
+        foreach (var function in Enum.GetValues<AplFunction>()) Add([function.Name()], AplTokenKind.Function, function.Doc().Label);
         foreach (string word in Operators) Add([word], AplTokenKind.Operator);
         return root;
     }

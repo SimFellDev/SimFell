@@ -27,6 +27,8 @@ public enum AplTokenKind
     Buff,
     Debuff,
     Cooldown,
+    /// <summary>A math function's name (<see cref="AplFunction"/>).</summary>
+    Function,
     /// <summary>A path that reads nothing the hero has: it evaluates to 0, or to a scope's first property.</summary>
     Unknown,
 }
@@ -168,6 +170,13 @@ public sealed class AplVocabulary
         {
             return (AplTokenKind.Named, null);
         }
+        if (property.Scope == PropertyExpression.PrevScope)
+        {
+            var hero = _hero ?? throw new InvalidOperationException($"This vocabulary of {Hero} was read from JSON and has no hero to check against.");
+            return AplNames.FindAbility(hero, property.Name!) != null
+                ? (AplTokenKind.Cooldown, null)
+                : (AplTokenKind.Unknown, $"{Hero} has no ability named `{property.Name}`.");
+        }
         if (property.Scope == PropertyExpression.ActiveDotScope)
         {
             return Auras.Any(a => a.Slug == property.Name) ? (AplTokenKind.Debuff, null) : (AplTokenKind.Unknown, $"{Hero} has no debuff named `{property.Name}`.");
@@ -201,12 +210,16 @@ public sealed class AplVocabulary
             return new AplExpressionCheck([], tokenized.FormatErrorMessageFragment(), tokenized.ErrorPosition.Absolute);
         }
 
-        var tokens = tokenized.Value.Select(t =>
+        var all = tokenized.Value.ToArray();
+        var tokens = all.Select((t, i) =>
         {
             var (kind, problem) = t.Kind switch
             {
                 AplToken.Number => (AplTokenKind.Number, null),
                 AplToken.LParen or AplToken.RParen => (AplTokenKind.Parenthesis, null),
+                // A function's name, before its arguments in parentheses.
+                AplToken.Identifier when i + 1 < all.Length && all[i + 1].Kind == AplToken.LParen
+                                         && AplFunctions.ByName.ContainsKey(t.ToStringValue()) => (AplTokenKind.Function, null),
                 AplToken.Identifier => Classify(new PropertyExpression(t.ToStringValue())),
                 _ => (AplTokenKind.Operator, (string?)null),
             };
