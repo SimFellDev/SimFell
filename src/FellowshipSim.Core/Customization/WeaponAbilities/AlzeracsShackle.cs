@@ -16,6 +16,10 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 ///   duration and the tick period, with no tick at the refresh (36 refreshes: the next tick comes one period after it).
 /// - Freeze and Slow ticks have the weapon ability's crit chance bonus (Brave Machinations): over the 19 Xavian fights,
 ///   Shackle hits crit 79-96% with Brave Machinations at rank 4, 55-63% at rank 1, and 31% without it.
+/// - Freeze and Slow take their damage, crit chance and crit power when applied, and the enemy's multipliers at each
+///   tick. Slow ticks hold their size when a damage buff ends or starts during the Slow: Meiko's, as Twin Souls: Army of
+///   One (+20%) falls, 1.005 of the ticks before (196 Slows) and, as it rises, 0.993 (73 Slows); Helena's, as Martial
+///   Initiative falls, 0.992 (2,490 Slows). UNVERIFIED: whether crit chance is taken at the application too.
 /// - Freeze and Slow keep ticking on an enemy after its death until they run out (effects 63 and 65 have no
 ///   RemoveOnDeath tag): over every tank fight, 23,007 of 208,854 Slow ticks and 117 of 8,722 Freeze ticks hit an enemy
 ///   after its logged death. An enemy that dies frozen gives no explosion (60 of 74 such Freezes; in the other 14 the
@@ -88,9 +92,10 @@ public class AlzeracsShackle : Ability
     {
         if (_freezes.Remove(target, out var old)) old.Stop(ctx);
         target.Auras.Apply(Freeze, ctx.CurrentTime);
+        var numbers = _freezeTick.Take(ctx, CritChanceBonus);
         PeriodicEffect? freeze = null;
         freeze = PeriodicEffect.BeginHasted(ctx, Owner, FreezeName, FreezeSeconds, FreezeTickSeconds, tickOnStart: false, partialFinalTick: true,
-            onTick: (c, fraction) => _freezeTick.DealDamage(c, target, damageMultiplier: fraction, extraCritChance: CritChanceBonus),
+            onTick: (c, fraction) => _freezeTick.Deal(c, target, numbers, fraction),
             onEnd: (c, clipped) =>
             {
                 if (_freezes.GetValueOrDefault(target) == freeze) _freezes.Remove(target);
@@ -119,9 +124,10 @@ public class AlzeracsShackle : Ability
     {
         if (_slows.Remove(enemy, out var old)) old.Stop(ctx);
         enemy.Auras.Apply(Slow, ctx.CurrentTime);
+        var numbers = _slowTick.Take(ctx, CritChanceBonus);
         PeriodicEffect? slow = null;
         slow = PeriodicEffect.BeginHasted(ctx, Owner, SlowName, SlowSeconds, SlowTickSeconds, tickOnStart: false, partialFinalTick: true,
-            onTick: (c, fraction) => _slowTick.DealDamage(c, enemy, damageMultiplier: fraction, extraCritChance: CritChanceBonus),
+            onTick: (c, fraction) => _slowTick.Deal(c, enemy, numbers, fraction),
             onEnd: (c, clipped) =>
             {
                 if (_slows.GetValueOrDefault(enemy) != slow) return;
@@ -132,6 +138,9 @@ public class AlzeracsShackle : Ability
         _slows[enemy] = slow;
     }
 
+    /// <summary>The damage, crit chance and crit power of one Freeze or Slow, taken when it is applied.</summary>
+    private sealed record Numbers(double Damage, double CritChance, double CritMultiplier);
+
     /// <summary>The damage numbers of a Freeze or Slow tick (logged as its effect).</summary>
     private sealed class Tick : Ability
     {
@@ -139,6 +148,21 @@ public class AlzeracsShackle : Ability
             : base(owner, LogIds.Effect(effectId), name, AbilityCategory.Weapon)
         {
             BaseCoefficient = coefficient;
+        }
+
+        /// <summary>The numbers now, with the weapon ability's crit chance bonus.</summary>
+        public Numbers Take(SimulationContext ctx, double weaponCritChanceBonus)
+        {
+            var now = ctx.CurrentTime;
+            return new Numbers(BaseDamage(ctx, null), Owner.CritChance(now) + CritChanceBonus + weaponCritChanceBonus, CritMultiplierAt(now));
+        }
+
+        /// <summary>A tick with the numbers taken at the application, and the enemy's multipliers at the tick.</summary>
+        public void Deal(SimulationContext ctx, EnemyTarget enemy, Numbers numbers, double fraction)
+        {
+            var now = ctx.CurrentTime;
+            ctx.ApplyDamage(Owner, enemy, numbers.Damage * fraction * Owner.DamageMultiplierAgainst(enemy, now), DamageLogId, Name, canCrit: true,
+                numbers.CritChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now), numbers.CritMultiplier, snapshot: true);
         }
 
         public override void Execute(SimulationContext ctx, EnemyTarget target) { }
