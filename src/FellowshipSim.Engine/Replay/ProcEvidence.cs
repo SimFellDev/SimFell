@@ -10,6 +10,8 @@ using FellowshipSim.Core.Heroes.Elarion.Talents;
 using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
+using FellowshipSim.Core.Heroes.Helena.Abilities;
+using FellowshipSim.Core.Heroes.Helena.Talents;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
 using FellowshipSim.Core.Heroes.Mara.Talents;
@@ -165,6 +167,13 @@ public static class ProcEvidence
         new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
         // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
         new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+
+        // Helena
+        // Each bounce of a Shield Throw is a hit on an enemy the shield has not hit yet, landing 0.03-0.2s after the hit
+        // before it (HrNZ6wQfFKGxybDR fight 1 @ 16.027).
+        new(ShieldThrow.BounceProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.4, ReservesHit: true),
+        // Hold the Line's own Empowered Shield Slam (the log names 975 as its cause) is no proof of Sword & Board's.
+        new(SwordAndBoard.ProcKey, HoldTheLine.Empowered.LogId, NotCausedByAbilityId: HoldTheLine.AbilityId),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
