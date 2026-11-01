@@ -2,7 +2,11 @@ using FellowshipSim.Core.Customization.WeaponAbilities;
 
 namespace FellowshipSim.Core.Customization.Weapons;
 
-/// <summary>Zeraleth's Arms (Helena's version, item 5983; the other heroes' weapons with weapon power 358 too): its weapon ability is Zeraleth's Hunger.</summary>
+/// <summary>
+/// Weapon power 358, whose weapon ability is Zeraleth's Hunger. Item 5983 grants it: Zeraleth's Arms (Helena), Zeraleth's
+/// Claws (Meiko) and Zaraleth's Mournfang (Xavian). Item 5984 grants it too: The Devourer’s Hour (Aeona), Zeraleth's Scythe
+/// (Sylvie) and Zeraleth's Compendium (Vigour).
+/// </summary>
 public class ZeralethsArms : Weapon
 {
     public const string WeaponName = "Zeraleth's Arms";

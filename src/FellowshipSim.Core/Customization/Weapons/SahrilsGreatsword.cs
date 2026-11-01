@@ -2,7 +2,10 @@ using FellowshipSim.Core.Customization.WeaponAbilities;
 
 namespace FellowshipSim.Core.Customization.Weapons;
 
-/// <summary>Sahril's Greatsword (item 5981 on Xavian; Sahril's Arms on Helena and Sahril's Grasp on Meiko, weapon power 352): its weapon ability is Sahril's Aegis.</summary>
+/// <summary>
+/// Weapon power 352, whose weapon ability is Sahril's Aegis. Item 5981 grants it: Sahril's Arms (Helena), Sahril's Grasp
+/// (Meiko) and Sahril's Greatsword (Xavian).
+/// </summary>
 public class SahrilsGreatsword : Weapon
 {
     public const string WeaponName = "Sahril's Greatsword";
