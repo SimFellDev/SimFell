@@ -2,11 +2,9 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 
 /// <summary>
 /// Ability 1122: "Summon 3 protective stones around you that spin in a wide circle, dealing 135.2% of Agility physical
-/// damage 4 times to all nearby enemies. Your armor is increased by 20% for every 1 stone that is active on you, up to a
-/// maximum of 60% increased armor with 3 stones. While at least one stone is active, they soak 35% of all damage you take.
-/// ... Stone Shield gains Cooldown Acceleration equal to your Haste. Can be used during Global Cooldown". 30 second
-/// cooldown, 2 charges. The stones' damage is ability 1121, logged as effect 1572. Armor and the soak are not simulated:
-/// the stones stay until the next cast.
+/// damage 4 times to all nearby enemies. ... Stone Shield gains Cooldown Acceleration equal to your Haste. Can be used
+/// during Global Cooldown". 30 second cooldown, 2 charges. The stones' damage is ability 1121, logged as effect 1572. The
+/// engine simulates the damage alone.
 /// </summary>
 public class StoneShield : MeikoAbility
 {
@@ -25,11 +23,6 @@ public class StoneShield : MeikoAbility
     /// </summary>
     public const int Hits = 5;
     public const double HitPeriodSeconds = 0.25;
-    /// <summary>Effect 1574 (maxStacks 3, infinite): the stones. Combat logs: every cast applies it at 3 stacks.</summary>
-    public const int StonesEffectId = 1574;
-    public const int MaxStones = 3;
-
-    public static readonly AuraDef Stones = AuraDef.Effect("Stone Shield", StonesEffectId, maxStacks: MaxStones);
 
     public StoneShield(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Defensive)
     {
@@ -43,9 +36,6 @@ public class StoneShield : MeikoAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        var now = ctx.CurrentTime;
-        Owner.Auras.Remove(Stones, now);
-        Owner.Auras.Apply(Stones, now, MaxStones);
         PeriodicEffect.Begin(ctx, Name, (Hits - 1) * HitPeriodSeconds, HitPeriodSeconds, tickOnStart: true, partialFinalTick: false,
             onTick: (c, _) => DealAoeDamage(c, c.ActiveEnemies),
             tickDelaySeconds: PeriodicEffect.ServerFrameSeconds, damageLogId: DamageLogId);

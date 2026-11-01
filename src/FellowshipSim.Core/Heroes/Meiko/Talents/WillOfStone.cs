@@ -17,12 +17,7 @@ public class WillOfStone : Talent
 
     public override void Bind(Hero hero)
     {
-        if (hero.GetAbility<ShatterEarth>() is not { } shatterEarth) return;
-        var vortex = hero.GetAbility<SpiritedVortex>();
-        shatterEarth.Slammed += (ctx, target) =>
-        {
-            hero.Auras.Apply(DoublePalmStrike.SpiritedStrikes, ctx.CurrentTime);
-            vortex?.Activate(ctx, target);
-        };
+        if (hero.GetAbility<ShatterEarth>() is not { } shatterEarth || hero.GetAbility<SpiritedVortex>() is not { } vortex) return;
+        shatterEarth.Slammed += (ctx, target) => vortex.Activate(ctx, target);
     }
 }

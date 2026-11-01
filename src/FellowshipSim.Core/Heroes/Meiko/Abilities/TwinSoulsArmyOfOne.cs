@@ -16,11 +16,9 @@ public class TwinSoulsArmyOfOne : MeikoAbility
     public const double BuffSeconds = 20.0;
     /// <summary>Effect 1547: DamageScale x1.2.</summary>
     public const double BuffDamage = 1.2;
-    /// <summary>Effect 1547: IncomingDamageMultiplier x0.6.</summary>
-    public const double BuffIncomingDamage = 0.6;
 
     public static readonly AuraDef Buff = AuraDef.Effect("Twin Souls: Army of One", BuffEffectId, BuffSeconds,
-        modifiers: [StatModifier.More(StatType.DamageScale, BuffDamage), StatModifier.More(StatType.IncomingDamageMultiplier, BuffIncomingDamage)]);
+        modifiers: StatModifier.More(StatType.DamageScale, BuffDamage));
 
     public TwinSoulsArmyOfOne(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
     {

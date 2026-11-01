@@ -7,18 +7,13 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// expires or is destroyed, you gain Earthen Skin for 60 seconds, granting you 80% more Armor. You deal 20% more Wind
 /// Damage. Your Stone Shield and Shatter Earth deal 20% more damage." The game data's changes list puts the 20% on Wind
 /// Kick, Rising Storm, Lashing Stormkick, the Sibling of Wind (effect 1548), Shatter Earth's slam and quake (effects 1557,
-/// 1556), Spirited Vortex and Stone Shield (effect 1572), all the time. Effect 3139 (Armor x1.8, 60 seconds) is the buff;
-/// Armor is not simulated. Combat logs (7Zmfx9gq6HjvThzc fight 2 @ 19.635): the buff comes as Twin Souls: Bulwark ends.
+/// 1556), Spirited Vortex and Stone Shield (effect 1572), all the time. The Armor changes no damage.
 /// </summary>
 public class EarthenSkin : Legendary
 {
     public const int PowerId = 665;
     public const int HelmItemId = 5899;
     public const double DamageMultiplier = 1.2;
-    public const int BuffEffectId = 3139;
-    public const double BuffSeconds = 60.0;
-
-    public static readonly AuraDef Buff = AuraDef.Effect("Earthen Skin", BuffEffectId, BuffSeconds);
 
     public override int LegendaryPowerId => PowerId;
     public override string Name => "Earthen Skin";
@@ -38,9 +33,5 @@ public class EarthenSkin : Legendary
         }
         hero.GetAbility<SpiritedVortex>()?.AddDamageMultiplier(DamageMultiplier);
         hero.GetAbility<StoneShield>()?.AddDamageMultiplier(DamageMultiplier);
-        hero.Auras.OnRemoved += (aura, at) =>
-        {
-            if (aura.Def.Key == TwinSoulsBulwark.Buff.Key) hero.Auras.Apply(Buff, at);
-        };
     }
 }

@@ -52,7 +52,6 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 - A Spirit Refund comes on Stormfall alone: 544 of 2,232 Stormfall consumptions came back 0.2s later with Rising Spirit,
   and none of 958 Earthfall consumptions, though hero 13's Spirit text names both. The engine's Spirit / (1 + Spirit)
   expects 552.
-- Each refund grants Spirit Armor and a stone for Stone Shield (7Zmfx9gq6HjvThzc fight 2 @ 25.482: 2 stones to 3).
 
 ## Replay matches
 
@@ -86,12 +85,11 @@ The fights below 97% hits matched are the players with Al'zerac's Shackle, a wea
 - **Free dice** come in at 82% of the logs' damage. The players time Rising Storm and Lashing Stormkick to the Stormfall
   their refunds gave back; with the refunds at random, a free-dice run consumes 18% fewer Stormfall charges on the casts
   of 7Zmfx9gq6HjvThzc fight 2 (79 against 96), with less Rising Spirit, Warden of the Temple and Double Palm Strike.
-- **Tank mechanics:** damage taken, armor, dodge, parry, the stones' health, healing and the Sibling of Earth's health are
-  not simulated. Stone Guard and Shattering Obelisk's pulses come from them, and Stone Shield's stones stay until the
-  next cast.
+- **Damage alone:** the engine simulates the damage Meiko deals, not damage taken, mitigation or healing. Shattering
+  Obelisk's pulses come from damage the Sibling of Earth takes and are not modeled; no log has the talent.
 
 ## Not yet checked against a log
 
-Will of Stone, Everlasting Spirit, Slipstream, Peacefield and Earthbourne's 20% are built from their tooltips and the
-game data (marked `UNVERIFIED` in their files). Forbidden Technique and Tectonic Impact are in 3M2vWr8taxVfTQFY fight 53
+Will of Stone and Everlasting Spirit are built from their tooltips and the game data (marked `UNVERIFIED` in their
+files). Forbidden Technique and Tectonic Impact are in 3M2vWr8taxVfTQFY fight 53
 alone.

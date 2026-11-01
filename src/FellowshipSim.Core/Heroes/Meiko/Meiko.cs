@@ -36,9 +36,6 @@ public sealed class Meiko : Hero
     /// </summary>
     public const double ChargeRefundDelaySeconds = 0.2;
 
-    /// <summary>Spirit Armor (effect 2420): "+20% Armor" for 12 seconds from a Spirit Refund. Armor is not simulated.</summary>
-    public const int SpiritArmorEffectId = 2420;
-    public const double SpiritArmorSeconds = 12.0;
 
     public static readonly ResourceDef ComboPoints = new("Combo Points", Max: MaxComboPoints)
     {
@@ -54,7 +51,6 @@ public sealed class Meiko : Hero
     /// <summary>The Palm Technique opened the combo held (Spirit Palm was its first builder).</summary>
     public static readonly AuraDef PalmTechnique = AuraDef.Internal("Palm Technique", 0);
 
-    public static readonly AuraDef SpiritArmor = AuraDef.Effect("Spirit Armor", SpiritArmorEffectId, SpiritArmorSeconds);
 
     /// <summary>Meiko's talent tree, as in game (game data talent-slot records, hero Meiko).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
@@ -154,7 +150,8 @@ public sealed class Meiko : Hero
 
     /// <summary>
     /// Consumes a <paramref name="charge"/> (Stormfall or Earthfall), when Meiko holds one. Hero 13's Spirit text: a Spirit
-    /// Refund on the consumption gives the charge back, with Spirit Armor, a stone for Stone Shield and Rising Spirit.
+    /// Refund on the consumption gives the charge back and Rising Spirit (and Spirit Armor and a stone for Stone Shield,
+    /// which change no damage).
     /// Combat logs (16 fights): 544 of 2,232 Stormfall consumptions came back with Rising Spirit, and none of 958 Earthfall
     /// consumptions did, so the engine rolls a Spirit Refund on Stormfall alone. Returns whether a charge was consumed.
     /// </summary>
@@ -165,9 +162,6 @@ public sealed class Meiko : Hero
         Auras.ConsumeStack(charge, now);
         ChargeConsumed?.Invoke(ctx, charge);
         if (charge != RisingStorm.Stormfall || !TriggerSpiritRefund(null, 0.0, ctx)) return true;
-        Auras.Apply(SpiritArmor, now);
-        // Combat logs (7Zmfx9gq6HjvThzc fight 2 @ 25.482): the refund's stone takes Stone Shield from 2 stones to 3.
-        if (Auras.HasAura(StoneShield.Stones, now)) Auras.Apply(StoneShield.Stones, now);
         ctx.Schedule(SimTime.FromSeconds(ChargeRefundDelaySeconds), c => Auras.Apply(charge, c.CurrentTime), "Spirit Refund");
         return true;
     }

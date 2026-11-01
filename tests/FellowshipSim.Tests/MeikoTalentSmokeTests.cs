@@ -13,8 +13,8 @@ namespace FellowshipSim.Tests;
 /// <summary>
 /// Runs normal (APL) sims with each Meiko talent and legendary, checking it is imported and its effect shows up: its aura
 /// is gained (on Meiko or an enemy she hits) or its damage is dealt. The character is the one from the 7Zmfx9gq6HjvThzc
-/// fight 2 replay. Stone Guard and Shattering Obelisk change only what the engine does not simulate (self-healing, the
-/// stones' health, the Sibling of Earth's health); the tree test covers them. The list builds Earthfall and Stormfall in
+/// fight 2 replay. Resonance of Earth, Stone Guard, Debilitating Vortex, Slipstream, Earthbourne, Harmonic Residual,
+/// Shattering Obelisk and Peacefield change no damage the engine simulates; the tree test covers them. The list builds Earthfall and Stormfall in
 /// turn (Rising Earth while Shatter Earth's cooldown has more than 22 seconds left), so both paths run on any number of
 /// enemies.
 /// </summary>
@@ -23,11 +23,9 @@ public class MeikoTalentSmokeTests(ITestOutputHelper output)
     private const string Apl = """
         actions=attack
         actions+=/twin_souls_army_of_one
-        actions+=/twin_souls_bulwark
         actions+=/stone_shield
         actions+=/shatter_earth
         actions+=/serenity,if=!buff.everlasting_spirit.up
-        actions+=/gust
         actions+=/double_palm_strike
         actions+=/spirited_vortex
         actions+=/earthfist_barrage
@@ -47,24 +45,18 @@ public class MeikoTalentSmokeTests(ITestOutputHelper output)
         actions+=/wind_kick
         """;
 
-    /// <summary>Two talents with no part in the other talents' evidence; the test of either leaves it out.</summary>
-    private static readonly int[] BaseTalents = [ResonanceOfEarth.TalentId, PerfectStorm.TalentId];
+    /// <summary>A talent with no part in the other talents' evidence; its own test leaves it out.</summary>
+    private static readonly int[] BaseTalents = [PerfectStorm.TalentId];
 
     [Theory]
-    [InlineData(ResonanceOfEarth.TalentId, "aura:Resonance of Earth")]
-    [InlineData(Earthwell.TalentId, "aura:Earthwell")]
+    [InlineData(Earthwell.TalentId, "more:aura:Serenity Stacks")]
     [InlineData(PerfectStorm.TalentId, "damage:Perfect Storm")]
-    [InlineData(WillOfStone.TalentId, "more:aura:Spirited Strikes")]
+    [InlineData(WillOfStone.TalentId, "more:damage:Spirited Vortex")]
     [InlineData(WhippingApex.TalentId, "more:aura:Serenity Stacks")]
-    [InlineData(DebilitatingVortex.TalentId, "debuff:Harsh Winds")]
     [InlineData(GuardiansFluidity.TalentId, "more:damage:Stone Shield")]
-    [InlineData(HarshWinds.TalentId, "aura:Harsh Winds")]
-    [InlineData(Slipstream.TalentId, "debuff:Slipstream")]
-    [InlineData(Earthbourne.TalentId, "more:aura:Twin Souls: Bulwark")]
-    [InlineData(HarmonicResidual.TalentId, "aura:Harmonic Residual")]
+    [InlineData(HarshWinds.TalentId, "more:damage:Spirited Vortex")]
     [InlineData(WardenOfTheTemple.TalentId, "aura:Warden of the Temple")]
     [InlineData(ForbiddenTechnique.TalentId, "damage:Forbidden Technique")]
-    [InlineData(Peacefield.TalentId, "aura:Peacefield")]
     [InlineData(RumblingStone.TalentId, "more:damage:Earth Fist")]
     [InlineData(ConclusiveStrikes.TalentId, "more:damage:Lashing Stormkick")]
     public void Talent_Is_Modeled_And_Takes_Effect(int talentId, string evidence)
@@ -94,7 +86,7 @@ public class MeikoTalentSmokeTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData(TectonicImpact.TunicItemId, "more:damage:Earthfist Barrage")]
-    [InlineData(EarthenSkin.HelmItemId, "aura:Earthen Skin")]
+    [InlineData(EarthenSkin.HelmItemId, "more:damage:Wind Kick")]
     [InlineData(EverlastingSpirit.LeggingsItemId, "damage:Everlasting Spirit")]
     public void Legendary_Is_Modeled_And_Takes_Effect(int itemId, string evidence)
     {
