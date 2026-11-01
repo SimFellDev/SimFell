@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 SimFell is a combat simulator for *Fellowship* (.NET 10, C# preview language version). It checks itself against
-FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara, Tariq and Elarion. `README.md` has setup and use. `docs/ADDING_A_HERO.md` has the engine
+FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara, Tariq, Elarion and Xavian. `README.md` has setup and use. `docs/ADDING_A_HERO.md` has the engine
 layout, the hook tables and the conventions for heroes, abilities, talents and gear. Read it before adding or changing
 game content.
 
