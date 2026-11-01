@@ -28,6 +28,7 @@ public static class PartyBuffs
     public const int ReturnedBuffEffectId = 2463;
     public const int WardstoneVulnerableEffectId = 1112;
     public const int WardstoneFocusingVulnerableEffectId = 1108;
+    public const int StormsFuryEffectId = 2699;
 
     public static readonly PartyBuff[] All =
     [
@@ -45,6 +46,11 @@ public static class PartyBuffs
 
         // Greedy (Greedspawned affix): effect modifier DamageScale 1.02 Multiplicitive per stack, up to 10 stacks.
         new(AuraDef.Effect("Greedy", GreedyEffectId, maxStacks: 10, modifiers: StatModifier.Increased(StatType.DamageScale, 1.02))),
+
+        // Storm's Fury (Storm Shield affix 25, Storm Shield: Lightning Strike, ability 1946): "+20% Critical Strike chance"
+        // (effect modifier CritChance 0.2 Additive, 20s). Logs: the Environment gives it to every player of a Storm Shield
+        // run (16 downloaded fights).
+        new(AuraDef.Effect("Storm's Fury", StormsFuryEffectId, 20, modifiers: StatModifier.Add(StatType.CritChance, 0.2))),
 
         // Orb Energy: "5% Additional damage per stack" (effect modifier DamageScale 1.05 Multiplicitive, up to 99 stacks).
         new(AuraDef.Effect("Orb Energy", OrbEnergyEffectId, maxStacks: 99, modifiers: StatModifier.Increased(StatType.DamageScale, 1.05))),
