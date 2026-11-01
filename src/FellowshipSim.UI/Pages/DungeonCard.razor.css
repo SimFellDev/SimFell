@@ -44,7 +44,7 @@
   field-sizing: content;
 }
 
-/* The hero share and its variance, time limit and difficulty, as the fields of the Fight card. */
+/* The hero share and its variance and time limit, as the fields of the Fight card. */
 .fields {
   display: flex;
   flex-wrap: wrap;
@@ -150,4 +150,14 @@
   margin: 8px 0;
   font: 13px/1.5 var(--code-font);
   resize: vertical;
+}
+
+/* The file picker above the dungeon text, as on the Import tab. */
+.text ::deep .file {
+  display: block;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
 }

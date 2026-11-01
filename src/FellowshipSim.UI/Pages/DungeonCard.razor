@@ -6,8 +6,8 @@
 @inject Visitor Visitor
 @inject IJSRuntime JS
 @*
-    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, its comment, the hero share and its variance, time limit and
-    difficulty, then its pulls in the order they run, each built as an action of the action-list editor, and its profile text.
+    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, its comment, the hero share and its variance and time limit,
+    then its pulls in the order they run, each built as an action of the action-list editor, and its profile text.
 *@
 <Card Title="Dungeon">
     <div class="row toolbar">
@@ -64,15 +64,18 @@
             Time limit (s)
             <input type="number" min="1" step="any" @bind:get="State.Dungeon.TimeLimitSeconds" @bind:set="v => Change(State.Dungeon with { TimeLimitSeconds = v })" />
         </label>
-        <label class="field">
-            Difficulty
-            <select @bind:get="State.Dungeon.Difficulty" @bind:set="v => Change(State.Dungeon with { Difficulty = v })">
-                @foreach (var level in DifficultyScaling.Levels)
-                {
-                    <option @key="level.Eternal" value="@level.Eternal">@level.Label</option>
-                }
-            </select>
-        </label>
+        @if (DifficultyShown)
+        {
+            <label class="field">
+                Difficulty
+                <select @bind:get="State.Dungeon.Difficulty" @bind:set="v => Change(State.Dungeon with { Difficulty = v })">
+                    @foreach (var level in DifficultyScaling.Levels)
+                    {
+                        <option @key="level.Eternal" value="@level.Eternal">@level.Label</option>
+                    }
+                </select>
+            </label>
+        }
     </div>
 
     <ol class="pulls">
@@ -101,6 +104,7 @@
 
     <details @key="_textKey" class="text" open="@_textOpen">
         <summary>Dungeon text</summary>
+        <InputFile class="file" accept=".simc,.txt" data-tooltip="Load a dungeon from a .simc file" OnChange="LoadFileAsync" />
         <textarea spellcheck="false" rows="8" @bind="_text"></textarea>
         <div class="row">
             <button type="button" class="secondary-button" @onclick="LoadText">Import</button>
@@ -112,6 +116,12 @@
 
 @code {
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    // The Difficulty field shows once the engine models each enemy.
+    private static readonly bool DifficultyShown = false;
+
+    /// <summary>Largest dungeon file the card reads.</summary>
+    private const long MaxDungeonBytes = 1024 * 1024;
 
     private IReadOnlyList<DungeonEntry> _saved = [];
     private MessageState _status = MessageState.None, _textStatus = MessageState.None;
@@ -278,11 +288,32 @@
         }
         catch (FormatException e)
         {
-            _textStatus = MessageState.Error(e.Message);
-            _textOpen = true;
-            _textKey++;
+            ShowTextError(e.Message);
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>Puts the file's text in the dungeon text and imports it.</summary>
+    private async Task LoadFileAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(MaxDungeonBytes));
+            _text = await reader.ReadToEndAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowTextError(ex.Message);
+            return;
+        }
+        await LoadText();
+    }
+
+    private void ShowTextError(string message)
+    {
+        _textStatus = MessageState.Error(message);
+        _textOpen = true;
+        _textKey++;
     }
 
     private Task Download() => FileDownloads.SaveAsync(JS, State.Dungeon.Name, ".simc", State.Dungeon.Format());
