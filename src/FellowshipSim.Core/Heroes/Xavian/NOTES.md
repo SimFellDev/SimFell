@@ -42,7 +42,10 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
   combat with Xavian within a large radius (effect 2667), so the log has no pulse while none is near. In 4 fights with
   one cast the pulses end while effect 2667 stays up: Gift of Solace (effect 2670) leaves every ally at once and the log
   has no removal of 2667 (XyGpcHjNaAzgk7mW fight 20 @ 228.508 of 743s, fight 22 @ 53.203 of 722s, YC861NTRgLbmw4Qa
-  fight 31 after 60.6s of 1079s, Fc8v6yWxD14GQMnV fight 19 after 105.3s of 1613s). The engine pulses for as long as 2667
+  fight 31 after 60.6s of 1079s, Fc8v6yWxD14GQMnV fight 19 after 105.3s of 1613s). The radius is 1500 around Xavian
+  (ability 1915), and the pulses move with Xavian: every logged pulse hit is within 1600 of Xavian and 3400 or more from
+  the cast. After each of the 4 ends, Xavian's melee hits reach enemies within 1400 of Xavian. Game data has no end
+  condition for effect 2667 besides death (EffectLogic.RemoveOnDeath). The engine pulses for as long as 2667
   is up. Over the 16 fights, 4,381 engine pulses have no log hits: exact replay deals 0 for them (89.9% of the log's
   8.61M) and free dice deals them to every engaged enemy (157.9%).
 - **Sunburn:** a tick every 1.5s shortened by Haste, with a partial tick as it runs out (7 ticks of 593 and one of 342
