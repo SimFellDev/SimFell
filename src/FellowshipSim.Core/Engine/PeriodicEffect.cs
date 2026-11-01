@@ -39,7 +39,7 @@ public sealed class PeriodicEffect
 
     public string Name { get; }
     public SimTime Start { get; }
-    public SimTime End { get; }
+    public SimTime End { get; private set; }
     public double Period { get; }
     public int TicksFired { get; private set; }
     public bool IsActive { get; private set; } = true;
@@ -387,7 +387,7 @@ public sealed class PeriodicEffect
 
         // The duration runs out at the nominal end (no more ticks; the partial tick is measured there) ...
         double partial = 0.0;
-        effect._events.Add(ctx.Kernel.ScheduleAt(nominalEnd, c =>
+        void DurationRunsOut(SimulationContext c)
         {
             if (!effect.IsActive) return;
             var timer = effect._nextHastedTick;
@@ -402,10 +402,10 @@ public sealed class PeriodicEffect
             {
                 partial = Math.Min(fraction, 1.0);
             }
-        }, name));
+        }
         // ... and the partial tick and the end happen on the next server frame.
         Action<SimulationContext>? finishAfterPartial = null;
-        effect._events.Add(ctx.Kernel.ScheduleAt(end, c =>
+        void EndFrame(SimulationContext c)
         {
             if (!effect.IsActive) return;
             if (partial > 0)
@@ -440,7 +440,26 @@ public sealed class PeriodicEffect
                 return;
             }
             effect.Finish(c, clipped: false);
-        }, name));
+        }
+        ScheduledEvent? durationEvent = null, endEvent = null;
+        void ScheduleEnd(SimulationContext c)
+        {
+            durationEvent?.Cancel();
+            endEvent?.Cancel();
+            durationEvent = c.Kernel.ScheduleAt(nominalEnd, DurationRunsOut, name);
+            effect._events.Add(durationEvent.Value);
+            endEvent = c.Kernel.ScheduleAt(end, EndFrame, name);
+            effect._events.Add(endEvent.Value);
+        }
+        ScheduleEnd(ctx);
+        // A refresh restarts the duration and keeps the period timer and the tick it has next.
+        effect._refresh = (c, seconds) =>
+        {
+            nominalEnd = c.CurrentTime + SimTime.FromSeconds(seconds);
+            end = nominalEnd + SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds);
+            effect.End = end;
+            ScheduleEnd(c);
+        };
 
         if (tickOnStart)
         {
@@ -460,6 +479,20 @@ public sealed class PeriodicEffect
         }
         if (effect.IsActive) ScheduleNext(ctx);
         return effect;
+    }
+
+    private Action<SimulationContext, double>? _refresh;
+
+    /// <summary>
+    /// Restarts the duration of a <see cref="BeginHasted"/> effect: it now runs out <paramref name="durationSeconds"/> from now.
+    /// The period timer runs on, so the next tick comes when it was due. Returns false, changing nothing, for an effect
+    /// that ended or whose duration already ran out (its last tick is under way), or one from <see cref="Begin"/>.
+    /// </summary>
+    public bool Refresh(SimulationContext ctx, double durationSeconds)
+    {
+        if (!IsActive || _refresh == null || ctx.CurrentTime >= End - SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds)) return false;
+        _refresh(ctx, durationSeconds);
+        return true;
     }
 
     /// <summary>Ends the effect now, cancelling every tick that has not fired yet.</summary>
