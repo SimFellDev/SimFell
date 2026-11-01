@@ -137,8 +137,10 @@ public static class ProcEvidence
             FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
 
         // Meiko
-        // Perfect Storm's extra kick lands 0.40s after the Lashing Stormkick that procced it, on every enemy the kick struck.
+        // Perfect Storm's extra kick is 0.40s after the Lashing Stormkick that procced it, on every enemy the kick struck.
         new(PerfectStorm.ProcKey, PerfectStorm.DamageId, DelaySeconds: 0.45, MinDelaySeconds: 0.35),
+        // A Shattering Obelisk pulse is its hit, on every enemy nearby. UNVERIFIED: no combat log has the talent.
+        new(ShatteringObelisk.ProcKey, ShatteringObelisk.PulseLogId),
 
         // Mara
         // 10 Energy at once (Fc8v6yWxD14GQMnV fight 19: 172 jumps of 8-12 Energy right after a poison hit, regeneration aside).
