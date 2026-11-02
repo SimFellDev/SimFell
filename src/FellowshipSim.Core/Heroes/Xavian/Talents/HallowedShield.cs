@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// Talent 567: "Each time you successfully Parry an attack you are granted 1 stack of Solar Vanguard for 30 seconds. Solar
 /// Vanguard increases the power of your next Solar Shield by 1% per stack. Stacks up to 30 times. Solar Shield consumes
 /// all stacks of Solar Vanguard." Effect 2649 "Hallowed Shield" (30s, 30 stacks). A Parry grants the stack, so it is a
-/// defensive proc: a replay fires it at each stack the log gains, a sim never.
+/// defensive proc: a replay fires it at each stack the log gains.
 /// </summary>
 public class HallowedShield : Talent
 {

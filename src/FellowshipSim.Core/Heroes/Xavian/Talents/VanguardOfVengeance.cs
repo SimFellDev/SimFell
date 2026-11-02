@@ -6,8 +6,7 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// up to 20 times - increasing your Spirit by +0.5% per stack. Your Parry chance is increased by +10%." Effect 2652 (20s,
 /// 20 stacks, Spirit +0.005 each); the counter-attack is ability 1909 (93% of Strength, spread 0.2; Mana 0.5% of the
 /// maximum, Sune.Talent.ParryCounterAttack.ManaGain), logged as effect 2651. A Parry triggers both, so they are defensive
-/// procs: a replay fires the counter-attack at each logged Counter-Attack and a stack at each stack the log gains, a sim
-/// never.
+/// procs: a replay fires the counter-attack at each logged Counter-Attack and a stack at each stack the log gains.
 /// </summary>
 public class VanguardOfVengeance : Talent
 {

@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 
 /// <summary>
 /// Ability 1843: "Taunt the target, forcing it to attack you for 6 sec. Can be used during Global Cooldown." Cooldown 8s,
-/// 2 charges. No damage.
+/// 2 charges.
 /// </summary>
 public class Taunt : XavianAbility
 {

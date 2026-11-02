@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 
 /// <summary>
 /// Talent 584: "When you cast Solar Shield on yourself, it grants you Magic Ward, reducing all Magic Damage taken by 30%
-/// for 4 seconds." Effect 2650 (4s). No damage. Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 1.136): applied with the shield.
+/// for 4 seconds." Effect 2650 (4s). Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 1.136): applied with the shield.
 /// </summary>
 public class MagicWard : Talent
 {

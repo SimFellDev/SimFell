@@ -2,7 +2,6 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 
 /// <summary>
 /// Talent 576: "While at 40% health or below, you take 20% reduced damage." Effect 2653 (IncomingDamageMultiplier x0.8).
-/// No damage.
 /// </summary>
 public class ShiftingSpectrum : Talent
 {

@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 
 /// <summary>
 /// Ability 1844: "Interrupt the target's spellcasting and prevent it from casting for 4 sec. ... Can be used during Global
-/// Cooldown." Cooldown 12s. No damage.
+/// Cooldown." Cooldown 12s.
 /// </summary>
 public class Interrupt : XavianAbility
 {

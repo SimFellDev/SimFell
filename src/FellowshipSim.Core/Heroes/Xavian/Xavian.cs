@@ -111,9 +111,8 @@ public sealed class Xavian : Hero
 
     /// <summary>
     /// Solaris (ability 1850, effect 2553; GE_Sune_OverhealToAoeDamage): Xavian's overhealing turned into damage on nearby
-    /// enemies. Overhealing triggers it, so it is a defensive proc: a replay deals it where the log has its hits, and a sim
-    /// never. The engine has no healing, so each hit deals the log's amount: exact replay the matched log hit, free dice
-    /// the nearest log hit within 0.1s. Combat logs (16 Xavian players, 74,327 hits): never a crit.
+    /// enemies. Overhealing triggers it, so it is a defensive proc: a replay deals it at the log's hits, with the log's
+    /// amounts (exact replay the matched log hit, free dice the nearest log hit within 0.1s). Combat logs (16 Xavian players, 74,327 hits): never a crit.
     /// </summary>
     public const int SolarisEffectId = 2553;
     public const string SolarisProcKey = "solaris";

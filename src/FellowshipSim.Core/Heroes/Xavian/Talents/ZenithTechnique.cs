@@ -4,8 +4,8 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 
 /// <summary>
 /// Talent 608: "While your Shining Halo is active, your Skycrash replaces it at the destination and extends its duration
-/// by 6 seconds." Effect 2645 "Zenith Technique" (3s; Parry chance +0.2). The engine puts every enemy in the halo, so the
-/// move changes nothing. UNVERIFIED.
+/// by 6 seconds." Effect 2645 "Zenith Technique" (3s; Parry chance +0.2). The engine puts every enemy in the halo, before
+/// and after the move. UNVERIFIED.
 /// </summary>
 public class ZenithTechnique : Talent
 {

@@ -26,7 +26,7 @@ public class ShiningHalo : XavianAbility
     public const double BrillianceSeconds = 2.0;
 
     /// <summary>
-    /// Effect 2569: up while Xavian stands in the halo, so combat logs remove and apply it as he moves.
+    /// Effect 2569: up while Xavian stands in the halo, so combat logs remove and apply it as Xavian moves.
     /// </summary>
     public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, 2569);
 
