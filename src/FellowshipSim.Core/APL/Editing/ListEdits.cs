@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
-using FellowshipSim.Core.APL;
 
-namespace FellowshipSim.UI.Apl;
+namespace FellowshipSim.Core.APL.Editing;
 
 /// <summary>
 /// The completion list of the action-list text at its caret. The line's part at the caret picks the items: a list prefix,

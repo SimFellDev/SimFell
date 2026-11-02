@@ -1,8 +1,7 @@
 using System.Runtime.CompilerServices;
-using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
 
-namespace FellowshipSim.UI.Apl;
+namespace FellowshipSim.Core.APL.Editing;
 
 /// <summary>The completion list of the code fields: the parts a condition can read after the word at the caret.</summary>
 public static class Completions

@@ -1,5 +1,5 @@
 using FellowshipSim.Core.APL;
-using FellowshipSim.UI.Apl;
+using FellowshipSim.Core.APL.Editing;
 
 namespace FellowshipSim.Tests.Apl.Editor;
 

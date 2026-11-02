@@ -116,6 +116,13 @@ or the desktop app).
   copied to IndexedDB (`BrowserDataFolder`).
 - **FellowshipSim.Cli** is `simfell`: one `LocalSimEngine.SimulateAsync` of a `.simc` profile, result on stdout,
   progress on stderr.
+- **FellowshipSim.LanguageServer** is the language server of `.simc` files over stdio, for the VS Code extension in
+  `src/FellowshipSim.VsCode` (`vscode-languageclient`, packaged per platform with the server self-contained in it). It
+  has the APL Editor's check (`AplListCheck`) as semantic tokens and diagnostics, and its completion list
+  (`Core/APL/Editing`: `ListEdits`, `Completions`) on `actions` lines. `SimcFile` blanks a profile's other lines and finds
+  the hero. The extension's token types and colours in `package.json` come from `AplTokenKind` and the `.tok-<kind>`
+  rules of FellowshipSim.UI's CSS (`ExtensionContributes`, written by `npm run package`; `SimcLanguageServerTests` checks
+  them).
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to
   the engine.
 - Each component has its styles in `X.razor.css` beside `X.razor`. `wwwroot/css/app.css` in FellowshipSim.UI has

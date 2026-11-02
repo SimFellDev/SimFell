@@ -45,6 +45,12 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
 {
     public static SimcProfile Load(string path) => Parse(File.ReadAllText(path));
 
+    /// <summary>True for a trimmed line of the action list: its key starts with <c>actions</c>.</summary>
+    public static bool IsActionLine(string line) => line.StartsWith(AplActionLine.ListPrefix, StringComparison.Ordinal);
+
+    /// <summary>The hero (<see cref="BuildHeroes.Names"/>) whose slug is the hero line's <paramref name="key"/>, or null.</summary>
+    public static string? HeroOf(string key) => BuildHeroes.Names.FirstOrDefault(h => AplNames.Slug(h) == key);
+
     public static SimcProfile Parse(string text)
     {
         var build = new CharacterBuild();
@@ -65,7 +71,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                 comments.Add(line);
                 continue;
             }
-            if (line.StartsWith("actions", StringComparison.Ordinal))
+            if (IsActionLine(line))
             {
                 foreach (string comment in comments) actions.AppendLine(comment);
                 comments.Clear();
@@ -83,7 +89,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             {
                 if (hero == null)
                 {
-                    var heroName = BuildHeroes.Names.FirstOrDefault(h => AplNames.Slug(h) == key)
+                    var heroName = HeroOf(key)
                                    ?? throw new FormatException("the first line names the hero: <hero>=\"<name>\"");
                     build.Hero = heroName;
                     build.Name = value.Trim('"');

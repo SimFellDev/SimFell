@@ -22,3 +22,8 @@ node_modules/
 
 # The CodeMirror bundle, built by FellowshipSim.UI's build from tools/codemirror
 src/FellowshipSim.UI/wwwroot/lib/codemirror/
+
+# The VS Code extension's bundle, its packaged language server and its packages (src/FellowshipSim.VsCode)
+src/FellowshipSim.VsCode/dist/
+src/FellowshipSim.VsCode/server/
+*.vsix
