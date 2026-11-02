@@ -107,7 +107,7 @@ internal sealed class DungeonFight
                 enemy.IsPriority = group.Priority;
                 enemy.SpiritPointValue = group.Spirit;
                 enemy.FollowTime(_ctx, now, dies);
-                _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true), "Pull duration");
+                _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true, died: true), "Pull duration");
                 if (group.Cast is { } cast) enemy.CastOnCooldown(_ctx, cast);
                 state.Enemies.Add(enemy);
                 _arrivals[enemy] = new Arrival(now, run, state, enemy.IsBoss && pull.Final);

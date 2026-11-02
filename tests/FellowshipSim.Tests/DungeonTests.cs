@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
+using FellowshipSim.Core.Customization.WeaponAbilities;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Engine;
@@ -456,6 +457,31 @@ public class DungeonTests
         Assert.Equal(AncientKorosGameCreature.SPIRIT_POINTS, group.Spirit);
         Assert.Null(group.Problem());
         Assert.Null(new EnemyGroup(1, "No Such Creature").Health);
+    }
+
+    [Fact]
+    public void An_Enemy_Keeps_Its_Shackle_Slow_Ticks_After_Its_Pull_Duration()
+    {
+        // The pull ends 3s into the Slow, 12s before the Slow runs out.
+        double pullEnds = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 3.0;
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob", HitPoints: TrashHitPoints)], pullEnds), Boss(2, 30, final: true));
+        var build = Build();
+        build.WeaponAbilityId = AlzeracsShackle.AbilityId;
+        int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId);
+        var slowTicks = new List<double>();
+        var simulator = new MonteCarloSimulator(() =>
+        {
+            var h = HeroImporter.Import(build);
+            h.OnDamageDealt += (in DamageContext hit) =>
+            {
+                if (hit.AbilityId == slowId && hit.Amount > 0 && hit.Target?.Id == 1001) slowTicks.Add(hit.Timestamp.TotalSeconds);
+            };
+            return h;
+        }, AplParser.ParseScript("actions=alzeracs_shackle\nactions+=/frost_bolt"));
+        simulator.Run(SimTime.FromSeconds(dungeon.TimeLimitSeconds), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon));
+
+        Assert.Contains(slowTicks, t => t < pullEnds);
+        Assert.Contains(slowTicks, t => t > pullEnds + 5.0);
     }
 
     [Fact]
