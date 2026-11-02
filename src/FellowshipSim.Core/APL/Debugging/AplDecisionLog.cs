@@ -109,7 +109,7 @@ internal sealed class AplDecisionLog(Hero hero, IReadOnlyList<AplTraceLine> line
             cooldowns.Add(new AplCooldownValue(ability.Name, charges, cooldown.MaxCharges, remains));
         }
         var values = variables.Slots.Select(slot => new AplVariableValue(slot.Key, slot.Value.Read(ctx))).ToList();
-        var enemies = ctx.ActiveEnemies.Select(enemy => new AplEnemyValue(Label(ctx, enemy), enemy.HealthPercent,
+        var enemies = ctx.ActiveEnemies.Select(enemy => new AplEnemyValue(Label(ctx, enemy), enemy.HealthFollowsTime ? null : enemy.HealthPercent,
             enemy == ctx.Player.CurrentTarget, Debuffs(ctx, enemy, now))).ToList();
         double globalCooldown = Math.Max(0.0, (hero.GlobalCooldownEndTime - now).TotalSeconds);
         return new AplHeroState(resources, buffs, globalCooldown, cooldowns, values, enemies);
