@@ -493,10 +493,15 @@ public abstract class Hero : Actor
     public const double RisingSpiritPrimaryStatPerStack = 0.05;
     /// <summary>Combat logs (10 Rime logs): each further Spirit Refund adds 2s to the time left instead of restarting it.</summary>
     public const double RisingSpiritReapplySeconds = 2.0;
+    /// <summary>
+    /// Combat logs: the refunds add 10s at most, so Rising Spirit lasts at most 20s from its first stack. The removal of
+    /// 191 of Rime's 193 chains of 2 or more stacks and 939 of Helena's 940 fits this, against 180 and 446 with no limit.
+    /// </summary>
+    public const double RisingSpiritReapplyUpToSeconds = 10.0;
 
     public static readonly AuraDef RisingSpirit = AuraDef.Effect("Rising Spirit", RisingSpiritEffectId, RisingSpiritSeconds,
         RisingSpiritMaxStacks, StatModifier.Add(StatType.PrimaryAttributeMultiplier, RisingSpiritPrimaryStatPerStack))
-        with { ReapplyExtendsSeconds = RisingSpiritReapplySeconds };
+        with { ReapplyExtendsSeconds = RisingSpiritReapplySeconds, ReapplyExtendsUpToSeconds = RisingSpiritReapplyUpToSeconds };
 
     /// <summary>Effects that make a Spirit Refund certain (e.g. Undulating Spirit): each returns true if it guaranteed this one.</summary>
     public List<Func<SimTime, bool>> GuaranteedSpiritRefunds { get; } = new();
