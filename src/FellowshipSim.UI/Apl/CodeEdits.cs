@@ -21,12 +21,12 @@ public static partial class CodeEdits
     /// The completion list for the path before <paramref name="at"/>, or null when the path is a number, nothing completes
     /// it, or it is empty and <paramref name="always"/> (Ctrl+Space) is false.
     /// </summary>
-    public static CompletionList? Open(AplVocabulary v, string text, int at, bool always)
+    public static CompletionList? Open(AplVocabulary v, string text, int at, bool always, IReadOnlyList<string>? variables = null)
     {
         at = Math.Min(at, text.Length);
         string word = PathBefore().Match(text[..at]).Value;
         if ((word.Length > 0 && char.IsAsciiDigit(word[0])) || (word.Length == 0 && !always)) return null;
-        var items = Completions.For(v, word).Take(MaxItems).ToList();
+        var items = Completions.For(v, word, variables).Take(MaxItems).ToList();
         if (items.Count == 0) return null;
         var (from, to) = PartAt(text, at);
         return new CompletionList(items, from, to);

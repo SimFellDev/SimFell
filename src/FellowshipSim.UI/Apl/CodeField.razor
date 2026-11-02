@@ -117,7 +117,7 @@
     /// <summary>The completion list at <paramref name="at"/> in <paramref name="text"/>; <paramref name="always"/> for Ctrl+Space.</summary>
     [JSInvokable]
     public CompletionReply? Complete(string text, int at, bool always) =>
-        (Lines ? ListEdits.Open(Vocabulary, text, at, always) : CodeEdits.Open(Vocabulary, text, at, always)) is { } list
+        (Lines ? ListEdits.Open(Vocabulary, text, at, always) : CodeEdits.Open(Vocabulary, text, at, always, ConditionBuilder.Variables(Editor.Lists))) is { } list
             ? CompletionReply.Of(list)
             : null;
 
