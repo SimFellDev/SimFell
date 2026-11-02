@@ -43,23 +43,8 @@
 <div role="tabpanel" aria-label="@State.Tab">
     @switch (State.Tab)
     {
-        case SimTab.Import:
-            <LogsSignInPrompt Purpose="to import a hero or a dungeon from a log" />
-            <ImportCard Title="Import from a log" PickHint="Pick a player, switch on their build, the fight's dungeon with their hero share, or both, then Import."
-                        BuildOnlyHeroes="true" OnImport="ImportFromLogAsync" />
-            <Card Title="Import a .simc profile or share link">
-                <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, and a profile's action list, if it has one, to Advanced.</p>
-                <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
-                <textarea class="profile" rows="10" spellcheck="false" placeholder='rime="name"' @bind="State.ProfileText"></textarea>
-                <div class="row actions">
-                    <button type="button" @onclick="ImportProfileAsync">Use this profile</button>
-                </div>
-            </Card>
-            <Message Kind="State.ImportStatus.Kind">@State.ImportStatus.Text</Message>
-            break;
-
         case SimTab.Hero:
-            <HeroEditor OnChanged="StateHasChanged" />
+            <HeroEditor OnChanged="StateHasChanged" OnImport="() => State.ImportOpen = true" />
             break;
 
         case SimTab.Modes:
@@ -108,6 +93,35 @@
             break;
     }
 </div>
+
+@if (State.ImportOpen)
+{
+    @* Import as the Import tab had it: a log's build or dungeon, or a profile or share link. Clicking outside it closes it. *@
+    <div class="modal-layer" @onclick="CloseImport" @onkeydown="OnImportKeyDown">
+        <div class="modal import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="import-title" class="title">Import</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseImport">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <div class="import-body">
+                <LogsSignInPrompt Purpose="to import a hero or a dungeon from a log" />
+                <ImportCard Title="Import from a log" PickHint="Pick a player, switch on their build, the fight's dungeon with their hero share, or both, then Import."
+                            BuildOnlyHeroes="true" OnImport="ImportFromLogAsync" />
+                <Card Title="Import a .simc profile or share link">
+                    <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, and a profile's action list, if it has one, to Advanced.</p>
+                    <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
+                    <textarea class="profile" rows="10" spellcheck="false" placeholder='rime="name"' @bind="State.ProfileText"></textarea>
+                    <div class="row actions">
+                        <button type="button" @onclick="ImportProfileAsync">Use this profile</button>
+                    </div>
+                </Card>
+                <Message Kind="State.ImportStatus.Kind">@State.ImportStatus.Text</Message>
+            </div>
+        </div>
+    </div>
+}
 
 
 @code {
@@ -206,11 +220,17 @@
 
     private static string StepTitle(SimTab tab) => tab switch
     {
-        SimTab.Import => "1. Import",
-        SimTab.Hero => "2. Hero & loadout",
-        SimTab.Modes => "3. Modes",
-        _ => "4. Advanced & APL",
+        SimTab.Hero => "1. Hero & loadout",
+        SimTab.Modes => "2. Modes",
+        _ => "3. Advanced & APL",
     };
+
+    private void CloseImport() => State.ImportOpen = false;
+
+    private void OnImportKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseImport();
+    }
 
     private string Summary() => State.Extra switch
     {
@@ -287,6 +307,7 @@
                 State.Tab = import.Build ? SimTab.Hero : SimTab.Modes;
             }
             State.ImportStatus = MessageState.None;
+            CloseImport();
         }
         catch (Exception e)
         {
@@ -315,6 +336,8 @@
             if (BuildShareLink.TryRead(State.ProfileText) is { } shared)
             {
                 UseBuild(shared);
+                State.ImportStatus = MessageState.None;
+                CloseImport();
                 return Task.CompletedTask;
             }
             var profile = SimcProfile.Parse(State.ProfileText);
@@ -327,6 +350,7 @@
                 State.ActionListValue = "";
             }
             State.ImportStatus = MessageState.None;
+            CloseImport();
         }
         catch (FormatException e)
         {
@@ -335,7 +359,12 @@
         return Task.CompletedTask;
     }
 
-    private void UseBuild(CharacterBuild build) => State.UseBuild(build);
+    // The Hero tab shows under the Import dialog: the state's word redraws its editor with the new build.
+    private void UseBuild(CharacterBuild build)
+    {
+        State.UseBuild(build);
+        State.NotifyChanged();
+    }
 
     // The fights every run of a sim has.
     private SimSettings Settings() => State.FightSettings(State.Iterations, Math.Clamp(State.Threads, 1, MaxThreads));

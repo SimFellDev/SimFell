@@ -7,8 +7,8 @@ using FellowshipSim.UI.Shared;
 
 namespace FellowshipSim.UI.Pages;
 
-/// <summary>The Sim page's tabs.</summary>
-public enum SimTab { Import, Hero, Modes, Advanced }
+/// <summary>The Sim page's tabs. Import is a dialog the Hero tab opens.</summary>
+public enum SimTab { Hero, Modes, Advanced }
 
 /// <summary>The fights a sim runs: a dungeon's pulls, or training dummies for the whole fight.</summary>
 public enum SimMode { Dungeon, TrainingDummies }
@@ -91,8 +91,14 @@ public sealed class SimPageState
         Tab = SimTab.Hero;
     }
 
-    /// <summary>A .simc profile or a build's share link pasted on the Import tab.</summary>
+    /// <summary>A .simc profile or a build's share link pasted in Import.</summary>
     public string ProfileText { get; set; } = "";
+
+    /// <summary>True while the Import dialog shows.</summary>
+    public bool ImportOpen { get; set; }
+
+    /// <summary>The Hero tab's cards folded to their title line, by title; every card is open at first.</summary>
+    public HashSet<string> CollapsedCards { get; } = [];
 
     public MessageState ImportStatus { get; set; } = MessageState.None;
 

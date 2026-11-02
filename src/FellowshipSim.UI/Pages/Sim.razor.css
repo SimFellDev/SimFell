@@ -142,3 +142,13 @@
   color: var(--text);
   font-size: 15px;
 }
+
+/* The Import dialog: the cards on the page's black, as the Import tab had them. */
+.import-dialog {
+  max-width: 860px;
+}
+
+.import-body {
+  padding: 0 20px 18px;
+  background: var(--bg);
+}
