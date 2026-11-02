@@ -15,6 +15,9 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
 - **Solaris:** Xavian's overhealing triggers it on nearby enemies (GE_Sune_OverhealToAoeDamage). In XyGpcHjNaAzgk7mW
   fight 20 it is 0.5s after a Brilliant Flash (11.988 -> 12.492, 13.223 -> 13.730). A replay deals Solaris at the log's hits
   with the log's amounts (exact replay the matched hit, free dice the nearest log hit within 0.1s); a sim has none.
+  Known gap over the 16 fights: the engine has no hit for 1,774 of the 74,327 log hits (exact replay 98.7% of the log's
+  19.85M, free dice 98.8%), and 361 engine hits are below the log's amount (log 811 against engine 67 on 23.1 at
+  677.597).
 - **Solar Blades:** the main target takes its 200% whatever the count. Every other enemy loses damage as sqrt(5/N) over
   all N enemies struck, the main target counted (log/engine 0.99-1.01 at every N from 2 to 17, 27,127 hits).
 - **Brilliant Flash, enhanced:** the main target takes 150% with no falloff. The other N enemies lose damage as
