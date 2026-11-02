@@ -187,6 +187,8 @@ public static class ProcEvidence
         new(HallowedShield.ProcKey, HallowedShield.Buff.LogId),
         // Solaris: the hits of one overheal (a defensive proc).
         new(Xavian.SolarisProcKey, Xavian.SolarisLogId),
+        // Aura of Solace: the hits of one pulse (a logged pulse).
+        new(AuraOfSolace.PulseProcKey, LogIds.Effect(AuraOfSolace.DamageEffectId)),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
