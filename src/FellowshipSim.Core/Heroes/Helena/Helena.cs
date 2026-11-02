@@ -28,9 +28,8 @@ public sealed class Helena : Hero
 
     /// <summary>
     /// Veteran of War takes twice the seconds each tooltip names off its targets. Combat logs (18 fights of patch
-    /// 0.5.0.0): with the tooltips' seconds the replay finds Shockwave on cooldown at 427 of its logged casts, Shield Throw at
-    /// 338 and Shield Slam at 274. With twice them, Shield Throw is on cooldown at a logged cast only in the 2 fights with The
-    /// Best Defense, which resets it (1p7AXmHfwV9CYMxR fight 30: 25 casts, xkGbdm8aNDwTcgjF fight 2: 19).
+    /// 0.5.0.0): with the tooltips' seconds the replay finds Shockwave on cooldown at 718 of its logged casts, Shield Throw at
+    /// 173 and Shield Slam at 112. With twice them, Shockwave is on cooldown at 3, Shield Throw at 3 and Shield Slam at 14.
     /// </summary>
     public const double VeteranOfWarTooltipMultiplier = 2.0;
 
