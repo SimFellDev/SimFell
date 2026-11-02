@@ -182,7 +182,8 @@ public static class ProcEvidence
         new(Core.Heroes.Xavian.Abilities.Attack.AvoidedProcKey, Core.Heroes.Xavian.Abilities.Attack.AbilityId, DelaySeconds: 0.05,
             HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
         // A Parry's Counter-Attack, Hallowed Shield stack and Vanguard of Vengeance stack (defensive procs).
-        new(VanguardOfVengeance.CounterAttackProcKey, LogIds.Effect(VanguardOfVengeance.CounterAttackEffectId)),
+        // Each Counter-Attack hit is its own Parry: two Parries in one server frame are two hits.
+        new(VanguardOfVengeance.CounterAttackProcKey, LogIds.Effect(VanguardOfVengeance.CounterAttackEffectId), EachHitProves: true),
         new(VanguardOfVengeance.StackProcKey, VanguardOfVengeance.Buff.LogId),
         new(HallowedShield.ProcKey, HallowedShield.Buff.LogId),
         // Solaris: the hits of one overheal (a defensive proc).
