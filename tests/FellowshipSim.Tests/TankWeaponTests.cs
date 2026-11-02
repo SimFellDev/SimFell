@@ -72,6 +72,29 @@ public class TankWeaponTests
         Assert.All(ticks, t => Assert.True(t.Amount > 0));
     }
 
+    [Fact]
+    public void Shackles_Slow_Keeps_Ticking_On_An_Enemy_After_It_Dies()
+    {
+        var hero = HeroImporter.Import(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, WeaponAbilityId = AlzeracsShackle.AbilityId });
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var enemy = ctx.AddEnemy(100, 1, "Dummy", 1e9);
+        hero.CurrentTarget = enemy;
+        int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId);
+        var slowTicks = new List<double>();
+        hero.OnDamageDealt += (in dmg) => { if (dmg.AbilityId == slowId && dmg.Amount > 0) slowTicks.Add(dmg.Timestamp.TotalSeconds); };
+        Assert.True(ctx.BeginCast(hero, hero.WeaponAbility!, enemy).Succeeded);
+        // The enemy dies 5s into its Slow: the Slow ticks on until it runs out.
+        double died = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 5.0;
+        ctx.Schedule(SimTime.FromSeconds(died), c => c.RemoveEnemy(enemy, defeated: true), "death");
+        ctx.RunUntil(SimTime.FromSeconds(25));
+
+        Assert.Contains(slowTicks, t => t < died);
+        Assert.Contains(slowTicks, t => t > died + 5.0);
+        Assert.InRange(slowTicks.Count, 7, 8);
+    }
+
     private static List<(int Id, double Time, double Amount)> Hits(int weaponAbilityId, string action, double seconds)
     {
         var hero = HeroImporter.Import(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, WeaponAbilityId = weaponAbilityId });
