@@ -612,7 +612,13 @@ public class DungeonTests
             var h = HeroImporter.Import(build);
             h.OnDamageDealt += (in DamageContext hit) =>
             {
-                if (hit.Target is { IsSleeping: true }) Interlocked.Increment(ref deadHits);
+                // Al'zerac's Shackle's Freeze and Slow tick on an enemy after its death: over every tank fight,
+                // 23,007 of 208,854 Slow ticks and 117 of 8,722 Freeze ticks hit an enemy after its logged death.
+                // Such an effect's own tick on its own dead target is the one hit a dead enemy takes.
+                if (hit.Target is not { IsSleeping: true } target) return;
+                if (target.HasDied && hit.SimContext?.CurrentPeriodicEffect is { TicksAfterTargetDies: true } effect
+                    && hit.AbilityId == effect.DamageLogId && target == effect.Target) return;
+                Interlocked.Increment(ref deadHits);
             };
             return h;
         }, AplParser.ParseScript(DefaultActionLists.Read(hero, DefaultActionLists.DefaultName)!));
