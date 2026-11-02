@@ -41,6 +41,17 @@ public sealed class Helena : Hero
     /// </summary>
     public const double SiegebreakerVeteranOfWarMultiplier = 2.0;
 
+    /// <summary>
+    /// Effect 1350 "Spirit of Heroism": "Haste is increased by 30%", Haste +0.3 for 20s (codex). Combat logs (19 fights): 270
+    /// Siegebreaker casts and 240 applications of effect 1350, none of effect 2253.
+    /// </summary>
+    public const int SiegebreakerHeroismEffectId = 1350;
+
+    public static readonly AuraDef SpiritOfHeroismBuff = AuraDef.Effect("Spirit of Heroism", SiegebreakerHeroismEffectId, SpiritOfHeroismSeconds,
+        modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
+
+    public override AuraDef SpiritOfHeroismAura => SpiritOfHeroismBuff;
+
     /// <summary>Helena's talent tree, as in game (game data talent-slot records, hero Helena).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
         //              row cost  a                            b                            c
