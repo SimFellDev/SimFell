@@ -60,26 +60,26 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 |---|---|---|
 | 2NwV9b6jdhFnzXJk fight 2 | 97.6% | 99.8% |
 | 3M2vWr8taxVfTQFY fight 53 | 99.0% | 100.6% |
-| 7Zmfx9gq6HjvThzc fight 1 | 97.9% | 99.6% |
-| 7Zmfx9gq6HjvThzc fight 2 | 99.2% | 100.7% |
+| 7Zmfx9gq6HjvThzc fight 1 | 97.9% | 99.9% |
+| 7Zmfx9gq6HjvThzc fight 2 | 99.2% | 100.8% |
 | BWFTRPJkz24QLjxM fight 2 | 99.1% | 99.9% |
 | DYL3Ph6Fkgp8jVbw fight 1 | 98.3% | 100.6% |
 | fXyzwGcQkTrLD34R fight 4 | 96.9% | 98.0% |
-| GXFz3pZ94aQr2chV fight 3 | 98.6% | 101.8% |
-| gZdryvDb9th8XxqM fight 5 | 98.8% | 100.0% |
-| Hzc78X3TFPvMVnhb fight 3 | 98.9% | 99.8% |
-| kYCNMwGW6cRKngr2 fight 2 | 98.6% | 99.9% |
-| P1yMmDGAWhnHNXTQ fight 16 | 99.1% | 101.3% |
-| PFtrX9RZJxmv1QfT fight 2 | 99.2% | 100.2% |
-| PrW4639VM7hYFD2g fight 13 | 99.6% | 101.0% |
-| VTghN4MvYn73PW9k fight 1 | 98.7% | 99.5% |
-| xPntaRwjmCWcqVfg fight 3 | 98.0% | 99.4% |
+| GXFz3pZ94aQr2chV fight 3 | 98.6% | 101.9% |
+| gZdryvDb9th8XxqM fight 5 | 98.8% | 100.2% |
+| Hzc78X3TFPvMVnhb fight 3 | 98.9% | 99.9% |
+| kYCNMwGW6cRKngr2 fight 2 | 98.6% | 100.2% |
+| P1yMmDGAWhnHNXTQ fight 16 | 99.1% | 101.5% |
+| PFtrX9RZJxmv1QfT fight 2 | 99.2% | 100.3% |
+| PrW4639VM7hYFD2g fight 13 | 99.6% | 101.4% |
+| VTghN4MvYn73PW9k fight 1 | 98.7% | 99.6% |
+| xPntaRwjmCWcqVfg fight 3 | 98.0% | 99.6% |
 
 ## Known gaps
 
 - **The quake** has a timer of its own on each enemy the slam struck. An enemy in the area after the slam has no quake
   ticks in the engine: 2,326 of the 21,392 logged ticks find no engine tick (92.6% of its damage in an exact replay).
-- **Free dice** come in at 94.3% of the logs' damage, from free-dice variance in the game's own mechanics. The players
+- **Free dice** come in at 94.4% of the logs' damage, from free-dice variance in the game's own mechanics. The players
   time Rising Storm and Lashing Stormkick to the Stormfall their refunds gave back. With the refunds at random on the
   logged casts, a free-dice run consumes 12% fewer Stormfall charges (1,942 against 2,208 over 16 fights), and Warden
   of the Temple enhances 21% fewer Double Palm Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of
