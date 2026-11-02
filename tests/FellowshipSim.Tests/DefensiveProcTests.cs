@@ -155,6 +155,17 @@ public class DefensiveProcTests
         Assert.Equal(0, fired);
     }
 
+    [Fact]
+    public void With_Each_Hit_Proves_Every_Hit_In_A_Server_Frame_Is_A_Proof()
+    {
+        // Hits on two enemies in one server frame: one proof as a group, two with EachHitProves.
+        var script = Script(new ReplayObservations { Damage = [Hit(5.0, Dummy), Hit(5.01, Other), Hit(8.0, Other)] });
+        var grouped = new ProcEvidence.Evidence("test", ProofId);
+        var each = grouped with { EachHitProves = true };
+        Assert.Equal([(5.0, (UnitRef?)Dummy), (8.0, Other)], ProcEvidence.Times(script, grouped));
+        Assert.Equal([(5.0, (UnitRef?)Dummy), (5.01, Other), (8.0, Other)], ProcEvidence.Times(script, each));
+    }
+
     private static LogDamage Hit(double time, UnitRef target, double amount = 1000) =>
         new() { Time = time, AbilityId = ProofId, AbilityName = RubyStorm.AspectName, Target = target, Amount = amount };
 

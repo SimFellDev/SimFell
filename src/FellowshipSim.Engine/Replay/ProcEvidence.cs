@@ -46,12 +46,14 @@ public static class ProcEvidence
     /// that ability's own grant). With <paramref name="EnemyDebuffApplied"/>, the proof is instead that debuff of the
     /// player's applied or refreshed on the proc's enemy. With <paramref name="AnyEnemy"/>, a hit on any enemy is proof,
     /// not only on the proc's. With <paramref name="QuietBeforeSeconds"/>, a hit is proof only when no other hit with the ID
-    /// landed that long before it (the first hit of a chain, not a bounce of another).
+    /// landed that long before it (the first hit of a chain, not a bounce of another). With <paramref name="EachHitProves"/>,
+    /// each hit with the ID is the proof of one proc: hits in one server frame are as many procs, not one group.
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, double FollowingSlackSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
         double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
-        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false, bool AnyEnemy = false, double QuietBeforeSeconds = 0.0);
+        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false, bool AnyEnemy = false, double QuietBeforeSeconds = 0.0,
+        bool EachHitProves = false);
 
     public static readonly Evidence[] All =
     [
@@ -175,7 +177,7 @@ public static class ProcEvidence
     /// <summary>
     /// Every proof of <paramref name="evidence"/> in the log, of the kind <see cref="LogOutcomeSource.RollProc"/> reads it
     /// as: its time and, for a proof on an enemy, that enemy. A resource jump is at its first reading. A hit proof is the
-    /// first hit of each group of hits in one server frame, with the hits that follow it.
+    /// first hit of each group of hits in one server frame, with the hits that follow it; with <c>EachHitProves</c>, every hit.
     /// </summary>
     public static IEnumerable<(double Time, UnitRef? Target)> Times(ReplayScript script, Evidence evidence)
     {
@@ -216,7 +218,7 @@ public static class ProcEvidence
         double groupEnd = double.NegativeInfinity;
         foreach (var hit in script.Observations.Damage.Where(d => d.AbilityId == evidence.LogId).OrderBy(d => d.Time))
         {
-            if (hit.Time <= groupEnd) continue;
+            if (hit.Time <= groupEnd && !evidence.EachHitProves) continue;
             groupEnd = hit.Time + PeriodicEffect.ServerFrameSeconds
                        + evidence.FollowingHits * (1.5 * evidence.FollowingSpacingSeconds + evidence.FollowingSlackSeconds);
             yield return (hit.Time, hit.Target);

@@ -416,6 +416,12 @@ public sealed class LogOutcomeSource : IOutcomeSource
             _claimedDamageEvidence.Add(hit);
             return true;
         }
+        if (evidence.EachHitProves)
+        {
+            // The hit proves this proc alone; the other hits of its server frame are other procs.
+            _claimedDamageEvidence.Add(hit);
+            return true;
+        }
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
         // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks): each the first free
