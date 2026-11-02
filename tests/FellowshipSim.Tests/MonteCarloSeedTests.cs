@@ -76,7 +76,8 @@ public class MonteCarloSeedTests
     /// Totals of fights 1-4 of each hero's default action list, captured again when sims began rolling crits and damage
     /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance); Rime's, Gunde's, Mara's
     /// and Tariq's again once dungeon_event.fight.remains and target.time_to_die read the fight's end. Tariq's again once
-    /// Schism had bad luck protection.
+    /// Schism had bad luck protection, and again once Bloodline was unhasted, Ride the Lightning snapshotted and Kill Em All
+    /// left Heavy Strike out.
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 2962161.4158089291, 3145794.8408500189, 2661851.3885713113, 2817501.4722939902 })]
@@ -87,8 +88,8 @@ public class MonteCarloSeedTests
     [InlineData("Gunde", 300, 1, new[] { 7589315.0879662065, 7860490.4554016367, 7145894.9954196177, 7482946.3632446928 })]
     [InlineData("Mara", 120, 3, new[] { 2467303.3938331231, 2427106.282543866, 2020983.4777073066, 2580733.0113486159 })]
     [InlineData("Mara", 300, 1, new[] { 5869212.4974295124, 5910391.7861513905, 5311189.945330617, 5469205.2517229859 })]
-    [InlineData("Tariq", 120, 3, new[] { 1871704.7378057118, 1982296.8520820616, 1800090.5274220684, 2190499.1747951428 })]
-    [InlineData("Tariq", 300, 1, new[] { 3673908.9642546247, 3705256.4997241483, 3479386.1051422935, 4039676.9705322459 })]
+    [InlineData("Tariq", 120, 3, new[] { 1866351.4274260837, 2095999.9564214954, 1728839.1919036561, 1977654.0835166338 })]
+    [InlineData("Tariq", 300, 1, new[] { 3840313.4565217663, 3364470.6032848917, 3454543.6249362486, 3971030.5181241543 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
