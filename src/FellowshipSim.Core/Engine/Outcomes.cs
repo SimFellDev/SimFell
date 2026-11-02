@@ -112,9 +112,11 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
-        // A hit at an enemy that has left combat misses and rolls nothing. A tick of an effect that keeps hitting its target
-        // after it dies (PeriodicEffect.TicksAfterTargetDies) hits a dead enemy.
-        if (hit.Target is { IsSleeping: true } left && !(left.HasDied && ctx.CurrentPeriodicEffect is { TicksAfterTargetDies: true }))
+        // A hit at an enemy that has left combat misses and rolls nothing. The one exception is the tick of an effect with
+        // PeriodicEffect.TicksAfterTargetDies: its tick hits its own target after that target dies.
+        if (hit.Target is { IsSleeping: true } left
+            && !(left.HasDied && ctx.CurrentPeriodicEffect is { TicksAfterTargetDies: true } effect
+                 && effect.DamageLogId == hit.AbilityId && effect.Target == left))
         {
             return new HitOutcome(false, Missed: true);
         }

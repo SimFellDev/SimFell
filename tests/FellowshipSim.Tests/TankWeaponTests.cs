@@ -103,6 +103,47 @@ public class TankWeaponTests
         else Assert.Empty(ticks);
     }
 
+    [Fact]
+    public void A_Proc_Off_A_Shackle_Tick_On_A_Dead_Enemy_Misses()
+    {
+        int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId);
+        int beamId = LogIds.Effect(DiamondStrike.DamageEffectId);
+        // The enemy dies 1s into its Slow.
+        double died = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 1.0;
+        int ticksAfterDeath = 0, beamsBeforeDeath = 0, beamsAfterDeath = 0;
+        for (int seed = 1; seed <= 100; seed++)
+        {
+            var hero = HeroImporter.Import(new CharacterBuild
+            {
+                Hero = "Rime", PrimaryStat = 1000, WeaponAbilityId = AlzeracsShackle.AbilityId,
+                Augmentations = [new BuildEntry(DiamondStrike.AspectId, 4)],
+            });
+            var ctx = new SimulationContext(hero);
+            ctx.Rng.Seed(seed);
+            hero.ResetForIteration();
+            hero.BeginFight(ctx);
+            var enemy = ctx.AddEnemy(100, 1, "Dummy", 1e9);
+            hero.CurrentTarget = enemy;
+            hero.OnDamageDealt += (in dmg) =>
+            {
+                bool after = dmg.Timestamp.TotalSeconds > died;
+                if (dmg.AbilityId == slowId && after) ticksAfterDeath++;
+                if (dmg.AbilityId == beamId && dmg.Amount > 0)
+                {
+                    if (after) beamsAfterDeath++;
+                    else beamsBeforeDeath++;
+                }
+            };
+            Assert.True(ctx.BeginCast(hero, hero.WeaponAbility!, enemy).Succeeded);
+            ctx.Schedule(SimTime.FromSeconds(died), c => c.RemoveEnemy(enemy, defeated: true, died: true), "death");
+            ctx.RunUntil(SimTime.FromSeconds(25));
+        }
+
+        Assert.True(ticksAfterDeath > 0);
+        Assert.True(beamsBeforeDeath > 0);
+        Assert.Equal(0, beamsAfterDeath);
+    }
+
     /// <summary>Times of the Shackle's <paramref name="effectId"/> ticks with damage, the enemy leaving combat at <paramref name="left"/>.</summary>
     private static List<double> ShackleTicks(int effectId, double left, bool dies)
     {
