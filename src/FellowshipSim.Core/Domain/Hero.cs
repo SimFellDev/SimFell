@@ -117,38 +117,35 @@ public abstract class Hero : Actor
 
     private readonly List<DefensiveProc> _defensiveProcs = new();
 
-    /// <summary>Procs of a block, parry, dodge, hit taken or heal: a replay fires them where the log proves them, a sim never.</summary>
+    /// <summary>Procs the log proves: they fire in a replay only, at each proof in the log.</summary>
     public IReadOnlyList<DefensiveProc> DefensiveProcs => _defensiveProcs;
 
     /// <summary>
-    /// Declares a proc of a block, parry, dodge, hit taken or heal. A sim never calls <paramref name="fire"/>. A replay
-    /// calls it at each proof of <paramref name="procKey"/> in the log (its proc evidence entry, of any kind a proc roll
-    /// reads), with the proof's enemy, or the current target for a proof without one. <paramref name="fire"/> deals the
-    /// proc's damage (Xavian's Solaris, through <see cref="DealDefensiveProcHit"/>) or does what else the proc does (Helena's
-    /// Second Wind: 20% more Strength once her Toughness has reduced enough damage).
+    /// Declares a proc the log proves. It fires in a replay only: <paramref name="fire"/> runs at each proof of
+    /// <paramref name="procKey"/> in the log (its proc evidence entry, of any kind a proc roll reads), with the proof's
+    /// enemy, or the current target for a proof without one. <paramref name="fire"/> deals the proc's damage (Xavian's
+    /// Solaris, through <see cref="DealDefensiveProcHit"/>) or does what else the proc does (Helena's Second Wind buff).
     /// </summary>
     public void AddDefensiveProc(string procKey, Action<SimulationContext, EnemyTarget?> fire) =>
         _defensiveProcs.Add(new DefensiveProc(procKey, fire));
 
     /// <summary>
-    /// Deals one hit of a defensive proc whose damage comes from what the engine does not simulate (healing, damage taken):
-    /// the amount is the log's hit (<see cref="IOutcomeSource.LoggedHitAmount"/>) in an exact replay
-    /// and in free dice. A sim never fires a defensive proc.
+    /// Deals one hit of a defensive proc whose amount the log gives: the log's hit
+    /// (<see cref="IOutcomeSource.LoggedHitAmount"/>), in an exact replay and in free dice.
     /// </summary>
     public double DealDefensiveProcHit(SimulationContext ctx, EnemyTarget enemy, int damageLogId, string abilityName) =>
         ctx.ApplyDamage(this, enemy, ctx.Outcomes.LoggedHitAmount(damageLogId, enemy, ctx), damageLogId, abilityName, canCrit: false, 0.0, 1.0);
 
     /// <summary>
-    /// True in a replay (exact or free dice), where every logged pulse (<see cref="AddLoggedPulse"/>) fires at its log hits:
-    /// hero code leaves the pulse's own periodic chain off then. False in a sim, where the chain runs.
+    /// True in a replay (exact or free dice), where every logged pulse (<see cref="AddLoggedPulse"/>) fires at its log hits;
+    /// hero code runs the pulse's own periodic chain while it is false, in a sim.
     /// </summary>
     public bool PulsesFollowLog { get; set; }
 
     /// <summary>
-    /// Declares a pulse whose timing the engine cannot predict (Xavian's Aura of Solace stops while no enemy is near). A
-    /// replay calls <paramref name="pulse"/> at each group of its log hits (the hit evidence of <paramref name="procKey"/>,
-    /// as for <see cref="AddDefensiveProc"/>), with <see cref="PulsesFollowLog"/> true; a sim never calls it, and the hero
-    /// code's own periodic chain deals the pulses.
+    /// Declares a pulse whose timing the log gives (Xavian's Aura of Solace). A replay calls <paramref name="pulse"/> at
+    /// each group of its log hits (the hit evidence of <paramref name="procKey"/>, as for <see cref="AddDefensiveProc"/>),
+    /// with <see cref="PulsesFollowLog"/> true. In a sim the hero code's own periodic chain deals the pulses.
     /// </summary>
     public void AddLoggedPulse(string procKey, Action<SimulationContext, EnemyTarget?> pulse) => AddDefensiveProc(procKey, pulse);
 

@@ -2,12 +2,11 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
 /// Weapon ability 159 (weapon power 352): "You are protected by the divine flame of Sahril, granting you a shield for up
-/// to 18 seconds that absorbs up to 35% of MaxHealth damage. Any damage the shield absorbs is reduced by 50%. When the
-/// shield expires it explodes on to enemies within a 1000 radius, dealing 2241% fire damage to them. Can be cast during
-/// Global Cooldown." Cooldown 90s; the explosion falls off as sqrt(1/N) beyond 1 enemy (game data targetCountFalloff).
-/// The shield is effect 77 (18 seconds, "Explodes upon removal"). The engine has the shield for its full 18 seconds and
-/// the explosion as it expires. UNVERIFIED: no combat log has this ability; the explosion's damage ID is assumed to be
-/// 159, as Sahril's Wrath's hits are logged as 157.
+/// to 18 seconds ... When the shield expires it explodes on to enemies within a 1000 radius, dealing 2241% fire damage to
+/// them. Can be cast during Global Cooldown." Cooldown 90s; the explosion falls off as sqrt(1/N) beyond 1 enemy (game
+/// data targetCountFalloff). The shield is effect 77 (18 seconds, "Explodes upon removal"); it lasts its 18 seconds and
+/// explodes as it expires. UNVERIFIED: the explosion's damage ID is taken to be 159, as Sahril's Wrath's hits are logged
+/// as 157; the downloaded combat logs have this ability in none of their fights.
 /// </summary>
 public class SahrilsAegis : Ability
 {

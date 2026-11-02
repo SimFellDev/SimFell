@@ -590,11 +590,10 @@ public sealed class ReplayDriver
     }
 
     /// <summary>
-    /// Defensive procs (<see cref="Hero.DefensiveProcs"/>) come from blocks, parries, dodges, hits taken and heals, which the
-    /// engine does not simulate, so the replay fires each one at each proof of it in the log (<see cref="ProcEvidence.Times"/>:
-    /// every kind of proof a proc roll reads), less the evidence's <see cref="ProcEvidence.Evidence.MinDelaySeconds"/>. The
-    /// roll there claims the proof
-    /// (<see cref="LogOutcomeSource"/>), so a hit an engine hit already matched fires nothing.
+    /// Defensive procs (<see cref="Hero.DefensiveProcs"/>) fire in a replay only, at each proof of them in the log
+    /// (<see cref="ProcEvidence.Times"/>: every kind of proof a proc roll reads), less the evidence's
+    /// <see cref="ProcEvidence.Evidence.MinDelaySeconds"/>. The roll there claims the proof (<see cref="LogOutcomeSource"/>),
+    /// so a hit an engine hit already matched fires nothing.
     /// </summary>
     private void FireDefensiveProcs()
     {
