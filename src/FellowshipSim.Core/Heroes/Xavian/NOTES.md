@@ -13,7 +13,7 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
   Hallowed Shield stack and a Vanguard of Vengeance stack are in the same server frame (XyGpcHjNaAzgk7mW fight 20 @
   7.516 and 15.834). Two Parries in one server frame are two Counter-Attacks: 2,135 of the 18,451 Counter-Attack hits
   in every downloaded Xavian fight follow another in the same 1/30s, so a replay fires one for each log hit. Over the 16
-  fights all 14,407 log hits match (exact replay 100.3%, free dice 95.5%).
+  fights all 14,407 log hits match (exact replay 100.3%, free dice 97.7%).
 - **Solaris:** Xavian's overhealing triggers it on nearby enemies (GE_Sune_OverhealToAoeDamage). In XyGpcHjNaAzgk7mW
   fight 20 it is 0.5s after a Brilliant Flash (11.988 -> 12.492, 13.223 -> 13.730). A replay deals Solaris at the log's hits
   with the log's amounts (exact replay the matched hit, free dice the nearest log hit within 0.1s).
