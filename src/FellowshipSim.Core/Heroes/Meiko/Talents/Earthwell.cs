@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// <summary>
 /// Talent 96: "Each hit with Earthfist Barrage adds 1 stack to your Serenity ability. Serenity now prevents your Stone
 /// Shield from losing health for 0.1 seconds per stack of Serenity consumed." The stacks count for Everlasting Spirit's
-/// pulse; the stones' health changes no damage.
+/// pulse.
 /// </summary>
 public class Earthwell : Talent
 {

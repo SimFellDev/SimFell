@@ -7,7 +7,7 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// expires or is destroyed, you gain Earthen Skin for 60 seconds, granting you 80% more Armor. You deal 20% more Wind
 /// Damage. Your Stone Shield and Shatter Earth deal 20% more damage." The game data's changes list puts the 20% on Wind
 /// Kick, Rising Storm, Lashing Stormkick, the Sibling of Wind (effect 1548), Shatter Earth's slam and quake (effects 1557,
-/// 1556), Spirited Vortex and Stone Shield (effect 1572), all the time. The Armor changes no damage.
+/// 1556), Spirited Vortex and Stone Shield (effect 1572), all the time.
 /// </summary>
 public class EarthenSkin : Legendary
 {

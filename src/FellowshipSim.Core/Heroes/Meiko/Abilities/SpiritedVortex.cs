@@ -4,8 +4,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// Ability 1120, a Palm Technique finisher (Spirit Palm then Earth Fist): "Meiko creates a vortex of winds around her,
 /// providing +15% Dodge Chance and dealing 105.56% of Agility damage every 2 seconds for 30 seconds to all nearby enemies.
 /// Enemies that take damage from Spirited Vortex have 35% reduced Movement Speed and 10% reduced Damage for 5 seconds. Can
-/// be used during Global Cooldown". Logged under 1120. The engine simulates the damage alone; effect 1570 on Meiko marks
-/// the vortex's time.
+/// be used during Global Cooldown". Logged under 1120. Effect 1570 on Meiko marks the vortex's time.
 /// </summary>
 public class SpiritedVortex : MeikoFinisher
 {

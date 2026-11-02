@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// <summary>
 /// Ability 1082: "Split your soul into the Sibling of Wind and the Sibling of Earth for up to 20 seconds. You are in control
 /// of the Sibling of Wind. SIBLING OF EARTH: While active, the Sibling of Earth forces all enemies within a 1000 radius to
-/// attack it." 180 second cooldown. It deals no damage.
+/// attack it." 180 second cooldown.
 /// </summary>
 public class TwinSoulsBulwark : MeikoAbility
 {

@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// <summary>
 /// Ability 1105, a Palm Technique finisher (Spirit Palm then Wind Kick): "Strike target enemy with both palms, dealing
 /// 1253.2% of Agility damage. Grants Spirited Strikes for 30 seconds. SPIRITED STRIKES: +25% Magic Damage Reduction, +5%
-/// Parry. Can be used during Global Cooldown". Logged under 1105. The engine simulates the damage alone.
+/// Parry. Can be used during Global Cooldown". Logged under 1105.
 /// </summary>
 public class DoublePalmStrike : MeikoFinisher
 {

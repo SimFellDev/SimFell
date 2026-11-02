@@ -3,8 +3,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// <summary>
 /// Ability 1119: "Instantly heal yourself for 220% of Agility. Each time you Auto Attack an enemy, your Serenity gains +40%
 /// increased healing, stacking up to 50 times. Can be used during Global Cooldown". 10 second cooldown, its duration
-/// scaled by Haste (cooldownDurationScalesOff Haste). The heal changes no damage; the stacks it consumes count for Everlasting
-/// Spirit.
+/// scaled by Haste (cooldownDurationScalesOff Haste). The stacks it consumes count for Everlasting Spirit.
 /// </summary>
 public class Serenity : MeikoAbility
 {

@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// Ability 1106, a Kick Technique finisher (Wind Kick then Earth Fist): "Perform a roundhouse kick, dealing 232.05% of
 /// Agility damage to your target and nearby enemies. Lashing Stormkick heals you for 50% of the damage it deals. AFFECTED
 /// BY STORMFALL: Lashing Stormkick deals +100% increased damage when it can consume a stack of Stormfall. Can be used
-/// during Global Cooldown". Logged under 1106. Healing is not simulated.
+/// during Global Cooldown". Logged under 1106.
 /// </summary>
 public class LashingStormkick : MeikoFinisher
 {

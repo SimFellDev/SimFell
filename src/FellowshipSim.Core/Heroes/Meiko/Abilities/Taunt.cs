@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 
 /// <summary>
 /// Ability 1095: "Taunt the target, forcing it to attack you for 6 sec. Can be used during Global Cooldown". 8 second
-/// cooldown, 2 charges. It deals no damage.
+/// cooldown, 2 charges.
 /// </summary>
 public class Taunt : MeikoAbility
 {

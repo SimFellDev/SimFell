@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 
 /// <summary>
 /// Ability 1125: "Create a Cyclone of strong winds that instantly pulls in all enemies within the radius to you. Can be used
-/// during Global Cooldown". 60 second cooldown. It deals no damage.
+/// during Global Cooldown". 60 second cooldown.
 /// </summary>
 public class Cyclone : MeikoAbility
 {

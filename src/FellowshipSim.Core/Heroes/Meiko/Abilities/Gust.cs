@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 
 /// <summary>
 /// Ability 1123: "Quickly travel forward a short distance. Can be used during Global Cooldown". 20 second cooldown, 2
-/// charges. It deals no damage.
+/// charges.
 /// </summary>
 public class Gust : MeikoAbility
 {

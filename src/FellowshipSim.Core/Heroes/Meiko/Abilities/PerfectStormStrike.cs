@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 
 /// <summary>
 /// Ability 2310 ("Lashing Stormkick"): combat logs record each Perfect Storm proc as a cast of it, at the Lashing Stormkick
-/// that procced it (7Zmfx9gq6HjvThzc fight 2 @ 25.481). The talent deals its hits; the cast does nothing.
+/// that procced it (7Zmfx9gq6HjvThzc fight 2 @ 25.481). The talent deals its hits.
 /// </summary>
 public class PerfectStormStrike : MeikoAbility
 {

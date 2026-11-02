@@ -1,7 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 
 /// <summary>
-/// Talent 90: "When you activate Stone Shield you take 20% reduced damage for 8 seconds." It changes no damage Meiko deals.
+/// Talent 90: "When you activate Stone Shield you take 20% reduced damage for 8 seconds."
 /// </summary>
 public class ResonanceOfEarth : Talent
 {

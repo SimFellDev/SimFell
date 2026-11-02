@@ -150,8 +150,8 @@ public sealed class Meiko : Hero
 
     /// <summary>
     /// Consumes a <paramref name="charge"/> (Stormfall or Earthfall), when Meiko holds one. Hero 13's Spirit text: a Spirit
-    /// Refund on the consumption gives the charge back and Rising Spirit. Its Spirit Armor and stone for Stone Shield change
-    /// no damage. The refund's roll is <paramref name="refundAfterSeconds"/> after the consumption.
+    /// Refund on the consumption gives the charge back and Rising Spirit. The refund's roll is
+    /// <paramref name="refundAfterSeconds"/> after the consumption.
     /// Combat logs (16 fights): 544 of 2,232 Stormfall consumptions came back with Rising Spirit at the consumption, and 189
     /// of 937 Earthfall consumptions came back with Rising Spirit 1.0s after the Earthfist Barrage cast (its channel's end).
     /// Returns whether a charge was consumed.

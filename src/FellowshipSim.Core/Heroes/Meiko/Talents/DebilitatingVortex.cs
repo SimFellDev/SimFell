@@ -1,8 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 
 /// <summary>
-/// Talent 97: "Enemies hit by Spirited Vortex have 20% reduced attack speed for 5 seconds." It changes no damage Meiko
-/// deals.
+/// Talent 97: "Enemies hit by Spirited Vortex have 20% reduced attack speed for 5 seconds."
 /// </summary>
 public class DebilitatingVortex : Talent
 {

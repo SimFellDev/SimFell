@@ -3,8 +3,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// <summary>
 /// Ability 1122: "Summon 3 protective stones around you that spin in a wide circle, dealing 135.2% of Agility physical
 /// damage 4 times to all nearby enemies. ... Stone Shield gains Cooldown Acceleration equal to your Haste. Can be used
-/// during Global Cooldown". 30 second cooldown, 2 charges. The stones' damage is ability 1121, logged as effect 1572. The
-/// engine simulates the damage alone.
+/// during Global Cooldown". 30 second cooldown, 2 charges. The stones' damage is ability 1121, logged as effect 1572.
 /// </summary>
 public class StoneShield : MeikoAbility
 {

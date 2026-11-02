@@ -13,10 +13,9 @@ namespace FellowshipSim.Tests;
 /// <summary>
 /// Runs normal (APL) sims with each Meiko talent and legendary, checking it is imported and its effect shows up: its aura
 /// is gained (on Meiko or an enemy she hits) or its damage is dealt. The character is the one from the 7Zmfx9gq6HjvThzc
-/// fight 2 replay. Resonance of Earth, Stone Guard, Debilitating Vortex, Slipstream, Earthbourne, Harmonic Residual,
-/// Shattering Obelisk and Peacefield change no damage the engine simulates; the tree test covers them. The list builds Earthfall and Stormfall in
-/// turn (Rising Earth while Shatter Earth's cooldown has more than 22 seconds left), so both paths run on any number of
-/// enemies.
+/// fight 2 replay. The tree test covers Resonance of Earth, Stone Guard, Debilitating Vortex, Slipstream, Earthbourne,
+/// Harmonic Residual, Shattering Obelisk and Peacefield. The list builds Earthfall and Stormfall in turn (Rising Earth
+/// while Shatter Earth's cooldown has more than 22 seconds left), so both paths run on any number of enemies.
 /// </summary>
 public class MeikoTalentSmokeTests(ITestOutputHelper output)
 {

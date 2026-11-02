@@ -84,9 +84,8 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
   logged casts, a free-dice run consumes 12% fewer Stormfall charges (1,942 against 2,208 over 16 fights), and Warden
   of the Temple enhances 21% fewer Double Palm Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of
   3,145 rolls against 769 expected. Lashing Stormkick (87.9%) and Spirited Vortex (91.3%) have most of the gap.
-- **Damage alone:** the engine simulates the damage Meiko deals, not damage taken, mitigation or healing. Shattering
-  Obelisk's pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a replay deals one at each
-  pulse hit in the log, with the log's amount, and a sim never. No log has the talent.
+- **Shattering Obelisk:** its pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a
+  replay deals one at each pulse hit in the log, with the log's amount, and a sim never. No log has the talent.
 
 ## Not yet checked against a log
 
