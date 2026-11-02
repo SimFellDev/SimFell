@@ -54,8 +54,8 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 ## Free dice
 
 - Free dice's hits on several enemies reach every enemy the log has Helena hitting between two casts. Shield Throw
-  bounces 5 times against the log's average of 3.5 hits per cast (free dice 108.1% of the log), and Razor Shrapnel
-  strikes up to 12 of those enemies (128.7%).
+  bounces 5 times against the log's average of 3.5 hits per cast (free dice 101.4% of the log), and Razor Shrapnel
+  strikes up to 12 of those enemies (122.9%).
 - Rising Spirit's stacks were free dice's excess: free dice dealt 107.2% of the log's damage with the log's hit counts and
   crit rates, with 5.30 stacks on average at Helena's hits against exact replay's 3.64. Each Spirit Refund adds 2s to
   Rising Spirit's time left, 10s in all over a chain of stacks, in the engine as in the logs. Free dice now deals 100.8%
