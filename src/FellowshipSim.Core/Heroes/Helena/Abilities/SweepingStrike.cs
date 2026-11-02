@@ -16,7 +16,7 @@ public class SweepingStrike : HelenaAbility
     public const int BloodRallyEffectId = 3098;
     public const double BloodRallySeconds = 6.0;
 
-    /// <summary>Blood Rally: it heals Helena. No damage of hers changes.</summary>
+    /// <summary>Blood Rally on Helena (effect 3098).</summary>
     public static readonly AuraDef BloodRally = AuraDef.Effect("Sweeping Strike: Blood Rally", BloodRallyEffectId, BloodRallySeconds);
 
     /// <summary>Blood Rally as it is applied (Lingering Rush lengthens it).</summary>

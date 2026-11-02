@@ -26,7 +26,7 @@ public class ShieldSlam : HelenaAbility
     public const double LingeringConcussionSeconds = 12.0;
     public const int LingeringConcussionMaxStacks = 5;
 
-    /// <summary>Lingering Concussion on the main target: it deals less damage to Helena. No damage of hers changes.</summary>
+    /// <summary>Lingering Concussion on the main target, up to 5 stacks.</summary>
     public static readonly AuraDef LingeringConcussion = AuraDef.Effect("Lingering Concussion", LingeringConcussionEffectId,
         LingeringConcussionSeconds, LingeringConcussionMaxStacks);
 

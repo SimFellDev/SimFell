@@ -1,8 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Helena.Talents;
 
 /// <summary>
-/// Talent 647: "Each time you Block an attack, the cooldown of Grand Melee is reduced by 0.2 seconds." The engine has no
-/// attacks on Helena, so nothing blocks.
+/// Talent 647: "Each time you Block an attack, the cooldown of Grand Melee is reduced by 0.2 seconds."
 /// </summary>
 public class MasterOfWar : Talent
 {

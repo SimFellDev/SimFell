@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// <summary>
 /// Ability 1465: "For the next 10 seconds, Incite all enemies in a large radius around you, forcing them to only use Auto
 /// Attacks and only attack you. All allies within the radius of Grand Melee take 20% reduced magic damage while it is
-/// active. Can be used during Global Cooldown." Cooldown 150s. No damage.
+/// active. Can be used during Global Cooldown." Cooldown 150s.
 /// </summary>
 public class GrandMelee : HelenaAbility
 {

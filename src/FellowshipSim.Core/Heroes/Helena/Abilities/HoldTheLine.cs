@@ -22,7 +22,7 @@ public class HoldTheLine : HelenaAbility
     /// <summary>Empowered Shield Slam: the next Shield Slam applies <see cref="Barrier"/>.</summary>
     public static readonly AuraDef Empowered = AuraDef.Effect("Empowered Shield Slam", EmpoweredEffectId, EmpoweredSeconds, EmpoweredMaxStacks);
 
-    /// <summary>The barrier an Empowered Shield Slam applies. It absorbs damage Helena takes; no damage of hers changes.</summary>
+    /// <summary>The barrier an Empowered Shield Slam applies on Helena, for 8 seconds.</summary>
     public static readonly AuraDef Barrier = AuraDef.Effect("Empowered Shield Slam: Barrier", BarrierEffectId, BarrierSeconds);
 
     public HoldTheLine(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)

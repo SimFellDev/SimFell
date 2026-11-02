@@ -61,13 +61,13 @@ public class HelenaTalentSmokeTests(ITestOutputHelper output)
         }
     }
 
-    /// <summary>A defensive proc's talent changes nothing in a sim: its aura is never gained, its hit never dealt.</summary>
+    /// <summary>A defensive proc's talent fires in a replay alone: a sim has 0 gains of its aura and 0 damage of its hit.</summary>
     [Theory]
     [InlineData(TheBestDefense.TalentId, "aura:The Best Defense")]
     [InlineData(PunishingStrikes.TalentId, "aura:Punishing Strikes")]
     [InlineData(SecondWind.TalentId, "aura:Second Wind")]
     [InlineData(UnscarredSoul.TalentId, "damage:Unscarred Soul")]
-    public void A_Defensive_Proc_Talent_Does_Nothing_In_A_Sim(int talentId, string evidence)
+    public void A_Defensive_Proc_Talent_Fires_In_A_Replay_Alone(int talentId, string evidence)
     {
         var (result, hero, gained) = Run([.. BaseTalents, talentId], 3);
         Assert.Single(hero.DefensiveProcs);

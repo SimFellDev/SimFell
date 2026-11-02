@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// <summary>
 /// Talent 219: "When your Toughness has reduced an amount of damage equal to 30% of your Maximum Health, you gain 20%
 /// increased Strength for 14 sec." The buff is effect 1215 (Strength x1.2); its build-up is effect 1214. Damage taken is a
-/// defensive proc: a replay fires it at each gain of the buff in the log, a sim never.
+/// defensive proc: a replay fires it at each gain of the buff in the log.
 /// </summary>
 public class SecondWind : Talent
 {

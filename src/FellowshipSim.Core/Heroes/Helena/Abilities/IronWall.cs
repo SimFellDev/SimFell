@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 
 /// <summary>
 /// Ability 973: "Your Toughness can not be reduced for 12 seconds. Can be used during Global Cooldown." Cooldown 90s. The
-/// buff is effect 1254. No damage.
+/// buff is effect 1254.
 /// </summary>
 public class IronWall : HelenaAbility
 {

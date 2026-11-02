@@ -9,8 +9,6 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
   (HrNZ6wQfFKGxybDR fight 1: 769,174 at 2.0s, 1,053,920 at 13.0s, 1,550,152 at 24.4s), so the replay compares the share
   of the maximum (`LogResources`).
 - Spirit Points are resource type 4, as for every hero.
-- The game data gives Shield Slam and Shields Up a cost of 3 Combo Points and Sweeping Strike 2. The logs have no such
-  resource for Helena, and nothing she casts generates one: 6,572 Shield Slams are cast with no cost.
 
 ## Veteran of War
 
@@ -44,9 +42,9 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
   1239's DamageScale x1.15 gives 0.92 of x1.25.
 - The Best Defense (effect 1231) comes 389 times in 7 fights.
 - Second Wind (effect 1215) comes 176 times in 4 fights; its build-up is effect 1214.
-- Attack: 1,024 of 11,385 swings are a miss or a dodge (log hit types 0 and 7), a hit of no damage.
-- The Best Defense, Punishing Strikes, Second Wind and Unscarred Soul come from blocks, damage taken and attacks on
-  Helena: a replay gives each one where the log has its buff or its hit.
+- Attack: 1,024 of 11,385 swings are a miss or a dodge (log hit types 0 and 7), a hit of 0 damage.
+- A replay gives The Best Defense, Punishing Strikes and Second Wind at each gain of their buff in the log, and deals
+  each Unscarred Soul hit the log has.
 - Gleaming Shield: each stack of the buff (effect 3096, up to 10) adds 3% to the Armor Shield Slam's extra damage reads.
   With the stacks, Shield Slam's hits are 1.02 times the engine's (36,523 hits over 18 fights); with the build's Armor
   alone, 1.11.

@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// <summary>
 /// Talent 644: "Your Successful Blocks have a 6% chance to grant you 2 stacks of Punishing Strikes. Punishing Strikes causes
 /// your next Measured Strike to deal 100% increased damage and have 100% increased Veteran of War." The buff is effect 3095.
-/// A block is a defensive proc: a replay fires it at each gain of the buff in the log, a sim never. UNVERIFIED: no log has
+/// A block is a defensive proc: a replay fires it at each gain of the buff in the log. UNVERIFIED: no log has
 /// the talent.
 /// </summary>
 public class PunishingStrikes : Talent

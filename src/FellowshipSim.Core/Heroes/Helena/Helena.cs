@@ -5,8 +5,8 @@ namespace FellowshipSim.Core.Heroes.Helena;
 
 /// <summary>
 /// Helena, the Warmaster (hero 22), a Strength tank. Veteran of War: her abilities take time off each other's cooldowns
-/// (<see cref="VeteranOfWar"/>). Toughness is her resource: Shield Slam, Shockwave and Shields Up raise it, and damage
-/// taken lowers it. Abilities are in Abilities/ and talents in Talents/.
+/// (<see cref="VeteranOfWar"/>). Toughness is her resource: Shield Slam, Shockwave and Shields Up raise it, and a replay
+/// takes it from the log. Abilities are in Abilities/ and talents in Talents/.
 /// </summary>
 public sealed class Helena : Hero
 {

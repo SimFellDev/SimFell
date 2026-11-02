@@ -1,8 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Helena.Talents;
 
 /// <summary>
-/// Talent 646: "Your Toughness reduces damage taken by an additional 5% on each Toughness Tier." The engine has no damage
-/// taken, so nothing changes.
+/// Talent 646: "Your Toughness reduces damage taken by an additional 5% on each Toughness Tier."
 /// </summary>
 public class FrontLineDefender : Talent
 {

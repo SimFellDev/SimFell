@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// <summary>
 /// Talent 207: "Each time you Block an attack with your shield, you have a chance to reset the cooldown of Shield Throw and
 /// cause your next Shield Throw within 12 seconds to deal 20% increased damage. (2.0 PPM)" The buff is effect 1231. A block
-/// is a defensive proc: a replay fires it at each gain of the buff in the log, a sim never.
+/// is a defensive proc: a replay fires it at each gain of the buff in the log.
 /// </summary>
 public class TheBestDefense : Talent
 {

@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// <summary>
 /// Ability 984: "Raise your shield, increasing your Toughness by 30% and increasing your Block chance by 25% for 12 sec.
 /// Shields Up gains Cooldown Acceleration equal to your Haste. Each time you succesfully Block an attack, you generate 3%
-/// Toughness. Can be used during Global Cooldown." 2 charges, 30s each. The buff is effect 1282. No damage.
+/// Toughness. Can be used during Global Cooldown." 2 charges, 30s each. The buff is effect 1282.
 /// </summary>
 public class ShieldsUp : HelenaAbility
 {

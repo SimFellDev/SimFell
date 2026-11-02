@@ -14,7 +14,7 @@ public class Attack : HelenaAbility
 
     /// <summary>
     /// Combat logs (19 Helena fights of patch 0.5.0.0): 1,024 of 11,385 swings are a miss or a dodge (log hit types 0 and 7),
-    /// a hit of no damage. UNVERIFIED estimate: the share of both, as one chance.
+    /// a hit of 0 damage. UNVERIFIED estimate: the share of both, as one chance.
     /// </summary>
     public const double AvoidChance = 0.09;
     public const string AvoidedProcKey = "helena_attack_avoided";
@@ -30,7 +30,7 @@ public class Attack : HelenaAbility
     {
         TriggerCooldown(ctx);
         if (target is not { IsSleeping: false }) return;
-        // A swing the enemy avoids is a hit of no damage.
+        // A swing the enemy avoids is a hit of 0 damage.
         bool avoided = ctx.Outcomes.RollProc(AvoidedProcKey, AvoidChance, ctx, target);
         DealDamage(ctx, target, avoided ? 0.0 : 1.0, canCrit: !avoided);
     }

@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 
 /// <summary>
 /// Talent 648: "When you are below 80% health, you gain +5% Block Chance and 20% increased Healing taken." The buff is
-/// effect 3094. It depends on Helena's health, which the engine does not simulate: a situational aura. No damage changes.
+/// effect 3094: a situational aura, up all fight in a sim and following the log in a replay.
 /// </summary>
 public class Defiance : Talent
 {

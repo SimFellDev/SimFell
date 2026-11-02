@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 
 /// <summary>
 /// Talent 649: "Your Sweeping Strike's Blood Rally lasts an additional 6 seconds, but its healing is reduced to 4% of your
-/// maximum health every 1 second." No damage changes.
+/// maximum health every 1 second."
 /// </summary>
 public class LingeringRush : Talent
 {

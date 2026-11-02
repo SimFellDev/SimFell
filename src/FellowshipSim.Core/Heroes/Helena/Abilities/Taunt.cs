@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 
 /// <summary>
 /// Ability 966: "Taunt the target, forcing it to attack you for 6 sec. Can be used during Global Cooldown." 2 charges, 8s
-/// each. No damage.
+/// each.
 /// </summary>
 public class Taunt : HelenaAbility
 {

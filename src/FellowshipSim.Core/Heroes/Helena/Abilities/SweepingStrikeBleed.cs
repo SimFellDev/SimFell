@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// <summary>
 /// Effect 1276, Sweeping Strike's bleed: "Enemies hit by Sweeping Strike bleed for 60% of Strength physical damage every 1.5
 /// seconds for 12 seconds" (EffectType.Dot, EffectLogic.CarryOverDuration). One bleed on each enemy, ticking every hasted
-/// period, with a partial final tick. Sweeping Strike applies it; an action list does not cast it.
+/// period, with a partial final tick. Sweeping Strike applies it.
 /// </summary>
 public class SweepingStrikeBleed : HelenaAbility
 {
@@ -75,7 +75,7 @@ public class SweepingStrikeBleed : HelenaAbility
 
     public override void Execute(SimulationContext ctx, EnemyTarget target) { }
 
-    /// <summary>An action list never casts it: Sweeping Strike applies it.</summary>
+    /// <summary>Sweeping Strike alone applies it.</summary>
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
         reason = explain ? $"{Name} is applied by Sweeping Strike" : null;

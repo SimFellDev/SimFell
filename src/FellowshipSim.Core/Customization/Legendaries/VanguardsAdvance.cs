@@ -6,7 +6,7 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// <summary>
 /// Legendary power 391 (Helena's Warmaster Greaves, item 5900): "Your Charge ability triggers a free Shockwave upon impact.
 /// Additionally, enemies that take damage from your Shockwave deal 5% reduced physical damage to you for 5 seconds." The
-/// debuff is effect 2429. UNVERIFIED: no log has it; the free Shockwave is taken to deal Shockwave's hits and nothing else.
+/// debuff is effect 2429. UNVERIFIED: no log has it; the free Shockwave is taken to deal Shockwave's hits.
 /// </summary>
 public class VanguardsAdvance : Legendary
 {
