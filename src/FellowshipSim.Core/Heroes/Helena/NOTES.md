@@ -52,10 +52,10 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 ## Free dice
 
 - Free dice's hits on several enemies reach every enemy the log has Helena hitting between two casts. Shield Throw
-  bounces 5 times against the log's average of 3.5 hits per cast (free dice 101.4% of the log), and Razor Shrapnel
-  strikes up to 12 of those enemies (122.9%).
+  bounces 5 times against the log's average of 3.5 hits per cast (free dice 101.3% of the log), and Razor Shrapnel
+  strikes up to 12 of those enemies (123.0%).
 - Rising Spirit's stacks were free dice's excess: free dice dealt 107.2% of the log's damage with the log's hit counts and
   crit rates, with 5.30 stacks on average at Helena's hits against exact replay's 3.64. Each Spirit Refund adds 2s to
-  Rising Spirit's time left, 10s in all over a chain of stacks, in the engine as in the logs. Free dice now deals 100.8%
-  of the log, the log at its 37.5% point.
+  Rising Spirit's time left, 10s in all over a chain of stacks, in the engine as in the logs. Free dice now deals 100.7%
+  of the log, the log at its 39.2% point.
 - Siegebreaker's Spirit of Heroism is effect 1350 (240 applications), never effect 2253.
