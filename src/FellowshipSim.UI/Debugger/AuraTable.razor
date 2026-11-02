@@ -1,0 +1,23 @@
+@* Auras with their stacks and the seconds left. *@
+@if (Auras.Count == 0)
+{
+    <p class="meta">None</p>
+}
+else
+{
+    <table>
+        <tbody>
+            @foreach (var aura in Auras)
+            {
+                <tr>
+                    <th scope="row">@aura.Name@(aura.Stacks > 1 ? $" ×{aura.Stacks}" : "")</th>
+                    <td>@(aura.Remains is { } remains ? AplValues.Seconds(remains) : "no end")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AplAuraValue> Auras { get; set; } = [];
+}

@@ -31,6 +31,12 @@ public enum AplTokenKind
     Function,
     /// <summary>A path that reads nothing the hero has: it evaluates to 0, or to a scope's first property.</summary>
     Unknown,
+    /// <summary>A '#' line of an action list.</summary>
+    Comment,
+    /// <summary>A list's prefix (<c>actions.aoe</c>), or the list a run_action_list or call_action_list names.</summary>
+    List,
+    /// <summary>An argument's key, a target selection, a variable op, or an action that controls the list (run_action_list).</summary>
+    Keyword,
 }
 
 /// <summary>One token of an expression: its place in the text, its kind, and why it is <see cref="AplTokenKind.Unknown"/>.</summary>
@@ -170,7 +176,7 @@ public sealed class AplVocabulary
         {
             return (AplTokenKind.Named, null);
         }
-        if (property.Scope == PropertyExpression.PrevScope)
+        if (property.Scope is PropertyExpression.PrevScope or PropertyExpression.PrevGcdScope)
         {
             var hero = _hero ?? throw new InvalidOperationException($"This vocabulary of {Hero} was read from JSON and has no hero to check against.");
             return AplNames.FindAbility(hero, property.Name!) != null
@@ -201,6 +207,9 @@ public sealed class AplVocabulary
         return property.Scope == PropertyExpression.BuffScope ? (AplTokenKind.Buff, null) : (AplTokenKind.Debuff, null);
     }
 
+    /// <summary>Tokens of the action list <paramref name="text"/> with their kinds, and its first line outside the grammar (<see cref="AplListCheck"/>).</summary>
+    public AplExpressionCheck CheckList(string text) => AplListCheck.Check(this, text);
+
     /// <summary>Tokens of <paramref name="text"/> with their kinds, and the parse error of text outside the grammar.</summary>
     public AplExpressionCheck Check(string text)
     {
@@ -210,21 +219,7 @@ public sealed class AplVocabulary
             return new AplExpressionCheck([], tokenized.FormatErrorMessageFragment(), tokenized.ErrorPosition.Absolute);
         }
 
-        var all = tokenized.Value.ToArray();
-        var tokens = all.Select((t, i) =>
-        {
-            var (kind, problem) = t.Kind switch
-            {
-                AplToken.Number => (AplTokenKind.Number, null),
-                AplToken.LParen or AplToken.RParen => (AplTokenKind.Parenthesis, null),
-                // A function's name, before its arguments in parentheses.
-                AplToken.Identifier when i + 1 < all.Length && all[i + 1].Kind == AplToken.LParen
-                                         && AplFunctions.ByName.ContainsKey(t.ToStringValue()) => (AplTokenKind.Function, null),
-                AplToken.Identifier => Classify(new PropertyExpression(t.ToStringValue())),
-                _ => (AplTokenKind.Operator, (string?)null),
-            };
-            return new AplTokenSpan(t.Position.Absolute, t.Span.Length, kind, problem);
-        }).ToList();
+        var tokens = Classified(tokenized.Value.ToArray());
         string inWords = InWords(text, tokenized.Value);
 
         try
@@ -237,6 +232,22 @@ public sealed class AplVocabulary
             return new AplExpressionCheck(tokens, e.Message, e.ErrorPosition.HasValue ? e.ErrorPosition.Absolute : text.Length, inWords);
         }
     }
+
+    /// <summary>The kind of each of an expression's tokens, at the offsets the tokenizer gave them.</summary>
+    internal List<AplTokenSpan> Classified(Token<AplToken>[] all) => all.Select((t, i) =>
+    {
+        var (kind, problem) = t.Kind switch
+        {
+            AplToken.Number => (AplTokenKind.Number, null),
+            AplToken.LParen or AplToken.RParen => (AplTokenKind.Parenthesis, null),
+            // A function's name, before its arguments in parentheses.
+            AplToken.Identifier when i + 1 < all.Length && all[i + 1].Kind == AplToken.LParen
+                                     && AplFunctions.ByName.ContainsKey(t.ToStringValue()) => (AplTokenKind.Function, null),
+            AplToken.Identifier => Classify(new PropertyExpression(t.ToStringValue())),
+            _ => (AplTokenKind.Operator, (string?)null),
+        };
+        return new AplTokenSpan(t.Position.Absolute, t.Span.Length, kind, problem);
+    }).ToList();
 
     // Each '&', '|' and '!' becomes its word, with a space on each side unless the text starts or ends there or a
     // parenthesis or space is already next to it. Every other character stays as written.

@@ -174,7 +174,7 @@ public class ConditionBuilderTests
             [
                 .. PropertyExpression.Scopes.Keys, ConditionBuilder.ResourceKind, ConditionBuilder.NamedKind, ConditionBuilder.ActionValueKind,
                 .. PropertyExpression.BuildScopes.Keys, PropertyExpression.ActiveDotScope, PropertyExpression.VariableScope,
-                PropertyExpression.PrevScope,
+                PropertyExpression.PrevScope, PropertyExpression.PrevGcdScope,
             ],
             kinds.Select(k => k.Id));
         Assert.Equal("Debuff on target", kinds.Single(k => k.Id == PropertyExpression.DebuffScope).Label);

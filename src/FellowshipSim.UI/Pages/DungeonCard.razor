@@ -1,12 +1,12 @@
 @using System.Globalization
 @using FellowshipSim.Core.Dungeons
 @using Microsoft.JSInterop
-@inject SimPageState State
+
 @inject DungeonStore Store
 @inject Visitor Visitor
 @inject IJSRuntime JS
 @*
-    The dungeon of a dungeon fight on the Modes tab: its name and the saved dungeons, its comment, the hero share and its variance and time limit,
+    The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment, the hero share and its variance and time limit,
     then its pulls in the order they run, each built as an action of the action-list editor, and its profile text.
 *@
 <Card Title="Dungeon">
@@ -115,6 +115,9 @@
 </Card>
 
 @code {
+    /// <summary>The fight's settings: the Sim page's, or the APL Debugger's own.</summary>
+    [Parameter, EditorRequired] public SimPageState State { get; set; } = null!;
+
     [Parameter] public EventCallback OnChanged { get; set; }
 
     // The Difficulty field shows once the engine models each enemy.

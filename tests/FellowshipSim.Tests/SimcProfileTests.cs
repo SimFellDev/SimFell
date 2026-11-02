@@ -92,4 +92,41 @@ public class SimcProfileTests
         Assert.Contains("line 2", error.Message);
         Assert.Contains("not_a_talent", error.Message);
     }
+
+    [Fact]
+    public void The_Action_List_Keeps_Its_Comments()
+    {
+        const string text = """
+            # The profile's own comment.
+            rime="sww"
+            primary_stat=300
+
+            # opener
+            actions+=/ice_comet
+            # filler
+            #
+            #   indented
+            actions+=/frost_bolt
+            # trailing
+            """;
+        var profile = SimcProfile.Parse(text);
+        Assert.Equal("""
+            # opener
+            actions+=/ice_comet
+            # filler
+            #
+            #   indented
+            actions+=/frost_bolt
+            # trailing
+
+            """.ReplaceLineEndings(), profile.ActionList.ReplaceLineEndings());
+        Assert.Equal(profile.ActionList, SimcProfile.Parse(profile.Format()).ActionList);
+    }
+
+    [Fact]
+    public void A_Comment_Above_A_Build_Line_Is_Not_The_Action_Lists()
+    {
+        var profile = SimcProfile.Parse("rime=\"x\"\nactions+=/frost_bolt\n# the stats\nprimary_stat=300\n");
+        Assert.Equal("actions+=/frost_bolt" + Environment.NewLine, profile.ActionList);
+    }
 }

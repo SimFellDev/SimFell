@@ -338,15 +338,7 @@
     private void UseBuild(CharacterBuild build) => State.UseBuild(build);
 
     // The fights every run of a sim has.
-    private SimSettings Settings() => new(State.Iterations, State.FightSeconds, State.Targets,
-        DegreeOfParallelism: Math.Clamp(State.Threads, 1, MaxThreads),
-        LengthVariance: State.VaryLength ? State.LengthVariancePercent / 100 : 0,
-        HealthFollowsTime: true,
-        StartingSpirit: State.StartWithSpirit ? State.StartingSpirit : 0,
-        Boss: State.Boss,
-        Dungeon: State.Mode == SimMode.Dungeon ? State.Dungeon : null,
-        HeroShareVariance: State.VaryHeroShare ? State.HeroShareVariancePercent / 100 : 0,
-        ReactionDelays: State.ReactionDelays);
+    private SimSettings Settings() => State.FightSettings(State.Iterations, Math.Clamp(State.Threads, 1, MaxThreads));
 
     private async Task StartAsync()
     {
@@ -462,7 +454,7 @@
                 done.Add(new SimRun(run.Label, run.Detail, run.Hero, run.ListName, run.ListValue, run.ProfileText, result));
             }
             var saved = new SavedSim(c.Job.Id, title, done[0].Hero, first.Build.Name, done[0].Profile, settings.TargetCount, done[0].Result,
-                DateTime.UtcNow, done);
+                DateTime.UtcNow, done, Settings: settings);
             await results.SaveAsync(visitor, saved, CancellationToken.None);
             return saved;
         }, first);
@@ -503,7 +495,7 @@
         var job = Jobs.Enqueue(SimJobKind.Sim, title, async c =>
         {
             var result = await engine.SimulateAsync(profile, settings, c, c.CancellationToken);
-            var saved = new SavedSim(c.Job.Id, title, profile.Build.Hero, profile.Build.Name, profileText, settings.TargetCount, result, DateTime.UtcNow);
+            var saved = new SavedSim(c.Job.Id, title, profile.Build.Hero, profile.Build.Name, profileText, settings.TargetCount, result, DateTime.UtcNow, Settings: settings);
             await results.SaveAsync(visitor, saved, CancellationToken.None);
             return saved;
         }, profile);

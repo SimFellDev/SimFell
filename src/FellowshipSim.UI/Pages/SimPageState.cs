@@ -1,5 +1,6 @@
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
+using FellowshipSim.Engine;
 using FellowshipSim.UI.Build;
 using FellowshipSim.UI.Services;
 using FellowshipSim.UI.Shared;
@@ -148,6 +149,20 @@ public sealed class SimPageState
 
     /// <summary>True when the hero takes a player's time to cast once the global cooldown, a cast or a channel lets them.</summary>
     public bool ReactionDelays { get; set; } = true;
+
+    /// <summary>
+    /// The settings of <paramref name="iterations"/> fights of this fight on <paramref name="threads"/> threads, the first
+    /// with seed <paramref name="firstSeed"/>.
+    /// </summary>
+    public SimSettings FightSettings(int iterations, int threads, int firstSeed = 1) => new(iterations, FightSeconds, Targets, firstSeed,
+        DegreeOfParallelism: threads,
+        LengthVariance: VaryLength ? LengthVariancePercent / 100 : 0,
+        HealthFollowsTime: true,
+        StartingSpirit: StartWithSpirit ? StartingSpirit : 0,
+        Boss: Boss,
+        Dungeon: Mode == SimMode.Dungeon ? Dungeon : null,
+        HeroShareVariance: VaryHeroShare ? HeroShareVariancePercent / 100 : 0,
+        ReactionDelays: ReactionDelays);
 
     public SimExtra Extra { get; set; } = SimExtra.None;
 

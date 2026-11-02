@@ -112,6 +112,21 @@ public sealed class SimWorkerPool(IJSRuntime js)
         }
     }
 
+    /// <summary>The first fight of a sim with every decision of its action list, on a worker; the worker's <see cref="TraceReply"/> JSON.</summary>
+    public async Task<string> TraceFightAsync(string profileJson, string settingsJson)
+    {
+        var pool = await PoolAsync();
+        try
+        {
+            return await pool.InvokeAsync<string>("traceFight", CancellationToken.None, profileJson, settingsJson);
+        }
+        catch (JSException e)
+        {
+            throw new SimEngineException(Reason(e));
+        }
+    }
+
+
     // The first line of a worker's error, without the JS error's own prefix.
     private static string Reason(JSException e)
     {

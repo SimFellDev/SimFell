@@ -135,6 +135,27 @@ public static partial class SimWorker
         return JsonSerializer.Serialize(reply, SimChunks.Json);
     }
 
+    /// <summary>
+    /// The first fight of a sim with every decision of its action list: a <see cref="TraceReply"/> as JSON, with the trace
+    /// or the reason the engine refused it.
+    /// </summary>
+    [JSExport]
+    public static async Task<string> TraceFight(string profileJson, string settingsJson)
+    {
+        TraceReply reply;
+        try
+        {
+            reply = new TraceReply(await new LocalSimEngine().TraceFightAsync(Read<SimcProfile>(profileJson), Read<SimSettings>(settingsJson)), null);
+        }
+        catch (SimEngineException e)
+        {
+            reply = new TraceReply(null, e.Message);
+        }
+        return JsonSerializer.Serialize(reply, SimChunks.Json);
+    }
+
+
+
     /// <summary>Keeps a downloaded fight in the browser's storage (sim/fights.js), for the next replay of it.</summary>
     [JSImport("saveFight", "simWorker")]
     private static partial Task SaveFight(string reportCode, int fightId, string text);

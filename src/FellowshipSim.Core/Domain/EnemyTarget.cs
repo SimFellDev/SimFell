@@ -76,6 +76,9 @@ public class EnemyTarget : Actor
         HeroShare = heroShare;
     }
 
+    /// <summary>True once <see cref="FollowTime"/> is called and until <see cref="FollowDamage"/>.</summary>
+    public bool HealthFollowsTime => _clock != null;
+
     public double HealthPercent => HealthFraction * 100.0;
     public double HealthFraction => MaxHealth > 0 ? CurrentHealth / MaxHealth : 0.0;
 

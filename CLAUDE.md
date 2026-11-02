@@ -60,8 +60,13 @@ or the desktop app).
 - **Talents** attach to the hero in `Bind` through events and multiplier lists on `Hero` and `Ability`. Abilities never
   check for talents.
 - **APL** (`Core/APL`) is a simc-style action-list grammar parsed with Superpower, plus a formatter.
+  `AplProgram.TryAct` runs each decision with an `IAplDecisionTrace` struct: `NoDecisionTrace` in a sim, and
+  `LoggedDecisionTrace` in a program from `AplProgram.BindTraced`. That program's `APL/Debugging/AplDecisionLog` keeps
+  each decision's hero, enemies, steps and the values of each expression (`AplProbe`). `MonteCarloSimulator.TraceFight`
+  fights one fight of a run with such a program (`AplFightTrace`); its casts are `RollFight`'s for every hero
+  (`AplFightTraceTests`).
 - **FellowshipSim.Engine** is a class library. `ISimEngine` is every call a frontend makes: heroes, action-list
-  vocabulary, checks, parse and write, reviews and sims. `LocalSimEngine` runs them in-process. Every argument and result
+  vocabulary, checks, parse and write, reviews, sims and traced fights. `LocalSimEngine` runs them in-process. Every argument and result
   round-trips through JSON (`SimEngineContractTests`). `Replay/` has replay-script building from a logged fight, exact
   replay, free dice, their HTML review pages, and everything a replay needs to read a log (`LogResources`,
   `ProcEvidence`, `ClassTuningHistory`, `PartyBuffs`); none of it is in Core. `Jobs/SimJobQueue` runs sims and reviews
@@ -83,10 +88,14 @@ or the desktop app).
   open list when the result tabs overflow). Both frames have `Jobs/ResultsSidebar`: the queue with live progress, then
   the saved sims and reviews. `Shell/AppPage` lists the menu pages; their routes come from each page's `@page`. Every
   link inside the app goes through `IAppViews`, since the desktop app has no router. Pages run in Interactive Server and in BlazorWebView, so no component uses `HttpContext` or static server
-  rendering. The action-list editor is in `Apl/`, with JS only for caret, drag and stored-mode work (`wwwroot/apl`);
+  rendering. The action-list editor is in `Apl/`, with JS only for the code editor (CodeMirror, from `tools/codemirror`), drag and stored-mode work (`wwwroot/apl`);
   `wwwroot/shell` scrolls the desktop result tabs. Every tooltip is the app's own: `data-tooltip="..."` for plain text,
   `Shared/Tooltip` for markup, both shown by `wwwroot/tooltip` in each frame's `Shared/TooltipLayer`; no element has a
-  `title` (`TooltipTests`).
+  `title` (`TooltipTests`). The APL Debugger (`Debugger/`) is out of the menu: one fight from
+  `ISimEngine.TraceFightAsync`, stepped decision by decision. A sim result's Replay in debugger opens the sim's typical
+  fight, and the APL Editor's Debug opens its action list with a build and the Modes tab's fight cards (`Pages/FightCards`)
+  on its own `SimPageState`; both go through `AplDebuggerState` and `IAppViews.ShowDebugger` (the web app's
+  `/apl-debugger`, the desktop app's debugger tab).
 - **FellowshipSim.Service** is the web app: a Blazor Web App (Interactive Server) hosting FellowshipSim.UI. Its
   `RemoteSimEngine` calls the engine server. It serves a review's files at `/reviews` to the visitor who ran it alone.
   Its FellowshipLogs credentials come from the host's environment, the `simfell` user secrets in development, or the

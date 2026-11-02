@@ -42,6 +42,7 @@ public static class ConditionBuilder
         var activeDot = PropertyExpression.ScopeDocs[PropertyExpression.ActiveDotScope];
         var variable = PropertyExpression.ScopeDocs[PropertyExpression.VariableScope];
         var prev = PropertyExpression.ScopeDocs[PropertyExpression.PrevScope];
+        var prevGcd = PropertyExpression.ScopeDocs[PropertyExpression.PrevGcdScope];
         return
         [
             .. v.Scopes.Select(scope => new ConditionKind(scope.Key, PropertyExpression.ScopeDocs[scope.Key].Label, scope.Key switch
@@ -64,6 +65,7 @@ public static class ConditionBuilder
             new ConditionKind(PropertyExpression.VariableScope, variable.Label, AplTokenKind.Named, variables.Select(n => new AplName(n, n)).ToList(),
                 Description: variable.Description),
             new ConditionKind(PropertyExpression.PrevScope, prev.Label, AplTokenKind.Cooldown, v.Abilities, Description: prev.Description),
+            new ConditionKind(PropertyExpression.PrevGcdScope, prevGcd.Label, AplTokenKind.Cooldown, v.Abilities, Description: prevGcd.Description),
         ];
     }
 
@@ -126,7 +128,8 @@ public static class ConditionBuilder
 
     /// <summary>Scopes of "&lt;scope&gt;.&lt;name&gt;" paths: the build's parts, the enemies with a debuff, and variables.</summary>
     private static bool IsNameScope(AplVocabulary v, string scope) =>
-        v.BuildNames.ContainsKey(scope) || scope is PropertyExpression.ActiveDotScope or PropertyExpression.VariableScope or PropertyExpression.PrevScope;
+        v.BuildNames.ContainsKey(scope) || scope is PropertyExpression.ActiveDotScope or PropertyExpression.VariableScope or PropertyExpression.PrevScope
+            or PropertyExpression.PrevGcdScope;
 
     /// <summary>
     /// A term with no value picked yet, parentheses with no picked term, a row with no picked term on its left, and a group

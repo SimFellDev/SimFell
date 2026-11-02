@@ -92,6 +92,8 @@ public abstract class BoundExpression
                 return new BoundNamed(hero, (_, ctx) => read(ability, ctx.CurrentTime));
             case PropertyExpression.PrevScope:
                 return AplNames.FindAbility(hero, p.Name!) is { } previous ? new BoundPrevious(previous) : new BoundConstant(0.0);
+            case PropertyExpression.PrevGcdScope:
+                return AplNames.FindAbility(hero, p.Name!) is { } previousGcd ? new BoundPreviousGcd(previousGcd) : new BoundConstant(0.0);
             case PropertyExpression.ActiveDotScope:
                 return new BoundActiveDot(hero, p.Name!);
             case PropertyExpression.VariableScope:
@@ -382,6 +384,9 @@ internal sealed class BoundVariables
 
     public BoundVariableSlot Slot(string name) =>
         _slots.TryGetValue(name, out var slot) ? slot : _slots[name] = new BoundVariableSlot();
+
+    /// <summary>Each variable by name.</summary>
+    public IEnumerable<KeyValuePair<string, BoundVariableSlot>> Slots => _slots;
 }
 
 /// <summary>
@@ -484,6 +489,15 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
 internal sealed class BoundPrevious(Ability ability) : BoundEventValue
 {
     public override double EvaluateNumeric(SimulationContext ctx) => ctx.PreviousCast == ability ? 1.0 : 0.0;
+}
+
+/// <summary>
+/// The last cast started on the global cooldown (<c>prev_gcd.&lt;ability&gt;</c>): 1 when it is <paramref name="ability"/>; it
+/// changes only in a cast.
+/// </summary>
+internal sealed class BoundPreviousGcd(Ability ability) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => ctx.PreviousGcdCast == ability ? 1.0 : 0.0;
 }
 
 /// <summary>

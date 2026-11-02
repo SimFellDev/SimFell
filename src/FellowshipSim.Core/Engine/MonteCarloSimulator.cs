@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
 
@@ -222,6 +223,22 @@ public class MonteCarloSimulator
             worker.Recorder.KeepFight = false;
             _idle.Add(worker);
         }
+    }
+
+    /// <summary>
+    /// Fight <paramref name="fight"/> of a run with these arguments again, with its seed, on a new hero whose action lists
+    /// log every decision (<see cref="AplProgram.BindTraced"/>): each decision's hero, enemies, steps and cast, and the
+    /// fight's casts. Its decisions and casts are those of the same fight in <see cref="RollFight"/>.
+    /// </summary>
+    public AplFightTrace TraceFight(int fight, SimTime duration, int targetCount = 1, int firstSeed = 1, FightOptions? options = null)
+    {
+        options ??= FightOptions.Default;
+        var hero = _newHero();
+        var program = AplProgram.BindTraced(_actions, hero);
+        var worker = new Worker(hero, program, new FightRecorder(hero)) { Recorder = { KeepFight = true } };
+        int seconds = (int)Math.Ceiling(Math.Max(1.0, options.LongestLength(duration).TotalSeconds));
+        var (_, end) = Fight(worker, options.Length(duration, firstSeed + fight), targetCount, firstSeed + fight, fight, seconds, options, new Totals());
+        return program.Log!.Trace(end.TotalSeconds, worker.Recorder.Fight.Casts);
     }
 
     private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations,

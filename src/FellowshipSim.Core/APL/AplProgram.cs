@@ -1,3 +1,4 @@
+using FellowshipSim.Core.APL.Debugging;
 using FellowshipSim.Core.APL.Expressions;
 
 namespace FellowshipSim.Core.APL;
@@ -32,6 +33,46 @@ public sealed class AplProgram
         }
         return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
     }
+
+    /// <summary>
+    /// Binds <paramref name="lists"/> to <paramref name="hero"/> as <see cref="Bind"/> does, with a log of every decision
+    /// (<see cref="Log"/>). Each step has its line and each expression its <see cref="AplProbe"/>, bound with the same
+    /// variables.
+    /// </summary>
+    internal static AplProgram BindTraced(AplActionLists lists, Hero hero)
+    {
+        var sourceLines = lists.Lists.SelectMany(kv => kv.Value.Select(action => (List: kv.Key, Action: action)))
+            .OrderBy(line => line.Action.LineNumber).ToList();
+        var lineOf = sourceLines.Select((line, index) => (line.Action, index)).ToDictionary(x => x.Action, x => x.index);
+        var bound = lists.Lists.ToDictionary(kv => kv.Key, _ => new BoundAplList());
+        var variables = new BoundVariables();
+        var inBuild = new HashSet<AplAction>();
+        foreach (var (name, actions) in lists.Lists)
+        {
+            var steps = new List<BoundAplStep>();
+            foreach (var action in actions)
+            {
+                if (BindStep(action, hero, bound, variables) is not { } step) continue;
+                inBuild.Add(action);
+                step.Line = lineOf[action];
+                if (action.Condition != null) step.ConditionProbe = AplProbe.Of(action.Condition, hero, variables);
+                if (step is BoundAplAction ability && action.TargetIf != null)
+                {
+                    ability.TargetIfProbe = AplProbe.Of(action.TargetIf.Expression, hero, variables);
+                }
+                steps.Add(step);
+            }
+            bound[name].Steps = steps.ToArray();
+        }
+        var lines = sourceLines.Select(line => new AplTraceLine(line.List, line.Action.LineNumber, line.Action.RawLine, inBuild.Contains(line.Action))).ToList();
+        return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray())
+        {
+            Log = new AplDecisionLog(hero, lines, variables),
+        };
+    }
+
+    /// <summary>The log of every decision, for a program bound with <see cref="BindTraced"/>; null otherwise.</summary>
+    internal AplDecisionLog? Log { get; private init; }
 
     /// <summary>
     /// The time of the next decision after one that cast nothing: the next event, or the earliest time anything the lists
@@ -106,10 +147,17 @@ public sealed class AplProgram
     }
 
     /// <summary>Casts the first ready action, starting at <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.</summary>
-    public bool TryAct(SimulationContext ctx) => TryAct(ctx, _default);
+    public bool TryAct(SimulationContext ctx)
+    {
+        if (Log is not { } log) return TryAct(ctx, _default, default(NoDecisionTrace));
+        log.Begin(ctx);
+        bool acted = TryAct(ctx, _default, new LoggedDecisionTrace(log));
+        log.End();
+        return acted;
+    }
 
     // A list already running in this decision is skipped, so lists that name each other end.
-    private static bool TryAct(SimulationContext ctx, BoundAplList? list)
+    private static bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, TTrace trace) where TTrace : struct, IAplDecisionTrace
     {
         if (list == null || list.Running) return false;
         list.Running = true;
@@ -119,18 +167,34 @@ public sealed class AplProgram
             {
                 if (step is BoundAplVariable variable)
                 {
-                    if (variable.ConditionHolds(ctx)) variable.Run(ctx);
+                    bool holds = variable.ConditionHolds(ctx);
+                    trace.Variable(variable, ctx, holds);
+                    if (holds)
+                    {
+                        variable.Run(ctx);
+                        trace.VariableSet(variable, ctx);
+                    }
                     continue;
                 }
                 if (step is BoundAplListAction listAction)
                 {
-                    if (listAction.List.Running || !listAction.ConditionHolds(ctx)) continue;
-                    bool acted = TryAct(ctx, listAction.List);
+                    bool running = listAction.List.Running;
+                    bool enters = !running && listAction.ConditionHolds(ctx);
+                    trace.ListAction(listAction, ctx,
+                        running ? AplStepOutcome.ListRunning : enters ? AplStepOutcome.ListEntered : AplStepOutcome.ConditionFalse);
+                    if (!enters) continue;
+                    bool acted = TryAct(ctx, listAction.List, trace);
+                    trace.ListEnded();
                     if (acted || listAction.Kind == AplListAction.Run) return acted;
                     continue;
                 }
                 var action = (BoundAplAction)step;
-                if (action.CanExecute(ctx) && action.Execute(ctx)) return true;
+                bool canExecute = action.CanExecute(ctx);
+                trace.Action(action, ctx, canExecute);
+                if (!canExecute) continue;
+                var attempt = action.Execute(ctx);
+                trace.Cast(attempt);
+                if (attempt.Succeeded) return true;
             }
             return false;
         }
@@ -155,6 +219,12 @@ public abstract class BoundAplStep
     private protected BoundAplStep(BoundExpression? condition) => Condition = condition;
 
     public BoundExpression? Condition { get; }
+
+    /// <summary>The step's index in its traced fight's lines (<see cref="AplFightTrace.Lines"/>); set by <see cref="AplProgram.BindTraced"/>.</summary>
+    internal int Line { get; set; } = -1;
+
+    /// <summary>The condition's probe, for a program bound with <see cref="AplProgram.BindTraced"/>.</summary>
+    internal AplProbe? ConditionProbe { get; set; }
 
     /// <summary>True when the step has no condition or its condition is true at the current target.</summary>
     public bool ConditionHolds(SimulationContext ctx) => Condition == null || Condition.Evaluate(ctx);
@@ -188,6 +258,9 @@ public sealed class BoundAplVariable : BoundAplStep
 
     public BoundExpression? Value { get; }
 
+    /// <summary>The variable's value in the fight of <paramref name="ctx"/>.</summary>
+    internal double Read(SimulationContext ctx) => _slot.Read(ctx);
+
     public void Run(SimulationContext ctx)
     {
         double value = Value?.EvaluateNumeric(ctx) ?? 0.0;
@@ -219,6 +292,12 @@ public sealed class BoundAplAction : BoundAplStep
 
     public Ability Ability { get; }
 
+    /// <summary>The <c>target_if</c> selection, or null for an action with none.</summary>
+    internal AplTargetSelection? TargetSelection => _targetIf?.Selection;
+
+    /// <summary>The <c>target_if</c> expression's probe, for a program bound with <see cref="AplProgram.BindTraced"/>.</summary>
+    internal AplProbe? TargetIfProbe { get; set; }
+
     public bool CanExecute(SimulationContext ctx)
     {
         if (!TrySelectTarget(ctx, out var target)) return false;
@@ -227,19 +306,19 @@ public sealed class BoundAplAction : BoundAplStep
     }
 
     /// <summary>
-    /// Starts the action's ability. Returns false if nothing was cast. The cast sets the hasted global cooldown
+    /// Starts the action's ability, or has the engine's reason for refusing it. The cast sets the hasted global cooldown
     /// (<see cref="SimulationContext.BeginCast"/>).
     /// </summary>
-    public bool Execute(SimulationContext ctx)
+    public CastAttempt Execute(SimulationContext ctx)
     {
-        if (!TrySelectTarget(ctx, out var target)) return false;
+        if (!TrySelectTarget(ctx, out var target)) return CastAttempt.Rejected("no target");
         if (target == null)
         {
             target = ctx.AddEnemy(1, 1, "Target Dummy");
             ctx.Player.CurrentTarget = target;
         }
 
-        return ctx.BeginCast(_hero, Ability, target).Succeeded;
+        return ctx.BeginCast(_hero, Ability, target);
     }
 
     /// <summary>
@@ -370,7 +449,7 @@ public sealed class BoundAplAction : BoundAplStep
     /// Target of the cast: the <c>target_if</c> pick among the active enemies, otherwise the current target (null when
     /// there are no enemies). False when <c>target_if</c> finds no enemy.
     /// </summary>
-    private bool TrySelectTarget(SimulationContext ctx, out EnemyTarget? target)
+    internal bool TrySelectTarget(SimulationContext ctx, out EnemyTarget? target)
     {
         var active = ctx.ActiveEnemies;
         target = ctx.Player.CurrentTarget ?? (active.Count > 0 ? active[0] : null);

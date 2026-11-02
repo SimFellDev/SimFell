@@ -6,6 +6,7 @@ namespace FellowshipSim.Engine;
 /// A Monte Carlo sim's DPS: mean, lowest and highest fight, standard deviation, and each ability's mean DPS; with its
 /// damage over time, each damage source's casts, hits and crits, each buff's and debuff's uptime, one typical fight's
 /// casts and hits in order, Spirit Points over the fight, and the DPS to bosses over the time of boss fighting. A result saved before those were recorded has them null.
+/// <see cref="TypicalFight"/> is the typical fight's index in the sim: its seed is the sim's first seed plus the index.
 /// </summary>
 public sealed record SimResult(
     double MeanDps,
@@ -22,10 +23,11 @@ public sealed record SimResult(
     IReadOnlyList<CastReport>? Casts = null,
     SpiritTimeline? Spirit = null,
     double? BossDps = null,
-    IReadOnlyList<HitReport>? Hits = null)
+    IReadOnlyList<HitReport>? Hits = null,
+    int? TypicalFight = null)
 {
     public static SimResult From(MonteCarloResult result) => new(result.MeanDps, result.MinDps, result.MaxDps,
         result.StandardDeviation, result.AbilityDpsBreakdown, result.Iterations, result.DurationSeconds,
         result.Timeline, result.Abilities, result.Buffs, result.PrimaryTargetDps, result.Casts, result.Spirit, result.BossDps,
-        result.Hits);
+        result.Hits, result.TypicalFight);
 }

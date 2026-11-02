@@ -146,6 +146,31 @@ public class AplConditionTests
     }
 
     [Fact]
+    public void Prev_Gcd_Reads_The_Last_Cast_Started_On_The_Global_Cooldown()
+    {
+        var (hero, ctx) = Fight();
+        var program = AplParser.ParseScript("actions=frost_bolt").Bind(hero);
+        var prev = BoundExpression.Bind(AplParser.ParseExpression("prev.frost_bolt"), hero);
+        var prevGcd = BoundExpression.Bind(AplParser.ParseExpression("prev_gcd.frost_bolt"), hero);
+        Assert.False(prevGcd.Evaluate(ctx));
+        Assert.True(program.TryAct(ctx));
+        Assert.True(prevGcd.Evaluate(ctx));
+
+        // Ice Blitz is off the global cooldown: prev reads it, prev_gcd still reads Frost Bolt.
+        var iceBlitz = AplNames.FindAbility(hero, "ice_blitz")!;
+        Assert.True(iceBlitz.IgnoresGcd);
+        Assert.True(ctx.BeginCast(hero, iceBlitz, ctx.Player.CurrentTarget, force: true).Succeeded);
+        Assert.False(prev.Evaluate(ctx));
+        Assert.True(prevGcd.Evaluate(ctx));
+        Assert.Equal(1.0, AplParser.ParseExpression("prev_gcd.frost_bolt").EvaluateNumeric(hero, ctx));
+        Assert.Equal(0.0, AplParser.ParseExpression("prev_gcd.ice_blitz").EvaluateNumeric(hero, ctx));
+        Assert.Equal(AplTokenKind.Cooldown, AplVocabulary.For("Rime").Check("prev_gcd.frost_bolt").Tokens[0].Kind);
+
+        ctx.Reset();
+        Assert.False(prevGcd.Evaluate(ctx));
+    }
+
+    [Fact]
     public void Oldest_And_Newest_Read_One_Application_Of_Engulfing_Flames()
     {
         var (hero, ctx) = Fight("Ardeos");

@@ -38,7 +38,8 @@ namespace FellowshipSim.Core.Import;
 /// weapon=ashas_chronoshift_spire
 /// actions+=/frost_bolt
 /// </code>
-/// Lines starting with '#' are comments. <c>actions</c> lines are the profile's action list.
+/// Lines starting with '#' are comments. <c>actions</c> lines are the profile's action list, with the comments directly
+/// above them and the comments after the last line when it is an <c>actions</c> line.
 /// </summary>
 public sealed record SimcProfile(CharacterBuild Build, string ActionList)
 {
@@ -49,18 +50,31 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         var build = new CharacterBuild();
         var actions = new StringBuilder();
         var percents = new HashSet<string>();
+        // '#' lines right above an actions line, or after the last line when it is an actions line, are the action list's.
+        var comments = new List<string>();
+        bool afterActions = false;
         Hero? hero = null;
         int lineNumber = 0;
         foreach (string raw in text.Split('\n'))
         {
             lineNumber++;
             string line = raw.Trim();
-            if (line.Length == 0 || line.StartsWith('#')) continue;
-            if (line.StartsWith("actions", StringComparison.Ordinal))
+            if (line.Length == 0) continue;
+            if (line.StartsWith('#'))
             {
-                actions.AppendLine(line);
+                comments.Add(line);
                 continue;
             }
+            if (line.StartsWith("actions", StringComparison.Ordinal))
+            {
+                foreach (string comment in comments) actions.AppendLine(comment);
+                comments.Clear();
+                actions.AppendLine(line);
+                afterActions = true;
+                continue;
+            }
+            comments.Clear();
+            afterActions = false;
             int eq = line.IndexOf('=');
             if (eq <= 0) throw Error(lineNumber, line, "expected key=value");
             string key = line[..eq].Trim();
@@ -82,6 +96,10 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             {
                 throw Error(lineNumber, line, e.Message);
             }
+        }
+        if (afterActions)
+        {
+            foreach (string comment in comments) actions.AppendLine(comment);
         }
         if (hero == null) throw new FormatException("The profile has no hero line.");
         // The ratings read from percentages count the stat enchants; a build's ratings are without them.

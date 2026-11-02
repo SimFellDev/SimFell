@@ -1,0 +1,29 @@
+@* Expressions and their values, each with its operands below it. A number written in the line shows no row of its own. *@
+<ul class="tree">
+    @foreach (var node in Nodes)
+    {
+        <li @key="node">
+            <div class="node @(node.Skipped ? "not-read" : "")">
+                <code class="text">@node.Text</code>
+                <span class="value @ValueClass(node)">@AplValues.Of(node)</span>
+                @if (node.Skipped)
+                {
+                    <span class="meta" data-tooltip="The decision did not read this: & stops at a false side and | at a true one">not read</span>
+                }
+            </div>
+            @if (Shown(node.Operands) is { Count: > 0 } operands)
+            {
+                <NodeTree Nodes="operands" />
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AplNodeTrace> Nodes { get; set; } = [];
+
+    private static IReadOnlyList<AplNodeTrace> Shown(IReadOnlyList<AplNodeTrace> operands) =>
+        operands.Where(o => o.Operands.Count > 0 || !double.TryParse(o.Text, System.Globalization.CultureInfo.InvariantCulture, out _)).ToList();
+
+    private static string ValueClass(AplNodeTrace node) => node.Truth ? (node.Value != 0 ? "true" : "false") : "number";
+}

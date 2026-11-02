@@ -18,6 +18,31 @@ public class ActionListEditorTests
     }
 
     [Fact]
+    public void Lists_from_the_text_keep_the_actions_as_they_were_at_the_start_and_end_of_each_list()
+    {
+        var editor = Loaded(new("frost_bolt"), new("ice_comet", "worb >= 3"), new("frost_bolt", Comment: "filler"));
+        var before = editor.Lists[0].Actions;
+        editor.Toggle(before[2].Key);
+        int changes = 0;
+        editor.Changed += () => changes++;
+
+        editor.Replace([new("frost_bolt"), new("ice_comet", "worb >= 4"), new("frost_bolt", Comment: "filler")]);
+        var after = editor.Lists[0].Actions;
+        Assert.Same(before[0], after[0]);
+        Assert.NotEqual(before[1].Key, after[1].Key);
+        Assert.Equal("worb >= 4", after[1].Condition);
+        Assert.Same(before[2], after[2]);
+        Assert.Contains(before[2].Key, editor.Open);
+        Assert.Equal(1, changes);
+
+        // A text that changes no action leaves the lists as they are.
+        var lists = editor.Lists;
+        editor.Replace([new("frost_bolt"), new("ice_comet", "worb >= 4"), new("frost_bolt", Comment: "filler")]);
+        Assert.Same(lists, editor.Lists);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
     public void A_new_action_is_open_and_its_removal_closes_it()
     {
         var editor = Loaded();

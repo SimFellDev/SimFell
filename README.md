@@ -14,6 +14,7 @@ SimFell runs in three ways. They share the same engine:
 ## You need
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org) with npm: the build bundles the code editor (CodeMirror)
 - The [Aspire CLI](https://aspire.dev), to run the web app
 - The .NET MAUI workload (`dotnet workload install maui`), to build the desktop app
 - To download fights, a FellowshipLogs account: **Sign in with FellowshipLogs** (top bar, or the Import cards) signs you in
@@ -266,7 +267,8 @@ parentheses, then each **Function**, then `not` or `-` before the term; typing f
 as its first argument and shows each argument in its own box. The empty select after a value adds a term, a comparison, or inside
 parentheses an `and` or `or` row; an emptied operator or comparison removes its term or value. **Text** shows the
 condition as text. Typing a name, a `.` or Ctrl+Space lists the names that fit; Enter or Tab writes the one picked.
-**Action list text** has the text of the list. Text pasted there loads into the editor. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
+**Action list text** has the text of the list, coloured and completed as a condition is, with each name the hero does not have and the first line
+that does not parse marked. An edit there goes into the editor once it parses. **Save** writes `data/apls/<hero>/<name>.simc` in the desktop app. In the web
 app, **Save** writes one of your own lists in `data/visitors/<visitor id>/apls/`, and **Saved** also lists the shared
 lists in `data/apls/`, marked "shared". A shared list loads into the editor, and saving it makes your own copy.
 
@@ -280,6 +282,8 @@ A target picks the enemy for the cast, written `target_if=` in the text:
 Conditions also have these values and functions:
 
 - `prev.<ability>`: 1 when the last cast the hero started is that ability (`prev.frost_bolt`)
+- `prev_gcd.<ability>`: 1 when the last cast the hero started on the global cooldown is that ability. A cast off the global
+  cooldown (Ice Blitz) leaves it as it is (`prev_gcd.frost_bolt`)
 - `debuff.<name>.oldest.remains` and `debuff.<name>.newest.remains` (and `.refreshable`): the application applied first or
   last, for a debuff whose every application runs on its own (`debuff.engulfing_flames.oldest.remains`)
 - `abs(x)`, `ceil(x)`, `floor(x)`, `round(x)`, `min(a, b, ...)` and `max(a, b, ...)`
@@ -295,6 +299,27 @@ Both take an `if` like any other action. A list the decision is already in is sk
 `run_action_list` has a warning until it has an action that is always ready: an ability with no cooldown and no cast
 requirement (Frost Bolt for Rime), with no condition or target.
 
+## Debug an action list
+
+The **APL Debugger** fights one fight of a build with an action list and keeps every decision. Two buttons open it:
+
+- **Replay in debugger** on a sim result fights the sim's typical fight again: the run's build and action list, the
+  sim's settings, and the typical fight's seed. The message says whether the fight's casts are the typical fight's. A
+  sim saved before sims kept their settings has the button off; run it again to replay it.
+- **Debug** in the APL Editor opens the list as it is in the editor, unsaved edits included. **Player profile** picks
+  the build: the Sim page's build of the list's hero, a saved build or a new build. The **Fight** and **Fight settings**
+  cards are the Sim page's Modes tab's, with settings of their own. **Fight settings** also has the **Seed**: any 32-bit
+  integer, 1 at first, and **Randomise** picks one from the current time. **Run fight** fights the first fight of a sim
+  with that seed.
+
+Each decision shows its time, the ability it cast and its target, and the action lines it read in order, indented for
+each list entered. Each line has its outcome: **Cast**, **Condition false**, **Not ready** (a cooldown, a resource or a
+cast already running), **No target**, **Cast refused**, a variable's value, or a list **Entered**. A line opens to show
+its condition as a tree of expressions with each one's value, and its `target_if` value at each enemy. A side of
+`&` or `|` the decision never read shows as not read. A **Cast refused** line opens to the engine's reason, such as the
+global cooldown. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and
+each enemy's health and debuffs, before the cast. **Previous** and **Next** (or the arrow keys) step one decision;
+**Previous cast** and **Next cast** step to the next decision that cast, and **Go to** (seconds or `m:ss`, then Enter) shows the last decision at or before that time.
 ## The two checks
 
 - **Exact replay** (the review pages): every crit, proc, target, landing time, damage amount and periodic tick time is

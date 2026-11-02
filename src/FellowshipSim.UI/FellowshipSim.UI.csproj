@@ -21,4 +21,28 @@
     <ProjectReference Include="..\FellowshipSim.Logs\FellowshipSim.Logs.csproj" />
   </ItemGroup>
 
+  <!-- The code editor's CodeMirror bundle (tools/codemirror), built with npm before the build. Each step runs only when its
+       inputs are newer than its output. -->
+  <PropertyGroup>
+    <CodeMirrorDir>$(MSBuildThisFileDirectory)..\..\tools\codemirror\</CodeMirrorDir>
+    <CodeMirrorBundle>$(MSBuildThisFileDirectory)wwwroot\lib\codemirror\codemirror.js</CodeMirrorBundle>
+  </PropertyGroup>
+
+  <Target Name="InstallCodeMirror" Inputs="$(CodeMirrorDir)package.json;$(CodeMirrorDir)package-lock.json"
+          Outputs="$(CodeMirrorDir)node_modules\.package-lock.json">
+    <Exec Command="npm ci --ignore-scripts --no-audit --no-fund" WorkingDirectory="$(CodeMirrorDir)" />
+  </Target>
+
+  <Target Name="BundleCodeMirror" DependsOnTargets="InstallCodeMirror" BeforeTargets="BeforeBuild"
+          Inputs="$(CodeMirrorDir)codemirror.js;$(CodeMirrorDir)package-lock.json" Outputs="$(CodeMirrorBundle)">
+    <Exec Command="npm run build" WorkingDirectory="$(CodeMirrorDir)" />
+  </Target>
+
+  <!-- A clean checkout has no bundle when the project's items are read, so the build adds it to the static web assets. -->
+  <Target Name="AddCodeMirrorBundle" AfterTargets="BundleCodeMirror">
+    <ItemGroup>
+      <Content Include="wwwroot\lib\codemirror\codemirror.js" Exclude="@(Content)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

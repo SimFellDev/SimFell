@@ -100,11 +100,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.hint {
-  margin: 14px 0 0;
-  font-size: 13px;
-}
-
 @media (max-width: 640px) {
   .choices {
     grid-template-columns: minmax(0, 1fr);
