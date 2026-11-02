@@ -5,9 +5,9 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// 126.96% of Agility physical damage every 0.2 seconds, leading in to a final powerful uppercut for 293.83% of Agility
 /// damage. You can move while channeling Earthfist Barrage. Earthfist Barrage heals you for 50% of the damage it deals.
 /// AFFECTED BY EARTHFALL: Earthfist Barrage deals +100% increased damage when it can consume a stack of Earthfall. Can be
-/// used during Global Cooldown". A 1 second channel. The game data gives it a 45 second cooldown,
-/// but combat logs (7Zmfx9gq6HjvThzc fight 2) have it cast 2.4-11 seconds apart (237.301, 239.672, 242.543, 250.895), so
-/// the engine gives it none.
+/// used during Global Cooldown". A 1 second channel, cast without a cooldown: combat logs
+/// (7Zmfx9gq6HjvThzc fight 2) have it cast 2.4-11 seconds apart (237.301, 239.672, 242.543, 250.895), against the game
+/// data's 45 second cooldown.
 /// </summary>
 public class EarthfistBarrage : MeikoFinisher
 {

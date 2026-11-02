@@ -11,19 +11,18 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
   (2,095), Wind Kick then Spirit Palm Rising Storm (856), Earth Fist then Wind Kick Earthfist Barrage (898), Earth Fist
   then Spirit Palm Rising Earth (397), Spirit Palm then Wind Kick Double Palm Strike (552), Spirit Palm then Earth Fist
   Spirited Vortex (511). After 3 builders in a row, the last two count.
-- **Stone Stomp** takes no combo, though the game data gives it a cost of 2 CP: 54 of its 111 casts have no builder
-  before them.
-- **Energy:** the builders cost 30 of a resource whose regeneration the game data does not give. The logs report no such
-  resource, and their builders come every global cooldown in runs of up to 46, so the engine leaves the cost out.
+- **Stone Stomp** is cast on its 60 second cooldown alone: 54 of its 111 casts have no builder before them.
+- **Combo Builders** are cast on the global cooldown alone, with no resource cost: the logs have them every global
+  cooldown in runs of up to 46.
 
 ## Damage
 
 - **Damage IDs:** Stone Shield's stones are logged as effect 1572, Shatter Earth's quake as effect 1556, the Sibling of
   Wind as effect 1548, Stone Stomp as effect 1542 and Forbidden Technique's eruption as effect 1509. Every hit of
   Earthfist Barrage, the uppercut too, is logged under 1112. Perfect Storm's extra kick is ability 2310.
-- **Conclusive Strikes** does not raise Earthfist Barrage, though the game data's changes list names it: Barrage hits
-  came in at 0.85-0.95 of the engine's with the 10% for the players with the talent, and 1.00-1.01 for those without it.
-  The other finishers match within 1.2% with it.
+- **Conclusive Strikes** raises Rising Storm, Rising Earth, Double Palm Strike, Lashing Stormkick and Spirited Vortex.
+  Those finishers match within 1.2% with the 10%. Earthfist Barrage's hits came in at 0.85-0.95 of the engine's with the
+  10% for the players with the talent, and 1.00-1.01 for those without it.
 - **Perfect Storm:** the extra kick strikes every enemy the kick struck, 0.40s later, at 1.01x the kick's hit at the
   median, each hit with a crit roll of its own. A chance of 25% x (1 + Haste) gives 725 procs expected against 738
   logged.
@@ -77,15 +76,15 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
 
 ## Known gaps
 
-- **The quake** has a timer of its own on each enemy the slam struck. An enemy in the area after the slam has no quake
-  ticks in the engine: 2,326 of the 21,392 logged ticks find no engine tick (92.6% of its damage in an exact replay).
+- **The quake** ticks on a timer of its own on each enemy the slam struck: 19,066 of the 21,392 logged ticks match an
+  engine tick (92.6% of its damage in an exact replay).
 - **Free dice** come in at 94.4% of the logs' damage, from free-dice variance in the game's own mechanics. The players
   time Rising Storm and Lashing Stormkick to the Stormfall their refunds gave back. With the refunds at random on the
   logged casts, a free-dice run consumes 12% fewer Stormfall charges (1,942 against 2,208 over 16 fights), and Warden
   of the Temple enhances 21% fewer Double Palm Strikes (315 against 397). The exact replay's Spirit Refunds are 733 of
   3,145 rolls against 769 expected. Lashing Stormkick (87.9%) and Spirited Vortex (91.3%) have most of the gap.
-- **Shattering Obelisk:** its pulses come from damage the Sibling of Earth takes, so they are a defensive proc: a
-  replay deals one at each pulse hit in the log, with the log's amount, and a sim never. No log has the talent.
+- **Shattering Obelisk:** its pulses come from damage the Sibling of Earth takes, so they are a defensive proc. The proc
+  fires in a replay only, at the log's pulses, with the log's amount. No log has the talent.
 
 ## Not yet checked against a log
 
