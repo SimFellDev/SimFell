@@ -139,6 +139,20 @@ public abstract class Hero : Actor
         ctx.ApplyDamage(this, enemy, ctx.Outcomes.LoggedHitAmount(damageLogId, enemy, ctx), damageLogId, abilityName, canCrit: false, 0.0, 1.0);
 
     /// <summary>
+    /// True in a replay (exact or free dice), where every logged pulse (<see cref="AddLoggedPulse"/>) fires at its log hits:
+    /// hero code leaves the pulse's own periodic chain off then. False in a sim, where the chain runs.
+    /// </summary>
+    public bool PulsesFollowLog { get; set; }
+
+    /// <summary>
+    /// Declares a pulse whose timing the engine cannot predict (Xavian's Aura of Solace stops while no enemy is near). A
+    /// replay calls <paramref name="pulse"/> at each group of its log hits (the hit evidence of <paramref name="procKey"/>,
+    /// as for <see cref="AddDefensiveProc"/>), with <see cref="PulsesFollowLog"/> true; a sim never calls it, and the hero
+    /// code's own periodic chain deals the pulses.
+    /// </summary>
+    public void AddLoggedPulse(string procKey, Action<SimulationContext, EnemyTarget?> pulse) => AddDefensiveProc(procKey, pulse);
+
+    /// <summary>
     /// The <see cref="SituationalAuras"/> up only in combat with a boss (Ruby's Blessing of the Conqueror): a sim without a
     /// boss (<see cref="Engine.FightOptions.Boss"/>) takes them off as each fight starts. A replay follows the log for them.
     /// </summary>

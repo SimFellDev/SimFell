@@ -134,6 +134,27 @@ public class DefensiveProcTests
         Assert.Equal([1234.0, 5678.0], result.AllHits.Where(h => h.AbilityId == ProofId).Select(h => h.EngineAmount));
     }
 
+    [Fact]
+    public void A_Logged_Pulse_Fires_At_Each_Group_Of_Its_Log_Hits_And_Only_In_A_Replay()
+    {
+        // Two pulses: one hitting both enemies in one server frame, then one on the first.
+        var script = Script(new ReplayObservations { Damage = [Hit(2.0, Dummy), Hit(2.001, Other), Hit(3.5, Dummy)] });
+        var hero = ReplayDriver.CreateHero(script);
+        var pulses = new List<double>();
+        hero.AddLoggedPulse(RubyStorm.ProcKey, (ctx, _) => pulses.Add(Math.Round(ctx.CurrentTime.TotalSeconds, 3)));
+        Assert.False(hero.PulsesFollowLog);
+        new ReplayDriver(hero, script, new ReplayOptions { StopOnFirstFailure = false }).Run();
+        Assert.True(hero.PulsesFollowLog);
+        Assert.Equal([2.0, 3.5], pulses);
+
+        var simmed = HeroImporter.Import(Character());
+        int fired = 0;
+        simmed.AddLoggedPulse(RubyStorm.ProcKey, (_, _) => fired++);
+        new MonteCarloSimulator(() => simmed, AplParser.ParseScript("actions=frost_bolt")).Run(SimTime.FromSeconds(30), 1, 1, degreeOfParallelism: 1);
+        Assert.False(simmed.PulsesFollowLog);
+        Assert.Equal(0, fired);
+    }
+
     private static LogDamage Hit(double time, UnitRef target, double amount = 1000) =>
         new() { Time = time, AbilityId = ProofId, AbilityName = RubyStorm.AspectName, Target = target, Amount = amount };
 

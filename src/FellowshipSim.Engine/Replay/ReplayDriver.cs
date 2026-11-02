@@ -45,6 +45,8 @@ public sealed class ReplayDriver
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability, now.TotalSeconds);
         // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
         _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
+        // Logged pulses fire at their log hits (FireDefensiveProcs), so the hero's own chains for them stay off.
+        _hero.PulsesFollowLog = true;
     }
 
     public SimulationContext Context => _ctx;
