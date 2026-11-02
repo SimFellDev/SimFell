@@ -13,8 +13,8 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
   Hallowed Shield stack and a Vanguard of Vengeance stack are in the same server frame (XyGpcHjNaAzgk7mW fight 20 @
   7.516 and 15.834).
 - **Solaris:** Xavian's overhealing triggers it on nearby enemies (GE_Sune_OverhealToAoeDamage). In XyGpcHjNaAzgk7mW
-  fight 20 it is 0.5s after a Brilliant Flash (11.988 -> 12.492, 13.223 -> 13.730). Solaris follows the log in a
-  replay, with the log's amounts; a sim has none.
+  fight 20 it is 0.5s after a Brilliant Flash (11.988 -> 12.492, 13.223 -> 13.730). A replay deals Solaris at the log's hits
+  with the log's amounts (exact replay the matched hit, free dice the nearest log hit within 0.1s); a sim has none.
 - **Solar Blades:** the main target takes its 200% whatever the count. Every other enemy loses damage as sqrt(5/N) over
   all N enemies struck, the main target counted (log/engine 0.99-1.01 at every N from 2 to 17, 27,127 hits).
 - **Brilliant Flash, enhanced:** the main target takes 150% with no falloff. The other N enemies lose damage as
@@ -45,9 +45,8 @@ XyGpcHjNaAzgk7mW fight 22) unless noted. Game values are from game data build 26
   fight 31 after 60.6s of 1079s, Fc8v6yWxD14GQMnV fight 19 after 105.3s of 1613s). The radius is 1500 around Xavian
   (ability 1915), and the pulses move with Xavian: every logged pulse hit is within 1600 of Xavian and 3400 or more from
   the cast. After each of the 4 ends, Xavian's melee hits reach enemies within 1400 of Xavian. Game data has no end
-  condition for effect 2667 besides death (EffectLogic.RemoveOnDeath). The engine pulses for as long as 2667
-  is up. Over the 16 fights, 4,381 engine pulses have no log hits: exact replay deals 0 for them (89.9% of the log's
-  8.61M) and free dice deals them to every engaged enemy (157.9%).
+  condition for effect 2667 besides death (EffectLogic.RemoveOnDeath). A replay therefore deals each pulse at its group
+  of log hits, with the engine's damage; a sim pulses every 1.50s while 2667 is up.
 - **Sunburn:** a tick every 1.5s shortened by Haste, with a partial tick as it runs out (7 ticks of 593 and one of 342
   over 9.02s, XyGpcHjNaAzgk7mW fight 20 @ 74.748). A refresh keeps the tick timing.
 - **Sky Crash:** the crash deals its damage 0.17s after the cast.

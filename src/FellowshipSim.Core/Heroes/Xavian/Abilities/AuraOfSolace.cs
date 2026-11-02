@@ -21,6 +21,11 @@ public class AuraOfSolace : XavianAbility
     public const double ManaPerPulse = 10;
     /// <summary>Game data targetCountFalloff: effect 2669, threshold 8; maxTargets 20.</summary>
     public const double TargetThreshold = 8;
+    /// <summary>
+    /// A replay deals each pulse at its group of log hits (<see cref="Hero.AddLoggedPulse"/>): the log has no pulse while
+    /// no enemy is within the radius, and in some fights the pulses end while effect 2667 stays up (NOTES.md).
+    /// </summary>
+    public const string PulseProcKey = "aura_of_solace_pulse";
 
     /// <summary>Effect 2667: up until the next cast.</summary>
     public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, 2667);
@@ -49,15 +54,22 @@ public class AuraOfSolace : XavianAbility
             return;
         }
         Xavian.Auras.Apply(Buff, now);
+        if (Xavian.PulsesFollowLog) return;
 
-        void Pulse(SimulationContext c)
+        void Chain(SimulationContext c)
         {
             if (aura != _aura || !IsActive(c.CurrentTime)) return;
-            Xavian.DrainMana(ManaPerPulse, c);
-            if (c.ActiveEnemies.Count > 0) DealAoeDamage(c, c.ActiveEnemies);
-            c.Schedule(SimTime.FromSeconds(PulseSeconds), Pulse, AbilityName);
+            Pulse(c);
+            c.Schedule(SimTime.FromSeconds(PulseSeconds), Chain, AbilityName);
         }
-        ctx.Schedule(SimTime.FromSeconds(PulseSeconds), Pulse, AbilityName);
+        ctx.Schedule(SimTime.FromSeconds(PulseSeconds), Chain, AbilityName);
+    }
+
+    /// <summary>One pulse: its Mana and its damage to every enemy within the radius.</summary>
+    public void Pulse(SimulationContext ctx)
+    {
+        Xavian.DrainMana(ManaPerPulse, ctx);
+        if (ctx.ActiveEnemies.Count > 0) DealAoeDamage(ctx, ctx.ActiveEnemies);
     }
 
     public void ResetState() => _aura = 0;
