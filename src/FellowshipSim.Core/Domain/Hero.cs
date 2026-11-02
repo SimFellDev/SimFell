@@ -24,11 +24,9 @@ public abstract class Hero : Actor
         Auras.OnRemoved += (aura, now) => AuraChanged(aura, now);
     }
 
-    /// <summary>The stats <see cref="CooldownRate"/> reads (a weapon ability's own recovery auras are cooldown recovery too).</summary>
+    /// <summary>The stats <see cref="CooldownRate"/> reads.</summary>
     private static readonly int CooldownRateStats =
         AuraDef.MaskOf(StatType.CooldownRecovery) | AuraDef.MaskOf(StatType.Haste) | AuraDef.MaskOf(StatType.HasteRating);
-
-    private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
 
     /// <summary>
     /// An aura with cooldown recovery or haste, or one a cooldown acceleration reads, progresses every recharge to now at
@@ -476,16 +474,14 @@ public abstract class Hero : Actor
     /// <summary>
     /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
     /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top. Weapon abilities ignore the pool and haste: their
-    /// cooldown runs at normal speed (Chronoshift's barrier does not speed up its own either; only cooldown reduction shortens them).
-    /// (10 Rime logs: no early casts, and ruru's fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool.)
+    /// Charge abilities that recharge with haste add the haste on top.
+    /// Weapon abilities always recover a base rate.
     /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
-        bool weaponOwnOnly = ability.IgnoresCooldownRecovery;
-        double pool = 1.0 + (weaponOwnOnly ? 0.0 : CooldownAcceleration(ability, now));
-        if (!weaponOwnOnly) pool += Auras.SumBonuses(StatType.CooldownRecovery, now);
+        if (ability.IgnoresCooldownRecovery) return 1.0;
+        double pool = 1.0 + CooldownAcceleration(ability, now) + Auras.SumBonuses(StatType.CooldownRecovery, now);
         return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
     }
 

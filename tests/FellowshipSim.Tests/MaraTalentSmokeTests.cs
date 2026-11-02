@@ -48,7 +48,6 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     [InlineData(CorrosiveSpill.TalentId, "damage:Corrosive Spill")]
     [InlineData(AssassinsGuile.TalentId, "aura:Assassin's Guile")]
     [InlineData(Bloodrush.TalentId, "more:damage:Hemorrhage")]
-    [InlineData(VenomousDelight.TalentId, "more:energy")]
     [InlineData(EfficientKiller.TalentId, "more:energy")]
     [InlineData(GushingBlood.TalentId, "more:damage:Hemorrhage")]
     [InlineData(FeedTheQueen.TalentId, "aura:Feed the Queen", 3)]
@@ -85,6 +84,32 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
             output.WriteLine($"Talent {talentId} on {targets} target(s): {result.MeanDps:N0} DPS, {shown} -> {amount:N0} (without: {baseline:N0})");
             Assert.True(amount > baseline, $"Talent {talentId}: no {evidence} on {targets} target(s)");
         }
+    }
+
+    /// <summary>
+    /// A list that starves Mara of Energy: Brooding Shadows, then Backstab (its Stealth cast while Brooding Shadows is up), as often as they
+    /// come up. Energy then runs out, so the talent's Energy is never lost to the cap and the rotation does not change with it. (With the full
+    /// list the talent's extra Energy changes what is cast and the total Energy gained can fall.)
+    /// Plain Backstab cannot be used in Stealth, so a list of Brooding Shadows and Backstab alone casts nothing after the first Brooding Shadows.
+    /// </summary>
+    private const string StarvingApl = """
+        actions+=/brooding_shadows
+        actions+=/stealth_backstab
+        actions+=/backstab
+        """;
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(8)]
+    public void Venomous_Delight_Gains_Energy_When_Starved(int targets)
+    {
+        int[] without = BaseTalents.Where(t => t != VenomousDelight.TalentId).ToArray();
+        var (result, hero, gained) = Run([.. without, VenomousDelight.TalentId], targets, apl: StarvingApl);
+        var (_, _, baseGained) = Run(without, targets, apl: StarvingApl);
+        Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
+        double with = gained.GetValueOrDefault(EnergyGained), baseline = baseGained.GetValueOrDefault(EnergyGained);
+        output.WriteLine($"Venomous Delight on {targets} target(s): {result.MeanDps:N0} DPS, energy -> {with:N0} (without: {baseline:N0})");
+        Assert.True(with > baseline, $"Venomous Delight: no more Energy on {targets} target(s) ({with:N0} against {baseline:N0})");
     }
 
     /// <summary>A sim's enemies never fall to 30% health: Maiden's Doom is checked on an enemy at 20%.</summary>
@@ -152,7 +177,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     private const string EnergyGained = "energy gained";
 
     private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets,
-        int iterations = 10, int? legendaryItemId = null)
+        int iterations = 10, int? legendaryItemId = null, string apl = Apl)
     {
         // The Mara from Fc8v6yWxD14GQMnV fight 19 (Culex), as the replay imported it.
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
@@ -167,7 +192,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
             if (resource == Mara.Energy) gained[EnergyGained] = gained.GetValueOrDefault(EnergyGained) + (int)amount;
         };
         // One thread: the simulator builds one hero, the one above.
-        var result = new MonteCarloSimulator(() => hero, AplParser.ParseScript(Apl))
+        var result = new MonteCarloSimulator(() => hero, AplParser.ParseScript(apl))
             .Run(SimTime.FromSeconds(300), iterations, targets, degreeOfParallelism: 1);
         return (result, hero, gained);
     }

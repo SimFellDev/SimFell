@@ -49,9 +49,6 @@ public class StarfallVolley : ElarionAbility
         AoeTargetThreshold = TargetThreshold;
     }
 
-    /// <summary>A volley is falling now.</summary>
-    public bool IsActive => _volleys.Count > 0;
-
     /// <summary>The volleys falling now (they can overlap).</summary>
     public int ActiveCount => _volleys.Count;
 
