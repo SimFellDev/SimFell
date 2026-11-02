@@ -7,6 +7,7 @@ namespace FellowshipSim.Core.Domain;
 /// </summary>
 /// <param name="ProcKey">The proc's name, with its proof in the replay's proc evidence table.</param>
 /// <param name="Fire">
-/// What the proc does: a hit, or a reaction without damage (Toughness from a block, a stack consumed on a dodge).
+/// What the proc does: a hit (Xavian's Solaris, <see cref="Hero.DealDefensiveProcHit"/>), or an effect without damage
+/// (Helena's Second Wind: 20% more Strength once her Toughness has reduced enough damage).
 /// </param>
 public sealed record DefensiveProc(string ProcKey, Action<SimulationContext, EnemyTarget?> Fire);

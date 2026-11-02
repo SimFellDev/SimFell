@@ -168,4 +168,106 @@ public static class ProcEvidence
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
 
     public static Evidence? For(string procKey) => ByKey.GetValueOrDefault(procKey);
+
+    /// <summary>Longest gap between the two resource readings of a resource jump.</summary>
+    public const double ResourceJumpWindowSeconds = 0.5;
+
+    /// <summary>
+    /// Every proof of <paramref name="evidence"/> in the log, of the kind <see cref="LogOutcomeSource.RollProc"/> reads it
+    /// as: its time and, for a proof on an enemy, that enemy. A resource jump is at its first reading. A hit proof is the
+    /// first hit of each group of hits in one server frame, with the hits that follow it.
+    /// </summary>
+    public static IEnumerable<(double Time, UnitRef? Target)> Times(ReplayScript script, Evidence evidence)
+    {
+        int player = script.Player.Id;
+        if (evidence.Resource != null)
+        {
+            foreach (var (from, _) in ResourceJumps(script.Observations.Resources.OrderBy(r => r.Time).ToList(), evidence)) yield return (from, null);
+            yield break;
+        }
+        var debuffs = script.Observations.Auras.Where(a => a.AbilityId == evidence.LogId && a.Source.Id == player && a.Target.Id != player);
+        if (evidence.EnemyDebuffApplied)
+        {
+            foreach (var a in debuffs.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time)) yield return (a.Time, a.Target);
+            yield break;
+        }
+        if (evidence.StackJump > 0)
+        {
+            // Gains in one millisecond on one enemy add up (a new debuff given several stacks at once).
+            foreach (var group in debuffs.GroupBy(a => a.Target))
+            {
+                foreach (var gains in StackChanges(group).Gains.GroupBy(g => g.Event.Time))
+                {
+                    if (gains.Sum(g => g.Added) >= evidence.StackJump) yield return (gains.Key, group.Key);
+                }
+            }
+            yield break;
+        }
+        var auras = script.Observations.Auras.Where(a => a.AbilityId == evidence.LogId && a.Target.Id == player && a.Source.Id == player).ToList();
+        if (auras.Count > 0)
+        {
+            foreach (var gain in auras.Where(a => a.IsGain && (evidence.NotCausedByAbilityId == 0 || a.ExtraAbilityId != evidence.NotCausedByAbilityId))
+                         .OrderBy(a => a.Time))
+            {
+                yield return (gain.Time, null);
+            }
+            yield break;
+        }
+        double groupEnd = double.NegativeInfinity;
+        foreach (var hit in script.Observations.Damage.Where(d => d.AbilityId == evidence.LogId).OrderBy(d => d.Time))
+        {
+            if (hit.Time <= groupEnd) continue;
+            groupEnd = hit.Time + PeriodicEffect.ServerFrameSeconds
+                       + evidence.FollowingHits * (1.5 * evidence.FollowingSpacingSeconds + evidence.FollowingSlackSeconds);
+            yield return (hit.Time, hit.Target);
+        }
+    }
+
+    /// <summary>
+    /// The jumps of <paramref name="evidence"/>'s resource by its gain (within 30%) between two readings at most
+    /// <see cref="ResourceJumpWindowSeconds"/> apart, beyond what it regenerates between them. A reading at a cast is before
+    /// its cost, so it never starts a jump.
+    /// </summary>
+    public static List<(double From, double To)> ResourceJumps(IReadOnlyList<LogResourceSnapshot> readings, Evidence evidence)
+    {
+        var jumps = new List<(double From, double To)>();
+        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
+        if (log == null) return jumps;
+        string type = log.LogResourceType.ToString();
+        double max = evidence.Resource!.Max;
+        LogResourceSnapshot? previous = null;
+        double previousAmount = 0;
+        foreach (var reading in readings)
+        {
+            if (!reading.Resources.TryGetValue(type, out var value)) continue;
+            double amount = log.EngineAmount(value);
+            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceJumpWindowSeconds
+                && amount < max - 0.5 && previousAmount < max - 0.5)
+            {
+                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
+                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
+            }
+            previous = reading;
+            previousAmount = amount;
+        }
+        return jumps;
+    }
+
+    /// <summary>
+    /// One debuff's events on one enemy: each gain with the stacks it added, and the times it lost stacks, in time order.
+    /// </summary>
+    public static (List<(LogAura Event, int Added)> Gains, List<double> Losses) StackChanges(IEnumerable<LogAura> events)
+    {
+        int stacks = 0;
+        var gains = new List<(LogAura Event, int Added)>();
+        var losses = new List<double>();
+        foreach (var a in events.OrderBy(a => a.Time))
+        {
+            int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
+            if (a.IsGain && now > stacks) gains.Add((a, now - stacks));
+            if (a.IsLoss && now < stacks) losses.Add(a.Time);
+            stacks = now;
+        }
+        return (gains, losses);
+    }
 }

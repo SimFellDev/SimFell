@@ -589,9 +589,9 @@ public sealed class ReplayDriver
 
     /// <summary>
     /// Defensive procs (<see cref="Hero.DefensiveProcs"/>) come from blocks, parries, dodges, hits taken and heals, which the
-    /// engine does not simulate, so the replay fires each one where the log proves it: at each gain of its evidence aura
-    /// on the player, or at the first hit of each group of its evidence hits (with the hits that follow it), less the
-    /// evidence's <see cref="ProcEvidence.Evidence.MinDelaySeconds"/>. The roll there claims the proof
+    /// engine does not simulate, so the replay fires each one at each proof of it in the log (<see cref="ProcEvidence.Times"/>:
+    /// every kind of proof a proc roll reads), less the evidence's <see cref="ProcEvidence.Evidence.MinDelaySeconds"/>. The
+    /// roll there claims the proof
     /// (<see cref="LogOutcomeSource"/>), so a hit an engine hit already matched fires nothing.
     /// </summary>
     private void FireDefensiveProcs()
@@ -604,7 +604,7 @@ public sealed class ReplayDriver
                     $"proc without evidence: {proc.ProcKey}");
                 continue;
             }
-            foreach (var (time, target) in DefensiveProcTimes(evidence))
+            foreach (var (time, target) in ProcEvidence.Times(_script, evidence))
             {
                 _ctx.Schedule(SimTime.FromSeconds(Math.Max(0.0, time - evidence.MinDelaySeconds)), c =>
                 {
@@ -612,28 +612,6 @@ public sealed class ReplayDriver
                     if (c.Outcomes.RollProc(proc.ProcKey, 1.0, c, enemy)) proc.Fire(c, enemy);
                 }, proc.ProcKey);
             }
-        }
-    }
-
-    /// <summary>The log's proofs of a defensive proc: their times and, for a hit, its enemy.</summary>
-    private IEnumerable<(double Time, UnitRef? Target)> DefensiveProcTimes(ProcEvidence.Evidence evidence)
-    {
-        var gains = _script.Observations.Auras
-            .Where(a => a.AbilityId == evidence.LogId && a.IsGain && a.Target.Id == _script.Player.Id && a.Source.Id == _script.Player.Id)
-            .OrderBy(a => a.Time).ToList();
-        if (gains.Count > 0)
-        {
-            foreach (var gain in gains) yield return (gain.Time, null);
-            yield break;
-        }
-        // A proc's group of hits in one server frame, and the hits that follow it, are one proof.
-        double groupEnd = double.NegativeInfinity;
-        foreach (var hit in _script.Observations.Damage.Where(d => d.AbilityId == evidence.LogId).OrderBy(d => d.Time))
-        {
-            if (hit.Time <= groupEnd) continue;
-            groupEnd = hit.Time + PeriodicEffect.ServerFrameSeconds
-                       + evidence.FollowingHits * (1.5 * evidence.FollowingSpacingSeconds + evidence.FollowingSlackSeconds);
-            yield return (hit.Time, hit.Target);
         }
     }
 

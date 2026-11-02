@@ -42,19 +42,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
                      .Where(a => a.Source.Id == script.Player.Id && a.Target.Id != script.Player.Id)
                      .GroupBy(a => (a.AbilityId, a.Target)))
         {
-            int stacks = 0;
-            var list = new List<(LogAura Event, int Added)>();
-            var losses = new List<double>();
             _enemyDebuffApplications[group.Key] = group.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time).ToList();
-            foreach (var a in group.OrderBy(a => a.Time))
-            {
-                int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
-                if (a.IsGain && now > stacks) list.Add((a, now - stacks));
-                if (a.IsLoss && now < stacks) losses.Add(a.Time);
-                stacks = now;
-            }
-            _enemyStackGains[group.Key] = list;
-            _enemyStackLosses[group.Key] = losses;
+            (_enemyStackGains[group.Key], _enemyStackLosses[group.Key]) = ProcEvidence.StackChanges(group);
         }
         foreach (var c in script.Commands.Where(c => c.Kind == CommandKind.EnemyDemise && c.Enemy != null))
         {
@@ -206,6 +195,10 @@ public sealed class LogOutcomeSource : IOutcomeSource
     /// <summary>A replay casts at the log's times, so the player's delays are already in them.</summary>
     public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => SimTime.Zero;
 
+    /// <summary>The amount of the log hit a defensive proc's hit on <paramref name="target"/> now takes (0 without one).</summary>
+    public double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) =>
+        _hits.Next(damageLogId, new UnitRef(target.Id, target.InstanceId), ctx.CurrentTime.TotalSeconds, _options)?.UnblockedAmount ?? 0.0;
+
     // ------------------------------------------------------------------ periodic ticks
 
     /// <summary>A periodic effect's log ticks: each tick's reserved log time (null without one) and each predicted time, paired in order.</summary>
@@ -341,7 +334,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
     {
         if (!_resourceJumps.TryGetValue(evidence, out var jumps))
         {
-            jumps = ResourceJumps(evidence);
+            jumps = ProcEvidence.ResourceJumps(_resourceReadings, evidence);
             _resourceJumps[evidence] = jumps;
         }
         for (int i = 0; i < jumps.Count; i++)
@@ -349,39 +342,13 @@ public sealed class LogOutcomeSource : IOutcomeSource
             var jump = jumps[i];
             if (jump.To < now - _options.SameTickSeconds) continue;
             if (jump.From > now + PeriodicEffect.ServerFrameSeconds) break;
-            if (jump.To > now + ResourceEvidenceWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
+            if (jump.To > now + ProcEvidence.ResourceJumpWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
             _claimedResourceJumps.Add((evidence, i));
             return true;
         }
         return false;
     }
 
-    private List<(double From, double To)> ResourceJumps(ProcEvidence.Evidence evidence)
-    {
-        var jumps = new List<(double From, double To)>();
-        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
-        if (log == null) return jumps;
-        string type = log.LogResourceType.ToString();
-        double max = evidence.Resource!.Max;
-        LogResourceSnapshot? previous = null;
-        double previousAmount = 0;
-        foreach (var reading in _resourceReadings)
-        {
-            if (!reading.Resources.TryGetValue(type, out var value)) continue;
-            double amount = log.EngineAmount(value);
-            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds
-                && amount < max - 0.5 && previousAmount < max - 0.5)
-            {
-                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
-                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
-            }
-            previous = reading;
-            previousAmount = amount;
-        }
-        return jumps;
-    }
-
-    private const double ResourceEvidenceWindowSeconds = 0.5;
     private readonly List<LogResourceSnapshot> _resourceReadings = [];
     private readonly Dictionary<ProcEvidence.Evidence, List<(double From, double To)>> _resourceJumps = new();
     private readonly HashSet<(ProcEvidence.Evidence, int)> _claimedResourceJumps = new();
@@ -494,6 +461,23 @@ public sealed class HitLedger
 
     /// <summary>Every log hit, in time order.</summary>
     public IReadOnlyList<LogDamage> All => _all;
+
+    /// <summary>
+    /// The log hit <see cref="Match"/> takes for an engine hit with no periodic effect and no reserved hit, without
+    /// matching it.
+    /// </summary>
+    public LogDamage? Next(int logId, UnitRef target, double engineTime, ReplayOptions options)
+    {
+        if (!_byKey.TryGetValue((logId, target.Id, target.Instance), out var list)) return null;
+        foreach (var h in list)
+        {
+            if (h.Time < engineTime - options.HitEarlySeconds) continue;
+            if (h.Time > engineTime + options.LateSecondsOf(logId)) break;
+            if (_matched.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, null)) continue;
+            return h;
+        }
+        return null;
+    }
 
     /// <param name="owner">The periodic effect ticking now: its reserved log hit on the target is taken first.</param>
     /// <param name="reservedOnly">Take only a log hit <paramref name="owner"/> reserved (the hit of a tick that follows the log).</param>

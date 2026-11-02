@@ -79,6 +79,12 @@ public interface IOutcomeSource
 
     /// <summary>How long the hero takes to cast after <paramref name="hold"/> ends (<see cref="SimulationContext.Reactions"/>).</summary>
     SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx);
+
+    /// <summary>
+    /// Damage of a defensive proc's hit on <paramref name="target"/> now, whose amount the engine does not model
+    /// (<see cref="Hero.DealDefensiveProcHit"/>): the log hit's in a replay, 0 in a sim, which never deals one.
+    /// </summary>
+    double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx);
 }
 
 /// <summary>
@@ -127,6 +133,9 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) =>
         reactions.Delay(hold, _rng.NextDouble(), _rng.NextDouble());
+
+    /// <summary>A sim never deals a defensive proc's hit.</summary>
+    public virtual double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) => 0.0;
 }
 
 /// <summary>The simulation's random numbers: xoshiro256** (Blackman and Vigna, 2018), seeded through SplitMix64.</summary>

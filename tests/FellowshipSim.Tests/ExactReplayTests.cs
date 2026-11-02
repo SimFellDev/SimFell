@@ -65,6 +65,7 @@ public class ExactReplayTests
         public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => inner.TickAt(tick, ctx);
         public void HitFinished(SimulationContext ctx) => inner.HitFinished(ctx);
         public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => inner.ReactionDelay(hold, reactions, ctx);
+        public double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) => inner.LoggedHitAmount(damageLogId, target, ctx);
     }
 
     [Fact]

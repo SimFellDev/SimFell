@@ -21,6 +21,8 @@ public sealed class FreeDiceOutcomeSource : RandomOutcomeSource
     {
         _rng = rng;
         (_castTimes, _engaged) = Engagements.GetValue(script, BuildEngagement);
+        _hitsByKey = HitsByKey.GetValue(script, s => s.Observations.Damage.OrderBy(d => d.Time)
+            .GroupBy(d => (d.AbilityId, d.Target)).ToDictionary(g => g.Key, g => g.ToList()));
     }
 
     private static Engagement BuildEngagement(ReplayScript script)
@@ -64,5 +66,30 @@ public sealed class FreeDiceOutcomeSource : RandomOutcomeSource
         if (preferred != null) return preferred;
         var engaged = Engaged(candidates, ctx);
         return engaged.Count == 0 ? null : engaged[(int)(_rng.NextDouble() * engaged.Count) % engaged.Count];
+    }
+
+    /// <summary>How far from now a defensive proc's log hit may be (a defensive proc fires at its log proof).</summary>
+    public const double LoggedHitWindowSeconds = 0.1;
+
+    // The script's hits by damage ID and enemy, in time order, built once per script.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ReplayScript, Dictionary<(int Id, UnitRef Target), List<LogDamage>>> HitsByKey = new();
+    private readonly Dictionary<(int Id, UnitRef Target), List<LogDamage>> _hitsByKey;
+    private readonly HashSet<LogDamage> _taken = new();
+
+    /// <summary>The amount of the nearest log hit with the ID on the enemy, untaken, within <see cref="LoggedHitWindowSeconds"/> (0 without one).</summary>
+    public override double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx)
+    {
+        if (!_hitsByKey.TryGetValue((damageLogId, new UnitRef(target.Id, target.InstanceId)), out var hits)) return 0.0;
+        double now = ctx.CurrentTime.TotalSeconds;
+        LogDamage? best = null;
+        foreach (var h in hits)
+        {
+            if (h.Time < now - LoggedHitWindowSeconds || _taken.Contains(h)) continue;
+            if (h.Time > now + LoggedHitWindowSeconds) break;
+            if (best == null || Math.Abs(h.Time - now) < Math.Abs(best.Time - now)) best = h;
+        }
+        if (best == null) return 0.0;
+        _taken.Add(best);
+        return best.UnblockedAmount;
     }
 }

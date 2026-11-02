@@ -122,12 +122,21 @@ public abstract class Hero : Actor
 
     /// <summary>
     /// Declares a proc of a block, parry, dodge, hit taken or heal. A sim never calls <paramref name="fire"/>. A replay
-    /// calls it at each proof of <paramref name="procKey"/> in the log (its proc evidence entry: an aura on the hero, or
-    /// the proc's hit), with the logged hit's enemy, or the current target for an aura. <paramref name="fire"/> deals the
-    /// proc's damage or does what else the proc does, e.g. Toughness from a block or a stack consumed on a dodge.
+    /// calls it at each proof of <paramref name="procKey"/> in the log (its proc evidence entry, of any kind a proc roll
+    /// reads), with the proof's enemy, or the current target for a proof without one. <paramref name="fire"/> deals the
+    /// proc's damage (Xavian's Solaris, through <see cref="DealDefensiveProcHit"/>) or does what else the proc does (Helena's
+    /// Second Wind: 20% more Strength once her Toughness has reduced enough damage).
     /// </summary>
     public void AddDefensiveProc(string procKey, Action<SimulationContext, EnemyTarget?> fire) =>
         _defensiveProcs.Add(new DefensiveProc(procKey, fire));
+
+    /// <summary>
+    /// Deals one hit of a defensive proc whose damage comes from what the engine does not simulate (healing, damage taken):
+    /// the amount is the log's hit (<see cref="IOutcomeSource.LoggedHitAmount"/>) in an exact replay
+    /// and in free dice. A sim never fires a defensive proc.
+    /// </summary>
+    public double DealDefensiveProcHit(SimulationContext ctx, EnemyTarget enemy, int damageLogId, string abilityName) =>
+        ctx.ApplyDamage(this, enemy, ctx.Outcomes.LoggedHitAmount(damageLogId, enemy, ctx), damageLogId, abilityName, canCrit: false, 0.0, 1.0);
 
     /// <summary>
     /// The <see cref="SituationalAuras"/> up only in combat with a boss (Ruby's Blessing of the Conqueror): a sim without a
