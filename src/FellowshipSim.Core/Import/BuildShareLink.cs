@@ -24,8 +24,8 @@ namespace FellowshipSim.Core.Import;
 /// <item>Version 2 on: the gear worn, its count, then each piece in slot order: its slot (<see cref="GearSlot"/>, EG0),
 /// the zigzag of its item ID less <see cref="GearBase"/> (EG6) and its tempers (EG2).</item>
 /// </list>
-/// Close IDs cost a few bits each, so most of a build is its stats and gem power. A version 1 code reads as a build
-/// with no gear worn.
+/// Close IDs cost a few bits each, so most of a build is its stats and gem power. A build with no gear worn writes as
+/// version 1, which has no gear list, so a link made before gear makes the same link again.
 /// </para>
 /// </summary>
 public static class BuildShareLink
@@ -97,7 +97,9 @@ public static class BuildShareLink
     public static string Code(CharacterBuild b)
     {
         var w = new BitWriter();
-        w.EG(Version, 0);
+        // A build with no gear worn writes as version 1, so a link made before gear makes the same link again.
+        int version = b.Gear.Count > 0 ? GearVersion : 1;
+        w.EG(version, 0);
         double[] stats = Stats(b);
         bool thousandths = stats.Append(b.MaxHealth).Concat(b.GemPower.Values).Any(v => v != Math.Floor(v));
         int extra = thousandths ? ThousandthsExtraOrder : 0;
@@ -126,13 +128,16 @@ public static class BuildShareLink
         w.EG(b.LegendaryItemIds.Count, 0);
         foreach (int id in b.LegendaryItemIds) w.EG(Zigzag(id - LegendaryBase), OffsetOrder);
         WriteOptional(w, b.WeaponAbilityId, WeaponBase);
-        var gear = b.Gear.OrderBy(p => p.Slot).ToList();
-        w.EG(gear.Count, 0);
-        foreach (var piece in gear)
+        if (version >= GearVersion)
         {
-            w.EG((int)piece.Slot, 0);
-            w.EG(Zigzag(Whole(piece.ItemId) - GearBase), GearItemOrder);
-            w.EG(Whole(piece.Tempers), TempersOrder);
+            var gear = b.Gear.OrderBy(p => p.Slot).ToList();
+            w.EG(gear.Count, 0);
+            foreach (var piece in gear)
+            {
+                w.EG((int)piece.Slot, 0);
+                w.EG(Zigzag(Whole(piece.ItemId) - GearBase), GearItemOrder);
+                w.EG(Whole(piece.Tempers), TempersOrder);
+            }
         }
         return w.Text();
     }
