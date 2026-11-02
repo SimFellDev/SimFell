@@ -7,7 +7,7 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// any remaining health it has. ... Damage is reduced beyond 1 targets." The pulse is the Sibling of Earth's ability 1551,
 /// effect 2261 (Magic.Wind). A pulse comes from damage the Sibling of Earth takes, so it is a defensive proc: a replay deals
 /// it where the log has its hit, and a sim never. Its amount is 15% of that damage. The engine does not have that damage,
-/// so the pulse's base damage is 0 and an exact replay takes the log's amount.
+/// so each pulse hit has the log's amount (Hero.DealDefensiveProcHit), with no crit roll.
 /// UNVERIFIED: no combat log has the talent, so the pulse's log ID (effect 2261) is unconfirmed.
 /// </summary>
 public class ShatteringObelisk : Talent
@@ -27,8 +27,7 @@ public class ShatteringObelisk : Talent
     {
         foreach (var enemy in ctx.Outcomes.SelectTargets(PulseLogId, ctx.ActiveEnemies, ctx))
         {
-            ctx.ApplyDamage(hero, enemy, PulseLogId, TalentName, canCrit: true, x => new SimulationContext.HitNumbers(
-                0.0, hero.CritChanceAgainst(enemy, x.CurrentTime), hero.CritMultiplier(x.CurrentTime)));
+            hero.DealDefensiveProcHit(ctx, enemy, PulseLogId, TalentName);
         }
     });
 }
