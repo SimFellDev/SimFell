@@ -29,9 +29,8 @@ public sealed class Helena : Hero
     /// <summary>
     /// Veteran of War takes twice the seconds each tooltip names off its targets. Combat logs (18 fights of patch
     /// 0.5.0.0): with the tooltips' seconds the replay finds Shockwave on cooldown at 427 of its logged casts, Shield Throw at
-    /// 338 and Shield Slam at 274; with twice them at 0, 0 and 199. A Spirit Refund on the cast changes none of them: with
-    /// its reductions doubled again (as hero 22 spiritAbility reads) or not, Shield Throw is on cooldown only in the 2
-    /// fights where The Best Defense resets it (1p7AXmHfwV9CYMxR fight 30, xkGbdm8aNDwTcgjF fight 2).
+    /// 338 and Shield Slam at 274. With twice them, Shield Throw is on cooldown at a logged cast only in the 2 fights with The
+    /// Best Defense, which resets it (1p7AXmHfwV9CYMxR fight 30: 25 casts, xkGbdm8aNDwTcgjF fight 2: 19).
     /// </summary>
     public const double VeteranOfWarTooltipMultiplier = 2.0;
 

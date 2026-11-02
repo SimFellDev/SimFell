@@ -13,10 +13,9 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 ## Veteran of War
 
 - Each reduction is twice the seconds its tooltip names. With the tooltips' seconds the replay finds Shockwave on cooldown
-  at 427 of its logged casts, Shield Throw at 338 and Shield Slam at 274; with twice them at 0, 0 and 199.
-- Shield Throw is on cooldown at a logged cast only in 2 fights, 1p7AXmHfwV9CYMxR fight 30 and xkGbdm8aNDwTcgjF fight 2,
-  both with The Best Defense, which resets it. A Spirit Refund doubling its cast's reductions again, as hero 22
-  spiritAbility reads, changes no count.
+  at 427 of its logged casts, Shield Throw at 338 and Shield Slam at 274. With twice them, Shield Throw is on cooldown at
+  a logged cast only in the 2 fights with The Best Defense, which resets it (1p7AXmHfwV9CYMxR fight 30: 25 casts,
+  xkGbdm8aNDwTcgjF fight 2: 19).
 - Rising Spirit (effect 3115) comes with each Spirit Refund and stacks to 10, as for every hero.
 
 ## Abilities
@@ -51,11 +50,11 @@ The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `too
 
 ## Free dice
 
+- Free dice, 100 runs a fight with seeds 1-100 (the accuracy measure's defaults), deals 100.8% of the log's damage over
+  the 18 fights, the log at its 37.9% point.
 - Free dice's hits on several enemies reach every enemy the log has Helena hitting between two casts. Shield Throw
-  bounces 5 times against the log's average of 3.5 hits per cast (free dice 101.3% of the log), and Razor Shrapnel
-  strikes up to 12 of those enemies (123.0%).
-- Rising Spirit's stacks were free dice's excess: free dice dealt 107.2% of the log's damage with the log's hit counts and
-  crit rates, with 5.30 stacks on average at Helena's hits against exact replay's 3.64. Each Spirit Refund adds 2s to
-  Rising Spirit's time left, 10s in all over a chain of stacks, in the engine as in the logs. Free dice now deals 100.7%
-  of the log, the log at its 39.2% point.
+  bounces 5 times against the log's average of 3.5 hits per cast (free dice 101.4% of the log), and Razor Shrapnel
+  strikes up to 12 of those enemies (123.7%).
+- Each Spirit Refund adds 2s to Rising Spirit's time left, 10s in all over a chain of stacks, in the engine as in the
+  logs: the rule fits the removal times of 896 of 902 Helena stack chains.
 - Siegebreaker's Spirit of Heroism is effect 1350 (240 applications), never effect 2253.
