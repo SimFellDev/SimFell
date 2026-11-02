@@ -7,6 +7,7 @@
 @inject ProfileStore Profiles
 @inject Visitor Visitor
 @inject SimPageState SimPage
+@inject IAppViews Views
 
 <PageTitle>APL Debugger - SimFell</PageTitle>
 
@@ -15,6 +16,14 @@
 </SectionContent>
 
 <div class="apl-debugger">
+    @if (State.Source != AplDebuggerSource.None)
+    {
+        <nav class="result-nav" aria-label="Back">
+            <button type="button" class="secondary-button" @onclick="Views.ShowDebuggerOpener">
+                ‹ Back to @(State.Source == AplDebuggerSource.SimFight ? "sim result" : "APL Editor")
+            </button>
+        </nav>
+    }
     @switch (State.Source)
     {
         case AplDebuggerSource.None:

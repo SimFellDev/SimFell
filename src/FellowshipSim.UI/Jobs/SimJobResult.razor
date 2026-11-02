@@ -241,17 +241,23 @@
             </div>
             @if (_castList)
             {
+                var sequence = SequenceRows(casts);
                 <div class="table-wrap cast-table">
-                    <table class="report-table">
+                    <table class="report-table" style="@sequence.Widths.Table">
+                        <colgroup>
+                            <col style="@sequence.Widths.Time" />
+                            <col style="@sequence.Widths.Name" />
+                            <col />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Time</th>
-                                <th>@(_castListAuras ? "Cast, hit, buff or debuff" : "Cast or hit")</th>
+                                <th>@SequenceNameHeading</th>
                                 <th>Damage</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <Virtualize Items="SequenceRows(casts)" Context="row" ItemSize="SequenceRowHeight" OverscanCount="20" SpacerElement="tr">
+                            <Virtualize Items="sequence.Rows" Context="row" ItemSize="SequenceRowHeight" OverscanCount="20" SpacerElement="tr">
                                 <tr class="@(row.Kind is null or HitKind ? null : "aura-row")">
                                     <td class="time">@Clock(row.Time, tenths: true)</td>
                                     <td class="name">
@@ -432,30 +438,42 @@
     /// </summary>
     private sealed record SequenceRow(double Time, string Name, int IconId, string? Kind, IReadOnlyList<HitReport> Hits);
 
+    /// <summary>
+    /// The list's lines and its column widths. The widths come from every line, so a column keeps its width while the
+    /// virtualized list renders other lines.
+    /// </summary>
+    private sealed record Sequence(List<SequenceRow> Rows, SequenceWidths Widths);
+
+    /// <summary>The <c>style</c> of the table and of its time and name columns; the damage column has the rest.</summary>
+    private sealed record SequenceWidths(string Table, string Time, string Name);
+
     private const string HitKind = "hit";
 
     /// <summary>The height of a list line in pixels, for its virtualization: the 22-pixel icon and the cell padding.</summary>
     private const float SequenceRowHeight = 37;
 
     // The list's lines, kept while the result and the buff switch are the same.
-    private List<SequenceRow>? _sequenceRows;
-    private (SimResult Result, bool Auras)? _sequenceRowsOf;
+    private Sequence? _sequence;
+    private (SimResult Result, bool Auras)? _sequenceOf;
 
     /// <summary>
     /// The list's lines in time order: the casts, each with the hits of its ability at its moment, then the other hits by
-    /// source and moment, then (when asked for) each buff's and debuff's starts and ends in the same typical fight. An end
-    /// at the fight's end is the fight ending, not the aura, so it has no line.
+    /// damage log ID and moment, then (when asked for) each buff's and debuff's starts and ends in the same typical fight.
+    /// Hits of one name under two damage log IDs are two lines: Flight of the Navir's circling Frost Swallows (effect 1365)
+    /// and the Frost Swallows of Winter Orbs (ability 1033). An end at the fight's end is the fight ending, not the aura, so
+    /// it has no line.
     /// </summary>
-    private List<SequenceRow> SequenceRows(IReadOnlyList<CastReport> casts)
+    private Sequence SequenceRows(IReadOnlyList<CastReport> casts)
     {
-        if (_sequenceRows != null && _sequenceRowsOf == (Result, _castListAuras)) return _sequenceRows;
+        if (_sequence != null && _sequenceOf == (Result, _castListAuras)) return _sequence;
         var hitsAt = (Result.Hits ?? []).GroupBy(h => (h.Time, h.Name)).ToDictionary(g => g.Key, g => (IReadOnlyList<HitReport>)g.ToList());
         var rows = new List<SequenceRow>();
         foreach (var c in casts)
         {
             rows.Add(new SequenceRow(c.Time, c.Name, c.Id, null, hitsAt.Remove((c.Time, c.Name), out var hits) ? hits : []));
         }
-        rows.AddRange(hitsAt.Values.Select(h => new SequenceRow(h[0].Time, h[0].Name, h[0].Id, HitKind, h)));
+        rows.AddRange(hitsAt.Values.SelectMany(h => h.GroupBy(hit => hit.Id)
+            .Select(id => new SequenceRow(h[0].Time, h[0].Name, id.Key, HitKind, id.ToList()))));
         if (_castListAuras)
         {
             foreach (var aura in Result.Buffs ?? [])
@@ -470,9 +488,36 @@
             }
         }
         // A cast before the hits and auras of the same moment, and hits before auras.
-        _sequenceRows = rows.OrderBy(r => r.Time).ThenBy(r => r.Kind switch { null => 0, HitKind => 1, _ => 2 }).ToList();
-        _sequenceRowsOf = (Result, _castListAuras);
-        return _sequenceRows;
+        var ordered = rows.OrderBy(r => r.Time).ThenBy(r => r.Kind switch { null => 0, HitKind => 1, _ => 2 }).ToList();
+        _sequence = new Sequence(ordered, SequenceColumnWidths(ordered, SequenceNameHeading));
+        _sequenceOf = (Result, _castListAuras);
+        return _sequence;
+    }
+
+    private string SequenceNameHeading => _castListAuras ? "Cast, hit, buff or debuff" : "Cast or hit";
+
+    /// <summary>A heading character's width in the cell's character widths: 11 pixels, capitals, 0.06em apart.</summary>
+    private const double HeadingCharWidth = 1.1;
+
+    /// <summary>
+    /// Each column's width for its longest content in any line, in the cell's character widths: the clock; the 22-pixel
+    /// icon and its 8-pixel margin, the name, and the kind at 11 of the cell's 13 pixels after a 6-pixel margin, or the
+    /// heading when that is longer; each hit's damage, 10 pixels apart. Each cell has 20 pixels of padding. The table is
+    /// as wide as its columns, or the card when that is wider.
+    /// </summary>
+    private static SequenceWidths SequenceColumnWidths(List<SequenceRow> rows, string nameHeading)
+    {
+        int time = rows.Count == 0 ? 0 : rows.Max(r => Clock(r.Time, tenths: true).Length);
+        double name = Math.Max(nameHeading.Length * HeadingCharWidth, rows.Count == 0 ? 0 : rows.Max(r => r.Name.Length + (r.Kind is { } kind ? kind.Length * 11.0 / 13 : 0)));
+        var widest = rows.Count == 0 ? null : rows.MaxBy(r => r.Hits.Sum(h => N(h.Amount).Length + 1));
+        int hitChars = widest?.Hits.Sum(h => N(h.Amount).Length) ?? 0;
+        int hitGaps = Math.Max(0, (widest?.Hits.Count ?? 0) - 1) * 10;
+        string Ch(double chars) => chars.ToString("0.#", CultureInfo.InvariantCulture) + "ch";
+        string timeWidth = $"calc({Ch(time)} + 20px)";
+        string nameWidth = $"calc({Ch(Math.Ceiling(name))} + 56px)";
+        string hitsWidth = $"calc({Ch(hitChars)} + {hitGaps + 20}px)";
+        return new SequenceWidths($"table-layout: fixed; width: max(100%, {timeWidth} + {nameWidth} + {hitsWidth})",
+            $"width: {timeWidth}", $"width: {nameWidth}");
     }
 
     /// <summary>An aura ending this close to the fight's end ended with the fight.</summary>
