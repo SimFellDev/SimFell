@@ -72,8 +72,39 @@ public class TankWeaponTests
         Assert.All(ticks, t => Assert.True(t.Amount > 0));
     }
 
-    [Fact]
-    public void Shackles_Slow_Keeps_Ticking_On_An_Enemy_After_It_Dies()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Shackles_Slow_Ticks_On_An_Enemy_That_Dies_And_Stops_On_One_That_Leaves_Combat_Alive(bool dies)
+    {
+        // The enemy leaves combat 5s into its Slow.
+        double left = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 5.0;
+        var ticks = ShackleTicks(AlzeracsShackle.SlowEffectId, left, dies);
+
+        Assert.Contains(ticks, t => t < left);
+        if (dies)
+        {
+            Assert.Contains(ticks, t => t > left + 5.0);
+            Assert.InRange(ticks.Count, 7, 8);
+        }
+        else Assert.DoesNotContain(ticks, t => t > left);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Shackles_Freeze_Ticks_On_An_Enemy_That_Dies_And_Stops_On_One_That_Leaves_Combat_Alive(bool dies)
+    {
+        // The enemy leaves combat 0.5s into its Freeze, before the first tick.
+        double left = AlzeracsShackle.FreezeLandSeconds + 0.5;
+        var ticks = ShackleTicks(AlzeracsShackle.FreezeEffectId, left, dies);
+
+        if (dies) Assert.Contains(ticks, t => t > left);
+        else Assert.Empty(ticks);
+    }
+
+    /// <summary>Times of the Shackle's <paramref name="effectId"/> ticks with damage, the enemy leaving combat at <paramref name="left"/>.</summary>
+    private static List<double> ShackleTicks(int effectId, double left, bool dies)
     {
         var hero = HeroImporter.Import(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, WeaponAbilityId = AlzeracsShackle.AbilityId });
         var ctx = new SimulationContext(hero);
@@ -81,18 +112,13 @@ public class TankWeaponTests
         hero.BeginFight(ctx);
         var enemy = ctx.AddEnemy(100, 1, "Dummy", 1e9);
         hero.CurrentTarget = enemy;
-        int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId);
-        var slowTicks = new List<double>();
-        hero.OnDamageDealt += (in dmg) => { if (dmg.AbilityId == slowId && dmg.Amount > 0) slowTicks.Add(dmg.Timestamp.TotalSeconds); };
+        int id = LogIds.Effect(effectId);
+        var ticks = new List<double>();
+        hero.OnDamageDealt += (in dmg) => { if (dmg.AbilityId == id && dmg.Amount > 0) ticks.Add(dmg.Timestamp.TotalSeconds); };
         Assert.True(ctx.BeginCast(hero, hero.WeaponAbility!, enemy).Succeeded);
-        // The enemy dies 5s into its Slow: the Slow ticks on until it runs out.
-        double died = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 5.0;
-        ctx.Schedule(SimTime.FromSeconds(died), c => c.RemoveEnemy(enemy, defeated: true), "death");
+        ctx.Schedule(SimTime.FromSeconds(left), c => c.RemoveEnemy(enemy, defeated: dies, died: dies), "leave");
         ctx.RunUntil(SimTime.FromSeconds(25));
-
-        Assert.Contains(slowTicks, t => t < died);
-        Assert.Contains(slowTicks, t => t > died + 5.0);
-        Assert.InRange(slowTicks.Count, 7, 8);
+        return ticks;
     }
 
     private static List<(int Id, double Time, double Amount)> Hits(int weaponAbilityId, string action, double seconds)

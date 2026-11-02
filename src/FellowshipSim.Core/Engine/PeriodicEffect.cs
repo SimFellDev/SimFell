@@ -50,8 +50,8 @@ public sealed class PeriodicEffect
     public int DamageLogId { get; }
     /// <summary>The enemy every tick hits; null for a pulse on every enemy in its area.</summary>
     public EnemyTarget? Target { get; }
-    /// <summary>True for an effect whose ticks keep hitting <see cref="Target"/> after it leaves combat (it died) until the effect runs out.</summary>
-    public bool TicksAfterTargetLeaves { get; set; }
+    /// <summary>True for an effect whose ticks keep hitting <see cref="Target"/> after it dies, until the effect runs out.</summary>
+    public bool TicksAfterTargetDies { get; set; }
     /// <summary>When the latest tick fired (the start before the first).</summary>
     public SimTime LastTickTime { get; private set; }
 

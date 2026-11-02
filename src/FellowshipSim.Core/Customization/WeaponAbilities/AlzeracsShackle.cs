@@ -105,7 +105,7 @@ public class AlzeracsShackle : Ability
                 if (!clipped && !target.IsSleeping) Explode(c, target);
             },
             damageLogId: _freezeTick.DamageLogId, target: target, damageOverTime: true);
-        freeze.TicksAfterTargetLeaves = true;
+        freeze.TicksAfterTargetDies = true;
         _freezes[target] = freeze;
     }
 
@@ -138,7 +138,7 @@ public class AlzeracsShackle : Ability
                 enemy.Auras.Remove(Slow, c.CurrentTime);
             },
             damageLogId: _slowTick.DamageLogId, target: enemy, damageOverTime: true);
-        slow.TicksAfterTargetLeaves = true;
+        slow.TicksAfterTargetDies = true;
         _slows[enemy] = slow;
     }
 

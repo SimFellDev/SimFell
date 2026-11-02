@@ -27,6 +27,9 @@ public class EnemyTarget : Actor
     /// <summary>The hero's damage to the enemy so far.</summary>
     public double HeroDamage { get; internal set; }
 
+    /// <summary>True once the enemy has died, until it arises.</summary>
+    public bool HasDied { get; internal set; }
+
     /// <summary>True for a boss.</summary>
     public bool IsBoss { get; set; }
 
@@ -99,6 +102,7 @@ public class EnemyTarget : Actor
     public override void Arise(SimulationContext ctx)
     {
         HeroDamage = 0;
+        HasDied = false;
         base.Arise(ctx);
     }
 

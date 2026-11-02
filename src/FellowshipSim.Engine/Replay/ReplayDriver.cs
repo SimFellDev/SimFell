@@ -208,7 +208,7 @@ public sealed class ReplayDriver
 
             case CommandKind.EnemyDemise:
                 var enemy = _ctx.FindEnemy(cmd.Enemy!.Id, cmd.Enemy.Instance);
-                if (enemy != null) _ctx.RemoveEnemy(enemy, defeated: cmd.Reason == "death");
+                if (enemy != null) _ctx.RemoveEnemy(enemy, defeated: cmd.Reason == "death", died: cmd.Reason == "death");
                 break;
 
             case CommandKind.ExternalAura:
