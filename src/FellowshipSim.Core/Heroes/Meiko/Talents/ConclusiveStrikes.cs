@@ -7,8 +7,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// changes list names Rising Storm, Rising Earth, Double Palm Strike, Lashing Stormkick, Earthfist Barrage (its damage and
 /// its crit chance) and Spirited Vortex. It raises Rising Storm, Rising Earth, Double Palm Strike, Lashing Stormkick and
 /// Spirited Vortex: combat logs (16 fights) match those finishers within 1.2% with the 10%, and put Earthfist Barrage's
-/// hits at 0.85-0.95 of the engine's with the 10% for the 12 players with the talent, and 0.99-1.01 for the players
-/// without it.
+/// hits at 0.83-0.93 of the engine's with the 10% for the 11 players with the talent and Barrage hits, and 0.99-1.01
+/// for the 4 players without it (median log/engine per player).
 /// </summary>
 public class ConclusiveStrikes : Talent
 {

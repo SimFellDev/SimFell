@@ -21,8 +21,9 @@ Measured on the 16 Meiko players of patch 0.5.0.0 in the 15 fights `tools/fetch-
   Wind as effect 1548, Stone Stomp as effect 1542 and Forbidden Technique's eruption as effect 1509. Every hit of
   Earthfist Barrage, the uppercut too, is logged under 1112. Perfect Storm's extra kick is ability 2310.
 - **Conclusive Strikes** raises Rising Storm, Rising Earth, Double Palm Strike, Lashing Stormkick and Spirited Vortex.
-  Those finishers match within 1.2% with the 10%. Earthfist Barrage's hits came in at 0.85-0.95 of the engine's with the
-  10% for the players with the talent, and 1.00-1.01 for those without it.
+  Those finishers match within 1.2% with the 10%. Earthfist Barrage's hits came in at 0.83-0.93 of the engine's with the
+  10% for the 11 players with the talent and Barrage hits, and 0.99-1.01 for the 4 without it (median log/engine per
+  player).
 - **Perfect Storm:** the extra kick strikes every enemy the kick struck, 0.40s later, at 1.01x the kick's hit at the
   median, each hit with a crit roll of its own. A chance of 25% x (1 + Haste) gives 725 procs expected against 738
   logged.
