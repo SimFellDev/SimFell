@@ -21,7 +21,9 @@ internal sealed class FightRecorder
     private string? _lastName;
     private SourceTally? _lastSource;
     private readonly Dictionary<Aura, AuraState> _active = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<(AuraContainer Owner, string Key), SimTime> _lastEnd = new();
+    // Speed: each watched container's aura keys this fight, found by the key alone (a tuple key runs in the browser
+    // build's interpreter).
+    private int _generation;
     /// <summary>This fight's aura spans (start and end seconds in turn), by name and side; null for a fight not sampled.</summary>
     private Dictionary<(string Name, bool OnTarget), List<double>>? _spans;
     /// <summary>This fight's casts in the order they started; null for a fight not sampled.</summary>
@@ -91,7 +93,7 @@ internal sealed class FightRecorder
         if (_damage.Length == seconds) Array.Clear(_damage);
         else _damage = new double[seconds];
         _active.Clear();
-        _lastEnd.Clear();
+        _generation++;
         _spans = fight < SpanFights ? new() : null;
         _castStarts.Clear();
         _casts = fight < SpanFights || KeepFight ? new() : null;
@@ -177,18 +179,21 @@ internal sealed class FightRecorder
 
     private void Watch(AuraContainer auras, bool onTarget)
     {
-        auras.OnGained += (aura, _, now) => Gained(auras, onTarget, aura, now);
+        var watch = new AuraWatch(onTarget);
+        auras.OnGained += (aura, _, now) => Gained(watch, aura, now);
         auras.OnStacksLost += (aura, _, now) =>
         {
-            if (_tally != null && Active(auras, aura) is { } state) Restack(state, aura, now);
+            if (_tally != null && Active(watch, aura) is { } state) Restack(state, aura, now);
         };
         auras.OnRemoved += (aura, now) =>
         {
-            if (_tally == null || Active(auras, aura) is not { } state) return;
+            if (_tally == null || Active(watch, aura) is not { } state) return;
             _active.Remove(state.Aura);
             var end = Earlier(aura.ExpiresAt, now);
             Close(state, end);
-            _lastEnd[(auras, aura.Key)] = end;
+            state.Key.Active = null;
+            state.Key.LastEnd = end;
+            state.Key.HasEnded = true;
         };
     }
 
@@ -196,42 +201,47 @@ internal sealed class FightRecorder
     /// The active aura's state. An aura re-applied with other values is a new <see cref="Aura"/> of the same key: its
     /// state carries over to it.
     /// </summary>
-    private AuraState? Active(AuraContainer owner, Aura aura)
+    private AuraState? Active(AuraWatch watch, Aura aura)
     {
-        if (_active.TryGetValue(aura, out var state)) return state;
-        foreach (var other in _active.Values)
+        if (!KeysOf(watch).TryGetValue(aura.Key, out var key) || key.Active is not { } state) return null;
+        if (!ReferenceEquals(state.Aura, aura))
         {
-            if (other.Owner != owner || other.Aura.Key != aura.Key) continue;
-            _active.Remove(other.Aura);
-            other.Aura = aura;
-            _active[aura] = other;
-            return other;
+            _active.Remove(state.Aura);
+            state.Aura = aura;
+            _active[aura] = state;
         }
-        return null;
+        return state;
     }
 
-    private void Gained(AuraContainer owner, bool onTarget, Aura aura, SimTime now)
+    private void Gained(AuraWatch watch, Aura aura, SimTime now)
     {
         if (_tally == null) return;
-        if (Active(owner, aura) is { } state)
+        if (Active(watch, aura) is { } state)
         {
             state.Tally.Refreshes++;
             state.Tally.MaxStacks = Math.Max(state.Tally.MaxStacks, aura.Stacks);
             Restack(state, aura, now);
             return;
         }
-        var key = (owner, aura.Key);
-        var tally = _tally.Aura(aura.Name, onTarget);
+        if (!KeysOf(watch).TryGetValue(aura.Key, out var key)) watch.Keys[aura.Key] = key = new AuraKeyState();
+        AuraTally tally;
+        if (ReferenceEquals(key.TallyOf, _tally) && ReferenceEquals(key.TallyName, aura.Name)) tally = key.Tally!;
+        else
+        {
+            tally = _tally.Aura(aura.Name, watch.OnTarget);
+            (key.Tally, key.TallyOf, key.TallyName) = (tally, _tally, aura.Name);
+        }
         if (tally.LogId == 0) tally.LogId = aura.LogId;
         tally.MaxStacks = Math.Max(tally.MaxStacks, aura.Stacks);
         tally.StackCap = Math.Max(tally.StackCap, aura.MaxStacks);
         tally.Applications++;
-        if (_lastEnd.TryGetValue(key, out var lastEnd))
+        if (key.HasEnded)
         {
             tally.Gaps++;
-            tally.GapSeconds += (now - lastEnd).TotalSeconds;
+            tally.GapSeconds += (now - key.LastEnd).TotalSeconds;
         }
-        _active[aura] = new AuraState(owner, onTarget, aura, tally) { Start = now, Changed = now, Stacks = aura.Stacks };
+        key.Active = new AuraState(key, watch.OnTarget, aura, tally) { Start = now, Changed = now, Stacks = aura.Stacks };
+        _active[aura] = key.Active;
     }
 
     private static void Restack(AuraState state, Aura aura, SimTime now)
@@ -262,9 +272,41 @@ internal sealed class FightRecorder
 
     private static SimTime Earlier(SimTime a, SimTime b) => a < b ? a : b;
 
-    private sealed class AuraState(AuraContainer owner, bool onTarget, Aura aura, AuraTally tally)
+    /// <summary><paramref name="watch"/>'s aura keys this fight (a key from an earlier fight is gone).</summary>
+    private Dictionary<string, AuraKeyState> KeysOf(AuraWatch watch)
     {
-        public AuraContainer Owner { get; } = owner;
+        if (watch.Generation != _generation)
+        {
+            watch.Keys.Clear();
+            watch.Generation = _generation;
+        }
+        return watch.Keys;
+    }
+
+    /// <summary>One watched aura container: the hero's (<see cref="OnTarget"/> false) or an enemy's.</summary>
+    private sealed class AuraWatch(bool onTarget)
+    {
+        public bool OnTarget { get; } = onTarget;
+        /// <summary>The fight <see cref="Keys"/> is of.</summary>
+        public int Generation = -1;
+        public readonly Dictionary<string, AuraKeyState> Keys = new(StringComparer.Ordinal);
+    }
+
+    /// <summary>One aura key of a watched container this fight: its active state, its last end and its tally.</summary>
+    private sealed class AuraKeyState
+    {
+        public AuraState? Active;
+        public bool HasEnded;
+        public SimTime LastEnd;
+        /// <summary>The tally of <see cref="TallyName"/> in <see cref="TallyOf"/>.</summary>
+        public AuraTally? Tally;
+        public Tally? TallyOf;
+        public string? TallyName;
+    }
+
+    private sealed class AuraState(AuraKeyState key, bool onTarget, Aura aura, AuraTally tally)
+    {
+        public AuraKeyState Key { get; } = key;
         public bool OnTarget { get; } = onTarget;
         public Aura Aura { get; set; } = aura;
         public AuraTally Tally { get; } = tally;
