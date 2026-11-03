@@ -55,53 +55,19 @@
                         }
                     </ul>
                 }
+                @if (_favorites.Count > 0)
+                {
+                    <h3>Favorites</h3>
+                    @ResultItems(_favorites)
+                }
                 <h3>Recent</h3>
                 @if (_recent.Count == 0)
                 {
-                    <p class="hint">No sims yet. Finished sims show here.</p>
+                    <p class="hint">@(_favorites.Count == 0 ? "No sims yet. Finished sims show here." : "No other sims yet. Finished sims show here.")</p>
                 }
                 else
                 {
-                    <ul class="items">
-                        @foreach (var result in _recent)
-                        {
-                            <li @key="result.Key" class="item">
-                                @if (_renaming == result.Sim.Id)
-                                {
-                                    <input class="rename" @ref="_renameInput" @bind="_newTitle" @bind:event="oninput" aria-label="Sim name"
-                                           @onkeydown="e => RenameKey(e, result)" @onkeydown:stopPropagation @onblur="() => Rename(result)" />
-                                }
-                                else
-                                {
-                                    <button type="button" class="pick" @onclick="() => Show(result)">
-                                        <span class="item-head">
-                                            <span class="kind">@result.Kind</span>
-                                            <span class="item-title" data-tooltip="@result.Title">@result.Title</span>
-                                        </span>
-                                        <span class="item-meta">
-                                            <span>@result.Value</span>
-                                            <span>@result.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</span>
-                                        </span>
-                                    </button>
-                                }
-                                <span class="actions">
-                                    <button type="button" class="icon-button favorite @(result.Sim.Favorite ? "on" : null)"
-                                            data-tooltip="@(result.Sim.Favorite ? "Unfavorite" : "Favorite: never dropped for newer sims")"
-                                            aria-label="Favorite" aria-pressed="@(result.Sim.Favorite ? "true" : "false")"
-                                            @onclick="() => ToggleFavorite(result)">
-                                        <Icon Shape="IconShape.Star" />
-                                    </button>
-                                    <button type="button" class="icon-button" data-tooltip="Rename" aria-label="Rename" @onclick="() => StartRename(result)">
-                                        <Icon Shape="IconShape.Pencil" />
-                                    </button>
-                                    <button type="button" class="icon-button danger-button" data-tooltip="Delete" aria-label="Delete"
-                                            @onclick="() => Delete(result)">
-                                        <Icon Shape="IconShape.Bin" />
-                                    </button>
-                                </span>
-                            </li>
-                        }
-                    </ul>
+                    @ResultItems(_recent)
                 }
             </div>
         </aside>
@@ -114,6 +80,53 @@
 
     private bool _open;
     private IReadOnlyList<RecentResult> _recent = [];
+    private IReadOnlyList<RecentResult> _favorites = [];
+
+    // A list of saved sims, each with its favorite, rename and delete.
+    private RenderFragment ResultItems(IReadOnlyList<RecentResult> results) => __builder =>
+    {
+        <ul class="items">
+            @foreach (var result in results)
+            {
+                <li @key="result.Key" class="item">
+                    @if (_renaming == result.Sim.Id)
+                    {
+                        <input class="rename" @ref="_renameInput" @bind="_newTitle" @bind:event="oninput" aria-label="Sim name"
+                               @onkeydown="e => RenameKey(e, result)" @onkeydown:stopPropagation @onblur="() => Rename(result)" />
+                    }
+                    else
+                    {
+                        <button type="button" class="pick" @onclick="() => Show(result)">
+                            <span class="item-head">
+                                <span class="kind">@result.Kind</span>
+                                <span class="item-title" data-tooltip="@result.Title">@result.Title</span>
+                            </span>
+                            <span class="item-meta">
+                                <span>@result.Value</span>
+                                <span>@result.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</span>
+                            </span>
+                        </button>
+                    }
+                    <span class="actions">
+                        <button type="button" class="icon-button favorite @(result.Sim.Favorite ? "on" : null)"
+                                data-tooltip="@(result.Sim.Favorite ? "Unfavorite" : "Favorite: never dropped for newer sims")"
+                                aria-label="Favorite" aria-pressed="@(result.Sim.Favorite ? "true" : "false")"
+                                @onclick="() => ToggleFavorite(result)">
+                            <Icon Shape="IconShape.Star" />
+                        </button>
+                        <button type="button" class="icon-button" data-tooltip="Rename" aria-label="Rename" @onclick="() => StartRename(result)">
+                            <Icon Shape="IconShape.Pencil" />
+                        </button>
+                        <button type="button" class="icon-button danger-button" data-tooltip="Delete" aria-label="Delete"
+                                @onclick="() => Delete(result)">
+                            <Icon Shape="IconShape.Bin" />
+                        </button>
+                    </span>
+                </li>
+            }
+        </ul>
+    };
+
 
     /// <summary>The ID of the saved sim whose name is being edited, and the name so far.</summary>
     private string? _renaming;
@@ -148,10 +161,12 @@
     {
         try
         {
-            _recent = (await Results.ListAsync(Jobs.Visitor)).Select(RecentResult.Of)
+            // The favorites stay at the top, every one of them; the other sims follow, newest first.
+            var results = (await Results.ListAsync(Jobs.Visitor)).Select(RecentResult.Of)
                 .OrderByDescending(r => r.CreatedAt)
-                .Take(RecentCount)
                 .ToList();
+            _favorites = results.Where(r => r.Sim.Favorite).ToList();
+            _recent = results.Where(r => !r.Sim.Favorite).Take(RecentCount).ToList();
         }
         catch (IOException)
         {

@@ -16,10 +16,14 @@
     <div @ref="_root" class="apl-editor">
         @if (Embedded)
         {
-            <div class="selected-apl">
+            <div class="selected-apl @(Disabled ? "off" : "")">
                 <label class="selected-label" for="@_selectId">Selected APL</label>
                 <select id="@_selectId" @key="_pickerKey" disabled="@(Disabled || State.Editor.Vocabulary == null)" @bind:get="State.SelectedSaved" @bind:set="PickSavedAsked">
-                    @if (State.SelectedSaved.Length == 0)
+                    @if (State.TextList is { } textList)
+                    {
+                        <option value="">@(textList.Name.Length > 0 ? textList.Name : "Imported list")</option>
+                    }
+                    else if (State.SelectedSaved.Length == 0)
                     {
                         <option value="">@(State.Name.Length > 0 ? State.Name : "Imported list")</option>
                     }
@@ -318,14 +322,21 @@
             await PickSaved(Selected);
             return;
         }
+        await LoadText(SelectedName, SelectedText ?? "");
+    }
+
+    /// <summary>Opens a list from its text, kept as the picker's text list.</summary>
+    private async Task LoadText(string name, string text)
+    {
+        State.TextList = (name, text);
         _loading = true;
         try
         {
             _read?.Cancel();
             _write?.Cancel();
             State.SelectedSaved = "";
-            State.Name = SelectedName;
-            State.Text = SelectedText ?? "";
+            State.Name = name;
+            State.Text = text;
             State.TextEdited = false;
             State.Editor.SetStatus(MessageState.None);
             try
@@ -777,6 +788,10 @@
 
     private Task PickSavedAsked(string value)
     {
+        if (Embedded && value.Length == 0 && State.TextList is { } textList)
+        {
+            return AskFirst($"opening {textList.Name}", () => LoadText(textList.Name, textList.Text));
+        }
         var picked = State.Saved.FirstOrDefault(s => SavedValue(s) == value);
         return AskFirst(picked != null ? $"opening {picked.Name}" : "starting a new list", () => PickSaved(value));
     }

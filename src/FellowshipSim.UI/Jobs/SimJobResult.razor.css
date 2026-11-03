@@ -13,6 +13,12 @@
   gap: 8px;
 }
 
+/* As a compare run's Load. */
+.save-bar .load {
+  border-color: var(--accent);
+  color: var(--heading);
+}
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

@@ -16,8 +16,8 @@ public sealed record SimSettings(int Iterations, double DurationSeconds, int Tar
     double LengthVariance = 0, bool HealthFollowsTime = true, double StartingSpirit = 0, bool Boss = true, DungeonProfile? Dungeon = null,
     double HeroShareVariance = 0, bool ReactionDelays = true, double ProcReactionSeconds = SimSettings.DefaultProcReactionSeconds)
 {
-    /// <summary>SimulationCraft's default reaction_time.</summary>
-    public const double DefaultProcReactionSeconds = 0.5;
+    /// <summary>SimulationCraft's player reaction_mean: 0.3 s.</summary>
+    public const double DefaultProcReactionSeconds = 0.3;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public FightOptions Fight => new(LengthVariance, HealthFollowsTime, StartingSpirit, Boss, Dungeon, HeroShareVariance, ReactionDelays, ProcReactionSeconds);

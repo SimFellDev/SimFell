@@ -67,6 +67,16 @@
   min-height: 40px;
 }
 
+/* Compare is on: each run picks its own list, so the picker is grey. */
+.selected-apl.off {
+  opacity: 0.45;
+}
+
+.selected-apl.off select,
+.selected-apl.off .edit-button {
+  cursor: not-allowed;
+}
+
 .edit-button {
   width: 40px;
   height: 40px;

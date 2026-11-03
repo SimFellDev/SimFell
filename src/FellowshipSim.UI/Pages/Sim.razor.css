@@ -159,6 +159,21 @@
 }
 
 .import-body {
-  padding: 0 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
   background: var(--bg);
+}
+
+/* Each card's own space would add to the gap: the body's padding and gap space them evenly. */
+.import-body ::deep .card {
+  margin: 0;
+}
+
+.profile-file {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

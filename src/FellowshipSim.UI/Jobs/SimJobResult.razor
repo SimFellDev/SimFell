@@ -12,7 +12,7 @@
     <div class="save-bar" data-save-skip>
         @if (Profile != null)
         {
-            <button type="button" class="secondary-button" data-tooltip="Back to the Import step with this sim's profile loaded" @onclick="RunAgain">Run again</button>
+            <button type="button" class="secondary-button load" data-tooltip="Put this sim's build, action list and settings in the Sim page" @onclick="Load">Load</button>
         }
         <button type="button" class="secondary-button" disabled="@(!CanReplay)" data-tooltip="@ReplayTip" @onclick="ReplayInDebugger">Replay in debugger</button>
         <button type="button" class="secondary-button" data-tooltip="Save this sim's report as an HTML file" @onclick="SaveAsync">Save as HTML</button>
@@ -357,7 +357,7 @@
     /// <summary>The sim's title: the saved file's name and heading.</summary>
     [Parameter] public string Title { get; set; } = "Sim";
 
-    /// <summary>The profile the sim ran, for Run again, Replay in debugger and the Advanced section.</summary>
+    /// <summary>The profile the sim ran, for Load, Replay in debugger and the Advanced section.</summary>
     [Parameter] public string? Profile { get; set; }
 
     /// <summary>The sim's settings, for Replay in debugger; null for a sim saved before they were kept.</summary>
@@ -378,10 +378,10 @@
     }
 
     // The Sim page's Import step with the sim's profile in the editor.
-    private void RunAgain()
+    private void Load()
     {
         if (Profile == null) return;
-        if (Sim.RunAgain(Profile)) Toasts.Ok("Loaded the sim's profile. Run sim runs it again.");
+        if (Sim.LoadSim(Profile)) Toasts.Ok($"Loaded {Sim.Build.Name} from a sim.");
         Views.ShowPage(AppPage.Sim);
     }
 

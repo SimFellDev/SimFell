@@ -69,14 +69,15 @@ public class SimPageStateTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Run_Again_Loads_An_Unsaved_Sims_Whole_Profile_In_The_Import_Dialog(bool dungeon)
+    public void Load_Puts_An_Unsaved_Sims_Whole_Profile_In_The_Page(bool dungeon)
     {
         var edited = Edited(dungeon);
         string profile = edited.SimProfileText(edited.Build, edited.ActionListText!);
         var state = new SimPageState { Tab = SimTab.Advanced, Extra = SimExtra.Compare };
 
-        Assert.True(state.RunAgain(profile));
-        Assert.True(state.ImportOpen);
+        Assert.True(state.LoadSim(profile));
+        Assert.False(state.ImportOpen);
+        Assert.Equal(SimTab.Hero, state.Tab);
         Assert.Equal(SimExtra.None, state.Extra);
         Assert.Equal(profile, state.ProfileText);
         Assert.Equal("Unsaved", state.Build.Name);

@@ -26,7 +26,7 @@ namespace FellowshipSim.Engine;
 /// boss=true
 /// starting_spirit=0
 /// reaction_delays=true
-/// proc_reaction=0.5
+/// proc_reaction=0.3
 ///
 /// actions+=/frost_bolt
 /// </code>

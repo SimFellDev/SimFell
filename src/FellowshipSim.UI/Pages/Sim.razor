@@ -94,13 +94,20 @@
                             BuildOnlyHeroes="true" OnImport="ImportFromLogAsync" />
                 <Card Title="Import a .simc profile or share link">
                     <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, a profile's sim settings to Modes and Advanced, and its action list to Modes.</p>
-                    <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
+                    <label class="secondary-button file-button profile-file">
+                        <Icon Shape="IconShape.Import" />
+                        Choose a .simc file
+                        <InputFile accept=".simc,.txt" OnChange="LoadFileAsync" />
+                    </label>
                     <textarea class="profile" rows="10" spellcheck="false" placeholder='rime="name"' @bind="State.ProfileText"></textarea>
                     <div class="row actions">
                         <button type="button" @onclick="ImportProfileAsync">Use this profile</button>
                     </div>
+                    @if (State.ImportStatus.Text.Length > 0)
+                    {
+                        <Message Kind="State.ImportStatus.Kind">@State.ImportStatus.Text</Message>
+                    }
                 </Card>
-                <Message Kind="State.ImportStatus.Kind">@State.ImportStatus.Text</Message>
             </div>
         </div>
     </div>

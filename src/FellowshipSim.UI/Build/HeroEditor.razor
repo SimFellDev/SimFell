@@ -62,11 +62,14 @@
                 </div>
             }
         </div>
+        <button type="button" class="secondary-button new-build" aria-haspopup="dialog" data-tooltip="Start a build of any hero" @onclick="() => _newOpen = true">
+            <Icon Shape="IconShape.Plus" />
+            New build
+        </button>
         <div class="icons">
             <button type="button" class="icon-button" aria-label="Save" data-tooltip="Save" @onclick="SaveAsked"><Icon Shape="IconShape.Save" /></button>
             <button type="button" class="icon-button" aria-label="Rename" data-tooltip="@(State.SavedName.Length == 0 ? "Save the build first" : "Rename")"
                     disabled="@(State.SavedName.Length == 0)" @onclick="RenameAsked"><Icon Shape="IconShape.Pencil" /></button>
-            <button type="button" class="icon-button" aria-label="New build" aria-haspopup="dialog" data-tooltip="New build" @onclick="() => _newOpen = true"><Icon Shape="IconShape.Plus" /></button>
             <button type="button" class="icon-button" aria-label="Duplicate" data-tooltip="Duplicate" @onclick="Duplicate"><Icon Shape="IconShape.Duplicate" /></button>
             <span class="divider" aria-hidden="true"></span>
             @if (OnImport.HasDelegate)
@@ -81,12 +84,17 @@
             }
             <button type="button" class="icon-button" aria-label="Export" aria-expanded="@(_exportOpen ? "true" : "false")" data-tooltip="Export the build as a .simc profile"
                     @onclick="ExportAsync"><Icon Shape="IconShape.Export" /></button>
-            <button type="button" class="icon-button" aria-label="Share build" aria-expanded="@(_shareOpen ? "true" : "false")"
-                    data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync"><Icon Shape="IconShape.Link" /></button>
             <span class="divider" aria-hidden="true"></span>
-            <button type="button" class="icon-button danger-button" aria-label="Delete" data-tooltip="@(State.SavedName.Length == 0 ? "The build is not saved" : "Delete")"
+            <button type="button" class="icon-button danger-button delete" aria-label="Delete" data-tooltip="@(State.SavedName.Length == 0 ? "The build is not saved" : "Delete")"
                     disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync"><Icon Shape="IconShape.Bin" /></button>
         </div>
+        @* The accent button, as Run sim is: sharing a build is a feature to notice. At the toolbar's end, apart from the rest.
+           Its classes say nothing of sharing: ad blockers' social lists hide .share-button and the like. *@
+        <button type="button" class="build-link-button" aria-expanded="@(_shareOpen ? "true" : "false")"
+                data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync">
+            <Icon Shape="IconShape.Link" />
+            Share build
+        </button>
     </div>
     @if (State.BuildStatus.Text.Length > 0)
     {
@@ -132,21 +140,7 @@
                         <GameIcon @key="hero" Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
                     }
                 </div>
-                @if (State.SavedName.Length > 0)
-                {
-                    @* A saved build's hero is fixed: another hero is a new build. *@
-                    <div class="hero-current fixed">
-                        @if (BuildCatalog.PortraitUrl(Build.Hero) is { } portrait)
-                        {
-                            <img src="@portrait" alt="" loading="lazy" />
-                        }
-                        <span class="hero-name">
-                            <strong>@Build.Hero</strong>
-                        </span>
-                    </div>
-                }
-                else
-                {
+                @* Another hero is a new build of that hero; a saved build stays saved. *@
                 <div class="hero-select" @onkeydown="OnHeroKeyDown">
                     <button type="button" class="hero-current @(_heroMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_heroMenuOpen ? "true" : "false")"
                             @onclick="() => _heroMenuOpen = !_heroMenuOpen">
@@ -156,7 +150,7 @@
                         }
                         <span class="hero-name">
                             <strong>@Build.Hero</strong>
-                            <span class="meta">Change hero</span>
+                            <span class="meta">@(State.SavedName.Length > 0 ? "Change hero: a new build" : "Change hero")</span>
                         </span>
                         <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
                     </button>
@@ -195,7 +189,6 @@
                         </div>
                     }
                 </div>
-                }
             <h3 class="section">Character sheet</h3>
             <div class="sheet">
                 <span class="sheet-label">Main stat</span>
@@ -534,13 +527,13 @@
                 {
                     <p class="hint">Rename saves the build's changes too.</p>
                 }
-                @if (_nameError.Length > 0)
+                @if (_nameError.Length > 0 && (_overwrite == null || Overwriting))
                 {
                     <p class="field-error">@_nameError</p>
                 }
                 <div class="row dialog-actions">
                     <button type="button" class="secondary-button" @onclick="CloseNameDialog">Cancel</button>
-                    <button type="submit">@(naming == BuildNaming.Rename ? "Rename" : "Save")</button>
+                    <button type="submit" class="@(Overwriting ? "overwrite" : "")">@(Overwriting ? "Overwrite" : naming == BuildNaming.Rename ? "Rename" : "Save")</button>
                 </div>
             </form>
         </div>
@@ -643,6 +636,8 @@
     private BuildNaming? _nameDialog;
     private string _nameText = "";
     private string _nameError = "";
+    // The taken name the name dialog asked to overwrite, null before it asks.
+    private string? _overwrite;
     private ElementReference _nameInput;
     private bool _focusName;
 
@@ -927,12 +922,16 @@
     private bool IsOpen(ProfileEntry saved) =>
         saved.Name == State.SavedName && saved.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
 
-    // The saved builds whose name or hero has the search text.
+    // The saved builds whose name or hero has the search text: the open build's hero first, then the other heroes, each
+    // hero's builds by name.
     private IEnumerable<ProfileEntry> FoundBuilds()
     {
         string search = _buildSearch.Trim();
-        return search.Length == 0 ? _saved
+        var found = search.Length == 0 ? _saved
             : _saved.Where(s => s.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || s.Hero.Contains(search, StringComparison.OrdinalIgnoreCase));
+        return found.OrderBy(s => s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(s => s.Hero, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase);
     }
 
     private void ToggleBuildMenu()
@@ -1006,6 +1005,7 @@
         _nameDialog = naming;
         _nameText = Build.Name;
         _nameError = "";
+        _overwrite = null;
         _focusName = true;
     }
 
@@ -1033,10 +1033,16 @@
             return;
         }
         string old = State.SavedName;
-        if (Taken(name))
+        // A name another saved build has asks once; the second Save, now Overwrite, replaces that build.
+        if (TakenBy(name) is { } taken)
         {
-            _nameError = TakenText(name);
-            return;
+            if (!Overwriting)
+            {
+                _overwrite = name;
+                _nameError = TakenText(name);
+                return;
+            }
+            name = taken.Name;
         }
         bool renaming = naming == BuildNaming.Rename && old.Length > 0 && !old.Equals(name, StringComparison.OrdinalIgnoreCase);
         if (!await SaveAsync(name, announce: !renaming)) return;
@@ -1062,11 +1068,16 @@
         await Changed();
     }
 
-    // A name the build cannot take: another saved build of its hero has it.
-    private bool Taken(string name) => _saved.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)
-                                                       && !s.Name.Equals(State.SavedName, StringComparison.OrdinalIgnoreCase));
+    // Another saved build of the build's hero with the name, null when the name is free.
+    private ProfileEntry? TakenBy(string name) => _saved.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)
+                                                                          && !s.Name.Equals(State.SavedName, StringComparison.OrdinalIgnoreCase));
 
-    private string TakenText(string name) => $"A {Build.Hero} build named {name} exists.";
+    private bool Taken(string name) => TakenBy(name) != null;
+
+    // The name dialog asked about overwriting the build with the name in its field.
+    private bool Overwriting => _overwrite is { } overwrite && overwrite.Equals(_nameText.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private string TakenText(string name) => $"{name} is a saved {Build.Hero} build. Overwrite replaces it with this build.";
 
     private const string NameRule = "Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).";
 
@@ -1112,6 +1123,7 @@
         OpenNameDialog(BuildNaming.Save);
         _nameText = name.Length > 0 ? name : Build.Name;
         _nameError = name.Length > 0 ? TakenText(name) : NameRule;
+        if (name.Length > 0) _overwrite = name;
     }
 
     private void OpenRefresh()

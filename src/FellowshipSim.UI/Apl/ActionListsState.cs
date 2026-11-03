@@ -24,6 +24,12 @@ public sealed class ActionListsState(ISimEngine engine)
 
     public string Name { get; set; } = "";
 
+    /// <summary>
+    /// The name and text of the list last opened from text (an imported profile's or a sim's), null before one: the
+    /// embedded picker keeps it as an option after a saved list is picked.
+    /// </summary>
+    public (string Name, string Text)? TextList { get; set; }
+
     public string NewList { get; set; } = "";
 
     /// <summary>The action-list text.</summary>

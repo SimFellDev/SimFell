@@ -102,6 +102,34 @@
   background: var(--border);
 }
 
+
+/* New build: a labelled button beside the build menu, so a new build of any hero is one click away. */
+.new-build {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border-color: var(--accent);
+  color: var(--heading);
+}
+
+/* Delete: red, as the old Delete button was. */
+.icons .delete:not(:disabled) {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 55%, var(--border));
+}
+
+/* The accent button, as Run sim is: sharing a build is a feature to notice. At the toolbar's end, apart from the rest. */
+.toolbar .build-link-button {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 20px;
+  font-weight: 700;
+}
+
 /* The New build dialog's hero tiles. */
 .hero-tiles {
   display: grid;
@@ -127,15 +155,6 @@
 
 .hero-tile ::deep .icon {
   border-radius: 50%;
-}
-
-/* A saved build's hero: the menu's look, with nothing to open. */
-.hero-current.fixed {
-  cursor: default;
-}
-
-.hero-current.fixed:hover {
-  border-color: var(--border);
 }
 
 /* Over the bottom of the window, the width of the page's content, while the build has changes not saved. */
@@ -1127,4 +1146,11 @@
 
 .refresh-choices button {
   text-align: left;
+}
+
+/* Save over another saved build of the same name: red, as Delete is. */
+.dialog-actions .overwrite {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
 }

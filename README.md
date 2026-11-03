@@ -138,8 +138,8 @@ The **Modes** tab has two kinds of fight:
   bosses. The Dungeon card starts with the built-in `Default` dungeon: Cithrel's Fall's creatures in four trash pulls and
   two bosses, Cithrel the final boss.
 
-**Proc reaction (ms)** in the **Fight settings** card is the time a proc's gain takes to reach the action list: 500 ms by
-default, as SimulationCraft's `reaction_time`. Until it passes, `buff.<proc>` reads the proc as it was before the gain:
+**Proc reaction (ms)** in the **Fight settings** card is the time a proc's gain takes to reach the action list: 300 ms by
+default, as SimulationCraft's player `reaction_mean`. Until it passes, `buff.<proc>` reads the proc as it was before the gain:
 down for a new proc, the stacks before a new stack, and the time left before a refresh. 0 shows each gain at once. The
 command line's `--proc-reaction <ms>` is the same setting.
 

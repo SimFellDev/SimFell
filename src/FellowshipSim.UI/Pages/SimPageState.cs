@@ -136,7 +136,7 @@ public sealed class SimPageState
             if (sim.Profile.ActionList.Trim().Length > 0)
             {
                 ActionListText = sim.Profile.ActionList;
-                ActionListName = "the profile's list";
+                ActionListName = "Profile's list";
                 ActionListValue = "";
             }
             UseSettings(sim);
@@ -149,17 +149,16 @@ public sealed class SimPageState
     }
 
     /// <summary>
-    /// Puts <paramref name="profile"/>, a sim's profile, in the Import dialog, and its build, action list and settings in
-    /// the page, and opens the Import dialog. Run sim then runs the profile alone: no compare or finder. False, with the
-    /// reason in <see cref="ImportStatus"/>, when the profile does not parse.
+    /// Puts <paramref name="profile"/>, a sim's profile, in the page: its build, action list and settings, on the Hero tab.
+    /// Run sim then runs the profile alone: no compare or finder. False, with the reason in <see cref="ImportStatus"/>, when
+    /// the profile does not parse.
     /// </summary>
-    public bool RunAgain(string profile)
+    public bool LoadSim(string profile)
     {
         ProfileText = profile;
         ImportProfile();
         bool loaded = ImportStatus.Kind != MessageKind.Error;
         if (loaded) Extra = SimExtra.None;
-        ImportOpen = true;
         NotifyChanged();
         return loaded;
     }
