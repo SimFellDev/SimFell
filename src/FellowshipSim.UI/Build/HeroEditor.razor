@@ -1027,6 +1027,8 @@
     {
         if (_nameDialog is not { } naming) return;
         string name = _nameText.Trim();
+        bool overwriting = Overwriting;
+        _overwrite = null;
         if (!ActionListStore.IsValidName(name))
         {
             _nameError = NameRule;
@@ -1036,7 +1038,7 @@
         // A name another saved build has asks once; the second Save, now Overwrite, replaces that build.
         if (TakenBy(name) is { } taken)
         {
-            if (!Overwriting)
+            if (!overwriting)
             {
                 _overwrite = name;
                 _nameError = TakenText(name);

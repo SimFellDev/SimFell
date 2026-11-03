@@ -122,8 +122,8 @@ Every option of the **Sim** page is a line of this text, and a sim's job is the 
 The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
 standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
-end, has the sim's profile, and **Run again** puts it back on the Sim page's Import step, with its build, action list
-and settings.
+end, has the sim's profile. **Load** puts its build, action list and settings in the Sim page, as a compare run's
+**Load** does.
 
 ### Fights
 

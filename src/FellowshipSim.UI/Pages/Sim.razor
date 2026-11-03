@@ -103,11 +103,11 @@
                     <div class="row actions">
                         <button type="button" @onclick="ImportProfileAsync">Use this profile</button>
                     </div>
-                    @if (State.ImportStatus.Text.Length > 0)
-                    {
-                        <Message Kind="State.ImportStatus.Kind">@State.ImportStatus.Text</Message>
-                    }
                 </Card>
+                @if (State.ImportStatus.Text.Length > 0)
+                {
+                    <Message Kind="State.ImportStatus.Kind">@State.ImportStatus.Text</Message>
+                }
             </div>
         </div>
     </div>
