@@ -1,16 +1,24 @@
 using FellowshipSim.Cli;
+using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Core.Import;
+using FellowshipSim.Engine;
+using FellowshipSim.UI.Build;
 
 namespace FellowshipSim.Tests;
 
 public class CliOptionsTests
 {
+    // A character profile with no sim settings.
+    private static string Character() => new SimcProfile(BuildEditor.NewBuild("Rime"), "actions=frost_bolt\n").Format();
+
     [Fact]
     public void Profile_Alone_Gets_The_Default_Settings_And_Text()
     {
         var options = CliOptions.Parse(["--profile", "rime.simc"])!;
 
         Assert.Equal("rime.simc", options.ProfilePath);
-        Assert.Equal(CliOptions.DefaultSettings, options.Settings);
+        Assert.Empty(options.Lines);
+        Assert.Equal(CliOptions.DefaultSettings, options.Read(Character()).Settings);
         Assert.Equal(CliOutputFormat.Text, options.Format);
     }
 
@@ -20,8 +28,31 @@ public class CliOptionsTests
         var options = CliOptions.Parse(["--profile", "rime.simc", "--iterations", "200", "--duration=90.5", "--targets", "3",
             "--seed", "-7", "--threads", "2", "--format", "json"])!;
 
-        Assert.Equal(new Engine.SimSettings(200, 90.5, TargetCount: 3, FirstSeed: -7, DegreeOfParallelism: 2), options.Settings);
+        Assert.Equal(new SimSettings(200, 90.5, TargetCount: 3, FirstSeed: -7, DegreeOfParallelism: 2), options.Read(Character()).Settings);
         Assert.Equal(CliOutputFormat.Json, options.Format);
+    }
+
+    [Fact]
+    public void Options_Replace_The_Profiles_Settings()
+    {
+        var profileSettings = new SimSettings(750, 200, TargetCount: 2, FirstSeed: 4, LengthVariance: 0.2, Boss: false);
+        string profile = new SimProfile(new SimcProfile(BuildEditor.NewBuild("Rime"), "actions=frost_bolt\n"), profileSettings).Format();
+        var options = CliOptions.Parse(["--profile", "rime.simc", "--iterations", "50", "--reactions", "off"])!;
+
+        Assert.Equal(profileSettings with { Iterations = 50, ReactionDelays = false }, options.Read(profile).Settings);
+    }
+
+    [Fact]
+    public void Dungeon_Option_Replaces_The_Profiles_Dungeon()
+    {
+        var mine = DefaultDungeons.Default with { Name = "Mine", TimeLimitSeconds = 600 };
+        string profile = new SimProfile(new SimcProfile(BuildEditor.NewBuild("Rime"), "actions=frost_bolt\n"), new SimSettings(10, 600, Dungeon: mine)).Format();
+        var options = CliOptions.Parse(["--profile", "rime.simc", "--dungeon", DefaultDungeons.DefaultName])!;
+
+        var settings = options.Read(profile).Settings;
+
+        Assert.Equal(DefaultDungeons.Default.Format(), settings.Dungeon!.Format());
+        Assert.Equal(DefaultDungeons.Default.TimeLimitSeconds, settings.DurationSeconds);
     }
 
     [Theory]

@@ -115,6 +115,8 @@
 </Card>
 
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     /// <summary>The fight's settings: the Sim page's, or the APL Debugger's own.</summary>
     [Parameter, EditorRequired] public SimPageState State { get; set; } = null!;
 
@@ -245,7 +247,8 @@
         State.MarkDungeonClean();
         await LoadSaved();
         State.DungeonValue = ValueOf(new DungeonEntry(dungeon.Name));
-        _status = MessageState.Ok($"Saved {dungeon.Name}.");
+        _status = MessageState.None;
+        Toasts.Ok($"Saved {dungeon.Name}.");
         return true;
     }
 
@@ -275,7 +278,8 @@
         await Store.DeleteAsync(Visitor, own);
         await LoadSaved();
         State.DungeonValue = "";
-        _status = MessageState.Ok($"Deleted {own.Name}. The editor still has it: save it to keep it.");
+        _status = MessageState.None;
+        Toasts.Ok($"Deleted {own.Name}. The editor still has it: save it to keep it.");
         await OnChanged.InvokeAsync();
     }
 
@@ -286,7 +290,8 @@
             var dungeon = DungeonProfile.Parse(_text);
             Editor.CloseAll();
             State.DungeonValue = "";
-            _textStatus = MessageState.Ok($"Loaded {PullsText(dungeon.Pulls.Count)}.");
+            _textStatus = MessageState.None;
+            Toasts.Ok($"Loaded {PullsText(dungeon.Pulls.Count)}.");
             return Change(dungeon);
         }
         catch (FormatException e)

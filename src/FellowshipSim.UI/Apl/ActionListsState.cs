@@ -29,11 +29,8 @@ public sealed class ActionListsState(ISimEngine engine)
     /// <summary>The action-list text.</summary>
     public string Text { get; set; } = "";
 
-    /// <summary>True when the text's section is open, as it is when a saved list does not parse.</summary>
+    /// <summary>True when the Action list text tab shows, as it does when a saved list does not parse.</summary>
     public bool TextOpen { get; set; }
-
-    /// <summary>Key of the text's section: a new key renders it anew with its open attribute.</summary>
-    public int TextKey { get; set; }
 
     public MessageState TextStatus { get; set; } = MessageState.None;
 

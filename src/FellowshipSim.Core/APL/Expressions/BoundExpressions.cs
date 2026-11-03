@@ -68,6 +68,7 @@ public abstract class BoundExpression
     // The same order as PropertyExpression.EvaluateNumeric: a named value, then a resource, then a scoped path; else 0.
     private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
+        if (p.Aggregate is { } aggregate) return p.IsEnemyAggregate ? new BoundEnemyAggregate(hero, p.Name!, aggregate) : new BoundConstant(0.0);
         if (p.PropertyPath == "time") return new BoundTime();
         if (p.PropertyPath == "target.cast.remains") return new BoundCastRemains();
         if (PropertyExpression.Countdowns.TryGetValue(p.PropertyPath, out var end)) return new BoundCountdown(end);
@@ -550,6 +551,28 @@ internal sealed class BoundActiveDot(Hero hero, string slug) : BoundNumeric
         }
         return count;
     }
+}
+
+/// <summary>
+/// A debuff's remaining time over every application on every enemy in combat (<c>min:dot.&lt;name&gt;.remains</c>,
+/// <see cref="AplEnemyAggregate"/>). It falls by a second per second until the application it reads runs out, and another
+/// application appears only in an event.
+/// </summary>
+internal sealed class BoundEnemyAggregate(Hero hero, string slug, AplEnemyAggregate aggregate) : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => NumericAt(ctx, ctx.CurrentTime);
+
+    private SimTime? Expiry(SimulationContext ctx) => AuraLookup.ExpiryAcross(hero, ctx, slug, aggregate, ctx.CurrentTime);
+
+    internal override SimTime Until(SimulationContext ctx) => Expiry(ctx) ?? SimTime.Infinite;
+
+    internal override bool IsLevel(SimulationContext ctx) => Expiry(ctx) is not { } expiry || expiry == SimTime.Infinite;
+
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        IsLevel(ctx) ? TimeCurve.Constant(EvaluateNumeric(ctx)) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
+
+    internal override double NumericAt(SimulationContext ctx, SimTime time) =>
+        PropertyExpression.RemainsAcross(Expiry(ctx), aggregate, time);
 }
 
 /// <summary>

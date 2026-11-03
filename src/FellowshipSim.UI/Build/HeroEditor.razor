@@ -11,28 +11,82 @@
 @inject SimPageState State
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject CharacterImport Characters
+@inject LogPlayerLookup LogPlayers
 @implements IDisposable
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
 <Card>
-    <div class="row toolbar">
-        <input aria-label="Build name" placeholder="Build name" autocomplete="off" @bind="Build.Name" @bind:after="Changed" />
-        <select @key="_pickerKey" aria-label="Saved builds" @bind:get="State.SavedName" @bind:set="LoadSavedAsked">
-            <option value="">Load build...</option>
-            @foreach (var saved in _saved)
+    <div class="toolbar">
+        <div class="build-select" @onkeydown="OnBuildKeyDown">
+            <button type="button" class="build-current @(_buildMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_buildMenuOpen ? "true" : "false")"
+                    aria-label="Saved builds" @onclick="ToggleBuildMenu">
+                <GameIcon Url="@BuildCatalog.PortraitUrl(Build.Hero)" Size="32" />
+                <span class="build-name">
+                    <strong>@Build.Name</strong>
+                    <span class="meta">@Build.Hero@(State.SavedName.Length == 0 ? " · not saved" : "")</span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            @if (_buildMenuOpen)
             {
-                <option @key="saved.Name" value="@saved.Name">@saved.Name</option>
+                <div class="hero-backdrop" @onclick="() => _buildMenuOpen = false"></div>
+                <div class="build-menu">
+                    <input @ref="_buildSearchInput" type="search" class="build-search" aria-label="Search builds or heroes" placeholder="Search builds or heroes"
+                           autocomplete="off" spellcheck="false" @bind="_buildSearch" @bind:event="oninput" />
+                    <div role="listbox" aria-label="Saved builds">
+                        @{ string? group = null; }
+                        @foreach (var saved in FoundBuilds())
+                        {
+                            if (!saved.Hero.Equals(group, StringComparison.OrdinalIgnoreCase))
+                            {
+                                group = saved.Hero;
+                                <span @key="@($"group/{saved.Hero}")" class="group">@saved.Hero</span>
+                            }
+                            bool picked = IsOpen(saved);
+                            <button @key="@($"{saved.Hero}/{saved.Name}")" type="button" role="option" class="hero-option @(picked ? "picked" : "")" aria-selected="@(picked ? "true" : "false")"
+                                    @onclick="() => LoadSavedAsked(saved)">
+                                <GameIcon Url="@BuildCatalog.PortraitUrl(saved.Hero)" Size="28" />
+                                <span class="option-name">@saved.Name</span>
+                                @if (picked)
+                                {
+                                    <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                                }
+                            </button>
+                        }
+                        @if (!FoundBuilds().Any())
+                        {
+                            <span class="no-builds">@(_saved.Count == 0 ? "No saved builds yet." : "No build or hero matches.")</span>
+                        }
+                    </div>
+                </div>
             }
-        </select>
-        <button type="button" class="secondary-button" @onclick="SaveAsync">Save</button>
-        <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
-        <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
-        <button type="button" class="secondary-button" aria-expanded="@(_exportOpen ? "true" : "false")" @onclick="ExportAsync">Export</button>
-        <button type="button" class="secondary-button delete" disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync">Delete</button>
-        <button type="button" class="build-link-button"aria-expanded="@(_shareOpen ? "true" : "false")" data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync">
-            <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path d="M10 2h4v4M14 2 8 8M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            Share build
-        </button>
+        </div>
+        <div class="icons">
+            <button type="button" class="icon-button" aria-label="Save" data-tooltip="Save" @onclick="SaveAsked"><Icon Shape="IconShape.Save" /></button>
+            <button type="button" class="icon-button" aria-label="Rename" data-tooltip="@(State.SavedName.Length == 0 ? "Save the build first" : "Rename")"
+                    disabled="@(State.SavedName.Length == 0)" @onclick="RenameAsked"><Icon Shape="IconShape.Pencil" /></button>
+            <button type="button" class="icon-button" aria-label="New build" aria-haspopup="dialog" data-tooltip="New build" @onclick="() => _newOpen = true"><Icon Shape="IconShape.Plus" /></button>
+            <button type="button" class="icon-button" aria-label="Duplicate" data-tooltip="Duplicate" @onclick="Duplicate"><Icon Shape="IconShape.Duplicate" /></button>
+            <span class="divider" aria-hidden="true"></span>
+            @if (OnImport.HasDelegate)
+            {
+                <button type="button" class="icon-button" aria-label="Import" aria-haspopup="dialog" data-tooltip="Import a character from a log, a .simc profile or a share link"
+                        @onclick="OnImport"><Icon Shape="IconShape.Import" /></button>
+            }
+            @if (Build.LogSource.Length > 0)
+            {
+                <button type="button" class="icon-button" aria-label="Refresh" aria-haspopup="dialog" data-tooltip="Refresh from a log: a fight, or the character's latest fight"
+                        @onclick="OpenRefresh"><Icon Shape="IconShape.Refresh" /></button>
+            }
+            <button type="button" class="icon-button" aria-label="Export" aria-expanded="@(_exportOpen ? "true" : "false")" data-tooltip="Export the build as a .simc profile"
+                    @onclick="ExportAsync"><Icon Shape="IconShape.Export" /></button>
+            <button type="button" class="icon-button" aria-label="Share build" aria-expanded="@(_shareOpen ? "true" : "false")"
+                    data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync"><Icon Shape="IconShape.Link" /></button>
+            <span class="divider" aria-hidden="true"></span>
+            <button type="button" class="icon-button danger-button" aria-label="Delete" data-tooltip="@(State.SavedName.Length == 0 ? "The build is not saved" : "Delete")"
+                    disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync"><Icon Shape="IconShape.Bin" /></button>
+        </div>
     </div>
     @if (State.BuildStatus.Text.Length > 0)
     {
@@ -78,6 +132,21 @@
                         <GameIcon @key="hero" Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
                     }
                 </div>
+                @if (State.SavedName.Length > 0)
+                {
+                    @* A saved build's hero is fixed: another hero is a new build. *@
+                    <div class="hero-current fixed">
+                        @if (BuildCatalog.PortraitUrl(Build.Hero) is { } portrait)
+                        {
+                            <img src="@portrait" alt="" loading="lazy" />
+                        }
+                        <span class="hero-name">
+                            <strong>@Build.Hero</strong>
+                        </span>
+                    </div>
+                }
+                else
+                {
                 <div class="hero-select" @onkeydown="OnHeroKeyDown">
                     <button type="button" class="hero-current @(_heroMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_heroMenuOpen ? "true" : "false")"
                             @onclick="() => _heroMenuOpen = !_heroMenuOpen">
@@ -126,6 +195,7 @@
                         </div>
                     }
                 </div>
+                }
             <h3 class="section">Character sheet</h3>
             <div class="sheet">
                 <span class="sheet-label">Main stat</span>
@@ -139,43 +209,43 @@
             <h3 class="section">Stats</h3>
             @if (Editor.StatsFromOldProfile)
             {
-                <p class="field-warning">These stats come from a profile saved before an update and are likely incorrect: they may count bonuses twice. Import the character again, or enter the gear's own stats.</p>
+                <p class="field-warning">These stats come from a profile saved before an update and are likely incorrect: they may count bonuses twice. Import the character again, or pick the gear.</p>
             }
-            @* Gear: the stats typed in, as the gear gives them. Total: what a sim starts with (the base stats, stat enchants, gem nodes, sigils). *@
+            @* Gear: the stats of the gear worn (a log's, or the items picked summed). Total: what a sim starts with (the base stats, stat enchants, gem nodes, sigils). *@
             <div class="ratings">
                 <div class="stat-group">
                     <span>Primary</span>
                     <span class="rating">
-                        <span class="column" data-tooltip="The stats the gear gives">Gear</span>
+                        <span class="column" data-tooltip="The stats the gear worn gives">Gear</span>
                         <span class="total" data-tooltip="What a sim starts with: the gear's, the base stats, the stat enchants, the gem nodes and the sigils">Total</span>
                     </span>
                 </div>
-                <label>
+                <div class="rating-line">
                     Stamina
                     <span class="rating">
-                        <input type="number" min="0" step="1" @bind:get="Build.Stamina" @bind:set="v => Set(() => Editor.SetStamina(v))" />
+                        <span class="value">@Build.Stamina.ToString("N0", CultureInfo.CurrentCulture)</span>
                         <span class="total" data-tooltip="Total Stamina: the base, the gear's and the gem nodes'">@Editor.TotalStamina.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
-                </label>
-                <label data-tooltip="@($"The gear's main stat; the total adds the base {StatBlock.BasePrimaryStat:0} and every bonus")">
+                </div>
+                <div class="rating-line" data-tooltip="@($"The gear's main stat; the total adds the base {StatBlock.BasePrimaryStat:0} and every bonus")">
                     Main stat
                     <span class="rating">
-                        <input type="number" min="0" step="1" aria-label="Main stat from gear" @bind:get="Build.PrimaryStat" @bind:set="v => Set(() => Editor.SetPrimaryStat(v))" />
+                        <span class="value">@Build.PrimaryStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                         <span class="total" data-tooltip="Total main stat: the base, the gear's and every bonus">@Editor.TotalMainStat.ToString("N0", CultureInfo.CurrentCulture)</span>
                     </span>
-                </label>
+                </div>
                 <div class="stat-group">
                     <span>Secondary</span>
                 </div>
                 @foreach (var stat in BuildEditor.InGameOrder)
                 {
-                    <label @key="stat">
+                    <div @key="stat" class="rating-line">
                         @StatName(stat)
                         <span class="rating">
-                            <input type="number" min="0" step="1" @bind:get="Math.Round(Editor.Rating(stat), 2)" @bind:set="v => Set(() => Editor.SetRating(stat, v))" />
+                            <span class="value">@Math.Round(Editor.Rating(stat), 2).ToString("N0", CultureInfo.CurrentCulture)</span>
                             <span class="total" data-tooltip="Total rating: the gear's, the stat enchants', the gem nodes' and the sigils'">@Editor.TotalRating(stat).ToString("N0", CultureInfo.CurrentCulture)</span>
                         </span>
-                    </label>
+                    </div>
                 }
             </div>
             <div class="slots-total @(Editor.UsedTotal > Editor.TotalLimit || !Editor.FitsGear ? "over" : "")"
@@ -199,7 +269,7 @@
     </aside>
 
     <div class="editor-main">
-        <Card Title="Talents">
+        <Card Title="Talents" Collapsible="true" Collapsed='@Folded("Talents")' CollapsedChanged='v => Fold("Talents", v)'>
             <div class="points">
                 <span class="count" data-tooltip="Talent points spent">@(FellowshipSim.Core.Domain.Hero.TalentPoints - Editor.PointsLeft) / @FellowshipSim.Core.Domain.Hero.TalentPoints</span>
                 <button type="button" class="secondary-button small" @onclick="ClearTalents">Clear all</button>
@@ -225,165 +295,167 @@
             </div>
         </Card>
 
-        <Card Title="Gear">
-                <h3 class="section">Weapon</h3>
-                <div class="chips">
-                    @foreach (var w in Catalog.Weapons)
-                    {
-                        bool picked = Editor.Weapon == w.Id;
-                        <button @key="w.Id" type="button" class="chip @(picked ? "picked" : "")" aria-pressed="@picked"
-                                @onclick="() => Set(() => Editor.Weapon = picked ? null : w.Id)">
-                            <GameIcon Url="@w.IconUrl" Size="24" />
-                            @w.Name
+        <Card Title="Gear" Count="@($"{Editor.GearWorn} / {GearSlots.All.Count}")" CountTitle="Slots with an item worn"
+              Collapsible="true" Collapsed='@Folded("Gear")' CollapsedChanged='v => Fold("Gear", v)'>
+            @* The armor down the left, the neck, wrists, rings, relics and weapon down the right. *@
+            <div class="gear-slots">
+                @foreach (var slot in GearSlots.All)
+                {
+                    var item = Editor.Item(slot);
+                    var piece = Editor.Piece(slot);
+                    <div @key="slot" class="gear-slot @(item != null ? "worn" : "")">
+                        <img class="slot-icon @(item == null ? "empty" : item.Legendary ? "legendary" : "")" alt="" width="40" height="40"
+                             src="@(item != null ? GameIcons.Url(item.Icon) : GearPicker.EmptyIconUrl(slot))" />
+                        <span class="slot-label">@GearSlots.Label(slot)</span>
+                        <button type="button" class="slot-button" aria-haspopup="dialog" aria-label="@($"{GearSlots.Label(slot)}: {item?.Name ?? "empty"}")"
+                                @onclick="() => _pickerSlot = slot">
+                            <span class="slot-item @(item?.Legendary == true ? "legendary-name" : item == null ? "none" : "")">@(item?.Name ?? "— empty —")</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
                         </button>
-                    }
-                </div>
-                <h3 class="section">Legendary</h3>
-                <div class="chips">
-                    @foreach (var l in Catalog.Legendaries)
-                    {
-                        bool picked = Catalog.LegendaryOption(Editor.Legendary) == l.Id;
-                        // A build-only hero's legendaries are all not modeled: the hero's warning says so once.
-                        bool unmodeled = !l.Modeled && !BuildHeroes.IsBuildOnly(Build.Hero);
-                        <button @key="l.Id" type="button" class="chip @(picked ? "picked" : "")" aria-pressed="@picked"
-                                data-tooltip="@(unmodeled ? "Not modeled yet" : null)" @onclick="() => Set(() => Editor.Legendary = picked ? null : l.Id)">
-                            <GameIcon Url="@l.IconUrl" Size="24" />
-                            @l.Name
-                            @if (unmodeled)
-                            {
-                                <span class="badge">not modeled</span>
-                            }
-                        </button>
-                    }
-                </div>
-            <h3 class="section counted">Relics <span class="count" data-tooltip="Relics worn">@Editor.RelicCount / @BuildEditor.RelicSlots</span></h3>
-                <div class="chips">
-                    @foreach (var r in Catalog.Relics)
-                    {
-                        bool worn = Editor.HasRelic(r.ItemId);
-                        bool full = !worn && Editor.RelicCount >= BuildEditor.RelicSlots;
-                        <button @key="r.ItemId" type="button" class="chip @(worn ? "picked" : "")" aria-pressed="@worn" disabled="@full"
-                                data-tooltip="@(full ? $"Take off one of the {BuildEditor.RelicSlots} first" : r.Name)" @onclick="() => Set(() => Editor.ToggleRelic(r.ItemId))">
-                            <GameIcon Url="@r.IconUrl" Size="24" />
-                            @r.PassiveName
-                        </button>
-                    }
-                </div>
-        </Card>
-
-        <div class="pair even">
-            <Card Title="Stat enchants" CountContent="@GearCount(EnchantSlot.StatEnchants)" CountTitle="@GearTitle(EnchantSlot.StatEnchants)" Over="@GearOver(EnchantSlot.StatEnchants)">
-                <div class="enchants">
-                    @foreach (var e in Catalog.StatEnchants)
-                    {
-                        double rating = Editor.StatEnchantRating(e.Enchant.Id);
-                        int count = Editor.StatEnchantCount(e.Enchant.Id);
-                        bool full = Editor.Room(EnchantSlot.StatEnchants) <= 0;
-                        <div @key="e.Enchant.Id" class="enchant @(rating > 0 ? "taken" : "")">
-                            <GameIcon Url="@e.IconUrl" Size="34" />
-                            <span class="enchant-name">
-                                @e.Name
-                                <span class="enchant-stats">@e.StatsText@(rating > 0 ? $" · {rating.ToString("0.#", CultureInfo.CurrentCulture)} rating" : "")</span>
-                            </span>
-                            <span class="stepper">
-                                <button type="button" class="icon-button" aria-label="@($"One fewer {e.Name}")" disabled="@(count <= 0)"
-                                        @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count - 1))">−</button>
-                                <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="count" @bind:set="v => Set(() => Editor.SetStatEnchantCount(e.Enchant, v))" />
-                                <button type="button" class="icon-button" aria-label="@($"One more {e.Name}")" disabled="@full" data-tooltip="@(full ? FullText(EnchantSlot.StatEnchants) : null)"
-                                        @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count + 1))">+</button>
-                            </span>
-                        </div>
-                    }
-                </div>
-            </Card>
-            <Card Title="Gems" CountContent="@GearCount(EnchantSlot.Gems)" CountTitle="@GearTitle(EnchantSlot.Gems)" Over="@GearOver(EnchantSlot.Gems)">
-                    <div class="sockets">
-                        @for (int i = 0; i < GemItem.Sockets; i++)
+                        @if (item != null && piece != null)
                         {
-                            int socket = i;
-                            var gem = Editor.Socket(socket);
-                            if (gem == null)
-                            {
-                                <span @key="socket" class="socket empty" data-tooltip="Empty socket"></span>
-                            }
-                            else
-                            {
-                                <button @key="socket" type="button" class="socket filled" data-tooltip="@($"Take out the {gem.Name}")" aria-label="@($"Take out the {gem.Name}")"
-                                        @onclick="() => Set(() => Editor.SetSocket(socket, null))">
-                                    <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="32" />
-                                </button>
-                            }
-                        }
-                    </div>
-                <div class="gem-rows">
-                    @foreach (var color in BuildCatalog.GemColors)
-                    {
-                        int bonuses = Editor.GearBonuses(color);
-                        bool socketsFull = Build.SocketedGemIds.Count >= GemItem.Sockets;
-                        <div @key="color" class="gem-row @(Editor.Gem(color) > 0 ? "taken" : "")">
-                            <span class="gem-name">@color</span>
-                            <span class="gem-picks">
-                                @foreach (var g in GemItem.All.Where(g => g.Color == color))
+                            var stats = item.StatsAt(piece.Tempers);
+                            <span class="slot-stats">
+                                @foreach (var (name, value) in SlotStats(stats))
                                 {
-                                    int count = Editor.SocketedCount(g.Id);
-                                    <button @key="g.Id" type="button" class="gem-pick @(count > 0 ? "picked" : "")" disabled="@socketsFull"
-                                            data-tooltip="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
-                                            @onclick="() => Set(() => Editor.AddGem(g.Id))">
-                                        <GameIcon Url="@BuildCatalog.GemIconUrl(g)" Size="26" />
-                                        <span class="gem-pick-power">@g.Power</span>
-                                        @if (count > 0)
-                                        {
-                                            <span class="gem-count">×@count</span>
-                                        }
-                                    </button>
+                                    <span @key="name" class="slot-stat @(name == Catalog.MainStatShort ? "primary" : "")">@name <strong>@value</strong></span>
                                 }
                             </span>
-                            <span class="gear-bonus">
-                                            <span class="stepper">
-                                    <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
-                                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
-                                    <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
-                                    <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")" disabled="@(Editor.Room(EnchantSlot.Gems) <= 0)"
-                                            data-tooltip="@(Editor.Room(EnchantSlot.Gems) <= 0 ? FullText(EnchantSlot.Gems) : null)"
-                                            @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
-                                </span>
-                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        </Card>
+        @if (_pickerSlot is { } pickerSlot)
+        {
+            <GearPicker Editor="Editor" Slot="pickerSlot" @bind-Sort="_gearSort" OnChanged="Changed" OnClose="() => _pickerSlot = null" />
+        }
+
+        @* Two columns, each card under the one above it: a folded card lets the next move up. A narrow window shows
+           them in one column, row by row as the cards pair. *@
+        <div class="loadout-columns">
+            <div class="loadout-column">
+                <div class="loadout-card" style="order: 1">
+                    <Card Title="Stat enchants" Collapsible="true" Collapsed='@Folded("Stat enchants")' CollapsedChanged='v => Fold("Stat enchants", v)' CountContent="@GearCount(EnchantSlot.StatEnchants)" CountTitle="@GearTitle(EnchantSlot.StatEnchants)" Over="@GearOver(EnchantSlot.StatEnchants)">
+                        <div class="enchants">
+                            @foreach (var e in Catalog.StatEnchants)
+                            {
+                                double rating = Editor.StatEnchantRating(e.Enchant.Id);
+                                int count = Editor.StatEnchantCount(e.Enchant.Id);
+                                bool full = Editor.Room(EnchantSlot.StatEnchants, e.Enchant.Id) <= 0;
+                                <div @key="e.Enchant.Id" class="enchant @(rating > 0 ? "taken" : "")">
+                                    <GameIcon Url="@e.IconUrl" Size="34" />
+                                    <span class="enchant-name">
+                                        @e.Name
+                                        <span class="enchant-stats">@e.StatsText@(rating > 0 ? $" · {rating.ToString("0.#", CultureInfo.CurrentCulture)} rating" : "")</span>
+                                    </span>
+                                    <span class="stepper">
+                                        <button type="button" class="icon-button" aria-label="@($"One fewer {e.Name}")" disabled="@(count <= 0)"
+                                                @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count - 1))">−</button>
+                                        <input type="number" min="0" step="1" aria-label="@EnchantLabel(e)" @bind:get="count" @bind:set="v => Set(() => Editor.SetStatEnchantCount(e.Enchant, v))" />
+                                        <button type="button" class="icon-button" aria-label="@($"One more {e.Name}")" disabled="@full" data-tooltip="@(full ? FullText(EnchantSlot.StatEnchants) : null)"
+                                                @onclick="() => Set(() => Editor.SetStatEnchantCount(e.Enchant, count + 1))">+</button>
+                                    </span>
+                                </div>
+                            }
                         </div>
-                    }
+                    </Card>
                 </div>
-            </Card>
-        </div>
-
-        <div class="pair">
-            <Card Title="Aspects" CountContent="@GearCount(EnchantSlot.Aspects)" CountTitle="@GearTitle(EnchantSlot.Aspects)" Over="@GearOver(EnchantSlot.Aspects)">
-                <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
-                               Room="Editor.Room(EnchantSlot.Aspects)" FullText="@FullText(EnchantSlot.Aspects)" />
-            </Card>
-            <Card Title="Sigils" CountContent="@GearCount(EnchantSlot.Sigils)" CountTitle="@GearTitle(EnchantSlot.Sigils)" Over="@GearOver(EnchantSlot.Sigils)">
-                <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
-                               Room="Editor.Room(EnchantSlot.Sigils)" FullText="@FullText(EnchantSlot.Sigils)" />
-            </Card>
-        </div>
-
-        <div class="pair">
-            <Card Title="Glyphs" CountContent="@GearCount(EnchantSlot.Glyphs)" CountTitle="@GearTitle(EnchantSlot.Glyphs)" Over="@GearOver(EnchantSlot.Glyphs)">
-                <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))"
-                               Room="Editor.Room(EnchantSlot.Glyphs)" FullText="@FullText(EnchantSlot.Glyphs)" />
-            </Card>
-            <Card Title="Protective enchants" Count="@SlotCount(EnchantSlot.Protective)" CountTitle="@SlotTitle(EnchantSlot.Protective)" Over="@SlotOver(EnchantSlot.Protective)">
-                <div class="chips">
-                    @foreach (var p in Catalog.ProtectiveEnchants)
-                    {
-                        bool taken = Editor.AugmentationRank(p.Id) > 0;
-                        bool full = !taken && Editor.Room(EnchantSlot.Protective) <= 0;
-                        <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
-                                data-tooltip="@(full ? FullText(EnchantSlot.Protective) : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
-                            <GameIcon Url="@p.IconUrl" Size="24" />
-                            @p.Name
-                        </button>
-                    }
+                <div class="loadout-card" style="order: 3">
+                    <Card Title="Aspects" Collapsible="true" Collapsed='@Folded("Aspects")' CollapsedChanged='v => Fold("Aspects", v)' CountContent="@GearCount(EnchantSlot.Aspects)" CountTitle="@GearTitle(EnchantSlot.Aspects)" Over="@GearOver(EnchantSlot.Aspects)">
+                        <RankedChoices Options="Catalog.Aspects" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
+                                       RoomOf="id => Editor.Room(EnchantSlot.Aspects, id)" FullText="@FullText(EnchantSlot.Aspects)" />
+                    </Card>
                 </div>
-            </Card>
+                <div class="loadout-card" style="order: 5">
+                    <Card Title="Glyphs" Collapsible="true" Collapsed='@Folded("Glyphs")' CollapsedChanged='v => Fold("Glyphs", v)' CountContent="@GearCount(EnchantSlot.Glyphs)" CountTitle="@GearTitle(EnchantSlot.Glyphs)" Over="@GearOver(EnchantSlot.Glyphs)">
+                        <RankedChoices Options="Catalog.Glyphs" RankOf="Editor.GlyphRank" SetRank="(o, r) => Set(() => Editor.SetGlyphRank(o, r))"
+                                       RoomOf="id => Editor.Room(EnchantSlot.Glyphs, id)" FullText="@FullText(EnchantSlot.Glyphs)" />
+                    </Card>
+                </div>
+            </div>
+            <div class="loadout-column">
+                <div class="loadout-card" style="order: 2">
+                    <Card Title="Gems" Collapsible="true" Collapsed='@Folded("Gems")' CollapsedChanged='v => Fold("Gems", v)' CountContent="@GearCount(EnchantSlot.Gems)" CountTitle="@GearTitle(EnchantSlot.Gems)" Over="@GearOver(EnchantSlot.Gems)">
+                            <div class="sockets">
+                                @for (int i = 0; i < GemItem.Sockets; i++)
+                                {
+                                    int socket = i;
+                                    var gem = Editor.Socket(socket);
+                                    if (gem == null)
+                                    {
+                                        <span @key="socket" class="socket empty" data-tooltip="Empty socket"></span>
+                                    }
+                                    else
+                                    {
+                                        <button @key="socket" type="button" class="socket filled" data-tooltip="@($"Take out the {gem.Name}")" aria-label="@($"Take out the {gem.Name}")"
+                                                @onclick="() => Set(() => Editor.SetSocket(socket, null))">
+                                            <GameIcon Url="@BuildCatalog.GemIconUrl(gem)" Size="32" />
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        <div class="gem-rows">
+                            @foreach (var color in BuildCatalog.GemColors)
+                            {
+                                int bonuses = Editor.GearBonuses(color);
+                                bool socketsFull = Build.SocketedGemIds.Count >= GemItem.Sockets;
+                                <div @key="color" class="gem-row @(Editor.Gem(color) > 0 ? "taken" : "")">
+                                    <span class="gem-name">@color</span>
+                                    <span class="gem-picks">
+                                        @foreach (var g in GemItem.All.Where(g => g.Color == color))
+                                        {
+                                            int count = Editor.SocketedCount(g.Id);
+                                            <button @key="g.Id" type="button" class="gem-pick @(count > 0 ? "picked" : "")" disabled="@socketsFull"
+                                                    data-tooltip="@(socketsFull ? "Every socket is filled: take a gem out first" : $"Socket a {g.Name} (+{g.Power})")"
+                                                    @onclick="() => Set(() => Editor.AddGem(g.Id))">
+                                                <GameIcon Url="@BuildCatalog.GemIconUrl(g)" Size="26" />
+                                                <span class="gem-pick-power">@g.Power</span>
+                                                @if (count > 0)
+                                                {
+                                                    <span class="gem-count">×@count</span>
+                                                }
+                                            </button>
+                                        }
+                                    </span>
+                                    <span class="gear-bonus">
+                                                    <span class="stepper">
+                                            <button type="button" class="icon-button" aria-label="@($"One fewer {color} gear bonus")" disabled="@(bonuses <= 0)"
+                                                    @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses - 1))">−</button>
+                                            <input type="number" min="0" step="1" aria-label="@($"{color} gear bonuses")" @bind:get="bonuses" @bind:set="v => Set(() => Editor.SetGearBonuses(color, Math.Max(0, v)))" />
+                                            <button type="button" class="icon-button" aria-label="@($"One more {color} gear bonus")" disabled="@(Editor.Room(EnchantSlot.Gems) <= 0)"
+                                                    data-tooltip="@(Editor.Room(EnchantSlot.Gems) <= 0 ? FullText(EnchantSlot.Gems) : null)"
+                                                    @onclick="() => Set(() => Editor.SetGearBonuses(color, bonuses + 1))">+</button>
+                                        </span>
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </Card>
+                </div>
+                <div class="loadout-card" style="order: 4">
+                    <Card Title="Sigils" Collapsible="true" Collapsed='@Folded("Sigils")' CollapsedChanged='v => Fold("Sigils", v)' CountContent="@GearCount(EnchantSlot.Sigils)" CountTitle="@GearTitle(EnchantSlot.Sigils)" Over="@GearOver(EnchantSlot.Sigils)">
+                        <RankedChoices Options="Catalog.Sigils" RankOf="Editor.AugmentationRank" SetRank="(o, r) => Set(() => Editor.SetAugmentationRank(o, r))"
+                                       RoomOf="id => Editor.Room(EnchantSlot.Sigils, id)" FullText="@FullText(EnchantSlot.Sigils)" />
+                    </Card>
+                </div>
+                <div class="loadout-card" style="order: 6">
+                    <Card Title="Protective enchants" Collapsible="true" Collapsed='@Folded("Protective enchants")' CollapsedChanged='v => Fold("Protective enchants", v)' Count="@SlotCount(EnchantSlot.Protective)" CountTitle="@SlotTitle(EnchantSlot.Protective)" Over="@SlotOver(EnchantSlot.Protective)">
+                        <div class="chips">
+                            @foreach (var p in Catalog.ProtectiveEnchants)
+                            {
+                                bool taken = Editor.AugmentationRank(p.Id) > 0;
+                                bool full = !taken && Editor.Room(EnchantSlot.Protective) <= 0;
+                                <button @key="p.Id" type="button" class="chip @(taken ? "picked" : "")" aria-pressed="@taken" disabled="@full"
+                                        data-tooltip="@(full ? FullText(EnchantSlot.Protective) : null)" @onclick="() => Set(() => Editor.ToggleProtectiveEnchant(p))">
+                                    <GameIcon Url="@p.IconUrl" Size="24" />
+                                    @p.Name
+                                </button>
+                            }
+                        </div>
+                    </Card>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -405,19 +477,180 @@
     </div>
 }
 
+@if (_newOpen)
+{
+    @* New build: its hero first. Clicking outside the dialog closes it. *@
+    <div class="modal-layer" @onclick="() => _newOpen = false" @onkeydown="OnDialogKeyDown">
+        <div class="modal small-dialog" role="dialog" aria-modal="true" aria-labelledby="new-build-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="new-build-title" class="title">New build</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="() => _newOpen = false">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <span class="group">In the engine</span>
+                <div class="hero-tiles">
+                    @foreach (string hero in BuildCatalog.GameHeroes.Where(IsSupported))
+                    {
+                        <button @key="hero" type="button" class="hero-tile" @onclick="() => NewAsked(hero)">
+                            <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="32" />
+                            @hero
+                        </button>
+                    }
+                </div>
+                <span class="group">Build Only: Not in Engine</span>
+                <div class="hero-tiles">
+                    @foreach (string hero in BuildCatalog.GameHeroes.Where(h => !IsSupported(h)))
+                    {
+                        <button @key="hero" type="button" class="hero-tile" @onclick="() => NewAsked(hero)">
+                            <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="32" />
+                            @hero
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_nameDialog is { } naming)
+{
+    @* Save names a build not saved yet; Rename names a saved one anew. *@
+    <div class="modal-layer" @onclick="CloseNameDialog" @onkeydown="OnDialogKeyDown">
+        <div class="modal small-dialog" role="dialog" aria-modal="true" aria-labelledby="build-name-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="build-name-title" class="title">@(naming == BuildNaming.Rename ? "Rename build" : "Save build")</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseNameDialog">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <form class="dialog-body" @onsubmit="ConfirmNameAsync" @onsubmit:preventDefault="true">
+                <label class="name-field">
+                    Build name
+                    <input @ref="_nameInput" autocomplete="off" spellcheck="false" maxlength="64" @bind="_nameText" @bind:event="oninput" />
+                </label>
+                @if (naming == BuildNaming.Rename && State.HasBuildEdits)
+                {
+                    <p class="hint">Rename saves the build's changes too.</p>
+                }
+                @if (_nameError.Length > 0)
+                {
+                    <p class="field-error">@_nameError</p>
+                }
+                <div class="row dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CloseNameDialog">Cancel</button>
+                    <button type="submit">@(naming == BuildNaming.Rename ? "Rename" : "Save")</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (_refreshOpen)
+{
+    @* Refresh: the build again from a fight or a character's page, as changes not saved. Clicking outside it closes it. *@
+    <div class="modal-layer" @onclick="CloseRefresh" @onkeydown="OnRefreshKeyDown">
+        <div class="modal small-dialog refresh-dialog" role="dialog" aria-modal="true" aria-labelledby="refresh-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="refresh-title" class="title">Refresh from a log</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseRefresh">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <form class="dialog-body" @onsubmit="FindRefreshAsync" @onsubmit:preventDefault="true">
+                <LogsSignInPrompt Purpose="to read a build from a log" />
+                <label class="name-field">
+                    FellowshipLogs link
+                    <input @ref="_refreshInput" autocomplete="off" spellcheck="false" placeholder="https://www.fellowshiplogs.com/character/id/615"
+                           @bind="_refreshLink" @bind:event="oninput" />
+                </label>
+                <p class="hint">A report link with its fight and player, or a character's page for their latest @Build.Hero fight. The build loads as changes to save or discard.</p>
+                @if (_refreshChoices is { } choices)
+                {
+                    <span class="group">Pick the player</span>
+                    <div class="refresh-choices">
+                        @foreach (var choice in choices)
+                        {
+                            <button @key="@($"{choice.Fight.Id}/{choice.Player.Id}")" type="button" class="secondary-button" disabled="@_refreshBusy"
+                                    @onclick="() => RefreshFromAsync([choice], null)">
+                                @choice.Player.Name · @choice.Fight.Name, fight @choice.Fight.Id
+                            </button>
+                        }
+                    </div>
+                }
+                @if (_refreshStatus.Text.Length > 0)
+                {
+                    <Message Kind="_refreshStatus.Kind">@_refreshStatus.Text</Message>
+                }
+                <div class="row dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CloseRefresh">Cancel</button>
+                    <button type="submit" disabled="@(_refreshBusy || _refreshLink.Trim().Length == 0)">Refresh</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     /// <summary>Called after every change to the build.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
-    private IReadOnlyList<string> _heroes = [];
-    private IReadOnlyList<ProfileEntry> _saved = [];
-    // The hero _saved lists the builds of.
-    private string? _savedHero;
+    /// <summary>Opens the Import dialog; the toolbar has an Import button when set.</summary>
+    [Parameter] public EventCallback OnImport { get; set; }
 
-    // The step waiting on the unsaved changes (open another hero, build or a new one), and a key that draws the picker
-    // anew so a cancelled pick shows the build still open.
+    // The gear slot whose item picker shows, and the column every picker sorts by.
+    private GearSlot? _pickerSlot;
+    private string _gearSort = GearPicker.ItemColumn;
+
+    private bool Folded(string card) => State.CollapsedCards.Contains(card);
+
+    private void Fold(string card, bool folded)
+    {
+        if (folded) State.CollapsedCards.Add(card);
+        else State.CollapsedCards.Remove(card);
+    }
+
+    // An item's stats under its slot: the main stat, the ratings in the game's order, Stamina last; none it lacks.
+    private IEnumerable<(string Name, int Value)> SlotStats(GearStats stats) =>
+        new (string, int)[] { (Catalog.MainStatShort, stats.Primary), ("Crit", stats.Crit), ("Exp", stats.Expertise), ("Haste", stats.Haste), ("Spirit", stats.Spirit), ("Stam", stats.Stamina) }
+            .Where(s => s.Item2 > 0);
+
+    private IReadOnlyList<string> _heroes = [];
+    // Every hero's saved builds, by hero then name, once listed.
+    private IReadOnlyList<ProfileEntry> _saved = [];
+    private bool _savedListed;
+
+    // The Refresh dialog: its link, the players to pick from a report with several, its status and focus.
+    private bool _refreshOpen;
+    private string _refreshLink = "";
+    private IReadOnlyList<PickedPlayer>? _refreshChoices;
+    private MessageState _refreshStatus = MessageState.None;
+    private bool _refreshBusy;
+    private ElementReference _refreshInput;
+    private bool _focusRefresh;
+
+    // The saved-build menu, its search, and a focus on the search once the menu draws.
+    private bool _buildMenuOpen;
+    private string _buildSearch = "";
+    private ElementReference _buildSearchInput;
+    private bool _focusSearch;
+
+    // The New build dialog, and the name dialog with its field and its error.
+    private bool _newOpen;
+    private BuildNaming? _nameDialog;
+    private string _nameText = "";
+    private string _nameError = "";
+    private ElementReference _nameInput;
+    private bool _focusName;
+
+    /// <summary>The browser's storage key of the last saved build open, as hero/name.</summary>
+    public const string LastBuildKey = "sim-build";
+
+    // The step waiting on the unsaved changes: open another hero, build or a new one.
     private (string What, Func<Task> Then)? _pending;
-    private int _pickerKey;
 
     private BuildEditor Editor => State.Editor;
     private CharacterBuild Build => State.Build;
@@ -431,7 +664,8 @@
         try
         {
             _heroes = await Engine.GetHeroesAsync();
-            await LoadSavedListAsync(force: true);
+            await LoadSavedListAsync();
+            await SaveImportedAsync();
         }
         catch (Exception e)
         {
@@ -439,20 +673,31 @@
         }
     }
 
+    // A build the Import dialog put in saves here.
     private void OnStateChanged() => _ = InvokeAsync(async () =>
     {
+        await SaveImportedAsync();
         StateHasChanged();
-        try
-        {
-            await LoadSavedListAsync();
-            StateHasChanged();
-        }
-        catch (Exception e)
-        {
-            State.BuildStatus = MessageState.Error(e.Message);
-            StateHasChanged();
-        }
     });
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusSearch)
+        {
+            _focusSearch = false;
+            await _buildSearchInput.FocusAsync();
+        }
+        if (_focusName)
+        {
+            _focusName = false;
+            await _nameInput.FocusAsync();
+        }
+        if (_focusRefresh)
+        {
+            _focusRefresh = false;
+            await _refreshInput.FocusAsync();
+        }
+    }
 
     public void Dispose() => State.Changed -= OnStateChanged;
 
@@ -489,11 +734,12 @@
     private bool GearOver(EnchantSlot slot) => Editor.GearUsed(slot) > GearFit.GearLimit(slot) || !Editor.FitsGear;
 
     // Why a + is off: this kind is at its most, or no slot that takes it is left.
-    private string FullText(EnchantSlot slot) => slot == EnchantSlot.Protective || Editor.Used(slot) >= Editor.Limit(slot)
+    private string FullText(EnchantSlot slot) => (slot == EnchantSlot.Protective || Editor.Used(slot) >= Editor.Limit(slot)
         ? $"At the limit of {Editor.Limit(slot)} {EnchantSlots.Name(slot)}"
         : slot is EnchantSlot.StatEnchants or EnchantSlot.Gems
             ? $"No slot left that takes {EnchantSlots.Name(slot)}: take off another enchant to make room"
-            : $"No armor slot left for {EnchantSlots.Name(slot)}: stat enchants and gems fill the other pieces first, then armor";
+            : $"No armor slot left for {EnchantSlots.Name(slot)}: stat enchants and gems fill the other pieces first, then armor")
+        + (GearFit.WeaponLimit(slot, Editor.HasWeapon) > 1 ? ". The weapon's slots take different ones, never two of the same" : "");
 
     private static string TalentTitle(TalentOption t) => $"{t.Slot.Code}: {t.Talent.Name}";
 
@@ -536,22 +782,14 @@
         return AskFirst($"opening {hero}", () => PickHero(hero));
     }
 
-    // Builds are saved per hero: the picker lists the new hero's builds.
-    private async Task PickHero(string hero)
+    // A new build of the hero, not saved yet.
+    private Task PickHero(string hero)
     {
         State.Editor = new BuildEditor(BuildEditor.NewBuild(hero));
         State.SavedName = "";
         State.MarkBuildClean();
         State.BuildStatus = MessageState.None;
-        try
-        {
-            await LoadSavedListAsync(force: true);
-        }
-        catch (Exception e)
-        {
-            State.BuildStatus = MessageState.Error(e.Message);
-        }
-        await Changed();
+        return Changed();
     }
 
     /// <summary>Runs <paramref name="then"/> now, or after asking to save when the build has changes not saved.</summary>
@@ -559,13 +797,18 @@
     {
         if (!State.HasBuildEdits) return then();
         _pending = (what, then);
-        _pickerKey++;
         return Task.CompletedTask;
     }
 
+    // A build not saved yet takes its name first: the name dialog's Save goes on to the step waiting.
     private async Task SaveThenContinue()
     {
-        await SaveAsync();
+        if (State.SavedName.Length == 0)
+        {
+            OpenNameDialog(BuildNaming.Save);
+            return;
+        }
+        await SaveAsync(State.SavedName);
         // A save that failed keeps the question, with the reason in the status.
         if (State.HasBuildEdits || _pending is not { } pending) return;
         _pending = null;
@@ -628,7 +871,8 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", ShareLink);
-            State.BuildStatus = MessageState.Ok("Copied the build's share link. Opening it, or pasting it into Import, loads the build.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok("Copied the build's share link. Opening it, or pasting it into Import, loads the build.");
         }
         catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
         {
@@ -643,7 +887,8 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", ExportText);
-            State.BuildStatus = MessageState.Ok("Copied the build to the clipboard. Import takes it as a profile.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok("Copied the build to the clipboard. Import takes it as a profile.");
         }
         catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
         {
@@ -651,20 +896,15 @@
         }
     }
 
-    private Task NewAsked() => AskFirst("starting a new build", New);
-
-    private Task New()
+    // A new build of the hero picked in the New build dialog.
+    private Task NewAsked(string hero)
     {
-        State.Editor = new BuildEditor(BuildEditor.NewBuild(Build.Hero));
-        State.SavedName = "";
-        State.MarkBuildClean();
-        State.BuildStatus = MessageState.None;
-        return Changed();
+        _newOpen = false;
+        return AskFirst($"starting a new {hero} build", () => PickHero(hero));
     }
 
     // The rating's percentage is the log's character sheet until the rating changes.
     private static string StatName(RatedStat stat) => stat == RatedStat.Crit ? "Critical strike" : stat.ToString();
-
 
     // A copy of the build, not saved yet, named after it.
     private Task Duplicate()
@@ -673,37 +913,60 @@
         copy.Name = $"{Build.Name} copy";
         State.Editor = new BuildEditor(copy);
         State.SavedName = "";
-        State.BuildStatus = MessageState.Ok($"Copied to {copy.Name}; save it to keep it.");
+        State.BuildStatus = MessageState.None;
+        Toasts.Ok($"Copied to {copy.Name}; save it to keep it.");
         return Changed();
     }
 
-    // A build from an import or a sim's run can be another hero's, so the list reads the builds of the hero shown.
-    private async Task LoadSavedListAsync(bool force = false)
+    private async Task LoadSavedListAsync()
     {
-        string hero = Build.Hero;
-        if (!force && hero.Equals(_savedHero, StringComparison.OrdinalIgnoreCase)) return;
-        var saved = (await Profiles.ListAsync(Visitor, [hero])).ToList();
-        // The build shows another hero now, whose list replaces this one.
-        if (!hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)) return;
-        _saved = saved;
-        _savedHero = hero;
+        _saved = await Profiles.ListAsync(Visitor, BuildCatalog.GameHeroes);
+        _savedListed = true;
     }
 
-    private Task LoadSavedAsked(string name) => name.Length > 0 ? AskFirst($"opening {name}", () => LoadSavedAsync(name)) : LoadSavedAsync(name);
+    private bool IsOpen(ProfileEntry saved) =>
+        saved.Name == State.SavedName && saved.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
 
-    private async Task LoadSavedAsync(string name)
+    // The saved builds whose name or hero has the search text.
+    private IEnumerable<ProfileEntry> FoundBuilds()
     {
-        State.SavedName = name;
-        if (name.Length == 0) return;
+        string search = _buildSearch.Trim();
+        return search.Length == 0 ? _saved
+            : _saved.Where(s => s.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || s.Hero.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ToggleBuildMenu()
+    {
+        _buildMenuOpen = !_buildMenuOpen;
+        _buildSearch = "";
+        _focusSearch = _buildMenuOpen;
+    }
+
+    private void OnBuildKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _buildMenuOpen = false;
+    }
+
+    private Task LoadSavedAsked(ProfileEntry saved)
+    {
+        _buildMenuOpen = false;
+        return IsOpen(saved) ? Task.CompletedTask : AskFirst($"opening {saved.Name}", () => LoadSavedAsync(saved));
+    }
+
+    private async Task LoadSavedAsync(ProfileEntry saved)
+    {
         try
         {
-            string text = await Profiles.ReadAsync(Visitor, new ProfileEntry(Build.Hero, name))
-                          ?? throw new KeyNotFoundException($"No build named {name}.");
+            string text = await Profiles.ReadAsync(Visitor, saved)
+                          ?? throw new KeyNotFoundException($"No {saved.Hero} build named {saved.Name}.");
             var build = SimcProfile.Parse(text).Build;
-            build.Name = name;
+            build.Name = saved.Name;
             State.Editor = new BuildEditor(build);
+            State.SavedName = saved.Name;
             State.MarkBuildClean();
-            State.BuildStatus = MessageState.Ok($"Loaded {name}.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok($"Loaded {saved.Name}.");
+            await RememberAsync();
             await Changed();
         }
         catch (Exception e)
@@ -712,26 +975,237 @@
         }
     }
 
-    private async Task SaveAsync()
+    // The browser keeps the saved build open. The Sim page opens it next time.
+    private async Task RememberAsync()
     {
-        string name = Build.Name.Trim();
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LastBuildKey, $"{Build.Hero}/{State.SavedName}");
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The page opens the first new build next time.
+        }
+    }
+
+    // A saved build saves under its name; a build not saved yet asks its name.
+    private Task SaveAsked()
+    {
+        if (State.SavedName.Length > 0) return SaveAsync(State.SavedName);
+        OpenNameDialog(BuildNaming.Save);
+        return Task.CompletedTask;
+    }
+
+    private void RenameAsked()
+    {
+        if (State.SavedName.Length > 0) OpenNameDialog(BuildNaming.Rename);
+    }
+
+    private void OpenNameDialog(BuildNaming naming)
+    {
+        _nameDialog = naming;
+        _nameText = Build.Name;
+        _nameError = "";
+        _focusName = true;
+    }
+
+    // Cancelling the name dialog cancels the step waiting on the save too.
+    private void CloseNameDialog()
+    {
+        _nameDialog = null;
+        _pending = null;
+    }
+
+    private void OnDialogKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape") return;
+        _newOpen = false;
+        if (_nameDialog != null) CloseNameDialog();
+    }
+
+    private async Task ConfirmNameAsync()
+    {
+        if (_nameDialog is not { } naming) return;
+        string name = _nameText.Trim();
         if (!ActionListStore.IsValidName(name))
         {
-            State.BuildStatus = MessageState.Error("Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).");
+            _nameError = NameRule;
             return;
         }
+        string old = State.SavedName;
+        if (Taken(name))
+        {
+            _nameError = TakenText(name);
+            return;
+        }
+        bool renaming = naming == BuildNaming.Rename && old.Length > 0 && !old.Equals(name, StringComparison.OrdinalIgnoreCase);
+        if (!await SaveAsync(name, announce: !renaming)) return;
+        if (renaming)
+        {
+            try
+            {
+                await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, old));
+                await LoadSavedListAsync();
+                Toasts.Ok($"Renamed {old} to {name}.");
+            }
+            catch (Exception e)
+            {
+                State.BuildStatus = MessageState.Error($"Saved {name}; {old} is still saved too: {e.Message}");
+            }
+        }
+        _nameDialog = null;
+        if (_pending is { } pending)
+        {
+            _pending = null;
+            await pending.Then();
+        }
+        await Changed();
+    }
+
+    // A name the build cannot take: another saved build of its hero has it.
+    private bool Taken(string name) => _saved.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)
+                                                       && !s.Name.Equals(State.SavedName, StringComparison.OrdinalIgnoreCase));
+
+    private string TakenText(string name) => $"A {Build.Hero} build named {name} exists.";
+
+    private const string NameRule = "Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).";
+
+    /// <summary>
+    /// Saves the build as <paramref name="name"/> and opens that saved build, with a toast when <paramref name="announce"/>;
+    /// false, with the reason in the status, when it fails. A save clears an error in the status and keeps a warning.
+    /// </summary>
+    private async Task<bool> SaveAsync(string name, bool announce = true)
+    {
         try
         {
             Build.Name = name;
             await Profiles.SaveAsync(Visitor, new ProfileEntry(Build.Hero, name), new SimcProfile(Build, "").Format());
-            await LoadSavedListAsync(force: true);
+            await LoadSavedListAsync();
             State.SavedName = name;
             State.MarkBuildClean();
-            State.BuildStatus = MessageState.Ok($"Saved {name} to your builds.");
+            if (State.BuildStatus.Kind is MessageKind.Error or MessageKind.Ok) State.BuildStatus = MessageState.None;
+            if (announce) Toasts.Ok($"Saved {name} to your builds.");
+            await RememberAsync();
+            return true;
         }
         catch (Exception e)
         {
             State.BuildStatus = MessageState.Error(e.Message);
+            _nameError = e.Message;
+            return false;
+        }
+    }
+
+    // The Import dialog's build: saved under its own name when that is free, else the save dialog asks for one. It waits
+    // for the saved builds to be listed.
+    private async Task SaveImportedAsync()
+    {
+        if (!State.ImportedBuildToSave || !_savedListed) return;
+        State.ImportedBuildToSave = false;
+        string name = ActionListStore.ValidName(Build.Name, "");
+        if (name.Length > 0 && !Taken(name))
+        {
+            await SaveAsync(name);
+            await Changed();
+            return;
+        }
+        OpenNameDialog(BuildNaming.Save);
+        _nameText = name.Length > 0 ? name : Build.Name;
+        _nameError = name.Length > 0 ? TakenText(name) : NameRule;
+    }
+
+    private void OpenRefresh()
+    {
+        _refreshOpen = true;
+        _refreshLink = Build.LogSource;
+        _refreshChoices = null;
+        _refreshStatus = MessageState.None;
+        _focusRefresh = true;
+    }
+
+    private void CloseRefresh()
+    {
+        if (!_refreshBusy) _refreshOpen = false;
+    }
+
+    private void OnRefreshKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseRefresh();
+    }
+
+    // The link's player of the build's hero: a character page's latest fight, a report link's one player, or a pick among
+    // the report's players.
+    private async Task FindRefreshAsync()
+    {
+        if (_refreshBusy || _refreshLink.Trim().Length == 0) return;
+        _refreshBusy = true;
+        _refreshChoices = null;
+        _refreshStatus = new MessageState("Reading the log...");
+        LogPlayers? found = null;
+        try
+        {
+            found = await LogPlayers.FindAsync(_refreshLink, Build.Hero);
+        }
+        catch (Exception e) when (e is ArgumentException or FellowshipLogsException or InvalidOperationException or HttpRequestException)
+        {
+            _refreshStatus = MessageState.Error(e.Message);
+        }
+        finally
+        {
+            _refreshBusy = false;
+        }
+        if (found == null) return;
+        if (found.Character == null && found.Players.Count > 1)
+        {
+            _refreshChoices = found.Players;
+            _refreshStatus = MessageState.None;
+            return;
+        }
+        await RefreshFromAsync(found.Players, found.Character);
+    }
+
+    // The build of the first of the players with character information: a character's fight without it gives way to the
+    // fight before. The build loads as changes to the build open, with its name.
+    private async Task RefreshFromAsync(IReadOnlyList<PickedPlayer> players, CharacterLink? character)
+    {
+        _refreshBusy = true;
+        try
+        {
+            foreach (var picked in players)
+            {
+                _refreshStatus = new MessageState($"Reading {picked.Player.Name}'s character in {picked.Fight.Name}...");
+                StateHasChanged();
+                CharacterBuild build;
+                try
+                {
+                    build = await Characters.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player);
+                }
+                catch (InvalidOperationException) when (character != null)
+                {
+                    continue;
+                }
+                var removed = BuildEditor.RemoveUnknown(build);
+                build.Name = Build.Name;
+                build.LogSource = character?.Url ?? new ReportLink(picked.ReportCode, picked.Fight.Id, picked.Player.Id).Url;
+                State.Editor = new BuildEditor(build);
+                var notes = new List<string>();
+                if (removed.Count > 0) notes.Add($"Left out (not in the engine): {string.Join(", ", removed)}.");
+                if (!picked.CurrentPatch) notes.Add($"This log is from before patch {GamePatch.Current.Name}: check its talents, traits and blessings.");
+                State.BuildStatus = notes.Count > 0 ? new MessageState(string.Join(' ', notes), MessageKind.Warning) : MessageState.None;
+                _refreshOpen = false;
+                Toasts.Ok($"Read {picked.Player.Name}'s build from {picked.Fight.Name}, fight {picked.Fight.Id}. Save keeps it.");
+                await Changed();
+                return;
+            }
+            _refreshStatus = MessageState.Error("None of the character's recent fights has their character information.");
+        }
+        catch (Exception e) when (e is FellowshipLogsException or InvalidOperationException or HttpRequestException)
+        {
+            _refreshStatus = MessageState.Error(e.Message);
+        }
+        finally
+        {
+            _refreshBusy = false;
         }
     }
 
@@ -741,9 +1215,10 @@
         try
         {
             await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, name));
-            await LoadSavedListAsync(force: true);
+            await LoadSavedListAsync();
             State.SavedName = "";
-            State.BuildStatus = MessageState.Ok($"Deleted {name}. The editor keeps the build until you change it.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok($"Deleted {name}. The editor keeps the build until you change it.");
         }
         catch (Exception e)
         {

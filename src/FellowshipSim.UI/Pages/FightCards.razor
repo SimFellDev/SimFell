@@ -1,7 +1,7 @@
 @using System.Globalization
 @*
-    The fight of a sim or of the APL Debugger: its dungeon or training dummies and their settings (the Fight card), the
-    dungeon's pulls, then what else the fight has (the Fight settings card).
+    The fight of a sim or of the APL Debugger: training dummies or a dungeon (the Fight card), the dungeon's pulls, then
+    the fight's settings (the Fight settings card).
 *@
 <Card Title="Fight">
     <div class="choices" role="radiogroup" aria-label="Fight">
@@ -16,6 +16,14 @@
             <span class="meta">Trash pulls and boss pulls in sequence. Each pull ends when its enemies die. The report also shows the DPS to bosses.</span>
         </label>
     </div>
+</Card>
+
+@if (State.Mode == SimMode.Dungeon)
+{
+    <DungeonCard State="State" OnChanged="OnChanged" />
+}
+
+<Card Title="Fight settings">
     <div class="fields">
         @if (State.Mode == SimMode.Dungeon)
         {
@@ -36,32 +44,6 @@
                        @bind:get="State.TrainingDummies" @bind:set="v => State.TrainingDummies = Math.Max(1, v)" />
             </label>
         }
-        <div class="toggle-block">
-            <label class="switch">
-                <input type="checkbox" @bind="State.VaryLength" />
-                <span data-tooltip="@(State.Mode == SimMode.Dungeon ? DungeonLengthTip : null)">Vary the fight length</span>
-            </label>
-            @if (State.Mode == SimMode.TrainingDummies && State.VaryLength && State.LengthVariancePercent > 0)
-            {
-                <span class="meta">@LengthText()</span>
-            }
-        </div>
-        <label class="field @(State.VaryLength ? "" : "off")">
-            By ± %
-            <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryLength)"
-                   @bind:get="State.LengthVariancePercent" @bind:set="v => State.LengthVariancePercent = Math.Clamp(v, 0, 90)" />
-        </label>
-    </div>
-</Card>
-
-@if (State.Mode == SimMode.Dungeon)
-{
-    <DungeonCard State="State" OnChanged="OnChanged" />
-}
-
-@* What else the fights have; more settings of the fight go here. *@
-<Card Title="Fight settings">
-    <div class="fields">
         @if (State.Mode == SimMode.TrainingDummies)
         {
             <div class="toggle-block">
@@ -82,17 +64,6 @@
             <input type="number" class="short" min="0" max="@MaxStartingSpirit" step="1" disabled="@(!State.StartWithSpirit)"
                    @bind:get="State.StartingSpirit" @bind:set="v => State.StartingSpirit = Math.Clamp(v, 0, MaxStartingSpirit)" />
         </label>
-        <div class="toggle-block">
-            <label class="switch" data-tooltip="@ReactionTip">
-                <input type="checkbox" @bind="State.ReactionDelays" />
-                <span>Player reaction time</span>
-            </label>
-        </div>
-        <label class="field" data-tooltip="@ProcReactionTip">
-            Proc reaction (ms)
-            <input type="number" class="short" min="0" step="1"
-                   @bind:get="State.ProcReactionMilliseconds" @bind:set="v => State.ProcReactionMilliseconds = Math.Max(0, v)" />
-        </label>
         @MoreSettings
     </div>
 </Card>
@@ -109,24 +80,8 @@
     /// <summary>The most Spirit a fight can start with: a build with Ancestral Surge - II holds 130.</summary>
     public const double MaxStartingSpirit = 130;
 
-    private const string ReactionTip = "A random delay before the cast after a channel, as players took in the combat logs (about 0.17 s): "
-        + "nothing is queued out of a channel. A cast queued during the global cooldown or a cast time goes off as it ends either way. "
-        + "Off, the hero casts the moment a channel ends.";
-
-    private const string ProcReactionTip = "The action list sees a proc's gain this long after it happens. Until then, buff.<proc> reads "
-        + "the proc as it was before the gain: down, its stacks before the gain, or its time left before the gain. 0 shows the gain at once.";
-
-    private const string DungeonLengthTip = "In a dungeon, this changes only the pull duration of enemies with no hit points.";
-
     // The radio group's name, its own in each place the cards show (the Sim page and the APL Debugger).
     private readonly string _group = $"mode-{Guid.NewGuid():N}";
-
-    /// <summary>The training dummies' fight length range.</summary>
-    private string LengthText()
-    {
-        double share = State.LengthVariancePercent / 100;
-        return $"Each fight lasts {N(State.FightSeconds * (1 - share))} – {N(State.FightSeconds * (1 + share))} s.";
-    }
 
     private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
 }

@@ -56,9 +56,9 @@
 
         <label hidden="@(Variable.Op == AplVariableOp.Reset)">Value</label>
         <div hidden="@(Variable.Op == AplVariableOp.Reset)">
-            <CodeField Vocabulary="Vocabulary" Value="@Variable.Value"
-                       Placeholder="@($"Example: {Vocabulary.Resources.FirstOrDefault()?.Slug ?? "active_enemies"} + 1")"
-                       OnChange="value => ChangeVariable(v => v with { Value = value })" />
+            <ConditionField Vocabulary="Vocabulary" Value="@Variable.Value" Label="Value" Lead=""
+                            Placeholder="@($"Example: {Vocabulary.Resources.FirstOrDefault()?.Slug ?? "active_enemies"} + 1")"
+                            OnChange="value => ChangeVariable(v => v with { Value = value })" />
         </div>
 
         <label for="@($"{Id}-default")">Default</label>
@@ -103,9 +103,21 @@
         </select>
         <label hidden="@(Action.TargetSelection == null)">Target by</label>
         <div hidden="@(Action.TargetSelection == null)">
-            <CodeField Vocabulary="Vocabulary" Value="@Action.TargetExpression"
-                       Placeholder="@($"Value for each enemy. Example: debuff.{Vocabulary.Auras.FirstOrDefault()?.Slug ?? "name"}.remains")"
-                       OnChange="expression => Change(a => a with { TargetExpression = expression })" />
+            <ConditionField Vocabulary="Vocabulary" Value="@Action.TargetExpression" Label="Target by" Lead=""
+                            Placeholder="@($"Value for each enemy. Example: debuff.{Vocabulary.Auras.FirstOrDefault()?.Slug ?? "name"}.remains")"
+                            OnChange="expression => Change(a => a with { TargetExpression = expression })" />
+        </div>
+
+        <label>Timing</label>
+        <div class="switches">
+            <label class="switch">
+                <input type="checkbox" checked="@Action.UseOffGcd" @onchange="e => Change(a => a with { UseOffGcd = e.Value is true })" />
+                <span data-tooltip="@OptionTip(AplActionLine.UseOffGcdKey)">Use off the global cooldown</span>
+            </label>
+            <label class="switch">
+                <input type="checkbox" checked="@Action.UseWhileCasting" @onchange="e => Change(a => a with { UseWhileCasting = e.Value is true })" />
+                <span data-tooltip="@OptionTip(AplActionLine.UseWhileCastingKey)">Use while casting</span>
+            </label>
         </div>
     }
 
@@ -167,6 +179,9 @@
 
     protected override void OnInitialized() => _hasArguments = !string.IsNullOrEmpty(Action.Arguments);
 
+    // The condition reference's meaning of an action option ("use_off_gcd=1").
+    private static string? OptionTip(string key) => AplActionOptions.All.FirstOrDefault(o => o.Syntax == $"{key}=1").Doc?.Description;
+
     private void Change(Func<EditorAction, EditorAction> change) => Editor.ChangeAction(Action.Key, change);
 
     private void ChangeVariable(Func<AplDocumentVariable, AplDocumentVariable> change) =>
@@ -182,8 +197,13 @@
             AplVariable.ActionName => a with
             {
                 Ability = type, ActionList = null, TargetSelection = null, TargetExpression = null, Variable = a.Variable ?? new AplDocumentVariable(""),
+                UseOffGcd = false, UseWhileCasting = false,
             },
-            _ => a with { Ability = type, ActionList = listAction ? a.ActionList : firstOther, TargetSelection = null, TargetExpression = null, Variable = null },
+            _ => a with
+            {
+                Ability = type, ActionList = listAction ? a.ActionList : firstOther, TargetSelection = null, TargetExpression = null, Variable = null,
+                UseOffGcd = false, UseWhileCasting = false,
+            },
         });
     }
 

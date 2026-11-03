@@ -95,7 +95,7 @@ public class AplEditorTests
         Assert.Equal(expected, AplParser.ParseActionLine(line)!.ToString());
 
     [Theory]
-    [InlineData("actions+=/frost_bolt,if=min:a")]
+    [InlineData("actions+=/frost_bolt,if=min:")]
     [InlineData("actions+=/frost_bolt,target_if=lowest:a")]
     [InlineData("actions+=/frost_bolt,target_if=min:")]
     public void ActionLine_Malformed_Target_If_Throws(string line) =>
@@ -205,6 +205,36 @@ public class AplEditorTests
         var lists = AplParser.ParseScript(written!);
         Assert.Equal(["ice_comet", "run_action_list", "frost_bolt"], lists.Actions.Select(a => a.AbilityName));
         Assert.Equal(["bursting_ice"], lists.Lists["aoe"].Select(a => a.AbilityName));
+    }
+
+    [Fact]
+    public void Document_Holds_Use_Off_Gcd_And_Use_While_Casting_As_Switches()
+    {
+        const string text = """
+            actions+=/ice_blitz,use_off_gcd=1,use_while_casting=1,line_cd=5,if=buff.chill.up
+            actions+=/frost_bolt,use_off_gcd=0
+            actions+=/call_action_list,name=aoe,use_off_gcd=1
+            actions.aoe+=/frost_bolt
+            """;
+        var actions = AplDocument.Parse(text);
+        Assert.Equal(new AplDocumentAction("ice_blitz", "buff.chill.up", Arguments: "line_cd=5", UseOffGcd: true, UseWhileCasting: true), actions[0]);
+        Assert.Equal(new AplDocumentAction("frost_bolt"), actions[1]);
+        // A list action keeps the argument as written: only an ability action reads it.
+        Assert.Equal((false, "use_off_gcd=1"), (actions[2].UseOffGcd, actions[2].Arguments));
+
+        var (written, errors) = AplDocument.Write(actions);
+        Assert.Empty(errors);
+        Assert.Equal("""
+            actions+=/ice_blitz,line_cd=5,use_off_gcd=1,use_while_casting=1,if=buff.chill.up
+            actions+=/frost_bolt
+            actions+=/call_action_list,name=aoe,use_off_gcd=1
+
+            actions.aoe+=/frost_bolt
+
+            """.ReplaceLineEndings("\n"), written);
+        var iceBlitz = AplParser.ParseScript(written!).Actions[0];
+        Assert.True(iceBlitz.UseOffGcd);
+        Assert.True(iceBlitz.UseWhileCasting);
     }
 
     [Fact]

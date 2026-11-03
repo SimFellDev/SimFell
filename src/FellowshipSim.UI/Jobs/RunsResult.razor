@@ -139,6 +139,8 @@ else
 }
 
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     /// <summary>The runs, the first the baseline.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<SimRun> Runs { get; set; } = [];
 
@@ -231,14 +233,15 @@ else
     {
         try
         {
-            var profile = SimcProfile.Parse(run.Profile);
+            var profile = SimProfile.Parse(run.Profile).Profile;
             Sim.Editor = new BuildEditor(profile.Build);
             Sim.SavedName = "";
             Sim.MarkBuildClean();
             Sim.ActionListText = profile.ActionList;
             Sim.ActionListName = run.ActionListName;
             Sim.ActionListValue = run.ActionListValue;
-            Sim.BuildStatus = MessageState.Ok($"Loaded {run.Label} ({run.Detail}) from a sim.");
+            Sim.BuildStatus = MessageState.None;
+            Toasts.Ok($"Loaded {run.Label} ({run.Detail}) from a sim.");
             Sim.Tab = SimTab.Hero;
             Sim.NotifyChanged();
             Views.ShowPage(AppPage.Sim);

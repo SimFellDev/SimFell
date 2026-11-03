@@ -1,6 +1,16 @@
+@using FellowshipSim.Core.Import
 @inject SimPageState State
-@* The Sim page's Modes tab: the fight, its dungeon or training dummies, its settings, then Compare and Finder. *@
+@inject ISimEngine Engine
+@* The Sim page's Modes tab: the fight, its dungeon or training dummies, its settings, the action list, then Compare and Finder. *@
 <FightCards State="State" OnChanged="OnChanged" />
+@if (!BuildHeroes.IsBuildOnly(State.Build.Hero))
+{
+    @* Each hero's own editor, so a hero's edits stay while another hero's build shows. *@
+    <ActionListsCard @key="State.Build.Hero" Lists="State.ActionListEditor(State.Build.Hero, Engine)" Hero="@State.Build.Hero"
+                     Selected="@State.ActionListValue" SelectedName="@State.ActionListName" SelectedText="@State.ActionListText"
+                     OnPicked="PickedAsync" OnSaved="OnListsChanged" Disabled="@(State.Extra == SimExtra.Compare)"
+                     @bind-Open="State.ActionListEditorOpen" />
+}
 <CompareCard Heroes="Heroes" Lists="Lists" OnChanged="OnChanged" />
 <FinderCard OnChanged="OnChanged" />
 
@@ -12,4 +22,16 @@
     [Parameter, EditorRequired] public IReadOnlyList<ActionListEntry> Lists { get; set; } = [];
 
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Called after the action list editor saves a list, so the page lists it.</summary>
+    [Parameter] public EventCallback OnListsChanged { get; set; }
+
+    // The sim runs the list picked, with its edits not saved.
+    private Task PickedAsync(ActionListPick pick)
+    {
+        State.ActionListValue = pick.Value;
+        State.ActionListName = pick.Name;
+        State.ActionListText = pick.Text;
+        return OnChanged.InvokeAsync();
+    }
 }

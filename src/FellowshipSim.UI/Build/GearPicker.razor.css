@@ -1,0 +1,219 @@
+.gear-picker {
+  max-width: 1080px;
+}
+
+/* The slot on the left, the tempers in the middle, the close button on the right. */
+.picker-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.picker-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slot-icon {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.slot-icon.empty {
+  padding: 7px;
+  opacity: 0.6;
+}
+
+.close {
+  justify-self: end;
+}
+
+.tempers {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tempers-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper input {
+  width: 48px;
+  padding: 4px 8px;
+  background: var(--surface);
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tempers-max {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The items, one per row: icon, name, a column per stat, the dungeons it drops in. */
+.picker-table {
+  max-height: min(640px, calc(100vh - 160px));
+  overflow: auto;
+  padding: 0 12px 12px;
+}
+
+.picker-row {
+  display: grid;
+  grid-template-columns: 36px minmax(200px, 1fr) repeat(6, 58px) minmax(180px, 260px);
+  gap: 0 12px;
+  align-items: center;
+  min-width: 900px;
+}
+
+.picker-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 12px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sort {
+  padding: 4px 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sort:hover {
+  color: var(--text);
+}
+
+.sort.active {
+  color: var(--heading);
+}
+
+.item {
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px 12px;
+  background: var(--input);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 15px;
+  text-align: left;
+}
+
+.item:hover {
+  border-color: var(--accent);
+}
+
+.item.selected {
+  background: var(--selected);
+  border-color: var(--accent);
+}
+
+.item-icon {
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.item-icon.legendary {
+  border-color: var(--legendary);
+}
+
+.item-icon.empty {
+  padding: 6px;
+  opacity: 0.6;
+}
+
+.item-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.item-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendary-name {
+  color: var(--legendary);
+}
+
+.empty-item {
+  color: var(--muted);
+}
+
+.empty-item .item-name {
+  font-weight: 400;
+}
+
+.equipped {
+  flex: none;
+  padding: 0 7px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--heading);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.stat {
+  font-variant-numeric: tabular-nums;
+}
+
+.stat.none {
+  color: var(--border);
+}
+
+/* The highest value of a stat among the slot's items. */
+.stat.high {
+  color: var(--heading);
+  font-weight: 600;
+}
+
+.stat.sorted {
+  padding-left: 4px;
+  border-radius: 4px;
+  background: rgb(176 142 88 / 0.1);
+}
+
+.source {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.3;
+}

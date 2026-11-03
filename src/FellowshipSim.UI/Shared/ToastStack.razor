@@ -1,0 +1,34 @@
+@* A ToastProvider's toasts at the bottom of the window, newest last, each with its close button. *@
+<div class="toasts" role="status" aria-live="polite">
+    @foreach (var toast in Toasts)
+    {
+        <div @key="toast.Id" class="toast @KindClass(toast.Message.Kind)">
+            <span class="text">@toast.Message.Text</span>
+            <button type="button" class="icon-button close" aria-label="Dismiss" @onclick="() => OnClose?.Invoke(toast)">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The toasts shown, oldest first; the provider owns the list.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<Toast> Toasts { get; set; } = [];
+
+    /// <summary>
+    /// Closes a toast. An action, not an EventCallback: an EventCallback would redraw the provider, and the frame's whole
+    /// content with it.
+    /// </summary>
+    [Parameter] public Action<Toast>? OnClose { get; set; }
+
+    /// <summary>Redraws the toasts after the provider's list changed.</summary>
+    public void Refresh() => StateHasChanged();
+
+    private static string KindClass(MessageKind kind) => kind switch
+    {
+        MessageKind.Ok => "ok",
+        MessageKind.Error => "error",
+        MessageKind.Warning => "warning",
+        _ => "",
+    };
+}

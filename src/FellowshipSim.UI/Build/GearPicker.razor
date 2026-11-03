@@ -1,0 +1,153 @@
+@using System.Globalization
+@using FellowshipSim.Core.Import
+@* The items a hero can wear in one gear slot, at the slot's tempers: picking one wears it, and the dialog closes. *@
+<div class="modal-layer" @onclick="Close" @onkeydown="OnKeyDown">
+    <div class="modal gear-picker" role="dialog" aria-modal="true" aria-labelledby="gear-picker-title" @onclick:stopPropagation="true">
+        <div class="modal-head picker-bar">
+            <div class="picker-title">
+                <img class="slot-icon empty" src="@EmptyIconUrl(Slot)" alt="" width="40" height="40" />
+                <h2 id="gear-picker-title" class="title">@GearSlots.Label(Slot)</h2>
+            </div>
+            <span class="tempers" data-tooltip="Each temper adds 1 to each of an item's stats. Legendaries take none.">
+                <span class="tempers-label">Temper</span>
+                <span class="stepper">
+                    <button type="button" class="icon-button" aria-label="One fewer temper" disabled="@(Tempers <= 0)" @onclick="() => SetTempers(Tempers - 1)">−</button>
+                    <input type="number" min="0" max="@BuildEditor.DefaultTempers" step="1" aria-label="@($"Tempers, of {BuildEditor.DefaultTempers}")"
+                           @bind:get="Tempers" @bind:set="SetTempers" />
+                    <span class="tempers-max">/ @BuildEditor.DefaultTempers</span>
+                    <button type="button" class="icon-button" aria-label="One more temper" disabled="@(Tempers >= BuildEditor.DefaultTempers)" @onclick="() => SetTempers(Tempers + 1)">+</button>
+                </span>
+            </span>
+            <button type="button" class="icon-button close" aria-label="Close" @onclick="Close">
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+            </button>
+        </div>
+        <div class="picker-table" role="listbox" aria-label="@($"{GearSlots.Label(Slot)} items")">
+            <div class="picker-row picker-head">
+                <span></span>
+                @foreach (var column in Columns)
+                {
+                    bool sorted = Sort == column;
+                    <button @key="column" type="button" class="sort @(sorted ? "active" : "") @(column == ItemColumn ? "first" : "")" aria-pressed="@sorted"
+                            aria-label="@(column == ItemColumn ? "Sort by name" : $"Sort by {Label(column)}, highest first")"
+                            @onclick="() => SortChanged.InvokeAsync(sorted ? ItemColumn : column)">
+                        @Label(column)@(sorted && column != ItemColumn ? " ▾" : "")
+                    </button>
+                }
+                <span>Drops in</span>
+            </div>
+            @{
+                var worn = Editor.Item(Slot);
+                var items = Sorted().ToList();
+                var highest = StatColumns.ToDictionary(c => c, c => items.Count == 0 ? 0 : items.Max(i => Value(i, c)));
+            }
+            @foreach (var item in items)
+            {
+                bool equipped = worn?.Id == item.Id;
+                <button @key="item.Id" type="button" role="option" class="picker-row item @(equipped ? "selected" : "")" aria-selected="@equipped"
+                        @onclick="() => Pick(item.Id)">
+                    <img class="item-icon @(item.Legendary ? "legendary" : "")" src="@GameIcons.Url(item.Icon)" alt="" width="36" height="36" loading="lazy" />
+                    <span class="item-name">
+                        <span class="@(item.Legendary ? "legendary-name" : "")">@item.Name</span>
+                        @if (equipped)
+                        {
+                            <span class="equipped">Equipped</span>
+                        }
+                    </span>
+                    @foreach (var column in StatColumns)
+                    {
+                        int value = Value(item, column);
+                        <span @key="column" class="stat @(value == 0 ? "none" : value == highest[column] && column != StaminaColumn ? "high" : "") @(Sort == column && value > 0 ? "sorted" : "")">
+                            @(value == 0 ? "–" : value.ToString(CultureInfo.CurrentCulture))
+                        </span>
+                    }
+                    <span class="source">@(string.Join(", ", item.Dungeons))@(item.Legendary ? $" · item level {item.ItemLevel}" : "")</span>
+                </button>
+            }
+            <button type="button" role="option" class="picker-row item empty-item @(worn == null ? "selected" : "")" aria-selected="@(worn == null)" @onclick="() => Pick(null)">
+                <img class="item-icon empty" src="@EmptyIconUrl(Slot)" alt="" width="36" height="36" />
+                <span class="item-name">
+                    <span>— Empty slot —</span>
+                    @if (worn == null)
+                    {
+                        <span class="equipped">Equipped</span>
+                    }
+                </span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>The column a picker sorts by name with.</summary>
+    public const string ItemColumn = "Item";
+
+    private const string StaminaColumn = "Stam";
+
+    /// <summary>The stat columns: the main stat, the ratings in the game's order, Stamina last.</summary>
+    private static readonly string[] StatColumns = ["Main", "Crit", "Exp", "Haste", "Spirit", StaminaColumn];
+
+    private static readonly string[] Columns = [ItemColumn, .. StatColumns];
+
+    [Parameter, EditorRequired] public BuildEditor Editor { get; set; } = null!;
+
+    [Parameter] public GearSlot Slot { get; set; }
+
+    /// <summary>The column the items are sorted by, highest first, or <see cref="ItemColumn"/> for by name.</summary>
+    [Parameter] public string Sort { get; set; } = ItemColumn;
+
+    [Parameter] public EventCallback<string> SortChanged { get; set; }
+
+    /// <summary>Called after the build's gear changes.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private int Tempers => Editor.Tempers(Slot);
+
+    /// <summary>The icon of an empty <paramref name="slot"/> (the game's; legs are its waist).</summary>
+    public static string EmptyIconUrl(GearSlot slot) =>
+        GameIcons.Url($"T_Icons_Gear_{(GearSlots.Kind(slot) == GearKind.Legs ? "Waist" : GearSlots.Kind(slot).ToString())}");
+
+    private string Label(string column) => column == "Main" ? Editor.Catalog.MainStatShort : column;
+
+    private int Value(GearItem item, string column)
+    {
+        var stats = item.StatsAt(Tempers);
+        return column switch
+        {
+            "Main" => stats.Primary,
+            "Crit" => stats.Crit,
+            "Exp" => stats.Expertise,
+            "Haste" => stats.Haste,
+            "Spirit" => stats.Spirit,
+            _ => stats.Stamina,
+        };
+    }
+
+    // Legendaries first, whatever the sort; then by name, or by the column's stat highest first.
+    private IEnumerable<GearItem> Sorted()
+    {
+        var items = Editor.ItemsFor(Slot).OrderByDescending(i => i.Legendary);
+        return Sort == ItemColumn || !StatColumns.Contains(Sort)
+            ? items.ThenBy(i => i.Name, StringComparer.CurrentCulture)
+            : items.ThenByDescending(i => Value(i, Sort)).ThenBy(i => i.Name, StringComparer.CurrentCulture);
+    }
+
+    private async Task SetTempers(int tempers)
+    {
+        Editor.SetTempers(Slot, tempers);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task Pick(int? itemId)
+    {
+        Editor.Wear(Slot, itemId);
+        await OnChanged.InvokeAsync();
+        await OnClose.InvokeAsync();
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? Close() : Task.CompletedTask;
+}

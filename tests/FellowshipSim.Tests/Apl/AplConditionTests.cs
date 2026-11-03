@@ -206,6 +206,85 @@ public class AplConditionTests
     }
 
     [Fact]
+    public void Min_And_Max_Read_Every_Application_Of_Engulfing_Flames_On_Every_Enemy()
+    {
+        var (hero, ctx) = Fight("Ardeos");
+        var ardeos = (Ardeos)hero;
+        var dot = hero.Abilities.OfType<EngulfingFlames>().Single().Dot;
+        var first = ctx.Player.CurrentTarget!;
+        var second = ctx.AddEnemy(101, 1, "Mob", maxHealth: 100_000);
+        var bare = ctx.AddEnemy(102, 1, "Mob", maxHealth: 100_000);
+
+        // No application anywhere: min is a very large number, max is 0.
+        AssertReads(hero, ctx, "min:dot.engulfing_flames.remains", double.MaxValue);
+        AssertReads(hero, ctx, "max:dot.engulfing_flames.remains", 0.0);
+        AssertReads(hero, ctx, "min:dot.engulfing_flames.remains<gcd", 0.0);
+
+        // The second enemy's copy is applied at 0 seconds, and the first enemy's copies at 2 and 3 seconds. The enemy without
+        // the dot is left out, and the current target leaves min and max as they are.
+        ardeos.Dots.Apply(ctx, dot, second);
+        ctx.RunUntil(SimTime.FromSeconds(2));
+        ardeos.Dots.Apply(ctx, dot, first);
+        ctx.RunUntil(SimTime.FromSeconds(3));
+        ardeos.Dots.Apply(ctx, dot, first);
+        ctx.Player.CurrentTarget = bare;
+
+        double soonest = ardeos.Dots.On(second).Min(d => d.ExpiresAt.Milliseconds) / 1000.0 - 3.0;
+        double latest = ardeos.Dots.On(first).Max(d => d.ExpiresAt.Milliseconds) / 1000.0 - 3.0;
+        AssertReads(hero, ctx, "min:dot.engulfing_flames.remains", soonest);
+        AssertReads(hero, ctx, "MIN:debuff.engulfing_flames.remains", soonest);
+        AssertReads(hero, ctx, "max:dot.engulfing_flames.remains", latest);
+        AssertReads(hero, ctx, "dot.engulfing_flames.remains", 0.0);
+
+        // The truth changes when the soonest copy falls under the threshold.
+        var bound = BoundExpression.Bind(AplParser.ParseExpression("min:dot.engulfing_flames.remains < 4"), hero);
+        Assert.False(bound.Evaluate(ctx));
+        Assert.Equal(SimTime.FromMilliseconds((long)Math.Round((soonest - 4.0 + 3.0) * 1000) + 1), bound.NextChange(ctx));
+    }
+
+    [Theory]
+    [InlineData("min:dot.engulfing_flames.remains<gcd")]
+    [InlineData("max: debuff.engulfing_flames.remains > 2 & min:dot.engulfing_flames.remains < 1")]
+    public void Min_And_Max_Write_Back_As_Read(string text)
+    {
+        var expression = AplParser.ParseExpression(text);
+        Assert.Equal(AplFormatter.Format(expression), AplFormatter.Format(AplParser.ParseExpression(AplFormatter.Format(expression))));
+        Assert.Contains("min:dot.engulfing_flames.remains", AplFormatter.Format(expression));
+        var line = AplParser.ParseActionLine($"actions+=/incinerate,if={text}");
+        Assert.NotNull(line);
+    }
+
+    [Fact]
+    public void Min_And_Max_Read_A_Debuffs_Remains_Alone()
+    {
+        var v = AplVocabulary.For("Ardeos");
+        var check = v.Check("min:dot.engulfing_flames.remains<gcd");
+        Assert.Null(check.Error);
+        Assert.Equal(AplTokenKind.Keyword, check.Tokens[0].Kind);
+        Assert.Equal((AplTokenKind.Debuff, (string?)null), (check.Tokens[2].Kind, check.Tokens[2].Problem));
+
+        foreach (string text in new[] { "min:buff.engulfing_flames.remains", "min:dot.engulfing_flames.stack", "max:dot.engulfing_flames.oldest.remains" })
+        {
+            Assert.Equal(AplTokenKind.Unknown, v.Check(text).Tokens[2].Kind);
+            var (hero, ctx) = Fight("Ardeos");
+            AssertReads(hero, ctx, text, 0.0);
+        }
+
+        // target_if's min: is the target selection, and its expression can have an aggregate of its own.
+        var targetIf = Assert.IsType<AplTargetIf>(AplParser.ParseActionSyntax("actions+=/incinerate,target_if=min:dot.engulfing_flames.remains").TargetIf);
+        Assert.Equal(AplTargetSelection.Min, targetIf.Selection);
+        Assert.Null(Assert.IsType<PropertyExpression>(targetIf.Expression).Aggregate);
+        Assert.Null(v.CheckList("actions+=/incinerate,target_if=min:dot.engulfing_flames.remains,if=min:dot.engulfing_flames.remains<gcd").Error);
+    }
+
+    private static void AssertReads(Hero hero, SimulationContext ctx, string text, double expected)
+    {
+        var expression = AplParser.ParseExpression(text);
+        Assert.Equal(expected, expression.EvaluateNumeric(hero, ctx), 6);
+        Assert.Equal(expected, BoundExpression.Bind(expression, hero).EvaluateNumeric(ctx), 6);
+    }
+
+    [Fact]
     public void Oldest_And_Newest_Are_Debuff_Properties_With_A_Doc()
     {
         Assert.Contains("oldest.remains", PropertyExpression.Scopes[PropertyExpression.DebuffScope]);

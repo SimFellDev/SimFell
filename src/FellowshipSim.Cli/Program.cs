@@ -32,9 +32,12 @@ if (!File.Exists(path))
 }
 
 SimcProfile profile;
+SimSettings settings;
 try
 {
-    profile = SimcProfile.Load(path);
+    var sim = options.Read(File.ReadAllText(path));
+    profile = sim.Profile;
+    settings = sim.Settings;
 }
 catch (FormatException e)
 {
@@ -58,7 +61,7 @@ var progress = new ProgressLine(Console.Error);
 SimResult result;
 try
 {
-    result = await new LocalSimEngine().SimulateAsync(profile, options.Settings, progress, cancel.Token);
+    result = await new LocalSimEngine().SimulateAsync(profile, settings, progress, cancel.Token);
 }
 catch (OperationCanceledException) when (cancel.IsCancellationRequested)
 {

@@ -486,3 +486,29 @@
   color: var(--warn);
   font-weight: 700;
 }
+
+/* The profile the sim ran, collapsed under Advanced at the report's end. */
+.advanced summary {
+  cursor: pointer;
+  font-family: var(--heading-font);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+.advanced .hint {
+  margin: 0;
+}
+
+.advanced .profile {
+  max-height: 420px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font: 13px/1.5 var(--code-font);
+  white-space: pre;
+}

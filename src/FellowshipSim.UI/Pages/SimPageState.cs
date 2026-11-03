@@ -7,8 +7,8 @@ using FellowshipSim.UI.Shared;
 
 namespace FellowshipSim.UI.Pages;
 
-/// <summary>The Sim page's tabs.</summary>
-public enum SimTab { Import, Hero, Modes, Advanced }
+/// <summary>The Sim page's tabs. Import is a dialog the Hero tab opens.</summary>
+public enum SimTab { Hero, Modes, Advanced }
 
 /// <summary>The fights a sim runs: a dungeon's pulls, or training dummies for the whole fight.</summary>
 public enum SimMode { Dungeon, TrainingDummies }
@@ -48,11 +48,18 @@ public sealed class SimPageState
         set
         {
             _editor = value;
+            BuildPlaced = true;
             if (!value.Build.Hero.Equals(_actionListHero, StringComparison.OrdinalIgnoreCase)) SwapActionList(value.Build.Hero);
         }
     }
 
     private BuildEditor _editor = new(BuildEditor.NewBuild("Rime"));
+
+    /// <summary>
+    /// True once a build replaced the first new build: a load, an import, a share link or a sim's run. The page opens the
+    /// last build open only while this is false.
+    /// </summary>
+    public bool BuildPlaced { get; private set; }
 
     public CharacterBuild Build => Editor.Build;
 
@@ -91,16 +98,144 @@ public sealed class SimPageState
         Tab = SimTab.Hero;
     }
 
-    /// <summary>A .simc profile or a build's share link pasted on the Import tab.</summary>
+    /// <summary>
+    /// True after the Import dialog put in a build, until the Hero tab's editor saves it: under its own name when that is
+    /// free, else under the name the save dialog asks for.
+    /// </summary>
+    public bool ImportedBuildToSave { get; set; }
+
+    /// <summary>A .simc profile or a build's share link pasted in Import.</summary>
     public string ProfileText { get; set; } = "";
+
+    /// <summary>True while the Import dialog shows.</summary>
+    public bool ImportOpen { get; set; }
+
+    /// <summary>The Hero tab's cards folded to their title line, by title; every card is open at first.</summary>
+    public HashSet<string> CollapsedCards { get; } = [];
 
     public MessageState ImportStatus { get; set; } = MessageState.None;
 
+    /// <summary>
+    /// Edits the build of <see cref="ProfileText"/> from now on, with the profile's action list when it has one, and shows
+    /// the Hero tab. Each sim setting the profile has replaces the page's. <see cref="ImportStatus"/> has the error of a
+    /// profile that does not parse.
+    /// </summary>
+    public void ImportProfile()
+    {
+        try
+        {
+            if (BuildShareLink.TryRead(ProfileText) is { } shared)
+            {
+                UseBuild(shared);
+                ImportStatus = MessageState.None;
+                return;
+            }
+            var sim = SimProfile.Parse(ProfileText);
+            // The build first: a build of another hero puts in that hero's list, and the profile's own list replaces it.
+            UseBuild(sim.Profile.Build);
+            if (sim.Profile.ActionList.Trim().Length > 0)
+            {
+                ActionListText = sim.Profile.ActionList;
+                ActionListName = "the profile's list";
+                ActionListValue = "";
+            }
+            UseSettings(sim);
+            ImportStatus = MessageState.None;
+        }
+        catch (FormatException e)
+        {
+            ImportStatus = MessageState.Error(e.Message);
+        }
+    }
+
+    /// <summary>
+    /// Puts <paramref name="profile"/>, a sim's profile, in the Import dialog, and its build, action list and settings in
+    /// the page, and opens the Import dialog. Run sim then runs the profile alone: no compare or finder. False, with the
+    /// reason in <see cref="ImportStatus"/>, when the profile does not parse.
+    /// </summary>
+    public bool RunAgain(string profile)
+    {
+        ProfileText = profile;
+        ImportProfile();
+        bool loaded = ImportStatus.Kind != MessageKind.Error;
+        if (loaded) Extra = SimExtra.None;
+        ImportOpen = true;
+        NotifyChanged();
+        return loaded;
+    }
+
+    // Each setting of the profile's text in the page. A switched-off variance or starting Spirit keeps the page's amount.
+    private void UseSettings(SimProfile sim)
+    {
+        var keys = sim.SettingKeys;
+        var settings = sim.Settings;
+        if (keys.Contains(SimProfile.Iterations)) Iterations = settings.Iterations;
+        if (keys.Contains(SimProfile.Threads))
+        {
+            Threads = Math.Clamp(settings.DegreeOfParallelism!.Value, 1, SimThreads.Available);
+            // The browser's stored choice no longer replaces the profile's.
+            ThreadsRestored = true;
+        }
+        if (keys.Contains(SimProfile.Seed)) FirstSeed = settings.FirstSeed;
+        if (keys.Contains(SimProfile.Dungeon))
+        {
+            var dungeon = settings.Dungeon!;
+            string text = dungeon.Format();
+            if (text != Dungeon.Format())
+            {
+                string? builtIn = DefaultDungeons.Names.FirstOrDefault(n => DungeonProfile.Parse(DefaultDungeons.Read(n)!).Format() == text);
+                Dungeon = dungeon;
+                DungeonEditor.CloseAll();
+                DungeonValue = builtIn != null ? $"builtin/{builtIn}" : "";
+                if (builtIn != null) MarkDungeonClean();
+            }
+            Mode = SimMode.Dungeon;
+        }
+        else if (keys.Contains(SimProfile.Duration) || keys.Contains(SimProfile.Targets))
+        {
+            Mode = SimMode.TrainingDummies;
+        }
+        if (keys.Contains(SimProfile.Duration)) DurationSeconds = settings.DurationSeconds;
+        if (keys.Contains(SimProfile.Targets)) TrainingDummies = settings.TargetCount;
+        if (keys.Contains(SimProfile.LengthVariance))
+        {
+            VaryLength = settings.LengthVariance > 0;
+            if (VaryLength) LengthVariancePercent = settings.LengthVariance * 100;
+        }
+        if (keys.Contains(SimProfile.HeroShareVariance))
+        {
+            VaryHeroShare = settings.HeroShareVariance > 0;
+            if (VaryHeroShare) HeroShareVariancePercent = settings.HeroShareVariance * 100;
+        }
+        if (keys.Contains(SimProfile.HealthFollowsTime)) HealthFollowsTime = settings.HealthFollowsTime;
+        if (keys.Contains(SimProfile.Boss)) Boss = settings.Boss;
+        if (keys.Contains(SimProfile.StartingSpirit))
+        {
+            StartWithSpirit = settings.StartingSpirit > 0;
+            if (StartWithSpirit) StartingSpirit = settings.StartingSpirit;
+        }
+        if (keys.Contains(SimProfile.ReactionDelays)) ReactionDelays = settings.ReactionDelays;
+        if (keys.Contains(SimProfile.ProcReaction)) ProcReactionMilliseconds = settings.ProcReactionSeconds * 1000;
+    }
+
+    /// <summary>
+    /// The <c>.simc</c> profile a sim of the page runs: <paramref name="build"/> with the action list
+    /// <paramref name="actionList"/>, and the page's settings. A sim's job is given this text alone.
+    /// </summary>
+    public string SimProfileText(CharacterBuild build, string actionList) =>
+        new SimProfile(new SimcProfile(build, actionList), FightSettings(Iterations, Math.Clamp(Threads, 1, SimThreads.Available), FirstSeed)).Format();
+
     public SimMode Mode { get; set; } = SimMode.TrainingDummies;
 
-    public int Iterations { get; set; } = 1000;
+    public int Iterations { get; set; } = SimProfile.DefaultIterations;
 
-    public double DurationSeconds { get; set; } = 300;
+    /// <summary>The seed of a sim's first fight; fight i has this seed + i.</summary>
+    public int FirstSeed { get; set; } = 1;
+
+    /// <summary>True when the targets lose their health over each fight.</summary>
+    public bool HealthFollowsTime { get; set; } = true;
+
+    public double DurationSeconds { get; set; } = SimProfile.DefaultDurationSeconds;
 
     /// <summary>The training dummies of a training dummy fight.</summary>
     public int TrainingDummies { get; set; } = 1;
@@ -160,7 +295,7 @@ public sealed class SimPageState
     public SimSettings FightSettings(int iterations, int threads, int firstSeed = 1) => new(iterations, FightSeconds, Targets, firstSeed,
         DegreeOfParallelism: threads,
         LengthVariance: VaryLength ? LengthVariancePercent / 100 : 0,
-        HealthFollowsTime: true,
+        HealthFollowsTime: HealthFollowsTime,
         StartingSpirit: StartWithSpirit ? StartingSpirit : 0,
         Boss: Boss,
         Dungeon: Mode == SimMode.Dungeon ? Dungeon : null,
@@ -204,6 +339,19 @@ public sealed class SimPageState
     }
 
     public MessageState Status { get; set; } = MessageState.None;
+
+    // Each hero's action-list editor on the Modes tab, kept while another hero's build shows.
+    private readonly Dictionary<string, Apl.ActionListsState> _actionListEditors = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The Modes tab's action-list editor of <paramref name="hero"/>, its own for each hero.</summary>
+    public Apl.ActionListsState ActionListEditor(string hero, ISimEngine engine)
+    {
+        if (!_actionListEditors.TryGetValue(hero, out var editor)) _actionListEditors[hero] = editor = new Apl.ActionListsState(engine);
+        return editor;
+    }
+
+    /// <summary>True when the Modes tab shows the action list's editor under its picker.</summary>
+    public bool ActionListEditorOpen { get; set; }
 
     /// <summary>Raised when something outside the Sim page changes its build (a sim's run loaded), so the page shows it.</summary>
     public event Action? Changed;

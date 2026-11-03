@@ -7,7 +7,8 @@ namespace FellowshipSim.Core.APL;
 /// One action of an action list as the visual editor holds it: expressions are text, and <see cref="Comment"/> is the
 /// '#' lines above the action. <see cref="List"/> is the list the action belongs to. <see cref="ActionList"/> is the list
 /// a <c>run_action_list</c> or <c>call_action_list</c> action names. <see cref="Variable"/> is the variable a
-/// <c>variable</c> action changes. <see cref="Arguments"/> holds the other arguments ("line_cd=5").
+/// <c>variable</c> action changes. <see cref="UseOffGcd"/> and <see cref="UseWhileCasting"/> are an ability actions
+/// <c>use_off_gcd=1</c> and <c>use_while_casting=1</c>. <see cref="Arguments"/> holds the other arguments ("line_cd=5").
 /// </summary>
 public sealed record AplDocumentAction(
     string Ability,
@@ -18,7 +19,9 @@ public sealed record AplDocumentAction(
     string List = AplActionLine.DefaultList,
     string? Arguments = null,
     string? ActionList = null,
-    AplDocumentVariable? Variable = null);
+    AplDocumentVariable? Variable = null,
+    bool UseOffGcd = false,
+    bool UseWhileCasting = false);
 
 /// <summary>
 /// The variable a <c>variable</c> action changes, as the visual editor holds it: its name, its op, its value as text
@@ -55,6 +58,7 @@ public static class AplDocument
         var arguments = syntax.Arguments
             .Where(a => !(listAction && a.Key.Equals(AplActionLine.ListNameKey, StringComparison.OrdinalIgnoreCase)))
             .Where(a => !(variableAction && VariableKeys.Contains(a.Key)))
+            .Where(a => listAction || variableAction || !FlagKeys.Contains(a.Key))
             .ToList();
         return new AplDocumentAction(
             syntax.Name,
@@ -65,8 +69,13 @@ public static class AplDocument
             syntax.List,
             arguments.Count > 0 ? string.Join(",", arguments) : null,
             listAction ? syntax.ListName : null,
-            variableAction ? VariableOf(syntax) : null);
+            variableAction ? VariableOf(syntax) : null,
+            !listAction && !variableAction && syntax.Flag(AplActionLine.UseOffGcdKey),
+            !listAction && !variableAction && syntax.Flag(AplActionLine.UseWhileCastingKey));
     }
+
+    // The arguments of an ability action the editor holds as switches.
+    private static readonly HashSet<string> FlagKeys = new([AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey], StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> VariableKeys = new([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey],
         StringComparer.OrdinalIgnoreCase);
@@ -168,6 +177,11 @@ public static class AplDocument
                 {
                     errors.Add(new AplDocumentError(i, "actionList", "Pick an action list with at least one action."));
                 }
+            }
+            else
+            {
+                if (action.UseOffGcd) arguments.Add(new AplArgument(AplActionLine.UseOffGcdKey, new Expressions.ConstantExpression(1)));
+                if (action.UseWhileCasting) arguments.Add(new AplArgument(AplActionLine.UseWhileCastingKey, new Expressions.ConstantExpression(1)));
             }
 
             var lines = blocks[list];
