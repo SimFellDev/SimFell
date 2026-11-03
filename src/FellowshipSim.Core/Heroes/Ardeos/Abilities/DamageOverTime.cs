@@ -16,8 +16,12 @@ public abstract class DamageOverTime : Ability
         // haste (only Wildfire speeds them up); the others tick faster with haste.
         TicksScaleWithHaste = stacking != DotStacking.Accumulate;
         Debuff = AuraDef.Effect(name, effectId, maxStacks: 99);
+        AplSlug = APL.AplNames.Slug(name);
         owner.AddDot(this);
     }
+
+    /// <summary>The effect's action-list name ("engulfing_flames").</summary>
+    public string AplSlug { get; }
 
     /// <summary>Seconds between ticks before haste and tick rate bonuses.</summary>
     public double BasePeriod { get; }

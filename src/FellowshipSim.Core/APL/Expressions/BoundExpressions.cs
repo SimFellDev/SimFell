@@ -440,18 +440,21 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
 
     private TargetEffect? Find(SimulationContext ctx, SimTime now) => Find(ctx, now, out _);
 
+    // Speed: the aura of the name is searched for again only once its container's auras change.
+    private AuraSearch _search;
+
     // The aura as the action lists see it, and the time they see a proc's last gain when it is after now.
     private TargetEffect? Find(SimulationContext ctx, SimTime now, out SimTime seenGainAt)
     {
         seenGainAt = SimTime.Infinite;
         if (!debuff)
         {
-            if (hero.Auras.FindActive(slug, now) is not { } aura) return null;
+            if (_search.Find(hero.Auras, slug, now) is not { } aura) return null;
             seenGainAt = aura.SeenGainAt(now, ctx.ProcReactionTime);
             return aura.Seen(now, ctx.ProcReactionTime);
         }
         var target = ctx.Player.CurrentTarget;
-        return target == null ? null : AuraLookup.On(hero, target, slug, now, pick);
+        return target == null ? null : AuraLookup.On(hero, target, slug, now, pick, ref _search);
     }
 
     private double Read(TargetEffect? aura, SimTime now) => property switch
@@ -527,9 +530,11 @@ internal sealed class BoundActiveDot(Hero hero, string slug) : BoundNumeric
     {
         var now = ctx.CurrentTime;
         var first = SimTime.Infinite;
-        foreach (var enemy in ctx.ActiveEnemies)
+        // By index: a foreach over the list interface allocates its enumerator.
+        var enemies = ctx.ActiveEnemies;
+        for (int i = 0; i < enemies.Count; i++)
         {
-            if (AuraLookup.On(hero, enemy, slug, now) is { } effect && effect.ExpiresAt < first) first = effect.ExpiresAt;
+            if (AuraLookup.On(hero, enemies[i], slug, now) is { } effect && effect.ExpiresAt < first) first = effect.ExpiresAt;
         }
         return first;
     }
@@ -538,9 +543,10 @@ internal sealed class BoundActiveDot(Hero hero, string slug) : BoundNumeric
     {
         var now = ctx.CurrentTime;
         int count = 0;
-        foreach (var enemy in ctx.ActiveEnemies)
+        var enemies = ctx.ActiveEnemies;
+        for (int i = 0; i < enemies.Count; i++)
         {
-            if (AuraLookup.On(hero, enemy, slug, now) is { } effect && time < effect.ExpiresAt) count++;
+            if (AuraLookup.On(hero, enemies[i], slug, now) is { } effect && time < effect.ExpiresAt) count++;
         }
         return count;
     }

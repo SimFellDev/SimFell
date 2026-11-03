@@ -66,9 +66,6 @@ public sealed class Ardeos : Hero, ITargetEffects
 
     public IEnumerable<string> TargetEffectNames => AllDots.Select(d => d.Name);
 
-    // Each kind's action-list name, worked out once.
-    private readonly Dictionary<DamageOverTime, string> _dotSlugs = new();
-
     /// <summary>
     /// A damage over time effect on <paramref name="target"/>, as one: running until its last copy runs out, with the
     /// stacks of every copy (Engulfing Flames runs as copies side by side). <see cref="TargetEffectPick.Oldest"/> and
@@ -84,8 +81,7 @@ public sealed class Ardeos : Hero, ITargetEffects
         {
             var dot = on[i];
             if (!dot.IsActive || dot.ExpiresAt <= now) continue;
-            if (!_dotSlugs.TryGetValue(dot.Effect, out var dotSlug)) _dotSlugs[dot.Effect] = dotSlug = APL.AplNames.Slug(dot.Effect.Name);
-            if (dotSlug != slug) continue;
+            if (dot.Effect.AplSlug != slug) continue;
             stacks += dot.Stacks;
             if (dot.ExpiresAt > expiresAt) expiresAt = dot.ExpiresAt;
             if (picked == null

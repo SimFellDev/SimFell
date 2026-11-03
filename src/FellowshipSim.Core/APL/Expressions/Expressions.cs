@@ -547,4 +547,9 @@ internal static class AuraLookup
     public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now, TargetEffectPick pick = TargetEffectPick.All) =>
         hero is ITargetEffects effects && effects.FindOn(enemy, slug, now, pick) is { } effect ? effect
         : enemy.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
+
+    /// <summary><see cref="On(Hero, EnemyTarget, string, SimTime, TargetEffectPick)"/>, with the enemy's auras searched by <paramref name="search"/>.</summary>
+    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now, TargetEffectPick pick, ref AuraSearch search) =>
+        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now, pick) is { } effect ? effect
+        : search.Find(enemy.Auras, slug, now) is { } aura ? TargetEffect.Of(aura) : null;
 }

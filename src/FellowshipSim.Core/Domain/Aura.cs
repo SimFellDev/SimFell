@@ -280,6 +280,7 @@ public class AuraContainer
                 changedStats = existing.Def.StatMask | def.StatMask;
                 existing = new Aura(def) { AppliedAt = existing.AppliedAt, Stacks = existing.Stacks };
                 _auras[def.Key] = existing;
+                Membership++;
             }
             if (def.ReapplyKeepsExpiry && previousExpiry > now)
             {
@@ -315,6 +316,7 @@ public class AuraContainer
             Stacks = Math.Clamp(setStacks ?? stacks, 1, def.MaxStacks)
         };
         _auras[def.Key] = aura;
+        Membership++;
         _activeSince[def.Key] = now;
         StatsChanged(def.StatMask);
         ExpiryChanged(expires);
@@ -339,6 +341,12 @@ public class AuraContainer
 
     /// <summary>Changes whenever the auras with a modifier of <paramref name="type"/> or their stacks change.</summary>
     internal int StatVersion(StatType type) => _statVersions[(int)type];
+
+    /// <summary>
+    /// Changes whenever an aura is added or removed, or is replaced by an aura of other values. Between two changes
+    /// <see cref="FindActive"/> finds the same aura for a name.
+    /// </summary>
+    internal int Membership { get; private set; }
 
     /// <summary>Applies an engine-internal aura built inline (not a game effect).</summary>
     public void Apply(Aura aura, SimTime now = default, int? explicitStacks = null) =>
@@ -386,6 +394,7 @@ public class AuraContainer
     {
         if (_auras.Remove(key, out var aura))
         {
+            Membership++;
             StatsChanged(aura.Def.StatMask);
             if (_activeSince.Remove(key, out var start))
             {
@@ -552,6 +561,7 @@ public class AuraContainer
     public void ClearAll()
     {
         _auras.Clear();
+        Membership++;
         _activeSince.Clear();
         for (int t = 0; t < StatTypes; t++) _statVersions[t]++;
         _nextExpiry = SimTime.Infinite;
