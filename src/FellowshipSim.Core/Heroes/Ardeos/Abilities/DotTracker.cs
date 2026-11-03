@@ -61,7 +61,17 @@ public sealed class DotTracker
         }
     }
 
-    public IReadOnlyList<DotInstance> On(EnemyTarget target) => _byTarget.TryGetValue(target, out var on) ? on : None;
+    public IReadOnlyList<DotInstance> On(EnemyTarget target)
+    {
+        // Speed: the reads of one hit or tick are mostly of one enemy. Its list changes in place and stays its list.
+        if (ReferenceEquals(target, _lastTarget)) return _lastOn!;
+        if (!_byTarget.TryGetValue(target, out var on)) return None;
+        (_lastTarget, _lastOn) = (target, on);
+        return on;
+    }
+
+    private EnemyTarget? _lastTarget;
+    private List<DotInstance>? _lastOn;
 
     public IEnumerable<DotInstance> On(EnemyTarget target, DamageOverTime effect) => On(target).Where(d => d.Effect == effect);
 
@@ -144,6 +154,7 @@ public sealed class DotTracker
         }
         _active.Clear();
         _byTarget.Clear();
+        (_lastTarget, _lastOn) = (null, null);
         _fight = null;
     }
 

@@ -200,7 +200,7 @@ public abstract class Hero : Actor
             int i = _damageDealt.FindLastIndex(s => s.Ability == null && s.DamageId == null && s.Handler == value);
             if (i < 0) return;
             _damageDealt.RemoveAt(i);
-            _damageDealtById.Clear();
+            ForgetDamageDealtTables();
         }
     }
 
@@ -224,11 +224,29 @@ public abstract class Hero : Actor
     private readonly List<DamageDealtSubscriber> _damageDealt = new();
     // Speed: each damage ID has its own subscribers, in subscription order, so a hit reaches only the handlers it concerns.
     private readonly Dictionary<int, DamageDealtSubscriber[]> _damageDealtById = new();
+    // Speed: the tables of recent damage IDs, one per low bits of the ID, ahead of the dictionary.
+    private const int RecentDamageIds = 64;
+    private readonly int[] _recentDamageIds = NoRecentDamageIds();
+    private readonly DamageDealtSubscriber[][] _recentSubscribers = new DamageDealtSubscriber[RecentDamageIds][];
+
+    private static int[] NoRecentDamageIds()
+    {
+        var ids = new int[RecentDamageIds];
+        Array.Fill(ids, int.MinValue);
+        return ids;
+    }
+
+    private void ForgetDamageDealtTables()
+    {
+        _damageDealtById.Clear();
+        Array.Fill(_recentDamageIds, int.MinValue);
+        Array.Clear(_recentSubscribers);
+    }
 
     private void Subscribe(DamageDealtSubscriber subscriber)
     {
         _damageDealt.Add(subscriber);
-        _damageDealtById.Clear();
+        ForgetDamageDealtTables();
     }
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastStarted;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastCompleted;
@@ -281,11 +299,19 @@ public abstract class Hero : Actor
 
     public void TriggerDamageDealt(in DamageContext hit)
     {
-        if (!_damageDealtById.TryGetValue(hit.AbilityId, out var subscribers))
+        int id = hit.AbilityId;
+        int recent = id & (RecentDamageIds - 1);
+        DamageDealtSubscriber[] subscribers;
+        if (_recentDamageIds[recent] == id) subscribers = _recentSubscribers[recent];
+        else
         {
-            int id = hit.AbilityId;
-            subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
-            _damageDealtById[id] = subscribers;
+            if (!_damageDealtById.TryGetValue(id, out subscribers!))
+            {
+                subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
+                _damageDealtById[id] = subscribers;
+            }
+            _recentDamageIds[recent] = id;
+            _recentSubscribers[recent] = subscribers;
         }
         foreach (var subscriber in subscribers)
         {

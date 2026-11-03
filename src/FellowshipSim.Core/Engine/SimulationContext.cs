@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace FellowshipSim.Core.Engine;
@@ -12,6 +13,10 @@ public class SimulationContext
     private readonly List<(string Name, double Damage)> _damageByName = new();
     private readonly Dictionary<string, int> _damageSlotByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _damageSlotByInstance = new(ReferenceEqualityComparer.Instance);
+    // Speed: the slots of recent name instances, one per bits of the instance's hash code, ahead of the dictionary.
+    private const int RecentDamageNames = 64;
+    private readonly string?[] _recentDamageNames = new string?[RecentDamageNames];
+    private readonly int[] _recentDamageSlots = new int[RecentDamageNames];
 
     public Hero Player { get; }
     public SimTime CurrentTime { get; private set; } = SimTime.Zero;
@@ -596,7 +601,15 @@ public class SimulationContext
         string? abilityGroup = null)
     {
         TotalDamage += dealt;
-        if (!_damageSlotByInstance.TryGetValue(abilityName, out int slot)) slot = DamageSlot(abilityName);
+        int recent = RuntimeHelpers.GetHashCode(abilityName) & (RecentDamageNames - 1);
+        int slot;
+        if (ReferenceEquals(_recentDamageNames[recent], abilityName)) slot = _recentDamageSlots[recent];
+        else
+        {
+            if (!_damageSlotByInstance.TryGetValue(abilityName, out slot)) slot = DamageSlot(abilityName);
+            _recentDamageNames[recent] = abilityName;
+            _recentDamageSlots[recent] = slot;
+        }
         CollectionsMarshal.AsSpan(_damageByName)[slot].Damage += dealt;
         if (target != null && target.MaxHealth > 0)
         {
@@ -650,6 +663,7 @@ public class SimulationContext
         _damageByName.Clear();
         _damageSlotByName.Clear();
         _damageSlotByInstance.Clear();
+        Array.Clear(_recentDamageNames);
         foreach (var enemy in _enemies)
         {
             enemy.Auras.ClearAll();
