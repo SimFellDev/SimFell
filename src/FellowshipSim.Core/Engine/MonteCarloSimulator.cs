@@ -291,7 +291,11 @@ public class MonteCarloSimulator
         FightOptions options, Totals totals)
     {
         var hero = worker.Hero;
-        var ctx = new SimulationContext(hero) { Reactions = options.ReactionDelays ? ReactionDelays.Measured : null };
+        var ctx = new SimulationContext(hero)
+        {
+            Reactions = options.ReactionDelays ? ReactionDelays.Measured : null,
+            ProcReactionTime = SimTime.FromSeconds(options.ProcReactionSeconds),
+        };
         ctx.Rng.Seed(seed);
         hero.ResetForIteration();
         worker.Recorder.Begin(fight, seconds, totals.Report);
@@ -352,24 +356,25 @@ public class MonteCarloSimulator
     private static bool RunUntil(Worker worker, SimulationContext ctx, SimTime end, Func<bool>? stop)
     {
         var hero = worker.Hero;
-        bool castsDuringGcd = hero.Abilities.Any(a => a.UsableDuringGcd);
+        var program = worker.Program;
         while (ctx.CurrentTime < end)
         {
             if (stop != null && stop()) return true;
-            bool acted = IsFreeToAct(hero, ctx, castsDuringGcd) && worker.Program.TryAct(ctx);
+            var hold = program.HoldOf(ctx);
+            bool acted = Decides(program, hold) && program.TryAct(ctx);
             NoteHold(hero, ctx);
 
             var next = NextDecisionTime(hero, ctx);
             if (!acted && next <= ctx.CurrentTime)
             {
                 // Nothing was cast: decide again at the next event or when something the action list reads changes.
-                next = worker.Program.NextDecision(ctx);
+                next = program.NextDecision(ctx);
             }
-            else if (castsDuringGcd && OnGcdOnly(hero, ctx))
+            else if (Decides(program, program.HoldOf(ctx)))
             {
-                // An ability usable during the global cooldown can go now, after the cast that started it, or once it
-                // becomes ready before the global cooldown ends.
-                var decision = acted ? ctx.CurrentTime : worker.Program.NextDecision(ctx);
+                // A use_off_gcd or use_while_casting action can go now, after the cast before it, or once it becomes ready
+                // before the hold ends.
+                var decision = acted ? ctx.CurrentTime : program.NextDecision(ctx);
                 if (decision < next) next = decision;
             }
             if (ctx.RunUntil(next < end ? next : end, stop)) return true;
@@ -377,14 +382,13 @@ public class MonteCarloSimulator
         return stop != null && stop();
     }
 
-    // While the global cooldown or the reaction to a hold runs, a hero with an ability usable during the global cooldown
-    // acts too: the others refuse (SimulationContext.Activate).
-    private static bool IsFreeToAct(Hero hero, SimulationContext ctx, bool castsDuringGcd) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && (castsDuringGcd || ctx.CurrentTime >= GcdOrReactionEnd(hero, ctx));
-
-    // The hero is held by the global cooldown, or the reaction to a hold, alone.
-    private static bool OnGcdOnly(Hero hero, SimulationContext ctx) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime < GcdOrReactionEnd(hero, ctx);
+    // A decision runs under a hold only when an action of the lists is a candidate under it (BoundAplAction.IsCandidate).
+    private static bool Decides(AplProgram program, AplDecisionHold hold) => hold switch
+    {
+        AplDecisionHold.GlobalCooldown => program.HasOffGcdActions,
+        AplDecisionHold.Cast => program.HasWhileCastingActions,
+        _ => true,
+    };
 
     private static SimTime GcdOrReactionEnd(Hero hero, SimulationContext ctx) =>
         ctx.ReactionEndTime > hero.GlobalCooldownEndTime ? ctx.ReactionEndTime : hero.GlobalCooldownEndTime;

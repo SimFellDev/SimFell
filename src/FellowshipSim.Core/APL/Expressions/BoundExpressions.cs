@@ -438,9 +438,18 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         return Read(Find(ctx, now), now);
     }
 
-    private TargetEffect? Find(SimulationContext ctx, SimTime now)
+    private TargetEffect? Find(SimulationContext ctx, SimTime now) => Find(ctx, now, out _);
+
+    // The aura as the action lists see it, and the time they see a proc's last gain when it is after now.
+    private TargetEffect? Find(SimulationContext ctx, SimTime now, out SimTime seenGainAt)
     {
-        if (!debuff) return hero.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
+        seenGainAt = SimTime.Infinite;
+        if (!debuff)
+        {
+            if (hero.Auras.FindActive(slug, now) is not { } aura) return null;
+            seenGainAt = aura.SeenGainAt(now, ctx.ProcReactionTime);
+            return aura.Seen(now, ctx.ProcReactionTime);
+        }
         var target = ctx.Player.CurrentTarget;
         return target == null ? null : AuraLookup.On(hero, target, slug, now, pick);
     }
@@ -455,12 +464,18 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         _ => aura is not { } r ? 0.0 : r.ExpiresAt == SimTime.Infinite ? double.MaxValue : (r.ExpiresAt - now).TotalSeconds,
     };
 
-    // The aura found now runs out at its expiry; another aura of the name appears only in an event. A refreshable read
-    // also changes at the first millisecond the aura is in its refresh window.
+    // The aura found now runs out at its expiry; another aura of the name appears only in an event, or as the action lists
+    // see a proc's gain. A refreshable read also changes at the first millisecond the aura is in its refresh window.
     internal override SimTime Until(SimulationContext ctx)
     {
         var now = ctx.CurrentTime;
-        if (Find(ctx, now) is not { } aura) return SimTime.Infinite;
+        var seen = Find(ctx, now, out var seenGainAt);
+        return Crossing.Earlier(seenGainAt, UntilSeen(seen, now));
+    }
+
+    private SimTime UntilSeen(TargetEffect? seen, SimTime now)
+    {
+        if (seen is not { } aura) return SimTime.Infinite;
         if (property == AuraProperty.Refreshable && aura.ExpiresAt != SimTime.Infinite)
         {
             double window = aura.ExpiresAt.Milliseconds - PropertyExpression.RefreshableFraction * aura.Duration.Milliseconds;

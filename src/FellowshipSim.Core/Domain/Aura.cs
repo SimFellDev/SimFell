@@ -37,6 +37,12 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// </summary>
     public bool ExpiryRemovesOneStack { get; init; }
 
+    /// <summary>
+    /// True for a proc: an aura a random chance applies. An action list sees a gain of it only after the proc reaction time
+    /// (<see cref="Aura.Seen"/>).
+    /// </summary>
+    public bool IsProc { get; init; }
+
     public string Key { get; private init; } = KeyOf(Name, LogId, 0);
 
     // Speed: StatMask is built once. Setting Modifiers rebuilds it.
@@ -112,7 +118,35 @@ public class Aura
     public SimTime ExpiresAt { get; internal set; } = SimTime.Infinite;
     public int Stacks { get; internal set; } = 1;
 
+    /// <summary>The time of the last gain: the aura's application, a refresh or a stack.</summary>
+    public SimTime GainedAt { get; internal set; }
+
+    /// <summary>The stacks before the last gain; 0 when the gain applied the aura.</summary>
+    public int StacksBeforeGain { get; internal set; }
+
+    /// <summary>The expiry before the last gain.</summary>
+    public SimTime ExpiresBeforeGain { get; internal set; }
+
     public bool IsExpired(SimTime now) => now >= ExpiresAt;
+
+    /// <summary>
+    /// The aura as an action list sees it at <paramref name="now"/> with <paramref name="reaction"/> as the proc reaction
+    /// time. A proc gained less than <paramref name="reaction"/> ago is in its state before the gain: its stacks and expiry
+    /// then (no more stacks than it has now), or null when it was down or that expiry has passed. Any other aura is as it is.
+    /// </summary>
+    public TargetEffect? Seen(SimTime now, SimTime reaction)
+    {
+        if (!Def.IsProc || now >= GainedAt + reaction) return TargetEffect.Of(this);
+        if (StacksBeforeGain == 0 || ExpiresBeforeGain <= now) return null;
+        return new TargetEffect(ExpiresBeforeGain, Math.Min(StacksBeforeGain, Stacks), MaxStacks, Duration);
+    }
+
+    /// <summary>
+    /// The time an action list sees the last gain with <paramref name="reaction"/> as the proc reaction time, when it is
+    /// after <paramref name="now"/>; otherwise <see cref="SimTime.Infinite"/>.
+    /// </summary>
+    public SimTime SeenGainAt(SimTime now, SimTime reaction) =>
+        Def.IsProc && now < GainedAt + reaction ? GainedAt + reaction : SimTime.Infinite;
 }
 
 public class AuraContainer
@@ -260,6 +294,9 @@ public class AuraContainer
                 double left = (previousExpiry - now).TotalSeconds;
                 expires += SimTime.FromSeconds(Math.Min(left, def.Duration.TotalSeconds * def.RefreshCarryoverFraction));
             }
+            existing.GainedAt = now;
+            existing.StacksBeforeGain = before;
+            existing.ExpiresBeforeGain = previousExpiry;
             existing.ExpiresAt = expires;
             existing.Stacks = Math.Clamp(setStacks ?? (existing.Stacks + stacks), 1, existing.MaxStacks);
             if (existing.Stacks != before) changedStats |= existing.Def.StatMask;
@@ -273,6 +310,7 @@ public class AuraContainer
         var aura = new Aura(def)
         {
             AppliedAt = now,
+            GainedAt = now,
             ExpiresAt = expires,
             Stacks = Math.Clamp(setStacks ?? stacks, 1, def.MaxStacks)
         };

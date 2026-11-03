@@ -18,7 +18,7 @@ public class InspiredAllegiance : Sigil
     public static readonly double[] WeaponCooldownSecondsByRank = [1.5, 4, 6, 8];
 
     // Combat logs: the buff stays through the hero's death (4 deaths, none removed it).
-    public static readonly AuraDef Buff = AuraDef.Effect(SigilName, BuffEffectId, BuffSeconds) with { KeepsOnDeath = true };
+    public static readonly AuraDef Buff = AuraDef.Effect(SigilName, BuffEffectId, BuffSeconds) with { KeepsOnDeath = true, IsProc = true };
 
     public override int Id => SigilId;
     public override string Name => SigilName;

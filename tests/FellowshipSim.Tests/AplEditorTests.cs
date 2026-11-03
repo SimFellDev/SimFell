@@ -208,6 +208,57 @@ public class AplEditorTests
     }
 
     [Fact]
+    public void Document_Round_Trips_A_Variable_Action()
+    {
+        const string text = """
+            actions+=/variable,name=orbs,value=winter_orbs+1,default=2,line_cd=5
+            actions+=/variable,name=orbs,op=add,value=1,if=buff.ice_blitz.up
+            actions+=/variable,op=reset,name=orbs
+            actions+=/variable,name=orbs,op=set,value=0,default=0
+            """;
+        var actions = AplDocument.Parse(text);
+        Assert.Equal(
+            [
+                new AplDocumentAction("variable", Arguments: "line_cd=5", Variable: new AplDocumentVariable("orbs", Value: "winter_orbs + 1", Default: 2)),
+                new AplDocumentAction("variable", "buff.ice_blitz.up", Variable: new AplDocumentVariable("orbs", AplVariableOp.Add, "1")),
+                new AplDocumentAction("variable", Variable: new AplDocumentVariable("orbs", AplVariableOp.Reset)),
+                new AplDocumentAction("variable", Variable: new AplDocumentVariable("orbs", Value: "0")),
+            ],
+            actions);
+
+        // The op is written when it is not set, and the default when it is not 0.
+        var (written, errors) = AplDocument.Write(actions);
+        Assert.Empty(errors);
+        Assert.Equal("""
+            actions+=/variable,name=orbs,value=winter_orbs + 1,default=2,line_cd=5
+            actions+=/variable,name=orbs,value=1,op=add,if=buff.ice_blitz.up
+            actions+=/variable,name=orbs,op=reset
+            actions+=/variable,name=orbs,value=0
+
+            """.ReplaceLineEndings("\n"), written);
+        Assert.Equal(actions, AplDocument.Parse(written!));
+
+        var variables = AplParser.ParseScript(written!).Actions.Select(a => a.Variable!).ToList();
+        Assert.Equal([AplVariableOp.Set, AplVariableOp.Add, AplVariableOp.Reset, AplVariableOp.Set], variables.Select(v => v.Op));
+        Assert.Equal([2, 0, 0, 0], variables.Select(v => v.Default));
+    }
+
+    [Fact]
+    public void Document_Write_Reports_Each_Bad_Variable_Field()
+    {
+        var (text, errors) = AplDocument.Write(
+        [
+            new AplDocumentAction("variable"),
+            new AplDocumentAction("variable", Variable: new AplDocumentVariable("my orbs", Value: "1")),
+            new AplDocumentAction("variable", Variable: new AplDocumentVariable("orbs", AplVariableOp.Add)),
+            new AplDocumentAction("variable", Variable: new AplDocumentVariable("orbs", Value: "(1")),
+            new AplDocumentAction("variable", Variable: new AplDocumentVariable("orbs", AplVariableOp.Reset)),
+        ]);
+        Assert.Null(text);
+        Assert.Equal([(0, "variable"), (1, "variable"), (2, "value"), (3, "value")], errors.Select(e => (e.Action, e.Field)));
+    }
+
+    [Fact]
     public void Document_Keeps_A_Comments_Blank_Lines_And_Indentation()
     {
         var actions = new List<AplDocumentAction>

@@ -1,32 +1,69 @@
 @using FellowshipSim.Core.APL
-@* The fields of an open action: its type, ability or list, condition, target and other arguments. *@
+@using FellowshipSim.Core.APL.Expressions
+@using System.Globalization
+@* The fields of an open action: its type, ability, list or variable, condition, target and other arguments. *@
 <div class="detail">
     <label for="@($"{Id}-type")">Type</label>
-    <select id="@($"{Id}-type")" value="@(ListAction ? Action.Ability : "")" @onchange="e => ChangeType((string?)e.Value ?? string.Empty)">
+    <select id="@($"{Id}-type")" value="@(ListAction || VariableAction ? Action.Ability : "")" @onchange="e => ChangeType((string?)e.Value ?? string.Empty)">
         <option value="">Cast an ability</option>
         @foreach (string name in Vocabulary.ListActions)
         {
             <option @key="name" value="@name">@ActionListModel.ListActionName(name)</option>
         }
+        <option value="@AplVariable.ActionName">Set a variable</option>
     </select>
 
     @if (ListAction)
     {
-        <label for="@($"{Id}-list")">List</label>
+        <label for="@($"{Id}-list")" data-tooltip="@ListTip">List</label>
+        <select id="@($"{Id}-list")" value="@(KnownList ? Action.ActionList : "")"
+                @onchange="e => Change(a => a with { ActionList = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value! })">
+            @if (!KnownList)
+            {
+                <option value="">@(OtherLists.Count > 0 ? "Pick a list" : "Add an action list first")</option>
+            }
+            @foreach (var l in OtherLists)
+            {
+                <option @key="l.Name" value="@l.Name">@l.Name</option>
+            }
+        </select>
+    }
+    else if (VariableAction)
+    {
+        <label for="@($"{Id}-variable")">Variable</label>
         <div>
-            <select id="@($"{Id}-list")" value="@(KnownList ? Action.ActionList : "")"
-                    @onchange="e => Change(a => a with { ActionList = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value! })">
-                @if (!KnownList)
+            <input id="@($"{Id}-variable")" class="name" spellcheck="false" autocomplete="off" placeholder="Name"
+                   list="@($"{Id}-variables")" @bind="VariableName" @bind:event="oninput" />
+            <datalist id="@($"{Id}-variables")">
+                @foreach (string name in OtherVariables)
                 {
-                    <option value="">@(OtherLists.Count > 0 ? "Pick a list" : "Add an action list first")</option>
+                    <option @key="name" value="@name"></option>
                 }
-                @foreach (var l in OtherLists)
-                {
-                    <option @key="l.Name" value="@l.Name">@l.Name</option>
-                }
-            </select>
-            <p class="hint list-hint">@ListHint</p>
+            </datalist>
+            @if (VariableName.Length > 0 && ActionListModel.VariableNameProblem(VariableName) is { } problem)
+            {
+                <p class="field-error">@problem</p>
+            }
         </div>
+
+        <label for="@($"{Id}-op")">Op</label>
+        <select id="@($"{Id}-op")" value="@Variable.Op.ToString()" @onchange="e => ChangeOp((string?)e.Value)">
+            @foreach (var op in Enum.GetValues<AplVariableOp>())
+            {
+                <option @key="op" value="@op.ToString()">@ActionListModel.VariableOpName(op)</option>
+            }
+        </select>
+
+        <label hidden="@(Variable.Op == AplVariableOp.Reset)">Value</label>
+        <div hidden="@(Variable.Op == AplVariableOp.Reset)">
+            <CodeField Vocabulary="Vocabulary" Value="@Variable.Value"
+                       Placeholder="@($"Example: {Vocabulary.Resources.FirstOrDefault()?.Slug ?? "active_enemies"} + 1")"
+                       OnChange="value => ChangeVariable(v => v with { Value = value })" />
+        </div>
+
+        <label for="@($"{Id}-default")">Default</label>
+        <input id="@($"{Id}-default")" type="number" step="any" class="default" value="@ConditionBuilder.Number(Variable.Default)"
+               @onchange="e => ChangeDefault((string?)e.Value)" />
     }
     else
     {
@@ -54,7 +91,7 @@
                         OnChange="condition => Change(a => a with { Condition = condition })" />
     </div>
 
-    @if (!ListAction)
+    @if (!ListAction && !VariableAction)
     {
         <label for="@($"{Id}-target")">Target</label>
         <select id="@($"{Id}-target")" value="@(Action.TargetSelection?.ToString() ?? "")" @onchange="e => ChangeTarget((string?)e.Value)">
@@ -103,6 +140,20 @@
 
     private bool ListAction => ActionListModel.IsListAction(Vocabulary, Action);
 
+    private bool VariableAction => ActionListModel.IsVariableAction(Action);
+
+    private AplDocumentVariable Variable => Action.Variable ?? new AplDocumentVariable("");
+
+    private string VariableName
+    {
+        get => Variable.Name;
+        set => ChangeVariable(v => v with { Name = value });
+    }
+
+    // The names the other variable actions set, for the name field's suggestions.
+    private IReadOnlyList<string> OtherVariables =>
+        ConditionBuilder.Variables(Lists.Select(l => l with { Actions = l.Actions.Where(a => a.Key != Action.Key).ToList() }));
+
     private IReadOnlyList<ActionList> OtherLists =>
         Lists.Where(l => l.Name != List.Name && !ActionListModel.IsDefaultList(Vocabulary, l)).ToList();
 
@@ -110,7 +161,7 @@
 
     private bool KnownList => OtherLists.Any(l => l.Name == Action.ActionList);
 
-    private string ListHint => Action.Ability == Vocabulary.ListActions[0]
+    private string ListTip => Action.Ability == Vocabulary.ListActions[0]
         ? "The actions after this one do not run, even when nothing in the named list is cast."
         : "When nothing in the named list is cast, the next action in this list runs.";
 
@@ -118,14 +169,32 @@
 
     private void Change(Func<EditorAction, EditorAction> change) => Editor.ChangeAction(Action.Key, change);
 
+    private void ChangeVariable(Func<AplDocumentVariable, AplDocumentVariable> change) =>
+        Change(a => a with { Variable = change(a.Variable ?? new AplDocumentVariable("")) });
+
     private void ChangeType(string type)
     {
         bool listAction = ListAction;
         string? firstOther = OtherLists.FirstOrDefault()?.Name;
-        Change(a => type.Length > 0
-            ? a with { Ability = type, ActionList = listAction ? a.ActionList : firstOther, TargetSelection = null, TargetExpression = null }
-            : a with { Ability = "", ActionList = null });
+        Change(a => type switch
+        {
+            "" => a with { Ability = "", ActionList = null, Variable = null },
+            AplVariable.ActionName => a with
+            {
+                Ability = type, ActionList = null, TargetSelection = null, TargetExpression = null, Variable = a.Variable ?? new AplDocumentVariable(""),
+            },
+            _ => a with { Ability = type, ActionList = listAction ? a.ActionList : firstOther, TargetSelection = null, TargetExpression = null, Variable = null },
+        });
     }
+
+    private void ChangeOp(string? value)
+    {
+        var op = Enum.TryParse<AplVariableOp>(value, out var parsed) ? parsed : AplVariableOp.Set;
+        ChangeVariable(v => v with { Op = op });
+    }
+
+    private void ChangeDefault(string? value) =>
+        ChangeVariable(v => v with { Default = double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double number) ? number : 0 });
 
     private void ChangeTarget(string? value)
     {

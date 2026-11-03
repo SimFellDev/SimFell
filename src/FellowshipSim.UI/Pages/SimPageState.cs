@@ -150,6 +150,9 @@ public sealed class SimPageState
     /// <summary>True when the hero takes a player's time to cast once the global cooldown, a cast or a channel lets them.</summary>
     public bool ReactionDelays { get; set; } = true;
 
+    /// <summary>Milliseconds a proc's gain takes to reach the action lists; 0 for at once.</summary>
+    public double ProcReactionMilliseconds { get; set; } = SimSettings.DefaultProcReactionSeconds * 1000;
+
     /// <summary>
     /// The settings of <paramref name="iterations"/> fights of this fight on <paramref name="threads"/> threads, the first
     /// with seed <paramref name="firstSeed"/>.
@@ -162,7 +165,8 @@ public sealed class SimPageState
         Boss: Boss,
         Dungeon: Mode == SimMode.Dungeon ? Dungeon : null,
         HeroShareVariance: VaryHeroShare ? HeroShareVariancePercent / 100 : 0,
-        ReactionDelays: ReactionDelays);
+        ReactionDelays: ReactionDelays,
+        ProcReactionSeconds: ProcReactionMilliseconds / 1000);
 
     public SimExtra Extra { get; set; } = SimExtra.None;
 

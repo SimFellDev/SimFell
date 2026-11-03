@@ -22,7 +22,7 @@ public class KillEmAll : Talent
     public const double DamageMultiplier = 2.5;
     public const string ProcKey = "kill_em_all";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Kill Em All", EffectId, BuffSeconds, MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect("Kill Em All", EffectId, BuffSeconds, MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

@@ -102,6 +102,12 @@ public class SimulationContext
     /// </summary>
     public ReactionDelays? Reactions { get; set; }
 
+    /// <summary>
+    /// How long a proc's gain takes to reach the action lists (<see cref="Aura.Seen"/>); zero for none, as in a replay,
+    /// which casts at the log's times.
+    /// </summary>
+    public SimTime ProcReactionTime { get; set; }
+
     /// <summary>Until this time the hero is still reacting to the last hold's end, and casts nothing on the global cooldown.</summary>
     public SimTime ReactionEndTime { get; private set; }
     private SimTime _lastHoldEnd;
@@ -305,6 +311,15 @@ public class SimulationContext
         if (hero.CurrentCast != null && !ability.IgnoresGcd)
         {
             return CastAttempt.Rejected($"already casting {hero.CurrentCast.Ability.Name}");
+        }
+
+        // An ability off the global cooldown goes during a cast or a channel when it is instant: one with a cast time or a
+        // channel of its own waits for the running one to end.
+        var running = hero.CurrentCast?.Ability ?? hero.CurrentChannel?.Ability;
+        if (running != null && ability.IgnoresGcd && !force
+            && (ability.IsChanneled || ability.GetAdjustedCastTime(CurrentTime) > SimTime.Zero))
+        {
+            return CastAttempt.Rejected($"already casting {running.Name}");
         }
 
         if (!ability.IgnoresGcd)

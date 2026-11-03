@@ -15,7 +15,7 @@ public class ImpendingHeartseeker : Talent
     public const int BuffEffectId = 2317;
     public const double BuffSeconds = 15.0;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Impending Heartseeker", BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect("Impending Heartseeker", BuffEffectId, BuffSeconds) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

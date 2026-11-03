@@ -15,7 +15,7 @@ public class VengefulSoul : Sigil
     public const string ProcKey = "vengeful_soul";
     public static readonly double[] MainStatByRank = [0.03, 0.051, 0.072, 0.093];
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Vengeful Soul", BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect("Vengeful Soul", BuffEffectId, BuffSeconds) with { IsProc = true };
 
     public override int Id => SigilId;
     public override string Name => SigilName;

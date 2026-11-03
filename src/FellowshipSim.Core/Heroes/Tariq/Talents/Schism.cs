@@ -24,8 +24,8 @@ public class Schism : Talent
     public const string SkullCrusherProcKey = "schism_skull_crusher";
     public const string HammerStormProcKey = "schism_hammer_storm";
 
-    public static readonly AuraDef SkullCrusherBuff = AuraDef.Effect("Schism - Skull Crusher", SkullCrusherEffectId, maxStacks: MaxStacks);
-    public static readonly AuraDef HammerStormBuff = AuraDef.Effect("Schism - Hammer Storm", HammerStormEffectId, maxStacks: MaxStacks);
+    public static readonly AuraDef SkullCrusherBuff = AuraDef.Effect("Schism - Skull Crusher", SkullCrusherEffectId, maxStacks: MaxStacks) with { IsProc = true };
+    public static readonly AuraDef HammerStormBuff = AuraDef.Effect("Schism - Hammer Storm", HammerStormEffectId, maxStacks: MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

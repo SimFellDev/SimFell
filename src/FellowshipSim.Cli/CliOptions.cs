@@ -30,6 +30,8 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
           --threads <n>         Most threads the fights use (default {MonteCarloSimulator.DefaultDegreeOfParallelism}, 80% of the logical processors).
           --reactions <on|off>  A player's reaction time before the cast after a channel, as in the combat logs (default on).
                                 Off, the hero casts the moment a channel ends.
+          --proc-reaction <ms>  Milliseconds a proc's gain takes to reach the action list (default {DefaultSettings.ProcReactionSeconds * 1000:0}).
+                                Until then, buff.<proc> reads the proc as it was before the gain. 0 shows the gain at once.
           --format <text|json>  Result format on stdout (default text). json is the SimResult record.
           -h, --help            This text.
 
@@ -74,6 +76,7 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
                         },
                     };
                     break;
+                case "--proc-reaction": settings = settings with { ProcReactionSeconds = Milliseconds(name, value) / 1000 }; break;
                 case "--format":
                     format = value switch
                     {
@@ -108,6 +111,11 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
         int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int n) && n >= min
             ? n
             : throw new CliUsageException(min == int.MinValue ? $"{name} is a whole number, not '{value}'." : $"{name} is a whole number of at least {min}, not '{value}'.");
+
+    private static double Milliseconds(string name, string value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double ms) && ms >= 0 && double.IsFinite(ms)
+            ? ms
+            : throw new CliUsageException($"{name} is a number of milliseconds of at least 0, not '{value}'.");
 
     private static double Seconds(string name, string value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double s) && s > 0 && double.IsFinite(s)

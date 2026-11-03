@@ -32,9 +32,14 @@
   font: 13px/1.5 var(--code-font);
 }
 
-.list-hint {
-  margin: 4px 0 0;
-  font-size: 13px;
+.detail .name {
+  width: 240px;
+  max-width: 100%;
+  font-family: var(--code-font);
+}
+
+.detail .default {
+  width: 120px;
 }
 
 @media (max-width: 600px) {

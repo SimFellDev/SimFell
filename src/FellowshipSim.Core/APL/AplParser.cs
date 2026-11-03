@@ -257,6 +257,8 @@ public static class AplParser
                 : syntax.TargetIf,
             ListAction = listAction,
             ListName = listAction != null ? syntax.ListName : null,
+            UseOffGcd = listAction == null && syntax.Flag(AplActionLine.UseOffGcdKey),
+            UseWhileCasting = listAction == null && syntax.Flag(AplActionLine.UseWhileCastingKey),
             RawLine = line
         };
     }

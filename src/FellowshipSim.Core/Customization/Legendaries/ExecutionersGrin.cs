@@ -25,7 +25,7 @@ public class ExecutionersGrin : Legendary
     public const double FurySpent = 30.0;
     public const string ProcKey = "executioners_grin";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Executioner's Grin", BuffEffectId, BuffSeconds, MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect("Executioner's Grin", BuffEffectId, BuffSeconds, MaxStacks) with { IsProc = true };
 
     public override int LegendaryPowerId => PowerId;
     public override string Name => "Executioner's Grin";

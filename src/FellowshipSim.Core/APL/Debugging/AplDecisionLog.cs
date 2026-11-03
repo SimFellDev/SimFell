@@ -62,11 +62,58 @@ internal sealed class AplDecisionLog(Hero hero, IReadOnlyList<AplTraceLine> line
             targetIf = new AplTargetIfTrace(step.TargetSelection!.Value, candidates, found && target != null ? Label(ctx, target) : null);
         }
         var condition = found && step.ConditionProbe is { } c ? AtTarget(ctx, target, c) : null;
-        var outcome = !found ? AplStepOutcome.NoTarget
+        string? procRefusal = canExecute ? null : ProcReactionRefusal(step, ctx);
+        var outcome = procRefusal != null ? AplStepOutcome.CastRefused
+            : !found ? AplStepOutcome.NoTarget
             : condition is { Value: 0.0 } ? AplStepOutcome.ConditionFalse
             : canExecute ? AplStepOutcome.Cast
             : AplStepOutcome.NotReady;
-        _steps.Add(new AplStepTrace(step.Line, _depth, outcome, condition, targetIf, target == null ? null : Label(ctx, target)));
+        _steps.Add(new AplStepTrace(step.Line, _depth, outcome, condition, targetIf, target == null ? null : Label(ctx, target), Refusal: procRefusal));
+    }
+
+    /// <summary>
+    /// The reason for an action refused only because a proc's gain is inside the proc reaction time
+    /// (<see cref="SimulationContext.ProcReactionTime"/>): the action could go if the action lists saw every gain at once.
+    /// Null for any other action.
+    /// </summary>
+    private string? ProcReactionRefusal(BoundAplAction step, SimulationContext ctx)
+    {
+        var reaction = ctx.ProcReactionTime;
+        if (reaction <= SimTime.Zero) return null;
+        var now = ctx.CurrentTime;
+        var unseen = hero.Auras.Active(now).Where(aura => aura.SeenGainAt(now, reaction) != SimTime.Infinite).ToList();
+        if (unseen.Count == 0) return null;
+        bool seenAtOnce;
+        ctx.ProcReactionTime = SimTime.Zero;
+        try
+        {
+            seenAtOnce = step.CanExecute(ctx);
+        }
+        finally
+        {
+            ctx.ProcReactionTime = reaction;
+        }
+        if (!seenAtOnce) return null;
+        // The procs the action waits on alone; every unseen proc when it waits on none alone.
+        var blocking = unseen.Where(aura => CanExecuteSeeing(step, ctx, aura, reaction)).ToList();
+        if (blocking.Count == 0) blocking = unseen;
+        return string.Join("; ", blocking.Select(aura =>
+            $"{aura.Name} was gained {(now - aura.GainedAt).TotalSeconds:F3}s ago, less than the {reaction.TotalSeconds:F3}s proc reaction time"));
+    }
+
+    // CanExecute with the gain of `proc` alone seen at once, then the gain time restored.
+    private static bool CanExecuteSeeing(BoundAplAction step, SimulationContext ctx, Aura proc, SimTime reaction)
+    {
+        var gainedAt = proc.GainedAt;
+        proc.GainedAt = gainedAt - reaction;
+        try
+        {
+            return step.CanExecute(ctx);
+        }
+        finally
+        {
+            proc.GainedAt = gainedAt;
+        }
     }
 
     public void Cast(CastAttempt attempt)

@@ -22,7 +22,7 @@ public class FrostweaversWrath : Talent
     public const double CritChance = 1.0;
     public const string ProcKey = "frostweavers_wrath";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Frostweaver's Wrath", EffectId, BuffSeconds, MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect("Frostweaver's Wrath", EffectId, BuffSeconds, MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

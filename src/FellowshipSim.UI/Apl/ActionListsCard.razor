@@ -17,9 +17,7 @@
         else
         {
             <CascadingValue Value="State.Editor" IsFixed="true">
-                <p class="hint">
-                    Each time the hero can act, they cast the first action from the top of the default list with a ready ability and
-                    a true condition. Run action list and Call action list run the actions of another list.
+                <p>
                     <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
                 </p>
                 <ConditionReference @ref="_reference" />

@@ -370,7 +370,7 @@ public class PropertyExpression : IAplExpression
         switch (Scope)
         {
             case BuffScope:
-                return AuraProperty(Property!)(AuraLookup.Find(hero.Auras, Name!, now) is { } aura ? TargetEffect.Of(aura) : null, now);
+                return AuraProperty(Property!)(AuraLookup.Find(hero.Auras, Name!, now)?.Seen(now, ctx.ProcReactionTime), now);
 
             case DebuffScope:
                 var target = ctx.Player.CurrentTarget;

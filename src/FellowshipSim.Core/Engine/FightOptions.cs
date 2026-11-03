@@ -14,9 +14,10 @@ namespace FellowshipSim.Core.Engine;
 /// <see cref="HeroShareVariance"/> spreads the dungeon's <see cref="DungeonProfile.HeroShare"/> over ± that share of it
 /// (0.2: 30 to 45% of 37.5%), a different share in each fight. With <see cref="ReactionDelays"/> the hero takes a player's
 /// time to cast once the global cooldown, a cast or a channel lets them (<see cref="Engine.ReactionDelays.Measured"/>).
+/// <see cref="ProcReactionSeconds"/> is the time a proc's gain takes to reach the action lists (<see cref="Domain.Aura.Seen"/>).
 /// </summary>
 public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0, bool Boss = true,
-    DungeonProfile? Dungeon = null, double HeroShareVariance = 0, bool ReactionDelays = false)
+    DungeonProfile? Dungeon = null, double HeroShareVariance = 0, bool ReactionDelays = false, double ProcReactionSeconds = 0)
 {
     public static readonly FightOptions Default = new();
 

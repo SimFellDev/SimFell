@@ -27,6 +27,19 @@ public static partial class ActionListModel
     /// <summary>run_action_list and call_action_list run another list.</summary>
     public static bool IsListAction(AplVocabulary v, EditorAction action) => v.ListActions.Contains(action.Ability);
 
+    /// <summary>variable changes a variable and casts nothing.</summary>
+    public static bool IsVariableAction(EditorAction action) => action.Ability == AplVariable.ActionName;
+
+    /// <summary>The op's words in an action's title: "Set", "Add to", "Subtract from" or "Reset".</summary>
+    public static string VariableOpName(AplVariableOp op) => op switch
+    {
+        AplVariableOp.Set => "Set",
+        AplVariableOp.Add => "Add to",
+        AplVariableOp.Sub => "Subtract from",
+        AplVariableOp.Reset => "Reset",
+        _ => throw new ArgumentOutOfRangeException(nameof(op), op, null)
+    };
+
     /// <summary>"run_action_list" -> "Run action list".</summary>
     public static string ListActionName(string name)
     {
@@ -37,6 +50,11 @@ public static partial class ActionListModel
     public static string ActionTitle(AplVocabulary v, EditorAction action)
     {
         if (IsListAction(v, action)) return $"{ListActionName(action.Ability)}: {(string.IsNullOrEmpty(action.ActionList) ? "pick a list" : action.ActionList)}";
+        if (IsVariableAction(action))
+        {
+            var variable = action.Variable ?? new AplDocumentVariable("");
+            return $"{VariableOpName(variable.Op)} variable: {(string.IsNullOrWhiteSpace(variable.Name) ? "name it" : variable.Name.Trim())}";
+        }
         string name = AbilityName(v, action.Ability);
         return name.Length > 0 ? name : "Pick an ability";
     }
@@ -92,10 +110,18 @@ public static partial class ActionListModel
         return null;
     }
 
+    /// <summary>A variable name is one identifier: letters, digits and '_', and none of the words 'and', 'or' and 'not'.</summary>
+    public static string? VariableNameProblem(string name)
+    {
+        if (!ListNamePattern().IsMatch(name)) return "Name the variable with letters, digits and '_', starting with a letter.";
+        if (OperatorPattern().IsMatch(name)) return $"`{name}` is an operator.";
+        return null;
+    }
+
     /// <summary>Every action in list order, with its list's name.</summary>
     public static IReadOnlyList<AplDocumentAction> DocumentActions(IReadOnlyList<ActionList> lists) =>
         lists.SelectMany(list => list.Actions.Select(a => new AplDocumentAction(
-            a.Ability, a.Condition, a.TargetSelection, a.TargetExpression, a.Comment, list.Name, a.Arguments, a.ActionList))).ToList();
+            a.Ability, a.Condition, a.TargetSelection, a.TargetExpression, a.Comment, list.Name, a.Arguments, a.ActionList, a.Variable))).ToList();
 
     public static string ErrorText(AplVocabulary v, IReadOnlyList<ActionList> lists, IReadOnlyList<AplDocumentError> errors)
     {

@@ -37,6 +37,19 @@ public class AplFightTraceTests
     public void A_Traced_Fight_Casts_As_The_Rolled_Fight(string hero, int targets) =>
         AssertCastsAsRolled(new MonteCarloSimulator(Fixture(hero), DefaultList(hero)), SimTime.FromSeconds(120), targets, FightOptions.Default);
 
+    [Theory]
+    [MemberData(nameof(HeroFights))]
+    public void A_Traced_Fight_With_A_Proc_Reaction_Time_Casts_As_The_Rolled_Fight(string hero, int targets) =>
+        AssertCastsAsRolled(new MonteCarloSimulator(Fixture(hero), DefaultList(hero)), SimTime.FromSeconds(120), targets,
+            FightOptions.Default with { ProcReactionSeconds = 0.5 });
+
+    [Fact]
+    public void A_Traced_Fight_With_Casts_During_Casts_Casts_As_The_Rolled_Fight()
+    {
+        var lists = AplParser.ParseScript("actions=ice_blitz,use_while_casting=1\nactions+=/wrath_of_winter,use_while_casting=1\nactions+=/frost_bolt");
+        AssertCastsAsRolled(new MonteCarloSimulator(Fixture("Rime"), lists), SimTime.FromSeconds(120), 1, FightOptions.Default with { StartingSpirit = 100 });
+    }
+
     [Fact]
     public void A_Traced_Dungeon_Fight_Casts_As_The_Rolled_Fight()
     {
@@ -77,8 +90,8 @@ public class AplFightTraceTests
     [Fact]
     public void A_Cast_Refused_During_The_Global_Cooldown_Has_The_Reason_And_The_Global_Cooldown_Left()
     {
-        // Ardeos casts Incinerate during the global cooldown, so a decision runs while it lasts and Engulfing Flames,
-        // ready and higher in the list, is refused (at 142.96 s in this fight).
+        // Ardeos casts Incinerate during the global cooldown (use_off_gcd=1), so a decision runs while it lasts and Engulfing
+        // Flames, use_off_gcd=1 too, ready and higher in the list, is refused (at 142.96 s in this fight).
         const string profile = """
             ardeos="Zig_3_1_test-haste_crit"
             primary_stat=161
@@ -105,12 +118,12 @@ public class AplFightTraceTests
             actions+=/apocalypse
             actions+=/fire_frogs
             actions+=/fire_ball,if=full_recharge_time <= gcd.max * 3 & active_dot.fire_ball = 0
-            actions+=/wildfire,if=cooldown.chronoshift.remains <= 20 | !cooldown.engulfing_flames.ready | !(spirit >= 83)
-            actions+=/pyromania
-            actions+=/engulfing_flames
+            actions+=/wildfire,use_off_gcd=1,if=cooldown.chronoshift.remains <= 20 | !cooldown.engulfing_flames.ready | !(spirit >= 83)
+            actions+=/pyromania,use_off_gcd=1
+            actions+=/engulfing_flames,use_off_gcd=1
             actions+=/fire_ball,if=full_recharge_time <= gcd.max * 3
             actions+=/chronoshift,if=buff.spirit_of_heroism.up & buff.spirit_of_heroism.remains <= gcd.max * 5 + 18 | spirit >= 70 | spirit <= 30 & !buff.martial_initiative.up
-            actions+=/incinerate,if=buff.martial_initiative.up
+            actions+=/incinerate,use_off_gcd=1,if=buff.martial_initiative.up
             actions+=/infernal_wave,if=buff.cascading_inferno.stack = 12 & cinders <= 300
             actions+=/detonate,if=dot.engulfing_flames.stack >= 2
             actions+=/infernal_wave,if=buff.cascading_inferno.stack >= 4

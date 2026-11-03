@@ -93,11 +93,10 @@ public static class ConditionBuilder
     /// <summary>The names of the variables the lists' variable actions set, in order of their first action.</summary>
     public static IReadOnlyList<string> Variables(IEnumerable<ActionList> lists) =>
         lists.SelectMany(l => l.Actions)
-            .Where(a => a.Ability == AplVariable.ActionName && a.Arguments != null)
-            .Select(a => a.Arguments!.Split(',').Select(p => p.Split('=', 2))
-                .FirstOrDefault(p => p.Length == 2 && p[0].Trim().Equals(AplVariable.NameKey, StringComparison.OrdinalIgnoreCase))?[1].Trim())
+            .Where(a => a.Ability == AplVariable.ActionName)
+            .Select(a => a.Variable?.Name.Trim())
             .OfType<string>()
-            .Where(n => n.Length > 0)
+            .Where(AplDocument.IsName)
             .Distinct()
             .ToList();
 

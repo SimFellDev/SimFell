@@ -27,6 +27,26 @@ public class ActionListModelTests
         Assert.Equal("Pick an ability", ActionListModel.ActionTitle(_v, EditorAction.New()));
         Assert.Equal("Run action list: aoe", ActionListModel.ActionTitle(_v, EditorAction.New() with { Ability = Run, ActionList = "aoe" }));
         Assert.Equal("Call action list: pick a list", ActionListModel.ActionTitle(_v, EditorAction.New() with { Ability = Call }));
+        Assert.Equal("Set variable: name it", ActionListModel.ActionTitle(_v, EditorAction.New() with { Ability = AplVariable.ActionName }));
+        Assert.Equal("Add to variable: orbs", ActionListModel.ActionTitle(_v,
+            EditorAction.New() with { Ability = AplVariable.ActionName, Variable = new AplDocumentVariable("orbs", AplVariableOp.Add, "1") }));
+    }
+
+    [Theory]
+    [InlineData("orbs", null)]
+    [InlineData("2orbs", "Name the variable with letters, digits and '_', starting with a letter.")]
+    [InlineData("not", "`not` is an operator.")]
+    public void Variable_names_are_one_identifier(string name, string? problem) =>
+        Assert.Equal(problem, ActionListModel.VariableNameProblem(name));
+
+    [Fact]
+    public void Document_actions_keep_the_variable()
+    {
+        var variable = new AplDocumentVariable("orbs", AplVariableOp.Sub, "1", 3);
+        var lists = ActionListModel.ListsOf(_v, [new AplDocumentAction(AplVariable.ActionName, Variable: variable)]);
+
+        Assert.Equal(variable, lists[0].Actions[0].Variable);
+        Assert.Equal(variable, ActionListModel.DocumentActions(lists)[0].Variable);
     }
 
     [Theory]

@@ -36,7 +36,7 @@ public class SoulfrostTorrent : Talent
     public static double TickDamageScale(Hero hero, SimTime now) => DamageScaleBase + hero.CritChance(now);
     public const string ProcKey = "soulfrost_torrent";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Soulfrost Torrent", EffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect("Soulfrost Torrent", EffectId, BuffSeconds) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

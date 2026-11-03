@@ -130,6 +130,11 @@ The **Modes** tab has two kinds of fight:
   bosses. The Dungeon card starts with the built-in `Default` dungeon: Cithrel's Fall's creatures in four trash pulls and
   two bosses, Cithrel the final boss.
 
+**Proc reaction (ms)** in the **Fight settings** card is the time a proc's gain takes to reach the action list: 500 ms by
+default, as SimulationCraft's `reaction_time`. Until it passes, `buff.<proc>` reads the proc as it was before the gain:
+down for a new proc, the stacks before a new stack, and the time left before a refresh. 0 shows each gain at once. The
+command line's `--proc-reaction <ms>` is the same setting.
+
 The **Dungeon** card has a comment, the hero share, the time limit, the difficulty and the pulls. **Vary
 the hero share** gives each fight a hero share in a range: ± 20% by default, so 37.5% is 30 – 45%. Each pull has a
 comment and a name in its head, and opens to its name, its start (after downtime, or chained to another pull's end), its
@@ -254,7 +259,10 @@ Its options are the following:
 ## Edit action lists
 
 The **Action lists** page edits an action list without writing its text. Each action has an
-ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. Each name in a
+ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. An action's **Type**
+is an ability to cast, **Run action list** or **Call action list** with the list to run, or **Set a variable** with the
+variable's name, its op (set, add to, subtract from or reset), its value and its default at the start of each fight;
+conditions read the variable as `variable.<name>`. Each name in a
 condition has a colour for its kind (buff, debuff, cooldown, resource), and a wavy underline marks a name the hero
 does not have. Conditions in the editor chain with `and`, `or` and `not`; the text has `&`, `|` and `!`. A `&`, `|`
 or `!` typed in the editor becomes its word when you leave the field. Parentheses stay as written. **Builder** shows a
@@ -278,6 +286,15 @@ A target picks the enemy for the cast, written `target_if=` in the text:
 - `target_if=debuff.<name>.down`: the first enemy where it is true; the action is skipped when there is none
 
 `target.*` and `debuff.*` in the action's `if` read the enemy picked.
+
+A decision runs whenever the hero is free to cast. Two options of an ability action add decisions while a hold runs, as
+in SimulationCraft:
+
+- `use_off_gcd=1`: the action is a candidate while the global cooldown runs (Ardeos's `incinerate,use_off_gcd=1`)
+- `use_while_casting=1`: the action is a candidate while a cast or a channel runs, for an ability off the global cooldown
+  (Rime's `ice_blitz,use_while_casting=1`)
+
+Without them, the action waits for the global cooldown, the cast or the channel to end.
 
 Conditions also have these values and functions:
 
@@ -317,7 +334,7 @@ each list entered. Each line has its outcome: **Cast**, **Condition false**, **N
 cast already running), **No target**, **Cast refused**, a variable's value, or a list **Entered**. A line opens to show
 its condition as a tree of expressions with each one's value, and its `target_if` value at each enemy. A side of
 `&` or `|` the decision never read shows as not read. A **Cast refused** line opens to the engine's reason, such as the
-global cooldown. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and
+global cooldown, or to each proc gained inside the proc reaction time. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and
 each enemy's health and debuffs, before the cast. **Previous** and **Next** (or the arrow keys) step one decision;
 **Previous cast** and **Next cast** step to the next decision that cast, and **Go to** (seconds or `m:ss`, then Enter) shows the last decision at or before that time.
 ## The two checks
