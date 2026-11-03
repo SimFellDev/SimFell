@@ -55,6 +55,10 @@
             <Card Title="Advanced settings">
                 <div class="fields">
                     <label class="field">
+                        Iterations
+                        <input type="number" min="1" step="1" @bind="State.Iterations" />
+                    </label>
+                    <label class="field">
                         Threads (of @MaxThreads)
                         <input type="number" min="1" max="@MaxThreads" step="1" @bind:get="State.Threads" @bind:set="SetThreadsAsync" />
                     </label>
@@ -286,6 +290,8 @@
                 State.ImportStatus = new MessageState($"Reading {picked.Player.Name}'s character...");
                 StateHasChanged();
                 var build = await Characters.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player, progress);
+                build.LogSource = new FellowshipSim.Logs.ReportLink(picked.ReportCode, picked.Fight.Id, picked.Player.Id).Url;
+                State.ImportedBuildToSave = true;
                 UseBuild(build);
                 if (!picked.CurrentPatch)
                 {
@@ -332,7 +338,11 @@
     private Task ImportProfileAsync()
     {
         State.ImportProfile();
-        if (State.ImportStatus.Kind != MessageKind.Error) CloseImport();
+        if (State.ImportStatus.Kind != MessageKind.Error)
+        {
+            State.ImportedBuildToSave = true;
+            CloseImport();
+        }
         // The Hero tab shows under the Import dialog: the state's word redraws its editor with the new build.
         State.NotifyChanged();
         return Task.CompletedTask;
@@ -466,7 +476,7 @@
             await results.SaveAsync(visitor, saved, CancellationToken.None);
             return saved;
         }, first.Profile);
-        State.Status = MessageState.Ok($"Queued: {title}.");
+        State.Status = MessageState.None;
         Views.ShowJob(job);
     }
 
@@ -509,7 +519,7 @@
             await results.SaveAsync(visitor, saved, CancellationToken.None);
             return saved;
         }, profile);
-        State.Status = MessageState.Ok($"Queued: {title}.");
+        State.Status = MessageState.None;
         Views.ShowJob(job);
     }
 }

@@ -14,6 +14,12 @@ public class CharacterBuild
 {
     public string Name { get; set; } = "";
 
+    /// <summary>
+    /// The FellowshipLogs link the build was read from: a report link with its fight and player, or a character's page.
+    /// Empty for a build not read from a log.
+    /// </summary>
+    public string LogSource { get; set; } = "";
+
     /// <summary>The hero's name, e.g. "Rime" (its class in Heroes/).</summary>
     public string Hero { get; set; } = "";
 

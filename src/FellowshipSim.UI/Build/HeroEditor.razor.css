@@ -1115,3 +1115,16 @@
     display: contents;
   }
 }
+
+/* The Refresh dialog's players of a report with several: one a row, scrolling past ten or so. */
+.refresh-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.refresh-choices button {
+  text-align: left;
+}

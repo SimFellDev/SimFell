@@ -11,6 +11,8 @@
 @inject SimPageState State
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject CharacterImport Characters
+@inject LogPlayerLookup LogPlayers
 @implements IDisposable
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
@@ -71,6 +73,11 @@
             {
                 <button type="button" class="icon-button" aria-label="Import" aria-haspopup="dialog" data-tooltip="Import a character from a log, a .simc profile or a share link"
                         @onclick="OnImport"><Icon Shape="IconShape.Import" /></button>
+            }
+            @if (Build.LogSource.Length > 0)
+            {
+                <button type="button" class="icon-button" aria-label="Refresh" aria-haspopup="dialog" data-tooltip="Refresh from a log: a fight, or the character's latest fight"
+                        @onclick="OpenRefresh"><Icon Shape="IconShape.Refresh" /></button>
             }
             <button type="button" class="icon-button" aria-label="Export" aria-expanded="@(_exportOpen ? "true" : "false")" data-tooltip="Export the build as a .simc profile"
                     @onclick="ExportAsync"><Icon Shape="IconShape.Export" /></button>
@@ -135,7 +142,6 @@
                         }
                         <span class="hero-name">
                             <strong>@Build.Hero</strong>
-                            <span class="meta">Fixed for a saved build</span>
                         </span>
                     </div>
                 }
@@ -541,7 +547,54 @@
     </div>
 }
 
+@if (_refreshOpen)
+{
+    @* Refresh: the build again from a fight or a character's page, as changes not saved. Clicking outside it closes it. *@
+    <div class="modal-layer" @onclick="CloseRefresh" @onkeydown="OnRefreshKeyDown">
+        <div class="modal small-dialog refresh-dialog" role="dialog" aria-modal="true" aria-labelledby="refresh-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="refresh-title" class="title">Refresh from a log</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseRefresh">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <form class="dialog-body" @onsubmit="FindRefreshAsync" @onsubmit:preventDefault="true">
+                <LogsSignInPrompt Purpose="to read a build from a log" />
+                <label class="name-field">
+                    FellowshipLogs link
+                    <input @ref="_refreshInput" autocomplete="off" spellcheck="false" placeholder="https://www.fellowshiplogs.com/character/id/615"
+                           @bind="_refreshLink" @bind:event="oninput" />
+                </label>
+                <p class="hint">A report link with its fight and player, or a character's page for their latest @Build.Hero fight. The build loads as changes to save or discard.</p>
+                @if (_refreshChoices is { } choices)
+                {
+                    <span class="group">Pick the player</span>
+                    <div class="refresh-choices">
+                        @foreach (var choice in choices)
+                        {
+                            <button @key="@($"{choice.Fight.Id}/{choice.Player.Id}")" type="button" class="secondary-button" disabled="@_refreshBusy"
+                                    @onclick="() => RefreshFromAsync([choice], null)">
+                                @choice.Player.Name · @choice.Fight.Name, fight @choice.Fight.Id
+                            </button>
+                        }
+                    </div>
+                }
+                @if (_refreshStatus.Text.Length > 0)
+                {
+                    <Message Kind="_refreshStatus.Kind">@_refreshStatus.Text</Message>
+                }
+                <div class="row dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CloseRefresh">Cancel</button>
+                    <button type="submit" disabled="@(_refreshBusy || _refreshLink.Trim().Length == 0)">Refresh</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     /// <summary>Called after every change to the build.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
@@ -566,8 +619,18 @@
             .Where(s => s.Item2 > 0);
 
     private IReadOnlyList<string> _heroes = [];
-    // Every hero's saved builds, by hero then name.
+    // Every hero's saved builds, by hero then name, once listed.
     private IReadOnlyList<ProfileEntry> _saved = [];
+    private bool _savedListed;
+
+    // The Refresh dialog: its link, the players to pick from a report with several, its status and focus.
+    private bool _refreshOpen;
+    private string _refreshLink = "";
+    private IReadOnlyList<PickedPlayer>? _refreshChoices;
+    private MessageState _refreshStatus = MessageState.None;
+    private bool _refreshBusy;
+    private ElementReference _refreshInput;
+    private bool _focusRefresh;
 
     // The saved-build menu, its search, and a focus on the search once the menu draws.
     private bool _buildMenuOpen;
@@ -602,6 +665,7 @@
         {
             _heroes = await Engine.GetHeroesAsync();
             await LoadSavedListAsync();
+            await SaveImportedAsync();
         }
         catch (Exception e)
         {
@@ -609,7 +673,12 @@
         }
     }
 
-    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+    // A build the Import dialog put in saves here.
+    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    {
+        await SaveImportedAsync();
+        StateHasChanged();
+    });
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -622,6 +691,11 @@
         {
             _focusName = false;
             await _nameInput.FocusAsync();
+        }
+        if (_focusRefresh)
+        {
+            _focusRefresh = false;
+            await _refreshInput.FocusAsync();
         }
     }
 
@@ -797,7 +871,8 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", ShareLink);
-            State.BuildStatus = MessageState.Ok("Copied the build's share link. Opening it, or pasting it into Import, loads the build.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok("Copied the build's share link. Opening it, or pasting it into Import, loads the build.");
         }
         catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
         {
@@ -812,7 +887,8 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", ExportText);
-            State.BuildStatus = MessageState.Ok("Copied the build to the clipboard. Import takes it as a profile.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok("Copied the build to the clipboard. Import takes it as a profile.");
         }
         catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
         {
@@ -837,11 +913,16 @@
         copy.Name = $"{Build.Name} copy";
         State.Editor = new BuildEditor(copy);
         State.SavedName = "";
-        State.BuildStatus = MessageState.Ok($"Copied to {copy.Name}; save it to keep it.");
+        State.BuildStatus = MessageState.None;
+        Toasts.Ok($"Copied to {copy.Name}; save it to keep it.");
         return Changed();
     }
 
-    private async Task LoadSavedListAsync() => _saved = await Profiles.ListAsync(Visitor, BuildCatalog.GameHeroes);
+    private async Task LoadSavedListAsync()
+    {
+        _saved = await Profiles.ListAsync(Visitor, BuildCatalog.GameHeroes);
+        _savedListed = true;
+    }
 
     private bool IsOpen(ProfileEntry saved) =>
         saved.Name == State.SavedName && saved.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
@@ -883,7 +964,8 @@
             State.Editor = new BuildEditor(build);
             State.SavedName = saved.Name;
             State.MarkBuildClean();
-            State.BuildStatus = MessageState.Ok($"Loaded {saved.Name}.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok($"Loaded {saved.Name}.");
             await RememberAsync();
             await Changed();
         }
@@ -947,25 +1029,24 @@
         string name = _nameText.Trim();
         if (!ActionListStore.IsValidName(name))
         {
-            _nameError = "Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).";
+            _nameError = NameRule;
             return;
         }
         string old = State.SavedName;
-        bool taken = _saved.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)
-                                     && !s.Name.Equals(old, StringComparison.OrdinalIgnoreCase));
-        if (taken)
+        if (Taken(name))
         {
-            _nameError = $"A {Build.Hero} build named {name} exists.";
+            _nameError = TakenText(name);
             return;
         }
-        if (!await SaveAsync(name)) return;
-        if (naming == BuildNaming.Rename && old.Length > 0 && !old.Equals(name, StringComparison.OrdinalIgnoreCase))
+        bool renaming = naming == BuildNaming.Rename && old.Length > 0 && !old.Equals(name, StringComparison.OrdinalIgnoreCase);
+        if (!await SaveAsync(name, announce: !renaming)) return;
+        if (renaming)
         {
             try
             {
                 await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, old));
                 await LoadSavedListAsync();
-                State.BuildStatus = MessageState.Ok($"Renamed {old} to {name}.");
+                Toasts.Ok($"Renamed {old} to {name}.");
             }
             catch (Exception e)
             {
@@ -981,8 +1062,19 @@
         await Changed();
     }
 
-    /// <summary>Saves the build as <paramref name="name"/> and opens that saved build; false, with the reason in the status, when it fails.</summary>
-    private async Task<bool> SaveAsync(string name)
+    // A name the build cannot take: another saved build of its hero has it.
+    private bool Taken(string name) => _saved.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)
+                                                       && !s.Name.Equals(State.SavedName, StringComparison.OrdinalIgnoreCase));
+
+    private string TakenText(string name) => $"A {Build.Hero} build named {name} exists.";
+
+    private const string NameRule = "Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).";
+
+    /// <summary>
+    /// Saves the build as <paramref name="name"/> and opens that saved build, with a toast when <paramref name="announce"/>;
+    /// false, with the reason in the status, when it fails. A save clears an error in the status and keeps a warning.
+    /// </summary>
+    private async Task<bool> SaveAsync(string name, bool announce = true)
     {
         try
         {
@@ -991,7 +1083,8 @@
             await LoadSavedListAsync();
             State.SavedName = name;
             State.MarkBuildClean();
-            State.BuildStatus = MessageState.Ok($"Saved {name} to your builds.");
+            if (State.BuildStatus.Kind is MessageKind.Error or MessageKind.Ok) State.BuildStatus = MessageState.None;
+            if (announce) Toasts.Ok($"Saved {name} to your builds.");
             await RememberAsync();
             return true;
         }
@@ -1003,6 +1096,119 @@
         }
     }
 
+    // The Import dialog's build: saved under its own name when that is free, else the save dialog asks for one. It waits
+    // for the saved builds to be listed.
+    private async Task SaveImportedAsync()
+    {
+        if (!State.ImportedBuildToSave || !_savedListed) return;
+        State.ImportedBuildToSave = false;
+        string name = ActionListStore.ValidName(Build.Name, "");
+        if (name.Length > 0 && !Taken(name))
+        {
+            await SaveAsync(name);
+            await Changed();
+            return;
+        }
+        OpenNameDialog(BuildNaming.Save);
+        _nameText = name.Length > 0 ? name : Build.Name;
+        _nameError = name.Length > 0 ? TakenText(name) : NameRule;
+    }
+
+    private void OpenRefresh()
+    {
+        _refreshOpen = true;
+        _refreshLink = Build.LogSource;
+        _refreshChoices = null;
+        _refreshStatus = MessageState.None;
+        _focusRefresh = true;
+    }
+
+    private void CloseRefresh()
+    {
+        if (!_refreshBusy) _refreshOpen = false;
+    }
+
+    private void OnRefreshKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseRefresh();
+    }
+
+    // The link's player of the build's hero: a character page's latest fight, a report link's one player, or a pick among
+    // the report's players.
+    private async Task FindRefreshAsync()
+    {
+        if (_refreshBusy || _refreshLink.Trim().Length == 0) return;
+        _refreshBusy = true;
+        _refreshChoices = null;
+        _refreshStatus = new MessageState("Reading the log...");
+        LogPlayers? found = null;
+        try
+        {
+            found = await LogPlayers.FindAsync(_refreshLink, Build.Hero);
+        }
+        catch (Exception e) when (e is ArgumentException or FellowshipLogsException or InvalidOperationException or HttpRequestException)
+        {
+            _refreshStatus = MessageState.Error(e.Message);
+        }
+        finally
+        {
+            _refreshBusy = false;
+        }
+        if (found == null) return;
+        if (found.Character == null && found.Players.Count > 1)
+        {
+            _refreshChoices = found.Players;
+            _refreshStatus = MessageState.None;
+            return;
+        }
+        await RefreshFromAsync(found.Players, found.Character);
+    }
+
+    // The build of the first of the players with character information: a character's fight without it gives way to the
+    // fight before. The build loads as changes to the build open, with its name.
+    private async Task RefreshFromAsync(IReadOnlyList<PickedPlayer> players, CharacterLink? character)
+    {
+        _refreshBusy = true;
+        try
+        {
+            foreach (var picked in players)
+            {
+                _refreshStatus = new MessageState($"Reading {picked.Player.Name}'s character in {picked.Fight.Name}...");
+                StateHasChanged();
+                CharacterBuild build;
+                try
+                {
+                    build = await Characters.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player);
+                }
+                catch (InvalidOperationException) when (character != null)
+                {
+                    continue;
+                }
+                var removed = BuildEditor.RemoveUnknown(build);
+                build.Name = Build.Name;
+                build.LogSource = character?.Url ?? new ReportLink(picked.ReportCode, picked.Fight.Id, picked.Player.Id).Url;
+                State.Editor = new BuildEditor(build);
+                var notes = new List<string>();
+                if (removed.Count > 0) notes.Add($"Left out (not in the engine): {string.Join(", ", removed)}.");
+                if (!picked.CurrentPatch) notes.Add($"This log is from before patch {GamePatch.Current.Name}: check its talents, traits and blessings.");
+                State.BuildStatus = notes.Count > 0 ? new MessageState(string.Join(' ', notes), MessageKind.Warning) : MessageState.None;
+                _refreshOpen = false;
+                Toasts.Ok($"Read {picked.Player.Name}'s build from {picked.Fight.Name}, fight {picked.Fight.Id}. Save keeps it.");
+                await Changed();
+                return;
+            }
+            _refreshStatus = MessageState.Error("None of the character's recent fights has their character information.");
+        }
+        catch (Exception e) when (e is FellowshipLogsException or InvalidOperationException or HttpRequestException)
+        {
+            _refreshStatus = MessageState.Error(e.Message);
+        }
+        finally
+        {
+            _refreshBusy = false;
+        }
+    }
+
     private async Task DeleteAsync()
     {
         string name = State.SavedName;
@@ -1011,7 +1217,8 @@
             await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, name));
             await LoadSavedListAsync();
             State.SavedName = "";
-            State.BuildStatus = MessageState.Ok($"Deleted {name}. The editor keeps the build until you change it.");
+            State.BuildStatus = MessageState.None;
+            Toasts.Ok($"Deleted {name}. The editor keeps the build until you change it.");
         }
         catch (Exception e)
         {

@@ -8,9 +8,9 @@
 @inject AplDebuggerState Debugger
 @inject IAppViews Views
 @*
-    Visual action-list editor: one section per action list, each with its actions in priority order. On the APL Editor
-    page it edits any hero's lists. Embedded (the Sim page's Modes tab, Hero set) it is the sim's Selected APL: the picker
-    of the hero's lists, then the picked list's editor under the edit button, its actions and its text on two tabs.
+    Visual action-list editor: one section per action list, each with its actions in priority order, and the text on a
+    second tab. On the APL Editor page it edits any hero's lists. Embedded (the Sim page's Modes tab, Hero set) it is the
+    sim's Selected APL: the picker of the hero's lists, then the picked list's editor under the edit button.
 *@
 <Card>
     <div @ref="_root" class="apl-editor">
@@ -55,33 +55,8 @@
         {
             <CascadingValue Value="State.Editor" IsFixed="true">
                 <ConditionReference @ref="_reference" />
-                @if (Embedded)
+                @if (!Embedded)
                 {
-                    <div class="editor-bar">
-                        <nav class="editor-tabs" role="tablist" aria-label="Action list views">
-                            <button type="button" role="tab" class="editor-tab @(State.TextOpen ? "" : "selected")" aria-selected="@(State.TextOpen ? "false" : "true")"
-                                    @onclick="() => State.TextOpen = false">Actions</button>
-                            <button type="button" role="tab" class="editor-tab @(State.TextOpen ? "selected" : "")" aria-selected="@(State.TextOpen ? "true" : "false")"
-                                    @onclick="() => State.TextOpen = true">Action list text</button>
-                        </nav>
-                        <div class="row editor-actions">
-                            <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
-                            @if (State.HasEdits)
-                            {
-                                <span class="edited">Edited</span>
-                            }
-                            <button type="button" class="icon-button" aria-label="Revert" disabled="@(!State.HasEdits || State.SelectedSaved.Length == 0)"
-                                    data-tooltip="Undo the changes not saved" @onclick="Revert"><Icon Shape="IconShape.Revert" /></button>
-                            <button type="button" class="icon-button" aria-label="Save" data-tooltip="@(PickedOwnList != null ? "Save" : "Save as your own list")"
-                                    @onclick="Save"><Icon Shape="IconShape.Save" /></button>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <p>
-                        <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
-                    </p>
                     <div class="row toolbar">
                         <label class="field">
                             Hero
@@ -100,15 +75,49 @@
                                 <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : saved.Shared ? " (shared)" : "")</option>
                             }
                         </select>
-                        <button type="button" class="secondary-button" @onclick="Save">Save</button>
-                        <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
-                        <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
-                        <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" data-tooltip="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
-                        <button type="button" class="secondary-button" data-tooltip="Step through one fight of this action list in the APL Debugger, with a build and a fight picked there" @onclick="DebugAsync">Debug</button>
                     </div>
                 }
+                <div class="editor-bar">
+                    <nav class="editor-tabs" role="tablist" aria-label="Action list views">
+                        <button type="button" role="tab" class="editor-tab @(State.TextOpen ? "" : "selected")" aria-selected="@(State.TextOpen ? "false" : "true")"
+                                @onclick="() => State.TextOpen = false">Actions</button>
+                        <button type="button" role="tab" class="editor-tab @(State.TextOpen ? "selected" : "")" aria-selected="@(State.TextOpen ? "true" : "false")"
+                                @onclick="() => State.TextOpen = true">Action list text</button>
+                    </nav>
+                    <div class="row editor-actions">
+                        <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
+                        @if (State.HasEdits)
+                        {
+                            <span class="edited">Edited</span>
+                        }
+                        <button type="button" class="icon-button" aria-label="Revert" disabled="@(!State.HasEdits || State.SelectedSaved.Length == 0)"
+                                data-tooltip="Undo the changes not saved" @onclick="Revert"><Icon Shape="IconShape.Revert" /></button>
+                        <button type="button" class="icon-button" aria-label="Save" data-tooltip="@(!Embedded || PickedOwnList != null ? "Save" : "Save as your own list")"
+                                @onclick="Save"><Icon Shape="IconShape.Save" /></button>
+                        @if (!Embedded)
+                        {
+                            <button type="button" class="icon-button" aria-label="New list" data-tooltip="New list" @onclick="NewAsked"><Icon Shape="IconShape.Plus" /></button>
+                            <button type="button" class="icon-button" aria-label="Duplicate" data-tooltip="Duplicate" @onclick="Duplicate"><Icon Shape="IconShape.Duplicate" /></button>
+                        }
+                        <span class="divider" aria-hidden="true"></span>
+                        <label class="icon-button file-button" aria-label="Import" data-tooltip="Open a .simc file's action list as a new list">
+                            <Icon Shape="IconShape.Import" />
+                            <InputFile accept=".simc,.txt" OnChange="ImportFileAsync" />
+                        </label>
+                        <button type="button" class="icon-button" aria-label="Download" data-tooltip="Download the action list as a .simc file"
+                                @onclick="Download"><Icon Shape="IconShape.Download" /></button>
+                        @if (!Embedded)
+                        {
+                            <button type="button" class="icon-button" aria-label="Debug" data-tooltip="Step through one fight of this action list in the APL Debugger, with a build and a fight picked there"
+                                    @onclick="DebugAsync"><Icon Shape="IconShape.Debug" /></button>
+                            <span class="divider" aria-hidden="true"></span>
+                            <button type="button" class="icon-button danger-button" aria-label="Delete" disabled="@(!CanDelete)"
+                                    data-tooltip="@(CanDelete ? "Delete" : "Only your own saved lists can be deleted")" @onclick="Delete"><Icon Shape="IconShape.Bin" /></button>
+                        }
+                    </div>
+                </div>
                 <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>
-                @if (!Embedded || !State.TextOpen)
+                @if (!State.TextOpen)
                 {
                     <div>
                         @foreach (var list in State.Editor.Lists)
@@ -121,14 +130,7 @@
                         <button type="button" class="secondary-button" @onclick="AddList">Add action list</button>
                     </div>
                 }
-                @if (!Embedded)
-                {
-                    <details @key="State.TextKey" class="text" open="@State.TextOpen">
-                        <summary>Action list text</summary>
-                        @TextPane(v)
-                    </details>
-                }
-                else if (State.TextOpen)
+                else
                 {
                     @TextPane(v)
                 }
@@ -168,6 +170,8 @@
 }
 
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     /// <summary>The lists and fields to edit; the APL Editor page's own when null.</summary>
     [Parameter] public ActionListsState? Lists { get; set; }
 
@@ -252,6 +256,15 @@
         {
             if (State.TextEdited) ReadLater(State.Text);
             else WriteText();
+            // A list saved in the other editor since (the APL Editor's or the Modes tab's) shows in the picker.
+            try
+            {
+                State.Saved = await _savedLists.ListAsync();
+            }
+            catch (Exception e)
+            {
+                Fail(e);
+            }
             return;
         }
         if (Embedded)
@@ -387,14 +400,11 @@
         }
     }
 
-    // The action list's text, its download and its problem: under the APL Editor's details, or the embedded editor's tab.
+    // The Action list text tab: the action list's text and its problem.
     private RenderFragment TextPane(AplVocabulary v) => __builder =>
     {
         <div class="text-field">
             <CodeField Vocabulary="v" Lines="true" Value="@State.Text" OnChange="TextChanged" Placeholder="actions+=/ability,if=condition" />
-        </div>
-        <div class="row">
-            <button type="button" class="secondary-button" data-tooltip="Save the action list as a .simc file" @onclick="Download">Download</button>
         </div>
         <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>
     };
@@ -565,6 +575,50 @@
         }
     }
 
+    /// <summary>Largest action list file the editor reads.</summary>
+    private const long MaxFileBytes = 1024 * 1024;
+
+    // A file's action list as a new list named after the file, not saved yet: Save keeps it. A profile file gives its
+    // action list.
+    private async Task ImportFileAsync(InputFileChangeEventArgs e)
+    {
+        string text;
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(MaxFileBytes));
+            text = await reader.ReadToEndAsync();
+        }
+        catch (IOException ex)
+        {
+            State.Editor.SetStatus(MessageState.Error(ex.Message));
+            return;
+        }
+        string name = ActionListStore.ValidName(Path.GetFileNameWithoutExtension(e.File.Name), "Imported list");
+        await AskFirst($"importing {e.File.Name}", () =>
+        {
+            State.SelectedSaved = "";
+            State.Name = name;
+            ReadLater(ActionListOf(text));
+            State.Editor.SetStatus(MessageState.None);
+            Toasts.Ok($"Imported {name}; save it to keep it.");
+            return Task.CompletedTask;
+        });
+    }
+
+    // The action list of a profile's text, or the text as it is when it is an action list alone.
+    private static string ActionListOf(string text)
+    {
+        try
+        {
+            string list = SimProfile.Parse(text).Profile.ActionList;
+            return list.Trim().Length > 0 ? list : text;
+        }
+        catch (FormatException)
+        {
+            return text;
+        }
+    }
+
     private Task Download() =>
         FileDownloads.SaveAsync(JS, State.Name.Trim().Length > 0 ? State.Name : State.Editor.Vocabulary?.Hero ?? "action list", ".simc", State.Text);
 
@@ -698,7 +752,6 @@
                 State.Text = list.Text.ReplaceLineEndings("\n");
                 State.TextEdited = true;
                 State.TextOpen = true;
-                State.TextKey++;
                 State.Editor.SetStatus(MessageState.Error($"The saved text does not parse: {list.Error}"));
                 State.MarkClean();
                 return;
@@ -761,7 +814,8 @@
     {
         State.Name = State.Name.Length > 0 ? $"{State.Name} copy" : "copy";
         State.SelectedSaved = "";
-        State.Editor.SetStatus(MessageState.Ok($"Copied to {State.Name}; save it to keep it."));
+        State.Editor.SetStatus(MessageState.None);
+        Toasts.Ok($"Copied to {State.Name}; save it to keep it.");
     }
 
     private async Task Delete()
@@ -771,7 +825,8 @@
         {
             await _savedLists.DeleteAsync(list);
             await LoadSavedLists();
-            State.Editor.SetStatus(MessageState.Ok($"Deleted {list.Name}. The editor keeps its actions until you change them."));
+            State.Editor.SetStatus(MessageState.None);
+            Toasts.Ok($"Deleted {list.Name}. The editor keeps its actions until you change them.");
         }
         catch (Exception e)
         {
@@ -805,7 +860,8 @@
             var saved = await _savedLists.SaveAsync(v.Hero, listName, ActionListModel.DocumentActions(lists));
             State.MarkClean();
             // No folder in the message: on a stream it would show the user's name.
-            State.Editor.SetStatus(MessageState.Ok($"Saved {saved.Name} to your action lists."));
+            State.Editor.SetStatus(MessageState.None);
+            Toasts.Ok($"Saved {saved.Name} to your action lists.");
             await LoadSavedLists(SavedValue(saved));
             _saveFailed = false;
             if (Embedded)

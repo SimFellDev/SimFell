@@ -350,6 +350,8 @@
 </div>
 
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     [Parameter, EditorRequired] public SimResult Result { get; set; } = null!;
 
     /// <summary>The sim's title: the saved file's name and heading.</summary>
@@ -379,7 +381,7 @@
     private void RunAgain()
     {
         if (Profile == null) return;
-        Sim.RunAgain(Profile);
+        if (Sim.RunAgain(Profile)) Toasts.Ok("Loaded the sim's profile. Run sim runs it again.");
         Views.ShowPage(AppPage.Sim);
     }
 

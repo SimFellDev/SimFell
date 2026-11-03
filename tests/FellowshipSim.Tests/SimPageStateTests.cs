@@ -75,8 +75,7 @@ public class SimPageStateTests
         string profile = edited.SimProfileText(edited.Build, edited.ActionListText!);
         var state = new SimPageState { Tab = SimTab.Advanced, Extra = SimExtra.Compare };
 
-        state.RunAgain(profile);
-
+        Assert.True(state.RunAgain(profile));
         Assert.True(state.ImportOpen);
         Assert.Equal(SimExtra.None, state.Extra);
         Assert.Equal(profile, state.ProfileText);

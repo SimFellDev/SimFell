@@ -25,13 +25,6 @@
 
 <Card Title="Fight settings">
     <div class="fields">
-        @if (ShowIterations)
-        {
-            <label class="field">
-                Iterations
-                <input type="number" min="1" step="1" @bind="State.Iterations" />
-            </label>
-        }
         @if (State.Mode == SimMode.Dungeon)
         {
             <div class="field">
@@ -80,9 +73,6 @@
     [Parameter, EditorRequired] public SimPageState State { get; set; } = null!;
 
     [Parameter] public EventCallback OnChanged { get; set; }
-
-    /// <summary>The Fight settings card has the sim's iterations (the Sim page); the APL Debugger runs one fight.</summary>
-    [Parameter] public bool ShowIterations { get; set; }
 
     /// <summary>Settings of the place the cards show, after the Fight settings card's own (the APL Debugger's seed).</summary>
     [Parameter] public RenderFragment? MoreSettings { get; set; }

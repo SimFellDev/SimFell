@@ -23,4 +23,10 @@ public enum IconShape
     Link,
     /// <summary>An arrow turning back: edits undone.</summary>
     Revert,
+    /// <summary>An arrow down into a tray: a file saved to the computer.</summary>
+    Download,
+    /// <summary>Two arrows in a circle: a build read again from a log.</summary>
+    Refresh,
+    /// <summary>A play arrow against a bar: one fight stepped through in the APL Debugger.</summary>
+    Debug,
 }

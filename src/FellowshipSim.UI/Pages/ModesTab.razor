@@ -2,7 +2,7 @@
 @inject SimPageState State
 @inject ISimEngine Engine
 @* The Sim page's Modes tab: the fight, its dungeon or training dummies, its settings, the action list, then Compare and Finder. *@
-<FightCards State="State" OnChanged="OnChanged" ShowIterations="true" />
+<FightCards State="State" OnChanged="OnChanged" />
 @if (!BuildHeroes.IsBuildOnly(State.Build.Hero))
 {
     @* Each hero's own editor, so a hero's edits stay while another hero's build shows. *@

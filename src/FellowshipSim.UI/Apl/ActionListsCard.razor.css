@@ -25,10 +25,6 @@
   flex: 1 1 260px;
 }
 
-.delete {
-  color: var(--bad);
-}
-
 .field {
   display: flex;
   align-items: center;
@@ -45,15 +41,6 @@
 
 .add-list input {
   flex: 0 1 280px;
-}
-
-.text {
-  margin-top: 14px;
-}
-
-.text summary {
-  cursor: pointer;
-  color: var(--muted);
 }
 
 .text-field {
@@ -92,7 +79,7 @@
   border-color: var(--accent);
 }
 
-/* The embedded editor's tabs, then its actions on the right. */
+/* The editor's tabs, then its actions on the right. */
 .editor-bar {
   display: flex;
   flex-wrap: wrap;
@@ -139,6 +126,14 @@
   height: 34px;
   justify-content: center;
   align-items: center;
+}
+
+/* Between the editor bar's groups of icons, as the Hero tab's toolbar has them. */
+.divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--border);
 }
 
 .edited {

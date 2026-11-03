@@ -6,28 +6,30 @@
 @inject FollowedReviews Followed
 @inject IAppViews Views
 @* The web app's frame: the name, the sections, the FellowshipLogs status (which opens the settings) and the sim results. *@
-<UpdateBanner />
-<header @ref="_header" class="top">
-    <a class="brand" href="">
-        <span class="name"><span class="white">SIM</span><span class="gold">FELL</span></span>
-        <span class="tagline">Fellowship simulator</span>
-    </a>
-    <nav class="nav" aria-label="Sections">
-        @foreach (var item in AppPage.Sections)
-        {
-            <NavLink @key="item.Route" href="@item.Route" Match="NavLinkMatch.All">@item.Title</NavLink>
-        }
-    </nav>
-    <div class="actions">
-        <LogsAccount />
-        <ResultsSidebar />
-    </div>
-</header>
+<ToastProvider>
+    <UpdateBanner />
+    <header @ref="_header" class="top">
+        <a class="brand" href="">
+            <span class="name"><span class="white">SIM</span><span class="gold">FELL</span></span>
+            <span class="tagline">Fellowship simulator</span>
+        </a>
+        <nav class="nav" aria-label="Sections">
+            @foreach (var item in AppPage.Sections)
+            {
+                <NavLink @key="item.Route" href="@item.Route" Match="NavLinkMatch.All">@item.Title</NavLink>
+            }
+        </nav>
+        <div class="actions">
+            <LogsAccount />
+            <ResultsSidebar />
+        </div>
+    </header>
 
+    <main class="main">
+        @Body
+    </main>
+</ToastProvider>
 <TooltipLayer />
-<main class="main">
-    @Body
-</main>
 
 @code {
     /// <summary>Name of the section each page fills with its line under the heading. The frame shows none.</summary>

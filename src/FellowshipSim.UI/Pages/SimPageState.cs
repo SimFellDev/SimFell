@@ -98,6 +98,12 @@ public sealed class SimPageState
         Tab = SimTab.Hero;
     }
 
+    /// <summary>
+    /// True after the Import dialog put in a build, until the Hero tab's editor saves it: under its own name when that is
+    /// free, else under the name the save dialog asks for.
+    /// </summary>
+    public bool ImportedBuildToSave { get; set; }
+
     /// <summary>A .simc profile or a build's share link pasted in Import.</summary>
     public string ProfileText { get; set; } = "";
 
@@ -144,19 +150,18 @@ public sealed class SimPageState
 
     /// <summary>
     /// Puts <paramref name="profile"/>, a sim's profile, in the Import dialog, and its build, action list and settings in
-    /// the page, and opens the Import dialog. Run sim then runs the profile alone: no compare or finder.
+    /// the page, and opens the Import dialog. Run sim then runs the profile alone: no compare or finder. False, with the
+    /// reason in <see cref="ImportStatus"/>, when the profile does not parse.
     /// </summary>
-    public void RunAgain(string profile)
+    public bool RunAgain(string profile)
     {
         ProfileText = profile;
         ImportProfile();
-        if (ImportStatus.Kind != MessageKind.Error)
-        {
-            Extra = SimExtra.None;
-            ImportStatus = MessageState.Ok("Loaded the sim's profile. Run sim runs it again.");
-        }
+        bool loaded = ImportStatus.Kind != MessageKind.Error;
+        if (loaded) Extra = SimExtra.None;
         ImportOpen = true;
         NotifyChanged();
+        return loaded;
     }
 
     // Each setting of the profile's text in the page. A switched-off variance or starting Spirit keeps the page's amount.
