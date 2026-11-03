@@ -73,7 +73,20 @@ public sealed class ReplayLibrary
         IProgress<string>? progress = null, CancellationToken ct = default)
     {
         string path = await GetRawFightFileAsync(client, reportCode, fightId, progress, ct);
-        return JsonNode.Parse(await File.ReadAllTextAsync(path, ct))!.AsObject();
+        await using var file = File.OpenRead(path);
+        return (await JsonNode.ParseAsync(file, cancellationToken: ct))!.AsObject();
+    }
+
+    /// <summary>
+    /// The fight's raw events as a <see cref="JsonDocument"/>, downloaded from FellowshipLogs the first time: a fraction of
+    /// the memory of <see cref="GetRawFightAsync"/>'s tree once every event is read.
+    /// </summary>
+    public async Task<JsonDocument> GetRawFightDocumentAsync(FellowshipLogsClient? client, string reportCode, int fightId,
+        IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        string path = await GetRawFightFileAsync(client, reportCode, fightId, progress, ct);
+        await using var file = File.OpenRead(path);
+        return await JsonDocument.ParseAsync(file, cancellationToken: ct);
     }
 
     /// <summary>

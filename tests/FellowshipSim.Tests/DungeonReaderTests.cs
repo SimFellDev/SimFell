@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Engine.Replay;
 using FellowshipSim.Logs;
@@ -24,8 +24,8 @@ public class DungeonReaderTests(ITestOutputHelper output)
             output.WriteLine($"Fight {FightId} of {ReportCode} is not in {library.FightsDirectory}.");
             return;
         }
-        var raw = await library.GetRawFightAsync(null, ReportCode, FightId);
-        var dungeon = DungeonReader.FromRawFight(raw, RimeId);
+        using var fight = await library.GetRawFightDocumentAsync(null, ReportCode, FightId);
+        var dungeon = DungeonReader.FromRawFight(fight.RootElement, RimeId);
         string text = dungeon.Format();
         output.WriteLine(text);
         double heroDamage = dungeon.HeroShare / 100 * dungeon.Pulls.SelectMany(p => p.Groups).Sum(g => g.Count * g.HitPoints!.Value) * dungeon.HealthScale;
@@ -57,7 +57,7 @@ public class DungeonReaderTests(ITestOutputHelper output)
         }
         Assert.Contains(dungeon.Pulls, p => p.Name == "1_2");
 
-        Assert.Equal(Deaths(raw), dungeon.Pulls.Sum(p => p.EnemyCount));
+        Assert.Equal(Deaths(fight.RootElement), dungeon.Pulls.Sum(p => p.EnemyCount));
         Assert.InRange(dungeon.HeroShare, 1, 100);
     }
 
@@ -68,11 +68,12 @@ public class DungeonReaderTests(ITestOutputHelper output)
         Assert.Equal(expected, FellowshipSim.UI.Services.ActionListStore.ValidName(name, "Imported dungeon"));
 
     // The enemies the party killed in the fight.
-    private static int Deaths(JsonObject raw)
+    private static int Deaths(JsonElement raw)
     {
-        var enemies = raw["fight"]!["enemyNPCs"]!.AsArray().Select(n => (int)n!["id"]!).ToHashSet();
-        return raw["events"]!.AsArray()
-            .Where(e => (string)e!["type"]! == "death" && enemies.Contains((int)e["targetID"]!))
-            .Select(e => ((int)e!["targetID"]!, (int?)e["targetInstance"] ?? 1)).Distinct().Count();
+        var enemies = raw.GetProperty("fight").GetProperty("enemyNPCs").EnumerateArray().Select(n => n.GetProperty("id").GetInt32()).ToHashSet();
+        return raw.GetProperty("events").EnumerateArray()
+            .Where(e => e.GetProperty("type").GetString() == "death" && enemies.Contains(e.GetProperty("targetID").GetInt32()))
+            .Select(e => (e.GetProperty("targetID").GetInt32(), e.TryGetProperty("targetInstance", out var i) ? i.GetInt32() : 1))
+            .Distinct().Count();
     }
 }

@@ -62,14 +62,23 @@ public static class ReplayScriptBuilder
 
     public static JsonObject Build(JsonObject raw, int playerId)
     {
-        var fight = raw["fight"]!.AsObject();
+        var fight = raw["fight"] as JsonObject ?? throw new ArgumentException("The raw fight has no fight.");
         double f0 = Num(fight["startTime"]);
         double fightEnd = Num(fight["endTime"]);
         var actors = new Dictionary<int, JsonNode>();
-        foreach (var a in raw["master_data"]!["actors"]!.AsArray()) actors[a!["id"]!.GetValue<int>()] = a;
+        foreach (var a in raw["master_data"]?["actors"] as JsonArray ?? throw new ArgumentException("The raw fight has no actors."))
+        {
+            if (a != null) actors[(int)Num(a["id"])] = a;
+        }
         var abilityNames = new Dictionary<long, string>();
-        foreach (var a in raw["master_data"]!["abilities"]!.AsArray()) abilityNames[(long)Num(a!["gameID"])] = a["name"]?.GetValue<string>() ?? "";
-        var events = Dedupe(raw["events"]!.AsArray());
+        foreach (var a in raw["master_data"]?["abilities"] as JsonArray ?? [])
+        {
+            if (a != null) abilityNames[(long)Num(a["gameID"])] = a["name"]?.GetValue<string>() ?? "";
+        }
+        var events = Dedupe(raw["events"] as JsonArray ?? throw new ArgumentException("The raw fight has no events."));
+        // The character comes from the player's combatantinfo event, which a fight downloaded in part can lack.
+        var combatant = events.FirstOrDefault(e => Str(e["type"]) == "combatantinfo" && Int(e["sourceID"]) == playerId)
+            ?? throw new ArgumentException($"Fight {Num(fight["id"])} has no character information (combatantinfo) for player {playerId}.");
 
         double Rel(double ts) => Math.Round((ts - f0) / 1000.0, 3);
         bool IsEnemy(int? id) => id is { } i && i != -1 && actors.TryGetValue(i, out var a)
@@ -345,7 +354,6 @@ public static class ReplayScriptBuilder
         actors.TryGetValue(playerId, out var player);
         string? playerName = player?["name"]?.GetValue<string>();
         string? hero = player?["subType"]?.GetValue<string>();
-        var combatant = events.FirstOrDefault(e => Str(e["type"]) == "combatantinfo" && Int(e["sourceID"]) == playerId);
 
         return new JsonObject
         {
@@ -357,11 +365,10 @@ public static class ReplayScriptBuilder
             ["duration_s"] = Rel(fightEnd),
             ["dungeon_modifiers"] = events.FirstOrDefault(e => Str(e["type"]) == "dungeonstart")?["affixes"]?.DeepClone() ?? new JsonArray(),
             ["player"] = new JsonObject { ["id"] = playerId, ["name"] = playerName, ["hero"] = hero },
-            ["combatant_info"] = combatant?.DeepClone(),
+            ["combatant_info"] = combatant.DeepClone(),
             ["players"] = players,
             // The character as it was in this fight (its combatantinfo event).
-            ["character"] = combatant == null ? null
-                : JsonSerializer.SerializeToNode(CharacterReader.FromCombatantInfo(combatant.AsObject(), playerName ?? "player", hero ?? "")),
+            ["character"] = JsonSerializer.SerializeToNode(CharacterReader.FromCombatantInfo(combatant, playerName ?? "player", hero ?? "")),
             ["enemies"] = enemies,
             ["commands"] = new JsonArray(sortedCommands.Select(c => (JsonNode?)c).ToArray()),
             ["ignored_casts"] = ignoredCasts,
@@ -383,17 +390,32 @@ public static class ReplayScriptBuilder
         return DateTimeOffset.FromUnixTimeMilliseconds((long)ms).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
     }
 
-    /// <summary>Page boundaries in the API overlap: drops exact duplicate events, then orders by time.</summary>
+    /// <summary>
+    /// Page boundaries in the API overlap: orders the events by time, then drops exact duplicate events. Duplicates have
+    /// one timestamp, so only the events of one timestamp are compared, and a fight's events are never held as text at once.
+    /// </summary>
     private static List<JsonObject> Dedupe(JsonArray events)
     {
+        var ordered = events.OfType<JsonObject>().OrderBy(e => Num(e["timestamp"])).ToList();
+        var list = new List<JsonObject>(ordered.Count);
         var seen = new HashSet<string>();
-        var list = new List<JsonObject>();
-        foreach (var node in events)
+        for (int i = 0; i < ordered.Count;)
         {
-            if (node is not JsonObject e) continue;
-            if (seen.Add(Canonical(e))) list.Add(e);
+            double t = Num(ordered[i]["timestamp"]);
+            int end = i + 1;
+            while (end < ordered.Count && Num(ordered[end]["timestamp"]) == t) end++;
+            if (end - i == 1) list.Add(ordered[i]);
+            else
+            {
+                seen.Clear();
+                for (int j = i; j < end; j++)
+                {
+                    if (seen.Add(Canonical(ordered[j]))) list.Add(ordered[j]);
+                }
+            }
+            i = end;
         }
-        return list.OrderBy(e => Num(e["timestamp"])).ToList();
+        return list;
     }
 
     private static string Canonical(JsonNode? node) => node switch

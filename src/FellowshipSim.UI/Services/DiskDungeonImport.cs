@@ -14,16 +14,23 @@ public sealed class DiskDungeonImport(ReplayLibrary library, LogsSettingsStore s
         CancellationToken ct = default)
     {
         var client = library.HasRawFight(reportCode, fightId) ? null : await settings.CreateClientAsync(ct);
-        var raw = await library.GetRawFightAsync(client, reportCode, fightId, progress, ct);
-        if (!DungeonReader.HasPulls(raw))
+        var fight = await library.GetRawFightDocumentAsync(client, reportCode, fightId, progress, ct);
+        if (!DungeonReader.HasPulls(fight.RootElement))
         {
+            fight.Dispose();
             client ??= await settings.CreateClientAsync(ct)
                 ?? throw new FellowshipLogsException("Sign in with FellowshipLogs to read the fight's pulls.");
             progress?.Report("Downloading the fight's pulls from FellowshipLogs");
+            // The pulls go into the fight's tree, which reads no event, and the fight is saved with them.
+            var raw = await library.GetRawFightAsync(null, reportCode, fightId, progress, ct);
             await client.AddDungeonPullsAsync(raw, ct);
             await library.SaveRawFightAsync(reportCode, fightId, raw, ct);
+            fight = await library.GetRawFightDocumentAsync(null, reportCode, fightId, progress, ct);
         }
-        progress?.Report("Reading the dungeon");
-        return DungeonReader.FromRawFight(raw, playerId);
+        using (fight)
+        {
+            progress?.Report("Reading the dungeon");
+            return DungeonReader.FromRawFight(fight.RootElement, playerId);
+        }
     }
 }

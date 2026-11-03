@@ -106,27 +106,32 @@ public static partial class SimWorker
                 accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken)
                 : clientId.Length > 0 ? new FellowshipLogsClient(http, clientId, clientSecret)
                 : throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
-            JsonObject raw;
-            if (keptFight.Length > 0)
-            {
-                raw = JsonNode.Parse(keptFight)!.AsObject();
-            }
-            else
+            // The fight is read as its text's JsonDocument; a long fight's events as a tree are more than a worker has.
+            string text = keptFight;
+            if (text.Length == 0)
             {
                 var client = Client();
                 progress.Report("Downloading the fight from FellowshipLogs");
-                raw = await client.DownloadFightAsync(reportCode, fightId, progress);
-                await SaveFight(reportCode, fightId, raw.ToJsonString());
+                text = (await client.DownloadFightAsync(reportCode, fightId, progress)).ToJsonString();
+                await SaveFight(reportCode, fightId, text);
             }
-            if (!DungeonReader.HasPulls(raw))
+            var fight = JsonDocument.Parse(text);
+            if (!DungeonReader.HasPulls(fight.RootElement))
             {
+                fight.Dispose();
                 var client = Client();
                 progress.Report("Downloading the fight's pulls from FellowshipLogs");
+                var raw = JsonNode.Parse(text)!.AsObject();
                 await client.AddDungeonPullsAsync(raw);
-                await SaveFight(reportCode, fightId, raw.ToJsonString());
+                text = raw.ToJsonString();
+                await SaveFight(reportCode, fightId, text);
+                fight = JsonDocument.Parse(text);
             }
-            progress.Report("Reading the dungeon");
-            reply = new DungeonReply(DungeonReader.FromRawFight(raw, playerId).Format(), null);
+            using (fight)
+            {
+                progress.Report("Reading the dungeon");
+                reply = new DungeonReply(DungeonReader.FromRawFight(fight.RootElement, playerId).Format(), null);
+            }
         }
         catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {

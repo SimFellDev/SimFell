@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Enemies;
 
@@ -31,17 +31,23 @@ public static class DungeonReader
     public const double WaveGapSeconds = 5;
 
     /// <summary>True when a raw fight has FellowshipLogs' pulls of it, which a fight downloaded before them lacks.</summary>
-    public static bool HasPulls(JsonObject raw) => raw["fight"]?["dungeonPulls"] is JsonArray;
+    public static bool HasPulls(JsonElement raw) => new Node(raw)["fight"]["dungeonPulls"].Element.ValueKind == JsonValueKind.Array;
 
-    /// <summary>The dungeon of a raw fight (<c>FellowshipLogsReports.DownloadFightAsync</c>), with player <paramref name="playerId"/>'s hero share.</summary>
-    public static DungeonProfile FromRawFight(JsonObject raw, int playerId)
+    /// <summary>
+    /// The dungeon of a raw fight (<c>FellowshipLogsReports.DownloadFightAsync</c>), with player <paramref name="playerId"/>'s
+    /// hero share. It reads the fight's <see cref="JsonDocument"/> in place: a long fight's events as a
+    /// <see cref="System.Text.Json.Nodes.JsonNode"/> tree are over a GB, more than the browser app's worker has.
+    /// </summary>
+    public static DungeonProfile FromRawFight(JsonElement rawFight, int playerId)
     {
-        var fight = raw["fight"]?.AsObject() ?? throw new ArgumentException("The raw fight has no fight.");
+        var raw = new Node(rawFight);
+        var fight = raw["fight"];
+        if (fight.Element.ValueKind != JsonValueKind.Object) throw new ArgumentException("The raw fight has no fight.");
         double start = Num(fight["startTime"]), end = Num(fight["endTime"]);
-        var actors = (raw["master_data"]?["actors"]?.AsArray() ?? []).Where(a => a != null).ToDictionary(a => (int)Num(a!["id"]), a => a!);
-        var abilityNames = (raw["master_data"]?["abilities"]?.AsArray() ?? []).Where(a => a != null)
-            .GroupBy(a => (int)Num(a!["gameID"])).ToDictionary(g => g.Key, g => Str(g.First()!["name"]));
-        var party = (fight["friendlyPlayers"]?.AsArray() ?? []).Select(p => (int)Num(p)).ToHashSet();
+        var actors = raw["master_data"]["actors"].Items.ToDictionary(a => (int)Num(a["id"]), a => a);
+        var abilityNames = raw["master_data"]["abilities"].Items
+            .GroupBy(a => (int)Num(a["gameID"])).ToDictionary(g => g.Key, g => Str(g.First()["name"]));
+        var party = fight["friendlyPlayers"].Items.Select(p => (int)Num(p)).ToHashSet();
         if (!party.Contains(playerId)) throw new ArgumentException($"Player {playerId} is not in fight {Num(fight["id"])}.");
         // The party's pets count as the party, and the player's as the player.
         foreach (var actor in actors.Values)
@@ -49,7 +55,7 @@ public static class DungeonReader
             if (Int(actor["petOwner"]) is { } owner && party.Contains(owner)) party.Add((int)Num(actor["id"]));
         }
         bool IsPlayers(int id) => id == playerId || actors.TryGetValue(id, out var a) && Int(a["petOwner"]) == playerId;
-        var enemyIds = (fight["enemyNPCs"]?.AsArray() ?? []).Select(n => (int)Num(n?["id"])).ToHashSet();
+        var enemyIds = fight["enemyNPCs"].Items.Select(n => (int)Num(n["id"])).ToHashSet();
 
         string? dungeonName = null;
         int difficulty = DungeonProfile.DefaultDifficulty;
@@ -58,9 +64,8 @@ public static class DungeonReader
             enemies.TryGetValue((id, instance), out var e) ? e : enemies[(id, instance)] = new Enemy(id, instance);
         // Each enemy's casts by ability: begun and completed, and the abilities the party interrupted by enemy name.
         var interrupts = new Dictionary<(string Name, int Ability), int>();
-        foreach (var e in raw["events"]?.AsArray() ?? [])
+        foreach (var e in raw["events"].Items)
         {
-            if (e == null) continue;
             double t = (Num(e["timestamp"]) - start) / 1000;
             int source = Int(e["sourceID"]) ?? 0, target = Int(e["targetID"]) ?? 0;
             switch (Str(e["type"]))
@@ -72,13 +77,13 @@ public static class DungeonReader
                 case "damage" when party.Contains(source) && enemyIds.Contains(target):
                 {
                     var enemy = At(target, Instance(e, "target"));
-                    enemy.Hit(t, Num(e["targetResources"]?["maxHitPoints"]));
+                    enemy.Hit(t, Num(e["targetResources"]["maxHitPoints"]));
                     enemy.Damaged = true;
                     if (IsPlayers(source)) enemy.HeroDamage += Num(e["amount"]);
                     break;
                 }
                 case "damage" when enemyIds.Contains(source) && party.Contains(target):
-                    At(source, Instance(e, "source")).Hit(t, Num(e["sourceResources"]?["maxHitPoints"]));
+                    At(source, Instance(e, "source")).Hit(t, Num(e["sourceResources"]["maxHitPoints"]));
                     break;
                 case "death" when enemyIds.Contains(target):
                     At(target, Instance(e, "target")).DiedAt ??= t;
@@ -87,7 +92,7 @@ public static class DungeonReader
                     At(source, Instance(e, "source")).Casts(Int(e["abilityGameID"]) ?? 0).Begun.Add(t);
                     break;
                 // A completed cast; the cast logged as its cast begins is "fake".
-                case "cast" when enemyIds.Contains(source) && e["fake"] == null:
+                case "cast" when enemyIds.Contains(source) && e["fake"].IsNull:
                     At(source, Instance(e, "source")).Casts(Int(e["abilityGameID"]) ?? 0).Completed.Add(t);
                     break;
                 case "interrupt" when enemyIds.Contains(target) && actors.TryGetValue(target, out var interrupted):
@@ -130,11 +135,11 @@ public static class DungeonReader
         }
 
         // The pulls: FellowshipLogs' pulls of the fight, each with the enemies that died in it.
-        var logPulls = (fight["dungeonPulls"]?.AsArray() ?? throw new ArgumentException("The raw fight has no pulls."))
-            .Where(p => p != null)
-            .Select((p, i) => new LogPull(i + 1, Str(p!["name"]), (Num(p["startTime"]) - start) / 1000, (Num(p["endTime"]) - start) / 1000,
-                (p["enemyNPCs"]?.AsArray() ?? []).Where(n => n != null)
-                    .Select(n => ((int)Num(n!["id"]), (int)Num(n["minimumInstanceID"]), (int)Num(n["maximumInstanceID"]))).ToList()))
+        if (!HasPulls(rawFight)) throw new ArgumentException("The raw fight has no pulls.");
+        var logPulls = fight["dungeonPulls"].Items
+            .Select((p, i) => new LogPull(i + 1, Str(p["name"]), (Num(p["startTime"]) - start) / 1000, (Num(p["endTime"]) - start) / 1000,
+                p["enemyNPCs"].Items
+                    .Select(n => ((int)Num(n["id"]), (int)Num(n["minimumInstanceID"]), (int)Num(n["maximumInstanceID"]))).ToList()))
             .ToList();
         if (logPulls.Count == 0) throw new ArgumentException("The fight has no pulls.");
         var pullOf = fought.ToLookup(e => logPulls
@@ -254,15 +259,23 @@ public static class DungeonReader
 
     private static string Clock(double seconds) => $"{(int)(seconds / 60)}:{(int)(seconds % 60):00}";
 
-    private static int Instance(JsonNode e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
-    private static string Str(JsonNode? n) => n is JsonValue v && v.TryGetValue<string>(out var s) ? s : "";
-    private static int? Int(JsonNode? n) => n is JsonValue ? (int)Num(n) : null;
-    private static double Num(JsonNode? n)
+    private static int Instance(Node e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
+    private static string Str(Node n) => n.Element.ValueKind == JsonValueKind.String ? n.Element.GetString()! : "";
+    private static int? Int(Node n) => n.Element.ValueKind is JsonValueKind.Number or JsonValueKind.String or JsonValueKind.True or JsonValueKind.False
+        ? (int)Num(n) : null;
+    private static double Num(Node n) => n.Element.ValueKind == JsonValueKind.Number && n.Element.TryGetDouble(out var d) ? d : 0;
+
+    // A value of the raw fight, or none: a missing property and JSON null are both none, and reading into none gives none.
+    private readonly record struct Node(JsonElement Element)
     {
-        if (n is not JsonValue v) return 0;
-        if (v.TryGetValue<double>(out var d)) return d;
-        if (v.TryGetValue<long>(out var l)) return l;
-        if (v.TryGetValue<int>(out var i)) return i;
-        return 0;
+        public Node this[string name] =>
+            Element.ValueKind == JsonValueKind.Object && Element.TryGetProperty(name, out var value) ? new Node(value) : default;
+
+        public bool IsNull => Element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null;
+
+        // The array's items other than JSON null; none for a value that is no array.
+        public IEnumerable<Node> Items => Element.ValueKind == JsonValueKind.Array
+            ? Element.EnumerateArray().Where(i => i.ValueKind != JsonValueKind.Null).Select(i => new Node(i))
+            : [];
     }
 }

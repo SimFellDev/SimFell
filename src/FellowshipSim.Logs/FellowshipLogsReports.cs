@@ -92,9 +92,9 @@ public static class FellowshipLogsReports
     public static async Task<JsonObject?> GetCombatantInfoAsync(this FellowshipLogsClient client, string reportCode, int fightId,
         int playerId, CancellationToken ct = default)
     {
-        var fight = (await client.QueryAsync(FightTimesQuery, new { code = reportCode, fightIDs = new[] { fightId } }, ct))
-            ["reportData"]?["report"]?["fights"]?.AsArray().FirstOrDefault()
-            ?? throw new FellowshipLogsException($"Fight {fightId} is not in report '{reportCode}'.");
+        var fight = await ReportPartAsync(client, FightTimesQuery, new { code = reportCode, fightIDs = new[] { fightId } },
+            r => r["fights"]?.AsArray().FirstOrDefault() is { } f && f["startTime"] is JsonValue && f["endTime"] is JsonValue ? f : null,
+            $"Fight {fightId} of report '{reportCode}'", ct);
         var data = (await client.QueryAsync(CombatantInfoQuery, new
         {
             code = reportCode,
@@ -113,12 +113,12 @@ public static class FellowshipLogsReports
     /// </summary>
     public static async Task AddDungeonPullsAsync(this FellowshipLogsClient client, JsonObject raw, CancellationToken ct = default)
     {
-        var fight = raw["fight"]!.AsObject();
-        string reportCode = raw["report_code"]!.GetValue<string>();
-        int fightId = fight["id"]!.GetValue<int>();
-        var pulls = (await client.QueryAsync(DungeonPullsQuery, new { code = reportCode, fightIDs = new[] { fightId } }, ct))
-            ["reportData"]?["report"]?["fights"]?.AsArray().FirstOrDefault()?["dungeonPulls"]
-            ?? throw new FellowshipLogsException($"Fight {fightId} is not in report '{reportCode}'.");
+        var fight = raw["fight"] as JsonObject ?? throw new ArgumentException("The raw fight has no fight.");
+        string reportCode = raw["report_code"]?.GetValue<string>() ?? throw new ArgumentException("The raw fight has no report code.");
+        int fightId = fight["id"]?.GetValue<int>() ?? throw new ArgumentException("The raw fight's fight has no ID.");
+        var pulls = await ReportPartAsync(client, DungeonPullsQuery, new { code = reportCode, fightIDs = new[] { fightId } },
+            r => r["fights"]?.AsArray().FirstOrDefault()?["dungeonPulls"] as JsonArray,
+            $"The pulls of fight {fightId} of report '{reportCode}'", ct);
         fight["dungeonPulls"] = pulls.DeepClone();
     }
 
@@ -153,24 +153,24 @@ public static class FellowshipLogsReports
     public static async Task<JsonObject> DownloadFightAsync(this FellowshipLogsClient client, string reportCode, int fightId,
         IProgress<string>? progress = null, CancellationToken ct = default)
     {
-        var meta = await client.QueryAsync(FightMetaQuery, new { code = reportCode, fightIDs = new[] { fightId } }, ct);
-        var report = meta["reportData"]?["report"] ?? throw new FellowshipLogsException($"Report '{reportCode}' was not found.");
-        var fight = report["fights"]?.AsArray().FirstOrDefault() ?? throw new FellowshipLogsException($"Fight {fightId} is not in report '{reportCode}'.");
+        var report = await ReportPartAsync(client, FightMetaQuery, new { code = reportCode, fightIDs = new[] { fightId } },
+            r => r["fights"]?.AsArray().FirstOrDefault() is { } f && f["startTime"] is JsonValue && f["endTime"] is JsonValue ? r : null,
+            $"Fight {fightId} of report '{reportCode}'", ct);
+        var fight = report["fights"]!.AsArray()[0]!;
         double start = fight["startTime"]!.GetValue<double>(), end = fight["endTime"]!.GetValue<double>();
 
         var events = new JsonArray();
         double? cursor = start;
         while (cursor is { } from && from < end)
         {
-            var page = (await client.QueryAsync(EventsQuery, new { code = reportCode, fightIDs = new[] { fightId }, startTime = from, endTime = end }, ct))
-                ["reportData"]!["report"]!["events"]!;
+            var page = await ReportPartAsync(client, EventsQuery, new { code = reportCode, fightIDs = new[] { fightId }, startTime = from, endTime = end },
+                r => r["events"] is { } p && p["data"] is JsonArray ? p : null,
+                $"The events of fight {fightId} of report '{reportCode}' from {(from - start) / 1000:F0}s", ct);
             // Moved, not copied: a long fight's events are hundreds of MB as a tree, and the browser app has little room.
-            if (page["data"]?.AsArray() is { } data)
-            {
-                var moved = data.ToArray();
-                data.Clear();
-                foreach (var e in moved) events.Add(e);
-            }
+            var data = page["data"]!.AsArray();
+            var moved = data.ToArray();
+            data.Clear();
+            foreach (var e in moved) events.Add(e);
             progress?.Report($"Downloaded {events.Count:N0} events");
             double? next = page["nextPageTimestamp"]?.GetValue<double?>();
             if (next == null || next <= from) break;
@@ -187,4 +187,30 @@ public static class FellowshipLogsReports
             ["events"] = events,
         };
     }
+
+    /// <summary>
+    /// The part of a report query's <c>report</c> that <paramref name="part"/> picks. FellowshipLogs at times answers a
+    /// report query with no report, or a report without the part asked for, and gives it on the next try; a part still
+    /// missing after <see cref="ReportAttempts"/> tries throws <see cref="FellowshipLogsException"/>.
+    /// </summary>
+    private static async Task<JsonNode> ReportPartAsync(FellowshipLogsClient client, string query, object variables,
+        Func<JsonNode, JsonNode?> part, string what, CancellationToken ct)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            var report = (await client.QueryAsync(query, variables, ct))["reportData"]?["report"];
+            if (report != null && part(report) is { } found) return found;
+            if (attempt == ReportAttempts)
+            {
+                throw new FellowshipLogsException($"{what} is missing from FellowshipLogs' answer after {ReportAttempts} tries. Try again later.");
+            }
+            await Task.Delay(ReportRetryDelay * attempt, ct);
+        }
+    }
+
+    /// <summary>Tries of a report query before a missing part is an error.</summary>
+    private const int ReportAttempts = 3;
+
+    /// <summary>The wait before the second try of a report query; each later try waits this times its number.</summary>
+    private static readonly TimeSpan ReportRetryDelay = TimeSpan.FromMilliseconds(500);
 }
