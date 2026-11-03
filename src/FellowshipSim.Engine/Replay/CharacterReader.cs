@@ -8,8 +8,8 @@ using FellowshipSim.Core.Import;
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// Reads the build a fight was played with from the player's combatantinfo event: the gear's own stats, and talents,
-/// augmentations, glyphs, gem sources, relic passive, legendary items and weapon by game ID.
+/// Reads the build a fight was played with from the player's combatantinfo event: the gear's own stats, the items worn with
+/// their tempers, and talents, augmentations, glyphs, gem sources, relic passive, legendary items and weapon by game ID.
 /// <para>
 /// The stats are the gear's raw ones, each item's listed attributes summed, before the hero's base stats, stat
 /// enchants, gem nodes, sigils and relics, which the engine adds as it imports the build. The combatantinfo totals
@@ -104,6 +104,12 @@ public static class CharacterReader
                 if (Enum.TryParse(Str(bonus?["name"]), out GemColor color)) build.GearGemBonuses[color] = build.GearGemBonuses.GetValueOrDefault(color) + 1;
             }
             if (Num(item["quality"]) >= 6) build.LegendaryItemIds.Add(itemId);
+            // The item in its slot with its tempers ("upgrades"); rings and relics fill their two slots in gear order.
+            if (GearItem.Find(hero, itemId) is { } worn
+                && GearSlots.Of(worn.Kind).Where(s => build.Gear.All(g => g.Slot != s)).ToList() is [var slot, ..])
+            {
+                build.Gear.Add(new GearPiece(slot, itemId, (int)Num(item["upgrades"])));
+            }
         }
 
         // Weapon and neck trees: augmentation IDs + 3,000,000 with the points spent; the weapon ability is listed by its own ID.
@@ -122,6 +128,12 @@ public static class CharacterReader
             }
             else if (id >= LogIds.AugmentationOffset) AddRank(augmentations, id - LogIds.AugmentationOffset, points, null, cap: true);
             else if (build.WeaponAbilityId == 0) build.WeaponAbilityId = id;
+        }
+
+        // A log without the weapon's tree: the weapon item's own ability.
+        if (build.WeaponAbilityId == 0 && build.Gear.FirstOrDefault(p => p.Slot == GearSlot.Weapon) is { } weapon)
+        {
+            build.WeaponAbilityId = GearItem.Find(hero, weapon.ItemId)?.WeaponAbilityId ?? 0;
         }
 
         build.Augmentations.AddRange(augmentations.Select(t => new BuildEntry(t.Id, Math.Min(MaxAugmentationRank, t.Rank), t.Name)));

@@ -152,7 +152,7 @@
   resize: vertical;
 }
 
-/* The file picker above the dungeon text, as on the Import tab. */
+/* The file picker above the dungeon text, as in Import. */
 .text ::deep .file {
   display: block;
   max-width: 100%;

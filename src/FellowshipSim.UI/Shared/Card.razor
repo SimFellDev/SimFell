@@ -1,9 +1,9 @@
-@* A section of the page, with its title when the section is one of several. *@
-<section class="card" hidden="@Hidden">
+@* A section of the page, with its title when the section is one of several. A collapsible one folds to its title line. *@
+<section class="card @(Collapsed ? "collapsed" : "")" hidden="@Hidden">
     @if (Title != null && (Count != null || CountContent != null))
     {
         <div class="head">
-            <h2 class="title">@Title</h2>
+            <h2 class="title">@TitleContent</h2>
             <span class="count @(Over ? "over" : "")" data-tooltip="@CountTitle">
                 @if (CountContent != null)
                 {
@@ -18,9 +18,12 @@
     }
     else if (Title != null)
     {
-        <h2 class="title">@Title</h2>
+        <h2 class="title">@TitleContent</h2>
     }
-    @ChildContent
+    @if (!Collapsed)
+    {
+        @ChildContent
+    }
 </section>
 
 @code {
@@ -41,5 +44,28 @@
     /// <summary>True when the count is over its limit: it shows in the warning colour.</summary>
     [Parameter] public bool Over { get; set; }
 
+    /// <summary>True when clicking the title folds the section to its title line, and opens it again.</summary>
+    [Parameter] public bool Collapsible { get; set; }
+
+    /// <summary>True while a collapsible section is folded. Its owner keeps it, through <see cref="CollapsedChanged"/>.</summary>
+    [Parameter] public bool Collapsed { get; set; }
+
+    [Parameter] public EventCallback<bool> CollapsedChanged { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private RenderFragment TitleContent => __builder =>
+    {
+        if (Collapsible)
+        {
+            <button type="button" class="collapse" aria-expanded="@(Collapsed ? "false" : "true")" @onclick="() => CollapsedChanged.InvokeAsync(!Collapsed)">
+                <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                @Title
+            </button>
+        }
+        else
+        {
+            @Title
+        }
+    };
 }

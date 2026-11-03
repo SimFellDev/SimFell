@@ -31,6 +31,9 @@ dotnet test -c Release
 # one test class or method
 dotnet test tests/FellowshipSim.Tests -c Release --filter "FullyQualifiedName~AplParserTests"
 
+# every hero's gear items and their stats from the Codex into Core/Import/GameGearData.cs (after a new datamine)
+dotnet run tools/generate-gear.cs
+
 # one hero's current-patch fights from FellowshipLogs into data/fights (credentials from the environment or the simfell user secrets)
 dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 

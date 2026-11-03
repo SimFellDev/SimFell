@@ -92,6 +92,38 @@ public class EnchantSlotsTests
     }
 
     [Fact]
+    public void A_Weapons_Two_Stat_Enchants_Are_Different_Ones()
+    {
+        var editor = NewEditor();
+        editor.Weapon = editor.Catalog.Weapons[0].Id;
+        // One stat enchant alone fills the gear's 26 and one of the weapon's 2, never both.
+        var first = StatEnchant.All[0];
+        editor.SetStatEnchantCount(first, 40);
+        Assert.Equal(27, editor.StatEnchantCount(first.Id));
+        Assert.Equal(1, editor.WeaponUsed(EnchantSlot.StatEnchants));
+        // The weapon's other slot takes another one.
+        Assert.Equal(0, editor.Room(EnchantSlot.StatEnchants, first.Id));
+        Assert.Equal(1, editor.Room(EnchantSlot.StatEnchants, StatEnchant.All[1].Id));
+        editor.SetStatEnchantCount(StatEnchant.All[1], 1);
+        Assert.Equal(28, editor.Used(EnchantSlot.StatEnchants));
+        Assert.True(editor.FitsGear);
+    }
+
+    [Fact]
+    public void A_Weapons_Two_Sigils_Are_Different_Ones()
+    {
+        // The armor holds 12 sigil ranks and the weapon 2, of two different sigils.
+        static int OneSigil(EnchantSlot kind) => kind == EnchantSlot.Sigils ? 1 : 0;
+        static int TwoSigils(EnchantSlot kind) => kind == EnchantSlot.Sigils ? 2 : 0;
+        Assert.True(GearFit.Fits(Counts(sigils: 13), weapon: true, OneSigil));
+        Assert.False(GearFit.Fits(Counts(sigils: 14), weapon: true, OneSigil));
+        Assert.True(GearFit.Fits(Counts(sigils: 14), weapon: true, TwoSigils));
+        // At 13 of one sigil, another rank of it does not fit; a rank of another one does.
+        Assert.Equal(0, GearFit.Room(EnchantSlot.Sigils, Counts(sigils: 13), weapon: true, OneSigil, another: false));
+        Assert.Equal(1, GearFit.Room(EnchantSlot.Sigils, Counts(sigils: 13), weapon: true, OneSigil, another: true));
+    }
+
+    [Fact]
     public void A_Weapon_Adds_Two_Sigils_Two_Stat_Enchants_And_An_Aspect()
     {
         var editor = NewEditor();

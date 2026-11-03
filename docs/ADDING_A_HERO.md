@@ -209,6 +209,7 @@ All found by the catalog through their ID constants; add the file and it is used
 | Relic passive | `Customization/RelicPassives` | `RelicPassiveId` (`Id`) |
 | Legendary | `Customization/Legendaries` | `HeroName` and the `ItemIds` that grant it |
 | Weapon | `Customization/Weapons` (+ its ability in `WeaponAbilities`) | `WeaponAbilityId` |
+| Gear items (the editor's slots and their stats) | `Import/GameGearData.cs`, written by `tools/generate-gear.cs`, not by hand | the item ID, per hero |
 | Buff from another player | `FellowshipSim.Engine/Replay/PartyBuffs.cs` | the buff's effect ID (optionally scaled by the giver's sigil rank) |
 
 Percentage bonuses to crit, haste, expertise or spirit go in `hero.Stats.Bonus*` (they apply in replays too: logs only give
