@@ -51,7 +51,9 @@ public class CompletionsTests
                 var properties = kind.Properties is { Count: > 0 } p ? p : [null];
                 foreach (string? property in properties)
                 {
+                    // A code field completes the path after an aggregate's ':' ("min:dot.chill.remains").
                     string path = ConditionBuilder.JoinPath(_v, new PathParts(kind.Id, name.Slug, property));
+                    path = path[(path.IndexOf(':') + 1)..];
                     int dot = path.LastIndexOf('.');
                     var found = Completions.For(_v, path[..(dot + 1)], variables).Select(c => c.Text);
                     Assert.Contains(path[(dot + 1)..], found);

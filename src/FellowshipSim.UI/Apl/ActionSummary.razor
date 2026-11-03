@@ -2,8 +2,8 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @implements IDisposable
 @*
-    The action's target, variable value and condition, coloured, once each has stayed the same for 300 ms; and a
-    run_action_list's warning.
+    The action's target, variable value and condition, coloured, once each has stayed the same for 300 ms; its
+    use_off_gcd and use_while_casting; and a run_action_list's warning.
 *@
 <div class="summary">@if (!string.IsNullOrWhiteSpace(_target.Text))
     {
@@ -17,6 +17,14 @@
     @if (!string.IsNullOrWhiteSpace(_condition.Text))
     {
         RenderClause(__builder, "if", null, _condition);
+    }
+    @if (Action.UseOffGcd)
+    {
+        RenderClause(__builder, "use", "off the global cooldown", null);
+    }
+    @if (Action.UseWhileCasting)
+    {
+        RenderClause(__builder, "use", "while casting", null);
     }
     @if (Warning is { } warning)
     {

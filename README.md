@@ -271,7 +271,9 @@ The **Action lists** page edits an action list without writing its text. Each ac
 ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. An action's **Type**
 is an ability to cast, **Run action list** or **Call action list** with the list to run, or **Set a variable** with the
 variable's name, its op (set, add to, subtract from or reset), its value and its default at the start of each fight;
-conditions read the variable as `variable.<name>`. Each name in a
+conditions read the variable as `variable.<name>`. An ability's **Timing** switches are **Use off the global cooldown**
+(`use_off_gcd=1`) and **Use while casting** (`use_while_casting=1`). The condition, a target's **Target by** and a
+variable's value each have **Builder** and **Text**. Each name in a
 condition has a colour for its kind (buff, debuff, cooldown, resource), and a wavy underline marks a name the hero
 does not have. Conditions in the editor chain with `and`, `or` and `not`; the text has `&`, `|` and `!`. A `&`, `|`
 or `!` typed in the editor becomes its word when you leave the field. Parentheses stay as written. **Builder** shows a
@@ -279,7 +281,8 @@ condition as rows: each row has its `and` or `or`, its `not`, and a value compar
 **Group** is a box of rows in parentheses; its chevron closes it to one line of its text, and **Close all groups** closes
 every group. Each value is terms joined by `+`, `-`, `*`, `%` or `%%`. Each term's picker lists the names by kind (buff,
 debuff, dot, cooldown, action, resource, fight value, value of the action itself, talent, blessing, legendary, weapon
-trait, weapon, enemies with a debuff, variable, previous action), then **Number** and **Group** for a condition in
+trait, weapon, enemies with a debuff, variable, previous action; a debuff's and a dot's properties include the shortest and
+longest time remaining on any enemy, `min:` and `max:`), then **Number** and **Group** for a condition in
 parentheses, then each **Function**, then `not` or `-` before the term; typing filters the list. A function takes the term
 as its first argument and shows each argument in its own box. The empty select after a value adds a term, a comparison, or inside
 parentheses an `and` or `or` row; an emptied operator or comparison removes its term or value. **Text** shows the
@@ -312,6 +315,9 @@ Conditions also have these values and functions:
   cooldown (Ice Blitz) leaves it as it is (`prev_gcd.frost_bolt`)
 - `debuff.<name>.oldest.remains` and `debuff.<name>.newest.remains` (and `.refreshable`): the application applied first or
   last, for a debuff whose every application runs on its own (`debuff.engulfing_flames.oldest.remains`)
+- `min:debuff.<name>.remains` and `max:debuff.<name>.remains`: the shortest or longest remaining time of any application on
+  any enemy in combat. Enemies without the debuff are left out. With no application anywhere, `min:` is a very large
+  number and `max:` is 0 (`incinerate,if=min:dot.engulfing_flames.remains<gcd`)
 - `abs(x)`, `ceil(x)`, `floor(x)`, `round(x)`, `min(a, b, ...)` and `max(a, b, ...)`
 - decimal numbers (`1.5`, `.25`)
 

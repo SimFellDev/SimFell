@@ -94,8 +94,16 @@ public static class AplParser
         Token.EqualTo(AplToken.Number)
             .Select(t => (IAplExpression)new ConstantExpression(double.Parse(t.ToStringValue(), NumberStyles.Float, CultureInfo.InvariantCulture)));
 
+    // An aggregate over every enemy in combat: 'min' or 'max', then ':', before a path.
+    private static readonly TokenListParser<AplToken, string?> Aggregate =
+        (from name in Token.EqualTo(AplToken.Identifier).Where(t => AplEnemyAggregates.ByPrefix.ContainsKey(t.ToStringValue()), "`min` or `max`")
+         from colon in Token.EqualTo(AplToken.Colon)
+         select (string?)$"{name.ToStringValue()}:").Try().OptionalOrDefault();
+
     private static readonly TokenListParser<AplToken, IAplExpression> Property =
-        Token.EqualTo(AplToken.Identifier).Select(t => (IAplExpression)new PropertyExpression(t.ToStringValue()));
+        from aggregate in Aggregate
+        from path in Token.EqualTo(AplToken.Identifier)
+        select (IAplExpression)new PropertyExpression(aggregate + path.ToStringValue());
 
     private static readonly TokenListParser<AplToken, IAplExpression> Group =
         Parse.Ref(() => Expression!).Between(Token.EqualTo(AplToken.LParen), Token.EqualTo(AplToken.RParen))

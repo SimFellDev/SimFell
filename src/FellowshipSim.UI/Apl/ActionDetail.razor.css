@@ -32,6 +32,13 @@
   font: 13px/1.5 var(--code-font);
 }
 
+.detail .switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding-top: 6px;
+}
+
 .detail .name {
   width: 240px;
   max-width: 100%;

@@ -8,7 +8,7 @@
 *@
 <div class="condition">
     <div class="bar">
-        <div class="segmented" role="group" aria-label="Condition editor">
+        <div class="segmented" role="group" aria-label="@($"{Label} editor")">
             <button type="button" aria-pressed="@(Building ? "true" : "false")" disabled="@(Rows == null)"
                     data-tooltip="@(Rows == null ? "The text does not parse" : "")" @onclick="() => PickMode(ActionListEditor.BuilderMode)">
                 Builder
@@ -42,6 +42,12 @@
     [Parameter] public string? Value { get; set; }
 
     [Parameter] public string Placeholder { get; set; } = "";
+
+    /// <summary>The field's name in the editor's accessible label: Condition, Target by or Value.</summary>
+    [Parameter] public string Label { get; set; } = "Condition";
+
+    /// <summary>The word before the first row: "if" on a condition, none on a value.</summary>
+    [Parameter] public string Lead { get; set; } = "if";
 
     [Parameter] public EventCallback<string> OnChange { get; set; }
 
@@ -167,7 +173,7 @@
                     }
                     else if (depth == 0 && !nested)
                     {
-                        <span class="if">if</span>
+                        <span class="if">@Lead</span>
                     }
                     @{ RenderNot(__builder, item.Not, () => Update(r => r.Not = !item.Not)); }
                 </div>
@@ -405,7 +411,7 @@
     {
         if (index == 0)
         {
-            <span class="if">@(depth == 0 && !nested ? "if" : "")</span>
+            <span class="if">@(depth == 0 && !nested ? Lead : "")</span>
         }
         else
         {

@@ -51,7 +51,7 @@ public static class ConditionBuilder
                 PropertyExpression.DebuffScope or PropertyExpression.DotScope => AplTokenKind.Debuff,
                 PropertyExpression.CooldownScope or PropertyExpression.ActionScope => AplTokenKind.Cooldown,
                 _ => AplTokenKind.Named,
-            }, scopeNames[scope.Key], scope.Value.ToList(), Description: PropertyExpression.ScopeDocs[scope.Key].Description)),
+            }, scopeNames[scope.Key], [.. scope.Value, .. AggregateProperties(scope.Key)], Description: PropertyExpression.ScopeDocs[scope.Key].Description)),
             new ConditionKind(ResourceKind, Resource.Label, AplTokenKind.Resource, v.Resources, [CurrentProperty, DeficitProperty], Description: Resource.Description),
             new ConditionKind(NamedKind, FightValue.Label, AplTokenKind.Named,
                 v.Named.Select(n => Described(n, PropertyExpression.Named[n].Doc)).ToList(),
@@ -71,6 +71,22 @@ public static class ConditionBuilder
 
     private static AplName Described(string slug, AplDoc doc) => new(slug, doc.Label, doc.Description);
 
+    /// <summary>
+    /// A debuff's or dot's remaining time over every enemy in combat as the builder's property ("min:remains"); the text
+    /// writes its prefix before the path (<c>min:dot.engulfing_flames.remains</c>).
+    /// </summary>
+    public static string AggregateProperty(AplEnemyAggregate aggregate) => $"{aggregate.Prefix()}:{AplEnemyAggregates.Property}";
+
+    // The aggregate properties of a kind: a debuff's and a dot's.
+    private static IEnumerable<string> AggregateProperties(string kind) =>
+        IsDebuffKind(kind) ? Enum.GetValues<AplEnemyAggregate>().Select(AggregateProperty) : [];
+
+    private static bool IsDebuffKind(string kind) => kind is PropertyExpression.DebuffScope or PropertyExpression.DotScope;
+
+    // The aggregate of an aggregate property ("min:remains"); null for any other property.
+    private static AplEnemyAggregate? AggregateOf(string? property) =>
+        Enum.GetValues<AplEnemyAggregate>().Cast<AplEnemyAggregate?>().FirstOrDefault(a => AggregateProperty(a!.Value) == property);
+
     /// <summary>The resource kind: each resource by its name, or after "resource.".</summary>
     public static readonly AplDoc Resource = new("Resource", "A resource of the hero. Write its name alone or after resource.");
 
@@ -81,7 +97,9 @@ public static class ConditionBuilder
     public static readonly AplDoc ThisAction = new("This action", "A value of the ability of this action. Write it with no scope.");
 
     /// <summary>The doc of a property of a kind: a scope's property, or a resource's current amount or deficit; null for any other.</summary>
-    public static AplDoc? PropertyDoc(string kind, string property) => kind == ResourceKind
+    public static AplDoc? PropertyDoc(string kind, string property) =>
+        IsDebuffKind(kind) && AggregateOf(property) is { } aggregate ? aggregate.Doc().Doc
+        : kind == ResourceKind
         ? property switch
         {
             CurrentProperty => PropertyExpression.ResourceCurrent,
@@ -102,10 +120,19 @@ public static class ConditionBuilder
 
     /// <summary>
     /// "buff.ice_blitz.up" -> (buff, ice_blitz, up); "talent.slow_burn" -> (talent, slow_burn); "spirit.deficit" ->
-    /// (resource, spirit, deficit); an action's own value or a named value is its whole path.
+    /// (resource, spirit, deficit); "min:dot.engulfing_flames.remains" -> (dot, engulfing_flames, min:remains); an action's
+    /// own value or a named value is its whole path.
     /// </summary>
     public static PathParts SplitPath(AplVocabulary v, string path)
     {
+        int colon = path.IndexOf(':');
+        if (colon > 0 && AplEnemyAggregates.ByPrefix.TryGetValue(path[..colon], out var aggregate))
+        {
+            var inner = SplitPath(v, path[(colon + 1)..]);
+            return IsDebuffKind(inner.Kind) && inner.Property == AplEnemyAggregates.Property
+                ? inner with { Property = AggregateProperty(aggregate) }
+                : new PathParts(NamedKind, path);
+        }
         string[] parts = path.Split('.');
         if (parts.Length >= 3 && v.Scopes.ContainsKey(parts[0])) return new PathParts(parts[0], parts[1], string.Join(".", parts[2..]));
         if (parts.Length == 2 && IsNameScope(v, parts[0])) return new PathParts(parts[0], parts[1]);
@@ -119,6 +146,8 @@ public static class ConditionBuilder
 
     public static string JoinPath(AplVocabulary v, PathParts parts) => parts.Kind switch
     {
+        _ when IsDebuffKind(parts.Kind) && AggregateOf(parts.Property) is { } aggregate =>
+            $"{aggregate.Prefix()}:{parts.Kind}.{parts.Name}.{AplEnemyAggregates.Property}",
         _ when v.Scopes.ContainsKey(parts.Kind) => $"{parts.Kind}.{parts.Name}.{parts.Property}",
         _ when IsNameScope(v, parts.Kind) => $"{parts.Kind}.{parts.Name}",
         ResourceKind when parts.Property == DeficitProperty => parts.Name + v.DeficitSuffix,

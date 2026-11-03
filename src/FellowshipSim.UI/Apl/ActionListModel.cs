@@ -121,7 +121,8 @@ public static partial class ActionListModel
     /// <summary>Every action in list order, with its list's name.</summary>
     public static IReadOnlyList<AplDocumentAction> DocumentActions(IReadOnlyList<ActionList> lists) =>
         lists.SelectMany(list => list.Actions.Select(a => new AplDocumentAction(
-            a.Ability, a.Condition, a.TargetSelection, a.TargetExpression, a.Comment, list.Name, a.Arguments, a.ActionList, a.Variable))).ToList();
+            a.Ability, a.Condition, a.TargetSelection, a.TargetExpression, a.Comment, list.Name, a.Arguments, a.ActionList, a.Variable,
+            a.UseOffGcd, a.UseWhileCasting))).ToList();
 
     public static string ErrorText(AplVocabulary v, IReadOnlyList<ActionList> lists, IReadOnlyList<AplDocumentError> errors)
     {

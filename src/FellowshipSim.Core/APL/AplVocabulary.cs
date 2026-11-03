@@ -167,6 +167,12 @@ public sealed class AplVocabulary
     }
 
     /// <summary>Token kind of <paramref name="property"/> for this hero, and the problem when the hero has nothing by that name.</summary>
+    // The path after an aggregate's ':': a debuff's remaining time, with no oldest or newest pick.
+    private (AplTokenKind Kind, string? Problem) ClassifyAggregated(PropertyExpression property) =>
+        property.IsEnemyAggregate
+            ? Classify(property)
+            : (AplTokenKind.Unknown, $"`{property.Aggregate!.Value.Prefix()}:` reads `{PropertyExpression.DotScope}.<name>.{AplEnemyAggregates.Property}` or `{PropertyExpression.DebuffScope}.<name>.{AplEnemyAggregates.Property}`; it reads as 0 here.");
+
     public (AplTokenKind Kind, string? Problem) Classify(PropertyExpression property)
     {
         if (PropertyExpression.Named.ContainsKey(property.PropertyPath)) return (AplTokenKind.Named, null);
@@ -243,6 +249,12 @@ public sealed class AplVocabulary
             // A function's name, before its arguments in parentheses.
             AplToken.Identifier when i + 1 < all.Length && all[i + 1].Kind == AplToken.LParen
                                      && AplFunctions.ByName.ContainsKey(t.ToStringValue()) => (AplTokenKind.Function, null),
+            // An aggregate over every enemy in combat, before its ':' and path.
+            AplToken.Identifier when i + 1 < all.Length && all[i + 1].Kind == AplToken.Colon
+                                     && AplEnemyAggregates.ByPrefix.ContainsKey(t.ToStringValue()) => (AplTokenKind.Keyword, null),
+            AplToken.Identifier when i >= 2 && all[i - 1].Kind == AplToken.Colon && all[i - 2].Kind == AplToken.Identifier
+                                     && AplEnemyAggregates.ByPrefix.ContainsKey(all[i - 2].ToStringValue()) =>
+                ClassifyAggregated(new PropertyExpression($"{all[i - 2].ToStringValue()}:{t.ToStringValue()}")),
             AplToken.Identifier => Classify(new PropertyExpression(t.ToStringValue())),
             _ => (AplTokenKind.Operator, (string?)null),
         };
