@@ -48,11 +48,18 @@ public sealed class SimPageState
         set
         {
             _editor = value;
+            BuildPlaced = true;
             if (!value.Build.Hero.Equals(_actionListHero, StringComparison.OrdinalIgnoreCase)) SwapActionList(value.Build.Hero);
         }
     }
 
     private BuildEditor _editor = new(BuildEditor.NewBuild("Rime"));
+
+    /// <summary>
+    /// True once a build replaced the first new build: a load, an import, a share link or a sim's run. The page opens the
+    /// last build open only while this is false.
+    /// </summary>
+    public bool BuildPlaced { get; private set; }
 
     public CharacterBuild Build => Editor.Build;
 
@@ -327,6 +334,19 @@ public sealed class SimPageState
     }
 
     public MessageState Status { get; set; } = MessageState.None;
+
+    // Each hero's action-list editor on the Modes tab, kept while another hero's build shows.
+    private readonly Dictionary<string, Apl.ActionListsState> _actionListEditors = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The Modes tab's action-list editor of <paramref name="hero"/>, its own for each hero.</summary>
+    public Apl.ActionListsState ActionListEditor(string hero, ISimEngine engine)
+    {
+        if (!_actionListEditors.TryGetValue(hero, out var editor)) _actionListEditors[hero] = editor = new Apl.ActionListsState(engine);
+        return editor;
+    }
+
+    /// <summary>True when the Modes tab shows the action list's editor under its picker.</summary>
+    public bool ActionListEditorOpen { get; set; }
 
     /// <summary>Raised when something outside the Sim page changes its build (a sim's run loaded), so the page shows it.</summary>
     public event Action? Changed;

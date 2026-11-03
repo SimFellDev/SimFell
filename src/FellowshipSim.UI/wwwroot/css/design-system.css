@@ -303,6 +303,34 @@
   margin: 0;
 }
 
+/* A dialog of one field or a few choices: a name to save under, a hero to start a build with. */
+.small-dialog {
+  max-width: 460px;
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px 20px;
+}
+
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.name-field input {
+  font-size: 15px;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 600px) {
   .modal-layer {
     padding: 16px 8px;

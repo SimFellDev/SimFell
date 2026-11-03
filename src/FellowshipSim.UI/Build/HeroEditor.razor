@@ -15,32 +15,71 @@
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
 <Card>
-    <div class="row toolbar">
-        <input aria-label="Build name" placeholder="Build name" autocomplete="off" @bind="Build.Name" @bind:after="Changed" />
-        <select @key="_pickerKey" aria-label="Saved builds" @bind:get="State.SavedName" @bind:set="LoadSavedAsked">
-            <option value="">Load build...</option>
-            @foreach (var saved in _saved)
-            {
-                <option @key="saved.Name" value="@saved.Name">@saved.Name</option>
-            }
-        </select>
-        <button type="button" class="secondary-button" @onclick="SaveAsync">Save</button>
-        <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
-        <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
-        <button type="button" class="secondary-button" aria-expanded="@(_exportOpen ? "true" : "false")" @onclick="ExportAsync">Export</button>
-        <button type="button" class="secondary-button delete" disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync">Delete</button>
-        @if (OnImport.HasDelegate)
-        {
-            <button type="button" class="secondary-button import-button" aria-haspopup="dialog" data-tooltip="Import a character from a log, a .simc profile or a share link"
-                    @onclick="OnImport">
-                <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                Import
+    <div class="toolbar">
+        <div class="build-select" @onkeydown="OnBuildKeyDown">
+            <button type="button" class="build-current @(_buildMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_buildMenuOpen ? "true" : "false")"
+                    aria-label="Saved builds" @onclick="ToggleBuildMenu">
+                <GameIcon Url="@BuildCatalog.PortraitUrl(Build.Hero)" Size="32" />
+                <span class="build-name">
+                    <strong>@Build.Name</strong>
+                    <span class="meta">@Build.Hero@(State.SavedName.Length == 0 ? " · not saved" : "")</span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
             </button>
-        }
-        <button type="button" class="build-link-button"aria-expanded="@(_shareOpen ? "true" : "false")" data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync">
-            <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path d="M10 2h4v4M14 2 8 8M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            Share build
-        </button>
+            @if (_buildMenuOpen)
+            {
+                <div class="hero-backdrop" @onclick="() => _buildMenuOpen = false"></div>
+                <div class="build-menu">
+                    <input @ref="_buildSearchInput" type="search" class="build-search" aria-label="Search builds or heroes" placeholder="Search builds or heroes"
+                           autocomplete="off" spellcheck="false" @bind="_buildSearch" @bind:event="oninput" />
+                    <div role="listbox" aria-label="Saved builds">
+                        @{ string? group = null; }
+                        @foreach (var saved in FoundBuilds())
+                        {
+                            if (!saved.Hero.Equals(group, StringComparison.OrdinalIgnoreCase))
+                            {
+                                group = saved.Hero;
+                                <span @key="@($"group/{saved.Hero}")" class="group">@saved.Hero</span>
+                            }
+                            bool picked = IsOpen(saved);
+                            <button @key="@($"{saved.Hero}/{saved.Name}")" type="button" role="option" class="hero-option @(picked ? "picked" : "")" aria-selected="@(picked ? "true" : "false")"
+                                    @onclick="() => LoadSavedAsked(saved)">
+                                <GameIcon Url="@BuildCatalog.PortraitUrl(saved.Hero)" Size="28" />
+                                <span class="option-name">@saved.Name</span>
+                                @if (picked)
+                                {
+                                    <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                                }
+                            </button>
+                        }
+                        @if (!FoundBuilds().Any())
+                        {
+                            <span class="no-builds">@(_saved.Count == 0 ? "No saved builds yet." : "No build or hero matches.")</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="icons">
+            <button type="button" class="icon-button" aria-label="Save" data-tooltip="Save" @onclick="SaveAsked"><Icon Shape="IconShape.Save" /></button>
+            <button type="button" class="icon-button" aria-label="Rename" data-tooltip="@(State.SavedName.Length == 0 ? "Save the build first" : "Rename")"
+                    disabled="@(State.SavedName.Length == 0)" @onclick="RenameAsked"><Icon Shape="IconShape.Pencil" /></button>
+            <button type="button" class="icon-button" aria-label="New build" aria-haspopup="dialog" data-tooltip="New build" @onclick="() => _newOpen = true"><Icon Shape="IconShape.Plus" /></button>
+            <button type="button" class="icon-button" aria-label="Duplicate" data-tooltip="Duplicate" @onclick="Duplicate"><Icon Shape="IconShape.Duplicate" /></button>
+            <span class="divider" aria-hidden="true"></span>
+            @if (OnImport.HasDelegate)
+            {
+                <button type="button" class="icon-button" aria-label="Import" aria-haspopup="dialog" data-tooltip="Import a character from a log, a .simc profile or a share link"
+                        @onclick="OnImport"><Icon Shape="IconShape.Import" /></button>
+            }
+            <button type="button" class="icon-button" aria-label="Export" aria-expanded="@(_exportOpen ? "true" : "false")" data-tooltip="Export the build as a .simc profile"
+                    @onclick="ExportAsync"><Icon Shape="IconShape.Export" /></button>
+            <button type="button" class="icon-button" aria-label="Share build" aria-expanded="@(_shareOpen ? "true" : "false")"
+                    data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync"><Icon Shape="IconShape.Link" /></button>
+            <span class="divider" aria-hidden="true"></span>
+            <button type="button" class="icon-button danger-button" aria-label="Delete" data-tooltip="@(State.SavedName.Length == 0 ? "The build is not saved" : "Delete")"
+                    disabled="@(State.SavedName.Length == 0)" @onclick="DeleteAsync"><Icon Shape="IconShape.Bin" /></button>
+        </div>
     </div>
     @if (State.BuildStatus.Text.Length > 0)
     {
@@ -86,6 +125,22 @@
                         <GameIcon @key="hero" Url="@BuildCatalog.PortraitUrl(hero)" Size="36" />
                     }
                 </div>
+                @if (State.SavedName.Length > 0)
+                {
+                    @* A saved build's hero is fixed: another hero is a new build. *@
+                    <div class="hero-current fixed">
+                        @if (BuildCatalog.PortraitUrl(Build.Hero) is { } portrait)
+                        {
+                            <img src="@portrait" alt="" loading="lazy" />
+                        }
+                        <span class="hero-name">
+                            <strong>@Build.Hero</strong>
+                            <span class="meta">Fixed for a saved build</span>
+                        </span>
+                    </div>
+                }
+                else
+                {
                 <div class="hero-select" @onkeydown="OnHeroKeyDown">
                     <button type="button" class="hero-current @(_heroMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_heroMenuOpen ? "true" : "false")"
                             @onclick="() => _heroMenuOpen = !_heroMenuOpen">
@@ -134,6 +189,7 @@
                         </div>
                     }
                 </div>
+                }
             <h3 class="section">Character sheet</h3>
             <div class="sheet">
                 <span class="sheet-label">Main stat</span>
@@ -415,6 +471,76 @@
     </div>
 }
 
+@if (_newOpen)
+{
+    @* New build: its hero first. Clicking outside the dialog closes it. *@
+    <div class="modal-layer" @onclick="() => _newOpen = false" @onkeydown="OnDialogKeyDown">
+        <div class="modal small-dialog" role="dialog" aria-modal="true" aria-labelledby="new-build-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="new-build-title" class="title">New build</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="() => _newOpen = false">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <span class="group">In the engine</span>
+                <div class="hero-tiles">
+                    @foreach (string hero in BuildCatalog.GameHeroes.Where(IsSupported))
+                    {
+                        <button @key="hero" type="button" class="hero-tile" @onclick="() => NewAsked(hero)">
+                            <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="32" />
+                            @hero
+                        </button>
+                    }
+                </div>
+                <span class="group">Build Only: Not in Engine</span>
+                <div class="hero-tiles">
+                    @foreach (string hero in BuildCatalog.GameHeroes.Where(h => !IsSupported(h)))
+                    {
+                        <button @key="hero" type="button" class="hero-tile" @onclick="() => NewAsked(hero)">
+                            <GameIcon Url="@BuildCatalog.PortraitUrl(hero)" Size="32" />
+                            @hero
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_nameDialog is { } naming)
+{
+    @* Save names a build not saved yet; Rename names a saved one anew. *@
+    <div class="modal-layer" @onclick="CloseNameDialog" @onkeydown="OnDialogKeyDown">
+        <div class="modal small-dialog" role="dialog" aria-modal="true" aria-labelledby="build-name-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="build-name-title" class="title">@(naming == BuildNaming.Rename ? "Rename build" : "Save build")</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseNameDialog">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <form class="dialog-body" @onsubmit="ConfirmNameAsync" @onsubmit:preventDefault="true">
+                <label class="name-field">
+                    Build name
+                    <input @ref="_nameInput" autocomplete="off" spellcheck="false" maxlength="64" @bind="_nameText" @bind:event="oninput" />
+                </label>
+                @if (naming == BuildNaming.Rename && State.HasBuildEdits)
+                {
+                    <p class="hint">Rename saves the build's changes too.</p>
+                }
+                @if (_nameError.Length > 0)
+                {
+                    <p class="field-error">@_nameError</p>
+                }
+                <div class="row dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CloseNameDialog">Cancel</button>
+                    <button type="submit">@(naming == BuildNaming.Rename ? "Rename" : "Save")</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 @code {
     /// <summary>Called after every change to the build.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
@@ -440,14 +566,28 @@
             .Where(s => s.Item2 > 0);
 
     private IReadOnlyList<string> _heroes = [];
+    // Every hero's saved builds, by hero then name.
     private IReadOnlyList<ProfileEntry> _saved = [];
-    // The hero _saved lists the builds of.
-    private string? _savedHero;
 
-    // The step waiting on the unsaved changes (open another hero, build or a new one), and a key that draws the picker
-    // anew so a cancelled pick shows the build still open.
+    // The saved-build menu, its search, and a focus on the search once the menu draws.
+    private bool _buildMenuOpen;
+    private string _buildSearch = "";
+    private ElementReference _buildSearchInput;
+    private bool _focusSearch;
+
+    // The New build dialog, and the name dialog with its field and its error.
+    private bool _newOpen;
+    private BuildNaming? _nameDialog;
+    private string _nameText = "";
+    private string _nameError = "";
+    private ElementReference _nameInput;
+    private bool _focusName;
+
+    /// <summary>The browser's storage key of the last saved build open, as hero/name.</summary>
+    public const string LastBuildKey = "sim-build";
+
+    // The step waiting on the unsaved changes: open another hero, build or a new one.
     private (string What, Func<Task> Then)? _pending;
-    private int _pickerKey;
 
     private BuildEditor Editor => State.Editor;
     private CharacterBuild Build => State.Build;
@@ -461,7 +601,7 @@
         try
         {
             _heroes = await Engine.GetHeroesAsync();
-            await LoadSavedListAsync(force: true);
+            await LoadSavedListAsync();
         }
         catch (Exception e)
         {
@@ -469,20 +609,21 @@
         }
     }
 
-    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        StateHasChanged();
-        try
+        if (_focusSearch)
         {
-            await LoadSavedListAsync();
-            StateHasChanged();
+            _focusSearch = false;
+            await _buildSearchInput.FocusAsync();
         }
-        catch (Exception e)
+        if (_focusName)
         {
-            State.BuildStatus = MessageState.Error(e.Message);
-            StateHasChanged();
+            _focusName = false;
+            await _nameInput.FocusAsync();
         }
-    });
+    }
 
     public void Dispose() => State.Changed -= OnStateChanged;
 
@@ -567,22 +708,14 @@
         return AskFirst($"opening {hero}", () => PickHero(hero));
     }
 
-    // Builds are saved per hero: the picker lists the new hero's builds.
-    private async Task PickHero(string hero)
+    // A new build of the hero, not saved yet.
+    private Task PickHero(string hero)
     {
         State.Editor = new BuildEditor(BuildEditor.NewBuild(hero));
         State.SavedName = "";
         State.MarkBuildClean();
         State.BuildStatus = MessageState.None;
-        try
-        {
-            await LoadSavedListAsync(force: true);
-        }
-        catch (Exception e)
-        {
-            State.BuildStatus = MessageState.Error(e.Message);
-        }
-        await Changed();
+        return Changed();
     }
 
     /// <summary>Runs <paramref name="then"/> now, or after asking to save when the build has changes not saved.</summary>
@@ -590,13 +723,18 @@
     {
         if (!State.HasBuildEdits) return then();
         _pending = (what, then);
-        _pickerKey++;
         return Task.CompletedTask;
     }
 
+    // A build not saved yet takes its name first: the name dialog's Save goes on to the step waiting.
     private async Task SaveThenContinue()
     {
-        await SaveAsync();
+        if (State.SavedName.Length == 0)
+        {
+            OpenNameDialog(BuildNaming.Save);
+            return;
+        }
+        await SaveAsync(State.SavedName);
         // A save that failed keeps the question, with the reason in the status.
         if (State.HasBuildEdits || _pending is not { } pending) return;
         _pending = null;
@@ -682,20 +820,15 @@
         }
     }
 
-    private Task NewAsked() => AskFirst("starting a new build", New);
-
-    private Task New()
+    // A new build of the hero picked in the New build dialog.
+    private Task NewAsked(string hero)
     {
-        State.Editor = new BuildEditor(BuildEditor.NewBuild(Build.Hero));
-        State.SavedName = "";
-        State.MarkBuildClean();
-        State.BuildStatus = MessageState.None;
-        return Changed();
+        _newOpen = false;
+        return AskFirst($"starting a new {hero} build", () => PickHero(hero));
     }
 
     // The rating's percentage is the log's character sheet until the rating changes.
     private static string StatName(RatedStat stat) => stat == RatedStat.Crit ? "Critical strike" : stat.ToString();
-
 
     // A copy of the build, not saved yet, named after it.
     private Task Duplicate()
@@ -708,33 +841,50 @@
         return Changed();
     }
 
-    // A build from an import or a sim's run can be another hero's, so the list reads the builds of the hero shown.
-    private async Task LoadSavedListAsync(bool force = false)
+    private async Task LoadSavedListAsync() => _saved = await Profiles.ListAsync(Visitor, BuildCatalog.GameHeroes);
+
+    private bool IsOpen(ProfileEntry saved) =>
+        saved.Name == State.SavedName && saved.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase);
+
+    // The saved builds whose name or hero has the search text.
+    private IEnumerable<ProfileEntry> FoundBuilds()
     {
-        string hero = Build.Hero;
-        if (!force && hero.Equals(_savedHero, StringComparison.OrdinalIgnoreCase)) return;
-        var saved = (await Profiles.ListAsync(Visitor, [hero])).ToList();
-        // The build shows another hero now, whose list replaces this one.
-        if (!hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)) return;
-        _saved = saved;
-        _savedHero = hero;
+        string search = _buildSearch.Trim();
+        return search.Length == 0 ? _saved
+            : _saved.Where(s => s.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || s.Hero.Contains(search, StringComparison.OrdinalIgnoreCase));
     }
 
-    private Task LoadSavedAsked(string name) => name.Length > 0 ? AskFirst($"opening {name}", () => LoadSavedAsync(name)) : LoadSavedAsync(name);
-
-    private async Task LoadSavedAsync(string name)
+    private void ToggleBuildMenu()
     {
-        State.SavedName = name;
-        if (name.Length == 0) return;
+        _buildMenuOpen = !_buildMenuOpen;
+        _buildSearch = "";
+        _focusSearch = _buildMenuOpen;
+    }
+
+    private void OnBuildKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _buildMenuOpen = false;
+    }
+
+    private Task LoadSavedAsked(ProfileEntry saved)
+    {
+        _buildMenuOpen = false;
+        return IsOpen(saved) ? Task.CompletedTask : AskFirst($"opening {saved.Name}", () => LoadSavedAsync(saved));
+    }
+
+    private async Task LoadSavedAsync(ProfileEntry saved)
+    {
         try
         {
-            string text = await Profiles.ReadAsync(Visitor, new ProfileEntry(Build.Hero, name))
-                          ?? throw new KeyNotFoundException($"No build named {name}.");
+            string text = await Profiles.ReadAsync(Visitor, saved)
+                          ?? throw new KeyNotFoundException($"No {saved.Hero} build named {saved.Name}.");
             var build = SimcProfile.Parse(text).Build;
-            build.Name = name;
+            build.Name = saved.Name;
             State.Editor = new BuildEditor(build);
+            State.SavedName = saved.Name;
             State.MarkBuildClean();
-            State.BuildStatus = MessageState.Ok($"Loaded {name}.");
+            State.BuildStatus = MessageState.Ok($"Loaded {saved.Name}.");
+            await RememberAsync();
             await Changed();
         }
         catch (Exception e)
@@ -743,26 +893,113 @@
         }
     }
 
-    private async Task SaveAsync()
+    // The browser keeps the saved build open. The Sim page opens it next time.
+    private async Task RememberAsync()
     {
-        string name = Build.Name.Trim();
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LastBuildKey, $"{Build.Hero}/{State.SavedName}");
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // The page opens the first new build next time.
+        }
+    }
+
+    // A saved build saves under its name; a build not saved yet asks its name.
+    private Task SaveAsked()
+    {
+        if (State.SavedName.Length > 0) return SaveAsync(State.SavedName);
+        OpenNameDialog(BuildNaming.Save);
+        return Task.CompletedTask;
+    }
+
+    private void RenameAsked()
+    {
+        if (State.SavedName.Length > 0) OpenNameDialog(BuildNaming.Rename);
+    }
+
+    private void OpenNameDialog(BuildNaming naming)
+    {
+        _nameDialog = naming;
+        _nameText = Build.Name;
+        _nameError = "";
+        _focusName = true;
+    }
+
+    // Cancelling the name dialog cancels the step waiting on the save too.
+    private void CloseNameDialog()
+    {
+        _nameDialog = null;
+        _pending = null;
+    }
+
+    private void OnDialogKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape") return;
+        _newOpen = false;
+        if (_nameDialog != null) CloseNameDialog();
+    }
+
+    private async Task ConfirmNameAsync()
+    {
+        if (_nameDialog is not { } naming) return;
+        string name = _nameText.Trim();
         if (!ActionListStore.IsValidName(name))
         {
-            State.BuildStatus = MessageState.Error("Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).");
+            _nameError = "Name the build with letters, digits, spaces, '_' and '-' (up to 64 characters).";
             return;
         }
+        string old = State.SavedName;
+        bool taken = _saved.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && s.Hero.Equals(Build.Hero, StringComparison.OrdinalIgnoreCase)
+                                     && !s.Name.Equals(old, StringComparison.OrdinalIgnoreCase));
+        if (taken)
+        {
+            _nameError = $"A {Build.Hero} build named {name} exists.";
+            return;
+        }
+        if (!await SaveAsync(name)) return;
+        if (naming == BuildNaming.Rename && old.Length > 0 && !old.Equals(name, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, old));
+                await LoadSavedListAsync();
+                State.BuildStatus = MessageState.Ok($"Renamed {old} to {name}.");
+            }
+            catch (Exception e)
+            {
+                State.BuildStatus = MessageState.Error($"Saved {name}; {old} is still saved too: {e.Message}");
+            }
+        }
+        _nameDialog = null;
+        if (_pending is { } pending)
+        {
+            _pending = null;
+            await pending.Then();
+        }
+        await Changed();
+    }
+
+    /// <summary>Saves the build as <paramref name="name"/> and opens that saved build; false, with the reason in the status, when it fails.</summary>
+    private async Task<bool> SaveAsync(string name)
+    {
         try
         {
             Build.Name = name;
             await Profiles.SaveAsync(Visitor, new ProfileEntry(Build.Hero, name), new SimcProfile(Build, "").Format());
-            await LoadSavedListAsync(force: true);
+            await LoadSavedListAsync();
             State.SavedName = name;
             State.MarkBuildClean();
             State.BuildStatus = MessageState.Ok($"Saved {name} to your builds.");
+            await RememberAsync();
+            return true;
         }
         catch (Exception e)
         {
             State.BuildStatus = MessageState.Error(e.Message);
+            _nameError = e.Message;
+            return false;
         }
     }
 
@@ -772,7 +1009,7 @@
         try
         {
             await Profiles.DeleteAsync(Visitor, new ProfileEntry(Build.Hero, name));
-            await LoadSavedListAsync(force: true);
+            await LoadSavedListAsync();
             State.SavedName = "";
             State.BuildStatus = MessageState.Ok($"Deleted {name}. The editor keeps the build until you change it.");
         }

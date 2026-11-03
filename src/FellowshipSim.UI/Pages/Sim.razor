@@ -48,43 +48,22 @@
             break;
 
         case SimTab.Modes:
-            <ModesTab Heroes="_heroes" Lists="_lists" OnChanged="StateHasChanged" />
+            <ModesTab Heroes="_heroes" Lists="_lists" OnChanged="StateHasChanged" OnListsChanged="ReloadListsAsync" />
             break;
 
         case SimTab.Advanced:
-            <Card Title="Sim">
-                <div class="settings">
-                    <label>
-                        Iterations
-                        <input type="number" min="1" step="1" @bind="State.Iterations" />
-                    </label>
-                    <label>
+            <Card Title="Advanced settings">
+                <div class="fields">
+                    <label class="field">
                         Threads (of @MaxThreads)
                         <input type="number" min="1" max="@MaxThreads" step="1" @bind:get="State.Threads" @bind:set="SetThreadsAsync" />
                     </label>
-                </div>
-            </Card>
-            <Card Title="Action list">
-                <div class="settings">
-                    <label>
-                        APL
-                        <select class="apl" disabled="@(State.Extra == SimExtra.Compare)" @bind:get="State.ActionListValue" @bind:set="PickActionListAsync">
-                            @if (State.ActionListValue.Length == 0)
-                            {
-                                <option value="">@State.ActionListName</option>
-                            }
-                            @foreach (var list in _lists.Where(l => l.Hero.Equals(State.Build.Hero, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                <option @key="ListValue(list)" value="@ListValue(list)">@list.Name@(list.BuiltIn ? " (built in)" : list.Shared ? " (shared)" : "")</option>
-                            }
-                        </select>
+                    <label class="field" data-tooltip="The first fight's seed; fight i has this seed + i. The fights' lengths and every roll of the dice depend on it">
+                        Seed
+                        <input type="number" min="@int.MinValue" max="@int.MaxValue" step="1" @bind="State.FirstSeed" />
                     </label>
+                    <AdvancedFightFields State="State" />
                 </div>
-                @if (State.Extra == SimExtra.Compare)
-                {
-                    <p class="hint">Compare is on: each of its runs picks its own action list on the Modes tab.</p>
-                }
-                <p class="hint">Make or change a list in the <button type="button" class="link-button" @onclick="() => Views.ShowPage(AppPage.AplEditor)">APL Editor</button>; save it there and it shows here.</p>
             </Card>
             <Card Title="Profile">
                 <p class="hint">The <code>.simc</code> profile the sim runs: the build, the sim settings, the dungeon of a dungeon fight, then the action list.</p>
@@ -110,7 +89,7 @@
                 <ImportCard Title="Import from a log" PickHint="Pick a player, switch on their build, the fight's dungeon with their hero share, or both, then Import."
                             BuildOnlyHeroes="true" OnImport="ImportFromLogAsync" />
                 <Card Title="Import a .simc profile or share link">
-                    <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, a profile's sim settings to Modes and Advanced, and its action list to Advanced.</p>
+                    <p class="hint">Load a <code>.simc</code> file, or paste its text or a build's share link. Its build goes to the Hero tab, a profile's sim settings to Modes and Advanced, and its action list to Modes.</p>
                     <InputFile class="file" accept=".simc,.txt" OnChange="LoadFileAsync" />
                     <textarea class="profile" rows="10" spellcheck="false" placeholder='rime="name"' @bind="State.ProfileText"></textarea>
                     <div class="row actions">
@@ -157,7 +136,9 @@
     // unavailable.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || State.ThreadsRestored) return;
+        if (!firstRender) return;
+        await OpenLastBuildAsync();
+        if (State.ThreadsRestored) return;
         State.ThreadsRestored = true;
         try
         {
@@ -170,6 +151,30 @@
         catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException)
         {
             // The default stays.
+        }
+    }
+
+    // The saved build the browser last had open, in place of the first new build. A build an import, a share link or a
+    // sim's run put in stays; a build since deleted leaves the new one.
+    private async Task OpenLastBuildAsync()
+    {
+        if (State.BuildPlaced || State.HasBuildEdits) return;
+        try
+        {
+            string? last = await JS.InvokeAsync<string?>("localStorage.getItem", HeroEditor.LastBuildKey);
+            if (State.BuildPlaced || State.HasBuildEdits || last?.Split('/', 2) is not [{ } hero, { } name]) return;
+            string? text = await Profiles.ReadAsync(Visitor, new ProfileEntry(hero, name));
+            if (State.BuildPlaced || State.HasBuildEdits || text == null) return;
+            var build = SimcProfile.Parse(text).Build;
+            build.Name = name;
+            State.Editor = new BuildEditor(build);
+            State.SavedName = name;
+            State.MarkBuildClean();
+            State.NotifyChanged();
+        }
+        catch (Exception e) when (e is JSDisconnectedException or JSException or OperationCanceledException or FormatException)
+        {
+            // The first new build stays.
         }
     }
 
@@ -194,17 +199,12 @@
     /// <summary>A list in a picker: where it is kept, its hero and its name.</summary>
     internal static string ListValue(ActionListEntry list) => $"{(list.BuiltIn ? "builtin" : list.Shared ? "shared" : "own")}/{list.Hero}/{list.Name}";
 
-    private async Task PickActionListAsync(string value)
+    // A list saved on the Modes tab shows in Compare's pickers too.
+    private async Task ReloadListsAsync()
     {
-        var list = _lists.FirstOrDefault(l => ListValue(l) == value);
-        if (list == null) return;
         try
         {
-            var saved = await _savedLists.ReadAsync(list);
-            State.ActionListValue = value;
-            State.ActionListName = list.Name;
-            State.ActionListText = saved.Text;
-            State.Status = saved.Error != null ? MessageState.Error($"{list.Name} does not parse: {saved.Error}") : MessageState.None;
+            _lists = await _savedLists.ListAsync();
         }
         catch (Exception e)
         {
@@ -222,7 +222,7 @@
     {
         SimTab.Hero => "1. Hero & loadout",
         SimTab.Modes => "2. Modes",
-        _ => "3. Advanced & APL",
+        _ => "3. Advanced",
     };
 
     private void CloseImport() => State.ImportOpen = false;
@@ -492,7 +492,7 @@
         }
         if (profile.ActionList.Trim().Length == 0)
         {
-            State.Status = MessageState.Error("The action list is empty: pick one on the Advanced tab.");
+            State.Status = MessageState.Error("The action list is empty: pick one on the Modes tab.");
             return;
         }
         string title = string.Format(CultureInfo.CurrentCulture, "{0} ({1}): {2:N0} iterations, {3} s, {4}",

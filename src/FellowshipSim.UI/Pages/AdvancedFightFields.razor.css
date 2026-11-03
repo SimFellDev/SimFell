@@ -1,0 +1,47 @@
+/* The fields as the Fight settings card has them (FightCards.razor.css). */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* A field its switch has turned off: the label dimmed, and the number greyed out with no box to type in. */
+.field.off {
+  opacity: 0.5;
+}
+
+.field input:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.field input {
+  width: 90px;
+  height: 36px;
+  font-size: 14px;
+  text-align: right;
+  /* Typed in, no spin arrows. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.toggle-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-block .switch span {
+  color: var(--text);
+  font-size: 14px;
+}

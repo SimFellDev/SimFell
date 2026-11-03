@@ -1,26 +1,141 @@
-.toolbar input {
-  flex: 1 1 220px;
-}
-
-.toolbar button {
-  min-height: 40px;
-}
-
-.delete {
-  color: var(--bad);
-}
-
-/* The accent button, as Run sim and Use this profile are: sharing a build is a feature to notice. At the toolbar's end,
-   apart from the rest. Its classes say nothing of sharing: ad blockers' social lists hide .share-button and the like. */
-.toolbar .build-link-button {
-  margin-left: auto;
-  display: inline-flex;
+/* The build menu, then the build's icon buttons; on a narrow window the icons go under the menu. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 8px 12px;
+}
+
+.build-select {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
+.build-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 5px 12px 5px 6px;
+  background: var(--input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: left;
+}
+
+.build-current:hover,
+.build-current.open {
+  border-color: var(--accent);
+}
+
+.build-current ::deep .icon {
+  border-radius: 50%;
+}
+
+.build-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.build-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.build-name .meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.build-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max(100%, min(300px, calc(100vw - 32px)));
+  z-index: 21;
+  max-height: 440px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--header);
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+.build-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
+.no-builds {
+  display: block;
+  padding: 8px 10px;
+  color: var(--muted);
+}
+
+.icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.icons .icon-button {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+/* The New build dialog's hero tiles. */
+.hero-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 8px;
 }
 
-.build-link-button svg {
-  flex: none;
+.hero-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  background: var(--input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.hero-tile:hover {
+  border-color: var(--accent);
+}
+
+.hero-tile ::deep .icon {
+  border-radius: 50%;
+}
+
+/* A saved build's hero: the menu's look, with nothing to open. */
+.hero-current.fixed {
+  cursor: default;
+}
+
+.hero-current.fixed:hover {
+  border-color: var(--border);
 }
 
 /* Over the bottom of the window, the width of the page's content, while the build has changes not saved. */
@@ -960,12 +1075,6 @@
 
 .slot-stat.primary strong {
   color: var(--heading);
-}
-
-.import-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 @media (max-width: 760px) {
