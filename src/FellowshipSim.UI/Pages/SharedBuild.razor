@@ -1,0 +1,45 @@
+@page "/build"
+@using FellowshipSim.Core.Import
+@inject NavigationManager Navigation
+@inject SimPageState State
+@inject IAppViews Views
+@* Where a build's share link opens (BuildShareLink): it puts the build on the Sim page, then shows it. *@
+
+<PageTitle>Shared build - SimFell</PageTitle>
+
+<Card>
+    @if (_error is { } error)
+    {
+        <Message Kind="MessageKind.Error">@error</Message>
+        <button type="button" class="link-button" @onclick="() => Views.ShowPage(AppPage.Sim)">Go to the Sim page</button>
+    }
+    else
+    {
+        <p class="hint">Opening the shared build…</p>
+    }
+</Card>
+
+@code {
+    private string? _error;
+
+    // After the first render: the part of the address after '#' never reaches a server, so a prerender has no build.
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            if (BuildShareLink.TryRead(Navigation.Uri) is { } build)
+            {
+                State.UseBuild(build);
+                Views.ShowPage(AppPage.Sim);
+                return;
+            }
+            _error = "This link has no build in it.";
+        }
+        catch (FormatException e)
+        {
+            _error = e.Message;
+        }
+        StateHasChanged();
+    }
+}

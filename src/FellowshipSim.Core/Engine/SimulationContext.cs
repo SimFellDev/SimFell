@@ -72,8 +72,51 @@ public class SimulationContext
 
     /// <summary>How early an ability may come off the global cooldown (a replay allows server-frame and latency slack).</summary>
     public double GlobalCooldownToleranceSeconds { get; set; }
+
+    /// <summary>The time the fight ends; <see cref="SimTime.Infinite"/> when it has no set end.</summary>
+    public SimTime FightEnd { get; set; } = SimTime.Infinite;
+
+    /// <summary>True while a dungeon boss is in combat, or in a training dummy fight against a boss.</summary>
+    public bool Boss { get; set; }
+
+    /// <summary>True while the final boss of a dungeon is in combat.</summary>
+    public bool FinalBoss { get; set; }
+
+    /// <summary>True while a dungeon enemy that is not a boss is in combat.</summary>
+    public bool Trash { get; set; }
+
+    /// <summary>The estimated start of the next dungeon pull with enemies that are not bosses; <see cref="SimTime.Infinite"/> when none follows or no estimate is possible.</summary>
+    public SimTime NextTrashAt { get; set; } = SimTime.Infinite;
+
+    /// <summary>The estimated start of the next dungeon pull with a boss; <see cref="SimTime.Infinite"/> when none follows or no estimate is possible.</summary>
+    public SimTime NextBossAt { get; set; } = SimTime.Infinite;
+
+    /// <summary>Raised as an enemy first enters the fight.</summary>
+    public event Action<EnemyTarget>? EnemySpawned;
     public SimulationRng Rng { get; } = new();
     public IOutcomeSource Outcomes { get; set; }
+
+    /// <summary>
+    /// The hero's delays to cast once a hold ends (<see cref="HoldEnds"/>); null for none, as in a replay, which casts at
+    /// the log's times.
+    /// </summary>
+    public ReactionDelays? Reactions { get; set; }
+
+    /// <summary>Until this time the hero is still reacting to the last hold's end, and casts nothing on the global cooldown.</summary>
+    public SimTime ReactionEndTime { get; private set; }
+    private SimTime _lastHoldEnd;
+
+    /// <summary>
+    /// The hero is held by <paramref name="hold"/> until <paramref name="end"/>: the first time a hold ending there is seen,
+    /// the hero's reaction to it is rolled (<see cref="IOutcomeSource.ReactionDelay"/>). A hold ending no later than one
+    /// already seen rolls nothing.
+    /// </summary>
+    public void HoldEnds(SimTime end, ReactionHold hold)
+    {
+        if (Reactions == null || end <= _lastHoldEnd) return;
+        _lastHoldEnd = end;
+        ReactionEndTime = end + Outcomes.ReactionDelay(hold, Reactions, this);
+    }
 
     public double TotalDamage { get; private set; }
 
@@ -121,7 +164,13 @@ public class SimulationContext
     /// Advances the clock to <paramref name="time"/>, firing every queued event due on the way in time order (the hero's
     /// aura expiries among them). This is the only way simulation time moves forward.
     /// </summary>
-    public void RunUntil(SimTime time)
+    public void RunUntil(SimTime time) => RunUntil(time, null);
+
+    /// <summary>
+    /// Advances the clock as <see cref="RunUntil(SimTime)"/> does, and stops right after an event once <paramref name="stop"/>
+    /// holds, the clock at that event. Returns true when it stopped there.
+    /// </summary>
+    public bool RunUntil(SimTime time, Func<bool>? stop)
     {
         while (Kernel.TryDequeueDue(time, out var ev))
         {
@@ -129,8 +178,10 @@ public class SimulationContext
             ev.HasFired = true;
             if (ev.Hit is { } hit) Land(hit);
             else ev.Action!(this);
+            if (stop != null && stop()) return true;
         }
         if (time > CurrentTime) CurrentTime = time;
+        return false;
     }
 
     // ------------------------------------------------------------------ enemies
@@ -145,6 +196,7 @@ public class SimulationContext
             _enemies.Add(enemy);
             enemy.SleepChanged = () => _activeEnemies = null;
             _activeEnemies = null;
+            EnemySpawned?.Invoke(enemy);
         }
         return enemy;
     }
@@ -167,6 +219,24 @@ public class SimulationContext
 
     /// <summary>Raised as an enemy dies or leaves combat, before it is removed (effects on it can still resolve).</summary>
     public event Action<SimulationContext, EnemyTarget>? EnemyDemising;
+
+    /// <summary>
+    /// Raised as damage takes health from an enemy dying from damage (<see cref="EnemyTarget.HeroShare"/>), with the
+    /// health lost, the party's damage included.
+    /// </summary>
+    public event Action<SimulationContext, EnemyTarget, double>? EnemyHurt;
+
+    /// <summary>
+    /// The hero interrupts <paramref name="enemy"/>'s cast: it ends with no effect, and <see cref="Hero.OnInterrupt"/> is
+    /// raised. Returns false when the enemy was not casting.
+    /// </summary>
+    public bool Interrupt(EnemyTarget enemy)
+    {
+        string? ability = enemy.CastAbility;
+        if (ability == null || !enemy.StopCast()) return false;
+        Player.TriggerInterrupt(this, enemy, ability);
+        return true;
+    }
 
     /// <summary>An enemy dies (<paramref name="defeated"/>) or leaves combat.</summary>
     public void RemoveEnemy(EnemyTarget enemy, bool defeated = false)
@@ -201,6 +271,15 @@ public class SimulationContext
         finally { AbilityActivation = outer; }
     }
 
+    /// <summary>The ability of the last cast started in this fight (<c>prev.&lt;ability&gt;</c>); null before the first.</summary>
+    public Ability? PreviousCast { get; private set; }
+
+    /// <summary>
+    /// The ability of the last cast started on the global cooldown in this fight (<c>prev_gcd.&lt;ability&gt;</c>); null before
+    /// the first. A cast with <see cref="Ability.IgnoresGcd"/> leaves it as it is.
+    /// </summary>
+    public Ability? PreviousGcdCast { get; private set; }
+
     /// <summary>
     /// The ability activation running before the frame's timers (numbered, 0 when none): a haste change in it re-arms a
     /// damage over time's period with the time left measured from the frame before (<see cref="HastedTimer"/>).
@@ -231,17 +310,23 @@ public class SimulationContext
         if (!ability.IgnoresGcd)
         {
             double left = (hero.GlobalCooldownEndTime - CurrentTime).TotalSeconds;
-            if (left > GlobalCooldownToleranceSeconds && !force)
+            if (left > GlobalCooldownToleranceSeconds && !force && !ability.UsableDuringGcd)
             {
                 return CastAttempt.Rejected($"on global cooldown ({left:F2}s remaining)");
+            }
+            if (CurrentTime < ReactionEndTime && !force && !ability.UsableDuringGcd)
+            {
+                return CastAttempt.Rejected($"reacting ({(ReactionEndTime - CurrentTime).TotalSeconds:F3}s remaining)");
             }
             StopChannel(hero);
             double gcd = ability.GlobalCooldownSeconds ?? hero.GlobalCooldownSeconds;
             if (ability.GlobalCooldownScalesWithHaste ?? hero.GlobalCooldownScalesWithHaste) gcd /= 1.0 + hero.GetHaste(CurrentTime);
             hero.GlobalCooldownEndTime = CurrentTime + SimTime.FromSeconds(gcd);
+            PreviousGcdCast = ability;
         }
 
         var castTime = ability.GetAdjustedCastTime(CurrentTime);
+        PreviousCast = ability;
         hero.TriggerCastStarted(ability, target, CurrentTime);
 
         if (castTime == SimTime.Zero)
@@ -477,7 +562,7 @@ public class SimulationContext
         CurrentHit = outer;
 
         double critChance = landed.ForcedCrit is { } forced ? (forced ? 1.0 : 0.0) : landed.CanCrit ? landed.CritChance : 0.0;
-        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance);
+        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance, hit.Ability?.Name);
         Outcomes.HitFinished(this);
         onLanded?.Invoke(this, dealt);
         ReturnHit(hit);
@@ -492,16 +577,29 @@ public class SimulationContext
         Deal(source, target, abilityId, abilityName, amount, isCrit, isCrit ? 1.0 : 0.0);
 
     /// <summary>Adds <paramref name="dealt"/> to the totals and the target's health loss, then raises <see cref="Hero.OnDamageDealt"/>.</summary>
-    private void Deal(Hero source, EnemyTarget? target, int abilityId, string abilityName, double dealt, bool isCrit, double critChance)
+    private void Deal(Hero source, EnemyTarget? target, int abilityId, string abilityName, double dealt, bool isCrit, double critChance,
+        string? abilityGroup = null)
     {
         TotalDamage += dealt;
         if (!_damageSlotByInstance.TryGetValue(abilityName, out int slot)) slot = DamageSlot(abilityName);
         CollectionsMarshal.AsSpan(_damageByName)[slot].Damage += dealt;
         if (target != null && target.MaxHealth > 0)
         {
-            target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
+            if (target.HeroShare is { } share)
+            {
+                // The party deals the rest: the enemy loses the hit over the hero's share.
+                double before = target.CurrentHealth;
+                target.CurrentHealth = Math.Max(0.0, before - dealt / share);
+                if (target.CurrentHealth <= 0 && !target.DeathScheduled && !target.IsSleeping)
+                {
+                    target.DeathScheduled = true;
+                    Kernel.ScheduleAt(CurrentTime, c => c.RemoveEnemy(target, defeated: true), "Death");
+                }
+                if (before > target.CurrentHealth) EnemyHurt?.Invoke(this, target, before - target.CurrentHealth);
+            }
+            else target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
         }
-        source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this, critChance));
+        source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this, critChance, abilityGroup));
     }
 
     private void ReturnHit(PendingHit hit)
@@ -528,6 +626,8 @@ public class SimulationContext
     {
         CurrentTime = SimTime.Zero;
         _lastAbilityEnd = SimTime.FromSeconds(-1.0);
+        PreviousCast = null;
+        PreviousGcdCast = null;
         Kernel.Clear();
         // The cleared queue lost the event of the hero's next aura expiry.
         Player.Auras.RunOutIn(this);

@@ -9,9 +9,11 @@ namespace FellowshipSim.UI.Build;
 /// <item>the <see cref="EnchantSlots.ArmorPieces"/> armor pieces take any kind;</item>
 /// <item>the <see cref="EnchantSlots.OtherPieces"/> other pieces take stat enchants and gem power bonuses alone, so
 /// those fill them first and only the rest goes on armor;</item>
-/// <item>a weapon's tree takes 1 aspect, 2 sigils and 2 stat enchants.</item>
+/// <item>a weapon's tree takes 1 aspect, 2 sigils and 2 stat enchants, never two of the same one (per the user): no
+/// more of a kind than the build has different ones of it.</item>
 /// </list>
-/// Protective enchants are apart. A fit is a flow from each kind's count to the pieces that take it.
+/// Protective enchants are apart. A fit is a flow from each kind's count to the pieces that take it. Without the
+/// different ones of each kind given, the weapon takes any.
 /// </summary>
 public static class GearFit
 {
@@ -32,24 +34,37 @@ public static class GearFit
         _ => 0,
     };
 
-    /// <summary>True when the build's counts can all be worn.</summary>
-    public static bool Fits(Func<EnchantSlot, int> used, bool weapon) => Fits(Kinds.Select(used).ToArray(), weapon);
+    /// <summary>
+    /// True when the build's counts can all be worn. <paramref name="distinct"/> is how many different ones of each kind
+    /// the build has: the most of it the weapon's tree takes.
+    /// </summary>
+    public static bool Fits(Func<EnchantSlot, int> used, bool weapon, Func<EnchantSlot, int>? distinct = null) =>
+        Fits(Kinds.Select(used).ToArray(), weapon, Distinct(distinct));
 
-    /// <summary>How many more of <paramref name="kind"/> fit with the rest of the build as it is; 0 when it does not fit.</summary>
-    public static int Room(EnchantSlot kind, Func<EnchantSlot, int> used, bool weapon)
+    /// <summary>
+    /// How many more of <paramref name="kind"/> fit with the rest of the build as it is; 0 when it does not fit. They are
+    /// all of one: one the build has none of yet when <paramref name="another"/>, else one it has.
+    /// </summary>
+    public static int Room(EnchantSlot kind, Func<EnchantSlot, int> used, bool weapon, Func<EnchantSlot, int>? distinct = null, bool another = true)
     {
         var counts = Kinds.Select(used).ToArray();
+        var different = Distinct(distinct);
         int k = IndexOf(kind);
         int most = GearLimit(kind) + WeaponLimit(kind, weapon) - counts[k];
         int room = 0;
         while (room < most)
         {
             counts[k]++;
-            if (!Fits(counts, weapon)) break;
+            if (another && room == 0) different[k]++;
+            if (!Fits(counts, weapon, different)) break;
             room++;
         }
         return room;
     }
+
+    // How many different ones of each kind, in Kinds' order; as many as the weapon takes when not given.
+    private static int[] Distinct(Func<EnchantSlot, int>? distinct) =>
+        Kinds.Select(k => distinct?.Invoke(k) ?? int.MaxValue / 2).ToArray();
 
     private static bool TakesOtherPieces(EnchantSlot kind) => kind is EnchantSlot.StatEnchants or EnchantSlot.Gems;
 
@@ -65,7 +80,7 @@ public static class GearFit
     // Nodes: the source, one per kind, the armor, the other pieces, the weapon's tree, the sink.
     private const int Source = 0, Armor = 6, Other = 7, Tree = 8, Sink = 9, Nodes = 10;
 
-    private static bool Fits(int[] counts, bool weapon)
+    private static bool Fits(int[] counts, bool weapon, int[] distinct)
     {
         var capacity = new int[Nodes, Nodes];
         int per = EnchantSlots.MostOfAKindPerPiece;
@@ -75,7 +90,8 @@ public static class GearFit
             capacity[Source, 1 + i] = counts[i];
             capacity[1 + i, Armor] = per * EnchantSlots.ArmorPieces;
             if (TakesOtherPieces(kind)) capacity[1 + i, Other] = per * EnchantSlots.OtherPieces;
-            capacity[1 + i, Tree] = WeaponLimit(kind, weapon);
+            // The weapon's tree holds one of each different one at most.
+            capacity[1 + i, Tree] = Math.Min(WeaponLimit(kind, weapon), distinct[i]);
         }
         capacity[Armor, Sink] = EnchantSlots.SlotsPerPiece * EnchantSlots.ArmorPieces;
         capacity[Other, Sink] = EnchantSlots.SlotsPerPiece * EnchantSlots.OtherPieces;

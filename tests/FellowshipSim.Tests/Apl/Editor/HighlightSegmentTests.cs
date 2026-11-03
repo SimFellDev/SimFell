@@ -58,4 +58,18 @@ public class HighlightSegmentTests
         Assert.Equal(text, string.Concat(segments.Select(s => s.Text)));
         Assert.Contains(segments, s => s.Kind == AplTokenKind.Unknown);
     }
+
+    [Fact]
+    public void The_html_has_a_span_of_its_classes_for_each_token_and_encodes_the_text()
+    {
+        const string text = "a<b & c";
+        var check = Check(null, new AplTokenSpan(0, 1, AplTokenKind.Named), new AplTokenSpan(4, 1, AplTokenKind.Operator),
+            new AplTokenSpan(6, 1, AplTokenKind.Unknown));
+
+        Assert.Equal("<span class=\"tok-named\">a</span>&lt;b <span class=\"tok-operator\">&amp;</span> <span class=\"tok-unknown\">c</span>",
+            HighlightSegment.Html(text, check));
+        Assert.Equal("tok-cooldown tok-error", HighlightSegment.ClassOf(AplTokenKind.Cooldown, true));
+        Assert.Equal("tok-error", HighlightSegment.ClassOf(null, true));
+        Assert.Null(HighlightSegment.ClassOf(null, false));
+    }
 }

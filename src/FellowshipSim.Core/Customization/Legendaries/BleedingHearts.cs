@@ -4,15 +4,16 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 698 (Gunde's Band of The Bleeding Heart, item 5220): "Your Heart Splitter ability has 2 Charges and a
-/// 25% chance to strike the target 1 additional time. Heart Splitter has +100% Critical Strike chance when striking
-/// targets above 80% health." Combat logs (Y4wpb2f3gc8LqJDX fight 25): the extra strike lands 0.23-0.30s after the cast,
+/// Legendary power 698 (Gunde's Band of The Bleeding Heart, item 5220; Northlander's Harness, item 5898): "Your Heart
+/// Splitter ability has 2 Charges and a 25% chance to strike the target 1 additional time. Heart Splitter has +100%
+/// Critical Strike chance when striking targets above 80% health." Combat logs (Y4wpb2f3gc8LqJDX fight 25): the extra strike lands 0.23-0.30s after the cast,
 /// with its own Exsanguinate; it adds no cast event.
 /// </summary>
 public class BleedingHearts : Legendary
 {
     public const int PowerId = 698;
     public const int RingItemId = 5220;
+    public const int HarnessItemId = 5898;
     public const int Charges = 2;
     public const double ExtraStrikeChance = 0.25;
     public const double ExtraStrikeDelaySeconds = 0.23;
@@ -23,7 +24,7 @@ public class BleedingHearts : Legendary
     public override int LegendaryPowerId => PowerId;
     public override string Name => "Bleeding Hearts";
     public override string HeroName => "Gunde";
-    public override IReadOnlyList<int> ItemIds => [RingItemId];
+    public override IReadOnlyList<int> ItemIds => [RingItemId, HarnessItemId];
 
     public override void Bind(Hero hero)
     {

@@ -1,0 +1,110 @@
+/* A group is a tinted box, as a condition group of the action-list editor: its kind on the top-left edge, its duplicate
+   and delete buttons on the top-right edge. */
+.group {
+  position: relative;
+  margin: 14px 0 4px;
+  padding: 16px 8px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.group-start,
+.group-end {
+  position: absolute;
+  top: -12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.group-start {
+  left: 6px;
+}
+
+.group-end {
+  right: 6px;
+}
+
+/* 22px controls, opaque so the border line is hidden behind them. */
+.group-start .kind,
+.group-end button {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  height: 22px;
+  min-width: 22px;
+  min-height: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background-color: var(--input);
+  color: var(--text);
+  font: 12px var(--code-font);
+}
+
+.group-end button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+/* The group's comment: muted italic below the values, as tall as its lines. */
+.comment {
+  display: block;
+  width: 100%;
+  margin: 8px 0px;
+  padding: 4px 8px;
+  resize: none;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.4;
+  /* As tall as its wrapped lines; a WebView without field-sizing has a row per line. */
+  field-sizing: content;
+}
+
+/* The values fill the box's width: as many columns as fit, each at least 120px. */
+.values {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px 10px;
+}
+
+.value {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.value.name {
+  grid-column: span 2;
+}
+
+.value input:not([type="checkbox"]) {
+  width: 100%;
+  min-width: 0;
+}
+
+.value input[type="number"] {
+  text-align: right;
+}
+
+.value input:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.value.check input {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .value.name {
+    grid-column: 1 / -1;
+  }
+}

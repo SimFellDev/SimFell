@@ -1,0 +1,214 @@
+/* A pull is built as an action of the action-list editor (Apl/ActionItem, Apl/ActionDetail). */
+.pull {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.pull.open {
+  border-color: var(--accent);
+}
+
+.pull.dragging {
+  opacity: 0.5;
+}
+
+.pull.drop-before {
+  box-shadow: 0 -3px 0 var(--accent);
+}
+
+.pull.drop-after {
+  box-shadow: 0 3px 0 var(--accent);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.head:hover {
+  background: var(--row-hover);
+}
+
+.grip {
+  cursor: grab;
+  color: var(--muted);
+  padding: 2px;
+  user-select: none;
+}
+
+.toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  padding: 4px;
+  text-align: left;
+}
+
+.toggle ::deep .chevron {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.pull.open .toggle ::deep .chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+/* The pull's name. */
+.number {
+  flex: none;
+  white-space: nowrap;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5em;
+  text-align: right;
+}
+
+.kind {
+  flex: none;
+  font-weight: 600;
+}
+
+/* The groups on one line after the kind, cut off at the head's width. */
+.summary {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The comment: muted italic after the kind, on one line while the pull is closed and a field while it is open. */
+.comment {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* The closed head's comment as wide as its text, the summary after it. */
+span.comment {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pull.open .toggle {
+  flex: none;
+}
+
+textarea.comment {
+  padding: 4px 8px;
+  resize: none;
+  line-height: 1.4;
+  /* As tall as its wrapped lines; a WebView without field-sizing has a row per line. */
+  field-sizing: content;
+}
+
+.move:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: start;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.detail > label {
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The enemies span the full width of the pull, under their label. */
+.detail > .wide {
+  grid-column: 1 / -1;
+}
+
+.detail > label.wide {
+  padding-top: 0;
+}
+
+.detail > input[type="number"] {
+  justify-self: start;
+  width: 260px;
+  max-width: 100%;
+}
+
+.detail > .name input {
+  width: 260px;
+  max-width: 100%;
+}
+
+.detail > .name .field-error {
+  margin: 6px 0 0;
+}
+
+.detail > .check {
+  justify-self: start;
+  margin-top: 10px;
+}
+
+/* A choice and its value side by side, wrapping under each other when narrow. */
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pair select,
+.pair input {
+  flex: 0 1 200px;
+  min-width: 0;
+}
+
+.adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add {
+  min-height: 0;
+  padding: 6px 12px;
+  border: 1px dashed #3a3a40;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--heading);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.add:hover {
+  border-color: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .pair select,
+  .pair input {
+    flex: 1 1 100%;
+  }
+}

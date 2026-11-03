@@ -36,7 +36,7 @@ public readonly record struct HitOutcome(bool IsCrit, SimTime LandingDelay = def
 /// <summary>
 /// Decides every random outcome in the simulation: proc rolls, crits and damage spread.
 /// Game code asks this instead of rolling dice itself, so the same mechanics can run against
-/// random rolls, expected values, or outcomes supplied from elsewhere.
+/// random rolls or outcomes supplied from elsewhere.
 /// </summary>
 public interface IOutcomeSource
 {
@@ -76,16 +76,15 @@ public interface IOutcomeSource
 
     /// <summary>Called once a landed hit has been dealt and everything it triggered (procs, follow-up hits) has run.</summary>
     void HitFinished(SimulationContext ctx);
+
+    /// <summary>How long the hero takes to cast after <paramref name="hold"/> ends (<see cref="SimulationContext.Reactions"/>).</summary>
+    SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx);
 }
 
-public enum OutcomeMode
-{
-    /// <summary>Crits and damage use their expected (average) values; procs still roll.</summary>
-    Expected,
-    /// <summary>Crits roll and damage varies uniformly within +/-10%.</summary>
-    Discrete
-}
-
+/// <summary>
+/// Rolls every outcome: crits, procs and damage spread (uniform within +/-10%). Each crit is a real one, so effects that
+/// trigger on crits (Amethyst Splinters, Pyrophibian Frenzy) trigger as often as the crit chance says.
+/// </summary>
 public class RandomOutcomeSource : IOutcomeSource
 {
     // Game damage variance is +/- 10% (uniform random in [0.90, 1.10]).
@@ -93,13 +92,10 @@ public class RandomOutcomeSource : IOutcomeSource
 
     private readonly SimulationRng _rng;
 
-    public RandomOutcomeSource(SimulationRng rng, OutcomeMode mode = OutcomeMode.Expected)
+    public RandomOutcomeSource(SimulationRng rng)
     {
         _rng = rng;
-        Mode = mode;
     }
-
-    public OutcomeMode Mode { get; set; }
 
     public bool RollProc(string procKey, double chance, SimulationContext ctx, EnemyTarget? target = null) => _rng.Roll(chance);
 
@@ -110,27 +106,27 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
+        // A hit at an enemy that has left combat (it died, or its pull duration ended) misses, and rolls nothing.
+        if (hit.Target is { IsSleeping: true }) return new HitOutcome(false, Missed: true);
         // A forced crit rolls nothing: no crit and no spread.
         if (hit.ForcedCrit is { } forced) return new HitOutcome(forced);
-        if (Mode == OutcomeMode.Discrete)
-        {
-            bool isCrit = hit.CanCrit && _rng.Roll(hit.CritChance);
-            double spread = (1.0 - DamageSpread) + (_rng.NextDouble() * 2.0 * DamageSpread);
-            return new HitOutcome(isCrit, SimTime.Zero, spread);
-        }
-        return new HitOutcome(hit.CritChance > 0.5);
+        bool isCrit = hit.CanCrit && _rng.Roll(hit.CritChance);
+        double spread = (1.0 - DamageSpread) + (_rng.NextDouble() * 2.0 * DamageSpread);
+        return new HitOutcome(isCrit, SimTime.Zero, spread);
     }
 
     public double Land(in HitRequest landed, HitOutcome outcome, SimulationContext ctx)
     {
         if (landed.ForcedCrit.HasValue) return landed.BaseDamage * (outcome.IsCrit ? landed.CritMultiplier : 1.0);
-        if (Mode == OutcomeMode.Discrete) return landed.BaseDamage * ((outcome.IsCrit ? landed.CritMultiplier : 1.0) * outcome.Spread);
-        return landed.BaseDamage * (landed.CanCrit ? 1.0 + (landed.CritChance * (landed.CritMultiplier - 1.0)) : 1.0);
+        return landed.BaseDamage * ((outcome.IsCrit ? landed.CritMultiplier : 1.0) * outcome.Spread);
     }
 
     public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => tick.Scheduled;
 
     public void HitFinished(SimulationContext ctx) { }
+
+    public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) =>
+        reactions.Delay(hold, _rng.NextDouble(), _rng.NextDouble());
 }
 
 /// <summary>The simulation's random numbers: xoshiro256** (Blackman and Vigna, 2018), seeded through SplitMix64.</summary>

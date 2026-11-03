@@ -20,11 +20,16 @@ public sealed class ExpressionChecks(ISimEngine engine)
         }
     }
 
-    private async Task<AplExpressionCheck?> Load(string hero, string text)
+    /// <summary>The engine's check of a whole action list's text, asked for each time: each edit makes a new text.</summary>
+    public Task<AplExpressionCheck?> GetList(string hero, string text) => Load(() => engine.CheckActionListAsync(hero, text));
+
+    private Task<AplExpressionCheck?> Load(string hero, string text) => Load(() => engine.CheckExpressionAsync(hero, text));
+
+    private static async Task<AplExpressionCheck?> Load(Func<Task<AplExpressionCheck?>> check)
     {
         try
         {
-            return await engine.CheckExpressionAsync(hero, text);
+            return await check();
         }
         catch (Exception)
         {

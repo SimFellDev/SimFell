@@ -44,7 +44,8 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     ];
 
     [Theory]
-    [InlineData(RedLedger.TalentId, "more:dps", 1, 1)]
+    // Red Ledger's few % of crit chance is lost in the crit rolls of 10 fights.
+    [InlineData(RedLedger.TalentId, "more:dps", 1, 1, 50)]
     [InlineData(CorrosiveSpill.TalentId, "damage:Corrosive Spill")]
     [InlineData(AssassinsGuile.TalentId, "aura:Assassin's Guile")]
     [InlineData(Bloodrush.TalentId, "more:damage:Hemorrhage")]
@@ -61,13 +62,14 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     [InlineData(ArachnidOnslaught.TalentId, "more:damage:Arachnid Assault", 8)]
     [InlineData(CausticWounds.TalentId, "more:damage:Caustic Poison", 1, 1)]
     [InlineData(Puncture.TalentId, "more:damage:Widow's Bite")]
-    public void Talent_Is_Modeled_And_Takes_Effect(int talentId, string evidence, int minTargets = 1, int maxTargets = 8)
+    public void Talent_Is_Modeled_And_Takes_Effect(int talentId, string evidence, int minTargets = 1, int maxTargets = 8,
+        int iterations = 10)
     {
         foreach (int targets in new[] { 1, 8 }.Where(t => t >= minTargets && t <= maxTargets))
         {
             // The base leaves the talent out, so only the talent can show the evidence.
             int[] without = BaseTalents.Where(t => t != talentId).ToArray();
-            var (result, hero, gained) = Run([.. without, talentId], targets);
+            var (result, hero, gained) = Run([.. without, talentId], targets, iterations);
             Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
             Assert.Contains(hero.Talents, t => t.Id == talentId);
             Assert.True(result.MeanDps > 0);
@@ -78,7 +80,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
             double baseline = 0.0;
             if (more)
             {
-                var (baseResult, _, baseGained) = Run(without, targets);
+                var (baseResult, _, baseGained) = Run(without, targets, iterations);
                 baseline = Amount(baseResult, baseGained, shown);
             }
             output.WriteLine($"Talent {talentId} on {targets} target(s): {result.MeanDps:N0} DPS, {shown} -> {amount:N0} (without: {baseline:N0})");
@@ -173,7 +175,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         };
     }
 
-    /// <summary>The key under which <see cref="Run"/> counts the Energy gained (not regenerated).</summary>
+    /// <summary>The key under which <see cref="Run"/> counts the Energy gained (not regenerated), past the cap included.</summary>
     private const string EnergyGained = "energy gained";
 
     private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets,
@@ -188,6 +190,11 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         var gained = new Dictionary<string, int>();
         hero.Auras.OnGained += (aura, _, _) => gained[aura.Def.Name] = gained.GetValueOrDefault(aura.Def.Name) + 1;
         hero.OnResourceGained += (resource, amount, _, _) =>
+        {
+            if (resource == Mara.Energy) gained[EnergyGained] = gained.GetValueOrDefault(EnergyGained) + (int)amount;
+        };
+        // Energy past the cap counts too: near the cap, a talent's Energy pushes other gains over it.
+        hero.OnResourceOverflow += (resource, amount, _) =>
         {
             if (resource == Mara.Energy) gained[EnergyGained] = gained.GetValueOrDefault(EnergyGained) + (int)amount;
         };

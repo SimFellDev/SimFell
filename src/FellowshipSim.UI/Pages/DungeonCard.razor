@@ -1,0 +1,325 @@
+@using System.Globalization
+@using FellowshipSim.Core.Dungeons
+@using Microsoft.JSInterop
+
+@inject DungeonStore Store
+@inject Visitor Visitor
+@inject IJSRuntime JS
+@*
+    The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment, the hero share and its variance and time limit,
+    then its pulls in the order they run, each built as an action of the action-list editor, and its profile text.
+*@
+<Card Title="Dungeon">
+    <div class="row toolbar">
+        <input aria-label="Dungeon name" placeholder="Dungeon name" autocomplete="off"
+               @bind:get="State.Dungeon.Name" @bind:set="v => Change(State.Dungeon with { Name = v.Trim() })" />
+        <select @key="_pickerKey" aria-label="Saved dungeons" @bind:get="State.DungeonValue" @bind:set="PickAsked">
+            @if (State.DungeonValue.Length == 0)
+            {
+                <option value="">Load dungeon...</option>
+            }
+            @foreach (var saved in _saved)
+            {
+                <option @key="ValueOf(saved)" value="@ValueOf(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : "")</option>
+            }
+        </select>
+        <button type="button" class="secondary-button" @onclick="Save">Save</button>
+        <button type="button" class="secondary-button delete" disabled="@(!CanDelete)"
+                data-tooltip="@(CanDelete ? null : "Only your own saved dungeons can be deleted")" @onclick="Delete">Delete</button>
+    </div>
+    @if (_pending is { } pending)
+    {
+        <div class="confirm" role="alertdialog" aria-label="Unsaved changes">
+            <span>@State.Dungeon.Name has changes that are not saved. Save them before @pending.What?</span>
+            <button type="button" @onclick="SaveThenContinue">Save</button>
+            <button type="button" class="secondary-button" @onclick="DiscardThenContinue">Discard</button>
+            <button type="button" class="secondary-button" @onclick="() => _pending = null">Cancel</button>
+        </div>
+    }
+    <Message Kind="_status.Kind">@_status.Text</Message>
+    <textarea class="comment" rows="@CommentRows" placeholder="Comment" aria-label="Dungeon comment" spellcheck="true"
+              @bind:get="State.Dungeon.Comment ?? string.Empty" @bind:set="SetComment" @bind:event="oninput"></textarea>
+
+    <div class="fields">
+        <label class="field">
+            Hero share (%)
+            <input type="number" min="1" max="100" step="any" @bind:get="State.Dungeon.HeroShare" @bind:set="v => Change(State.Dungeon with { HeroShare = v })" />
+        </label>
+        <div class="toggle-block">
+            <label class="switch">
+                <input type="checkbox" @bind="State.VaryHeroShare" />
+                <span>Vary the hero share</span>
+            </label>
+            @if (ShareText() is { } shareText)
+            {
+                <span class="meta">@shareText</span>
+            }
+        </div>
+        <label class="field @(State.VaryHeroShare ? "" : "off")">
+            By ± %
+            <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryHeroShare)"
+                   @bind:get="State.HeroShareVariancePercent" @bind:set="v => State.HeroShareVariancePercent = Math.Clamp(v, 0, 90)" />
+        </label>
+        <label class="field">
+            Time limit (s)
+            <input type="number" min="1" step="any" @bind:get="State.Dungeon.TimeLimitSeconds" @bind:set="v => Change(State.Dungeon with { TimeLimitSeconds = v })" />
+        </label>
+        @if (DifficultyShown)
+        {
+            <label class="field">
+                Difficulty
+                <select @bind:get="State.Dungeon.Difficulty" @bind:set="v => Change(State.Dungeon with { Difficulty = v })">
+                    @foreach (var level in DifficultyScaling.Levels)
+                    {
+                        <option @key="level.Eternal" value="@level.Eternal">@level.Label</option>
+                    }
+                </select>
+            </label>
+        }
+    </div>
+
+    <ol class="pulls">
+        @for (int i = 0; i < Pulls.Count; i++)
+        {
+            int index = i;
+            var pull = Pulls[i];
+            <PullItem @key="index" Pull="pull" Pulls="Pulls" Index="index" Open="Editor.Open.Contains(pull.Name)" DragFrom="Editor.DragFrom"
+                      OnChange="p => ChangePulls(ps => ps.Select((x, at) => at == index ? p : x).ToList())"
+                      OnToggle="() => Editor.Toggle(pull.Name)"
+                      OnRename="name => ChangePulls(ps => Editor.Rename(ps, index, name))"
+                      OnMove="m => ChangePulls(ps => Editor.Move(ps, m.From, m.To))"
+                      OnDuplicate="() => ChangePulls(ps => Editor.Insert(ps, index + 1, pull with { Join = null }))"
+                      OnDelete="() => ChangePulls(ps => Editor.Remove(ps, index))"
+                      OnDrag="from => Editor.DragFrom = from" />
+        }
+    </ol>
+    @if (State.Dungeon.Problem() is { } problem)
+    {
+        <p class="field-error">@problem</p>
+    }
+    <div class="adds">
+        <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewTrash)))">+ Trash pull</button>
+        <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewBoss)))">+ Boss pull</button>
+    </div>
+
+    <details @key="_textKey" class="text" open="@_textOpen">
+        <summary>Dungeon text</summary>
+        <InputFile class="file" accept=".simc,.txt" data-tooltip="Load a dungeon from a .simc file" OnChange="LoadFileAsync" />
+        <textarea spellcheck="false" rows="8" @bind="_text"></textarea>
+        <div class="row">
+            <button type="button" class="secondary-button" @onclick="LoadText">Import</button>
+            <button type="button" class="secondary-button" data-tooltip="Save the dungeon as a .simc file" @onclick="Download">Download</button>
+        </div>
+        <Message Kind="_textStatus.Kind">@_textStatus.Text</Message>
+    </details>
+</Card>
+
+@code {
+    /// <summary>The fight's settings: the Sim page's, or the APL Debugger's own.</summary>
+    [Parameter, EditorRequired] public SimPageState State { get; set; } = null!;
+
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // The Difficulty field shows once the engine models each enemy.
+    private static readonly bool DifficultyShown = false;
+
+    /// <summary>Largest dungeon file the card reads.</summary>
+    private const long MaxDungeonBytes = 1024 * 1024;
+
+    private IReadOnlyList<DungeonEntry> _saved = [];
+    private MessageState _status = MessageState.None, _textStatus = MessageState.None;
+    private string _text = "";
+    private bool _textOpen;
+    private int _textKey, _pickerKey;
+    // The step waiting on the unsaved changes (open another dungeon).
+    private (string What, Func<Task> Then)? _pending;
+
+    private const string BuiltInValue = "builtin";
+    private const string OwnValue = "own";
+
+    private IReadOnlyList<DungeonPull> Pulls => State.Dungeon.Pulls;
+
+    private DungeonEditor Editor => State.DungeonEditor;
+
+    private static string ValueOf(DungeonEntry entry) => $"{(entry.BuiltIn ? BuiltInValue : OwnValue)}/{entry.Name}";
+
+    private DungeonEntry? Picked => _saved.FirstOrDefault(s => ValueOf(s) == State.DungeonValue);
+
+    private bool CanDelete => Picked is { BuiltIn: false };
+
+    /// <summary>"Pull" or "pulls" with the count.</summary>
+    private static string PullsText(int count) => $"{count} {(count == 1 ? "pull" : "pulls")}";
+
+    private int CommentRows => Math.Max(1, (State.Dungeon.Comment ?? "").Split('\n').Length);
+
+    private Task SetComment(string comment) => Change(State.Dungeon with { Comment = string.IsNullOrWhiteSpace(comment) ? null : comment });
+
+    /// <summary>The hero share range of a fight; null when the share does not vary.</summary>
+    private string? ShareText()
+    {
+        if (!State.VaryHeroShare || State.HeroShareVariancePercent <= 0) return null;
+        double share = State.Dungeon.HeroShare, spread = State.HeroShareVariancePercent / 100;
+        return $"Each fight has a hero share of {N(share * (1 - spread))} – {N(Math.Min(100, share * (1 + spread)))}%.";
+    }
+
+    /// <summary>A new pull of one group, 20 seconds after the pull before it; <see cref="DungeonEditor.Insert"/> names it.</summary>
+    private static DungeonPull NewPull(EnemyGroup group) => new("", [group], DowntimeSeconds: 20);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _text = State.Dungeon.Format();
+        await LoadSaved();
+    }
+
+    private async Task LoadSaved()
+    {
+        try
+        {
+            _saved = await Store.ListAsync(Visitor);
+        }
+        catch (Exception e)
+        {
+            _status = MessageState.Error(e.Message);
+        }
+    }
+
+    private Task Change(DungeonProfile dungeon)
+    {
+        State.Dungeon = dungeon;
+        _text = dungeon.Format();
+        _status = MessageState.None;
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task ChangePulls(Func<IReadOnlyList<DungeonPull>, IReadOnlyList<DungeonPull>> change) =>
+        Change(State.Dungeon with { Pulls = change(Pulls) });
+
+    private Task PickAsked(string value)
+    {
+        var picked = _saved.FirstOrDefault(s => ValueOf(s) == value);
+        if (picked == null) return Task.CompletedTask;
+        if (!State.HasDungeonEdits) return Pick(picked);
+        _pending = ($"opening {picked.Name}", () => Pick(picked));
+        _pickerKey++;
+        return Task.CompletedTask;
+    }
+
+    private async Task Pick(DungeonEntry entry)
+    {
+        try
+        {
+            string text = await Store.ReadAsync(Visitor, entry) ?? throw new KeyNotFoundException($"No dungeon named {entry.Name}.");
+            State.Dungeon = DungeonProfile.Parse(text);
+            Editor.CloseAll();
+            State.DungeonValue = ValueOf(entry);
+            State.MarkDungeonClean();
+            _text = State.Dungeon.Format();
+            _status = MessageState.None;
+        }
+        catch (Exception e) when (e is FormatException or KeyNotFoundException)
+        {
+            _status = MessageState.Error(e.Message);
+        }
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task<bool> SaveDungeon()
+    {
+        var dungeon = State.Dungeon;
+        if (DefaultDungeons.Read(dungeon.Name) != null)
+        {
+            _status = MessageState.Error($"{dungeon.Name} is a built-in dungeon: save it under another name.");
+            return false;
+        }
+        if (!ActionListStore.IsValidName(dungeon.Name))
+        {
+            _status = MessageState.Error("Name the dungeon with letters, digits, spaces, '_' or '-' (up to 64 characters).");
+            return false;
+        }
+        if (dungeon.Problem() is { } problem)
+        {
+            _status = MessageState.Error(problem);
+            return false;
+        }
+        await Store.SaveAsync(Visitor, dungeon);
+        State.MarkDungeonClean();
+        await LoadSaved();
+        State.DungeonValue = ValueOf(new DungeonEntry(dungeon.Name));
+        _status = MessageState.Ok($"Saved {dungeon.Name}.");
+        return true;
+    }
+
+    private async Task Save()
+    {
+        await SaveDungeon();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SaveThenContinue()
+    {
+        var pending = _pending;
+        _pending = null;
+        if (await SaveDungeon() && pending is { } p) await p.Then();
+    }
+
+    private async Task DiscardThenContinue()
+    {
+        var pending = _pending;
+        _pending = null;
+        if (pending is { } p) await p.Then();
+    }
+
+    private async Task Delete()
+    {
+        if (Picked is not { BuiltIn: false } own) return;
+        await Store.DeleteAsync(Visitor, own);
+        await LoadSaved();
+        State.DungeonValue = "";
+        _status = MessageState.Ok($"Deleted {own.Name}. The editor still has it: save it to keep it.");
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task LoadText()
+    {
+        try
+        {
+            var dungeon = DungeonProfile.Parse(_text);
+            Editor.CloseAll();
+            State.DungeonValue = "";
+            _textStatus = MessageState.Ok($"Loaded {PullsText(dungeon.Pulls.Count)}.");
+            return Change(dungeon);
+        }
+        catch (FormatException e)
+        {
+            ShowTextError(e.Message);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>Puts the file's text in the dungeon text and imports it.</summary>
+    private async Task LoadFileAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(MaxDungeonBytes));
+            _text = await reader.ReadToEndAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowTextError(ex.Message);
+            return;
+        }
+        await LoadText();
+    }
+
+    private void ShowTextError(string message)
+    {
+        _textStatus = MessageState.Error(message);
+        _textOpen = true;
+        _textKey++;
+    }
+
+    private Task Download() => FileDownloads.SaveAsync(JS, State.Dungeon.Name, ".simc", State.Dungeon.Format());
+
+    private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
+}

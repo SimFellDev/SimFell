@@ -1,69 +1,6 @@
-@using System.Globalization
 @inject SimPageState State
-@* The Sim page's Modes tab: the fight, its settings, then Compare and Finder. *@
-<Card Title="Fight">
-    <div class="choices" role="radiogroup" aria-label="Fight">
-        <label class="choice @(State.Mode == SimMode.SingleTarget ? "on" : "")">
-            <input type="radio" name="mode" checked="@(State.Mode == SimMode.SingleTarget)" @onchange="() => State.Mode = SimMode.SingleTarget" />
-            <strong>Single target</strong>
-            <span class="meta">One target for the whole fight.</span>
-        </label>
-        <label class="choice @(State.Mode == SimMode.Aoe ? "on" : "")">
-            <input type="radio" name="mode" checked="@(State.Mode == SimMode.Aoe)" @onchange="() => State.Mode = SimMode.Aoe" />
-            <strong>AoE</strong>
-            <span class="meta">Several targets for the whole fight. The report adds the primary target's DPS.</span>
-        </label>
-    </div>
-    <div class="fields">
-        <label class="field">
-            Duration (seconds)
-            <input type="number" min="1" step="any" @bind="State.DurationSeconds" />
-        </label>
-        @if (State.Mode == SimMode.Aoe)
-        {
-            <label class="field">
-                Targets
-                <input type="number" min="2" step="1" @bind="State.AoeTargets" />
-            </label>
-        }
-        <div class="toggle-block">
-            <label class="switch">
-                <input type="checkbox" @bind="State.VaryLength" />
-                <span>Vary the fight length</span>
-            </label>
-            <span class="meta">@LengthText()</span>
-        </div>
-        <label class="field @(State.VaryLength ? "" : "off")">
-            By ± %
-            <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryLength)"
-                   @bind:get="State.LengthVariancePercent" @bind:set="v => State.LengthVariancePercent = Math.Clamp(v, 0, 90)" />
-        </label>
-    </div>
-</Card>
-
-@* What else the fights have; more settings of the fight go here. *@
-<Card Title="Fight settings">
-    <div class="fields">
-        <div class="toggle-block">
-            <label class="switch">
-                <input type="checkbox" @bind="State.Boss" />
-                <span>Boss fight</span>
-            </label>
-        </div>
-        <div class="toggle-block">
-            <label class="switch">
-                <input type="checkbox" @bind="State.StartWithSpirit" />
-                <span>Start with Spirit</span>
-            </label>
-        </div>
-        <label class="field @(State.StartWithSpirit ? "" : "off")">
-            Spirit (0 – @N(MaxStartingSpirit))
-            <input type="number" class="short" min="0" max="@MaxStartingSpirit" step="1" disabled="@(!State.StartWithSpirit)"
-                   @bind:get="State.StartingSpirit" @bind:set="v => State.StartingSpirit = Math.Clamp(v, 0, MaxStartingSpirit)" />
-        </label>
-    </div>
-</Card>
-
+@* The Sim page's Modes tab: the fight, its dungeon or training dummies, its settings, then Compare and Finder. *@
+<FightCards State="State" OnChanged="OnChanged" />
 <CompareCard Heroes="Heroes" Lists="Lists" OnChanged="OnChanged" />
 <FinderCard OnChanged="OnChanged" />
 
@@ -75,16 +12,4 @@
     [Parameter, EditorRequired] public IReadOnlyList<ActionListEntry> Lists { get; set; } = [];
 
     [Parameter] public EventCallback OnChanged { get; set; }
-
-    /// <summary>The most Spirit a fight can start with: a build with Ancestral Surge - II holds 130.</summary>
-    public const double MaxStartingSpirit = 130;
-
-    private string LengthText()
-    {
-        if (!State.VaryLength || State.LengthVariancePercent <= 0) return "Every fight lasts the duration.";
-        double share = State.LengthVariancePercent / 100;
-        return $"Each fight lasts {N(State.DurationSeconds * (1 - share))} – {N(State.DurationSeconds * (1 + share))} s, so no build is tuned to one exact length.";
-    }
-
-    private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
 }

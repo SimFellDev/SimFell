@@ -208,6 +208,23 @@ public class AplEditorTests
     }
 
     [Fact]
+    public void Document_Keeps_A_Comments_Blank_Lines_And_Indentation()
+    {
+        var actions = new List<AplDocumentAction>
+        {
+            new("ice_comet", Comment: "\nopener\n\n  indented\n"),
+            new("frost_bolt", Comment: "filler"),
+        };
+        var (written, errors) = AplDocument.Write(actions);
+        Assert.Empty(errors);
+        Assert.Equal("# opener\n#\n#   indented\nactions+=/ice_comet\n# filler\nactions+=/frost_bolt\n", written);
+
+        var read = AplDocument.Parse(written! + "# trailing\n#\n# more\n");
+        Assert.Equal("opener\n\n  indented", read[0].Comment);
+        Assert.Equal("filler\ntrailing\n\nmore", read[1].Comment);
+    }
+
+    [Fact]
     public void Document_Write_Needs_A_List_With_Actions()
     {
         var (text, errors) = AplDocument.Write(

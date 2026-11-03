@@ -15,7 +15,7 @@
             <span class="stepper">
                 <button type="button" class="icon-button" aria-label="@Label("Lower", option)" disabled="@(rank == 0)" @onclick="() => SetRank(option, rank - 1)">−</button>
                 <span class="rank" aria-label="@Label("Rank of", option)">@rank/@option.MaxRank</span>
-                <button type="button" class="icon-button" aria-label="@Label("Raise", option)" disabled="@(rank >= option.MaxRank || Room <= 0)" data-tooltip="@(Room <= 0 && rank < option.MaxRank ? FullText : null)" @onclick="() => SetRank(option, rank + 1)">+</button>
+                <button type="button" class="icon-button" aria-label="@Label("Raise", option)" disabled="@(rank >= option.MaxRank || RoomOf(option.Id) <= 0)" data-tooltip="@(RoomOf(option.Id) <= 0 && rank < option.MaxRank ? FullText : null)" @onclick="() => SetRank(option, rank + 1)">+</button>
             </span>
         </div>
     }
@@ -31,8 +31,8 @@
 
     [Parameter, EditorRequired] public Func<BuildOption, int, Task> SetRank { get; set; } = (_, _) => Task.CompletedTask;
 
-    /// <summary>How many more ranks the build can take of these options (their limit and the total's).</summary>
-    [Parameter] public int Room { get; set; } = int.MaxValue;
+    /// <summary>How many more ranks the build can take of an option, by ID (their limit, the total's and the weapon's).</summary>
+    [Parameter] public Func<int, int> RoomOf { get; set; } = _ => int.MaxValue;
 
     /// <summary>Why a raise is off when there is no room.</summary>
     [Parameter] public string FullText { get; set; } = "At the limit";

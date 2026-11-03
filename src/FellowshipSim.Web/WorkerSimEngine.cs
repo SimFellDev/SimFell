@@ -1,5 +1,7 @@
 using System.Text.Json;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
+using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
 using FellowshipSim.Logs;
@@ -21,6 +23,9 @@ public sealed class WorkerSimEngine(SimWorkerPool workers) : ISimEngine
 
     public Task<AplExpressionCheck?> CheckExpressionAsync(string hero, string text, CancellationToken ct = default) =>
         _local.CheckExpressionAsync(hero, text, ct);
+
+    public Task<AplExpressionCheck?> CheckActionListAsync(string hero, string text, CancellationToken ct = default) =>
+        _local.CheckActionListAsync(hero, text, ct);
 
     public Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default) => _local.ParseActionListAsync(text, ct);
 
@@ -47,5 +52,16 @@ public sealed class WorkerSimEngine(SimWorkerPool workers) : ISimEngine
             done => progress?.Report(new SimProgress(done == chunks ? settings.Iterations : settings.Iterations * done / chunks, settings.Iterations)),
             ct);
         return JsonSerializer.Deserialize<SimResult>(json, SimChunks.Json)!;
+    }
+
+    public async Task<AplFightTrace> TraceFightAsync(SimcProfile profile, SimSettings settings, CancellationToken ct = default)
+    {
+        // An action list the engine cannot run is refused here, with its reason, before a worker starts.
+        SimChunks.CheckDungeon(settings);
+        SimChunks.NewSimulator(profile);
+        string json = await workers.TraceFightAsync(JsonSerializer.Serialize(profile, SimChunks.Json),
+            JsonSerializer.Serialize(settings, SimChunks.Json));
+        var reply = JsonSerializer.Deserialize<TraceReply>(json, SimChunks.Json)!;
+        return reply.Trace ?? throw new SimEngineException(reply.Error ?? "The fight gave no trace.");
     }
 }

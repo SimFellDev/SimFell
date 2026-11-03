@@ -25,6 +25,17 @@ public sealed partial class ActionListStore(ReplayLibrary library, IBlobStore st
     /// <summary>True when <paramref name="name"/> can be a file name: letters, digits, spaces, '_' and '-', up to 64 characters.</summary>
     public static bool IsValidName(string name) => NamePattern().IsMatch(name);
 
+    /// <summary>
+    /// <paramref name="name"/> without the characters a file name cannot have (<see cref="IsValidName"/>), up to 64 characters;
+    /// <paramref name="fallback"/> when nothing is left.
+    /// </summary>
+    public static string ValidName(string name, string fallback)
+    {
+        string valid = new string(name.Where(c => char.IsAsciiLetterOrDigit(c) || c is ' ' or '_' or '-').ToArray()).Trim(' ', '_', '-');
+        valid = valid.Length > 64 ? valid[..64].TrimEnd() : valid;
+        return IsValidName(valid) ? valid : fallback;
+    }
+
     /// <summary>The visitor's saved lists of <paramref name="heroes"/>, then the shared ones for a web visitor.</summary>
     public async Task<IReadOnlyList<ActionListEntry>> ListAsync(Visitor visitor, IEnumerable<string> heroes, CancellationToken ct = default)
     {

@@ -50,6 +50,7 @@ public static class AplFormatter
         ConstantExpression constant => constant.Value.ToString(CultureInfo.InvariantCulture),
         PropertyExpression property => property.PropertyPath,
         GroupExpression group => $"({Format(group.Inner, style)})",
+        FunctionExpression call => $"{call.Function.Name()}({string.Join(", ", call.Arguments.Select(a => Format(a, style)))})",
         // A prefix operator binds to one primary, so any operator expression under it needs parentheses.
         UnaryOpExpression unary => Prefix(unary.Operator, style) + Wrap(unary.Operand, Precedence(unary.Operand) < PrefixPrecedence, style),
         // Every level is left-associative: the left operand needs parentheses when it binds looser, the right one

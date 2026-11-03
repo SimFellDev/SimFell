@@ -45,3 +45,46 @@
     padding: 14px 16px;
   }
 }
+
+/* A collapsible section's title: a button that folds the section to its title line. */
+.collapse {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.collapse:hover {
+  color: var(--text);
+}
+
+.chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+
+.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+/* A folded section is its title line alone. */
+.collapsed .title,
+.collapsed .head {
+  margin: 0;
+}

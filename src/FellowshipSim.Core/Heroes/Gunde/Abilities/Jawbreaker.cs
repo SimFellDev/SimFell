@@ -11,7 +11,12 @@ public class Jawbreaker : GundeAbility
     {
         SetCooldown(CooldownSeconds);
         IgnoresGcd = true;
+        Interrupts = true;
     }
 
-    public override void Execute(SimulationContext ctx, EnemyTarget target) => TriggerCooldown(ctx);
+    public override void Execute(SimulationContext ctx, EnemyTarget target)
+    {
+        if (target is { IsCasting: true }) ctx.Interrupt(target);
+        TriggerCooldown(ctx);
+    }
 }

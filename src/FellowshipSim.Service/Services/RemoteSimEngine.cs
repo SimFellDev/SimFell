@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
+using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
 using FellowshipSim.Logs;
@@ -44,6 +46,10 @@ public sealed class RemoteSimEngine : ISimEngine
 
     public Task<AplExpressionCheck?> CheckExpressionAsync(string hero, string text, CancellationToken ct = default) =>
         SendAsync<AplExpressionCheck>(HttpMethod.Post, $"apl/heroes/{Uri.EscapeDataString(hero)}/check",
+            JsonContent.Create(new AplText(text), options: Json), ct, notFoundIsNull: true);
+
+    public Task<AplExpressionCheck?> CheckActionListAsync(string hero, string text, CancellationToken ct = default) =>
+        SendAsync<AplExpressionCheck>(HttpMethod.Post, $"apl/heroes/{Uri.EscapeDataString(hero)}/check-list",
             JsonContent.Create(new AplText(text), options: Json), ct, notFoundIsNull: true);
 
     public async Task<AplDocumentActions> ParseActionListAsync(string text, CancellationToken ct = default) =>
@@ -99,12 +105,17 @@ public sealed class RemoteSimEngine : ISimEngine
         }
     }
 
+    public async Task<AplFightTrace> TraceFightAsync(SimcProfile profile, SimSettings settings, CancellationToken ct = default) =>
+        (await SendAsync<AplFightTrace>(HttpMethod.Post, "sims/trace",
+            JsonContent.Create(new SimRequest(profile, settings), options: Json), ct, replyJson: SimChunks.Json))!;
+
     /// <summary>
-    /// The reply's JSON body as <typeparamref name="T"/>; null for a 404 when <paramref name="notFoundIsNull"/>. The wait
+    /// The reply's JSON body as <typeparamref name="T"/>, read with <paramref name="replyJson"/> (the web defaults when
+    /// null); null for a 404 when <paramref name="notFoundIsNull"/>. The wait
     /// ends after <see cref="RequestTimeout"/> with a <see cref="TimeoutException"/>.
     /// </summary>
     private async Task<T?> SendAsync<T>(HttpMethod method, string path, HttpContent? content, CancellationToken ct,
-        bool notFoundIsNull = false) where T : class
+        bool notFoundIsNull = false, JsonSerializerOptions? replyJson = null) where T : class
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(RequestTimeout);
@@ -115,7 +126,7 @@ public sealed class RemoteSimEngine : ISimEngine
             using var response = await _http.SendAsync(request, timeout.Token);
             if (notFoundIsNull && response.StatusCode == HttpStatusCode.NotFound) return null;
             await EnsureAcceptedAsync(response, timeout.Token);
-            return await response.Content.ReadFromJsonAsync<T>(Json, timeout.Token)
+            return await response.Content.ReadFromJsonAsync<T>(replyJson ?? Json, timeout.Token)
                 ?? throw new HttpRequestException($"The engine server sent an empty reply to {path}.");
         }
         catch (OperationCanceledException e) when (!ct.IsCancellationRequested)

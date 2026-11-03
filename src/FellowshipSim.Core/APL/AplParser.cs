@@ -14,7 +14,7 @@ namespace FellowshipSim.Core.APL;
 public static class AplParser
 {
     // Actions that control the list rather than cast an ability.
-    private static readonly HashSet<string> SkippedActions = ["snapshot_stats"];
+    internal static readonly HashSet<string> SkippedActions = ["snapshot_stats"];
 
     private static readonly TextParser<TextSpan> Word = Span.WithAll(c => char.IsLetterOrDigit(c) || c is '_' or '.');
 
@@ -101,14 +101,26 @@ public static class AplParser
         Parse.Ref(() => Expression!).Between(Token.EqualTo(AplToken.LParen), Token.EqualTo(AplToken.RParen))
             .Select(inner => (IAplExpression)new GroupExpression(inner));
 
+    // Call: a function's name, then its arguments in parentheses, separated by ','.
+    private static readonly TokenListParser<AplToken, IAplExpression> Call =
+        (from name in Token.EqualTo(AplToken.Identifier).Where(t => AplFunctions.ByName.ContainsKey(t.ToStringValue()), "function")
+         from open in Token.EqualTo(AplToken.LParen)
+         select AplFunctions.ByName[name.ToStringValue()]).Try()
+        .Then(function =>
+            (from arguments in Parse.Ref(() => Expression!).ManyDelimitedBy(Token.EqualTo(AplToken.Comma))
+             from close in Token.EqualTo(AplToken.RParen)
+             select arguments)
+            .Where(arguments => function.Takes(arguments.Length), $"`{function.Name()}` with {function.ArgumentsText()}")
+            .Select(arguments => (IAplExpression)new FunctionExpression(function, arguments)));
+
     private static readonly TokenListParser<AplToken, IAplExpression> Prefixed =
         from op in Token.Matching<AplToken>(kind => PrefixOperator(kind) is not null, "prefix operator").Select(t => PrefixOperator(t.Kind)!.Value)
         from operand in Parse.Ref(() => Primary!)
         select (IAplExpression)new UnaryOpExpression(op, operand);
 
-    // Primary: '!' Primary, '-' Primary, '(' Expression ')', Number, Property
+    // Primary: '!' Primary, '-' Primary, '(' Expression ')', Number, Call, Property
     private static readonly TokenListParser<AplToken, IAplExpression> Primary =
-        Prefixed.Or(Group).Or(Constant).Or(Property);
+        Prefixed.Or(Group).Or(Constant).Or(Call).Or(Property);
 
     // Product: '*', '%' (divide), '%%' (remainder)
     private static readonly TokenListParser<AplToken, IAplExpression> Product =
@@ -198,6 +210,7 @@ public static class AplParser
             }
 
             if (action == null) continue;
+            action.LineNumber = lineNumber;
             if (!lists.TryGetValue(syntax.List, out var actions))
             {
                 lists[syntax.List] = actions = [];
@@ -282,6 +295,7 @@ public static class AplParser
         GroupExpression g => new GroupExpression(OfAction(g.Inner, ability)!),
         UnaryOpExpression u => new UnaryOpExpression(u.Operator, OfAction(u.Operand, ability)!),
         BinaryOpExpression b => new BinaryOpExpression(OfAction(b.Left, ability)!, b.Operator, OfAction(b.Right, ability)!),
+        FunctionExpression f => new FunctionExpression(f.Function, f.Arguments.Select(a => OfAction(a, ability)!).ToList()),
         _ => expression,
     };
 

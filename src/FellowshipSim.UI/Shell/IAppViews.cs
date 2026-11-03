@@ -11,6 +11,15 @@ public interface IAppViews
 {
     void ShowPage(AppPage page);
 
+    /// <summary>
+    /// The APL Debugger (<see cref="AppPage.AplDebugger"/>) with the fight its state was last given. The view on show
+    /// before it is the one <see cref="ShowDebuggerOpener"/> shows.
+    /// </summary>
+    void ShowDebugger();
+
+    /// <summary>The view on show at the last <see cref="ShowDebugger"/>: a sim result or the APL Editor.</summary>
+    void ShowDebuggerOpener();
+
     /// <summary>The job's progress, then its result.</summary>
     void ShowJob(SimJob job);
 

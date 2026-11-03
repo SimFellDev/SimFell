@@ -73,22 +73,25 @@ public class MonteCarloSeedTests
     }
 
     /// <summary>
-    /// Totals of fights 1-4 of each hero's default action list, captured after Rime replay accuracy v1 (#8); the other
-    /// heroes' again with their lists from FellowSimc's SimC lists. Re-pinned for the engine fixes of the functional tests branch (cooldown rates, the 31/30 and 29/30 global cooldown of Detonate,
-    /// Detonate and Cinders, Event Horizon, Skylit Grace, Brave Machinations and Nature's Fury, weapon cooldowns, gems, Amethyst Splinters).
+    /// Totals of fights 1-4 of each hero's default action list, captured again when sims began rolling crits and damage
+    /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance); Rime's, Gunde's, Mara's
+    /// and Tariq's again once dungeon_event.fight.remains and target.time_to_die read the fight's end. Tariq's again once
+    /// Schism had bad luck protection, and again once Bloodline was unhasted, Ride the Lightning snapshotted and Kill Em All
+    /// left Heavy Strike out. Rime's, Ardeos's, Mara's and Tariq's again for the engine fixes of the functional tests branch
+    /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
     /// </summary>
     [Theory]
-    [InlineData("Rime", 120, 3, new[] { 3072594.4512320277, 2891268.419831695, 3064480.4096245281, 2959378.6551024965 })]
-    [InlineData("Rime", 300, 1, new[] { 7932641.1848282842, 8212400.8833039831, 7497932.6960335923, 8972097.1966243163 })]
-    [InlineData("Ardeos", 120, 3, new[] { 3178854.3626358607, 3015413.6128822458, 3185682.0778475194, 3177669.8038768875 })]
-    [InlineData("Ardeos", 300, 1, new[] { 4936513.4543811502, 4833849.5613626326, 4455490.0538597442, 4831046.3185050916 })]
-    [InlineData("Gunde", 120, 3, new[] { 4249690.0869354261, 4420362.5168073159, 4321510.3556000302, 4574701.5092196791 })]
-    [InlineData("Gunde", 300, 1, new[] { 6861027.1777992975, 6757379.5672820788, 7042020.9264418846, 7284342.3034589784 })]
-    [InlineData("Mara", 120, 3, new[] { 2310180.6123624993, 2117118.5577164143, 2362270.4404721106, 2636468.8278212529 })]
-    [InlineData("Mara", 300, 1, new[] { 4896400.2174366862, 5123015.2697632769, 5710790.6310998807, 5730826.6926729493 })]
-    [InlineData("Tariq", 120, 3, new[] { 2052950.4947410417, 1734670.2676573573, 1910001.0717739458, 1597080.5579660365 })]
-    [InlineData("Tariq", 300, 1, new[] { 3535217.5392981456, 3230726.0350537631, 3256625.6694165505, 3547927.9140148927 })]
-    public void Each_Seed_Gives_The_Totals_Of_Rime_Accuracy_V1(string hero, int seconds, int targets, double[] totals)
+    [InlineData("Rime", 120, 3, new[] { 3103846.9857844426, 3146941.0664216764, 2661851.3885713113, 2817501.47229399 })]
+    [InlineData("Rime", 300, 1, new[] { 8470077.969138976, 7314085.758635247, 6457222.233761247, 8102670.212286511 })]
+    [InlineData("Ardeos", 120, 3, new[] { 2928926.308143849, 3153655.5730937966, 3210365.792271153, 3186044.199992814 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4880401.459850469, 4756376.690589438, 4909095.667185546, 4970616.393990371 })]
+    [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
+    [InlineData("Gunde", 300, 1, new[] { 7589315.0879662065, 7860490.4554016367, 7145894.9954196177, 7482946.3632446928 })]
+    [InlineData("Mara", 120, 3, new[] { 2440956.3761566584, 2523958.1828004178, 2016531.8647401505, 2580733.011348616 })]
+    [InlineData("Mara", 300, 1, new[] { 4698165.2098863395, 6431641.410211125, 5304913.496761604, 5296672.2168469215 })]
+    [InlineData("Tariq", 120, 3, new[] { 1967584.2099560164, 2090697.5341359354, 1728839.191903656, 1977654.0835166338 })]
+    [InlineData("Tariq", 300, 1, new[] { 3840313.4565217663, 3364470.6032848917, 3454543.6249362486, 3971030.5181241543 })]
+    public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"{hero.ToLowerInvariant()}_character.json")))!;

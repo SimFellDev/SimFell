@@ -1,3 +1,4 @@
+using System.Reflection;
 using FellowshipSim.Engine;
 using FellowshipSim.UI.Services;
 using Microsoft.JSInterop;
@@ -14,11 +15,21 @@ public sealed class SimWorkerPool(IJSRuntime js)
     private IJSObjectReference? _pool;
     private int _nextRun;
 
+    /// <summary>
+    /// The build's stamp (the project's BuildStamp). The sim scripts' addresses carry it, so a browser never runs a
+    /// script it kept from an older build (GitHub Pages lets it keep one for 10 minutes) with this build's app.
+    /// </summary>
+    private static readonly string BuildStamp = typeof(SimWorkerPool).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(a => a.Key == "BuildStamp")?.Value ?? "0";
+
     private async Task<IJSObjectReference> PoolAsync() =>
-        _pool ??= await js.InvokeAsync<IJSObjectReference>("import", "./sim/simPool.js");
+        _pool ??= await js.InvokeAsync<IJSObjectReference>("import", $"./sim/simPool.js?v={BuildStamp}");
 
     /// <summary>The workers a sim can use: the cores but the page's, up to the pool's most.</summary>
     public async Task<int> SizeAsync() => await (await PoolAsync()).InvokeAsync<int>("size");
+
+    /// <summary>The browser's logical processors.</summary>
+    public async Task<int> CoresAsync() => await (await PoolAsync()).InvokeAsync<int>("cores");
 
     /// <summary>
     /// Runs a sim's <paramref name="chunkCount"/> chunks on up to <paramref name="workers"/> workers (all when null) and
@@ -80,6 +91,41 @@ public sealed class SimWorkerPool(IJSRuntime js)
             throw new SimEngineException(Reason(e));
         }
     }
+
+    /// <summary>
+    /// Reads the dungeon of a fight on a worker with player <paramref name="playerId"/>'s hero share, downloading the fight
+    /// as <see cref="ReviewFightAsync"/> does when the browser does not keep it; the worker's <see cref="DungeonReply"/> JSON.
+    /// </summary>
+    public async Task<string> DungeonFightAsync(string reportCode, int fightId, int playerId, string? accessToken, LogsCredentials? credentials,
+        IProgress<string>? progress)
+    {
+        var pool = await PoolAsync();
+        using var sink = DotNetObjectReference.Create(new Sink(null, progress));
+        try
+        {
+            return await pool.InvokeAsync<string>("dungeonFight", CancellationToken.None, reportCode, fightId, playerId,
+                accessToken ?? "", credentials?.ClientId ?? "", credentials?.ClientSecret ?? "", sink);
+        }
+        catch (JSException e)
+        {
+            throw new SimEngineException(Reason(e));
+        }
+    }
+
+    /// <summary>The first fight of a sim with every decision of its action list, on a worker; the worker's <see cref="TraceReply"/> JSON.</summary>
+    public async Task<string> TraceFightAsync(string profileJson, string settingsJson)
+    {
+        var pool = await PoolAsync();
+        try
+        {
+            return await pool.InvokeAsync<string>("traceFight", CancellationToken.None, profileJson, settingsJson);
+        }
+        catch (JSException e)
+        {
+            throw new SimEngineException(Reason(e));
+        }
+    }
+
 
     // The first line of a worker's error, without the JS error's own prefix.
     private static string Reason(JSException e)

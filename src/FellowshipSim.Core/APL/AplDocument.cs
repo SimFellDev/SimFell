@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Superpower;
 
 namespace FellowshipSim.Core.APL;
@@ -33,6 +34,30 @@ public sealed record AplDocumentText(string? Text, IReadOnlyList<AplDocumentErro
 /// <summary>Converts between action-list text and the actions the visual editor holds.</summary>
 public static class AplDocument
 {
+    /// <summary>The most action lines kept parsed; past it the lines are parsed again as they come.</summary>
+    private const int MaxParsedLines = 20_000;
+
+    // Each action line's action, without its comment: an edit changes one line, so a long list reads the others from here.
+    private static readonly ConcurrentDictionary<string, AplDocumentAction> ParsedLines = new(StringComparer.Ordinal);
+
+    private static AplDocumentAction ActionOf(string line)
+    {
+        var syntax = AplParser.ParseActionSyntax(line);
+        bool listAction = AplListActions.Parse(syntax.Name) != null;
+        var arguments = syntax.Arguments
+            .Where(a => !(listAction && a.Key.Equals(AplActionLine.ListNameKey, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        return new AplDocumentAction(
+            syntax.Name,
+            syntax.Condition is { } condition ? AplFormatter.Format(condition, AplOperatorStyle.Words) : null,
+            syntax.TargetIf?.Selection,
+            syntax.TargetIf is { } targetIf ? AplFormatter.Format(targetIf.Expression, AplOperatorStyle.Words) : null,
+            null,
+            syntax.List,
+            arguments.Count > 0 ? string.Join(",", arguments) : null,
+            listAction ? syntax.ListName : null);
+    }
+
     /// <summary>
     /// The actions of <paramref name="script"/>, in order, with expressions in <see cref="AplFormatter"/> form with
     /// <see cref="AplOperatorStyle.Words"/> (the editor writes <c>and</c>, <c>or</c> and <c>not</c>). '#' lines
@@ -49,39 +74,29 @@ public static class AplDocument
             if (line.Length == 0) continue;
             if (line.StartsWith('#'))
             {
-                comment.Add(line[1..].TrimStart());
+                // Write puts one space after the '#'; any more is the comment's own indentation.
+                comment.Add(line.StartsWith("# ", StringComparison.Ordinal) ? line[2..] : line[1..]);
                 continue;
             }
 
-            AplActionLine syntax;
+            AplDocumentAction action;
             try
             {
-                syntax = AplParser.ParseActionSyntax(line);
+                if (ParsedLines.Count > MaxParsedLines) ParsedLines.Clear();
+                action = ParsedLines.GetOrAdd(line, ActionOf);
             }
             catch (ParseException e)
             {
                 throw new ParseException($"APL line {i + 1}: {e.Message}", e.ErrorPosition, e);
             }
-            bool listAction = AplListActions.Parse(syntax.Name) != null;
-            var arguments = syntax.Arguments
-                .Where(a => !(listAction && a.Key.Equals(AplActionLine.ListNameKey, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-            actions.Add(new AplDocumentAction(
-                syntax.Name,
-                syntax.Condition is { } condition ? AplFormatter.Format(condition, AplOperatorStyle.Words) : null,
-                syntax.TargetIf?.Selection,
-                syntax.TargetIf is { } targetIf ? AplFormatter.Format(targetIf.Expression, AplOperatorStyle.Words) : null,
-                comment.Count > 0 ? string.Join("\n", comment) : null,
-                syntax.List,
-                arguments.Count > 0 ? string.Join(",", arguments) : null,
-                listAction ? syntax.ListName : null));
+            actions.Add(comment.Count > 0 ? action with { Comment = string.Join("\n", comment) } : action);
             comment.Clear();
         }
 
         if (comment.Count > 0 && actions.Count > 0)
         {
             var last = actions[^1];
-            actions[^1] = last with { Comment = string.Join("\n", (last.Comment ?? "").Split('\n').Concat(comment).Where(c => c.Length > 0)) };
+            actions[^1] = last with { Comment = string.Join("\n", (last.Comment is { } above ? [above] : Array.Empty<string>()).Concat(comment)) };
         }
         return actions;
     }
@@ -125,9 +140,12 @@ public static class AplDocument
             }
 
             var lines = blocks[list];
-            foreach (string comment in (action.Comment ?? "").Split('\n').Select(c => c.TrimEnd()).Where(c => c.Length > 0))
+            // A blank line inside a comment is a bare '#'; blank lines before and after it are left out.
+            var commentLines = (action.Comment ?? "").Split('\n').Select(c => c.TrimEnd()).SkipWhile(c => c.Length == 0).Reverse()
+                .SkipWhile(c => c.Length == 0).Reverse();
+            foreach (string comment in commentLines)
             {
-                lines.Add($"# {comment}");
+                lines.Add(comment.Length > 0 ? $"# {comment}" : "#");
             }
             var targetIf = targetExpression != null ? new AplTargetIf(action.TargetSelection ?? AplTargetSelection.First, targetExpression) : null;
             lines.Add(new AplActionLine(list, ability, condition, targetIf, arguments).ToString());

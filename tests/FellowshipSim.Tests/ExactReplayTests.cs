@@ -64,6 +64,7 @@ public class ExactReplayTests
         public double Land(in HitRequest landed, HitOutcome outcome, SimulationContext ctx) => inner.Land(landed, outcome, ctx);
         public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => inner.TickAt(tick, ctx);
         public void HitFinished(SimulationContext ctx) => inner.HitFinished(ctx);
+        public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => inner.ReactionDelay(hold, reactions, ctx);
     }
 
     [Fact]

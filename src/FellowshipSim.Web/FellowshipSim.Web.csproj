@@ -8,6 +8,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Sims, results and reviews cross between the page and its workers as JSON of the engine's own records. -->
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <!-- index.html's #[.{fingerprint}] placeholders and import map get each build's file names, so a browser that kept an
+         older build's start files (GitHub Pages lets it keep them for 10 minutes) cannot start that build again. -->
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +20,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FellowshipSim.UI\FellowshipSim.UI.csproj" />
+  </ItemGroup>
+
+  <!-- Each build's stamp, on the sim scripts' addresses (SimWorkerPool): a browser that kept an older build's scripts
+       loads this build's instead. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildStamp</_Parameter1>
+      <_Parameter2>$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <!-- The catalog finds heroes, talents, traits and gear by reflection: trimming keeps every type of the app's own assemblies. -->

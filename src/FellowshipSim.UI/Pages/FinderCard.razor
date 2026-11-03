@@ -8,7 +8,7 @@
         </label>
         @if (!On)
         {
-            <span class="meta">Off · turn on to try changes to your build (turns Compare off)</span>
+            <span class="meta">Off. Enable Finder to sim changes to your build. This disables Compare.</span>
         }
     </div>
     <div class="body @(On ? "" : "off")" inert="@(!On)">
@@ -59,12 +59,12 @@
 
     private string Describe(FinderKind kind) => kind switch
     {
-        FinderKind.Aspects => "Each aspect one rank higher, or at max rank.",
-        FinderKind.Sigils => "Each sigil one rank higher, or at max rank.",
-        FinderKind.Glyphs => "Each glyph one rank higher, or at max rank.",
-        FinderKind.Relics => "Every pair of relics.",
-        FinderKind.Gems => "Each colour with the gem power to reach its next node, or each node above it as a run of its own.",
-        _ => $"Each talent that fits your free points ({State.Editor.PointsLeft} left).",
+        FinderKind.Aspects => "Each aspect at its next rank or at max rank.",
+        FinderKind.Sigils => "Each sigil at its next rank or at max rank.",
+        FinderKind.Glyphs => "Each glyph at its next rank or at max rank.",
+        FinderKind.Relics => "Each pair of relics.",
+        FinderKind.Gems => "Each colour with the gem power for its next node, or for each higher node as a separate run.",
+        _ => $"Each talent you can add with your free points ({State.Editor.PointsLeft} left).",
     };
 
     // The runs a finder makes: its variations and the build as it is.

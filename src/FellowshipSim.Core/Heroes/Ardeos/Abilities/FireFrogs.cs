@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// <summary>
 /// Ability 1268: instant, 45s. "Conjure five Fire Frogs to leap at your enemies ... Each Fire Frog will perform 3 attacks
 /// before dissipating." Each attack (<see cref="FireFrogAttack"/>) picks its enemy. Pyrophibian Frenzy spawns frogs of its
-/// own (<see cref="Spawn"/>).
+/// own (<see cref="Spawn"/>); the Fire Toad legendary turns frogs into toads (<see cref="ToadChance"/>).
 /// </summary>
 public class FireFrogs : ArdeosAbility
 {
@@ -24,6 +24,9 @@ public class FireFrogs : ArdeosAbility
     /// <summary>The proc of each frog a cast conjures (always procs).</summary>
     public const string ConjuredProcKey = "fire_frogs_conjured";
 
+    /// <summary>The proc of a frog that comes as a Fire Toad instead (<see cref="ToadChance"/>).</summary>
+    public const string ToadProcKey = "fire_toad";
+
     public FireFrogAttack Attack { get; }
 
     /// <summary>Frogs a cast conjures (Frog Squad adds to it).</summary>
@@ -31,6 +34,15 @@ public class FireFrogs : ArdeosAbility
 
     /// <summary>Attacks each frog performs (Frog Squad adds to it).</summary>
     public int AttacksPerFrog { get; set; } = BaseAttacksPerFrog;
+
+    /// <summary>Chance each frog conjured comes as a Fire Toad instead (the Fire Toad legendary sets it).</summary>
+    public double ToadChance { get; set; }
+
+    /// <summary>Fire Toads a cast conjures besides its frogs (the Fire Toad legendary sets it).</summary>
+    public int ToadsPerCast { get; set; }
+
+    /// <summary>A Fire Toad exploding onto an enemy, in place of a frog's attacks (the Fire Toad legendary sets it).</summary>
+    public Action<SimulationContext, EnemyTarget>? ToadExplosion { get; set; }
 
     private SimulationContext? _fight;
 
@@ -47,6 +59,7 @@ public class FireFrogs : ArdeosAbility
         // as theirs, so they are no proof of Pyrophibian Frenzy's frogs.
         for (int frog = 0; frog < Frogs; frog++) ctx.Outcomes.RollProc(ConjuredProcKey, 1.0, ctx);
         Spawn(ctx, Frogs, FirstAttackSeconds);
+        for (int toad = 0; toad < ToadsPerCast; toad++) ScheduleToad(ctx, FirstAttackSeconds + (Frogs + toad) * FrogStaggerSeconds);
     }
 
     /// <summary>
@@ -58,6 +71,12 @@ public class FireFrogs : ArdeosAbility
         _fight = ctx;
         for (int frog = 0; frog < frogs; frog++)
         {
+            // A Fire Toad explodes once, when the frog would have made its first attack.
+            if (ToadChance > 0 && ctx.Outcomes.RollProc(ToadProcKey, ToadChance, ctx))
+            {
+                ScheduleToad(ctx, firstAttackSeconds + frog * FrogStaggerSeconds);
+                continue;
+            }
             for (int attack = 0; attack < AttacksPerFrog; attack++)
             {
                 double delay = firstAttackSeconds + frog * FrogStaggerSeconds + attack * AttackIntervalSeconds;
@@ -71,6 +90,18 @@ public class FireFrogs : ArdeosAbility
         if (_fight != ctx) return;
         var enemy = ctx.Outcomes.ChooseTarget(Attack.DamageLogId, ctx.ActiveEnemies, ctx);
         if (enemy != null) Attack.DealDamage(ctx, enemy);
+    }
+
+    private void ScheduleToad(SimulationContext ctx, double delaySeconds)
+    {
+        if (ToadExplosion is not { } explode) return;
+        _fight = ctx;
+        ctx.Schedule(SimTime.FromSeconds(delaySeconds), c =>
+        {
+            if (_fight != c) return;
+            var enemy = c.Outcomes.ChooseTarget(Attack.DamageLogId, c.ActiveEnemies, c);
+            if (enemy != null) explode(c, enemy);
+        }, AbilityName);
     }
 
     /// <summary>A new iteration: frogs of the last one stop.</summary>

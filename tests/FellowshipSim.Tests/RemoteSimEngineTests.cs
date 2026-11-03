@@ -72,6 +72,14 @@ public sealed class RemoteSimEngineTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_Action_List_Check_Is_The_Engines_And_No_Hero_Is_Null()
+    {
+        const string text = "# opener\nactions+=/frost_bolt,if=buff.ice_blitz.up\nactions+=/nothing,if=(";
+        Assert.Equal(Json(await _local.CheckActionListAsync("Rime", text)), Json(await _engine.CheckActionListAsync("Rime", text)));
+        Assert.Null(await _engine.CheckActionListAsync("Nobody", "actions+=/frost_bolt"));
+    }
+
+    [Fact]
     public async Task Parsed_Actions_And_Written_Text_Are_The_Engines()
     {
         string actionList = SimcProfile.Parse(Profile).ActionList;
@@ -121,6 +129,18 @@ public sealed class RemoteSimEngineTests : IAsyncLifetime
         var profile = SimcProfile.Parse(Profile) with { ActionList = "actions+=/not_an_ability\n" };
         var e = await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(profile, new SimSettings(1, 10)));
         Assert.Contains("not_an_ability", e.Message);
+        e = await Assert.ThrowsAsync<SimEngineException>(() => _engine.TraceFightAsync(profile, new SimSettings(1, 10)));
+        Assert.Contains("not_an_ability", e.Message);
+    }
+
+    [Fact]
+    public async Task A_Traced_Fight_Is_The_Engines()
+    {
+        var settings = new SimSettings(Iterations: 1, DurationSeconds: 30, TargetCount: 2);
+        var local = await _local.TraceFightAsync(SimcProfile.Parse(Profile), settings);
+        var remote = await _engine.TraceFightAsync(SimcProfile.Parse(Profile), settings);
+
+        Assert.Equal(JsonSerializer.Serialize(local, SimChunks.Json), JsonSerializer.Serialize(remote, SimChunks.Json));
     }
 
     [Fact]

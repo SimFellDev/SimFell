@@ -1,9 +1,16 @@
-/* A sim's report: tiles, two charts over the fight, then the damage and buff tables. */
+/* A sim's report: tiles, the charts over the fight, then the damage and buff tables. */
 .report {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: 12px;
+}
+
+.save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .tiles {
@@ -105,12 +112,6 @@
   background: var(--heading);
 }
 
-.legend i.band {
-  height: 10px;
-  border-radius: 2px;
-  background: rgba(212, 175, 110, 0.18);
-}
-
 .legend i.spirit-mean {
   height: 2px;
   border-radius: 1px;
@@ -129,18 +130,40 @@
   column-gap: 8px;
 }
 
+/* Each value label centred on its grid line: the five quarters from the top to the bottom. */
 .chart .y {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
+  position: relative;
 }
 
+.chart .y span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.chart .y span:nth-child(1) { top: 0; }
+.chart .y span:nth-child(2) { top: 25%; }
+.chart .y span:nth-child(3) { top: 50%; }
+.chart .y span:nth-child(4) { top: 75%; }
+.chart .y span:nth-child(5) { top: 100%; }
+
+/* Each time label centred on its second (left set inline); the first starts at the left edge. */
 .chart .x {
   grid-column: 2;
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 15px;
   margin-top: 4px;
+}
+
+.chart .x span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.chart .x span:first-child {
+  transform: none;
 }
 
 .chart .y span,
@@ -162,11 +185,6 @@
   stroke: #1e1e22;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-}
-
-.chart .band {
-  fill: rgba(212, 175, 110, 0.18);
-  stroke: none;
 }
 
 .chart .mean {
@@ -231,6 +249,46 @@
 .report-table td.name ::deep .icon {
   vertical-align: middle;
   margin-right: 8px;
+}
+
+/* An ability with sources under other names: the whole name opens its sources, which show indented under it. */
+.group-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-table td.name .group-toggle ::deep .chevron,
+.chevron-space {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+
+.chevron-space {
+  display: inline-block;
+}
+
+.report-table td.name .group-toggle ::deep .chevron {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.report-table td.name .group-toggle.open ::deep .chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.report-table tr.part td.name {
+  padding-left: 48px;
+  color: var(--muted);
 }
 
 .report-table td.name .meta {
@@ -401,10 +459,30 @@
 }
 
 .cast-table td.time {
-  width: 1%;
   color: var(--muted);
 }
 
 .cast-table .aura-row td.name {
   color: var(--muted);
+}
+
+/* A line's hits: each one's damage, a critical hit in bold and the warning colour. One line high, for the list's virtualization. */
+.cast-table td.hits {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* With the space between amounts, about 10px apart. */
+.cast-table .hit + .hit {
+  margin-left: 6px;
+}
+
+.cast-table .count {
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.cast-table .hit.crit {
+  color: var(--warn);
+  font-weight: 700;
 }

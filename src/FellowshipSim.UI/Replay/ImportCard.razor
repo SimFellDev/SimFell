@@ -1,3 +1,4 @@
+@using FellowshipSim.Core.Import
 @using FellowshipSim.Logs
 @inject ReportLookup Reports
 @inject ImportPageState State
@@ -47,10 +48,11 @@
                             @foreach (var p in f.Players)
                             {
                                 bool picked = selected && p.Id == State.Picked?.PlayerId;
-                                string kind = !p.Supported ? "player unsupported" : picked ? "player picked" : "player";
+                                bool pickable = Pickable(p);
+                                string kind = !pickable ? "player unsupported" : picked ? "player picked" : "player";
                                 <button @key="p.Id" type="button" class="@kind" aria-pressed="@picked"
-                                        disabled="@(!p.Supported || Busy)"
-                                        data-tooltip="@(p.Supported ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
+                                        disabled="@(!pickable || Busy)"
+                                        data-tooltip="@(pickable ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
                                         @onclick="() => State.Picked = (f.Id, p.Id)">
                                     <span class="player-name">@p.Name</span>
                                     <span class="player-hero">@p.Hero</span>
@@ -63,7 +65,21 @@
             var pick = PickedIn(report);
             <div class="import-bar">
                 <span class="meta">@(pick is { } chosen ? $"{chosen.Player.Name} ({chosen.Player.Hero}) in {chosen.Fight.Name}, fight {chosen.Fight.Id}" : "Pick a player above.")</span>
-                <button type="button" class="import-button" disabled="@(pick == null || Busy)" @onclick="() => OnPick(report, pick!.Value.Fight, pick!.Value.Player)">Import</button>
+                <div class="import-actions">
+                    @if (OnImport.HasDelegate)
+                    {
+                        <label class="switch" data-tooltip="The player's hero, talents, gear and stats">
+                            <input type="checkbox" @bind="State.ImportBuild" />
+                            <span>Build</span>
+                        </label>
+                        <label class="switch" data-tooltip="The fight's pulls and enemies as the dungeon, with the player's hero share">
+                            <input type="checkbox" @bind="State.ImportDungeon" />
+                            <span>Dungeon</span>
+                        </label>
+                    }
+                    <button type="button" class="import-button" disabled="@(pick == null || Busy || OnImport.HasDelegate && !State.ImportBuild && !State.ImportDungeon)"
+                            @onclick="() => OnPick(report, pick!.Value.Fight, pick!.Value.Player)">Import</button>
+                </div>
             </div>
         }
     </div>
@@ -78,22 +94,33 @@
 
     [Parameter] public EventCallback<ReviewTarget> OnReplay { get; set; }
 
-    /// <summary>Called with the player picked, instead of <see cref="OnReplay"/>, when set.</summary>
-    [Parameter] public EventCallback<PickedPlayer> OnPlayer { get; set; }
+    /// <summary>
+    /// Called with the player picked and the parts switched on (build, dungeon), instead of <see cref="OnReplay"/>, when
+    /// set; the switches show then.
+    /// </summary>
+    [Parameter] public EventCallback<LogImport> OnImport { get; set; }
+
+    /// <summary>
+    /// True when a player of a hero the engine does not have yet can be picked too: for their build, which the build editor
+    /// takes, never for a replay.
+    /// </summary>
+    [Parameter] public bool BuildOnlyHeroes { get; set; }
 
     /// <summary>The line after a report loads, saying what to pick.</summary>
     [Parameter] public string PickHint { get; set; } = "Pick a player, then Import to replay their fight.";
 
-    // The picked fight and player of the report shown, when both are in it and the player's hero is supported.
+    private bool Pickable(FightPlayer player) => player.Supported || (BuildOnlyHeroes && BuildHeroes.IsBuildOnly(player.Hero));
+
+    // The picked fight and player of the report shown, when both are in it and the player can be picked.
     private (ReportFight Fight, FightPlayer Player)? PickedIn(Report report)
     {
         if (State.Picked is not { } picked || report.Fights.FirstOrDefault(f => f.Id == picked.FightId) is not { } fight) return null;
-        return fight.Players.FirstOrDefault(p => p.Id == picked.PlayerId && p.Supported) is { } player ? (fight, player) : null;
+        return fight.Players.FirstOrDefault(p => p.Id == picked.PlayerId && Pickable(p)) is { } player ? (fight, player) : null;
     }
 
     private Task OnPick(Report report, ReportFight fight, FightPlayer player) =>
-        OnPlayer.HasDelegate
-            ? OnPlayer.InvokeAsync(new PickedPlayer(report.Code, fight, player, report.CurrentPatch))
+        OnImport.HasDelegate
+            ? OnImport.InvokeAsync(new LogImport(new PickedPlayer(report.Code, fight, player, report.CurrentPatch), State.ImportBuild, State.ImportDungeon))
             : OnReplay.InvokeAsync(new ReviewTarget(report.Code, fight.Id, player.Id));
 
     private static string OldPatchWarning(Report report) =>

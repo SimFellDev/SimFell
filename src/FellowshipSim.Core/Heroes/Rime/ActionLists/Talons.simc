@@ -17,9 +17,9 @@ actions.talons=ice_blitz
 actions.talons+=/winters_blessing
 actions.talons+=/flight_of_the_navir
 actions.talons+=/cold_snap,if=cooldown.chronoshift.up&worb<5&!buff.glacial_assault.at_max_stacks
-actions.talons+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|fight_remains<=30)&(cooldown.cold_snap.charges=0|worb>=5)&target.time_to_die>=10
-actions.talons+=/wrath_of_winter,if=(target.time_to_die>=18|fight_remains<=20)&(buff.ice_blitz.up|spirit>=85)
-actions.talons+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
+actions.talons+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|dungeon_event.fight.remains<=30)&(cooldown.cold_snap.charges=0|worb>=5)&target.time_to_die>=10
+actions.talons+=/wrath_of_winter,if=(target.time_to_die>=18|dungeon_event.fight.remains<=20)&(buff.ice_blitz.up|spirit>=85)
+actions.talons+=/icicles_of_anzhyr,if=!dungeon_event.adds.exists|active_enemies%2>=dungeon_event.adds.count|dungeon_event.adds.in>=12
 actions.talons+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 
 # --------------------------------------------------------------------

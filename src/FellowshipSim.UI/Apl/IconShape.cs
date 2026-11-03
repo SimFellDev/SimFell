@@ -10,4 +10,7 @@ public enum IconShape
     Down,
     Grip,
     Duplicate,
+    /// <summary>A star outline; its parent fills the path to mark it on.</summary>
+    Star,
+    Pencil,
 }

@@ -1,0 +1,104 @@
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.kind {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.title {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.build {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The seed in the Fight settings card, laid out as that card's fields (FightCards.razor.css). */
+.seed {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.seed .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.seed input {
+  width: 130px;
+  height: 36px;
+  font-size: 14px;
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.seed input::-webkit-outer-spin-button,
+.seed input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.seed button {
+  height: 36px;
+}
+
+.build select {
+  min-width: 240px;
+}
+
+.run-button {
+  min-height: 40px;
+  padding: 10px 22px;
+}
+
+.fight {
+  margin: 10px 0 0;
+}
+
+.hint {
+  max-width: 90ch;
+}
+
+.profile {
+  max-height: 320px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font: 13px/1.5 var(--code-font);
+  white-space: pre;
+}
+
+/* Run fight scrolls the decisions to the top, under the web app's pinned top bar. */
+.decisions {
+  scroll-margin-top: calc(var(--header-height, 0px) + 12px);
+}
+
+.decisions:focus {
+  outline: none;
+}

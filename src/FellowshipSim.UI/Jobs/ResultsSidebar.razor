@@ -5,8 +5,8 @@
 @inject IAppViews Views
 @*
     The Sim results button counts the running sims and opens a sidebar over the page from the right: the sims still in
-    the queue with their live progress, then the saved sims, newest first. Picking one shows it. Replays and their reviews
-    are on the Log Replay page.
+    the queue with their live progress, then the saved sims, newest first. Picking one shows it; each can be favorited (kept
+    when the oldest are dropped), renamed or deleted. Replays and their reviews are on the Log Replay page.
 *@
 <div class="results" @onkeydown="OnKeyDown">
     <button type="button" class="toggle" aria-haspopup="true" aria-expanded="@(_open ? "true" : "false")" @onclick="Open">
@@ -66,16 +66,39 @@
                         @foreach (var result in _recent)
                         {
                             <li @key="result.Key" class="item">
-                                <button type="button" class="pick" @onclick="() => Show(result)">
-                                    <span class="item-head">
-                                        <span class="kind">@result.Kind</span>
-                                        <span class="item-title" data-tooltip="@result.Title">@result.Title</span>
-                                    </span>
-                                    <span class="item-meta">
-                                        <span>@result.Value</span>
-                                        <span>@result.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</span>
-                                    </span>
-                                </button>
+                                @if (_renaming == result.Sim.Id)
+                                {
+                                    <input class="rename" @ref="_renameInput" @bind="_newTitle" @bind:event="oninput" aria-label="Sim name"
+                                           @onkeydown="e => RenameKey(e, result)" @onkeydown:stopPropagation @onblur="() => Rename(result)" />
+                                }
+                                else
+                                {
+                                    <button type="button" class="pick" @onclick="() => Show(result)">
+                                        <span class="item-head">
+                                            <span class="kind">@result.Kind</span>
+                                            <span class="item-title" data-tooltip="@result.Title">@result.Title</span>
+                                        </span>
+                                        <span class="item-meta">
+                                            <span>@result.Value</span>
+                                            <span>@result.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</span>
+                                        </span>
+                                    </button>
+                                }
+                                <span class="actions">
+                                    <button type="button" class="icon-button favorite @(result.Sim.Favorite ? "on" : null)"
+                                            data-tooltip="@(result.Sim.Favorite ? "Unfavorite" : "Favorite: never dropped for newer sims")"
+                                            aria-label="Favorite" aria-pressed="@(result.Sim.Favorite ? "true" : "false")"
+                                            @onclick="() => ToggleFavorite(result)">
+                                        <Icon Shape="IconShape.Star" />
+                                    </button>
+                                    <button type="button" class="icon-button" data-tooltip="Rename" aria-label="Rename" @onclick="() => StartRename(result)">
+                                        <Icon Shape="IconShape.Pencil" />
+                                    </button>
+                                    <button type="button" class="icon-button danger-button" data-tooltip="Delete" aria-label="Delete"
+                                            @onclick="() => Delete(result)">
+                                        <Icon Shape="IconShape.Bin" />
+                                    </button>
+                                </span>
                             </li>
                         }
                     </ul>
@@ -91,6 +114,12 @@
 
     private bool _open;
     private IReadOnlyList<RecentResult> _recent = [];
+
+    /// <summary>The ID of the saved sim whose name is being edited, and the name so far.</summary>
+    private string? _renaming;
+    private string _newTitle = "";
+    private ElementReference _renameInput;
+    private bool _focusRename;
 
     private int Running => Jobs.List().Count(j => j.Kind == SimJobKind.Sim && j.Status == SimJobStatus.Running);
 
@@ -130,16 +159,78 @@
         }
     }
 
+    private async Task ToggleFavorite(RecentResult result) =>
+        await Change(() => Results.UpdateAsync(Jobs.Visitor, result.Sim with { Favorite = !result.Sim.Favorite }));
+
+    private void StartRename(RecentResult result)
+    {
+        _renaming = result.Sim.Id;
+        _newTitle = result.Title;
+        _focusRename = true;
+    }
+
+    private async Task RenameKey(KeyboardEventArgs e, RecentResult result)
+    {
+        if (e.Key == "Enter") await Rename(result);
+        else if (e.Key == "Escape") _renaming = null;
+    }
+
+    /// <summary>Takes the new name; an empty or unchanged one leaves the sim as it was.</summary>
+    private async Task Rename(RecentResult result)
+    {
+        if (_renaming != result.Sim.Id) return;
+        _renaming = null;
+        string title = _newTitle.Trim();
+        if (title.Length == 0 || title == result.Title) return;
+        await Change(() => Results.UpdateAsync(Jobs.Visitor, result.Sim with { Title = title }));
+    }
+
+    private async Task Delete(RecentResult result) => await Change(() => Results.DeleteAsync(Jobs.Visitor, result.Sim.Id));
+
+    private async Task Change(Func<Task> change)
+    {
+        try
+        {
+            await change();
+        }
+        catch (IOException)
+        {
+            // The sim stays as it was; the list below shows the folder as it is.
+        }
+        await LoadRecent();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusRename) return;
+        _focusRename = false;
+        await _renameInput.FocusAsync();
+    }
+
     private void Show(SimJob job)
     {
         _open = false;
         Views.ShowJob(job);
     }
 
-    private void Show(RecentResult result)
+    /// <summary>Reads the sim and shows it; one gone from the folder leaves the list open, read again.</summary>
+    private async Task Show(RecentResult result)
     {
+        SavedSim? sim = null;
+        try
+        {
+            sim = await Results.GetAsync(Jobs.Visitor, result.Sim.Id);
+        }
+        catch (IOException)
+        {
+        }
+        if (sim == null)
+        {
+            await LoadRecent();
+            return;
+        }
         _open = false;
-        Views.ShowSavedSim(result.Sim);
+        Views.ShowSavedSim(sim);
     }
 
     public void Dispose() => Jobs.Changed -= OnChanged;

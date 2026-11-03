@@ -1,5 +1,5 @@
 @using FellowshipSim.Core.APL
-@* The fields of an open action: its type, ability or list, condition, target, other arguments and comment. *@
+@* The fields of an open action: its type, ability or list, condition, target and other arguments. *@
 <div class="detail">
     <label for="@($"{Id}-type")">Type</label>
     <select id="@($"{Id}-type")" value="@(ListAction ? Action.Ability : "")" @onchange="e => ChangeType((string?)e.Value ?? string.Empty)">
@@ -77,9 +77,6 @@
         <label for="@($"{Id}-arguments")">Other arguments</label>
         <input id="@($"{Id}-arguments")" class="arguments" spellcheck="false" autocomplete="off" @bind="ArgumentsText" @bind:event="oninput" />
     }
-
-    <label for="@($"{Id}-comment")">Comment</label>
-    <textarea id="@($"{Id}-comment")" class="comment" rows="2" @bind="CommentText" @bind:event="oninput"></textarea>
 </div>
 
 @code {
@@ -102,12 +99,6 @@
     {
         get => Action.Arguments ?? "";
         set => Change(a => a with { Arguments = value });
-    }
-
-    private string CommentText
-    {
-        get => Action.Comment ?? "";
-        set => Change(a => a with { Comment = value });
     }
 
     private bool ListAction => ActionListModel.IsListAction(Vocabulary, Action);

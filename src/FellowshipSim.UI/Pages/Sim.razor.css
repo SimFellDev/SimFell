@@ -58,10 +58,6 @@
 .run-button {
   min-height: 40px;
   padding: 10px 22px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 ::deep .file {
@@ -145,4 +141,14 @@
   width: 160px;
   color: var(--text);
   font-size: 15px;
+}
+
+/* The Import dialog: the cards on the page's black, as the Import tab had them. */
+.import-dialog {
+  max-width: 860px;
+}
+
+.import-body {
+  padding: 0 20px 18px;
+  background: var(--bg);
 }

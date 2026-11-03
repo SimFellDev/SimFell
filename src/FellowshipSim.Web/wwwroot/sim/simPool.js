@@ -9,13 +9,22 @@ const workers = [];
 const cancelled = new Set();
 let nextCall = 1;
 
+/** The browser's logical processors (2 when it does not say). */
+export function cores() {
+  return navigator.hardwareConcurrency || 2;
+}
+
 /** The workers a sim can use: the cores but the page's, from 1 to MaxWorkers. */
 export function size() {
-  return Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, MaxWorkers));
+  return Math.max(1, Math.min(cores() - 1, MaxWorkers));
 }
 
 function spawn() {
-  const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+  // With this script's build stamp (?v=), so the worker is of the same build; and this build's dotnet.js, from the page's
+  // import map, which a worker does not have.
+  const url = new URL('./worker.js' + new URL(import.meta.url).search, import.meta.url);
+  url.searchParams.set('dotnet', import.meta.resolve?.('../_framework/dotnet.js') ?? new URL('../_framework/dotnet.js', import.meta.url).href);
+  const worker = new Worker(url, { type: 'module' });
   const w = { worker, calls: new Map(), busy: 0, dead: false };
   w.ready = new Promise((resolve, reject) => { w.resolve = resolve; w.reject = reject; });
   w.ready.catch(() => { });
@@ -92,7 +101,7 @@ export async function simulate(runId, profileJson, settingsJson, chunkCount, wan
       }
     }));
     if (done < chunkCount) throw new DOMException('The sim was cancelled.', 'AbortError');
-    return (await call(chosen[0], { type: 'combine', settingsJson, chunks })).json;
+    return (await call(chosen[0], { type: 'combine', profileJson, settingsJson, chunks })).json;
   } finally {
     cancelled.delete(runId);
   }
@@ -119,6 +128,37 @@ export async function reviewFight(reportCode, fightId, playerId, accessToken, cl
     w.busy--;
   }
 }
+
+/**
+ * Downloads a fight from FellowshipLogs on the least busy worker, or takes the one the browser keeps, and reads its dungeon
+ * with player `playerId`'s hero share there; `sink` hears OnProgress(text). Resolves to the reply's JSON.
+ */
+export async function dungeonFight(reportCode, fightId, playerId, accessToken, clientId, clientSecret, sink) {
+  ensure();
+  const [w] = leastBusy(1);
+  await w.ready;
+  w.busy++;
+  try {
+    return (await call(w, { type: 'dungeonFight', reportCode, fightId, playerId, accessToken, clientId, clientSecret },
+      text => sink.invokeMethodAsync('OnProgress', text))).json;
+  } finally {
+    w.busy--;
+  }
+}
+
+/** Fights the first fight of a sim on the least busy worker, tracing every decision. Resolves to the reply's JSON. */
+export async function traceFight(profileJson, settingsJson) {
+  ensure();
+  const [w] = leastBusy(1);
+  await w.ready;
+  w.busy++;
+  try {
+    return (await call(w, { type: 'traceFight', profileJson, settingsJson })).json;
+  } finally {
+    w.busy--;
+  }
+}
+
 
 /** Replays player `playerId` of a raw fight on the least busy worker; `sink` hears OnProgress(text). Resolves to the reply's JSON. */
 export async function review(rawFight, playerId, sink) {

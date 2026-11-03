@@ -11,7 +11,7 @@
         <strong>@shown.Label</strong>
         <span class="meta">@shown.Detail</span>
     </div>
-    <SimJobResult Result="shown.Result" />
+    <SimJobResult Result="shown.Result" Title="@shown.Label" Profile="@shown.Profile" Settings="Settings" />
 }
 else
 {
@@ -82,6 +82,10 @@ else
                                 {
                                     <span data-tooltip="The DPS to the first target alone">@N(primary) main target</span>
                                 }
+                                @if (Boss && run.Result.BossDps is { } boss)
+                                {
+                                    <span data-tooltip="The DPS to bosses over the time of boss fighting">@N(boss) bosses</span>
+                                }
                             </td>
                             <td class="two @(isBase ? "same" : Class(run))">
                                 @if (isBase)
@@ -141,6 +145,9 @@ else
     /// <summary>The run whose report shows in place of the runs; null for the runs.</summary>
     [Parameter] public SimRun? Report { get; set; }
 
+    /// <summary>The sim's settings, every run's; null for a sim saved before they were kept.</summary>
+    [Parameter] public SimSettings? Settings { get; set; }
+
     [Parameter] public EventCallback<SimRun?> ReportChanged { get; set; }
 
     private string? _loaded;
@@ -155,7 +162,10 @@ else
     private SimRun Best => Others.Where(r => Change(r) > 0).MaxBy(r => r.Result.MeanDps) ?? Base;
 
     // A column for the first target's DPS when the runs had more than one target.
-    private bool Primary => Runs.Any(r => r.Result.PrimaryTargetDps is { } p && p < r.Result.MeanDps * 0.999);
+    private bool Primary => Runs.Any(r => r.Result.PrimaryTargetDps is { } p && p > 0 && p < r.Result.MeanDps * 0.999);
+
+    // A column for the DPS to bosses when the runs were dungeon fights (with trash besides their bosses).
+    private bool Boss => Runs.Any(r => SimJobResult.HasBossDps(r.Result));
 
     // The hero on each row when the runs have more than one.
     private bool Heroes => Runs.Select(r => r.Hero).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1;

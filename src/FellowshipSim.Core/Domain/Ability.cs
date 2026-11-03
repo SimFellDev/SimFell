@@ -35,6 +35,15 @@ public abstract class Ability
     public int MaxCharges { get; protected set; } = 1;
     public bool IgnoresGcd { get; protected set; } = false;
 
+    /// <summary>True for an interrupt: it ends a casting target's cast (<see cref="SimulationContext.Interrupt"/>).</summary>
+    public bool Interrupts { get; protected set; }
+
+    /// <summary>
+    /// Whether this ability can be cast while the global cooldown runs. Unlike <see cref="IgnoresGcd"/> it still waits for
+    /// a cast or channel to end and starts its own global cooldown.
+    /// </summary>
+    public bool UsableDuringGcd { get; protected set; }
+
     /// <summary>
     /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
     /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
@@ -86,6 +95,11 @@ public abstract class Ability
     public bool ChannelPartialFinalTick { get; protected set; } = false;
     /// <summary>The partial final tick comes even when less than a server frame of a period is left (Freezing Torrent).</summary>
     public bool ChannelFinalTickAlways { get; protected set; } = false;
+    /// <summary>
+    /// A cast can be queued during the channel and fires as it ends, as after a cast time (Hammer Storm); other channels
+    /// end with nothing queued, and the player reacts (<see cref="Engine.ReactionDelays"/>).
+    /// </summary>
+    public bool ChannelQueuesNextCast { get; protected set; } = false;
 
     /// <summary>Unhasted seconds between ticks of the channel starting now (abilities whose tick rate a buff changes override this).</summary>
     public virtual double ChannelTickPeriodFor(SimulationContext ctx) => ChannelTickPeriodSeconds;

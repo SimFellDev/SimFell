@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
+using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Core.Engine;
@@ -22,12 +24,21 @@ public class MonteCarloResult
     public IReadOnlyList<AbilityReport> Abilities { get; init; } = [];
     /// <summary>Each buff on the hero and debuff on the targets, as means per fight.</summary>
     public IReadOnlyList<BuffReport> Buffs { get; init; } = [];
-    /// <summary>The casts of one typical fight (the sampled fight nearest the mean damage), in order.</summary>
+    /// <summary>
+    /// The casts of one typical fight (the sampled fight nearest the mean damage), in order: rolled
+    /// (<see cref="MonteCarloSimulator.RollFight"/>) for a run asked to roll it, and as the run fought it otherwise.
+    /// </summary>
     public IReadOnlyList<CastReport> Casts { get; init; } = [];
+    /// <summary>The typical fight's index in the run (its seed is the first seed plus it), or null for a run of no fights.</summary>
+    public int? TypicalFight { get; init; }
+    /// <summary>The rolled typical fight's hits, in order (<see cref="MonteCarloSimulator.RollFight"/>). Empty for a run not asked to roll it.</summary>
+    public IReadOnlyList<HitReport> Hits { get; init; } = [];
     /// <summary>The hero's Spirit Points over the fight.</summary>
     public SpiritTimeline? Spirit { get; init; }
     /// <summary>The first target's DPS: its damage in every fight over their lengths.</summary>
     public double PrimaryTargetDps { get; init; }
+    /// <summary>The DPS to bosses over the time of boss fighting in every fight; 0 when the fights had no enemies besides bosses, or no boss.</summary>
+    public double BossDps { get; init; }
 }
 
 /// <summary>
@@ -76,10 +87,12 @@ public class MonteCarloSimulator
     /// </para>
     /// <paramref name="fight"/> sets each fight's length, the targets' health and the starting Spirit
     /// (<see cref="FightOptions.Default"/> when null). A fight's DPS is its damage over its own length.
+    /// <paramref name="rollTypicalFight"/> fights the typical fight once more with dice (<see cref="RollFight"/>) for the
+    /// result's casts and hits; the hero's events hear that fight too.
     /// </summary>
     public MonteCarloResult Run(SimTime duration, int iterations = 100, int targetCount = 1, int firstSeed = 1,
         int? degreeOfParallelism = null, bool keepFightDamage = false, Action<int>? progress = null,
-        CancellationToken cancellationToken = default, FightOptions? fight = null)
+        CancellationToken cancellationToken = default, FightOptions? fight = null, bool rollTypicalFight = false)
     {
         fight ??= FightOptions.Default;
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
@@ -116,7 +129,9 @@ public class MonteCarloSimulator
             },
             worker => _idle.Add(worker));
         reporter?.Finish(iterations);
-        return Result(total, fightDamage, duration, iterations, targetCount);
+        int? typical = total.Report.TypicalFight();
+        return Result(total, fightDamage, duration, iterations,
+            rollTypicalFight && typical is { } t ? RollFight(t, duration, targetCount, firstSeed, fight) : null);
     }
 
     /// <summary>
@@ -156,7 +171,7 @@ public class MonteCarloSimulator
     /// <see cref="Run"/> with the same arguments.
     /// </summary>
     public static MonteCarloResult Combine(IReadOnlyList<MonteCarloChunk> chunks, SimTime duration, int iterations,
-        int targetCount = 1, bool keepFightDamage = false)
+        bool keepFightDamage = false)
     {
         if (chunks.Count != ChunkCount(iterations) || chunks.Where((c, i) => c.Index != i).Any())
         {
@@ -165,7 +180,7 @@ public class MonteCarloSimulator
         var total = new Totals();
         foreach (var chunk in chunks) total.Merge(Totals.From(chunk));
         double[]? fightDamage = keepFightDamage ? chunks.SelectMany(c => c.FightDamage).ToArray() : null;
-        return Result(total, fightDamage, duration, iterations, targetCount);
+        return Result(total, fightDamage, duration, iterations);
     }
 
     // The fights of one chunk on one worker. A kept fight's damage goes in its place in fightDamage.
@@ -180,15 +195,54 @@ public class MonteCarloSimulator
         {
             cancellationToken.ThrowIfCancellationRequested();
             var length = fight.Length(duration, firstSeed + i);
-            double damage = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
-            double lengthSeconds = Math.Max(1.0, length.TotalSeconds);
+            var (damage, fightEnd) = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
+            double lengthSeconds = Math.Max(1.0, fightEnd.TotalSeconds);
             totals.Add(damage / lengthSeconds, damage, lengthSeconds);
             if (fightDamage != null) fightDamage[i] = damage;
         }
         return totals;
     }
 
-    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations, int targetCount)
+    /// <summary>
+    /// Fight <paramref name="fight"/> of a run with these arguments again, with its seed: its casts and hits. A run's fights
+    /// keep no hits, since the typical fight is known only once every fight is done.
+    /// </summary>
+    public RolledFight RollFight(int fight, SimTime duration, int targetCount = 1, int firstSeed = 1, FightOptions? options = null)
+    {
+        options ??= FightOptions.Default;
+        var worker = _idle.TryTake(out var idle) ? idle : NewWorker();
+        try
+        {
+            int seconds = (int)Math.Ceiling(Math.Max(1.0, options.LongestLength(duration).TotalSeconds));
+            worker.Recorder.KeepFight = true;
+            Fight(worker, options.Length(duration, firstSeed + fight), targetCount, firstSeed + fight, fight, seconds, options, new Totals());
+            return worker.Recorder.Fight;
+        }
+        finally
+        {
+            worker.Recorder.KeepFight = false;
+            _idle.Add(worker);
+        }
+    }
+
+    /// <summary>
+    /// Fight <paramref name="fight"/> of a run with these arguments again, with its seed, on a new hero whose action lists
+    /// log every decision (<see cref="AplProgram.BindTraced"/>): each decision's hero, enemies, steps and cast, and the
+    /// fight's casts. Its decisions and casts are those of the same fight in <see cref="RollFight"/>.
+    /// </summary>
+    public AplFightTrace TraceFight(int fight, SimTime duration, int targetCount = 1, int firstSeed = 1, FightOptions? options = null)
+    {
+        options ??= FightOptions.Default;
+        var hero = _newHero();
+        var program = AplProgram.BindTraced(_actions, hero);
+        var worker = new Worker(hero, program, new FightRecorder(hero)) { Recorder = { KeepFight = true } };
+        int seconds = (int)Math.Ceiling(Math.Max(1.0, options.LongestLength(duration).TotalSeconds));
+        var (_, end) = Fight(worker, options.Length(duration, firstSeed + fight), targetCount, firstSeed + fight, fight, seconds, options, new Totals());
+        return program.Log!.Trace(end.TotalSeconds, worker.Recorder.Fight.Casts);
+    }
+
+    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations,
+        RolledFight? rolled = null)
     {
         // The fights' mean length: every fight's, or the duration for a run of none.
         double totalSeconds = total.Count > 0 ? total.LengthSum / total.Count : Math.Max(1.0, duration.TotalSeconds);
@@ -211,10 +265,14 @@ public class MonteCarloSimulator
             DurationSeconds = totalSeconds,
             Timeline = total.Report.Timeline(),
             Abilities = total.Report.Abilities(totalSeconds),
-            Buffs = total.Report.Buffs(totalSeconds, targetCount),
-            Casts = total.Report.Casts(),
+            Buffs = total.Report.Buffs(totalSeconds),
+            Casts = rolled?.Casts ?? total.Report.Casts(),
+            TypicalFight = total.Report.TypicalFight(),
+            Hits = rolled?.Hits ?? [],
             Spirit = total.Report.Spirit(),
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
+            // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.
+            BossDps = total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999 ? total.Report.BossDamage / total.Report.BossSeconds : 0,
         };
     }
 
@@ -225,62 +283,131 @@ public class MonteCarloSimulator
     }
 
     /// <summary>
-    /// Fight <paramref name="fight"/> of the run on the worker's hero, <paramref name="duration"/> long; returns its total
-    /// damage and adds each ability's damage and the fight's report to <paramref name="totals"/>.
+    /// Fight <paramref name="fight"/> of the run on the worker's hero, <paramref name="duration"/> long (a dungeon's time
+    /// limit); returns its total damage and its end, and adds each ability's damage and the fight's report to
+    /// <paramref name="totals"/>.
     /// </summary>
-    private static double Fight(Worker worker, SimTime duration, int targetCount, int seed, int fight, int seconds,
+    private static (double Damage, SimTime End) Fight(Worker worker, SimTime duration, int targetCount, int seed, int fight, int seconds,
         FightOptions options, Totals totals)
     {
         var hero = worker.Hero;
-        var ctx = new SimulationContext(hero);
+        var ctx = new SimulationContext(hero) { Reactions = options.ReactionDelays ? ReactionDelays.Measured : null };
         ctx.Rng.Seed(seed);
         hero.ResetForIteration();
         worker.Recorder.Begin(fight, seconds, totals.Report);
         hero.BeginFight(ctx);
         if (options.StartingSpirit > 0) hero.GainResource(Hero.SpiritPoints, options.StartingSpirit, ctx);
-        if (!options.Boss) foreach (var aura in hero.BossAuras) hero.Auras.Remove(aura, SimTime.Zero);
+        ctx.FightEnd = duration;
 
-        // Populate enemies
-        for (int i = 1; i <= targetCount; i++)
+        double targetSeconds, bossSeconds;
+        var end = duration;
+        if (options.Dungeon is { } dungeon)
         {
-            var enemy = ctx.AddEnemy(100 + i, i, $"Training Mob {i}", maxHealth: 100_000_000);
-            if (options.HealthFollowsTime) enemy.FollowTime(ctx, duration);
+            // A dungeon has no main target: its enemies come and go.
+            worker.Recorder.WatchTargets(ctx);
+            (end, targetSeconds, bossSeconds) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed), options.HeroShare(seed),
+                (until, stop) => RunUntil(worker, ctx, until, stop)).Run();
         }
-        ctx.Player.CurrentTarget = ctx.AllEnemies.First();
-        worker.Recorder.WatchTargets(ctx);
-
-        // Main loop: whenever the hero is free to act, run the first ready APL action, then let the
-        // event queue carry time forward to the next decision point.
-        while (ctx.CurrentTime < duration)
+        else
         {
-            bool acted = IsFreeToAct(hero, ctx) && worker.Program.TryAct(ctx);
-
-            var next = NextDecisionTime(hero);
-            if (!acted && next <= ctx.CurrentTime)
+            if (!options.Boss) foreach (var aura in hero.BossAuras) hero.Auras.Remove(aura, SimTime.Zero);
+            ctx.Boss = options.Boss;
+            for (int i = 1; i <= targetCount; i++)
             {
-                // Nothing was cast: decide again at the next event or when something the action list reads changes.
-                next = worker.Program.NextDecision(ctx);
+                var enemy = ctx.AddEnemy(100 + i, i, $"Training Dummy {i}", maxHealth: TrainingDummyHealth);
+                enemy.IsBoss = options.Boss;
+                if (options.HealthFollowsTime) enemy.FollowTime(ctx, SimTime.Zero, duration);
             }
-            ctx.RunUntil(next < duration ? next : duration);
+            ctx.Player.CurrentTarget = ctx.AllEnemies.First();
+            worker.Recorder.WatchTargets(ctx);
+            RunUntil(worker, ctx, duration);
+            targetSeconds = targetCount * duration.TotalSeconds;
+            bossSeconds = options.Boss ? duration.TotalSeconds : 0;
         }
 
-        hero.Auras.FinalizeUptimes(duration);
-        worker.Recorder.End(duration);
+        hero.Auras.FinalizeUptimes(end);
+        worker.Recorder.End(end, targetSeconds, bossSeconds);
 
         foreach (var (ability, dmg) in ctx.AbilityDamage)
         {
             totals.AbilityDamage.TryGetValue(ability, out double cur);
             totals.AbilityDamage[ability] = cur + dmg;
         }
-        return ctx.TotalDamage;
+        return (ctx.TotalDamage, end);
     }
 
-    private static bool IsFreeToAct(Hero hero, SimulationContext ctx) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime >= hero.GlobalCooldownEndTime;
+    /// <summary>The health of every training dummy; it falls with time, so its size only sets damage-to-health ratios.</summary>
+    private const double TrainingDummyHealth = 100_000_000;
 
-    private static SimTime NextDecisionTime(Hero hero)
+    /// <summary>
+    /// The hero acts until <paramref name="end"/>: whenever they are free to act, the first ready APL action runs, then the
+    /// event queue carries time forward to the next decision point.
+    /// </summary>
+    private static void RunUntil(Worker worker, SimulationContext ctx, SimTime end) => RunUntil(worker, ctx, end, null);
+
+    /// <summary>
+    /// The hero acts as <see cref="RunUntil(Worker, SimulationContext, SimTime)"/> has them, and stops right after the
+    /// event at which <paramref name="stop"/> holds. Returns true when it stopped there.
+    /// </summary>
+    private static bool RunUntil(Worker worker, SimulationContext ctx, SimTime end, Func<bool>? stop)
     {
-        var next = hero.GlobalCooldownEndTime;
+        var hero = worker.Hero;
+        bool castsDuringGcd = hero.Abilities.Any(a => a.UsableDuringGcd);
+        while (ctx.CurrentTime < end)
+        {
+            if (stop != null && stop()) return true;
+            bool acted = IsFreeToAct(hero, ctx, castsDuringGcd) && worker.Program.TryAct(ctx);
+            NoteHold(hero, ctx);
+
+            var next = NextDecisionTime(hero, ctx);
+            if (!acted && next <= ctx.CurrentTime)
+            {
+                // Nothing was cast: decide again at the next event or when something the action list reads changes.
+                next = worker.Program.NextDecision(ctx);
+            }
+            else if (castsDuringGcd && OnGcdOnly(hero, ctx))
+            {
+                // An ability usable during the global cooldown can go now, after the cast that started it, or once it
+                // becomes ready before the global cooldown ends.
+                var decision = acted ? ctx.CurrentTime : worker.Program.NextDecision(ctx);
+                if (decision < next) next = decision;
+            }
+            if (ctx.RunUntil(next < end ? next : end, stop)) return true;
+        }
+        return stop != null && stop();
+    }
+
+    // While the global cooldown or the reaction to a hold runs, a hero with an ability usable during the global cooldown
+    // acts too: the others refuse (SimulationContext.Activate).
+    private static bool IsFreeToAct(Hero hero, SimulationContext ctx, bool castsDuringGcd) =>
+        hero.CurrentCast == null && hero.CurrentChannel == null && (castsDuringGcd || ctx.CurrentTime >= GcdOrReactionEnd(hero, ctx));
+
+    // The hero is held by the global cooldown, or the reaction to a hold, alone.
+    private static bool OnGcdOnly(Hero hero, SimulationContext ctx) =>
+        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime < GcdOrReactionEnd(hero, ctx);
+
+    private static SimTime GcdOrReactionEnd(Hero hero, SimulationContext ctx) =>
+        ctx.ReactionEndTime > hero.GlobalCooldownEndTime ? ctx.ReactionEndTime : hero.GlobalCooldownEndTime;
+
+    /// <summary>
+    /// The hold the hero is under now, the last to end of a channel, a cast and the global cooldown, so the reaction to it
+    /// is rolled once (<see cref="SimulationContext.HoldEnds"/>).
+    /// </summary>
+    private static void NoteHold(Hero hero, SimulationContext ctx)
+    {
+        if (ctx.Reactions == null) return;
+        var (end, hold) = (hero.GlobalCooldownEndTime, ReactionHold.GlobalCooldown);
+        if (hero.CurrentCast is { } cast && cast.EndTime >= end) (end, hold) = (cast.EndTime, ReactionHold.CastTime);
+        if (hero.CurrentChannel is { } channel && channel.Ticks.End >= end)
+        {
+            (end, hold) = (channel.Ticks.End, channel.Ability.ChannelQueuesNextCast ? ReactionHold.CastTime : ReactionHold.Channel);
+        }
+        if (end > ctx.CurrentTime) ctx.HoldEnds(end, hold);
+    }
+
+    private static SimTime NextDecisionTime(Hero hero, SimulationContext ctx)
+    {
+        var next = GcdOrReactionEnd(hero, ctx);
         if (hero.CurrentCast != null && hero.CurrentCast.EndTime > next) next = hero.CurrentCast.EndTime;
         if (hero.CurrentChannel != null && hero.CurrentChannel.Ticks.End > next) next = hero.CurrentChannel.Ticks.End;
         return next;

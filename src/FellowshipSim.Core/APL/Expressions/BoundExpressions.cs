@@ -60,6 +60,7 @@ public abstract class BoundExpression
         UnaryOpExpression { Operator: UnaryOperator.Not } u => new BoundNot(Bind(u.Operand, hero, variables)),
         UnaryOpExpression { Operator: UnaryOperator.Minus } u => new BoundMinus(Bind(u.Operand, hero, variables)),
         BinaryOpExpression b => new BoundBinary(Bind(b.Left, hero, variables), b.Operator, Bind(b.Right, hero, variables)),
+        FunctionExpression f => new BoundFunction(f.Function, f.Arguments.Select(a => Bind(a, hero, variables)).ToArray()),
         PropertyExpression p => BindProperty(p, hero, variables),
         _ => throw new ArgumentException($"Unsupported APL expression: '{expression}'", nameof(expression)),
     };
@@ -68,6 +69,8 @@ public abstract class BoundExpression
     private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
         if (p.PropertyPath == "time") return new BoundTime();
+        if (p.PropertyPath == "target.cast.remains") return new BoundCastRemains();
+        if (PropertyExpression.Countdowns.TryGetValue(p.PropertyPath, out var end)) return new BoundCountdown(end);
         if (PropertyExpression.Named.TryGetValue(p.PropertyPath, out var named)) return new BoundNamed(hero, named.Value);
         if (hero.FindResource(p.ResourceName) is { } resource)
         {
@@ -79,7 +82,7 @@ public abstract class BoundExpression
             case PropertyExpression.BuffScope:
                 return new BoundAura(hero, debuff: false, p.Name!, BoundAura.PropertyOf(p.Property!));
             case PropertyExpression.DebuffScope:
-                return new BoundAura(hero, debuff: true, p.Name!, BoundAura.PropertyOf(p.Property!));
+                return new BoundAura(hero, debuff: true, p.Name!, BoundAura.PropertyOf(p.Property!), p.Pick);
             case PropertyExpression.CooldownScope:
                 // Cooldowns are kept under the ability's own name ("Cold Snap"), not its action-list name.
                 return BoundCooldown.For(hero, AplNames.FindAbility(hero, p.Name!), p.Name!, p.Property!);
@@ -87,6 +90,10 @@ public abstract class BoundExpression
                 var ability = AplNames.FindAbility(hero, p.Name!);
                 var read = PropertyExpression.ActionProperty(p.Property!);
                 return new BoundNamed(hero, (_, ctx) => read(ability, ctx.CurrentTime));
+            case PropertyExpression.PrevScope:
+                return AplNames.FindAbility(hero, p.Name!) is { } previous ? new BoundPrevious(previous) : new BoundConstant(0.0);
+            case PropertyExpression.PrevGcdScope:
+                return AplNames.FindAbility(hero, p.Name!) is { } previousGcd ? new BoundPreviousGcd(previousGcd) : new BoundConstant(0.0);
             case PropertyExpression.ActiveDotScope:
                 return new BoundActiveDot(hero, p.Name!);
             case PropertyExpression.VariableScope:
@@ -336,6 +343,40 @@ internal sealed class BoundTime : BoundNumeric
     internal override double NumericAt(SimulationContext ctx, SimTime time) => time.TotalSeconds;
 }
 
+/// <summary>
+/// The seconds until a time (<see cref="PropertyExpression.Countdowns"/>), falling a second per second; it breaks at that
+/// time, where an event starts the next pull or ends the fight. <see cref="PropertyExpression.NeverIn"/> when the time
+/// never comes.
+/// </summary>
+internal sealed class BoundCountdown(Func<SimulationContext, SimTime> end) : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => PropertyExpression.SecondsUntil(ctx, end(ctx));
+    internal override SimTime Until(SimulationContext ctx) => end(ctx);
+    internal override bool IsLevel(SimulationContext ctx) => end(ctx) == SimTime.Infinite;
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        IsLevel(ctx) ? TimeCurve.Constant(PropertyExpression.NeverIn) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
+    internal override double NumericAt(SimulationContext ctx, SimTime time)
+    {
+        var at = end(ctx);
+        return at == SimTime.Infinite ? PropertyExpression.NeverIn : (at - time).TotalSeconds;
+    }
+}
+
+/// <summary>
+/// The seconds until the current target's cast ends, falling a second per second to 0 at its end, where an event ends the
+/// cast; 0 while the target is not casting.
+/// </summary>
+internal sealed class BoundCastRemains : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => PropertyExpression.CastRemains(ctx, ctx.CurrentTime);
+    internal override SimTime Until(SimulationContext ctx) =>
+        ctx.Player.CurrentTarget is { IsCasting: true } target ? target.CastEnd : SimTime.Infinite;
+    internal override bool IsLevel(SimulationContext ctx) => ctx.Player.CurrentTarget is not { IsCasting: true };
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        IsLevel(ctx) ? TimeCurve.Constant(0.0) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
+    internal override double NumericAt(SimulationContext ctx, SimTime time) => PropertyExpression.CastRemains(ctx, time);
+}
+
 /// <summary>The variables of one bound program, by name.</summary>
 internal sealed class BoundVariables
 {
@@ -343,6 +384,9 @@ internal sealed class BoundVariables
 
     public BoundVariableSlot Slot(string name) =>
         _slots.TryGetValue(name, out var slot) ? slot : _slots[name] = new BoundVariableSlot();
+
+    /// <summary>Each variable by name.</summary>
+    public IEnumerable<KeyValuePair<string, BoundVariableSlot>> Slots => _slots;
 }
 
 /// <summary>
@@ -372,7 +416,8 @@ internal sealed class BoundVariable(BoundVariableSlot slot) : BoundEventValue
 /// keeps, <see cref="ITargetEffects"/>). It is found by its action-list name, as <see cref="PropertyExpression"/> finds it:
 /// several definitions can share a name (copies with another duration or source).
 /// </summary>
-internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.AuraProperty property) : BoundNumeric
+internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.AuraProperty property, TargetEffectPick pick = TargetEffectPick.All)
+    : BoundNumeric
 {
     public enum AuraProperty { Up, Down, Stack, AtMaxStacks, Remains, Refreshable }
 
@@ -397,7 +442,7 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
     {
         if (!debuff) return hero.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
         var target = ctx.Player.CurrentTarget;
-        return target == null ? null : AuraLookup.On(hero, target, slug, now);
+        return target == null ? null : AuraLookup.On(hero, target, slug, now, pick);
     }
 
     private double Read(TargetEffect? aura, SimTime now) => property switch
@@ -438,6 +483,21 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         var aura = Find(ctx, ctx.CurrentTime);
         return Read(aura is { } a && time >= a.ExpiresAt ? null : aura, time);
     }
+}
+
+/// <summary>The last cast started (<c>prev.&lt;ability&gt;</c>): 1 when it is <paramref name="ability"/>; it changes only in a cast.</summary>
+internal sealed class BoundPrevious(Ability ability) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => ctx.PreviousCast == ability ? 1.0 : 0.0;
+}
+
+/// <summary>
+/// The last cast started on the global cooldown (<c>prev_gcd.&lt;ability&gt;</c>): 1 when it is <paramref name="ability"/>; it
+/// changes only in a cast.
+/// </summary>
+internal sealed class BoundPreviousGcd(Ability ability) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => ctx.PreviousGcdCast == ability ? 1.0 : 0.0;
 }
 
 /// <summary>

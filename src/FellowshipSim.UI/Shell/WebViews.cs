@@ -9,6 +9,17 @@ public sealed class WebViews(NavigationManager navigation) : IAppViews
 {
     public void ShowPage(AppPage page) => navigation.NavigateTo(page.Route);
 
+    // The address on show at the last ShowDebugger.
+    private string? _debuggerOpener;
+
+    public void ShowDebugger()
+    {
+        _debuggerOpener = navigation.Uri;
+        navigation.NavigateTo(AppPage.AplDebugger.Route);
+    }
+
+    public void ShowDebuggerOpener() => navigation.NavigateTo(_debuggerOpener ?? AppPage.All[0].Route);
+
     public void ShowJob(SimJob job) => navigation.NavigateTo(Pages.Job.Href(job.Id));
 
     public void ShowSavedSim(SavedSim sim) => navigation.NavigateTo(Pages.Job.Href(sim.Id));

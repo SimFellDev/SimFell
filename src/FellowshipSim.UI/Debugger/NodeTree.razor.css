@@ -1,0 +1,43 @@
+.tree {
+  margin: 0;
+  padding: 0 0 0 16px;
+  list-style: none;
+  border-left: 1px solid var(--border);
+}
+
+.tree .tree {
+  margin-left: 6px;
+}
+
+.node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 2px 0;
+}
+
+.text {
+  font: 13px/1.5 var(--code-font);
+  overflow-wrap: anywhere;
+}
+
+.value {
+  font: 600 13px var(--code-font);
+}
+
+.value.true {
+  color: var(--good);
+}
+
+.value.false {
+  color: var(--bad);
+}
+
+.value.number {
+  color: var(--tok-number);
+}
+
+.not-read {
+  opacity: 0.5;
+}

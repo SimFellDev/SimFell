@@ -69,6 +69,13 @@ public class CharacterBuild
     /// <summary>The weapon's ability ID (the weapon tree's ability, e.g. 1558 for Asha's Chronoshift Spire).</summary>
     public int WeaponAbilityId { get; set; }
 
+    /// <summary>
+    /// The items worn, one piece per filled slot, with their tempers. Picking gear sets the raw stats above to the pieces'
+    /// stats summed, and the relics, legendary and weapon to theirs; a log gives both. Empty for a build made before
+    /// builds held their gear: its stats stand as they are.
+    /// </summary>
+    public List<GearPiece> Gear { get; set; } = new();
+
     /// <summary>The rating the stat enchants add to <paramref name="rating"/> (<see cref="StatType.CritRating"/> ...).</summary>
     public double EnchantRating(StatType rating) =>
         StatEnchants.Sum(e => Customization.StatEnchants.StatEnchant.Find(e.Id) is { } enchant

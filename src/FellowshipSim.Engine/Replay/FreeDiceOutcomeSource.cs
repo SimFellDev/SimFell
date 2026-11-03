@@ -17,7 +17,7 @@ public sealed class FreeDiceOutcomeSource : RandomOutcomeSource
     // Built once per script: free dice runs one script many times, on several threads.
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ReplayScript, Engagement> Engagements = new();
 
-    public FreeDiceOutcomeSource(ReplayScript script, SimulationRng rng) : base(rng, OutcomeMode.Discrete)
+    public FreeDiceOutcomeSource(ReplayScript script, SimulationRng rng) : base(rng)
     {
         _rng = rng;
         (_castTimes, _engaged) = Engagements.GetValue(script, BuildEngagement);

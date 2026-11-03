@@ -197,9 +197,9 @@ public sealed class ReplayVerifier
         bool canCast = ability.CanCast(ctx, out var reason);
         var state = EngineState.Capture(ctx, _hero.CurrentTarget, cast: ability, refusal: reason);
 
-        if (!ability.IgnoresGcd)
+        if (!ability.IgnoresGcd && !ability.UsableDuringGcd)
         {
-            var gcd = new ExpectedRange(_hero.GlobalCooldownEndTime.TotalSeconds - _options.GlobalCooldownToleranceSeconds, double.PositiveInfinity, "s");
+            var gcd =new ExpectedRange(_hero.GlobalCooldownEndTime.TotalSeconds - _options.GlobalCooldownToleranceSeconds, double.PositiveInfinity, "s");
             if (!gcd.Contains(time))
             {
                 refusals.Add(Issue(ctx, IssueCategory.GlobalCooldown,

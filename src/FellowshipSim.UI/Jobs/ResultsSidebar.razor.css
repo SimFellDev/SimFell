@@ -183,3 +183,20 @@ h3 {
 .actions .icon-button {
   padding: 3px 8px;
 }
+
+.favorite.on {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.favorite.on ::deep .icon path {
+  fill: currentColor;
+}
+
+.rename {
+  width: 100%;
+  min-width: 0;
+  margin: 4px 0;
+  font: inherit;
+  font-weight: 600;
+}

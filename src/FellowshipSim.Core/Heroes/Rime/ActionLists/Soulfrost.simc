@@ -18,9 +18,9 @@ actions.soulfrost=ice_blitz
 actions.soulfrost+=/winters_blessing,if=worb>=4
 actions.soulfrost+=/flight_of_the_navir
 actions.soulfrost+=/cold_snap,if=cooldown.chronoshift.up&worb<4&!buff.glacial_assault.at_max_stacks&(!blessing.the_vehement|!buff.the_vehement.at_max_stacks|buff.frostwyrms_spite.up)
-actions.soulfrost+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|fight_remains<=30)&(cooldown.cold_snap.charges=0|worb>=4)&target.time_to_die>=10
-actions.soulfrost+=/wrath_of_winter,if=(target.time_to_die>=18|fight_remains<=20)&(buff.ice_blitz.up|spirit>=85)
-actions.soulfrost+=/icicles_of_anzhyr,if=!raid_event.adds.exists|active_enemies%2>=raid_event.adds.count|raid_event.adds.in>=12
+actions.soulfrost+=/chronoshift,if=(spirit>=70|spirit>=85|buff.ice_blitz.up|dungeon_event.fight.remains<=30)&(cooldown.cold_snap.charges=0|worb>=4)&target.time_to_die>=10
+actions.soulfrost+=/wrath_of_winter,if=(target.time_to_die>=18|dungeon_event.fight.remains<=20)&(buff.ice_blitz.up|spirit>=85)
+actions.soulfrost+=/icicles_of_anzhyr,if=!dungeon_event.adds.exists|active_enemies%2>=dungeon_event.adds.count|dungeon_event.adds.in>=12
 actions.soulfrost+=/voidbringers_touch,if=!debuff.voidbringers_touch.up
 
 # --------------------------------------------------------------------
@@ -57,3 +57,6 @@ actions.soulfrost+=/cold_snap,if=worb<5&!buff.glacial_assault.at_max_stacks&(!bl
 # Nature's Fury is a weapon the engine does not have yet.
 # actions.soulfrost+=/natures_fury
 actions.soulfrost+=/frost_bolt,if=!blessing.the_vehement|!buff.the_vehement.at_max_stacks
+# At the most stacks of The Vehement, Cold Snap and Frost Bolt above wait for Frostwyrm's Spite. With nothing else to
+# cast, Frost Bolt goes anyway: a dungeon fight stops while the hero casts nothing.
+actions.soulfrost+=/frost_bolt

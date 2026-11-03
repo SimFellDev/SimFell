@@ -43,6 +43,11 @@ public sealed class MonteCarloChunk
         /// <summary>Each aura, in the order the fights first met it.</summary>
         public List<AuraTotals> Auras { get; init; } = [];
         public double PrimaryDamage { get; init; }
+        public double BossDamage { get; init; }
+        public double BossSeconds { get; init; }
+        public double TargetSeconds { get; init; }
+        /// <summary>The whole seconds of the longest fight.</summary>
+        public int LongestSeconds { get; init; }
     }
 
     /// <summary>One of the first fights' damage each second, for the band of the damage over time.</summary>
@@ -53,7 +58,7 @@ public sealed class MonteCarloChunk
 
     public sealed record AuraSpans(string Name, bool OnTarget, List<double> Spans);
 
-    public sealed record SourceTotals(string Name, double Damage, double Crits, long Casts, long Hits, int Id);
+    public sealed record SourceTotals(string Name, double Damage, double Crits, long Casts, long Hits, int Id, string? Group = null);
 
     public sealed record AuraTotals(string Name, bool OnTarget, double UpSeconds, double StackSeconds, double AtMaxSeconds,
         double GapSeconds, long Applications, long Refreshes, long Gaps, int MaxStacks, int StackCap, int LogId);

@@ -28,11 +28,11 @@
         case { Status: SimJobStatus.Done, Result: SavedSim sim }:
             if (sim.Runs is { Count: > 0 } runs)
             {
-                <RunsResult Runs="runs" @bind-Report="_report" />
+                <RunsResult Runs="runs" Settings="sim.Settings" @bind-Report="_report" />
             }
             else
             {
-                <SimJobResult Result="sim.Result" />
+                <SimJobResult Result="sim.Result" Title="@Job.Title" Profile="@sim.Profile" Settings="sim.Settings" />
             }
             break;
     }

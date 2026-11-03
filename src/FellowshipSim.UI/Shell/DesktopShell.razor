@@ -43,7 +43,7 @@
                             {
                                 <li @key="tab.Key" class="@(tab == Tabs.Selected ? "selected" : "")">
                                     <button type="button" class="pick" role="menuitem" data-tooltip="@tab.Title" @onclick="() => Pick(tab)">
-                                        <span class="kind">@(tab.Kind == DesktopTabKind.Review ? "Review" : "Sim")</span>
+                                        <span class="kind">@KindLabel(tab.Kind)</span>
                                         <span class="pick-title">@tab.Title</span>
                                     </button>
                                     <button type="button" class="close" data-tooltip="Close" aria-label="@($"Close {tab.Title}")" @onclick="() => Tabs.Close(tab)">✕</button>
@@ -63,6 +63,9 @@
             <div class="content">
                 @switch (tab)
                 {
+                    case { Kind: DesktopTabKind.Debugger }:
+                        <Debugger.AplDebuggerPage />
+                        break;
                     case { Kind: DesktopTabKind.Page, Page: { } menuPage }:
                         <DynamicComponent Type="menuPage.Component" />
                         break;
@@ -83,6 +86,13 @@
 <TooltipLayer />
 
 @code {
+    private static string KindLabel(DesktopTabKind kind) => kind switch
+    {
+        DesktopTabKind.Review => "Review",
+        DesktopTabKind.Debugger => "Debugger",
+        _ => "Sim",
+    };
+
     private ElementReference _resultTabs;
     private IJSObjectReference? _module, _scrolling;
     private bool _listOpen;

@@ -58,6 +58,40 @@ public sealed class ActionListEditor(ISimEngine engine)
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Shows <paramref name="actions"/> as lists, keeping the actions at the start and end of each list that are as they
+    /// were, open or closed, so an edit of the text re-renders only the actions it changed. A text that changes no action
+    /// raises no <see cref="Changed"/>.
+    /// </summary>
+    public void Replace(IReadOnlyList<AplDocumentAction> actions)
+    {
+        var lists = ActionListModel.ListsOf(V, actions).Select(list =>
+            Lists.FirstOrDefault(l => l.Name == list.Name) is { } old ? Kept(old, list) : list).ToList();
+        if (lists.Count == Lists.Count && lists.Zip(Lists).All(pair => ReferenceEquals(pair.First, pair.Second))) return;
+        Lists = lists;
+        _open.IntersectWith(lists.SelectMany(l => l.Actions).Select(a => a.Key));
+        Changed?.Invoke();
+    }
+
+    // The new list, with the old list's actions where the start and end of the two lists have the same fields; the old
+    // list when every action is as it was.
+    private static ActionList Kept(ActionList old, ActionList list)
+    {
+        static bool Same(EditorAction a, EditorAction b) => a with { Key = 0 } == b with { Key = 0 };
+        var actions = list.Actions.ToArray();
+        int start = 0;
+        while (start < actions.Length && start < old.Actions.Count && Same(old.Actions[start], actions[start]))
+        {
+            actions[start] = old.Actions[start];
+            start++;
+        }
+        for (int end = 1; end <= actions.Length - start && end <= old.Actions.Count - start && Same(old.Actions[^end], actions[^end]); end++)
+        {
+            actions[^end] = old.Actions[^end];
+        }
+        return actions.Length == old.Actions.Count && start == actions.Length ? old : list with { Actions = actions };
+    }
+
     public void SetDragFrom(DragFrom? from)
     {
         DragFrom = from;

@@ -22,6 +22,8 @@ public static class ConditionBuilder
     public const string NumberKind = "number";
     /// <summary>A group of rows in a condition, or a condition in parentheses on a side of a row.</summary>
     public const string GroupKind = "group";
+    /// <summary>A math function (<see cref="AplFunction"/>) on a side of a row, with the rows of each argument.</summary>
+    public const string FunctionKind = "function";
     /// <summary>The kind of a <see cref="ValuePick"/> that adds a prefix to its term.</summary>
     public const string PrefixKind = "prefix";
 
@@ -39,6 +41,8 @@ public static class ConditionBuilder
         var scopeNames = v.ScopeNames;
         var activeDot = PropertyExpression.ScopeDocs[PropertyExpression.ActiveDotScope];
         var variable = PropertyExpression.ScopeDocs[PropertyExpression.VariableScope];
+        var prev = PropertyExpression.ScopeDocs[PropertyExpression.PrevScope];
+        var prevGcd = PropertyExpression.ScopeDocs[PropertyExpression.PrevGcdScope];
         return
         [
             .. v.Scopes.Select(scope => new ConditionKind(scope.Key, PropertyExpression.ScopeDocs[scope.Key].Label, scope.Key switch
@@ -60,6 +64,8 @@ public static class ConditionBuilder
             new ConditionKind(PropertyExpression.ActiveDotScope, activeDot.Label, AplTokenKind.Debuff, v.Auras, Description: activeDot.Description),
             new ConditionKind(PropertyExpression.VariableScope, variable.Label, AplTokenKind.Named, variables.Select(n => new AplName(n, n)).ToList(),
                 Description: variable.Description),
+            new ConditionKind(PropertyExpression.PrevScope, prev.Label, AplTokenKind.Cooldown, v.Abilities, Description: prev.Description),
+            new ConditionKind(PropertyExpression.PrevGcdScope, prevGcd.Label, AplTokenKind.Cooldown, v.Abilities, Description: prevGcd.Description),
         ];
     }
 
@@ -122,20 +128,25 @@ public static class ConditionBuilder
 
     /// <summary>Scopes of "&lt;scope&gt;.&lt;name&gt;" paths: the build's parts, the enemies with a debuff, and variables.</summary>
     private static bool IsNameScope(AplVocabulary v, string scope) =>
-        v.BuildNames.ContainsKey(scope) || scope is PropertyExpression.ActiveDotScope or PropertyExpression.VariableScope;
+        v.BuildNames.ContainsKey(scope) || scope is PropertyExpression.ActiveDotScope or PropertyExpression.VariableScope or PropertyExpression.PrevScope
+            or PropertyExpression.PrevGcdScope;
 
     /// <summary>
     /// A term with no value picked yet, parentheses with no picked term, a row with no picked term on its left, and a group
-    /// with no such row, are in the builder only: the text has what is picked.
+    /// with no such row, and a function with an argument that has no such row, are in the builder only: the text has what is
+    /// picked.
     /// </summary>
     public static bool IsComplete(ConditionRow row) => row.Items is { } items ? items.Any(IsComplete) : row.Left is { } left && left.Any(IsComplete);
 
     public static bool IsComplete(ConditionTerm term) =>
-        term.Items is { } items ? items.Any(IsComplete) : !string.IsNullOrEmpty(term.Path) || term.Number != null;
+        term.Arguments is { } arguments ? arguments.All(a => a.Any(IsComplete))
+        : term.Items is { } items ? items.Any(IsComplete)
+        : !string.IsNullOrEmpty(term.Path) || term.Number != null;
 
     /// <summary>
     /// Changes <paramref name="term"/> by a pick: a prefix goes before its prefixes, a number starts at 0, parentheses hold the
-    /// term as it was, and a name keeps the property when its kind lists it, else takes the kind's first.
+    /// term as it was, a function takes the term as it was as its first argument (a function picked over another keeps the
+    /// arguments it takes), and a name keeps the property when its kind lists it, else takes the kind's first.
     /// </summary>
     public static void Apply(ConditionTerm term, ValuePick pick, AplVocabulary v, IReadOnlyList<ConditionKind> kinds)
     {
@@ -146,9 +157,7 @@ public static class ConditionBuilder
         }
         if (pick.Kind == NumberKind)
         {
-            term.Path = null;
-            term.Number = 0;
-            term.Items = null;
+            SetValue(term, number: 0);
             return;
         }
         if (pick.Kind == GroupKind)
@@ -156,9 +165,26 @@ public static class ConditionBuilder
             var held = term.Clone();
             held.Operator = null;
             held.Prefix = null;
-            term.Path = null;
-            term.Number = null;
-            term.Items = [new ConditionRow { Left = [held] }];
+            SetValue(term, items: [new ConditionRow { Left = [held] }]);
+            return;
+        }
+        if (pick.Kind == FunctionKind)
+        {
+            var function = AplFunctions.ByName[pick.Name!];
+            List<List<ConditionRow>> arguments;
+            if (term.Arguments is { } kept)
+            {
+                arguments = kept.Take(function.MaxArguments()).ToList();
+            }
+            else
+            {
+                var argument = term.Clone();
+                argument.Operator = null;
+                argument.Prefix = null;
+                arguments = [[new ConditionRow { Left = [argument] }]];
+            }
+            while (arguments.Count < function.MinArguments()) arguments.Add(NumberArgument());
+            SetValue(term, function: function.Name(), arguments: arguments);
             return;
         }
         var kind = kinds.First(k => k.Id == pick.Kind);
@@ -166,16 +192,37 @@ public static class ConditionBuilder
                            && kind.Properties?.Contains(current.Property!) == true
             ? current.Property
             : kind.Properties?.FirstOrDefault();
-        term.Path = JoinPath(v, new PathParts(kind.Id, pick.Name ?? "", property));
-        term.Number = null;
-        term.Items = null;
+        SetValue(term, path: JoinPath(v, new PathParts(kind.Id, pick.Name ?? "", property)));
     }
 
-    /// <summary>The row a group's empty row becomes by a pick: a group, a number, or a name with its kind's first property.</summary>
+    // A term's value: one of a path, a number, parentheses, or a function with its arguments.
+    private static void SetValue(ConditionTerm term, string? path = null, double? number = null, List<ConditionRow>? items = null,
+        string? function = null, List<List<ConditionRow>>? arguments = null) =>
+        (term.Path, term.Number, term.Items, term.Function, term.Arguments) = (path, number, items, function, arguments);
+
+    // An argument of a function that holds the number 0.
+    private static List<ConditionRow> NumberArgument() => [new ConditionRow { Left = [new ConditionTerm { Number = 0 }] }];
+
+    /// <summary>
+    /// The row a group's empty row becomes by a pick: a group, a number, a function with 0 in each argument it needs, or a name
+    /// with its kind's first property.
+    /// </summary>
     public static ConditionRow RowFor(ValuePick pick, string join, bool not, AplVocabulary v, IReadOnlyList<ConditionKind> kinds) => pick.Kind switch
     {
         GroupKind => new ConditionRow { Join = join, Not = not, Items = [] },
         NumberKind => new ConditionRow { Join = join, Not = not, Left = [new ConditionTerm { Number = 0 }] },
+        FunctionKind => new ConditionRow
+        {
+            Join = join, Not = not,
+            Left =
+            [
+                new ConditionTerm
+                {
+                    Function = pick.Name,
+                    Arguments = Enumerable.Range(0, AplFunctions.ByName[pick.Name!].MinArguments()).Select(_ => NumberArgument()).ToList(),
+                },
+            ],
+        },
         _ => new ConditionRow
         {
             Join = join, Not = not,
@@ -183,11 +230,17 @@ public static class ConditionBuilder
         },
     };
 
-    /// <summary>Every group in the rows, at every depth, in the rows and in each condition in parentheses on a side.</summary>
+    /// <summary>
+    /// Every group in the rows, at every depth, in the rows and in each condition in parentheses or argument of a function on
+    /// a side.
+    /// </summary>
     public static IEnumerable<ConditionRow> Groups(IEnumerable<ConditionRow> rows) => rows.SelectMany(row =>
         row.Items is { } items
             ? Groups(items).Prepend(row)
-            : (row.Left ?? []).Concat(row.Comparisons.SelectMany(c => c.Terms)).SelectMany(t => t.Items is { } inner ? Groups(inner) : []));
+            : (row.Left ?? []).Concat(row.Comparisons.SelectMany(c => c.Terms)).SelectMany(TermGroups));
+
+    private static IEnumerable<ConditionRow> TermGroups(ConditionTerm term) =>
+        term.Items is { } inner ? Groups(inner) : term.Arguments is { } arguments ? arguments.SelectMany(Groups) : [];
 
     /// <summary>
     /// Rows as text: each join as its word, a group in parentheses, 'not' before a value or a group. 'not' binds to one value,
@@ -207,12 +260,15 @@ public static class ConditionBuilder
 
     /// <summary>
     /// Terms as text: each operator with a space on each side, each prefix before its term ('!' as "not "), a condition in
-    /// parentheses. The first term written has no operator.
+    /// parentheses, a function with its arguments in parentheses after its name. The first term written has no operator.
     /// </summary>
     public static string Text(IReadOnlyList<ConditionTerm> terms) =>
         string.Concat(terms.Where(IsComplete).Select((term, i) =>
         {
-            string value = term.Items is { } items ? $"({Text(items)})" : !string.IsNullOrEmpty(term.Path) ? term.Path : Number(term.Number!.Value);
+            string value = term.Arguments is { } arguments ? $"{term.Function}({string.Join(", ", arguments.Select(Text))})"
+                : term.Items is { } items ? $"({Text(items)})"
+                : !string.IsNullOrEmpty(term.Path) ? term.Path
+                : Number(term.Number!.Value);
             string prefixed = string.Concat(PrefixOperators(term.Prefix).Select(op => AplFormatter.Prefix(op, AplOperatorStyle.Words))) + value;
             return i == 0 ? prefixed : $" {(string.IsNullOrEmpty(term.Operator) ? "+" : term.Operator)} {prefixed}";
         }));

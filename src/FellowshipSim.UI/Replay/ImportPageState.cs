@@ -19,6 +19,11 @@ public sealed class ImportPageState
     /// <summary>True to list every fight of a report whose link names one; false lists that fight alone.</summary>
     public bool ShowAllFights { get; set; }
 
+    /// <summary>The parts the Sim page's Import takes from the player picked: their build, the fight's dungeon.</summary>
+    public bool ImportBuild { get; set; } = true;
+
+    public bool ImportDungeon { get; set; }
+
     public MessageState Status { get; set; } = MessageState.None;
 
     /// <summary>The review started from the page; its player buttons are disabled while it runs.</summary>

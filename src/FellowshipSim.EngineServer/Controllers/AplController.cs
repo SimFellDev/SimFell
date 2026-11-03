@@ -19,6 +19,11 @@ public sealed class AplController(ISimEngine engine) : ControllerBase
     public async Task<IActionResult> Check(string hero, [FromBody] AplText request, CancellationToken ct) =>
         await engine.CheckExpressionAsync(hero, request.Text ?? "", ct) is { } check ? Ok(check) : NotFound(new { error = $"No hero named {hero}." });
 
+    /// <summary>Tokens of an action list's text with their kinds for <paramref name="hero"/>, and its first line outside the grammar.</summary>
+    [HttpPost("heroes/{hero}/check-list")]
+    public async Task<IActionResult> CheckList(string hero, [FromBody] AplText request, CancellationToken ct) =>
+        await engine.CheckActionListAsync(hero, request.Text ?? "", ct) is { } check ? Ok(check) : NotFound(new { error = $"No hero named {hero}." });
+
     /// <summary>The actions of an action list's text.</summary>
     [HttpPost("parse")]
     public async Task<IActionResult> ParseText([FromBody] AplText request, CancellationToken ct)

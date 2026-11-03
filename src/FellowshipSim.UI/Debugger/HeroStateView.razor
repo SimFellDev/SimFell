@@ -1,0 +1,70 @@
+@* The hero and the enemies at a decision, before its cast. *@
+<section class="state" aria-label="Hero at this decision">
+    <h3 class="heading">Resources</h3>
+    <table>
+        <tbody>
+            @foreach (var resource in Value.Resources)
+            {
+                <tr><th scope="row">@resource.Name</th><td>@AplValues.Number(resource.Current) / @AplValues.Number(resource.Max)</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <h3 class="heading">Buffs</h3>
+    <AuraTable Auras="Value.Buffs" />
+
+    <h3 class="heading">Cooldowns</h3>
+    <table>
+        <tbody>
+            <tr class="@(Value.GlobalCooldown > 0 ? "waiting" : "")">
+                <th scope="row">Global cooldown</th>
+                <td>@(Value.GlobalCooldown > 0 ? AplValues.Seconds(Value.GlobalCooldown) : "Ended")</td>
+            </tr>
+            @foreach (var cooldown in Value.Cooldowns)
+            {
+                <tr class="@(cooldown.Charges > 0 ? "" : "waiting")">
+                    <th scope="row">@cooldown.Ability</th>
+                    <td>@(cooldown.Charges > 0 ? "Ready" : AplValues.Seconds(cooldown.Remains))@(cooldown.MaxCharges > 1 ? $" ({cooldown.Charges}/{cooldown.MaxCharges})" : "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (Value.Variables.Count > 0)
+    {
+        <h3 class="heading">Variables</h3>
+        <table>
+            <tbody>
+                @foreach (var variable in Value.Variables)
+                {
+                    <tr><th scope="row"><code>variable.@variable.Name</code></th><td>@AplValues.Number(variable.Value)</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h3 class="heading">Enemies</h3>
+    @if (Value.Enemies.Count == 0)
+    {
+        <p class="meta">None</p>
+    }
+    @foreach (var enemy in Value.Enemies)
+    {
+        <div class="enemy">
+            <p class="name">
+                @enemy.Name
+                @{ var meta = string.Join(", ", new[] { enemy.HealthPercent is { } health ? $"{AplValues.Number(health)}% health" : null,
+                       enemy.Current ? "current target" : null }.OfType<string>()); }
+                @if (meta.Length > 0)
+                {
+                    <span class="meta">@meta</span>
+                }
+            </p>
+            <AuraTable Auras="enemy.Debuffs" />
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AplHeroState Value { get; set; } = null!;
+}

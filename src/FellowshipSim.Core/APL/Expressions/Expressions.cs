@@ -39,18 +39,59 @@ public class PropertyExpression : IAplExpression
     public const string WeaponScope = "weapon";
     public const string WeaponTraitScope = "weapon_trait";
     public const string VariableScope = "variable";
+    public const string PrevScope = "prev";
+    public const string PrevGcdScope = "prev_gcd";
+
+    /// <summary>The application of a debuff applied first: <c>debuff.&lt;name&gt;.oldest.&lt;property&gt;</c>.</summary>
+    public const string OldestPick = "oldest";
+    /// <summary>The application of a debuff applied last: <c>debuff.&lt;name&gt;.newest.&lt;property&gt;</c>.</summary>
+    public const string NewestPick = "newest";
+
+    /// <summary>The properties one application of a debuff has, after <see cref="OldestPick"/> or <see cref="NewestPick"/>.</summary>
+    private static readonly string[] PickedProperties = ["remains", "refreshable"];
+
+    /// <summary>A debuff's properties: each aura property, then each picked application's ("oldest.remains").</summary>
+    private static IReadOnlyCollection<string> DebuffProperties =>
+        [.. AuraProperties.Keys, .. new[] { OldestPick, NewestPick }.SelectMany(pick => PickedProperties.Select(p => $"{pick}.{p}"))];
 
     /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last 30% of its duration.</summary>
     public const double RefreshableFraction = 0.3;
 
-    /// <summary>The sim's fights have no raid events: none exist, and the next one never comes.</summary>
-    public const double NoRaidEventIn = 10_000.0;
+    /// <summary>A countdown's value when its time never comes: no such pull follows, or the fight has no set end.</summary>
+    public const double NeverIn = 10_000.0;
 
-    /// <summary>The target's time to die in every fight.</summary>
-    public const double TargetTimeToDie = 60.0;
+    /// <summary>
+    /// Named values that count the seconds down to a time (<see cref="SecondsUntil"/>), by their path: they fall by a second
+    /// per second between events.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<SimulationContext, SimTime>> Countdowns { get; } =
+        new Dictionary<string, Func<SimulationContext, SimTime>>
+        {
+            ["target.time_to_die"] = ctx => ctx.Player.CurrentTarget is not { } target ? SimTime.Zero
+                : target.DiesAt != SimTime.Infinite ? target.DiesAt : ctx.FightEnd,
+            ["dungeon_event.fight.remains"] = ctx => ctx.FightEnd,
+            ["dungeon_event.adds.in"] = ctx => ctx.NextTrashAt,
+            ["dungeon_event.boss.in"] = ctx => ctx.NextBossAt,
+        };
 
-    /// <summary>The fight's remaining time in every fight.</summary>
-    public const double FightRemains = 100.0;
+    /// <summary>The seconds from now until <paramref name="end"/>; <see cref="NeverIn"/> when it never comes.</summary>
+    public static double SecondsUntil(SimulationContext ctx, SimTime end) =>
+        end == SimTime.Infinite ? NeverIn : (end - ctx.CurrentTime).TotalSeconds;
+
+    /// <summary>The seconds from <paramref name="time"/> until the end of the current target's cast; 0 when it is not casting.</summary>
+    public static double CastRemains(SimulationContext ctx, SimTime time) =>
+        ctx.Player.CurrentTarget is { IsCasting: true } target ? Math.Max(0.0, (target.CastEnd - time).TotalSeconds) : 0.0;
+
+    /// <summary>The enemies in combat that are bosses (or are not).</summary>
+    private static int CountActive(SimulationContext ctx, bool boss)
+    {
+        int count = 0;
+        foreach (var enemy in ctx.ActiveEnemies)
+        {
+            if (enemy.IsBoss == boss) count++;
+        }
+        return count;
+    }
 
     /// <summary>Values named by their whole path.</summary>
     public static IReadOnlyDictionary<string, AplDescribed<Func<Hero, SimulationContext, double>>> Named { get; } =
@@ -62,22 +103,38 @@ public class PropertyExpression : IAplExpression
                 (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0),
             ["target.health"] = new(new("Target health", "The current health of the target. 0 if there is no target."),
                 (_, ctx) => ctx.Player.CurrentTarget?.CurrentHealth ?? 0.0),
-            ["target.time_to_die"] = new(new("Target time to die", $"Seconds until the target dies. The value is {TargetTimeToDie} in every fight."),
-                (_, _) => TargetTimeToDie),
-            ["fight_remains"] = new(new("Fight time remaining", $"Seconds until the fight ends. The value is {FightRemains} in every fight."),
-                (_, _) => FightRemains),
+            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: from its health loss per second since it arrived, the end of its pull duration, or the end of a training dummy fight. The end of the fight before a dungeon enemy with hit points takes damage. 0 if there is no target."),
+                (_, ctx) => SecondsUntil(ctx, Countdowns["target.time_to_die"](ctx))),
+            ["target.is_boss"] = new(new("Target is a boss", "1 if the target is a boss. Otherwise 0."),
+                (_, ctx) => ctx.Player.CurrentTarget is { IsBoss: true } ? 1.0 : 0.0),
+            ["target.is_priority"] = new(new("Target is a priority target", "1 if the target is a priority target of a trash pull. Otherwise 0."),
+                (_, ctx) => ctx.Player.CurrentTarget is { IsPriority: true } ? 1.0 : 0.0),
+            ["target.casting"] = new(new("Target is casting", "1 if the target is casting an interruptible ability. Otherwise 0."),
+                (_, ctx) => ctx.Player.CurrentTarget is { IsCasting: true } ? 1.0 : 0.0),
+            ["target.cast.remains"] = new(new("Target cast time remaining", "Seconds until the cast of the target ends. 0 if the target is not casting."),
+                (_, ctx) => CastRemains(ctx, ctx.CurrentTime)),
             ["time"] = new(new("Fight time", "Seconds since the fight started."),
                 (_, ctx) => ctx.CurrentTime.TotalSeconds),
             ["gcd"] = new(new("Global cooldown", "The length of the global cooldown, in seconds. The value is the base global cooldown of the hero divided by (1 + haste). Example: a base of 1.5 at 25% haste gives 1.2. The value is the full length. It is not the time that remains on the current global cooldown."),
                 (hero, ctx) => Gcd(hero, ctx.CurrentTime)),
             ["gcd.max"] = new(new("Global cooldown (max)", "The same value as gcd: the length of the global cooldown, in seconds."),
                 (hero, ctx) => Gcd(hero, ctx.CurrentTime)),
-            ["raid_event.adds.exists"] = new(new("Adds exist", "1 if a wave of adds is active. The value is 0 in every fight."),
-                (_, _) => 0.0),
-            ["raid_event.adds.count"] = new(new("Adds count", "The number of adds in the current wave. The value is 0 in every fight."),
-                (_, _) => 0.0),
-            ["raid_event.adds.in"] = new(new("Adds in", $"Seconds until the next wave of adds. The value is {NoRaidEventIn} in every fight."),
-                (_, _) => NoRaidEventIn),
+            ["dungeon_event.adds.exists"] = new(new("Trash pull", "1 while a dungeon enemy that is not a boss is in combat. Otherwise 0."),
+                (_, ctx) => ctx.Trash ? 1.0 : 0.0),
+            ["dungeon_event.adds.count"] = new(new("Trash enemies", "The number of dungeon enemies in combat that are not bosses. 0 if there are none."),
+                (_, ctx) => ctx.Trash ? CountActive(ctx, boss: false) : 0.0),
+            ["dungeon_event.adds.in"] = new(new("Next trash pull in", $"Seconds until the next pull of a dungeon with enemies that are not bosses starts, an estimate from the pulls so far. {NeverIn} if no such pull follows, or before damage gives an estimate."),
+                (_, ctx) => SecondsUntil(ctx, ctx.NextTrashAt)),
+            ["dungeon_event.boss.exists"] = new(new("Boss fight", "1 while a dungeon boss is in combat, or in a training dummy fight against a boss. Otherwise 0. A boss that is not the final boss is dungeon_event.boss.exists & !dungeon_event.boss.final."),
+                (_, ctx) => ctx.Boss ? 1.0 : 0.0),
+            ["dungeon_event.boss.count"] = new(new("Bosses", "The number of bosses in combat. A council of three bosses gives 3."),
+                (_, ctx) => CountActive(ctx, boss: true)),
+            ["dungeon_event.boss.final"] = new(new("Final boss", "1 while the final boss of a dungeon is in combat. Otherwise 0."),
+                (_, ctx) => ctx.FinalBoss ? 1.0 : 0.0),
+            ["dungeon_event.boss.in"] = new(new("Next boss in", $"Seconds until the next pull of a dungeon with a boss starts, an estimate from the pulls so far. {NeverIn} if no boss follows, or before damage gives an estimate."),
+                (_, ctx) => SecondsUntil(ctx, ctx.NextBossAt)),
+            ["dungeon_event.fight.remains"] = new(new("Fight time remaining", "Seconds until the fight ends. In a dungeon, an estimate from the pulls so far, at most the time to the time limit."),
+                (_, ctx) => SecondsUntil(ctx, ctx.FightEnd)),
         };
 
     /// <summary>The hasted global cooldown, as <see cref="SimulationContext.BeginCast"/> sets it.</summary>
@@ -151,8 +208,8 @@ public class PropertyExpression : IAplExpression
         new Dictionary<string, IReadOnlyCollection<string>>
         {
             [BuffScope] = AuraProperties.Keys,
-            [DebuffScope] = AuraProperties.Keys,
-            [DotScope] = AuraProperties.Keys,
+            [DebuffScope] = DebuffProperties,
+            [DotScope] = DebuffProperties,
             [CooldownScope] = CooldownProperties.Keys,
             [ActionScope] = ActionProperties.Keys,
         };
@@ -189,6 +246,8 @@ public class PropertyExpression : IAplExpression
         [ActionScope] = new("Action", "The cast of an ability."),
         [ActiveDotScope] = new("Enemies with debuff", "The number of enemies in combat that have the debuff."),
         [VariableScope] = new("Variable", "The value that a variable action set in this fight. Before a variable action sets it, the value is the default of the variable."),
+        [PrevScope] = new("Previous action", "1 if the last ability the hero started to cast is this ability. Otherwise 0. 0 before the first cast of the fight."),
+        [PrevGcdScope] = new("Previous GCD action", "1 if the last ability the hero started to cast on the global cooldown is this ability. Otherwise 0. A cast off the global cooldown leaves it as it is. 0 before the first cast on the global cooldown."),
     };
 
     /// <summary>A resource's current amount, written as its name alone ("winter_orbs") or after <see cref="ResourcePrefix"/>.</summary>
@@ -200,9 +259,30 @@ public class PropertyExpression : IAplExpression
     /// <summary>The property's doc in a scope of <see cref="Scopes"/>; null for a scope or property not in it.</summary>
     public static AplDoc? PropertyDoc(string scope, string property) => scope switch
     {
-        BuffScope or DebuffScope or DotScope => AuraProperties.GetValueOrDefault(property)?.Doc,
+        BuffScope => AuraProperties.GetValueOrDefault(property)?.Doc,
+        DebuffScope or DotScope => PickedDoc(property) ?? AuraProperties.GetValueOrDefault(property)?.Doc,
         CooldownScope => CooldownProperties.GetValueOrDefault(property)?.Doc,
         ActionScope => ActionProperties.GetValueOrDefault(property)?.Doc,
+        _ => null,
+    };
+
+    /// <summary>The doc of a picked application's property ("oldest.remains"); null for any other property.</summary>
+    private static AplDoc? PickedDoc(string property)
+    {
+        var parts = property.Split('.');
+        if (parts.Length != 2 || PickOf(parts[0]) is not { } pick || !PickedProperties.Contains(parts[1])) return null;
+        string which = pick == TargetEffectPick.Oldest ? "oldest" : "newest";
+        string applied = pick == TargetEffectPick.Oldest ? "first" : "last";
+        var doc = AuraProperties[parts[1]].Doc;
+        return new AplDoc($"{doc.Label} ({which})",
+            $"{doc.Description} The value reads the application applied {applied}, for a debuff whose every application runs on its own (Engulfing Flames). For any other debuff, the same value as {parts[1]}.");
+    }
+
+    /// <summary>The application <paramref name="word"/> picks ("oldest"); null for any other word.</summary>
+    public static TargetEffectPick? PickOf(string word) => word switch
+    {
+        OldestPick => TargetEffectPick.Oldest,
+        NewestPick => TargetEffectPick.Newest,
         _ => null,
     };
 
@@ -231,12 +311,18 @@ public class PropertyExpression : IAplExpression
     public string? Name { get; }
     /// <summary>The property a scoped path reads ("stack"); null for a build part or a variable. A property its scope lacks reads as "up" or "ready".</summary>
     public string? Property { get; }
+    /// <summary>The application a debuff path reads (<see cref="OldestPick"/>, <see cref="NewestPick"/>); every application as one when not written.</summary>
+    public TargetEffectPick Pick { get; }
 
     public PropertyExpression(string propertyPath)
     {
-        PropertyPath = propertyPath.Trim().ToLowerInvariant();
+        PropertyPath = AplPaths.Migrate(propertyPath.Trim().ToLowerInvariant());
         var parts = PropertyPath.Split('.');
-        if (parts.Length >= 3 && parts[0] == DotScope)
+        if (parts.Length == 4 && parts[0] is DotScope or DebuffScope && PickOf(parts[2]) is { } pick)
+        {
+            (Scope, Name, Pick, Property) = (DebuffScope, parts[1], pick, parts[3]);
+        }
+        else if (parts.Length >= 3 && parts[0] == DotScope)
         {
             (Scope, Name, Property) = (DebuffScope, parts[1], parts[2]);
         }
@@ -244,7 +330,7 @@ public class PropertyExpression : IAplExpression
         {
             (Scope, Name, Property) = (parts[0], parts[1], parts[2]);
         }
-        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope))
+        else if (parts.Length == 2 && (BuildScopes.ContainsKey(parts[0]) || parts[0] is VariableScope or ActiveDotScope or PrevScope or PrevGcdScope))
         {
             (Scope, Name) = (parts[0], parts[1]);
         }
@@ -288,7 +374,13 @@ public class PropertyExpression : IAplExpression
 
             case DebuffScope:
                 var target = ctx.Player.CurrentTarget;
-                return AuraProperty(Property!)(target == null ? null : AuraLookup.On(hero, target, Name!, now), now);
+                return AuraProperty(Property!)(target == null ? null : AuraLookup.On(hero, target, Name!, now, Pick), now);
+
+            case PrevScope:
+                return ctx.PreviousCast is { } previous && AplNames.NamesAbility(Name!, previous) ? 1.0 : 0.0;
+
+            case PrevGcdScope:
+                return ctx.PreviousGcdCast is { } previousGcd && AplNames.NamesAbility(Name!, previousGcd) ? 1.0 : 0.0;
 
             case ActiveDotScope:
                 return ctx.ActiveEnemies.Count(enemy => AuraLookup.On(hero, enemy, Name!, now) != null);
@@ -450,9 +542,9 @@ internal static class AuraLookup
     /// <summary>
     /// The effect <paramref name="slug"/> <paramref name="hero"/> keeps on <paramref name="enemy"/>
     /// (<see cref="ITargetEffects"/>: its own expiry, where the enemy's debuff that shows it has none), or else the aura of
-    /// that name on it; null when neither is on it.
+    /// that name on it; null when neither is on it. An aura has one application, so <paramref name="pick"/> reads it the same.
     /// </summary>
-    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now) =>
-        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now) is { } effect ? effect
+    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now, TargetEffectPick pick = TargetEffectPick.All) =>
+        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now, pick) is { } effect ? effect
         : enemy.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
 }
