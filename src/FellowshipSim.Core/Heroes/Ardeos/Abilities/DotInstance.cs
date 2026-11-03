@@ -37,6 +37,8 @@ public sealed class DotInstance
     /// <summary>Base seconds of the tick period done per second (haste and tick rate bonuses).</summary>
     internal double Rate = 1.0;
     internal ScheduledEvent? Event;
+    /// <summary>The tick and the end <see cref="Event"/> runs, made once.</summary>
+    internal Action<SimulationContext>? TickAction, ExpireAction;
 
     public double RemainingSeconds(SimTime now) => Math.Max(0.0, (ExpiresAt - now).TotalSeconds);
 }

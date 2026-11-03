@@ -200,12 +200,14 @@ public sealed class DotTracker
     /// <summary>Queues the next tick, or the end when it comes first.</summary>
     private void Schedule(SimulationContext ctx, DotInstance dot)
     {
-        dot.Event?.Cancel();
         double toTick = Math.Max(0.0, dot.Effect.BasePeriod - dot.Progress) / dot.Rate;
         var tickAt = dot.LastUpdate + SimTime.FromSeconds(toTick);
-        dot.Event = tickAt < dot.ExpiresAt
-            ? ctx.ScheduleAt(tickAt, c => TickDue(c, dot), dot.Effect.Name)
-            : ctx.ScheduleAt(dot.ExpiresAt, c => Expire(c, dot), dot.Effect.Name);
+        bool ticks = tickAt < dot.ExpiresAt;
+        var time = ticks ? tickAt : dot.ExpiresAt;
+        var action = ticks ? dot.TickAction ??= c => TickDue(c, dot) : dot.ExpireAction ??= c => Expire(c, dot);
+        // Speed: the queued event moves, so the queue keeps no cancelled copy of it.
+        if (dot.Event != null && ctx.Reschedule(dot.Event, time, action)) return;
+        dot.Event = ctx.ScheduleAt(time, action, dot.Effect.Name);
     }
 
     private void TickDue(SimulationContext ctx, DotInstance dot)

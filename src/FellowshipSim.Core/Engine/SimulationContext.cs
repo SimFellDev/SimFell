@@ -172,6 +172,13 @@ public class SimulationContext
         Kernel.ScheduleAt(time < CurrentTime ? CurrentTime : time, action, label);
 
     /// <summary>
+    /// Moves the queued <paramref name="ev"/> to <paramref name="time"/> with <paramref name="action"/>, as cancelling it and
+    /// scheduling a new event would. False when it is no longer queued.
+    /// </summary>
+    internal bool Reschedule(ScheduledEvent ev, SimTime time, Action<SimulationContext> action) =>
+        Kernel.Reschedule(ev, time < CurrentTime ? CurrentTime : time, action);
+
+    /// <summary>
     /// Advances the clock to <paramref name="time"/>, firing every queued event due on the way in time order (the hero's
     /// aura expiries among them). This is the only way simulation time moves forward.
     /// </summary>
