@@ -43,7 +43,10 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// </summary>
     public bool IsProc { get; init; }
 
-    public string Key { get; private init; } = KeyOf(Name, LogId, 0);
+    public string Key { get; private init { field = value; Slot = AuraSlots.Of(value); } } = KeyOf(Name, LogId, 0);
+
+    /// <summary>The slot of <see cref="Key"/> (<see cref="AuraSlots"/>).</summary>
+    internal int Slot { get; private init; } = AuraSlots.Of(KeyOf(Name, LogId, 0));
 
     // Speed: StatMask is built once. Setting Modifiers rebuilds it.
     public IReadOnlyList<StatModifier> Modifiers { get; init { field = value; StatMask = MaskOf(value); } } = Modifiers;
@@ -269,7 +272,7 @@ public class AuraContainer
     {
         CleanExpired(now);
         var expires = def.Duration == SimTime.Infinite ? SimTime.Infinite : now + def.Duration + SimTime.FromSeconds(ExpiryLagSeconds);
-        if (_auras.TryGetValue(def.Key, out var existing))
+        if (Find(def) is { } existing)
         {
             int before = existing.Stacks;
             var previousExpiry = existing.ExpiresAt;
@@ -280,6 +283,7 @@ public class AuraContainer
                 changedStats = existing.Def.StatMask | def.StatMask;
                 existing = new Aura(def) { AppliedAt = existing.AppliedAt, Stacks = existing.Stacks };
                 _auras[def.Key] = existing;
+                Place(def.Slot, existing);
                 Membership++;
             }
             if (def.ReapplyKeepsExpiry && previousExpiry > now)
@@ -316,6 +320,7 @@ public class AuraContainer
             Stacks = Math.Clamp(setStacks ?? stacks, 1, def.MaxStacks)
         };
         _auras[def.Key] = aura;
+        Place(def.Slot, aura);
         Membership++;
         _activeSince[def.Key] = now;
         StatsChanged(def.StatMask);
@@ -352,12 +357,47 @@ public class AuraContainer
     public void Apply(Aura aura, SimTime now = default, int? explicitStacks = null) =>
         Apply(aura.Def, now, aura.Stacks, explicitStacks);
 
-    public bool HasAura(AuraDef def, SimTime now = default) => HasAura(def.Key, now);
-    public int GetStacks(AuraDef def, SimTime now = default) => GetStacks(def.Key, now);
+    public bool HasAura(AuraDef def, SimTime now = default)
+    {
+        CleanExpired(now);
+        return Find(def) != null;
+    }
+
+    public int GetStacks(AuraDef def, SimTime now = default)
+    {
+        CleanExpired(now);
+        return Find(def)?.Stacks ?? 0;
+    }
+
     public void Remove(AuraDef def, SimTime now = default) => Remove(def.Key, now);
     public void ConsumeStack(AuraDef def, SimTime now = default, int count = 1) => ConsumeStack(def.Key, now, count);
     public void Extend(AuraDef def, SimTime duration) => Extend(def.Key, duration);
-    public Aura? Get(AuraDef def, SimTime now = default) => Get(def.Key, now);
+
+    public Aura? Get(AuraDef def, SimTime now = default)
+    {
+        CleanExpired(now);
+        return Find(def);
+    }
+
+    // Speed: the auras of _auras by their key's slot too, so a read by definition hashes no string.
+    private Aura?[] _bySlot = [];
+
+    /// <summary>The aura of <paramref name="def"/>'s key, run out or not.</summary>
+    private Aura? Find(AuraDef def)
+    {
+        int slot = def.Slot;
+        return slot < _bySlot.Length ? _bySlot[slot] : null;
+    }
+
+    private void Place(int slot, Aura? aura)
+    {
+        if (slot >= _bySlot.Length)
+        {
+            if (aura == null) return;
+            Array.Resize(ref _bySlot, Math.Max(slot + 1, AuraSlots.Count));
+        }
+        _bySlot[slot] = aura;
+    }
 
     public Aura? Get(string key, SimTime now = default)
     {
@@ -394,6 +434,7 @@ public class AuraContainer
     {
         if (_auras.Remove(key, out var aura))
         {
+            Place(aura.Def.Slot, null);
             Membership++;
             StatsChanged(aura.Def.StatMask);
             if (_activeSince.Remove(key, out var start))
@@ -561,6 +602,7 @@ public class AuraContainer
     public void ClearAll()
     {
         _auras.Clear();
+        Array.Clear(_bySlot);
         Membership++;
         _activeSince.Clear();
         for (int t = 0; t < StatTypes; t++) _statVersions[t]++;
