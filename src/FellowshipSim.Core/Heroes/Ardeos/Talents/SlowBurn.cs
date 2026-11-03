@@ -30,9 +30,12 @@ public class SlowBurn : Talent
         burn.Ticked += (ctx, dot, fraction) =>
         {
             double seconds = perTick * fraction;
-            foreach (var other in ardeos.Dots.On(dot.Target).Where(d => d.Effect == engulfing || d.Effect == searing).ToList())
+            // By index and without a copy: extending an effect leaves the enemy's list as it is.
+            var on = ardeos.Dots.On(dot.Target);
+            for (int i = 0; i < on.Count; i++)
             {
-                ardeos.Dots.Extend(ctx, other, seconds);
+                var other = on[i];
+                if (other.Effect == engulfing || other.Effect == searing) ardeos.Dots.Extend(ctx, other, seconds);
             }
         };
     }

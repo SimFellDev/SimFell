@@ -51,6 +51,16 @@ public sealed class DotTracker
     /// <summary>The enemies with an effect on them.</summary>
     public IEnumerable<EnemyTarget> Targets => _byTarget.Where(kv => kv.Value.Count > 0).Select(kv => kv.Key);
 
+    /// <summary>Fills <paramref name="targets"/> with <see cref="Targets"/>, in the same order.</summary>
+    public void TargetsInto(List<EnemyTarget> targets)
+    {
+        targets.Clear();
+        foreach (var (target, on) in _byTarget)
+        {
+            if (on.Count > 0) targets.Add(target);
+        }
+    }
+
     public IReadOnlyList<DotInstance> On(EnemyTarget target) => _byTarget.TryGetValue(target, out var on) ? on : None;
 
     public IEnumerable<DotInstance> On(EnemyTarget target, DamageOverTime effect) => On(target).Where(d => d.Effect == effect);

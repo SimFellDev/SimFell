@@ -33,7 +33,17 @@ public class Detonate : ArdeosAbility
         GlobalCooldownScalesWithHaste = false;
     }
 
-    private AuraDef? FreeCastBuff(SimTime now) => FreeCastBuffs.FirstOrDefault(b => Owner.Auras.HasAura(b, now));
+    // Speed: the enemies with an effect at the cast, in a list kept between casts.
+    private readonly List<EnemyTarget> _targets = new();
+
+    private AuraDef? FreeCastBuff(SimTime now)
+    {
+        foreach (var buff in FreeCastBuffs)
+        {
+            if (Owner.Auras.HasAura(buff, now)) return buff;
+        }
+        return null;
+    }
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
@@ -52,10 +62,12 @@ public class Detonate : ArdeosAbility
         else Owner.SpendResource(Ardeos.Cinders, CinderCost, ctx);
 
         var dots = Ardeos.Dots;
-        foreach (var enemy in dots.Targets.ToList())
+        dots.TargetsInto(_targets);
+        foreach (var enemy in _targets)
         {
             double perSecond = 0.0;
-            foreach (var dot in dots.On(enemy)) perSecond += dot.Effect.DamagePerSecond(ctx, dot);
+            var on = dots.On(enemy);
+            for (int i = 0; i < on.Count; i++) perSecond += on[i].Effect.DamagePerSecond(ctx, on[i]);
             double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier;
             if (damage <= 0) continue;
             double critChance = Owner.CritChanceAgainst(enemy, now) + CritChanceBonus + (CurrentCast?.CritChance ?? 0.0);

@@ -33,17 +33,30 @@ public class Pyromania : ArdeosAbility
         if (_dot == null) return;
         var dots = Ardeos.Dots;
         if (target != null) dots.Apply(ctx, _dot, target);
-        var others = ctx.ActiveEnemiesExcept(target)
-            .OrderBy(e => dots.Has(e, _dot))
-            .ThenByDescending(e => e.CurrentHealth)
-            .ToList();
+        // Enemies without the effect first, then the most health first; enemies alike keep their order.
+        _others.Clear();
+        foreach (var enemy in ctx.ActiveEnemiesExcept(target))
+        {
+            int at = _others.Count;
+            while (at > 0 && Before(dots, enemy, _others[at - 1])) at--;
+            _others.Insert(at, enemy);
+        }
         int chosen = 0;
-        foreach (var enemy in others)
+        foreach (var enemy in _others)
         {
             if (chosen == ExtraTargets) break;
             if (!ctx.Outcomes.RollProc(TargetProcKey, 1.0, ctx, enemy)) continue;
             dots.Apply(ctx, _dot, enemy);
             chosen++;
         }
+    }
+
+    // Speed: the other enemies at the cast in their order of priority, in a list kept between casts.
+    private readonly List<EnemyTarget> _others = new();
+
+    private bool Before(DotTracker dots, EnemyTarget a, EnemyTarget b)
+    {
+        bool aHas = dots.Has(a, _dot!), bHas = dots.Has(b, _dot!);
+        return aHas != bHas ? !aHas : a.CurrentHealth.CompareTo(b.CurrentHealth) > 0;
     }
 }
