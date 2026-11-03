@@ -24,11 +24,9 @@ public abstract class Hero : Actor
         Auras.OnRemoved += (aura, now) => AuraChanged(aura, now);
     }
 
-    /// <summary>The stats <see cref="CooldownRate"/> reads (a weapon ability's own recovery auras are cooldown recovery too).</summary>
+    /// <summary>The stats <see cref="CooldownRate"/> reads.</summary>
     private static readonly int CooldownRateStats =
         AuraDef.MaskOf(StatType.CooldownRecovery) | AuraDef.MaskOf(StatType.Haste) | AuraDef.MaskOf(StatType.HasteRating);
-
-    private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
 
     /// <summary>
     /// An aura with cooldown recovery or haste, or one a cooldown acceleration reads, progresses every recharge to now at
@@ -399,9 +397,9 @@ public abstract class Hero : Actor
     }
 
     /// <summary>Lets talents add to a cast about to resolve (<see cref="OnCastResolving"/>); see <see cref="Ability.ResolveCast(SimulationContext, EnemyTarget, object?)"/>.</summary>
-    public CastBonus PrepareCast(Ability ability, EnemyTarget? target, SimTime now, object? source = null)
+    public CastBonus PrepareCast(Ability ability, EnemyTarget? target, SimTime now, object? source = null, SimulationContext? ctx = null)
     {
-        var cast = new CastBonus(ability, target, now, source);
+        var cast = new CastBonus(ability, target, now, source, ctx);
         OnCastResolving?.Invoke(cast);
         return cast;
     }
@@ -514,32 +512,14 @@ public abstract class Hero : Actor
     /// <summary>
     /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
     /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top. Weapon abilities ignore the pool except for their own
-    /// effects: Chronoshift recovers at 8x while channeling it (per the user; 10 Rime logs: no early casts, and ruru's
-    /// fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool).
+    /// Charge abilities that recharge with haste add the haste on top.
+    /// Weapon abilities always recover a base rate.
     /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
-        bool weaponOwnOnly = ability.IgnoresCooldownRecovery;
-        double pool = 1.0 + (weaponOwnOnly ? 0.0 : CooldownAcceleration(ability, now));
-        if (!weaponOwnOnly)
-        {
-            pool += Auras.SumBonuses(StatType.CooldownRecovery, now);
-        }
-        else
-        {
-            foreach (var aura in Auras.Active(now))
-            {
-                // Weapon abilities only speed up from their own recovery effects (Chronoshift's barrier, per the user).
-                if (!aura.Def.Changes(CooldownRecoveryStat) || !ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
-                var mods = aura.Modifiers;
-                for (int i = 0; i < mods.Count; i++)
-                {
-                    if (mods[i].Type == StatType.CooldownRecovery) pool += mods[i].Value - 1.0;
-                }
-            }
-        }
+        if (ability.IgnoresCooldownRecovery) return 1.0;
+        double pool = 1.0 + CooldownAcceleration(ability, now) + Auras.SumBonuses(StatType.CooldownRecovery, now);
         return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
     }
 
@@ -708,6 +688,12 @@ public abstract class Hero : Actor
     }
 
     public abstract void Initialize();
+
+    /// <summary>
+    /// The last step of building the hero (<see cref="Import.HeroImporter"/>), once its talents, gear and legendaries are bound: what
+    /// depends on the whole build is set here (Ardeos: the global cooldown a legendary item shortens).
+    /// </summary>
+    public virtual void FinalizeBuild() { }
     public abstract void ResetForIteration();
 
     public Ability? GetAbility(string name) =>
@@ -782,8 +768,8 @@ public sealed class CooldownState
     private double _rate = 1.0;
     // The version of the rate's inputs when it was last read (-1: never read).
     private long _rateReadAt = -1;
-    // Set when Advance skipped reading the rate of a full cooldown.
-    private bool _rateStale;
+    // Set while the cooldown is full: no rate is read until a recharge starts (Spend). A new state is full, so it starts set.
+    private bool _rateStale = true;
     private bool _advancing;
 
     /// <summary>A cooldown that recharges in real time.</summary>
@@ -881,6 +867,7 @@ public sealed class CooldownState
     {
         _charges = MaxCharges;
         _remaining = 0;
+        _rateStale = true;
     }
 
     /// <summary>Gives back one charge now (a forced cast in a replay); the recharge in progress carries on.</summary>
@@ -895,30 +882,30 @@ public sealed class CooldownState
     /// <summary>Progresses the recharge to <paramref name="now"/> at the rate last read, then reads the rate at <paramref name="now"/>.</summary>
     public void Advance(SimTime now)
     {
-        if (now == default || now < _last || _advancing) return;
-        var t = _last;
-        while (t < now && Recharging)
-        {
-            double span = (now - t).TotalSeconds;
-            double rate = Math.Max(1e-9, _rate);
-            if (_remaining > span * rate)
-            {
-                _remaining -= span * rate;
-                break;
-            }
-            // A charge returns before now.
-            t += SimTime.FromSeconds(_remaining / rate);
-            _charges++;
-            _remaining = Recharging ? _rechargeBase : 0;
-        }
-        _last = now;
-        // Speed: a full cooldown reads no rate; Spend reads it when a recharge starts.
-        _rateStale = !Recharging;
-        if (_rateStale) return;
-        // The rate's read can run auras out, and their handlers advance every cooldown: this one skips that Advance. Only
-        // the read needs the guard, since the progress above calls nothing outside this state.
+        if (now < _last || _advancing) return;
         _advancing = true;
-        try { ReadRate(now); }
+        try
+        {
+            var t = _last;
+            while (t < now && Recharging)
+            {
+                double span = (now - t).TotalSeconds;
+                double rate = Math.Max(1e-9, _rate);
+                if (_remaining > span * rate)
+                {
+                    _remaining -= span * rate;
+                    break;
+                }
+                // A charge returns before now.
+                t += SimTime.FromSeconds(_remaining / rate);
+                _charges++;
+                _remaining = Recharging ? _rechargeBase : 0;
+            }
+            _last = now;
+            // Speed: a full cooldown reads no rate; Spend reads it when a recharge starts.
+            _rateStale = !Recharging;
+            if (!_rateStale) ReadRate(now);
+        }
         finally { _advancing = false; }
     }
 }

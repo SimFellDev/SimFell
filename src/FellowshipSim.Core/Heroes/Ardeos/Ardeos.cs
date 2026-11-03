@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 using FellowshipSim.Core.Heroes.Ardeos.Talents;
 
@@ -120,6 +121,16 @@ public sealed class Ardeos : Hero, ITargetEffects
         Abilities.Add(new Pyromania(this));
         Abilities.Add(new Apocalypse(this));
         Abilities.Add(new Incinerate(this));
+    }
+
+    /// <summary>
+    /// With a legendary item worn, its +10% cooldown recovery (<see cref="LegendaryStats.StrandOfEternity"/>) shortens Detonate's global cooldown
+    /// from 31 to 29 server frames. The combat logs' 896 Detonates in a row, 0.96-0.97s apart, are from builds with a legendary item; 31 frames
+    /// without one is as observed in game.
+    /// </summary>
+    public override void FinalizeBuild()
+    {
+        if (PassiveAuras.Contains(LegendaryStats.StrandOfEternity)) GetAbility<Detonate>()?.ModifyGlobalCooldownFromStrandOfEternity();
     }
 
     /// <summary>Adds Cinders (every 100 are a Burning Ember).</summary>

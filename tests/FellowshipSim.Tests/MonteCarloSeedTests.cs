@@ -77,18 +77,19 @@ public class MonteCarloSeedTests
     /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance); Rime's, Gunde's, Mara's
     /// and Tariq's again once dungeon_event.fight.remains and target.time_to_die read the fight's end. Tariq's again once
     /// Schism had bad luck protection, and again once Bloodline was unhasted, Ride the Lightning snapshotted and Kill Em All
-    /// left Heavy Strike out.
+    /// left Heavy Strike out. Rime's, Ardeos's, Mara's and Tariq's again for the engine fixes of the functional tests branch
+    /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
     /// </summary>
     [Theory]
-    [InlineData("Rime", 120, 3, new[] { 2962161.4158089291, 3145794.8408500189, 2661851.3885713113, 2817501.4722939902 })]
-    [InlineData("Rime", 300, 1, new[] { 6859253.925934054, 7314085.7586352471, 6457222.2337612472, 8102670.2122865114 })]
-    [InlineData("Ardeos", 120, 3, new[] { 2781099.1900238036, 3263932.7779190126, 2753135.9767431421, 3078553.5447283266 })]
-    [InlineData("Ardeos", 300, 1, new[] { 4809649.3156830147, 5354771.8207936427, 4616929.8337775627, 4979340.0336285327 })]
+    [InlineData("Rime", 120, 3, new[] { 3103846.9857844426, 3146941.0664216764, 2661851.3885713113, 2817501.47229399 })]
+    [InlineData("Rime", 300, 1, new[] { 8470077.969138976, 7314085.758635247, 6457222.233761247, 8102670.212286511 })]
+    [InlineData("Ardeos", 120, 3, new[] { 2928926.308143849, 3153655.5730937966, 3210365.792271153, 3186044.199992814 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4880401.459850469, 4756376.690589438, 4909095.667185546, 4970616.393990371 })]
     [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
     [InlineData("Gunde", 300, 1, new[] { 7589315.0879662065, 7860490.4554016367, 7145894.9954196177, 7482946.3632446928 })]
-    [InlineData("Mara", 120, 3, new[] { 2467303.3938331231, 2427106.282543866, 2020983.4777073066, 2580733.0113486159 })]
-    [InlineData("Mara", 300, 1, new[] { 5869212.4974295124, 5910391.7861513905, 5311189.945330617, 5469205.2517229859 })]
-    [InlineData("Tariq", 120, 3, new[] { 1866351.4274260837, 2095999.9564214954, 1728839.1919036561, 1977654.0835166338 })]
+    [InlineData("Mara", 120, 3, new[] { 2440956.3761566584, 2523958.1828004178, 2016531.8647401505, 2580733.011348616 })]
+    [InlineData("Mara", 300, 1, new[] { 4698165.2098863395, 6431641.410211125, 5304913.496761604, 5296672.2168469215 })]
+    [InlineData("Tariq", 120, 3, new[] { 1967584.2099560164, 2090697.5341359354, 1728839.191903656, 1977654.0835166338 })]
     [InlineData("Tariq", 300, 1, new[] { 3840313.4565217663, 3364470.6032848917, 3454543.6249362486, 3971030.5181241543 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {

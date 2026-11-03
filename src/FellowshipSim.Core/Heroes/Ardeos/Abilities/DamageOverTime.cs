@@ -40,7 +40,7 @@ public abstract class DamageOverTime : Ability
     /// <summary>Stacks a <see cref="DotStacking.Stacking"/> effect reaches.</summary>
     public int MaxStacks { get; protected set; } = 1;
 
-    /// <summary>Cinders a full tick generates at the base tick rate (a faster tick generates less, the same per second).</summary>
+    /// <summary>Cinders a full tick generates with no haste (a hasted tick generates less, the same per second).</summary>
     public double CindersPerTick { get; protected set; }
 
     /// <summary>False for effects whose damage over time cannot critically strike (Fire Ball, Fire Frogs).</summary>
@@ -93,9 +93,12 @@ public abstract class DamageOverTime : Ability
         Ticked?.Invoke(ctx, dot, fraction);
     }
 
-    /// <summary>Cinders of a tick: a faster tick rate generates the same Cinders per second.</summary>
+    /// <summary>
+    /// Cinders of a tick: the nominal Cinders divided by (1 + haste) for an effect whose ticks come with haste, so haste
+    /// leaves the Cinders per second alone. Wildfire's faster ticks do not change them: each tick keeps its Cinders.
+    /// </summary>
     protected virtual double TickCinders(SimulationContext ctx, DotInstance dot, double fraction) =>
-        CindersPerTick * dot.CinderScale * fraction / Ardeos.Dots.Rate(this, ctx.CurrentTime);
+        CindersPerTick * dot.CinderScale * fraction / (TicksScaleWithHaste ? 1.0 + Owner.GetHaste(ctx.CurrentTime) : 1.0);
 
     /// <summary>Damage over time effects are applied by abilities, never cast.</summary>
     public override void Execute(SimulationContext ctx, EnemyTarget target) { }

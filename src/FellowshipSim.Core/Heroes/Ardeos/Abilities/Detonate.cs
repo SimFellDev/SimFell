@@ -21,11 +21,13 @@ public class Detonate : ArdeosAbility
     public List<AuraDef> FreeCastBuffs { get; } = new();
 
     /// <summary>
-    /// Combat logs (5 fights, 896 Detonates in a row): they come 0.96-0.97s apart at every haste from 0.2 to 1.3, while
-    /// the other instants take the hero's 1.5s global cooldown, hasted. Detonate's global cooldown is 29 server frames, not
-    /// hasted.
+    /// Detonate's global cooldown, not hasted: 31 server frames without a legendary item, 29 with one (combat logs; see
+    /// <see cref="UseLegendaryGlobalCooldown"/>). The other instants take the hero's 1.5s global cooldown, hasted.
     /// </summary>
-    public const double GlobalCooldown = 29.0 / 30.0;
+    public const double GlobalCooldown = 31.0 / 30.0;
+
+    /// <summary>The global cooldown with a legendary item worn: 29 server frames.</summary>
+    public const double GlobalCooldownWithLegendary = 29.0 / 30.0;
 
     public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
@@ -44,6 +46,12 @@ public class Detonate : ArdeosAbility
         }
         return null;
     }
+
+    /// <summary>
+    /// A legendary item's +10% cooldown recovery (Strand of Eternity) shortens Detonate's global cooldown from <see cref="GlobalCooldown"/> to
+    /// <see cref="GlobalCooldownWithLegendary"/>. Called once when the hero is built (<see cref="Hero.FinalizeBuild"/>).
+    /// </summary>
+    public void ModifyGlobalCooldownFromStrandOfEternity() => GlobalCooldownSeconds = GlobalCooldownWithLegendary;
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {

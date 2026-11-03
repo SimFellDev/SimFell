@@ -82,11 +82,9 @@ public abstract class Ability
     /// </summary>
     public bool ChargesRechargeWithHaste { get; protected set; } = false;
 
-    /// <summary>Weapon abilities run outside cooldown recovery and haste (only cooldown reduction and weapon-specific effects).</summary>
+    /// <summary>Weapon abilities run outside cooldown recovery and haste (only cooldown reduction shortens them).</summary>
     public bool IgnoresCooldownRecovery => Category == AbilityCategory.Weapon;
 
-    /// <summary>Log IDs of the ability's own auras whose cooldown recovery speeds up its own cooldown too.</summary>
-    public HashSet<int> OwnRecoveryAuraLogIds { get; } = new();
 
     /// <summary>Channeled abilities tick for <see cref="ChannelDuration"/> after their cast resolves.</summary>
     public bool IsChanneled { get; protected set; } = false;
@@ -247,7 +245,7 @@ public abstract class Ability
     {
         // As ResolveCast with an effect, without making a delegate for each cast.
         var outer = CurrentCast;
-        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source);
+        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source, ctx);
         try
         {
             Execute(ctx, target);
@@ -262,7 +260,7 @@ public abstract class Ability
     protected void ResolveCast(SimulationContext ctx, EnemyTarget target, object? source, Action effect)
     {
         var outer = CurrentCast;
-        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source);
+        CurrentCast = Owner.PrepareCast(this, target, ctx.CurrentTime, source, ctx);
         try
         {
             effect();
