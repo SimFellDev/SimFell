@@ -231,7 +231,7 @@ else
     {
         try
         {
-            var profile = SimcProfile.Parse(run.Profile);
+            var profile = SimProfile.Parse(run.Profile).Profile;
             Sim.Editor = new BuildEditor(profile.Build);
             Sim.SavedName = "";
             Sim.MarkBuildClean();

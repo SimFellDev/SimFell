@@ -5,9 +5,26 @@ using FellowshipSim.Engine;
 
 namespace FellowshipSim.Cli;
 
-/// <summary>The <c>simfell</c> command line: the profile file, the sim's fights and the output format.</summary>
-public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOutputFormat Format)
+/// <summary>
+/// The <c>simfell</c> command line: the profile file, the sim's fights and the output format. Each sim option is a
+/// profile line (<see cref="Lines"/>), added at the end of the profile so it replaces the profile's own line.
+/// </summary>
+public sealed record CliOptions(string ProfilePath, IReadOnlyList<string> Lines, CliOutputFormat Format)
 {
+    /// <summary>
+    /// The sim of <paramref name="profileText"/> with <see cref="Lines"/> at its end. Iterations and a training dummy
+    /// fight's length that neither sets are <see cref="DefaultSettings"/>'.
+    /// </summary>
+    /// <exception cref="FormatException">The profile does not parse.</exception>
+    public SimProfile Read(string profileText)
+    {
+        var sim = SimProfile.Parse(string.Join('\n', [profileText, .. Lines]));
+        var settings = sim.Settings;
+        if (!sim.SettingKeys.Contains(SimProfile.Iterations)) settings = settings with { Iterations = DefaultSettings.Iterations };
+        if (!sim.SettingKeys.Contains(SimProfile.Duration) && settings.Dungeon == null) settings = settings with { DurationSeconds = DefaultSettings.DurationSeconds };
+        return sim with { Settings = settings };
+    }
+
     /// <summary>
     /// Settings of a command line naming none. Iterations are <see cref="MonteCarloSimulator.Run"/>'s default and the
     /// duration is the benchmarks' Monte Carlo fight; targets, seed and threads are <see cref="SimSettings"/>'s defaults.
@@ -17,7 +34,9 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
     public static string Usage => $"""
         Usage: simfell --profile <file.simc> [options]
 
-        Runs a Monte Carlo sim of a simc profile. The action list is the profile's actions lines.
+        Runs a Monte Carlo sim of a simc profile. The action list is the profile's actions lines, and its sim settings
+        (iterations=, duration=, a dungeon's lines and the rest the Sim page writes) are the defaults of the options below:
+        each option is a line added at the end of the profile, and the last line of a setting is the setting.
 
         Options:
           --profile <file>      Profile to simulate (required). A relative path is relative to the current directory.
@@ -43,7 +62,7 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
     public static CliOptions? Parse(IReadOnlyList<string> args)
     {
         string? profile = null;
-        var settings = DefaultSettings;
+        var lines = new List<string>();
         var format = CliOutputFormat.Text;
         for (int i = 0; i < args.Count; i++)
         {
@@ -59,24 +78,24 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
             switch (name)
             {
                 case "--profile": profile = value; break;
-                case "--iterations": settings = settings with { Iterations = Integer(name, value, min: 1) }; break;
-                case "--duration": settings = settings with { DurationSeconds = Seconds(name, value) }; break;
-                case "--dungeon": settings = settings with { Dungeon = Dungeon(value) }; break;
-                case "--targets": settings = settings with { TargetCount = Integer(name, value, min: 1) }; break;
-                case "--seed": settings = settings with { FirstSeed = Integer(name, value, min: int.MinValue) }; break;
-                case "--threads": settings = settings with { DegreeOfParallelism = Integer(name, value, min: 1) }; break;
+                case "--iterations": lines.Add(Line(SimProfile.Iterations, Integer(name, value, min: 1))); break;
+                case "--duration": lines.Add(Line(SimProfile.Duration, Seconds(name, value))); break;
+                case "--dungeon": lines.Add(Dungeon(value).Format()); break;
+                case "--targets": lines.Add(Line(SimProfile.Targets, Integer(name, value, min: 1))); break;
+                case "--seed": lines.Add(Line(SimProfile.Seed, Integer(name, value, min: int.MinValue))); break;
+                case "--threads": lines.Add(Line(SimProfile.Threads, Integer(name, value, min: 1))); break;
                 case "--reactions":
-                    settings = settings with
+                {
+                    bool reactions = value switch
                     {
-                        ReactionDelays = value switch
-                        {
-                            "on" => true,
-                            "off" => false,
-                            _ => throw new CliUsageException($"--reactions is on or off, not '{value}'."),
-                        },
+                        "on" => true,
+                        "off" => false,
+                        _ => throw new CliUsageException($"--reactions is on or off, not '{value}'."),
                     };
+                    lines.Add($"{SimProfile.ReactionDelays}={(reactions ? "true" : "false")}");
                     break;
-                case "--proc-reaction": settings = settings with { ProcReactionSeconds = Milliseconds(name, value) / 1000 }; break;
+                }
+                case "--proc-reaction": lines.Add(Line(SimProfile.ProcReaction, Milliseconds(name, value) / 1000)); break;
                 case "--format":
                     format = value switch
                     {
@@ -89,9 +108,10 @@ public sealed record CliOptions(string ProfilePath, SimSettings Settings, CliOut
             }
         }
         if (string.IsNullOrWhiteSpace(profile)) throw new CliUsageException("--profile is required.");
-        if (settings.Dungeon is { } dungeon) settings = settings with { DurationSeconds = dungeon.TimeLimitSeconds };
-        return new CliOptions(profile, settings, format);
+        return new CliOptions(profile, lines, format);
     }
+
+    private static string Line(string key, double value) => $"{key}={value.ToString(CultureInfo.InvariantCulture)}";
 
     // The built-in dungeon of that name, or the dungeon in that file.
     private static DungeonProfile Dungeon(string value)

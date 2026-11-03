@@ -57,7 +57,10 @@ or the desktop app).
   outcome (crit, proc, spread, travel time), each hit's damage (`Land`) and each periodic tick's time with a damage log ID
   (`TickAt`) go through `IOutcomeSource`. `RandomOutcomeSource` rolls dice;
   `LogOutcomeSource` (exact replay) and `FreeDiceOutcomeSource` (free dice) in FellowshipSim.Engine are the other two.
-  `Import/SimcProfile` reads and writes `.simc` profiles.
+  `Import/SimcProfile` reads and writes `.simc` character profiles. A sim's profile (`FellowshipSim.Engine/SimProfile`) is
+  the character's lines and action list, the `SimSettings` lines and a dungeon fight's dungeon lines, in any order. The
+  last line of a setting wins, and the last dungeon replaces the ones before. The Sim page writes every option into it, a
+  sim's job is that text alone, and the CLI's options are lines added at its end.
 - **Catalog** (`Core/Catalog.cs`) finds heroes, talents, traits, blessings, sets, legendaries and weapons by reflection
   over their ID constants. A new class with its ID constant and a parameterless constructor needs no registration.
 - **Talents** attach to the hero in `Bind` through events and multiplier lists on `Hero` and `Ability`. Abilities never

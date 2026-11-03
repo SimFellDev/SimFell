@@ -113,9 +113,17 @@ fine-grained token with "Contents: Read and write" on that repository alone.
 A profile is a `.simc` file: the hero, stats, talents, traits, blessings, gear and its `actions` lines, which are the
 action list. Keep profiles in `data/profiles/<Hero>/`.
 
+A sim's profile also has the sim settings: `iterations`, `threads`, `seed`, `duration` and `targets` (training
+dummies), `length_variance` and `hero_share_variance` (fractions), `health_follows_time`, `boss`, `starting_spirit`,
+`reaction_delays` and `proc_reaction` (seconds). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
+order. The last line of a setting is the setting, and a `dungeon=` line starts a dungeon that replaces the one before.
+Every option of the **Sim** page is a line of this text, and a sim's job is the text alone.
+
 The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
-standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file.
+standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
+end, has the sim's profile, and **Run again** puts it back on the Sim page's Import step, with its build, action list
+and settings.
 
 ### Fights
 
@@ -245,10 +253,11 @@ dotnet run --project src/FellowshipSim.Cli -c Release -- --profile data/profiles
 Replace `PROFILE` with the name of your profile file.
 
 `simfell` writes the result to stdout and its progress to stderr. Ctrl+C cancels the sim. You can run several at once.
-Its options are the following:
+Each option is a line added at the end of the profile, so it replaces the profile's own line for that setting. The
+options are the following:
 
 - `--profile <file>`: the profile to sim (required)
-- `--iterations <n>`: fights (default 100)
+- `--iterations <n>`: fights (default 100 for a profile with no sim settings)
 - `--dungeon <name|file>`: fights of a dungeon, built in (`Default`) or a dungeon `.simc` file; its pulls set the enemies and its time limit the longest fight. Without it, the fights are training dummies
 - `--duration <seconds>`: length of each fight of training dummies (default 300)
 - `--targets <n>`: training dummies in each fight (default 1)

@@ -41,9 +41,9 @@ namespace FellowshipSim.Core.Import;
 /// actions+=/frost_bolt
 /// </code>
 /// Lines starting with '#' are comments. <c>actions</c> lines are the profile's action list, with the comments directly
-/// above them and the comments after the last line when it is an <c>actions</c> line. A gear slot's line
-/// (<see cref="GearSlots.Key"/>) names the item worn there, its ID and its tempers; a relic or weapon line with an
-/// <c>id</c> and <c>tempers</c> is its slot's item too (a weapon line's name is its weapon's).
+/// above them, and the comments right after an <c>actions</c> line that end at a blank line or at the end of the text. A
+/// gear slot's line (<see cref="GearSlots.Key"/>) names the item worn there, its ID and its tempers; a relic or weapon
+/// line with an <c>id</c> and <c>tempers</c> is its slot's item too (a weapon line's name is its weapon's).
 /// </summary>
 public sealed record SimcProfile(CharacterBuild Build, string ActionList)
 {
@@ -63,7 +63,16 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         {
             lineNumber++;
             string line = raw.Trim();
-            if (line.Length == 0) continue;
+            if (line.Length == 0)
+            {
+                // Comments after an actions line with a blank line under them are the action list's.
+                if (afterActions)
+                {
+                    foreach (string comment in comments) actions.AppendLine(comment);
+                    comments.Clear();
+                }
+                continue;
+            }
             if (line.StartsWith('#'))
             {
                 comments.Add(line);
