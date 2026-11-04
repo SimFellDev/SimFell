@@ -152,9 +152,10 @@ time. A new pull's name is the lowest whole number no pull has. Renaming a pull 
 `pull_with`. **Save** writes `data/dungeons/<name>.simc` in the desktop app and `data/visitors/<visitor id>/dungeons/` in
 the web app.
 
-**Import from a log** on the **Import** tab imports the player picked: their build with **Build** on, the
-dungeon of the run (with their hero share) with **Dungeon** on, and both at once with both on. The dungeon import
-downloads the fight as a replay does (`Engine/Replay/DungeonReader`):
+The Dungeon card's toolbar has **Revert**, **Save**, **Duplicate**, **Import**, **Export** and **Delete**. **Import** takes a
+FellowshipLogs fight link, a `.simc` file (the upload icon) or pasted dungeon text. A fight link's hero share is the
+link's player's, else the fight's player of the build's hero, else the player picked from the fight's players. The
+import downloads the fight as a replay does (`Engine/Replay/DungeonReader`):
 
 - The enemies are the ones the party damaged and killed. Each has its hit points from its log health at the run's
   difficulty, and its Spirit Points from game data.
@@ -168,7 +169,7 @@ downloads the fight as a replay does (`Engine/Replay/DungeonReader`):
   the log.
 - The hero share is the player's damage to those enemies over their health.
 
-**Dungeon text** has the dungeon as text:
+**Export** shows the dungeon as text, with **Copy** and **Download**:
 
 ```
 # Cithrel's Fall, two trash pulls before the first boss.

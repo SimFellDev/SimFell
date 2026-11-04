@@ -5,9 +5,12 @@
 @inject DungeonStore Store
 @inject Visitor Visitor
 @inject IJSRuntime JS
+@inject ReportLookup Reports
+@inject IDungeonImport Dungeons
 @*
     The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment, the hero share and its variance and time limit,
-    then its pulls in the order they run, each built as an action of the action-list editor, and its profile text.
+    then its pulls in the order they run, each built as an action of the action-list editor. Import reads a fight's dungeon from
+    its log link, or a dungeon profile from a file or pasted; Export shows the profile text.
 *@
 <Card Title="Dungeon">
     <div class="row toolbar">
@@ -23,10 +26,33 @@
                 <option @key="ValueOf(saved)" value="@ValueOf(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : "")</option>
             }
         </select>
-        <button type="button" class="secondary-button" @onclick="Save">Save</button>
-        <button type="button" class="secondary-button delete" disabled="@(!CanDelete)"
-                data-tooltip="@(CanDelete ? null : "Only your own saved dungeons can be deleted")" @onclick="Delete">Delete</button>
+        <div class="icons">
+            <button type="button" class="icon-button" aria-label="Revert" disabled="@(!CanRevert)"
+                    data-tooltip="Undo the changes not saved" @onclick="Revert"><Icon Shape="IconShape.Revert" /></button>
+            <button type="button" class="icon-button" aria-label="Save" data-tooltip="Save" @onclick="Save"><Icon Shape="IconShape.Save" /></button>
+            <button type="button" class="icon-button" aria-label="Duplicate" data-tooltip="Duplicate" @onclick="Duplicate"><Icon Shape="IconShape.Duplicate" /></button>
+            <span class="divider" aria-hidden="true"></span>
+            <button type="button" class="icon-button" aria-label="Import" aria-haspopup="dialog" data-tooltip="Import a dungeon from a log or a .simc profile"
+                    @onclick="OpenImport"><Icon Shape="IconShape.Import" /></button>
+            <button type="button" class="icon-button" aria-label="Export" aria-expanded="@(_exportOpen ? "true" : "false")" data-tooltip="Export the dungeon as a .simc profile"
+                    @onclick="ExportAsync"><Icon Shape="IconShape.Export" /></button>
+            <span class="divider" aria-hidden="true"></span>
+            <button type="button" class="icon-button danger-button delete" aria-label="Delete" disabled="@(!CanDelete)"
+                    data-tooltip="@(CanDelete ? "Delete" : "Only your own saved dungeons can be deleted")" @onclick="Delete"><Icon Shape="IconShape.Bin" /></button>
+        </div>
     </div>
+    @if (_exportOpen)
+    {
+        @* The dungeon as a profile, the text Import reads; it follows the dungeon while it shows. *@
+        <div class="export">
+            <textarea aria-label="Dungeon profile" readonly spellcheck="false" rows="8">@State.Dungeon.Format()</textarea>
+            <div class="row">
+                <button type="button" class="secondary-button" @onclick="CopyExportAsync">Copy</button>
+                <button type="button" class="secondary-button" data-tooltip="Save the dungeon as a .simc file" @onclick="Download">Download</button>
+                <button type="button" class="secondary-button" @onclick="() => _exportOpen = false">Close</button>
+            </div>
+        </div>
+    }
     @if (_pending is { } pending)
     {
         <div class="confirm" role="alertdialog" aria-label="Unsaved changes">
@@ -101,18 +127,61 @@
         <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewTrash)))">+ Trash pull</button>
         <button type="button" class="add" @onclick="() => ChangePulls(ps => Editor.Insert(ps, ps.Count, NewPull(PullItem.NewBoss)))">+ Boss pull</button>
     </div>
-
-    <details @key="_textKey" class="text" open="@_textOpen">
-        <summary>Dungeon text</summary>
-        <InputFile class="file" accept=".simc,.txt" data-tooltip="Load a dungeon from a .simc file" OnChange="LoadFileAsync" />
-        <textarea spellcheck="false" rows="8" @bind="_text"></textarea>
-        <div class="row">
-            <button type="button" class="secondary-button" @onclick="LoadText">Import</button>
-            <button type="button" class="secondary-button" data-tooltip="Save the dungeon as a .simc file" @onclick="Download">Download</button>
-        </div>
-        <Message Kind="_textStatus.Kind">@_textStatus.Text</Message>
-    </details>
 </Card>
+
+@if (_importOpen)
+{
+    @* Import: a fight's dungeon from its log link, or a dungeon profile from a file or pasted. Clicking outside it closes it. *@
+    <div class="modal-layer" @onclick="CloseImport" @onkeydown="OnImportKeyDown">
+        <div class="modal small-dialog import-dialog" role="dialog" aria-modal="true" aria-labelledby="dungeon-import-title" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="dungeon-import-title" class="title">Import a dungeon</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseImport">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <form class="dialog-body" @onsubmit="ImportAsync" @onsubmit:preventDefault="true">
+                <LogsSignInPrompt Purpose="to import a dungeon from a log" />
+                <label class="name-field">
+                    FellowshipLogs link
+                    <input @ref="_linkInput" autocomplete="off" spellcheck="false" placeholder="https://www.fellowshiplogs.com/reports/code?fight=6"
+                           disabled="@_importBusy" @bind="_importLink" @bind:event="oninput" />
+                </label>
+                <p class="hint">A report link with its fight. The pulls and enemies come from the fight, and the hero share from the link's player or the fight's @State.Build.Hero.</p>
+                @if (_importChoices is { } choices)
+                {
+                    <span class="group">Whose hero share?</span>
+                    <div class="choices">
+                        @foreach (var choice in choices)
+                        {
+                            <button @key="choice.Player.Id" type="button" class="secondary-button" disabled="@_importBusy"
+                                    @onclick="() => ImportFromLogAsync(choice)">
+                                @choice.Player.Name · @choice.Player.Hero
+                            </button>
+                        }
+                    </div>
+                }
+                <div class="text-head">
+                    <label for="dungeon-import-text">Or a dungeon profile</label>
+                    <label class="icon-button file-button" aria-label="Upload" data-tooltip="Import a dungeon from a .simc file">
+                        <Icon Shape="IconShape.Import" />
+                        <InputFile accept=".simc,.txt" disabled="@_importBusy" OnChange="LoadFileAsync" />
+                    </label>
+                </div>
+                <textarea id="dungeon-import-text" spellcheck="false" rows="8" placeholder='dungeon="name"' disabled="@_importBusy"
+                          @bind="_importText" @bind:event="oninput"></textarea>
+                @if (_importStatus.Text.Length > 0)
+                {
+                    <Message Kind="_importStatus.Kind">@_importStatus.Text</Message>
+                }
+                <div class="row dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CloseImport">Cancel</button>
+                    <button type="submit" disabled="@(_importBusy || (_importLink.Trim().Length == 0 && _importText.Trim().Length == 0))">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
 
 @code {
     [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
@@ -129,12 +198,18 @@
     private const long MaxDungeonBytes = 1024 * 1024;
 
     private IReadOnlyList<DungeonEntry> _saved = [];
-    private MessageState _status = MessageState.None, _textStatus = MessageState.None;
-    private string _text = "";
-    private bool _textOpen;
-    private int _textKey, _pickerKey;
+    private MessageState _status = MessageState.None;
+    private int _pickerKey;
     // The step waiting on the unsaved changes (open another dungeon).
     private (string What, Func<Task> Then)? _pending;
+    private bool _exportOpen;
+
+    // The Import dialog: its link, the players to pick the hero share from, its profile text, status and focus.
+    private bool _importOpen, _importBusy, _focusLink;
+    private string _importLink = "", _importText = "";
+    private IReadOnlyList<PickedPlayer>? _importChoices;
+    private MessageState _importStatus = MessageState.None;
+    private ElementReference _linkInput;
 
     private const string BuiltInValue = "builtin";
     private const string OwnValue = "own";
@@ -148,6 +223,8 @@
     private DungeonEntry? Picked => _saved.FirstOrDefault(s => ValueOf(s) == State.DungeonValue);
 
     private bool CanDelete => Picked is { BuiltIn: false };
+
+    private bool CanRevert => Picked != null && State.HasDungeonEdits;
 
     /// <summary>"Pull" or "pulls" with the count.</summary>
     private static string PullsText(int count) => $"{count} {(count == 1 ? "pull" : "pulls")}";
@@ -169,7 +246,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _text = State.Dungeon.Format();
         await LoadSaved();
     }
 
@@ -188,7 +264,6 @@
     private Task Change(DungeonProfile dungeon)
     {
         State.Dungeon = dungeon;
-        _text = dungeon.Format();
         _status = MessageState.None;
         return OnChanged.InvokeAsync();
     }
@@ -215,7 +290,6 @@
             Editor.CloseAll();
             State.DungeonValue = ValueOf(entry);
             State.MarkDungeonClean();
-            _text = State.Dungeon.Format();
             _status = MessageState.None;
         }
         catch (Exception e) when (e is FormatException or KeyNotFoundException)
@@ -283,48 +357,173 @@
         await OnChanged.InvokeAsync();
     }
 
-    private Task LoadText()
+    private Task Revert() => Picked is { } picked ? Pick(picked) : Task.CompletedTask;
+
+    private Task Duplicate()
+    {
+        var copy = State.Dungeon with { Name = $"{State.Dungeon.Name} copy" };
+        State.DungeonValue = "";
+        Toasts.Ok($"Copied to {copy.Name}; save it to keep it.");
+        return Change(copy);
+    }
+
+    private async Task ExportAsync()
+    {
+        _exportOpen = true;
+        await CopyExportAsync();
+    }
+
+    private async Task CopyExportAsync()
     {
         try
         {
-            var dungeon = DungeonProfile.Parse(_text);
-            Editor.CloseAll();
-            State.DungeonValue = "";
-            _textStatus = MessageState.None;
-            Toasts.Ok($"Loaded {PullsText(dungeon.Pulls.Count)}.");
-            return Change(dungeon);
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", State.Dungeon.Format());
+            _status = MessageState.None;
+            Toasts.Ok("Copied the dungeon to the clipboard. Import takes it as a profile.");
+        }
+        catch (Exception e) when (e is JSException or TaskCanceledException or InvalidOperationException)
+        {
+            _status = new MessageState("Select the dungeon's text below and copy it. Import takes it as a profile.");
+        }
+    }
+
+    private Task Download() => FileDownloads.SaveAsync(JS, State.Dungeon.Name, ".simc", State.Dungeon.Format());
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusLink)
+        {
+            _focusLink = false;
+            await _linkInput.FocusAsync();
+        }
+    }
+
+    private void OpenImport()
+    {
+        _importOpen = true;
+        _importLink = "";
+        _importText = "";
+        _importChoices = null;
+        _importStatus = MessageState.None;
+        _focusLink = true;
+    }
+
+    private void CloseImport()
+    {
+        if (!_importBusy) _importOpen = false;
+    }
+
+    private void OnImportKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseImport();
+    }
+
+    // The link's fight when the link has text, else the pasted profile.
+    private Task ImportAsync() => _importLink.Trim().Length > 0 ? FindFightAsync() : ImportTextAsync();
+
+    // The link's fight and the player whose hero share the dungeon takes: the link's player, else the fight's one player of
+    // the build's hero; otherwise the dialog lists the players to pick from.
+    private async Task FindFightAsync()
+    {
+        if (_importBusy) return;
+        _importBusy = true;
+        _importChoices = null;
+        _importStatus = new MessageState("Reading the log...");
+        IReadOnlyList<PickedPlayer> players;
+        try
+        {
+            var report = await Reports.FindAsync(_importLink);
+            var fight = report.SelectedFightId is { } id
+                ? report.Fights.FirstOrDefault(f => f.Id == id) ?? throw new InvalidOperationException($"The report has no fight {id}.")
+                : throw new InvalidOperationException("The link names no fight: open the fight on FellowshipLogs and copy its link.");
+            if (fight.Players.Count == 0) throw new InvalidOperationException($"{fight.Name} (fight {fight.Id}) has no players.");
+            var all = fight.Players.Select(p => new PickedPlayer(report.Code, fight, p, report.CurrentPatch)).ToList();
+            var linked = all.Where(p => p.Player.Id == report.SelectedPlayerId).ToList();
+            var hero = all.Where(p => p.Player.Hero.Equals(State.Build.Hero, StringComparison.OrdinalIgnoreCase)).ToList();
+            players = linked.Count == 1 ? linked : hero.Count == 1 ? hero : all;
+        }
+        catch (Exception e)
+        {
+            _importStatus = MessageState.Error(e.Message);
+            return;
+        }
+        finally
+        {
+            _importBusy = false;
+        }
+        if (players.Count == 1)
+        {
+            await ImportFromLogAsync(players[0]);
+            return;
+        }
+        _importChoices = players;
+        _importStatus = MessageState.None;
+    }
+
+    private async Task ImportFromLogAsync(PickedPlayer picked)
+    {
+        _importBusy = true;
+        _importStatus = new MessageState($"Reading the dungeon of {picked.Fight.Name}...");
+        var progress = new Progress<string>(m => { _importStatus = new MessageState($"{m}..."); InvokeAsync(StateHasChanged); });
+        try
+        {
+            var dungeon = await Dungeons.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player.Id, progress);
+            // A saved dungeon's name is a file name.
+            await UseImported(dungeon with { Name = ActionListStore.ValidName(dungeon.Name, "Imported dungeon") });
+            if (!picked.CurrentPatch)
+            {
+                _status = new MessageState($"This log is from before patch {GamePatch.Current.Name}: its enemies and pulls may have changed.", MessageKind.Warning);
+            }
+        }
+        catch (Exception e)
+        {
+            _importStatus = MessageState.Error(e.Message);
+        }
+        finally
+        {
+            _importBusy = false;
+        }
+    }
+
+    private Task ImportTextAsync()
+    {
+        try
+        {
+            return UseImported(DungeonProfile.Parse(_importText));
         }
         catch (FormatException e)
         {
-            ShowTextError(e.Message);
+            _importStatus = MessageState.Error(e.Message);
             return Task.CompletedTask;
         }
     }
 
-    /// <summary>Puts the file's text in the dungeon text and imports it.</summary>
+    /// <summary>Puts the file's text in the profile field and imports it.</summary>
     private async Task LoadFileAsync(InputFileChangeEventArgs e)
     {
         try
         {
             using var reader = new StreamReader(e.File.OpenReadStream(MaxDungeonBytes));
-            _text = await reader.ReadToEndAsync();
+            _importText = await reader.ReadToEndAsync();
         }
         catch (Exception ex)
         {
-            ShowTextError(ex.Message);
+            _importStatus = MessageState.Error(ex.Message);
             return;
         }
-        await LoadText();
+        await ImportTextAsync();
     }
 
-    private void ShowTextError(string message)
+    // The imported dungeon in the editor, as changes not saved; the dialog closes.
+    private Task UseImported(DungeonProfile dungeon)
     {
-        _textStatus = MessageState.Error(message);
-        _textOpen = true;
-        _textKey++;
+        Editor.CloseAll();
+        State.DungeonValue = "";
+        _importStatus = MessageState.None;
+        _importOpen = false;
+        Toasts.Ok($"Imported {dungeon.Name}: {PullsText(dungeon.Pulls.Count)}.");
+        return Change(dungeon);
     }
-
-    private Task Download() => FileDownloads.SaveAsync(JS, State.Dungeon.Name, ".simc", State.Dungeon.Format());
 
     private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
 }
