@@ -11,21 +11,20 @@ using Microsoft.CodeAnalysis.Text;
 namespace FellowshipSim.Codex.Generators;
 
 /// <summary>
-/// Writes a <c>public partial class &lt;Name&gt;GameCreature</c> in <c>FellowshipSim.Core.Enemies</c> for each creature of
-/// the Codex's data export, with the export's values as static properties: <c>Id</c> (a FellowshipLogs NPC actor's
-/// gameID), <c>Name</c>, <c>Rank</c> (a <c>CreatureRank</c>, the SDK's ranks), <c>BaseHealth</c> (before the
-/// difficulty's scale), <c>SpiritPoints</c> and
-/// <c>KillScore</c>. The export is the AdditionalFiles <c>entities.jsonl</c> and <c>settings.json</c>, read through
+/// Writes a <c>public partial class &lt;Name&gt;GameCreature</c> in <c>FellowshipSim.Core.Domain</c> for each creature of
+/// the Codex's data export, deriving from <c>GameCreature</c>, with the export's values as constants: <c>ID</c> (a
+/// FellowshipLogs NPC actor's gameID), <c>NAME</c>, <c>RANK</c> (a <c>CreatureRank</c>, the SDK's ranks), <c>BASE_HEALTH</c>
+/// (before the difficulty's scale), <c>SPIRIT_POINTS</c> and <c>KILL_SCORE</c>. The export is the AdditionalFiles <c>entities.jsonl</c> and <c>settings.json</c>, read through
 /// FellowshipAnalyzer.Codex.SDK. A class name is the creature's name in Pascal case, letters and digits only; the creatures
 /// sharing a name, and a creature without one, have their ID after it. <c>GameCreatures</c> has every class's values as a
-/// <c>GameCreature</c>, by ID and by name.
+/// <c>CodexCreature</c>, by ID and by name.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class CreatureGenerator : IIncrementalGenerator
 {
     private const string EntitiesName = "entities.jsonl";
     private const string SettingsName = "settings.json";
-    private const string Namespace = "FellowshipSim.Core.Enemies";
+    private const string Namespace = "FellowshipSim.Core.Domain";
 
     private static readonly DiagnosticDescriptor MissingExport = new(
         "CODEX001", "The Codex export is missing",
@@ -132,25 +131,25 @@ public sealed class CreatureGenerator : IIncrementalGenerator
                 .Append("namespace ").Append(Namespace).Append(";\n\n")
                 .Append("/// <summary>").Append(Escape(creature.Name.Length > 0 ? creature.Name : $"Creature {creature.Id}"))
                 .Append(", creature ").Append(creature.Id).Append(" of the Codex's data export.</summary>\n")
-                .Append("public partial class ").Append(className).Append("\n{\n")
+                .Append("public partial class ").Append(className).Append(" : GameCreature\n{\n")
                 .Append("    /// <summary>The creature's game ID: a FellowshipLogs NPC actor's gameID.</summary>\n")
-                .Append("    public static int Id { get; } = ").Append(creature.Id).Append(";\n\n")
-                .Append("    public static string Name { get; } = ").Append(Literal(creature.Name)).Append(";\n\n")
+                .Append("    public const int ID = ").Append(creature.Id).Append(";\n\n")
+                .Append("    public const string NAME = ").Append(Literal(creature.Name)).Append(";\n\n")
                 .Append("    /// <summary>The creature's rank; null for a creature the export has no rank for.</summary>\n")
-                .Append("    public static CreatureRank? Rank { get; } = ")
+                .Append("    public static readonly CreatureRank? RANK = ")
                 .Append(creature.Rank != null ? $"CreatureRank.{creature.Rank}" : "null").Append(";\n\n")
                 .Append("    /// <summary>The creature's health before the difficulty's scale.</summary>\n")
-                .Append("    public static double BaseHealth { get; } = ").Append(Number(creature.BaseHealth)).Append(";\n\n")
+                .Append("    public const double BASE_HEALTH = ").Append(Number(creature.BaseHealth)).Append(";\n\n")
                 .Append("    /// <summary>The Spirit Points the creature is worth.</summary>\n")
-                .Append("    public static int SpiritPoints { get; } = ").Append(creature.SpiritPoints).Append(";\n\n")
-                .Append("    public static int KillScore { get; } = ").Append(creature.KillScore).Append(";\n")
+                .Append("    public const int SPIRIT_POINTS = ").Append(creature.SpiritPoints).Append(";\n\n")
+                .Append("    public const int KILL_SCORE = ").Append(creature.KillScore).Append(";\n")
                 .Append("}\n");
             context.AddSource($"{className}.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
         }
         WriteLookup(context, classNames);
     }
 
-    // GameCreatures: every creature class's values as a GameCreature, by ID and by name.
+    // GameCreatures: every creature class's values as a CodexCreature, by ID and by name.
     private static void WriteLookup(SourceProductionContext context, List<string> classNames)
     {
         var source = new StringBuilder()
@@ -158,26 +157,26 @@ public sealed class CreatureGenerator : IIncrementalGenerator
             .Append("#nullable enable\n")
             .Append("namespace ").Append(Namespace).Append(";\n\n")
             .Append("/// <summary>One creature of the Codex's data export: the static values of its <c>&lt;Name&gt;GameCreature</c> class.</summary>\n")
-            .Append("public sealed record GameCreature(int Id, string Name, CreatureRank? Rank, double BaseHealth, int SpiritPoints, int KillScore);\n\n")
+            .Append("public sealed record CodexCreature(int Id, string Name, CreatureRank? Rank, double BaseHealth, int SpiritPoints, int KillScore);\n\n")
             .Append("/// <summary>Every creature of the Codex's data export.</summary>\n")
             .Append("public static partial class GameCreatures\n{\n")
             .Append("    /// <summary>Every creature, by ID.</summary>\n")
-            .Append("    public static IReadOnlyList<GameCreature> All { get; } =\n    [\n");
+            .Append("    public static IReadOnlyList<CodexCreature> All { get; } =\n    [\n");
         foreach (string c in classNames)
         {
-            source.Append("        new(").Append(c).Append(".Id, ").Append(c).Append(".Name, ").Append(c).Append(".Rank, ")
-                .Append(c).Append(".BaseHealth, ").Append(c).Append(".SpiritPoints, ").Append(c).Append(".KillScore),\n");
+            source.Append("        new(").Append(c).Append(".ID, ").Append(c).Append(".NAME, ").Append(c).Append(".RANK, ")
+                .Append(c).Append(".BASE_HEALTH, ").Append(c).Append(".SPIRIT_POINTS, ").Append(c).Append(".KILL_SCORE),\n");
         }
         source.Append("    ];\n\n")
-            .Append("    private static readonly Dictionary<int, GameCreature> _byId = All.ToDictionary(c => c.Id);\n\n")
-            .Append("    private static readonly Dictionary<string, GameCreature[]> _byName = All.GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)\n")
+            .Append("    private static readonly Dictionary<int, CodexCreature> _byId = All.ToDictionary(c => c.Id);\n\n")
+            .Append("    private static readonly Dictionary<string, CodexCreature[]> _byName = All.GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)\n")
             .Append("        .ToDictionary(g => g.Key, g => g.ToArray(), StringComparer.OrdinalIgnoreCase);\n\n")
             .Append("    /// <summary>The creature with game ID <paramref name=\"id\"/> (a FellowshipLogs NPC actor's gameID); null when there is none.</summary>\n")
-            .Append("    public static GameCreature? ById(int id) => _byId.GetValueOrDefault(id);\n\n")
+            .Append("    public static CodexCreature? ById(int id) => _byId.GetValueOrDefault(id);\n\n")
             .Append("    /// <summary>The one creature named <paramref name=\"name\"/>; null when none or several have the name.</summary>\n")
-            .Append("    public static GameCreature? ByName(string name) => Named(name) is [var one] ? one : null;\n\n")
+            .Append("    public static CodexCreature? ByName(string name) => Named(name) is [var one] ? one : null;\n\n")
             .Append("    /// <summary>Every creature named <paramref name=\"name\"/>, by ID.</summary>\n")
-            .Append("    public static IReadOnlyList<GameCreature> Named(string name) => _byName.GetValueOrDefault(name.Trim()) ?? [];\n")
+            .Append("    public static IReadOnlyList<CodexCreature> Named(string name) => _byName.GetValueOrDefault(name.Trim()) ?? [];\n")
             .Append("}\n");
         context.AddSource("GameCreatures.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
     }

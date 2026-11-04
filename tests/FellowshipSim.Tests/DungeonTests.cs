@@ -4,7 +4,6 @@ using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Dungeons;
-using FellowshipSim.Core.Enemies;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 
@@ -453,8 +452,8 @@ public class DungeonTests
     public void A_Group_Without_Values_Takes_Its_Creatures_Game_Data()
     {
         var group = new EnemyGroup(1, "Ancient Koros");
-        Assert.Equal(AncientKorosGameCreature.BaseHealth, group.Health);
-        Assert.Equal(AncientKorosGameCreature.SpiritPoints, group.Spirit);
+        Assert.Equal(AncientKorosGameCreature.BASE_HEALTH, group.Health);
+        Assert.Equal(AncientKorosGameCreature.SPIRIT_POINTS, group.Spirit);
         Assert.Null(group.Problem());
         Assert.Null(new EnemyGroup(1, "No Such Creature").Health);
     }

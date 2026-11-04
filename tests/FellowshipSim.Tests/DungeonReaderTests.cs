@@ -1,6 +1,6 @@
 using System.Text.Json;
 using FellowshipSim.Core.Dungeons;
-using FellowshipSim.Core.Enemies;
+using FellowshipSim.Core.Domain;
 using FellowshipSim.Engine.Replay;
 
 namespace FellowshipSim.Tests;

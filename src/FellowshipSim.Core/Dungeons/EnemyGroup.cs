@@ -1,5 +1,3 @@
-using FellowshipSim.Core.Enemies;
-
 namespace FellowshipSim.Core.Dungeons;
 
 /// <summary>
@@ -21,13 +19,13 @@ public sealed record EnemyGroup(
     string? Comment = null)
 {
     /// <summary>
-    /// Each enemy's health before the difficulty's scale: <see cref="HitPoints"/>, or the <see cref="GameCreature.BaseHealth"/>
+    /// Each enemy's health before the difficulty's scale: <see cref="HitPoints"/>, or the <see cref="CodexCreature.BaseHealth"/>
     /// of the one creature named <see cref="Name"/>. Null when neither has one.
     /// </summary>
     public double? Health => HitPoints ?? GameCreatures.ByName(Name)?.BaseHealth;
 
     /// <summary>
-    /// The Spirit Points each enemy is worth: <see cref="SpiritPoints"/>, or the <see cref="GameCreature.SpiritPoints"/> of the
+    /// The Spirit Points each enemy is worth: <see cref="SpiritPoints"/>, or the <see cref="CodexCreature.SpiritPoints"/> of the
     /// one creature named <see cref="Name"/>, or 0.
     /// </summary>
     public double Spirit => SpiritPoints ?? GameCreatures.ByName(Name)?.SpiritPoints ?? 0;

@@ -213,7 +213,7 @@ public class SimulationContext
             // Points count.
             enemy = new EnemyTarget(id, instanceId, name)
             {
-                SpiritPointValue = Enemies.GameCreatures.Named(name).Select(c => c.SpiritPoints).DefaultIfEmpty().Max(),
+                SpiritPointValue = GameCreatures.Named(name).Select(c => c.SpiritPoints).DefaultIfEmpty().Max(),
             };
             _enemyLookup[key] = enemy;
             _enemies.Add(enemy);

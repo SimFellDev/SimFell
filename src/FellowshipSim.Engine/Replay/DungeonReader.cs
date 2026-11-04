@@ -1,7 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
+
 using FellowshipSim.Core.Dungeons;
-using FellowshipSim.Core.Enemies;
+
 using static FellowshipSim.Engine.Replay.RawFightValue;
 
 namespace FellowshipSim.Engine.Replay;
@@ -51,7 +52,7 @@ public static class DungeonReader
 
         // Each enemy instance's first death, and its creature.
         var leftOut = new SortedSet<string>(StringComparer.Ordinal);
-        var enemies = new List<(GameCreature Creature, LogPull Pull)>();
+        var enemies = new List<(CodexCreature Creature, LogPull Pull)>();
         var seen = new HashSet<(int, int)>();
         foreach (var death in raw["enemy_deaths"].Items.OrderBy(d => Num(d["timestamp"])))
         {
@@ -110,7 +111,7 @@ public static class DungeonReader
         return new DungeonProfile(zone.Length > 0 ? zone : Str(fight["name"]), timeLimit, profilePulls, difficulty, comment);
     }
 
-    private static bool IsBoss(GameCreature creature) => creature.Rank == CreatureRank.Boss;
+    private static bool IsBoss(CodexCreature creature) => creature.Rank == CreatureRank.Boss;
 
     // One of FellowshipLogs' pulls of the fight: its name, its start and end in seconds into the fight, and its enemy
     // instance ranges by actor.

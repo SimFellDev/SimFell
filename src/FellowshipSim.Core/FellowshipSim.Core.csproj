@@ -34,4 +34,8 @@
     <AdditionalFiles Include="$(CodexExportFolder)settings.json" Condition="Exists('$(CodexExportFolder)settings.json')" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Enemies\" />
+  </ItemGroup>
+
 </Project>
