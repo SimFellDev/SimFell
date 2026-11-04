@@ -39,6 +39,13 @@ public class MonteCarloResult
     public double PrimaryTargetDps { get; init; }
     /// <summary>The DPS to bosses over the time of boss fighting in every fight; 0 when the fights had no enemies besides bosses, or no boss.</summary>
     public double BossDps { get; init; }
+    /// <summary>A dungeon's party DPS: the health its enemies lost in every fight over their lengths; null for training dummies.</summary>
+    public double? PartyDps { get; init; }
+    /// <summary>
+    /// The hero's share of a dungeon's party damage, from 0 to 1, the hero's damage to each enemy counted up to the health it
+    /// lost; null for training dummies.
+    /// </summary>
+    public double? GroupDamageShare { get; init; }
 }
 
 /// <summary>
@@ -273,6 +280,8 @@ public class MonteCarloSimulator
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
             // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.
             BossDps = total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999 ? total.Report.BossDamage / total.Report.BossSeconds : 0,
+            PartyDps = total.Report.PartyDamage > 0 && total.LengthSum > 0 ? total.Report.PartyDamage / total.LengthSum : null,
+            GroupDamageShare = total.Report.PartyDamage > 0 ? total.Report.HeroPartyDamage / total.Report.PartyDamage : null,
         };
     }
 
@@ -304,12 +313,13 @@ public class MonteCarloSimulator
         ctx.FightEnd = duration;
 
         double targetSeconds, bossSeconds;
+        IReadOnlyList<PartyEnemy>? party = null;
         var end = duration;
         if (options.Dungeon is { } dungeon)
         {
             // A dungeon has no main target: its enemies come and go.
             worker.Recorder.WatchTargets(ctx);
-            (end, targetSeconds, bossSeconds) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed), options.HeroShare(seed),
+            (end, targetSeconds, bossSeconds, party) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed),
                 (until, stop) => RunUntil(worker, ctx, until, stop)).Run();
         }
         else
@@ -330,7 +340,7 @@ public class MonteCarloSimulator
         }
 
         hero.Auras.FinalizeUptimes(end);
-        worker.Recorder.End(end, targetSeconds, bossSeconds);
+        worker.Recorder.End(end, targetSeconds, bossSeconds, party);
 
         foreach (var (ability, dmg) in ctx.AbilityDamage)
         {

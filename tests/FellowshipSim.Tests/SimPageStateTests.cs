@@ -49,7 +49,6 @@ public class SimPageStateTests
             TrainingDummies = 4,
             VaryLength = true,
             LengthVariancePercent = 12.5,
-            VaryHeroShare = false,
             Boss = false,
             StartWithSpirit = true,
             StartingSpirit = 55,

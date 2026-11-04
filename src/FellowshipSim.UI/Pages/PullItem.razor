@@ -85,9 +85,9 @@
                 }
             </div>
 
-            <label for="@($"{Id}-duration")">Pull Duration (s)</label>
-            <input id="@($"{Id}-duration")" type="number" min="1" step="any" placeholder="@(NeedsDuration ? "Needed by enemies without hit points" : "None")"
-                   @bind:get="Pull.PullDurationSeconds" @bind:set="SetDuration" />
+            <label for="@($"{Id}-duration")">Duration (s)</label>
+            <input id="@($"{Id}-duration")" type="number" min="1" step="any" required
+                   @bind:get="Pull.DurationSeconds" @bind:set="SetDuration" />
 
             @if (Pull.IsBoss)
             {
@@ -170,11 +170,14 @@
     /// <summary>Renames the pull to a valid name no other pull has.</summary>
     [Parameter] public EventCallback<string> OnRename { get; set; }
 
-    /// <summary>The trash group of a new pull, and the one "+ Enemy group" adds.</summary>
-    public static readonly EnemyGroup NewTrash = new(5, "Trash Mob", 3, HitPoints: 2_000_000);
+    /// <summary>
+    /// The trash group of a new pull, and the one "+ Enemy group" adds: five Coldbrine Fiends, with their game data health and
+    /// Spirit Points.
+    /// </summary>
+    public static readonly EnemyGroup NewTrash = new(5, "Coldbrine Fiend");
 
-    /// <summary>The boss of a new boss pull, and the one "+ Boss" adds.</summary>
-    public static readonly EnemyGroup NewBoss = new(1, "Boss", 45, HitPoints: 20_000_000, Boss: true);
+    /// <summary>The boss of a new boss pull, and the one "+ Boss" adds: Ancient Koros, with its game data health and Spirit Points.</summary>
+    public static readonly EnemyGroup NewBoss = new(1, "Ancient Koros", Boss: true);
 
     private const string DowntimeStart = "downtime";
     private const string ChainStart = "chain";
@@ -204,7 +207,6 @@
 
     private IReadOnlyList<DungeonPull> Others => Pulls.Where(p => p.Name != Pull.Name).ToList();
 
-    private bool NeedsDuration => Pull.Groups.Any(g => g.HitPoints == null);
 
     /// <summary>The groups on one line: "Imp ×5, Ogre Captain".</summary>
     private string Summary => string.Join(", ", Pull.Groups.Select(g => g.Count > 1 ? $"{g.Name} ×{g.Count}" : g.Name));
@@ -238,7 +240,7 @@
         return _nameError == null && name != Pull.Name ? OnRename.InvokeAsync(name) : Task.CompletedTask;
     }
 
-    private Task SetDuration(double? seconds) => Set(Pull with { PullDurationSeconds = seconds is > 0 ? seconds : null });
+    private Task SetDuration(double seconds) => seconds > 0 ? Set(Pull with { DurationSeconds = seconds }) : Task.CompletedTask;
 
     private Task ChangeStart(ChangeEventArgs e) => (string?)e.Value == ChainStart && Others.Count > 0
         ? Set(Pull with { ChainWith = (Index > 0 ? Pulls[Index - 1] : Others[0]).Name, DowntimeSeconds = 0 })

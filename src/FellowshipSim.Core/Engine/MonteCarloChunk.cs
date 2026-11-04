@@ -48,6 +48,11 @@ public sealed class MonteCarloChunk
         public double TargetSeconds { get; init; }
         /// <summary>The whole seconds of the longest fight.</summary>
         public int LongestSeconds { get; init; }
+        /// <summary>A dungeon's party damage each second, added up; empty for training dummies.</summary>
+        public double[] PartyDamageSum { get; init; } = [];
+        /// <summary>The party's damage, and the hero's damage to each enemy up to the health it lost, added up.</summary>
+        public double PartyDamage { get; init; }
+        public double HeroPartyDamage { get; init; }
     }
 
     /// <summary>One of the first fights' damage each second, for the band of the damage over time.</summary>

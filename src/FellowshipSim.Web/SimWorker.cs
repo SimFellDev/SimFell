@@ -90,59 +90,6 @@ public static partial class SimWorker
     }
 
     /// <summary>
-    /// Reads the dungeon of fight <paramref name="fightId"/> of report <paramref name="reportCode"/> with player
-    /// <paramref name="playerId"/>'s hero share: a <see cref="DungeonReply"/> as JSON. The fight is
-    /// <paramref name="keptFight"/>, the one the browser keeps, or else downloaded as <see cref="ReviewFight"/> does and kept.
-    /// A fight kept without its pulls gets them from FellowshipLogs and is kept again.
-    /// </summary>
-    [JSExport]
-    public static async Task<string> ReadDungeonFight(string reportCode, int fightId, int playerId, string keptFight, string accessToken,
-        string clientId, string clientSecret, int callId)
-    {
-        var progress = new ProgressTo(callId);
-        DungeonReply reply;
-        try
-        {
-            using var http = new HttpClient();
-            FellowshipLogsClient Client() =>
-                accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken)
-                : clientId.Length > 0 ? new FellowshipLogsClient(http, clientId, clientSecret)
-                : throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
-            // The fight is read as its text's JsonDocument; a long fight's events as a tree are more than a worker has.
-            string text = keptFight;
-            if (text.Length == 0)
-            {
-                var client = Client();
-                progress.Report("Downloading the fight from FellowshipLogs");
-                text = (await client.DownloadFightAsync(reportCode, fightId, progress)).ToJsonString();
-                await SaveFight(reportCode, fightId, text);
-            }
-            var fight = JsonDocument.Parse(text);
-            if (!DungeonReader.HasPulls(fight.RootElement))
-            {
-                fight.Dispose();
-                var client = Client();
-                progress.Report("Downloading the fight's pulls from FellowshipLogs");
-                var raw = JsonNode.Parse(text)!.AsObject();
-                await client.AddDungeonPullsAsync(raw);
-                text = raw.ToJsonString();
-                await SaveFight(reportCode, fightId, text);
-                fight = JsonDocument.Parse(text);
-            }
-            using (fight)
-            {
-                progress.Report("Reading the dungeon");
-                reply = new DungeonReply(DungeonReader.FromRawFight(fight.RootElement, playerId).Format(), null);
-            }
-        }
-        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
-        {
-            reply = new DungeonReply(null, e.Message);
-        }
-        return JsonSerializer.Serialize(reply, SimChunks.Json);
-    }
-
-    /// <summary>
     /// The first fight of a sim with every decision of its action list: a <see cref="TraceReply"/> as JSON, with the trace
     /// or the reason the engine refused it.
     /// </summary>

@@ -21,6 +21,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FellowshipSim.Core.Generators\FellowshipSim.Core.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\FellowshipSim.Codex.Generators\FellowshipSim.Codex.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- The Codex's data export (tools/download-codex-export.sh): each creature's class (CreatureGenerator). -->
+  <PropertyGroup>
+    <CodexExportFolder>$(MSBuildThisFileDirectory)..\..\codex-export\</CodexExportFolder>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(CodexExportFolder)entities.jsonl" Condition="Exists('$(CodexExportFolder)entities.jsonl')" />
+    <AdditionalFiles Include="$(CodexExportFolder)settings.json" Condition="Exists('$(CodexExportFolder)settings.json')" />
   </ItemGroup>
 
 </Project>

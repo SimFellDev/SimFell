@@ -10,6 +10,7 @@
     <Project Path="src/FellowshipSim.Engine/FellowshipSim.Engine.csproj" />
     <Project Path="src/FellowshipSim.Launcher/FellowshipSim.Launcher.csproj" />
     <Project Path="src/FellowshipSim.EngineServer/FellowshipSim.EngineServer.csproj" />
+    <Project Path="src/FellowshipSim.Codex.Generators/FellowshipSim.Codex.Generators.csproj" />
     <Project Path="src/FellowshipSim.Core.Generators/FellowshipSim.Core.Generators.csproj" />
     <Project Path="src/FellowshipSim.Logs/FellowshipSim.Logs.csproj" />
     <Project Path="src/FellowshipSim.ServiceDefaults/FellowshipSim.ServiceDefaults.csproj" />

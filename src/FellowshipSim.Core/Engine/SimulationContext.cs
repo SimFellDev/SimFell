@@ -209,7 +209,12 @@ public class SimulationContext
         var key = (id, instanceId);
         if (!_enemyLookup.TryGetValue(key, out var enemy))
         {
-            enemy = new EnemyTarget(id, instanceId, name) { SpiritPointValue = Enemies.CreatureSpiritPoints.For(name) };
+            // A log names an enemy but has no game ID for it. Where several creatures have the name, the highest Spirit
+            // Points count.
+            enemy = new EnemyTarget(id, instanceId, name)
+            {
+                SpiritPointValue = Enemies.GameCreatures.Named(name).Select(c => c.SpiritPoints).DefaultIfEmpty().Max(),
+            };
             _enemyLookup[key] = enemy;
             _enemies.Add(enemy);
             enemy.SleepChanged = () => _activeEnemies = null;
@@ -237,12 +242,6 @@ public class SimulationContext
 
     /// <summary>Raised as an enemy dies or leaves combat, before it is removed (effects on it can still resolve).</summary>
     public event Action<SimulationContext, EnemyTarget>? EnemyDemising;
-
-    /// <summary>
-    /// Raised as damage takes health from an enemy dying from damage (<see cref="EnemyTarget.HeroShare"/>), with the
-    /// health lost, the party's damage included.
-    /// </summary>
-    public event Action<SimulationContext, EnemyTarget, double>? EnemyHurt;
 
     /// <summary>
     /// The hero interrupts <paramref name="enemy"/>'s cast: it ends with no effect, and <see cref="Hero.OnInterrupt"/> is
@@ -618,21 +617,10 @@ public class SimulationContext
             _recentDamageSlots[recent] = slot;
         }
         CollectionsMarshal.AsSpan(_damageByName)[slot].Damage += dealt;
-        if (target != null && target.MaxHealth > 0)
+        if (target != null)
         {
-            if (target.HeroShare is { } share)
-            {
-                // The party deals the rest: the enemy loses the hit over the hero's share.
-                double before = target.CurrentHealth;
-                target.CurrentHealth = Math.Max(0.0, before - dealt / share);
-                if (target.CurrentHealth <= 0 && !target.DeathScheduled && !target.IsSleeping)
-                {
-                    target.DeathScheduled = true;
-                    Kernel.ScheduleAt(CurrentTime, c => c.RemoveEnemy(target, defeated: true), "Death");
-                }
-                if (before > target.CurrentHealth) EnemyHurt?.Invoke(this, target, before - target.CurrentHealth);
-            }
-            else target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
+            target.HeroDamage += dealt;
+            if (target.MaxHealth > 0) target.CurrentHealth = Math.Max(0.0, target.CurrentHealth - dealt);
         }
         source.TriggerDamageDealt(new DamageContext(source, target, abilityId, abilityName, dealt, isCrit, CurrentTime, this, critChance, abilityGroup));
     }

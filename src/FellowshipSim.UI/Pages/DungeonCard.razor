@@ -5,10 +5,9 @@
 @inject DungeonStore Store
 @inject Visitor Visitor
 @inject IJSRuntime JS
-@inject ReportLookup Reports
-@inject IDungeonImport Dungeons
+@inject DungeonImport Dungeons
 @*
-    The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment, the hero share and its variance and time limit,
+    The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment and time limit,
     then its pulls in the order they run, each built as an action of the action-list editor. Import reads a fight's dungeon from
     its log link, or a dungeon profile from a file or pasted; Export shows the profile text.
 *@
@@ -67,25 +66,6 @@
               @bind:get="State.Dungeon.Comment ?? string.Empty" @bind:set="SetComment" @bind:event="oninput"></textarea>
 
     <div class="fields">
-        <label class="field">
-            Hero share (%)
-            <input type="number" min="1" max="100" step="any" @bind:get="State.Dungeon.HeroShare" @bind:set="v => Change(State.Dungeon with { HeroShare = v })" />
-        </label>
-        <div class="toggle-block">
-            <label class="switch">
-                <input type="checkbox" @bind="State.VaryHeroShare" />
-                <span>Vary the hero share</span>
-            </label>
-            @if (ShareText() is { } shareText)
-            {
-                <span class="meta">@shareText</span>
-            }
-        </div>
-        <label class="field @(State.VaryHeroShare ? "" : "off")">
-            By ± %
-            <input type="number" class="short" min="0" max="90" step="1" disabled="@(!State.VaryHeroShare)"
-                   @bind:get="State.HeroShareVariancePercent" @bind:set="v => State.HeroShareVariancePercent = Math.Clamp(v, 0, 90)" />
-        </label>
         <label class="field">
             Time limit (s)
             <input type="number" min="1" step="any" @bind:get="State.Dungeon.TimeLimitSeconds" @bind:set="v => Change(State.Dungeon with { TimeLimitSeconds = v })" />
@@ -147,20 +127,7 @@
                     <input @ref="_linkInput" autocomplete="off" spellcheck="false" placeholder="https://www.fellowshiplogs.com/reports/code?fight=6"
                            disabled="@_importBusy" @bind="_importLink" @bind:event="oninput" />
                 </label>
-                <p class="hint">A report link with its fight. The pulls and enemies come from the fight, and the hero share from the link's player or the fight's @State.Build.Hero.</p>
-                @if (_importChoices is { } choices)
-                {
-                    <span class="group">Whose hero share?</span>
-                    <div class="choices">
-                        @foreach (var choice in choices)
-                        {
-                            <button @key="choice.Player.Id" type="button" class="secondary-button" disabled="@_importBusy"
-                                    @onclick="() => ImportFromLogAsync(choice)">
-                                @choice.Player.Name · @choice.Player.Hero
-                            </button>
-                        }
-                    </div>
-                }
+                <p class="hint">A report link with its fight. The pulls, their enemies and their durations come from the fight.</p>
                 <div class="text-head">
                     <label for="dungeon-import-text">Or a dungeon profile</label>
                     <label class="icon-button file-button" aria-label="Upload" data-tooltip="Import a dungeon from a .simc file">
@@ -204,10 +171,9 @@
     private (string What, Func<Task> Then)? _pending;
     private bool _exportOpen;
 
-    // The Import dialog: its link, the players to pick the hero share from, its profile text, status and focus.
+    // The Import dialog: its link, its profile text, status and focus.
     private bool _importOpen, _importBusy, _focusLink;
     private string _importLink = "", _importText = "";
-    private IReadOnlyList<PickedPlayer>? _importChoices;
     private MessageState _importStatus = MessageState.None;
     private ElementReference _linkInput;
 
@@ -233,16 +199,11 @@
 
     private Task SetComment(string comment) => Change(State.Dungeon with { Comment = string.IsNullOrWhiteSpace(comment) ? null : comment });
 
-    /// <summary>The hero share range of a fight; null when the share does not vary.</summary>
-    private string? ShareText()
-    {
-        if (!State.VaryHeroShare || State.HeroShareVariancePercent <= 0) return null;
-        double share = State.Dungeon.HeroShare, spread = State.HeroShareVariancePercent / 100;
-        return $"Each fight has a hero share of {N(share * (1 - spread))} – {N(Math.Min(100, share * (1 + spread)))}%.";
-    }
-
-    /// <summary>A new pull of one group, 20 seconds after the pull before it; <see cref="DungeonEditor.Insert"/> names it.</summary>
-    private static DungeonPull NewPull(EnemyGroup group) => new("", [group], DowntimeSeconds: 20);
+    /// <summary>
+    /// A new pull of one group, 60 seconds long and 20 seconds after the pull before it; <see cref="DungeonEditor.Insert"/>
+    /// names it.
+    /// </summary>
+    private static DungeonPull NewPull(EnemyGroup group) => new("", [group], DurationSeconds: 60, DowntimeSeconds: 20);
 
     protected override async Task OnInitializedAsync()
     {
@@ -403,7 +364,6 @@
         _importOpen = true;
         _importLink = "";
         _importText = "";
-        _importChoices = null;
         _importStatus = MessageState.None;
         _focusLink = true;
     }
@@ -421,63 +381,26 @@
     // The link's fight when the link has text, else the pasted profile.
     private Task ImportAsync() => _importLink.Trim().Length > 0 ? FindFightAsync() : ImportTextAsync();
 
-    // The link's fight and the player whose hero share the dungeon takes: the link's player, else the fight's one player of
-    // the build's hero; otherwise the dialog lists the players to pick from.
+    // The link's fight: its pulls, enemies and pull durations. A failure shows as a toast, and the dialog stays open.
     private async Task FindFightAsync()
     {
         if (_importBusy) return;
         _importBusy = true;
-        _importChoices = null;
-        _importStatus = new MessageState("Reading the log...");
-        IReadOnlyList<PickedPlayer> players;
+        _importStatus = new MessageState("Reading the fight's pulls...");
         try
         {
-            var report = await Reports.FindAsync(_importLink);
-            var fight = report.SelectedFightId is { } id
-                ? report.Fights.FirstOrDefault(f => f.Id == id) ?? throw new InvalidOperationException($"The report has no fight {id}.")
-                : throw new InvalidOperationException("The link names no fight: open the fight on FellowshipLogs and copy its link.");
-            if (fight.Players.Count == 0) throw new InvalidOperationException($"{fight.Name} (fight {fight.Id}) has no players.");
-            var all = fight.Players.Select(p => new PickedPlayer(report.Code, fight, p, report.CurrentPatch)).ToList();
-            var linked = all.Where(p => p.Player.Id == report.SelectedPlayerId).ToList();
-            var hero = all.Where(p => p.Player.Hero.Equals(State.Build.Hero, StringComparison.OrdinalIgnoreCase)).ToList();
-            players = linked.Count == 1 ? linked : hero.Count == 1 ? hero : all;
-        }
-        catch (Exception e)
-        {
-            _importStatus = MessageState.Error(e.Message);
-            return;
-        }
-        finally
-        {
-            _importBusy = false;
-        }
-        if (players.Count == 1)
-        {
-            await ImportFromLogAsync(players[0]);
-            return;
-        }
-        _importChoices = players;
-        _importStatus = MessageState.None;
-    }
-
-    private async Task ImportFromLogAsync(PickedPlayer picked)
-    {
-        _importBusy = true;
-        _importStatus = new MessageState($"Reading the dungeon of {picked.Fight.Name}...");
-        var progress = new Progress<string>(m => { _importStatus = new MessageState($"{m}..."); InvokeAsync(StateHasChanged); });
-        try
-        {
-            var dungeon = await Dungeons.ReadAsync(picked.ReportCode, picked.Fight.Id, picked.Player.Id, progress);
+            var (dungeon, currentPatch) = await Dungeons.ReadAsync(_importLink);
             // A saved dungeon's name is a file name.
             await UseImported(dungeon with { Name = ActionListStore.ValidName(dungeon.Name, "Imported dungeon") });
-            if (!picked.CurrentPatch)
+            if (!currentPatch)
             {
                 _status = new MessageState($"This log is from before patch {GamePatch.Current.Name}: its enemies and pulls may have changed.", MessageKind.Warning);
             }
         }
         catch (Exception e)
         {
-            _importStatus = MessageState.Error(e.Message);
+            _importStatus = MessageState.None;
+            Toasts.Show(MessageState.Error(e.Message));
         }
         finally
         {

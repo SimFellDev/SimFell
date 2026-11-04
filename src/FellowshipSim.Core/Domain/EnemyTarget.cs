@@ -19,33 +19,13 @@ public class EnemyTarget : Actor
     private SimTime _diesAt = SimTime.Infinite;
 
     /// <summary>
-    /// The time the enemy's health reaches 0: the end of <see cref="FollowTime"/>, or for an enemy dying from damage
-    /// (<see cref="HeroShare"/>) its health over its health loss per second since it arrived. <see cref="SimTime.Infinite"/>
-    /// before such an enemy takes damage, and for an enemy whose health follows damage alone.
+    /// The time the enemy's health reaches 0: the end of <see cref="FollowTime"/>. <see cref="SimTime.Infinite"/> for an
+    /// enemy whose health follows damage.
     /// </summary>
-    public SimTime DiesAt
-    {
-        get
-        {
-            if (HeroShare == null || _fight == null) return _diesAt;
-            double lost = MaxHealth - CurrentHealth;
-            double seconds = (_fight.CurrentTime - _arrivedAt).TotalSeconds;
-            if (lost <= 0 || seconds <= 0) return SimTime.Infinite;
-            return _fight.CurrentTime + SimTime.FromSeconds(CurrentHealth * seconds / lost);
-        }
-    }
+    public SimTime DiesAt => _diesAt;
 
-    /// <summary>
-    /// The hero's share of the damage the enemy takes, for an enemy dying from damage: each hit takes the hit over this
-    /// share from its health, the party's damage beside the hero's. Null for an enemy that does not die from damage.
-    /// </summary>
-    public double? HeroShare { get; private set; }
-
-    /// <summary>True once the enemy's death is in the event queue.</summary>
-    internal bool DeathScheduled { get; set; }
-
-    private SimulationContext? _fight;
-    private SimTime _arrivedAt;
+    /// <summary>The hero's damage to the enemy so far.</summary>
+    public double HeroDamage { get; internal set; }
 
     /// <summary>True for a boss.</summary>
     public bool IsBoss { get; set; }
@@ -65,18 +45,7 @@ public class EnemyTarget : Actor
         _diesAt = end;
     }
 
-    /// <summary>
-    /// From now on the enemy dies from damage, the hero dealing <paramref name="heroShare"/> of it (<see cref="HeroShare"/>).
-    /// </summary>
-    public void FollowDamage(SimulationContext ctx, double heroShare)
-    {
-        _clock = null;
-        _fight = ctx;
-        _arrivedAt = ctx.CurrentTime;
-        HeroShare = heroShare;
-    }
-
-    /// <summary>True once <see cref="FollowTime"/> is called and until <see cref="FollowDamage"/>.</summary>
+    /// <summary>True once <see cref="FollowTime"/> is called.</summary>
     public bool HealthFollowsTime => _clock != null;
 
     public double HealthPercent => HealthFraction * 100.0;
@@ -129,7 +98,7 @@ public class EnemyTarget : Actor
 
     public override void Arise(SimulationContext ctx)
     {
-        DeathScheduled = false;
+        HeroDamage = 0;
         base.Arise(ctx);
     }
 

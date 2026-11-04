@@ -33,9 +33,6 @@ public sealed class SimPageState
     /// <summary>How far each fight's length varies at first: ±20%.</summary>
     public const double DefaultLengthVariancePercent = 20;
 
-    /// <summary>How far each dungeon fight's hero share varies at first: ±20%, 30 to 45% of 37.5%.</summary>
-    public const double DefaultHeroShareVariancePercent = 20;
-
     public SimTab Tab { get; set; } = SimTab.Hero;
 
     /// <summary>
@@ -201,11 +198,6 @@ public sealed class SimPageState
             VaryLength = settings.LengthVariance > 0;
             if (VaryLength) LengthVariancePercent = settings.LengthVariance * 100;
         }
-        if (keys.Contains(SimProfile.HeroShareVariance))
-        {
-            VaryHeroShare = settings.HeroShareVariance > 0;
-            if (VaryHeroShare) HeroShareVariancePercent = settings.HeroShareVariance * 100;
-        }
         if (keys.Contains(SimProfile.HealthFollowsTime)) HealthFollowsTime = settings.HealthFollowsTime;
         if (keys.Contains(SimProfile.Boss)) Boss = settings.Boss;
         if (keys.Contains(SimProfile.StartingSpirit))
@@ -268,11 +260,6 @@ public sealed class SimPageState
 
     public double LengthVariancePercent { get; set; } = DefaultLengthVariancePercent;
 
-    /// <summary>True when each dungeon fight's hero share varies by <see cref="HeroShareVariancePercent"/>.</summary>
-    public bool VaryHeroShare { get; set; } = true;
-
-    public double HeroShareVariancePercent { get; set; } = DefaultHeroShareVariancePercent;
-
     /// <summary>True when the training dummies are bosses: Ruby's Blessing of the Conqueror counts only then.</summary>
     public bool Boss { get; set; } = true;
 
@@ -298,7 +285,6 @@ public sealed class SimPageState
         StartingSpirit: StartWithSpirit ? StartingSpirit : 0,
         Boss: Boss,
         Dungeon: Mode == SimMode.Dungeon ? Dungeon : null,
-        HeroShareVariance: VaryHeroShare ? HeroShareVariancePercent / 100 : 0,
         ReactionDelays: ReactionDelays,
         ProcReactionSeconds: ProcReactionMilliseconds / 1000);
 

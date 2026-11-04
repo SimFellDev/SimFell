@@ -115,12 +115,16 @@ public class SimEngineContractTests
         var result = await _engine.SimulateAsync(SimcProfile.Parse(Profile), settings);
         Assert.Equal(JsonSerializer.Serialize(result, Web), JsonSerializer.Serialize(await _engine.SimulateAsync(SimcProfile.Parse(Profile), sent), Web));
         Assert.True(result.BossDps > 0);
+        Assert.True(result.PartyDps > result.MeanDps);
+        Assert.InRange(result.GroupDamageShare!.Value, 0.0001, 1.0);
+        Assert.NotNull(result.Timeline!.PartyDps);
+        AssertRoundTrip(result);
     }
 
     [Fact]
     public async Task A_Dungeon_With_A_Pull_Of_No_Hit_Points_Is_Refused()
     {
-        var dungeon = new DungeonProfile("Broken", DungeonProfile.DefaultHeroShare, 600, [new DungeonPull("1", [new EnemyGroup(1, "Boss", HitPoints: 0, Boss: true)])]);
+        var dungeon = new DungeonProfile("Broken", 600, [new DungeonPull("1", [new EnemyGroup(1, "Boss", HitPoints: 0, Boss: true)], 30)]);
         await Assert.ThrowsAsync<SimEngineException>(() => _engine.SimulateAsync(SimcProfile.Parse(Profile), new SimSettings(1, 10, Dungeon: dungeon)));
     }
 

@@ -4,18 +4,18 @@ using System.Text;
 namespace FellowshipSim.Core.Dungeons;
 
 /// <summary>
-/// A dungeon fight: its pulls, the hero's share of the party's damage in percent, the time limit in seconds and the
-/// difficulty, an Eternal level (0 for Base). In simc style, one <c>key=value</c> per line:
+/// A dungeon fight: its pulls, the time limit in seconds and the difficulty, an Eternal level (0 for Base). In simc style,
+/// one <c>key=value</c> per line:
 /// <code>
 /// dungeon=Default
 /// difficulty=10
-/// hero_share=37.5
 /// time_limit=1800
-/// pull.1=/count=5,name=Imp,spirit_points=3,hit_points=7857
+/// pull.1=/duration=40
+/// pull.1+=/count=5,name=Imp,spirit_points=3,hit_points=7857
 /// pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=11546,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
-/// pull.ghouls=/pull_duration=45,downtime=20
+/// pull.ghouls=/duration=45,downtime=20
 /// pull.ghouls+=/count=4,name=Ghoul
-/// pull.last_boss=/final=1,pull_with=ghouls,offset_pct=50
+/// pull.last_boss=/duration=90,final=1,pull_with=ghouls,offset_pct=50
 /// pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
 /// </code>
 /// A pull has a name of letters, digits and '_'. Pulls run in the order of their <c>pull.X=/</c> lines.
@@ -26,16 +26,13 @@ namespace FellowshipSim.Core.Dungeons;
 /// <c>pull.X=/</c> starts pull X and <c>pull.X+=/</c> adds a line to it. A line is
 /// an enemy group (<c>count=</c>), a boss (<c>boss.N</c>) or the pull's options; a group line can also have pull options.
 /// Group values: <c>count</c>, <c>name</c>, <c>spirit_points</c>, <c>priority</c>, <c>hit_points</c>,
-/// <c>interrupt_ability</c>, <c>cooldown</c> and <c>cast_time</c>. Pull options: <c>pull_duration</c>, <c>downtime</c>,
+/// <c>interrupt_ability</c>, <c>cooldown</c> and <c>cast_time</c>. Pull options: <c>duration</c> (every pull has one), <c>downtime</c>,
 /// <c>final</c>, <c>chain_with</c> and <c>pull_with</c> with one trigger at most (<c>offset_ms</c>, <c>offset_pct</c>,
 /// <c>after_deaths</c>, <c>after_deaths_total</c>). A name with a comma is quoted.
 /// </summary>
-public sealed record DungeonProfile(string Name, double HeroShare, double TimeLimitSeconds, IReadOnlyList<DungeonPull> Pulls,
+public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadOnlyList<DungeonPull> Pulls,
     int Difficulty = DungeonProfile.DefaultDifficulty, string? Comment = null)
 {
-    /// <summary>The hero's share of the party's damage, in percent, of a dungeon whose text names none: the middle of 30-45%.</summary>
-    public const double DefaultHeroShare = 37.5;
-
     /// <summary>The time limit of a dungeon whose text names none, in seconds.</summary>
     public const double DefaultTimeLimitSeconds = 1800;
 
@@ -113,7 +110,6 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     public string? Problem()
     {
         if (Pulls.Count == 0) return "A dungeon has at least one pull.";
-        if (!(HeroShare > 0 && HeroShare <= 100)) return "The hero share is more than 0% and at most 100%.";
         if (!(TimeLimitSeconds > 0)) return "The time limit is more than 0 seconds.";
         if (Level == null) return $"The difficulty is an Eternal level from 0 (Base) to {DifficultyScaling.Levels[^1].Eternal}.";
         foreach (var pull in Pulls)
@@ -146,7 +142,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     public static DungeonProfile Parse(string text)
     {
         string? name = null;
-        double heroShare = DefaultHeroShare, timeLimit = DefaultTimeLimitSeconds;
+        double timeLimit = DefaultTimeLimitSeconds;
         int difficulty = DefaultDifficulty;
         var pulls = new OrderedDictionary<string, PullText>();
         var dungeonComment = new List<string>();
@@ -174,9 +170,6 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                     case "dungeon":
                         name = Unquote(value);
                         break;
-                    case "hero_share":
-                        heroShare = Number(key, value);
-                        break;
                     case "time_limit":
                         timeLimit = Number(key, value);
                         break;
@@ -185,7 +178,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                         break;
                     default:
                         if (!key.StartsWith("pull.", StringComparison.Ordinal))
-                            throw new FormatException($"'{key}' is not a dungeon option (dungeon, difficulty, hero_share, time_limit, pull.X)");
+                            throw new FormatException($"'{key}' is not a dungeon option (dungeon, difficulty, time_limit, pull.X)");
                         bool append = key.EndsWith('+');
                         string pullName = PullName(key[5..(append ? ^1 : ^0)]);
                         if (append && !pulls.ContainsKey(pullName)) throw new FormatException($"pull {pullName} has no pull.{pullName}= line before this one");
@@ -211,7 +204,11 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         (lastPull?.Comment ?? dungeonComment).AddRange(comment);
         if (string.IsNullOrWhiteSpace(name)) throw new FormatException("The dungeon has no dungeon=<name> line.");
         if (pulls.Count == 0) throw new FormatException("The dungeon has no pull line.");
-        var profile = new DungeonProfile(name, heroShare, timeLimit, pulls.Select(p => p.Value.Pull(p.Key)).ToList(), difficulty,
+        foreach (var (pullName, pull) in pulls)
+        {
+            if (pull.Duration == null) throw new FormatException($"Pull {pullName} has no duration=<seconds>.");
+        }
+        var profile = new DungeonProfile(name, timeLimit, pulls.Select(p => p.Value.Pull(p.Key)).ToList(), difficulty,
             JoinComment(dungeonComment));
         foreach (var (pullName, pull) in pulls)
         {
@@ -225,7 +222,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     private sealed class PullText
     {
         public readonly List<EnemyGroup> Groups = [];
-        public double? PullDuration;
+        public double? Duration;
         public double Downtime;
         public string? ChainWith;
         public bool Final;
@@ -236,7 +233,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
 
         public bool TriggerWithoutJoin => PullWith == null && (OffsetMs != null || OffsetPct != null || AfterDeaths != null || AfterDeathsTotal != null);
 
-        public DungeonPull Pull(string name) => new(name, Groups, PullDuration, Downtime, ChainWith, Final,
+        public DungeonPull Pull(string name) => new(name, Groups, Duration!.Value, Downtime, ChainWith, Final,
             PullWith is { } with ? new PullJoin(with, OffsetMs, OffsetPct, AfterDeaths, AfterDeathsTotal) : null, JoinComment(Comment));
     }
 
@@ -266,8 +263,8 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         }
         int? count = boss ? 1 : null;
         string? name = null;
-        double spirit = 0, cooldown = 0, castTime = EnemyCast.DefaultCastSeconds;
-        double? hitPoints = null;
+        double cooldown = 0, castTime = EnemyCast.DefaultCastSeconds;
+        double? hitPoints = null, spirit = null;
         bool priority = false, groupValues = false;
         string? ability = null;
         foreach (string option in parts)
@@ -287,7 +284,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                 case "interrupt_ability": ability = Unquote(v); groupValues = true; break;
                 case "cooldown": cooldown = Number(key, v); groupValues = true; break;
                 case "cast_time": castTime = Number(key, v); groupValues = true; break;
-                case "pull_duration": pull.PullDuration = Number(key, v); break;
+                case "duration": pull.Duration = Number(key, v); break;
                 case "downtime": pull.Downtime = Number(key, v); break;
                 case "final": pull.Final = Integer(key, v) != 0; break;
                 case "chain_with": pull.ChainWith = PullName(v); break;
@@ -298,7 +295,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                 case "after_deaths_total": pull.AfterDeathsTotal = DeathCount.Parse(key, v); break;
                 default:
                     throw new FormatException($"'{key}' is not a pull option (count, name, spirit_points, priority, hit_points, " +
-                        "interrupt_ability, cooldown, cast_time, pull_duration, downtime, final, chain_with, pull_with, offset_ms, " +
+                        "interrupt_ability, cooldown, cast_time, duration, downtime, final, chain_with, pull_with, offset_ms, " +
                         "offset_pct, after_deaths, after_deaths_total)");
             }
         }
@@ -320,7 +317,6 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
         AppendComment(text, Comment);
         text.Append("dungeon=").Append(Quote(Name)).Append('\n');
         text.Append("difficulty=").Append(N(Difficulty)).Append('\n');
-        text.Append("hero_share=").Append(N(HeroShare)).Append('\n');
         text.Append("time_limit=").Append(N(TimeLimitSeconds)).Append('\n');
         foreach (var pull in Pulls)
         {
@@ -341,7 +337,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
                 if (g.Boss) text.Append("boss.").Append(N(++boss));
                 else text.Append("count=").Append(N(g.Count));
                 text.Append(",name=").Append(Quote(g.Name));
-                if (g.SpiritPoints != 0) text.Append(",spirit_points=").Append(N(g.SpiritPoints));
+                if (g.SpiritPoints is { } spirit) text.Append(",spirit_points=").Append(N(spirit));
                 if (g.Priority) text.Append(",priority=1");
                 if (g.HitPoints is { } hp) text.Append(",hit_points=").Append(N(hp));
                 if (g.Cast is { } cast)
@@ -360,7 +356,7 @@ public sealed record DungeonProfile(string Name, double HeroShare, double TimeLi
     private static List<string> PullOptions(DungeonPull pull)
     {
         var options = new List<string>();
-        if (pull.PullDurationSeconds is { } duration) options.Add($"pull_duration={N(duration)}");
+        options.Add($"duration={N(pull.DurationSeconds)}");
         if (pull.DowntimeSeconds != 0) options.Add($"downtime={N(pull.DowntimeSeconds)}");
         if (pull.ChainWith is { } chain) options.Add($"chain_with={chain}");
         if (pull.Final) options.Add("final=1");

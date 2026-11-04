@@ -129,23 +129,6 @@ export async function reviewFight(reportCode, fightId, playerId, accessToken, cl
   }
 }
 
-/**
- * Downloads a fight from FellowshipLogs on the least busy worker, or takes the one the browser keeps, and reads its dungeon
- * with player `playerId`'s hero share there; `sink` hears OnProgress(text). Resolves to the reply's JSON.
- */
-export async function dungeonFight(reportCode, fightId, playerId, accessToken, clientId, clientSecret, sink) {
-  ensure();
-  const [w] = leastBusy(1);
-  await w.ready;
-  w.busy++;
-  try {
-    return (await call(w, { type: 'dungeonFight', reportCode, fightId, playerId, accessToken, clientId, clientSecret },
-      text => sink.invokeMethodAsync('OnProgress', text))).json;
-  } finally {
-    w.busy--;
-  }
-}
-
 /** Fights the first fight of a sim on the least busy worker, tracing every decision. Resolves to the reply's JSON. */
 export async function traceFight(profileJson, settingsJson) {
   ensure();

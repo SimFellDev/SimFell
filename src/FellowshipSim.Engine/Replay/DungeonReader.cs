@@ -7,236 +7,114 @@ using static FellowshipSim.Engine.Replay.RawFightValue;
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// Reads the dungeon a logged run was: its pulls, enemies, interruptible casts, difficulty and one player's hero share.
+/// Reads the dungeon a logged run was from its fight without events (<c>FellowshipLogsReports.GetDungeonFightAsync</c>):
 /// <list type="bullet">
-/// <item>The enemies are the enemy instances the party damaged and the log has a death for.</item>
-/// <item>The pulls are FellowshipLogs' pulls of the fight (<c>fight.dungeonPulls</c>), numbered as FellowshipLogs lists
-/// them. An enemy is in the pull it died in, or the pull nearest its death, and a pull without one is left out. A pull
-/// starts its downtime as the pull before it ends; a pull starting before that end joins it with <c>pull_with</c> at the
-/// offset of its start.</item>
-/// <item>An enemy arrives at its first hit with the party in its pull, and the enemies arriving with no gap over
-/// <see cref="WaveGapSeconds"/> between them are a wave. A pull's first wave has the pull's name, and each later wave
-/// (name <c>&lt;pull&gt;_&lt;n&gt;</c>) joins the wave before it with <c>pull_with</c> at the offset of its arrival, so
-/// a pull has the enemies in combat at once that the log has.</item>
-/// <item>A group is the enemies of one name and hit points in a pull. The hit points are the log's maximum health over
-/// <see cref="DungeonProfile.HealthScale"/> at the run's difficulty, and the Spirit Points are
-/// <see cref="CreatureSpiritPoints"/>'. A boss is an actor of subtype Boss, and the last pull with a boss is final.</item>
-/// <item>An enemy's interruptible cast is the ability of its name the party interrupted most. Its cooldown is the median gap
-/// between one enemy's casts of it, interrupted ones included, and its cast time the median time to a completed cast.</item>
-/// <item>The hero share is the player's damage to the enemies, their pets' included and up to each enemy's maximum health, over the enemies' maximum health.</item>
+/// <item>The enemies are the deaths of the fight's enemy NPCs (<c>enemy_deaths</c> of <c>fight.enemyNPCs</c>), each actor
+/// instance once.</item>
+/// <item>The pulls are FellowshipLogs' pulls of the fight (<c>fight.dungeonPulls</c>), numbered by their start. An enemy is
+/// in the pull it died in, or the pull nearest its death, and a pull without one is left out.</item>
+/// <item>A pull's duration is its end minus its start in the log. Its downtime is the time from the pull before it ending to
+/// its start; a pull starting before that end joins it with <c>pull_with</c> at the offset of its start.</item>
+/// <item>A group is the enemies of one creature in a pull, the creature being the death's gameID in the game data
+/// (<see cref="GameCreatures.ById"/>): its name, base health, Spirit Points and rank. A boss is a creature of rank Boss,
+/// and the last pull with a boss is final. An enemy whose gameID has no creature is left out and named in the dungeon's
+/// comment.</item>
+/// <item>The difficulty is the fight's <c>difficulty</c>, and the name its <c>gameZone</c>'s.</item>
+/// <item>The time limit is <see cref="TimeLimitShare"/> of the run's length, and at least
+/// <see cref="DungeonProfile.DefaultTimeLimitSeconds"/>.</item>
 /// </list>
 /// </summary>
 public static class DungeonReader
 {
-    /// <summary>The longest gap between the arrivals of two enemies of one wave, in seconds.</summary>
-    public const double WaveGapSeconds = 5;
+    /// <summary>An imported dungeon's time limit over the run's length, rounded up to a whole minute.</summary>
+    public const double TimeLimitShare = 1.5;
 
-    /// <summary>True when a raw fight has FellowshipLogs' pulls of it, which a fight downloaded before them lacks.</summary>
-    public static bool HasPulls(JsonElement raw) => new RawFightValue(raw)["fight"]["dungeonPulls"].IsArray;
-
-    /// <summary>
-    /// The dungeon of a raw fight (<c>FellowshipLogsReports.DownloadFightAsync</c>), with player <paramref name="playerId"/>'s
-    /// hero share. It reads the fight's <see cref="JsonDocument"/> in place: a long fight's events as a
-    /// <see cref="System.Text.Json.Nodes.JsonNode"/> tree are over a GB, more than the browser app's worker has.
-    /// </summary>
-    public static DungeonProfile FromRawFight(JsonElement rawFight, int playerId)
+    /// <summary>The dungeon of a fight without events, as <c>FellowshipLogsReports.GetDungeonFightAsync</c> returns it.</summary>
+    public static DungeonProfile FromFight(JsonElement dungeonFight)
     {
-        var raw = new RawFightValue(rawFight);
+        var raw = new RawFightValue(dungeonFight);
         var fight = raw["fight"];
-        if (fight.Element.ValueKind != JsonValueKind.Object) throw new ArgumentException("The raw fight has no fight.");
+        if (fight.Element.ValueKind != JsonValueKind.Object) throw new ArgumentException("The fight is missing.");
         double start = Num(fight["startTime"]), end = Num(fight["endTime"]);
-        var actors = raw["master_data"]["actors"].Items.ToDictionary(a => (int)Num(a["id"]), a => a);
-        var abilityNames = raw["master_data"]["abilities"].Items
-            .GroupBy(a => (int)Num(a["gameID"])).ToDictionary(g => g.Key, g => Str(g.First()["name"]));
-        var party = fight["friendlyPlayers"].Items.Select(p => (int)Num(p)).ToHashSet();
-        if (!party.Contains(playerId)) throw new ArgumentException($"Player {playerId} is not in fight {Num(fight["id"])}.");
-        // The party's pets count as the party, and the player's as the player.
-        foreach (var actor in actors.Values)
-        {
-            if (Int(actor["petOwner"]) is { } owner && party.Contains(owner)) party.Add((int)Num(actor["id"]));
-        }
-        bool IsPlayers(int id) => id == playerId || actors.TryGetValue(id, out var a) && Int(a["petOwner"]) == playerId;
-        var enemyIds = fight["enemyNPCs"].Items.Select(n => (int)Num(n["id"])).ToHashSet();
+        int difficulty = Int(fight["difficulty"]) ?? throw new ArgumentException("The fight has no difficulty.");
+        if (DifficultyScaling.At(difficulty) == null) throw new ArgumentException($"The run's difficulty {difficulty} is no Eternal level.");
 
-        string? dungeonName = null;
-        int difficulty = DungeonProfile.DefaultDifficulty;
-        var enemies = new Dictionary<(int Id, int Instance), Enemy>();
-        Enemy At(int id, int instance) =>
-            enemies.TryGetValue((id, instance), out var e) ? e : enemies[(id, instance)] = new Enemy(id, instance);
-        // Each enemy's casts by ability: begun and completed, and the abilities the party interrupted by enemy name.
-        var interrupts = new Dictionary<(string Name, int Ability), int>();
-        foreach (var e in raw["events"].Items)
-        {
-            double t = (Num(e["timestamp"]) - start) / 1000;
-            int source = Int(e["sourceID"]) ?? 0, target = Int(e["targetID"]) ?? 0;
-            switch (Str(e["type"]))
-            {
-                case "dungeonstart":
-                    dungeonName = Str(e["name"]);
-                    difficulty = Int(e["difficulty"]) ?? difficulty;
-                    break;
-                case "damage" when party.Contains(source) && enemyIds.Contains(target):
-                {
-                    var enemy = At(target, Instance(e, "target"));
-                    enemy.Hit(t, Num(e["targetResources"]["maxHitPoints"]));
-                    enemy.Damaged = true;
-                    if (IsPlayers(source)) enemy.HeroDamage += Num(e["amount"]);
-                    break;
-                }
-                case "damage" when enemyIds.Contains(source) && party.Contains(target):
-                    At(source, Instance(e, "source")).Hit(t, Num(e["sourceResources"]["maxHitPoints"]));
-                    break;
-                case "death" when enemyIds.Contains(target):
-                    At(target, Instance(e, "target")).DiedAt ??= t;
-                    break;
-                case "begincast" when enemyIds.Contains(source):
-                    At(source, Instance(e, "source")).Casts(Int(e["abilityGameID"]) ?? 0).Begun.Add(t);
-                    break;
-                // A completed cast; the cast logged as its cast begins is "fake".
-                case "cast" when enemyIds.Contains(source) && e["fake"].IsNull:
-                    At(source, Instance(e, "source")).Casts(Int(e["abilityGameID"]) ?? 0).Completed.Add(t);
-                    break;
-                case "interrupt" when enemyIds.Contains(target) && actors.TryGetValue(target, out var interrupted):
-                {
-                    var key = (Str(interrupted["name"]), Int(e["extraAbilityGameID"]) ?? 0);
-                    interrupts[key] = interrupts.GetValueOrDefault(key) + 1;
-                    break;
-                }
-            }
-        }
-
-        double healthScale = (DifficultyScaling.At(difficulty) ?? throw new ArgumentException($"The run's difficulty {difficulty} is no Eternal level.")).Health;
-        var fought = enemies.Values.Where(e => e.Damaged && e.DiedAt != null && e.MaxHealth > 0)
-            .OrderBy(e => e.DiedAt).ToList();
-        if (fought.Count == 0) throw new ArgumentException("The fight has no enemy the party damaged and killed.");
-        string NameOf(Enemy e) => Str(actors[e.Id]["name"]);
-        bool IsBoss(Enemy e) => Str(actors[e.Id]["subType"]) == "Boss";
-
-        // Each enemy name's interruptible cast, from every enemy of the name.
-        var castOf = new Dictionary<string, EnemyCast?>();
-        EnemyCast? CastOf(string name)
-        {
-            if (castOf.TryGetValue(name, out var known)) return known;
-            var ability = interrupts.Where(i => i.Key.Name == name).OrderByDescending(i => i.Value).Select(i => (int?)i.Key.Ability).FirstOrDefault();
-            EnemyCast? cast = null;
-            if (ability is { } id && abilityNames.GetValueOrDefault(id) is { Length: > 0 } abilityName)
-            {
-                var casts = enemies.Values.Where(e => e.CastsOf.ContainsKey(id) && NameOf(e) == name).Select(e => e.CastsOf[id]).ToList();
-                var gaps = casts.SelectMany(c => c.Begun.Zip(c.Begun.Skip(1), (a, b) => b - a)).ToList();
-                var castTimes = casts.SelectMany(c => c.Completed.Select(done => done - c.Begun.LastOrDefault(b => b <= done, double.NaN)))
-                    .Where(s => s > 0).ToList();
-                if (gaps.Count > 0)
-                {
-                    double cooldown = Math.Round(Median(gaps), 1);
-                    double castTime = castTimes.Count > 0 ? Math.Round(Median(castTimes), 1) : EnemyCast.DefaultCastSeconds;
-                    if (cooldown > 0) cast = new EnemyCast(abilityName, cooldown, Math.Min(castTime, cooldown));
-                }
-            }
-            return castOf[name] = cast;
-        }
-
-        // The pulls: FellowshipLogs' pulls of the fight, each with the enemies that died in it.
-        if (!HasPulls(rawFight)) throw new ArgumentException("The raw fight has no pulls.");
         var logPulls = fight["dungeonPulls"].Items
-            .Select((p, i) => new LogPull(i + 1, Str(p["name"]), (Num(p["startTime"]) - start) / 1000, (Num(p["endTime"]) - start) / 1000,
+            .Select(p => new LogPull(Str(p["name"]), (Num(p["startTime"]) - start) / 1000, (Num(p["endTime"]) - start) / 1000,
                 p["enemyNPCs"].Items
                     .Select(n => ((int)Num(n["id"]), (int)Num(n["minimumInstanceID"]), (int)Num(n["maximumInstanceID"]))).ToList()))
+            .OrderBy(p => p.Start)
             .ToList();
         if (logPulls.Count == 0) throw new ArgumentException("The fight has no pulls.");
-        var pullOf = fought.ToLookup(e => logPulls
-            .OrderBy(p => p.Distance(e.DiedAt!.Value))
-            .ThenBy(p => p.Lists(e.Id, e.Instance) ? 0 : 1)
-            .First());
+        // The fight's enemies: the deaths table also has NPCs of the party's, such as a summoned Sibling of Earth.
+        var enemyIds = fight["enemyNPCs"].Items.Select(n => (int)Num(n["id"])).ToHashSet();
+
+        // Each enemy instance's first death, and its creature.
+        var leftOut = new SortedSet<string>(StringComparer.Ordinal);
+        var enemies = new List<(GameCreature Creature, LogPull Pull)>();
+        var seen = new HashSet<(int, int)>();
+        foreach (var death in raw["enemy_deaths"].Items.OrderBy(d => Num(d["timestamp"])))
+        {
+            int id = (int)Num(death["id"]), instance = Int(death["instance"]) ?? 1;
+            if (!enemyIds.Contains(id) || !seen.Add((id, instance))) continue;
+            if (GameCreatures.ById(Int(death["gameID"]) ?? 0) is not { } creature)
+            {
+                // The table names an enemy with its instance number: "Frozen Remnant 2".
+                string name = Str(death["name"]).TrimEnd(' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+                leftOut.Add(name.Length > 0 ? name : $"actor {id}");
+                continue;
+            }
+            double t = (Num(death["timestamp"]) - start) / 1000;
+            var pull = logPulls.OrderBy(p => p.Distance(t)).ThenBy(p => p.Lists(id, instance) ? 0 : 1).First();
+            enemies.Add((creature, pull));
+        }
+        if (enemies.Count == 0) throw new ArgumentException("The fight has no enemy deaths.");
+
+        var pullOf = enemies.ToLookup(e => e.Pull, e => e.Creature);
         var pulls = logPulls.Where(p => pullOf[p].Any()).ToList();
         int lastBossPull = pulls.FindLastIndex(p => pullOf[p].Any(IsBoss));
-
-        // Each profile pull's arrival in the log, for the offset of the wave that joins it.
-        var profileArrivals = new List<double>();
         var profilePulls = new List<DungeonPull>();
         for (int i = 0; i < pulls.Count; i++)
         {
             var pull = pulls[i];
-            string pullName = pull.Number.ToString(CultureInfo.InvariantCulture);
-            // A boss pull's log name is in the language of the log's uploader; the actor names are English.
-            var pullBosses = pullOf[pull].Where(IsBoss).Select(NameOf).Distinct().ToList();
-            string pullLabel = pullBosses.Count > 0 ? string.Join(" and ", pullBosses) : pull.Name;
-            // The pull's waves: its enemies by arrival.
-            var waves = new List<List<(Enemy Enemy, double At)>>();
-            foreach (var arrival in pullOf[pull].Select(e => (Enemy: e, At: e.ArrivedAt(pull.Start))).OrderBy(a => a.At))
+            string name = (logPulls.IndexOf(pull) + 1).ToString(CultureInfo.InvariantCulture);
+            var groups = pullOf[pull]
+                .GroupBy(c => c.Id)
+                .Select(g => new EnemyGroup(g.Count(), g.First().Name, g.First().SpiritPoints, HitPoints: Math.Round(g.First().BaseHealth, 2),
+                    Boss: IsBoss(g.First())))
+                // A boss line is one boss.
+                .SelectMany(g => g.Boss ? Enumerable.Repeat(g with { Count = 1 }, g.Count) : [g])
+                .OrderBy(g => g.Boss)
+                .ToList();
+            double downtime = 0;
+            if (i > 0 && pull.Start < pulls[i - 1].End)
             {
-                if (waves.Count == 0 || arrival.At - waves[^1][^1].At > WaveGapSeconds) waves.Add([]);
-                waves[^1].Add(arrival);
+                // A pull starting in combat: the pull before takes it in at its start.
+                double offset = Math.Round((pull.Start - pulls[i - 1].Start) * 1000);
+                profilePulls[^1] = profilePulls[^1] with { Join = new PullJoin(name, OffsetMs: offset) };
             }
-            for (int w = 0; w < waves.Count; w++)
-            {
-                var wave = waves[w];
-                double arrived = wave[0].At;
-                string name = w == 0 ? pullName : $"{pullName}_{w + 1}";
-                var groups = wave.Select(a => a.Enemy)
-                    .GroupBy(e => (Name: NameOf(e), Boss: IsBoss(e), HitPoints: Math.Round(e.MaxHealth / healthScale)))
-                    .Select(g => new EnemyGroup(g.Count(), g.Key.Name, CreatureSpiritPoints.ByName.GetValueOrDefault(g.Key.Name), false,
-                        g.Key.HitPoints, g.Key.Boss, CastOf(g.Key.Name)))
-                    // A boss line is one boss.
-                    .SelectMany(g => g.Boss ? Enumerable.Repeat(g with { Count = 1 }, g.Count) : [g])
-                    .ToList();
-                double downtime = 0;
-                if (w > 0 || i > 0 && pull.Start < pulls[i - 1].End)
-                {
-                    // A later wave, or a pull starting in combat: the wave before takes it in at its arrival.
-                    double offset = Math.Round(Math.Max(0, arrived - profileArrivals[^1]) * 1000);
-                    profilePulls[^1] = profilePulls[^1] with { Join = new PullJoin(name, OffsetMs: offset) };
-                }
-                else if (i > 0) downtime = Math.Round(pull.Start - pulls[i - 1].End, 1);
-                bool hasBoss = wave.Any(a => IsBoss(a.Enemy));
-                string label = w == 0 ? pullLabel : $"{pullLabel}, wave {w + 1}";
-                profilePulls.Add(new DungeonPull(name, groups, DowntimeSeconds: downtime, Final: i == lastBossPull && hasBoss,
-                    Comment: $"{label}, {Clock(arrived)} in the log"));
-                profileArrivals.Add(arrived);
-            }
+            else if (i > 0) downtime = Math.Round(pull.Start - pulls[i - 1].End, 1);
+            // A boss pull's log name is in the language of the log's uploader; the creature names are English.
+            var bosses = pullOf[pull].Where(IsBoss).Select(c => c.Name).Distinct().ToList();
+            string label = bosses.Count > 0 ? string.Join(" and ", bosses) : pull.Name;
+            profilePulls.Add(new DungeonPull(name, groups, Math.Max(0.1, Math.Round(pull.End - pull.Start, 1)), downtime,
+                Final: i == lastBossPull, Comment: $"{label}, {Clock(pull.Start)} in the log"));
         }
 
-        double totalHealth = fought.Sum(e => e.MaxHealth);
-        // Damage past an enemy's health (healing it took) is no share of its health.
-        double heroDamage = fought.Sum(e => Math.Min(e.HeroDamage, e.MaxHealth));
-        double heroShare = Math.Round(Math.Clamp(heroDamage / totalHealth * 100, 0.1, 100), 1);
         double seconds = (end - start) / 1000;
-        double timeLimit = Math.Max(DungeonProfile.DefaultTimeLimitSeconds, Math.Ceiling(seconds / 60) * 60);
-        string player = actors.TryGetValue(playerId, out var p) ? $"{Str(p["name"])} ({Str(p["subType"])})" : $"player {playerId}";
-        return new DungeonProfile(string.IsNullOrWhiteSpace(dungeonName) ? Str(fight["name"]) : dungeonName, heroShare, timeLimit,
-            profilePulls, difficulty,
-            $"From FellowshipLogs report {Str(raw["report_code"])}, fight {Num(fight["id"])} ({Clock(seconds)}), with the hero share of {player}.");
+        // Room for the length variance: a fight of pulls 20% longer still ends before its time limit.
+        double timeLimit = Math.Max(DungeonProfile.DefaultTimeLimitSeconds, Math.Ceiling(seconds * TimeLimitShare / 60) * 60);
+        string zone = Str(fight["gameZone"]["name"]);
+        string comment = $"From FellowshipLogs report {Str(raw["report_code"])}, fight {Num(fight["id"])} ({Clock(seconds)}).";
+        if (leftOut.Count > 0) comment += $"\nEnemies without game data: {string.Join(", ", leftOut)}.";
+        return new DungeonProfile(zone.Length > 0 ? zone : Str(fight["name"]), timeLimit, profilePulls, difficulty, comment);
     }
 
-    // One enemy instance of the log.
-    private sealed class Enemy(int id, int instance)
-    {
-        public int Id { get; } = id;
-        public int Instance { get; } = instance;
-        public double MaxHealth { get; private set; }
-        public double? DiedAt { get; set; }
-        public bool Damaged { get; set; }
-        public double HeroDamage { get; set; }
-        public Dictionary<int, AbilityCasts> CastsOf { get; } = [];
+    private static bool IsBoss(GameCreature creature) => creature.Rank == CreatureRank.Boss;
 
-        // The times of the hits between the enemy and the party, in log order.
-        private readonly List<double> _hits = [];
-
-        // The enemy's maximum health on a hit between it and the party.
-        public void Hit(double t, double maxHealth)
-        {
-            _hits.Add(t);
-            MaxHealth = Math.Max(MaxHealth, maxHealth);
-        }
-
-        /// <summary>The enemy's first hit with the party from <paramref name="pullStart"/> on, or the pull's start without one.</summary>
-        public double ArrivedAt(double pullStart) => _hits.Find(t => t >= pullStart) is var t && t >= pullStart ? t : pullStart;
-
-        public AbilityCasts Casts(int ability) => CastsOf.TryGetValue(ability, out var c) ? c : CastsOf[ability] = new AbilityCasts();
-    }
-
-    // One of FellowshipLogs' pulls of the fight: its number in FellowshipLogs' list, its name, its start and end in seconds
-    // into the fight, and its enemy instance ranges by actor.
-    private sealed record LogPull(int Number, string Name, double Start, double End, List<(int Id, int Min, int Max)> Enemies)
+    // One of FellowshipLogs' pulls of the fight: its name, its start and end in seconds into the fight, and its enemy
+    // instance ranges by actor.
+    private sealed record LogPull(string Name, double Start, double End, List<(int Id, int Min, int Max)> Enemies)
     {
         // Seconds from the pull to time t; 0 within it.
         public double Distance(double t) => t < Start ? Start - t : t > End ? t - End : 0;
@@ -244,21 +122,5 @@ public static class DungeonReader
         public bool Lists(int id, int instance) => Enemies.Any(n => n.Id == id && instance >= n.Min && instance <= n.Max);
     }
 
-    // One enemy's casts of one ability: the times each began and each completed.
-    private sealed class AbilityCasts
-    {
-        public List<double> Begun { get; } = [];
-        public List<double> Completed { get; } = [];
-    }
-
-    private static double Median(List<double> values)
-    {
-        var sorted = values.Order().ToList();
-        int mid = sorted.Count / 2;
-        return sorted.Count % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
     private static string Clock(double seconds) => $"{(int)(seconds / 60)}:{(int)(seconds % 60):00}";
-
-    private static int Instance(RawFightValue e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
 }

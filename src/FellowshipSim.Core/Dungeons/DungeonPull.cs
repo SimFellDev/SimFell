@@ -1,15 +1,15 @@
 namespace FellowshipSim.Core.Dungeons;
 
 /// <summary>
-/// Pull <see cref="Name"/> of a dungeon: its enemy <see cref="Groups"/>. It starts <see cref="DowntimeSeconds"/> after the
-/// pull before it ends, or as pull <see cref="ChainWith"/> ends. <see cref="Join"/> takes another pull's enemies in.
-/// <see cref="PullDurationSeconds"/> is the time over which the health of enemies without hit points falls.
-/// <see cref="Final"/> marks the dungeon's final boss. <see cref="Comment"/> is the '#' lines above the pull.
+/// Pull <see cref="Name"/> of a dungeon: its enemy <see cref="Groups"/>, whose health falls from full to none over the
+/// pull's <see cref="DurationSeconds"/>. It starts <see cref="DowntimeSeconds"/> after the pull before it ends, or as pull
+/// <see cref="ChainWith"/> ends. <see cref="Join"/> takes another pull's enemies in. <see cref="Final"/> marks the
+/// dungeon's final boss. <see cref="Comment"/> is the '#' lines above the pull.
 /// </summary>
 public sealed record DungeonPull(
     string Name,
     IReadOnlyList<EnemyGroup> Groups,
-    double? PullDurationSeconds = null,
+    double DurationSeconds,
     double DowntimeSeconds = 0,
     string? ChainWith = null,
     bool Final = false,
@@ -34,9 +34,7 @@ public sealed record DungeonPull(
         {
             if (group.Problem() is { } problem) return $"{group.Name}: {problem}";
         }
-        if (PullDurationSeconds is { } duration && !(duration > 0)) return "the pull duration is more than 0 seconds";
-        if (PullDurationSeconds == null && Groups.Any(g => g.HitPoints == null))
-            return "a group without hit points needs the pull's pull_duration";
+        if (!(DurationSeconds > 0)) return "the duration is more than 0 seconds";
         if (!(DowntimeSeconds >= 0)) return "the downtime is 0 seconds or more";
         if (Final && !IsBoss) return "only a pull with a boss is the final boss";
         if (Join?.Problem() is { } joinProblem) return joinProblem;

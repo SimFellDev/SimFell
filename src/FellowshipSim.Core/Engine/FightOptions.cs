@@ -6,18 +6,17 @@ namespace FellowshipSim.Core.Engine;
 /// How each fight of a sim runs. A fight is a <see cref="Dungeon"/>'s pulls, or training dummies for the whole sim duration
 /// when <see cref="Dungeon"/> is null. <see cref="LengthVariance"/> spreads a value over ± that share of it (0.2: 240 to
 /// 360 s of a 300 s sim), the same for a seed in every run: the training dummies' fight length, or a dungeon pull's
-/// <see cref="DungeonPull.PullDurationSeconds"/>. A dungeon fight lasts until its last pull ends, or to its time limit.
+/// <see cref="DungeonPull.DurationSeconds"/>. A dungeon fight lasts until its last pull ends, or to its time limit.
 /// <see cref="HealthFollowsTime"/> takes the training dummies from full health at the start to none at the fight's end,
 /// whatever damage they take, so health-gated effects come at their share of the fight. <see cref="StartingSpirit"/> is the
 /// hero's Spirit Points as the fight starts. <see cref="Boss"/> is true for training dummies that are bosses: without one, the
 /// hero's <see cref="Domain.Hero.BossAuras"/> are off. In a dungeon they are on while a boss is in combat.
-/// <see cref="HeroShareVariance"/> spreads the dungeon's <see cref="DungeonProfile.HeroShare"/> over ± that share of it
-/// (0.2: 30 to 45% of 37.5%), a different share in each fight. With <see cref="ReactionDelays"/> the hero takes a player's
+/// With <see cref="ReactionDelays"/> the hero takes a player's
 /// time to cast once the global cooldown, a cast or a channel lets them (<see cref="Engine.ReactionDelays.Measured"/>).
 /// <see cref="ProcReactionSeconds"/> is the time a proc's gain takes to reach the action lists (<see cref="Domain.Aura.Seen"/>).
 /// </summary>
 public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0, bool Boss = true,
-    DungeonProfile? Dungeon = null, double HeroShareVariance = 0, bool ReactionDelays = false, double ProcReactionSeconds = 0)
+    DungeonProfile? Dungeon = null, bool ReactionDelays = false, double ProcReactionSeconds = 0)
 {
     public static readonly FightOptions Default = new();
 
@@ -33,28 +32,14 @@ public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsT
     }
 
     /// <summary>The share of its base value a varied value has in the fight with seed <paramref name="seed"/>: 1 ± <see cref="LengthVariance"/>.</summary>
-    public double VarianceScale(int seed) => LengthVariance <= 0 ? 1.0 : 1 + LengthVariance * (2 * Uniform(seed, 0) - 1);
+    public double VarianceScale(int seed) => LengthVariance <= 0 ? 1.0 : 1 + LengthVariance * (2 * Uniform(seed) - 1);
 
     /// <summary>
-    /// The dungeon's hero share in the fight with seed <paramref name="seed"/>, from 0 to 1: <see cref="DungeonProfile.HeroShare"/>
-    /// ± <see cref="HeroShareVariance"/> of it, at most all the damage.
+    /// SplitMix64 of the seed: a uniform share in [0, 1) that leaves the fight's own dice alone.
     /// </summary>
-    public double HeroShare(int seed)
+    private static double Uniform(int seed)
     {
-        double share = (Dungeon?.HeroShare ?? DungeonProfile.DefaultHeroShare) / 100;
-        if (HeroShareVariance <= 0) return share;
-        return Math.Min(1.0, share * (1 + HeroShareVariance * (2 * Uniform(seed, HeroShareStream) - 1)));
-    }
-
-    // The hero share's own uniform stream, apart from the fight length's.
-    private const ulong HeroShareStream = 0xD1B54A32D192ED03UL;
-
-    /// <summary>
-    /// SplitMix64 of the seed in <paramref name="stream"/>: a uniform share in [0, 1) that leaves the fight's own dice alone.
-    /// </summary>
-    private static double Uniform(int seed, ulong stream)
-    {
-        ulong z = unchecked((ulong)seed * 0x9E3779B97F4A7C15UL + 0x9E3779B97F4A7C15UL) ^ stream;
+        ulong z = unchecked((ulong)seed * 0x9E3779B97F4A7C15UL + 0x9E3779B97F4A7C15UL);
         z = unchecked((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL);
         z = unchecked((z ^ (z >> 27)) * 0x94D049BB133111EBUL);
         z ^= z >> 31;

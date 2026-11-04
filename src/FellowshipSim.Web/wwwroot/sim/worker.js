@@ -44,14 +44,6 @@ onmessage = async ({ data }) => {
             data.clientSecret, data.id);
         break;
       }
-      case 'dungeonFight': {
-        // A dungeon from the fight the browser keeps, as reviewFight replays one, or else downloaded.
-        const kept = await fights.read(fights.key(data.reportCode, data.fightId));
-        if (kept != null) postMessage({ id: data.id, type: 'progress', text: 'Using the fight saved in this browser' });
-        reply.json = await worker.ReadDungeonFight(data.reportCode, data.fightId, data.playerId, kept ?? '', data.accessToken,
-          data.clientId, data.clientSecret, data.id);
-        break;
-      }
       default: throw new Error(`No worker call named ${data.type}.`);
     }
   } catch (e) {

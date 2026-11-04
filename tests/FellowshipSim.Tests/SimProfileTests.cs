@@ -19,13 +19,12 @@ public class SimProfileTests
         # A dungeon's comment
         dungeon=Quick
         difficulty=10
-        hero_share=37.5
         time_limit=900
         # A pull's comment
-        pull.1=/pull_duration=45
+        pull.1=/duration=45
         # A group's comment
         pull.1+=/count=5,name=Imp,spirit_points=3,hit_points=7857
-        pull.last_boss=/final=1
+        pull.last_boss=/final=1,duration=90
         pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
         """;
 
@@ -35,7 +34,7 @@ public class SimProfileTests
     public void Training_Dummy_Profile_Reads_Back_Its_Settings()
     {
         var settings = new SimSettings(2500, 240, TargetCount: 3, FirstSeed: 7, DegreeOfParallelism: 6, LengthVariance: 0.15,
-            HealthFollowsTime: false, StartingSpirit: 80, Boss: false, HeroShareVariance: 0.1, ReactionDelays: false);
+            HealthFollowsTime: false, StartingSpirit: 80, Boss: false, ReactionDelays: false);
         string text = new SimProfile(Character(), settings).Format();
 
         var read = SimProfile.Parse(text);
@@ -50,7 +49,7 @@ public class SimProfileTests
     public void Dungeon_Profile_Keeps_The_Dungeons_And_The_Action_Lists_Comments()
     {
         var dungeon = DungeonProfile.Parse(DungeonText);
-        var settings = new SimSettings(500, dungeon.TimeLimitSeconds, LengthVariance: 0.2, Dungeon: dungeon, HeroShareVariance: 0.2);
+        var settings = new SimSettings(500, dungeon.TimeLimitSeconds, LengthVariance: 0.2, Dungeon: dungeon);
         string text = new SimProfile(Character(), settings).Format();
 
         var read = SimProfile.Parse(text);

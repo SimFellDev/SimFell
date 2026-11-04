@@ -21,7 +21,6 @@ namespace FellowshipSim.Engine;
 /// duration=300
 /// targets=1
 /// length_variance=0.2
-/// hero_share_variance=0.2
 /// health_follows_time=true
 /// boss=true
 /// starting_spirit=0
@@ -30,7 +29,7 @@ namespace FellowshipSim.Engine;
 ///
 /// actions+=/frost_bolt
 /// </code>
-/// A dungeon fight has the dungeon's lines (<c>dungeon=</c>, <c>difficulty=</c>, <c>hero_share=</c>, <c>time_limit=</c>
+/// A dungeon fight has the dungeon's lines (<c>dungeon=</c>, <c>difficulty=</c>, <c>time_limit=</c>
 /// and <c>pull.X=</c>) in place of <c>duration</c> and <c>targets</c>: its time limit is each fight's length, and its pulls
 /// set the enemies. <see cref="SettingKeys"/> are the setting keys the text has, <c>dungeon</c> for the dungeon's lines; a
 /// setting the text does not have is <see cref="SimSettings"/>'s default, and the iterations and duration are
@@ -44,7 +43,6 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     public const string Duration = "duration";
     public const string Targets = "targets";
     public const string LengthVariance = "length_variance";
-    public const string HeroShareVariance = "hero_share_variance";
     public const string HealthFollowsTime = "health_follows_time";
     public const string Boss = "boss";
     public const string StartingSpirit = "starting_spirit";
@@ -60,7 +58,7 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     /// <summary>Length of each training dummy fight of a profile with no <c>duration</c> line, in seconds.</summary>
     public const double DefaultDurationSeconds = 300;
 
-    private static readonly HashSet<string> DungeonKeys = ["dungeon", "difficulty", "hero_share", "time_limit"];
+    private static readonly HashSet<string> DungeonKeys = ["dungeon", "difficulty", "time_limit"];
 
     /// <summary>A profile with every setting of <paramref name="settings"/>.</summary>
     public SimProfile(SimcProfile profile, SimSettings settings) : this(profile, settings, AllKeys(settings))
@@ -155,7 +153,6 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
             Read(StartingSpirit, 0.0, NonNegative),
             Read(Boss, true, Bool),
             fight,
-            Read(HeroShareVariance, 0.0, NonNegative),
             Read(ReactionDelays, true, Bool),
             Read(ProcReaction, SimSettings.DefaultProcReactionSeconds, NonNegative));
         return new SimProfile(profile, settings, keys);
@@ -178,7 +175,6 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
             s.AppendLine($"{Targets}={Text(Settings.TargetCount)}");
         }
         s.AppendLine($"{LengthVariance}={Text(Settings.LengthVariance)}");
-        s.AppendLine($"{HeroShareVariance}={Text(Settings.HeroShareVariance)}");
         s.AppendLine($"{HealthFollowsTime}={Text(Settings.HealthFollowsTime)}");
         s.AppendLine($"{Boss}={Text(Settings.Boss)}");
         s.AppendLine($"{StartingSpirit}={Text(Settings.StartingSpirit)}");
@@ -198,11 +194,11 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     }
 
     private static bool IsSettingKey(string key) => key is Iterations or Threads or Seed or Duration or Targets or LengthVariance
-        or HeroShareVariance or HealthFollowsTime or Boss or StartingSpirit or ReactionDelays or ProcReaction;
+        or HealthFollowsTime or Boss or StartingSpirit or ReactionDelays or ProcReaction;
 
     private static HashSet<string> AllKeys(SimSettings settings)
     {
-        HashSet<string> keys = [Iterations, Seed, LengthVariance, HeroShareVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
+        HashSet<string> keys = [Iterations, Seed, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
         if (settings.DegreeOfParallelism != null) keys.Add(Threads);
         if (settings.Dungeon != null) keys.Add(Dungeon);
         else keys.UnionWith([Duration, Targets]);

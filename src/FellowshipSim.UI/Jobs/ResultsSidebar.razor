@@ -138,9 +138,18 @@
 
     protected override void OnInitialized() => Jobs.Changed += OnChanged;
 
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
+    // The failed replays shown as a toast, each once.
+    private readonly HashSet<string> _toasted = [];
+
     private void OnChanged(SimJob job) => _ = InvokeAsync(async () =>
     {
         if (_open && job.Status == SimJobStatus.Done) await LoadRecent();
+        if (job is { Kind: SimJobKind.Review, Status: SimJobStatus.Failed } && _toasted.Add(job.Id))
+        {
+            Toasts.Show(MessageState.Error($"{job.Title}: {job.Error}"));
+        }
         StateHasChanged();
     });
 

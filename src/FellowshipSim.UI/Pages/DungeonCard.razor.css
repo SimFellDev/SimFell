@@ -65,7 +65,7 @@
   field-sizing: content;
 }
 
-/* The hero share and its variance and time limit, as the fields of the Fight card. */
+/* The time limit, as the fields of the Fight card. */
 .fields {
   display: flex;
   flex-wrap: wrap;
@@ -87,35 +87,8 @@
   text-align: right;
 }
 
-.field input.short {
-  width: 90px;
-}
-
 .field select {
   width: 140px;
-}
-
-/* A field its switch has turned off: the label dimmed, and the number greyed out with no box to type in. */
-.field.off {
-  opacity: 0.5;
-}
-
-.field input:disabled {
-  color: var(--muted);
-  background: transparent;
-  border-style: dashed;
-  cursor: not-allowed;
-}
-
-.toggle-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.toggle-block .switch span {
-  color: var(--text);
-  font-size: 14px;
 }
 
 /* The pulls in number order, as the actions of an action list. */
@@ -171,24 +144,6 @@
 /* The Import dialog: the log link, then the profile with its upload icon. */
 .import-dialog {
   max-width: 560px;
-}
-
-.group {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* The players of a fight to take the hero share from: one a row, scrolling past ten or so. */
-.choices {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.choices button {
-  text-align: left;
 }
 
 .text-head {

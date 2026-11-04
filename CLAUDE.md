@@ -10,6 +10,10 @@ game content.
 ## Commands
 
 ```
+# the Codex's data export into codex-export/ (git-ignored), from which FellowshipSim.Codex.Generators writes each
+# creature's <Name>GameCreature class; once after cloning, and after a new datamine
+tools/download-codex-export.sh
+
 # the solution (the desktop app needs the maui workload)
 dotnet build -c Release
 

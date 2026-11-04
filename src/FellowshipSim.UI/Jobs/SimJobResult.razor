@@ -39,6 +39,22 @@
                 <em>to bosses, over the time of boss fighting</em>
             </div>
         }
+        @if (Result.PartyDps is { } party)
+        {
+            <div class="tile">
+                <span>Party DPS</span>
+                <strong>@N(party)</strong>
+                <em>the health the dungeon's enemies lost each second</em>
+            </div>
+        }
+        @if (Result.GroupDamageShare is { } share)
+        {
+            <div class="tile">
+                <span>Share of group damage</span>
+                <strong>@Percent(share)</strong>
+                <em>the hero's damage, up to each enemy's health</em>
+            </div>
+        }
         <div class="tile">
             <span>Range</span>
             <strong>@N(Result.MinDps) – @N(Result.MaxDps)</strong>
@@ -66,10 +82,15 @@
         <section class="card">
             <div class="card-head">
                 <h3>DPS</h3>
-                <span class="legend"><i class="mean"></i>Mean of every fight <i class="average"></i>Mean DPS</span>
+                <span class="legend"><i class="mean"></i>Mean of every fight <i class="average"></i>Mean DPS
+                    @if (timeline.PartyDps is { Count: > 1 })
+                    {
+                        <i class="party"></i><text>Party DPS</text>
+                    }
+                </span>
             </div>
             <div class="chart">
-                @{ double dpsMax = Math.Max(timeline.Dps.Max(), Result.MeanDps); }
+                @{ double dpsMax = Math.Max(Math.Max(timeline.Dps.Max(), Result.MeanDps), timeline.PartyDps is { Count: > 0 } p ? p.Max() : 0); }
                 <div class="y">@foreach (var tick in Ticks(dpsMax).Reverse())
                 {
                     <span>@tick</span>
@@ -80,6 +101,10 @@
                         <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
                     }
                     <line x1="0" x2="1000" y1="@Y(Result.MeanDps, Nice(dpsMax))" y2="@Y(Result.MeanDps, Nice(dpsMax))" class="average" />
+                    @if (timeline.PartyDps is { Count: > 1 } partyDps)
+                    {
+                        <path d="@Line(partyDps, dpsMax)" class="party" />
+                    }
                     <path d="@Line(timeline.Dps, dpsMax)" class="mean" />
                 </svg>
                 @TimeAxis(timeline.Dps.Count)

@@ -124,6 +124,12 @@
   background: #8ea2ff;
 }
 
+.legend i.party {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--good);
+}
+
 .legend i.average {
   border-top: 1px dashed #8ea2ff;
 }
@@ -203,6 +209,15 @@
 .chart .spirit-mean {
   fill: none;
   stroke: #8ea2ff;
+  stroke-width: 1.5;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+/* A dungeon's party DPS, on the DPS chart. */
+.chart .party {
+  fill: none;
+  stroke: var(--good);
   stroke-width: 1.5;
   opacity: 0.8;
   vector-effect: non-scaling-stroke;

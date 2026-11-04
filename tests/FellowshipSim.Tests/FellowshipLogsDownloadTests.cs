@@ -5,8 +5,8 @@ using FellowshipSim.Logs;
 namespace FellowshipSim.Tests;
 
 /// <summary>
-/// A fight's download when FellowshipLogs answers an events query with no events (report rf7qpV3tATCx86hN fight 6 gave
-/// such an answer and then the events on the next try).
+/// A fight's download when FellowshipLogs answers an events query with no events, as it answered report rf7qpV3tATCx86hN
+/// fight 6 once: one query, and an error naming what is missing.
 /// </summary>
 public class FellowshipLogsDownloadTests
 {
@@ -43,23 +43,36 @@ public class FellowshipLogsDownloadTests
     }
 
     [Fact]
-    public async Task A_Page_Without_Events_Is_Asked_Again()
+    public async Task A_Page_Without_Events_Is_A_FellowshipLogs_Error()
     {
-        var logs = new FellowshipLogs(NoEvents, NoReport, Events);
+        foreach (string answer in new[] { NoEvents, NoReport })
+        {
+            var logs = new FellowshipLogs(answer, Events);
+            var client = new FellowshipLogsClient(new HttpClient(logs), "id", "secret");
+
+            var e = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.DownloadFightAsync("rf7qpV3tATCx86hN", 6));
+            Assert.Equal("FellowshipLogs returned no events for fight 6 of report 'rf7qpV3tATCx86hN' from 0s.", e.Message);
+            Assert.Equal(1, logs.EventsQueries);
+        }
+    }
+
+    [Fact]
+    public async Task A_Page_With_Events_Downloads()
+    {
+        var logs = new FellowshipLogs(Events);
         var raw = await new FellowshipLogsClient(new HttpClient(logs), "id", "secret").DownloadFightAsync("rf7qpV3tATCx86hN", 6);
 
-        Assert.Equal(3, logs.EventsQueries);
+        Assert.Equal(1, logs.EventsQueries);
         Assert.Equal(2, raw["events"]!.AsArray().Count);
     }
 
     [Fact]
-    public async Task A_Page_Never_Given_Is_A_FellowshipLogs_Error()
+    public async Task A_Dungeon_Fight_Without_Its_Deaths_Table_Is_A_FellowshipLogs_Error()
     {
-        var logs = new FellowshipLogs(NoEvents);
-        var client = new FellowshipLogsClient(new HttpClient(logs), "id", "secret");
+        // The fight's answer has its pulls and no table.
+        var client = new FellowshipLogsClient(new HttpClient(new FellowshipLogs(Events)), "id", "secret");
 
-        var e = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.DownloadFightAsync("rf7qpV3tATCx86hN", 6));
-        Assert.Contains("events of fight 6 of report 'rf7qpV3tATCx86hN'", e.Message);
-        Assert.Equal(3, logs.EventsQueries);
+        var e = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.GetDungeonFightAsync("rf7qpV3tATCx86hN", 6));
+        Assert.Equal("FellowshipLogs returned no enemy deaths for fight 6 of report 'rf7qpV3tATCx86hN'.", e.Message);
     }
 }

@@ -22,3 +22,6 @@ node_modules/
 
 # The CodeMirror bundle, built by FellowshipSim.UI's build from tools/codemirror
 src/FellowshipSim.UI/wwwroot/lib/codemirror/
+
+# The Codex data export (tools/download-codex-export.sh): Fellowship game content, read by FellowshipSim.Core's build
+/codex-export/

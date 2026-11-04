@@ -12,11 +12,13 @@ public abstract class Hero : Actor
     protected Hero()
     {
         AddResource(SpiritPoints);
-        // Spirit Points from damage: a hit earns its share of the enemy's health times the enemy's Spirit Point value.
+        // Spirit Points from damage: a hit earns its share of the enemy's health times the enemy's Spirit Point value, up to
+        // the enemy's whole value over the hero's damage to it (the hit is already in HeroDamage).
         OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target is not { SpiritPointValue: > 0, MaxHealth: > 0 } enemy || dmg.Amount <= 0) return;
-            GainResource(SpiritPoints, Math.Min(dmg.Amount, enemy.MaxHealth) / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
+            double counted = Math.Clamp(enemy.MaxHealth - (enemy.HeroDamage - dmg.Amount), 0, dmg.Amount);
+            if (counted > 0) GainResource(SpiritPoints, counted / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
         };
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
