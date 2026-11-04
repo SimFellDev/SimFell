@@ -82,9 +82,7 @@ public static class Counters
         {
             _hero = hero;
             _ctx = ctx;
-            var ownRecovery = hero.Abilities.SelectMany(a => a.OwnRecoveryAuraLogIds).ToHashSet();
             bool TouchesCooldowns(Aura aura) =>
-                ownRecovery.Contains(aura.LogId) ||
                 aura.Modifiers.Any(m => m.Type is StatType.Haste or StatType.HasteRating or StatType.CooldownRecovery);
             hero.Auras.OnGained += (aura, _, _) =>
             {
