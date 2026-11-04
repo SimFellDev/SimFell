@@ -83,4 +83,39 @@ public class FellowshipLogsDownloadTests
         var e = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.GetDungeonFightAsync("rf7qpV3tATCx86hN", 6));
         Assert.Equal("FellowshipLogs returned no enemy deaths for fight 6 of report 'rf7qpV3tATCx86hN'.", e.Message);
     }
+
+    [Fact]
+    public async Task A_Page_Formatted_For_Reading_Downloads_Compact()
+    {
+        const string formatted = "{ \"data\": { \"reportData\": { \"report\": { \"events\": {\n  \"data\": [\n    {\n      \"timestamp\": 100,\n      \"type\": \"dungeonstart\"\n    }\n  ],\n  \"nextPageTimestamp\": null } } } } }";
+        var raw = new MemoryStream();
+        await new FellowshipLogsClient(new HttpClient(new FellowshipLogs(formatted)), "id", "secret").DownloadFightAsync("rf7qpV3tATCx86hN", 6, raw);
+
+        Assert.EndsWith("\"events\":[{\"timestamp\":100,\"type\":\"dungeonstart\"}]}", Encoding.UTF8.GetString(raw.ToArray()));
+    }
+
+    [Fact]
+    public async Task A_Compact_Page_Downloads_As_FellowshipLogs_Has_It()
+    {
+        const string events = """[{"timestamp":100,"type":"dungeonstart","name":"Cithrel's Fall"},null,{"timestamp":150,"type":"death"}]""";
+        var raw = new MemoryStream();
+        await new FellowshipLogsClient(new HttpClient(new FellowshipLogs("""{"data":{"reportData":{"report":{"events":{"data":""" + events + ""","nextPageTimestamp":null}}}}}""")), "id", "secret")
+            .DownloadFightAsync("rf7qpV3tATCx86hN", 6, raw);
+
+        Assert.EndsWith($"\"events\":{events}}}", Encoding.UTF8.GetString(raw.ToArray()));
+    }
+
+    [Theory]
+    [InlineData("""{ "errors": [ { "message": "Too many points" } ], "data": null }""", "FellowshipLogs API error: [{\"message\":\"Too many points\"}]")]
+    [InlineData("""{ "data": null }""", "FellowshipLogs API response has no data.")]
+    [InlineData("null", "FellowshipLogs API returned an empty response.")]
+    public async Task An_Answer_With_Errors_Or_No_Data_Is_A_FellowshipLogs_Error(string answer, string message)
+    {
+        var client = new FellowshipLogsClient(new HttpClient(new FellowshipLogs(answer)), "id", "secret");
+
+        var download = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.DownloadFightAsync("rf7qpV3tATCx86hN", 6, new MemoryStream()));
+        var query = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.QueryAsync("events(", null));
+        Assert.Equal(message, download.Message);
+        Assert.Equal(message, query.Message);
+    }
 }

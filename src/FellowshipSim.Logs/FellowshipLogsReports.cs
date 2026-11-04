@@ -198,19 +198,14 @@ public static class FellowshipLogsReports
         double? cursor = start;
         while (cursor is { } from && from < end)
         {
-            var page = await ReportPartAsync(client, EventsQuery, new { code = reportCode, fightIDs = new[] { fightId }, startTime = from, endTime = end },
-                r => r["events"] is { } p && p["data"] is JsonArray ? p : null,
-                $"events for fight {fightId} of report '{reportCode}' from {(from - start) / 1000:F0}s", ct);
-            foreach (var e in page["data"]!.AsArray())
-            {
-                if (e == null) writer.WriteNullValue();
-                else e.WriteTo(writer);
-            }
-            events += page["data"]!.AsArray().Count;
+            byte[] answer = await client.QueryUtf8Async(EventsQuery,
+                new { code = reportCode, fightIDs = new[] { fightId }, startTime = from, endTime = end }, ct);
+            var page = EventsPage.Read(answer)
+                ?? throw new FellowshipLogsException($"FellowshipLogs returned no events for fight {fightId} of report '{reportCode}' from {(from - start) / 1000:F0}s.");
+            events += page.WriteEvents(answer, writer);
             await writer.FlushAsync(ct);
             progress?.Report($"Downloaded {events:N0} events");
-            double? next = page["nextPageTimestamp"]?.GetValue<double?>();
-            if (next == null || next <= from) break;
+            if (page.NextPageTimestamp is not { } next || next <= from) break;
             cursor = next;
         }
         writer.WriteEndArray();

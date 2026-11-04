@@ -8,7 +8,8 @@
 // Workloads:
 //   sim:<fights>[:<targets>]      a Rime sim of 300 s fights, every chunk on this worker, then combined
 //   dungeon:<fights>              the same in the default dungeon
-//   review:<raw fight>:<player>   a replay of a fight the browser keeps (SimWorker.Review)
+//   review:<raw fight>:<player>   a replay of a fight the browser keeps (SimWorker.HoldFight, then SimWorker.Review)
+//   build:<raw fight>:<player>    the player's replay script built alone (WorkerMeasures.BuildScript)
 //   download:<raw fight>:<player> a first replay (SimWorker.ReviewFight): the fight downloaded from FellowshipLogs, whose
 //                                 answers come from the raw fight in pages of 10,000 events, then replayed
 //
@@ -103,13 +104,16 @@ for (const workload of workloads) {
     worker.Finish(id);
     worker.Combine(profileJson, settingsJson, chunks);
   } else if (kind === 'review') {
-    failed(await worker.Review(readFileSync(path), player, 0));
+    worker.HoldFight(readFileSync(path));
+    failed(await worker.Review(player, 0));
+  } else if (kind === 'build') {
+    measures.BuildScript(readFileSync(path), player);
   } else if (kind === 'download') {
     const { reportCode, fightId } = serve(readFileSync(path, 'utf8'));
     failed(await measures.ReviewFight(reportCode, fightId, player));
   } else {
     throw new Error(`No workload named ${kind}.`);
   }
-  line(kind === 'review' || kind === 'download' ? `${kind}:${player}` : workload, performance.now() - started);
+  line(kind === 'review' || kind === 'download' || kind === 'build' ? `${kind}:${player}` : workload, performance.now() - started);
 }
 process.exit(0);

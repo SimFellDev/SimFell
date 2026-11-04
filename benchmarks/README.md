@@ -161,6 +161,8 @@ managed heap after a full collection, the collections so far and the workload's 
 never shrinks and stops at 2 GB, so each line's WebAssembly memory is the worker's peak so far, and a workload past 2 GB
 fails with "Out of memory". The memory grows in steps of 20%.
 
+A `build` workload builds the player's replay script alone (`WorkerMeasures.BuildScript`), without the replay.
+
 A `download` workload has FellowshipLogs' answers from the raw fight, in pages of 10,000 events, through
 `WorkerMeasures.ReviewFight`. `WorkerMeasures` is the harness's part of the app: its calls force a full collection, and
 the app never makes them. `MONO_GC_PARAMS` in the environment reaches the worker's GC.

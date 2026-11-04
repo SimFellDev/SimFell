@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FellowshipSim.Engine.Replay;
 using FellowshipSim.Logs;
 using Xunit.Abstractions;
@@ -6,15 +5,15 @@ using Xunit.Abstractions;
 namespace FellowshipSim.Tests;
 
 /// <summary>
-/// The memory a replay script takes from a long fight's <see cref="JsonDocument"/>: the 26-minute
-/// Cithrel's Fall of report T2qLPpmMkrAtJ9B1 (fight 18, its Elarion, player 4) and the 30-minute Wraithtide Vault of report
-/// rf7qpV3tATCx86hN (fight 6, its Tariq, player 83). Read as a JsonNode tree, a replay of either ran out of memory under a
-/// 1.25 GB heap, and the browser app's worker has 2 GB for everything. With a fight not in data/fights it does nothing.
+/// The memory a replay script build takes from a long fight's UTF-8 JSON: the 26-minute Cithrel's Fall of report
+/// T2qLPpmMkrAtJ9B1 (fight 18, its Elarion, player 4) and the 30-minute Wraithtide Vault of report rf7qpV3tATCx86hN
+/// (fight 6, its Tariq, player 83). The browser app's worker has 2 GB for everything. With a fight not in data/fights it
+/// does nothing.
 /// </summary>
 public class RawFightMemoryTests(ITestOutputHelper output)
 {
-    /// <summary>The most a replay script build allocates beyond the fight's document (about 440 MB for these fights).</summary>
-    private const long ScriptBuildBudget = 768L << 20;
+    /// <summary>The most a replay script build allocates beyond the raw fight's bytes and the script's own UTF-8.</summary>
+    private const long ScriptBuildBudget = 64L << 20;
 
     [Theory]
     [InlineData("T2qLPpmMkrAtJ9B1", 18, 4)]
@@ -27,13 +26,13 @@ public class RawFightMemoryTests(ITestOutputHelper output)
             output.WriteLine($"Fight {fightId} of {reportCode} is not in {library.FightsDirectory}.");
             return;
         }
-        using var fight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
+        byte[] fight = await library.GetRawFightBytesAsync(null, reportCode, fightId);
 
         long before = GC.GetAllocatedBytesForCurrentThread();
-        ReplayScriptBuilder.Build(fight.RootElement, playerId);
+        byte[] script = ReplayScriptBuilder.Build(fight, playerId);
         long scriptBuild = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        output.WriteLine($"Replay script {scriptBuild >> 20} MB.");
-        Assert.InRange(scriptBuild, 0, ScriptBuildBudget);
+        output.WriteLine($"Replay script {script.Length >> 20} MB, build {scriptBuild >> 20} MB allocated.");
+        Assert.InRange(scriptBuild, 0, script.Length + ScriptBuildBudget);
     }
 }

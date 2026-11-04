@@ -28,8 +28,7 @@ public class ReplayScriptBuilderTests
     [MemberData(nameof(Refused))]
     public void A_Fight_Without_The_Players_Events_Is_An_Argument_Error(string events, string reason)
     {
-        using var raw = JsonDocument.Parse(Fight(events));
-        var e = Assert.Throws<ArgumentException>(() => ReplayReview.Run(raw.RootElement, 1));
+        var e = Assert.Throws<ArgumentException>(() => ReplayReview.Run(Encoding.UTF8.GetBytes(Fight(events)), 1));
         Assert.Contains(reason, e.Message);
     }
 
@@ -40,5 +39,26 @@ public class ReplayScriptBuilderTests
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(Fight(events)));
         var e = await Assert.ThrowsAsync<SimEngineException>(() => new LocalSimEngine().ReviewAsync(stream, 1));
         Assert.Contains(reason, e.Message);
+    }
+
+    private const string Combatant = """{ "timestamp": 100, "type": "combatantinfo", "sourceID": 1, "gear": [] }""";
+
+    private static byte[] Casts(params (double Timestamp, int AbilityId)[] casts) => Encoding.UTF8.GetBytes(Fight(
+        "[" + string.Join(", ", casts.Select(c => $$"""{ "timestamp": {{c.Timestamp}}, "type": "cast", "sourceID": 1, "abilityGameID": {{c.AbilityId}} }""").Prepend(Combatant)) + "]"));
+
+    [Fact]
+    public void An_Event_Earlier_Than_The_One_Before_It_Is_An_Argument_Error()
+    {
+        var e = Assert.Throws<ArgumentException>(() => ReplayScriptBuilder.Build(Casts((150, 7), (120, 7)), 1));
+        Assert.Contains("out of time order at timestamp 120", e.Message);
+    }
+
+    [Fact]
+    public void An_Event_Equal_To_One_At_Its_Timestamp_Is_Dropped()
+    {
+        using var script = JsonDocument.Parse(ReplayScriptBuilder.Build(Casts((150, 7), (150, 8), (150, 7), (160, 7)), 1));
+        var casts = script.RootElement.GetProperty("commands").EnumerateArray()
+            .Select(c => (c.GetProperty("t").GetDouble(), c.GetProperty("ability_id").GetInt32())).ToList();
+        Assert.Equal([(0.05, 7), (0.05, 8), (0.06, 7)], casts);
     }
 }

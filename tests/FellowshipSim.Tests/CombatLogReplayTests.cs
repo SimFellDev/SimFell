@@ -24,11 +24,10 @@ public class CombatLogReplayTests(ITestOutputHelper output)
 
         foreach (var (reportCode, fightId) in fights)
         {
-            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
-            var raw = rawFight.RootElement;
+            byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId);
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => ReplayDriver.SupportsHero(p.Hero)))
             {
-                string scriptJson = ReplayScriptBuilder.Build(raw, player.Id).ToJsonString();
+                byte[] scriptJson = ReplayScriptBuilder.Build(raw, player.Id);
                 var script = ReplayScript.FromJson(scriptJson);
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false }).Run();
                 var artifacts = ReplayReview.Artifacts(result, script, scriptJson, player.Id);
@@ -50,10 +49,9 @@ public class CombatLogReplayTests(ITestOutputHelper output)
         var library = new ReplayLibrary(Path.Combine(TestPaths.RepositoryRoot, "data"));
         if (library.ListDownloadedFights() is not [var (reportCode, fightId), ..]) return;
 
-        using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
-        var raw = rawFight.RootElement;
+        byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId);
         var player = ReplayScriptBuilder.Players(raw).First(p => ReplayDriver.SupportsHero(p.Hero));
-        var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
+        var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
         var driver = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false });
 
         Assert.Throws<OperationCanceledException>(() => driver.Run(new CancellationToken(canceled: true)));

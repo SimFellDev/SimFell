@@ -4,9 +4,9 @@ using System.Text.Json.Nodes;
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// A value of a raw fight's <see cref="JsonDocument"/>, read in place. A missing property and JSON null are both none,
-/// and a property of none is none. A long fight's events as a <see cref="JsonNode"/> tree are over a GB, more than the
-/// browser app's worker has; the document is its text and an index.
+/// A value of a <see cref="JsonDocument"/> from a raw fight (a dungeon fight's document, a value of
+/// <see cref="RawFightHead"/>, a combatantinfo event), read in place. A missing property and JSON null are both none,
+/// and a property of none is none.
 /// </summary>
 internal readonly record struct RawFightValue(JsonElement Element)
 {

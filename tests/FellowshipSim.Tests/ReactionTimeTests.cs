@@ -36,11 +36,10 @@ public class ReactionTimeTests(ITestOutputHelper output)
         int fights = 0;
         foreach (var (reportCode, fightId) in library.ListDownloadedFights())
         {
-            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
-            var raw = rawFight.RootElement;
+            byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId);
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero.Equals(heroName, StringComparison.OrdinalIgnoreCase)))
             {
-                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
+                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
                 // A fight without the player's character (no combatantinfo) has no hero to replay.
                 if (script.FightDate is not { } date || !GamePatch.Current.Covers(date, null) || script.Character == null) continue;
                 var hero = ReplayDriver.CreateHero(script);

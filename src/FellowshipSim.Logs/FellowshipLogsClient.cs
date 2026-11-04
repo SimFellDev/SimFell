@@ -45,7 +45,14 @@ public sealed class FellowshipLogsClient
     }
 
     /// <summary>Runs a GraphQL query and returns its <c>data</c> object; GraphQL errors are thrown.</summary>
-    public async Task<JsonNode> QueryAsync(string query, object? variables = null, CancellationToken ct = default)
+    public async Task<JsonNode> QueryAsync(string query, object? variables = null, CancellationToken ct = default) =>
+        JsonNode.Parse(await QueryUtf8Async(query, variables, ct))!["data"]!;
+
+    /// <summary>
+    /// Runs a GraphQL query and returns its whole answer as UTF-8 JSON, read in place by the caller. An answer that is no
+    /// success, has GraphQL errors or has no <c>data</c> is thrown.
+    /// </summary>
+    public async Task<byte[]> QueryUtf8Async(string query, object? variables = null, CancellationToken ct = default)
     {
         var token = await GetTokenAsync(ct);
         using var request = new HttpRequestMessage(HttpMethod.Post, _apiUrl)
@@ -55,17 +62,40 @@ public sealed class FellowshipLogsClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.UserAgent.ParseAdd("FellowshipSim/1.0");
         using var response = await _http.SendAsync(request, ct);
-        string body = await response.Content.ReadAsStringAsync(ct);
+        byte[] body = await response.Content.ReadAsByteArrayAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new FellowshipLogsException($"FellowshipLogs API returned {(int)response.StatusCode}: {Truncate(body)}");
+            throw new FellowshipLogsException($"FellowshipLogs API returned {(int)response.StatusCode}: {Truncate(Encoding.UTF8.GetString(body))}");
         }
-        var json = JsonNode.Parse(body) ?? throw new FellowshipLogsException("FellowshipLogs API returned an empty response.");
-        if (json["errors"] is JsonArray { Count: > 0 } errors)
+        CheckAnswer(body);
+        return body;
+    }
+
+    // An answer that is no JSON object, has GraphQL errors or has no data throws FellowshipLogsException.
+    private static void CheckAnswer(ReadOnlySpan<byte> body)
+    {
+        var reader = new Utf8JsonReader(body);
+        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
         {
-            throw new FellowshipLogsException($"FellowshipLogs API error: {Truncate(errors.ToJsonString())}");
+            throw new FellowshipLogsException("FellowshipLogs API returned an empty response.");
         }
-        return json["data"] ?? throw new FellowshipLogsException("FellowshipLogs API response has no data.");
+        bool hasData = false;
+        while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+        {
+            bool errors = reader.ValueTextEquals("errors"u8), data = reader.ValueTextEquals("data"u8);
+            reader.Read();
+            int start = (int)reader.TokenStartIndex;
+            if (data) hasData = reader.TokenType != JsonTokenType.Null;
+            var first = reader;
+            bool nonEmptyArray = reader.TokenType == JsonTokenType.StartArray && first.Read() && first.TokenType != JsonTokenType.EndArray;
+            reader.Skip();
+            if (errors && nonEmptyArray)
+            {
+                var text = body[start..(int)reader.BytesConsumed];
+                throw new FellowshipLogsException($"FellowshipLogs API error: {Truncate(JsonNode.Parse(text)!.ToJsonString())}");
+            }
+        }
+        if (!hasData) throw new FellowshipLogsException("FellowshipLogs API response has no data.");
     }
 
     private async Task<string> GetTokenAsync(CancellationToken ct)

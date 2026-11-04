@@ -24,12 +24,20 @@ public sealed record ReviewReply(ReviewArtifacts? Review, string? Error)
     public byte[] ToBytes()
     {
         byte[] head = JsonSerializer.SerializeToUtf8Bytes(new Head(Review?.Summary, Error), SimChunks.Json);
-        string[] texts = Review is { } r ? [r.ScriptJson, r.Html, r.SummaryText, r.HitsCsv] : [];
-        var bytes = new byte[4 + head.Length + texts.Sum(t => 4 + Encoding.UTF8.GetByteCount(t))];
+        byte[] script = Review?.ScriptJson ?? [];
+        string[] texts = Review is { } r ? [r.Html, r.SummaryText, r.HitsCsv] : [];
+        var bytes = new byte[4 + head.Length + (Review is null ? 0 : 4 + script.Length) + texts.Sum(t => 4 + Encoding.UTF8.GetByteCount(t))];
         var rest = bytes.AsSpan();
         BinaryPrimitives.WriteInt32LittleEndian(rest, head.Length);
         head.CopyTo(rest[4..]);
         rest = rest[(4 + head.Length)..];
+        if (Review is not null)
+        {
+            // The script is UTF-8 already.
+            BinaryPrimitives.WriteInt32LittleEndian(rest, script.Length);
+            script.CopyTo(rest[4..]);
+            rest = rest[(4 + script.Length)..];
+        }
         foreach (string text in texts)
         {
             int length = Encoding.UTF8.GetBytes(text, rest[4..]);
@@ -44,7 +52,8 @@ public sealed record ReviewReply(ReviewArtifacts? Review, string? Error)
     {
         var head = JsonSerializer.Deserialize<Head>(Next(ref bytes), SimChunks.Json)!;
         if (head.Summary is not { } summary) return new ReviewReply(null, head.Error);
-        string scriptJson = Encoding.UTF8.GetString(Next(ref bytes)), html = Encoding.UTF8.GetString(Next(ref bytes));
+        byte[] scriptJson = Next(ref bytes).ToArray();
+        string html = Encoding.UTF8.GetString(Next(ref bytes));
         string summaryText = Encoding.UTF8.GetString(Next(ref bytes)), hitsCsv = Encoding.UTF8.GetString(Next(ref bytes));
         return new ReviewReply(new ReviewArtifacts(summary, scriptJson, html, summaryText, hitsCsv), head.Error);
     }

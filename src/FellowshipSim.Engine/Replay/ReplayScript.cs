@@ -28,9 +28,12 @@ public class ReplayScript
     [JsonPropertyName("commands")] public List<ReplayCommand> Commands { get; set; } = new();
     [JsonPropertyName("observations")] public ReplayObservations Observations { get; set; } = new();
 
-    public static ReplayScript FromJson(string json)
+    private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>The script in its UTF-8 JSON.</summary>
+    public static ReplayScript FromJson(ReadOnlySpan<byte> json)
     {
-        var script = JsonSerializer.Deserialize<ReplayScript>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+        var script = JsonSerializer.Deserialize<ReplayScript>(json, Json)
                      ?? throw new InvalidOperationException("Failed to read replay script");
         if (script.Schema != SchemaVersion)
         {
@@ -39,7 +42,7 @@ public class ReplayScript
         return script;
     }
 
-    public static ReplayScript Load(string path) => FromJson(File.ReadAllText(path));
+    public static ReplayScript Load(string path) => FromJson(File.ReadAllBytes(path));
 }
 
 public class ReplayPlayer

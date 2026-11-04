@@ -36,7 +36,7 @@ public sealed record FreeDiceSummary(
 /// damage calibration per ability), and every engine hit with the log hit it matched, for checking damage formulas in a
 /// spreadsheet.
 /// </summary>
-public sealed record ReviewArtifacts(ReviewSummary Summary, string ScriptJson, string Html, string SummaryText, string HitsCsv);
+public sealed record ReviewArtifacts(ReviewSummary Summary, byte[] ScriptJson, string Html, string SummaryText, string HitsCsv);
 
 /// <summary>
 /// The local library of fights and replay reviews, kept in a data folder:
@@ -78,6 +78,11 @@ public sealed class ReplayLibrary
         // Read in place: a document parsed from a stream copies the text into buffers it rents, doubling as it reads.
         return JsonDocument.Parse(await File.ReadAllBytesAsync(path, ct));
     }
+
+    /// <summary>The fight's raw events as UTF-8 JSON, downloaded from FellowshipLogs the first time.</summary>
+    public async Task<byte[]> GetRawFightBytesAsync(FellowshipLogsClient? client, string reportCode, int fightId,
+        IProgress<string>? progress = null, CancellationToken ct = default) =>
+        await File.ReadAllBytesAsync(await GetRawFightFileAsync(client, reportCode, fightId, progress, ct), ct);
 
     /// <summary>
     /// The path of the fight's raw events, downloaded from FellowshipLogs the first time. One download runs at a time, so
@@ -125,7 +130,7 @@ public sealed class ReplayLibrary
     public void Save(ReviewArtifacts review)
     {
         string id = review.Summary.Id;
-        File.WriteAllText(Path.Combine(ScriptsDirectory, $"{id}.replay.json"), review.ScriptJson);
+        File.WriteAllBytes(Path.Combine(ScriptsDirectory, $"{id}.replay.json"), review.ScriptJson);
         File.WriteAllText(Path.Combine(ReviewsDirectory, review.Summary.HtmlFile), review.Html);
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.summary.json"), JsonSerializer.Serialize(review.Summary, Indented));
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.summary.txt"), review.SummaryText);

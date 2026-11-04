@@ -39,13 +39,20 @@ onmessage = async ({ data }) => {
       case 'finish': worker.Finish(data.runId); return;
       case 'combine': reply.json = worker.Combine(data.profileJson, data.settingsJson, data.chunks); break;
       case 'traceFight': reply.json = await worker.TraceFight(data.profileJson, data.settingsJson); break;
-      case 'review': reply.bytes = await worker.Review(data.rawFight, data.playerId, data.id); break;
+      case 'review':
+        // The fight goes in a call of its own, so no frame of the replay holds it.
+        worker.HoldFight(data.rawFight);
+        reply.bytes = await worker.Review(data.playerId, data.id);
+        break;
       case 'reviewFight': {
         // A fight the browser keeps replays from it, costing no FellowshipLogs points; any other is downloaded and kept.
         const kept = fights.bytes(await fights.read(fights.key(data.reportCode, data.fightId)));
-        if (kept != null) postMessage({ id: data.id, type: 'progress', text: 'Using the fight saved in this browser' });
+        if (kept != null) {
+          postMessage({ id: data.id, type: 'progress', text: 'Using the fight saved in this browser' });
+          worker.HoldFight(kept);
+        }
         reply.bytes = kept != null
-          ? await worker.Review(kept, data.playerId, data.id)
+          ? await worker.Review(data.playerId, data.id)
           : await worker.ReviewFight(data.reportCode, data.fightId, data.playerId, data.accessToken, data.clientId,
             data.clientSecret, data.id);
         break;

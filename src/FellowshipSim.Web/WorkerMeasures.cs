@@ -4,13 +4,14 @@ using System.Text;
 using System.Text.Json;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Engine;
+using FellowshipSim.Engine.Replay;
 using FellowshipSim.Logs;
 
 namespace FellowshipSim.Web;
 
 /// <summary>
 /// A sim worker's measures for benchmarks/wasm/worker-memory.mjs, which runs a worker's runtime in Node: its managed heap,
-/// its collections, a sim's chunk count, the default dungeon, and a first replay of a fight with FellowshipLogs' answers
+/// its collections, a sim's chunk count, the default dungeon, a replay script built alone, and a first replay of a fight with FellowshipLogs' answers
 /// from the script.
 /// </summary>
 public static partial class WorkerMeasures
@@ -39,6 +40,10 @@ public static partial class WorkerMeasures
     public static Task<JSObject> ReviewFight(string reportCode, int fightId, int playerId) =>
         SimWorker.ReviewFight(FellowshipLogsClient.ForUser(new HttpClient(new FromScript()), "token"), reportCode, fightId, playerId,
             new Progress<string>());
+
+    /// <summary>The replay script of player <paramref name="playerId"/> in a raw fight's UTF-8 JSON, built alone: its length.</summary>
+    [JSExport]
+    public static int BuildScript(byte[] rawFight, int playerId) => ReplayScriptBuilder.Build(new RawFightHolder(rawFight), playerId).Length;
 
     /// <summary>The script's answer to a FellowshipLogs query (the request's JSON body).</summary>
     [JSImport("answer", "workerMeasures")]
