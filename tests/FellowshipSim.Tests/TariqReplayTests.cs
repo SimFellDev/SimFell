@@ -20,7 +20,8 @@ public class TariqReplayTests(ITestOutputHelper output)
         foreach (var (reportCode, fightId) in library.ListDownloadedFights())
         {
             if (only != null && only != reportCode && only != $"{reportCode}_{fightId}") continue;
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId);
+            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
+            var raw = rawFight.RootElement;
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero == "Tariq"))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());

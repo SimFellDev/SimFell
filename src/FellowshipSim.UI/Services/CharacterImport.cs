@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine.Replay;
 using FellowshipSim.Logs;
@@ -24,15 +26,25 @@ public sealed class CharacterImport(ReplayLibrary library, LogsSettingsStore set
         return CharacterReader.FromCombatantInfo(combatant, player.Name, BuildHeroes.Find(player.Hero) ?? player.Hero);
     }
 
-    private async Task<System.Text.Json.Nodes.JsonObject?> CombatantInfoAsync(string reportCode, int fightId, int playerId,
+    private async Task<JsonObject?> CombatantInfoAsync(string reportCode, int fightId, int playerId,
         IProgress<string>? progress, CancellationToken ct)
     {
         if (library.HasRawFight(reportCode, fightId))
         {
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId, progress, ct);
-            return raw["events"]?.AsArray()
-                .FirstOrDefault(e => e?["type"]?.GetValue<string>() == "combatantinfo" && e["sourceID"]?.GetValue<int>() == playerId)
-                ?.AsObject();
+            // The fight's JsonDocument, read in place: its events as a JsonNode tree are over a GB for a long fight.
+            using var fight = await library.GetRawFightDocumentAsync(null, reportCode, fightId, progress, ct);
+            if (!fight.RootElement.TryGetProperty("events", out var events) || events.ValueKind != JsonValueKind.Array) return null;
+            foreach (var e in events.EnumerateArray())
+            {
+                if (e.ValueKind == JsonValueKind.Object
+                    && e.TryGetProperty("type", out var type) && type.ValueEquals("combatantinfo")
+                    && e.TryGetProperty("sourceID", out var source) && source.ValueKind == JsonValueKind.Number
+                    && source.TryGetInt32(out int id) && id == playerId)
+                {
+                    return JsonNode.Parse(e.GetRawText())!.AsObject();
+                }
+            }
+            return null;
         }
         var client = await settings.CreateClientAsync(ct)
             ?? throw new FellowshipLogsException("Sign in with FellowshipLogs to import characters.");

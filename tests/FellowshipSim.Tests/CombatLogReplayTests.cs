@@ -24,7 +24,8 @@ public class CombatLogReplayTests(ITestOutputHelper output)
 
         foreach (var (reportCode, fightId) in fights)
         {
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId);
+            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
+            var raw = rawFight.RootElement;
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => ReplayDriver.SupportsHero(p.Hero)))
             {
                 string scriptJson = ReplayScriptBuilder.Build(raw, player.Id).ToJsonString();
@@ -49,7 +50,8 @@ public class CombatLogReplayTests(ITestOutputHelper output)
         var library = new ReplayLibrary(Path.Combine(TestPaths.RepositoryRoot, "data"));
         if (library.ListDownloadedFights() is not [var (reportCode, fightId), ..]) return;
 
-        var raw = await library.GetRawFightAsync(null, reportCode, fightId);
+        using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
+        var raw = rawFight.RootElement;
         var player = ReplayScriptBuilder.Players(raw).First(p => ReplayDriver.SupportsHero(p.Hero));
         var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
         var driver = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false });

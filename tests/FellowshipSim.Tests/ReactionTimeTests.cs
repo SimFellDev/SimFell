@@ -36,7 +36,8 @@ public class ReactionTimeTests(ITestOutputHelper output)
         int fights = 0;
         foreach (var (reportCode, fightId) in library.ListDownloadedFights())
         {
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId);
+            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
+            var raw = rawFight.RootElement;
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero.Equals(heroName, StringComparison.OrdinalIgnoreCase)))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());

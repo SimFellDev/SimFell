@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Debugging;
@@ -54,11 +54,12 @@ public sealed class LocalSimEngine : ISimEngine
     public async Task<ReviewArtifacts> ReviewAsync(Stream rawFight, int playerId, IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
-        var raw = (await JsonNode.ParseAsync(rawFight, cancellationToken: ct))?.AsObject()
-            ?? throw new SimEngineException("The raw fight is empty.");
+        // The fight's JsonDocument, read in place: a long fight's events as a JsonNode tree are over a GB.
+        using var raw = await JsonDocument.ParseAsync(rawFight, cancellationToken: ct);
+        if (raw.RootElement.ValueKind != JsonValueKind.Object) throw new SimEngineException("The raw fight is empty.");
         try
         {
-            return await Task.Run(() => ReplayReview.Run(raw, playerId, progress: progress, cancellationToken: ct), ct);
+            return await Task.Run(() => ReplayReview.Run(raw.RootElement, playerId, progress: progress, cancellationToken: ct), ct);
         }
         catch (Exception e) when (e is NotSupportedException or ArgumentException)
         {

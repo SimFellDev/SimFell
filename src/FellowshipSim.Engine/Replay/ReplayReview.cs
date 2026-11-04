@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+using System.Text.Json;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -9,11 +9,11 @@ public static class ReplayReview
     /// Builds the player's replay script from the raw fight, replays it and renders the review.
     /// <paramref name="cancellationToken"/> stops it between steps with an <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static ReviewArtifacts Run(JsonObject raw, int playerId, ReplayOptions? options = null, IProgress<string>? progress = null,
+    public static ReviewArtifacts Run(JsonElement raw, int playerId, ReplayOptions? options = null, IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var player = ReplayScriptBuilder.Players(raw).FirstOrDefault(p => p.Id == playerId)
-            ?? throw new ArgumentException($"Player {playerId} did not take part in fight {raw["fight"]?["id"]}.");
+            ?? throw new ArgumentException($"Player {playerId} did not take part in fight {new RawFightValue(raw)["fight"]["id"].Element}.");
         if (!ReplayDriver.SupportsHero(player.Hero))
         {
             throw new NotSupportedException($"{player.Name} plays {player.Hero}, which is not supported yet (supported: {string.Join(", ", ReplayDriver.SupportedHeroes)}).");

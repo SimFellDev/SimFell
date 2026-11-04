@@ -75,10 +75,12 @@ public static partial class SimWorker
             using var http = new HttpClient();
             progress.Report("Downloading the fight from FellowshipLogs");
             var client = accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken) : new FellowshipLogsClient(http, clientId, clientSecret);
-            var raw = await client.DownloadFightAsync(reportCode, fightId, progress);
-            await SaveFight(reportCode, fightId, raw.ToJsonString());
+            // The fight is replayed from its text's JsonDocument; a long fight's events as a tree are more than a worker has.
+            string text = (await client.DownloadFightAsync(reportCode, fightId, progress)).ToJsonString();
+            await SaveFight(reportCode, fightId, text);
             progress.Report("Replaying the fight");
-            reply = new ReviewReply(ReplayReview.Run(raw, playerId, progress: progress), null);
+            using var fight = JsonDocument.Parse(text);
+            reply = new ReviewReply(ReplayReview.Run(fight.RootElement, playerId, progress: progress), null);
         }
         catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {

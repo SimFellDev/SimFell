@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Enemies;
+using static FellowshipSim.Engine.Replay.RawFightValue;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -31,7 +32,7 @@ public static class DungeonReader
     public const double WaveGapSeconds = 5;
 
     /// <summary>True when a raw fight has FellowshipLogs' pulls of it, which a fight downloaded before them lacks.</summary>
-    public static bool HasPulls(JsonElement raw) => new Node(raw)["fight"]["dungeonPulls"].Element.ValueKind == JsonValueKind.Array;
+    public static bool HasPulls(JsonElement raw) => new RawFightValue(raw)["fight"]["dungeonPulls"].IsArray;
 
     /// <summary>
     /// The dungeon of a raw fight (<c>FellowshipLogsReports.DownloadFightAsync</c>), with player <paramref name="playerId"/>'s
@@ -40,7 +41,7 @@ public static class DungeonReader
     /// </summary>
     public static DungeonProfile FromRawFight(JsonElement rawFight, int playerId)
     {
-        var raw = new Node(rawFight);
+        var raw = new RawFightValue(rawFight);
         var fight = raw["fight"];
         if (fight.Element.ValueKind != JsonValueKind.Object) throw new ArgumentException("The raw fight has no fight.");
         double start = Num(fight["startTime"]), end = Num(fight["endTime"]);
@@ -259,23 +260,5 @@ public static class DungeonReader
 
     private static string Clock(double seconds) => $"{(int)(seconds / 60)}:{(int)(seconds % 60):00}";
 
-    private static int Instance(Node e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
-    private static string Str(Node n) => n.Element.ValueKind == JsonValueKind.String ? n.Element.GetString()! : "";
-    private static int? Int(Node n) => n.Element.ValueKind is JsonValueKind.Number or JsonValueKind.String or JsonValueKind.True or JsonValueKind.False
-        ? (int)Num(n) : null;
-    private static double Num(Node n) => n.Element.ValueKind == JsonValueKind.Number && n.Element.TryGetDouble(out var d) ? d : 0;
-
-    // A value of the raw fight, or none: a missing property and JSON null are both none, and reading into none gives none.
-    private readonly record struct Node(JsonElement Element)
-    {
-        public Node this[string name] =>
-            Element.ValueKind == JsonValueKind.Object && Element.TryGetProperty(name, out var value) ? new Node(value) : default;
-
-        public bool IsNull => Element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null;
-
-        // The array's items other than JSON null; none for a value that is no array.
-        public IEnumerable<Node> Items => Element.ValueKind == JsonValueKind.Array
-            ? Element.EnumerateArray().Where(i => i.ValueKind != JsonValueKind.Null).Select(i => new Node(i))
-            : [];
-    }
+    private static int Instance(RawFightValue e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
 }

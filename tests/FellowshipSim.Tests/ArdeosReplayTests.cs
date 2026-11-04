@@ -17,7 +17,8 @@ public class ArdeosReplayTests(ITestOutputHelper output)
         var library = new ReplayLibrary(Path.Combine(TestPaths.RepositoryRoot, "data"));
         foreach (var (reportCode, fightId) in library.ListDownloadedFights())
         {
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId);
+            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
+            var raw = rawFight.RootElement;
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero == "Ardeos"))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());

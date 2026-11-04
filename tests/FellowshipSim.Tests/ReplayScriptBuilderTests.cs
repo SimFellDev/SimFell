@@ -1,5 +1,5 @@
 using System.Text;
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using FellowshipSim.Engine;
 using FellowshipSim.Engine.Replay;
 
@@ -28,8 +28,8 @@ public class ReplayScriptBuilderTests
     [MemberData(nameof(Refused))]
     public void A_Fight_Without_The_Players_Events_Is_An_Argument_Error(string events, string reason)
     {
-        var raw = JsonNode.Parse(Fight(events))!.AsObject();
-        var e = Assert.Throws<ArgumentException>(() => ReplayReview.Run(raw, 1));
+        using var raw = JsonDocument.Parse(Fight(events));
+        var e = Assert.Throws<ArgumentException>(() => ReplayReview.Run(raw.RootElement, 1));
         Assert.Contains(reason, e.Message);
     }
 

@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Text.Json;
+using static FellowshipSim.Engine.Replay.RawFightValue;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -51,38 +52,42 @@ public static class ReplayScriptBuilder
     };
 
     /// <summary>The players of a raw fight (actor ID, name, hero).</summary>
-    public static IReadOnlyList<ReportPlayer> Players(JsonObject raw)
+    public static IReadOnlyList<ReportPlayer> Players(JsonElement rawFight)
     {
-        var friendly = raw["fight"]?["friendlyPlayers"]?.AsArray().Select(x => x!.GetValue<int>()).ToHashSet() ?? [];
-        return (raw["master_data"]?["actors"]?.AsArray() ?? [])
-            .Where(a => a?["type"]?.GetValue<string>() == "Player" && friendly.Contains(a["id"]!.GetValue<int>()))
-            .Select(a => new ReportPlayer(a!["id"]!.GetValue<int>(), a["name"]?.GetValue<string>() ?? "?", a["subType"]?.GetValue<string>() ?? ""))
+        var raw = new RawFightValue(rawFight);
+        var friendly = raw["fight"]["friendlyPlayers"].Items.Select(x => (int)Num(x)).ToHashSet();
+        return raw["master_data"]["actors"].Items
+            .Where(a => Str(a["type"]) == "Player" && friendly.Contains((int)Num(a["id"])))
+            .Select(a => new ReportPlayer((int)Num(a["id"]), a["name"].IsNull ? "?" : Str(a["name"]), Str(a["subType"])))
             .ToList();
     }
 
-    public static JsonObject Build(JsonObject raw, int playerId)
+    /// <summary>
+    /// The replay script of player <paramref name="playerId"/> in a raw fight's <see cref="JsonDocument"/>, read in place
+    /// (<see cref="RawFightValue"/>). Throws <see cref="ArgumentException"/> for a raw fight without the player's events.
+    /// </summary>
+    public static JsonObject Build(JsonElement rawFight, int playerId)
     {
-        var fight = raw["fight"] as JsonObject ?? throw new ArgumentException("The raw fight has no fight.");
+        var raw = new RawFightValue(rawFight);
+        var fight = raw["fight"];
+        if (fight.Element.ValueKind != JsonValueKind.Object) throw new ArgumentException("The raw fight has no fight.");
         double f0 = Num(fight["startTime"]);
         double fightEnd = Num(fight["endTime"]);
-        var actors = new Dictionary<int, JsonNode>();
-        foreach (var a in raw["master_data"]?["actors"] as JsonArray ?? throw new ArgumentException("The raw fight has no actors."))
-        {
-            if (a != null) actors[(int)Num(a["id"])] = a;
-        }
+        if (!raw["master_data"]["actors"].IsArray) throw new ArgumentException("The raw fight has no actors.");
+        var actors = new Dictionary<int, RawFightValue>();
+        foreach (var a in raw["master_data"]["actors"].Items) actors[(int)Num(a["id"])] = a;
         var abilityNames = new Dictionary<long, string>();
-        foreach (var a in raw["master_data"]?["abilities"] as JsonArray ?? [])
-        {
-            if (a != null) abilityNames[(long)Num(a["gameID"])] = a["name"]?.GetValue<string>() ?? "";
-        }
-        var events = Dedupe(raw["events"] as JsonArray ?? throw new ArgumentException("The raw fight has no events."));
+        foreach (var a in raw["master_data"]["abilities"].Items) abilityNames[(long)Num(a["gameID"])] = Str(a["name"]);
+        if (!raw["events"].IsArray) throw new ArgumentException("The raw fight has no events.");
+        var events = Dedupe(raw["events"]);
         // The character comes from the player's combatantinfo event, which a fight downloaded in part can lack.
-        var combatant = events.FirstOrDefault(e => Str(e["type"]) == "combatantinfo" && Int(e["sourceID"]) == playerId)
+        var combatantEvent = events.FirstOrDefault(e => Str(e["type"]) == "combatantinfo" && Int(e["sourceID"]) == playerId);
+        var combatant = Copy(combatantEvent)?.AsObject()
             ?? throw new ArgumentException($"Fight {Num(fight["id"])} has no character information (combatantinfo) for player {playerId}.");
 
         double Rel(double ts) => Math.Round((ts - f0) / 1000.0, 3);
         bool IsEnemy(int? id) => id is { } i && i != -1 && actors.TryGetValue(i, out var a)
-            && a["type"]?.GetValue<string>() == "NPC" && a["name"]?.GetValue<string>() != "Environment";
+            && Str(a["type"]) == "NPC" && Str(a["name"]) != "Environment";
         string AbilityName(long id) => abilityNames.TryGetValue(id, out var n) ? n : $"ability_{id}";
         JsonObject Unit(int? id, int instance) => new() { ["id"] = id, ["instance"] = instance };
 
@@ -109,8 +114,8 @@ public static class ReplayScriptBuilder
                 double ts = Num(e["timestamp"]);
                 if (!firstSeen.ContainsKey(key)) { firstSeen[key] = ts; order.Add(key); }
                 lastSeen[key] = ts;
-                nameOf[key] = actors[key.Item1]["name"]?.GetValue<string>() ?? "";
-                if (e[$"{prefix}Resources"]?["maxHitPoints"] is { } mhp && Num(mhp) > 0)
+                nameOf[key] = Str(actors[key.Item1]["name"]);
+                if (e[$"{prefix}Resources"]["maxHitPoints"] is { IsNull: false } mhp && Num(mhp) > 0)
                 {
                     maxHp[key] = Math.Max(maxHp.GetValueOrDefault(key), Num(mhp));
                 }
@@ -153,7 +158,7 @@ public static class ReplayScriptBuilder
         {
             if (Str(e["type"]) != "damage" || !IsEnemy(Int(e["targetID"]))) continue;
             var res = e["targetResources"];
-            if (res?["hitPoints"] is not { } hpNode || res["maxHitPoints"] is not { } maxNode || Num(maxNode) == 0) continue;
+            if (res["hitPoints"] is not { IsNull: false } hpNode || res["maxHitPoints"] is not { IsNull: false } maxNode || Num(maxNode) == 0) continue;
             double hp = Num(hpNode), maxNow = Num(maxNode);
             // A killing blow logs the health below 0 as an unsigned 32-bit number (1p7AXmHfwV9CYMxR fight 30 @ 157.097:
             // 4294950962 of 726971).
@@ -165,15 +170,15 @@ public static class ReplayScriptBuilder
             commands.Add(new JsonObject
             {
                 ["t"] = Rel(Num(e["timestamp"])), ["kind"] = "enemy_health", ["enemy"] = Unit(key.Item1, key.Item2),
-                ["hp"] = hp, ["max_hp"] = maxNode.DeepClone(),
+                ["hp"] = hp, ["max_hp"] = Copy(maxNode),
             });
         }
 
         // ---- Player deaths -------------------------------------------------------------------
         // A dead player's events log their health below 0 as an unsigned 32-bit number (above their maximum). Many returns
         // log no resurrect event (a release, or a wipe): the player is back at their first event with health in range.
-        bool Alive(JsonNode e, string prefix) => e[$"{prefix}Resources"] is { } r && r["hitPoints"] is { } hpNode
-            && r["maxHitPoints"] is { } maxNode && Num(hpNode) > 0 && Num(hpNode) <= Num(maxNode);
+        bool Alive(RawFightValue e, string prefix) => e[$"{prefix}Resources"] is { IsNull: false } r && r["hitPoints"] is { IsNull: false } hpNode
+            && r["maxHitPoints"] is { IsNull: false } maxNode && Num(hpNode) > 0 && Num(hpNode) <= Num(maxNode);
         bool dead = false;
         foreach (var e in events)
         {
@@ -234,8 +239,8 @@ public static class ReplayScriptBuilder
                     break;
 
                 case "cast":
-                    if (e["fake"]?.GetValue<bool>() == true) break; // duplicate activation marker emitted alongside begincast
-                    if (openCast != null && (long)Num(openCast["ability_id"]) == gid)
+                    if (True(e["fake"])) break; // duplicate activation marker emitted alongside begincast
+                    if (openCast != null && openCast["ability_id"]!.GetValue<long>() == gid)
                     {
                         commands.Add(With(Base(), "kind", "complete_cast"));
                         openCast = null;
@@ -284,8 +289,8 @@ public static class ReplayScriptBuilder
                 {
                     ["t"] = Rel(Num(e["timestamp"])), ["type"] = type, ["ability_id"] = gid, ["ability_name"] = AbilityName(gid),
                     ["source"] = Unit(src, Instance(e, "source")), ["target"] = Unit(tgt, Instance(e, "target")),
-                    ["stack"] = e["stack"]?.DeepClone(), ["duration_ms"] = e["duration"]?.DeepClone(),
-                    ["extra_ability_id"] = e["extraAbilityGameID"]?.DeepClone(),
+                    ["stack"] = Copy(e["stack"]), ["duration_ms"] = Copy(e["duration"]),
+                    ["extra_ability_id"] = Copy(e["extraAbilityGameID"]),
                 };
                 if (tgt == playerId && src == playerId) obsAuras.Add(rec);
                 // Buffs from others on the player, and debuffs from others on enemies: engine inputs.
@@ -300,30 +305,30 @@ public static class ReplayScriptBuilder
                 {
                     ["t"] = Rel(Num(e["timestamp"])), ["ability_id"] = gid, ["ability_name"] = AbilityName(gid),
                     ["target"] = Unit(tgt, Instance(e, "target")),
-                    ["amount"] = e["amount"]?.DeepClone() ?? 0, ["unmitigated"] = e["unmitigatedAmount"]?.DeepClone(),
-                    ["absorbed"] = e["absorbed"]?.DeepClone() ?? 0, ["blocked"] = e["blocked"]?.DeepClone() ?? 0, ["overkill"] = e["overkill"]?.DeepClone() ?? 0,
-                    ["crit"] = Int(e["hitType"]) is HitTypeCrit or HitTypeGrievousCrit, ["hit_type"] = e["hitType"]?.DeepClone(), ["tick"] = e["tick"]?.GetValue<bool>() ?? false,
+                    ["amount"] = Copy(e["amount"]) ?? 0, ["unmitigated"] = Copy(e["unmitigatedAmount"]),
+                    ["absorbed"] = Copy(e["absorbed"]) ?? 0, ["blocked"] = Copy(e["blocked"]) ?? 0, ["overkill"] = Copy(e["overkill"]) ?? 0,
+                    ["crit"] = Int(e["hitType"]) is HitTypeCrit or HitTypeGrievousCrit, ["hit_type"] = Copy(e["hitType"]), ["tick"] = True(e["tick"]),
                 });
             }
 
-            if (src == playerId && e["sourceResources"]?["resources"] is JsonArray { Count: > 0 } resources)
+            if (src == playerId && e["sourceResources"]["resources"] is { IsArray: true } resources && resources.Element.GetArrayLength() > 0)
             {
                 var byType = new JsonObject();
-                foreach (var r in resources)
+                foreach (var r in resources.Items)
                 {
-                    byType[Int(r!["type"])!.Value.ToString()] = new JsonObject { ["amount"] = r["amount"]?.DeepClone(), ["max"] = r["max"]?.DeepClone() };
+                    byType[(Int(r["type"]) ?? 0).ToString()] = new JsonObject { ["amount"] = Copy(r["amount"]), ["max"] = Copy(r["max"]) };
                 }
                 obsResources.Add(new JsonObject
                 {
-                    ["t"] = Rel(Num(e["timestamp"])), ["event"] = type, ["ability_id"] = e["abilityGameID"]?.DeepClone(),
-                    ["activation"] = e["activation"]?.GetValue<bool>() == true, ["resources"] = byType,
+                    ["t"] = Rel(Num(e["timestamp"])), ["event"] = type, ["ability_id"] = Copy(e["abilityGameID"]),
+                    ["activation"] = True(e["activation"]), ["resources"] = byType,
                 });
             }
         }
 
         var sortedCommands = commands
-            .OrderBy(c => Num(c["t"]))
-            .ThenBy(c => KindOrder.GetValueOrDefault(Str(c["kind"]), 5))
+            .OrderBy(c => c["t"]!.GetValue<double>())
+            .ThenBy(c => KindOrder.GetValueOrDefault(c["kind"]!.GetValue<string>(), 5))
             .ToList();
 
         // Every player's augmentation ranks (buffs other players give scale with the giver's rank).
@@ -331,20 +336,20 @@ public static class ReplayScriptBuilder
         foreach (var e in events.Where(e => Str(e["type"]) == "combatantinfo"))
         {
             var gearTraits = new Dictionary<string, int>();
-            foreach (var item in e["gear"]?.AsArray() ?? [])
+            foreach (var item in e["gear"].Items)
             {
-                foreach (var tr in item?["traits"]?.AsArray() ?? [])
+                foreach (var tr in item["traits"].Items)
                 {
-                    string name = Str(tr!["name"]);
+                    string name = Str(tr["name"]);
                     gearTraits[name] = gearTraits.GetValueOrDefault(name) + (Int(tr["rank"]) ?? 1);
                 }
             }
             var weaponTraits = new JsonObject();
-            foreach (var w in e["weaponTraits"]?.AsArray() ?? []) weaponTraits[Int(w!["id"])!.Value.ToString()] = Int(w["points"]) ?? 0;
-            int sid = Int(e["sourceID"])!.Value;
+            foreach (var w in e["weaponTraits"].Items) weaponTraits[(Int(w["id"]) ?? 0).ToString()] = Int(w["points"]) ?? 0;
+            int sid = Int(e["sourceID"]) ?? 0;
             players[sid.ToString()] = new JsonObject
             {
-                ["name"] = actors.TryGetValue(sid, out var who) ? who["name"]?.DeepClone() : null,
+                ["name"] = actors.TryGetValue(sid, out var who) ? Copy(who["name"]) : null,
                 ["gear_traits"] = new JsonObject(gearTraits.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
                 // weapon-tree augmentation IDs are 3,000,000 + datamine augmentation ID
                 ["weapon_traits"] = weaponTraits,
@@ -352,18 +357,18 @@ public static class ReplayScriptBuilder
         }
 
         actors.TryGetValue(playerId, out var player);
-        string? playerName = player?["name"]?.GetValue<string>();
-        string? hero = player?["subType"]?.GetValue<string>();
+        string? playerName = player["name"].IsNull ? null : Str(player["name"]);
+        string? hero = player["subType"].IsNull ? null : Str(player["subType"]);
 
         return new JsonObject
         {
             ["schema"] = Schema,
-            ["report_code"] = raw["report_code"]?.DeepClone(),
-            ["fight_id"] = fight["id"]?.DeepClone(),
-            ["fight_name"] = fight["name"]?.DeepClone(),
+            ["report_code"] = Copy(raw["report_code"]),
+            ["fight_id"] = Copy(fight["id"]),
+            ["fight_name"] = Copy(fight["name"]),
             ["fight_date"] = FightDate(raw),
             ["duration_s"] = Rel(fightEnd),
-            ["dungeon_modifiers"] = events.FirstOrDefault(e => Str(e["type"]) == "dungeonstart")?["affixes"]?.DeepClone() ?? new JsonArray(),
+            ["dungeon_modifiers"] = Copy(events.FirstOrDefault(e => Str(e["type"]) == "dungeonstart")["affixes"]) ?? new JsonArray(),
             ["player"] = new JsonObject { ["id"] = playerId, ["name"] = playerName, ["hero"] = hero },
             ["combatant_info"] = combatant.DeepClone(),
             ["players"] = players,
@@ -383,48 +388,36 @@ public static class ReplayScriptBuilder
     }
 
     /// <summary>When the fight was logged (UTC, ISO 8601), or null if the raw fight has no report start time.</summary>
-    private static string? FightDate(JsonObject raw)
+    private static string? FightDate(RawFightValue raw)
     {
-        if (raw["report_start_time"] is not { } start) return null;
-        double ms = Num(start) + Num(raw["fight"]?["startTime"]);
+        if (raw["report_start_time"] is not { IsNull: false } start) return null;
+        double ms = Num(start) + Num(raw["fight"]["startTime"]);
         return DateTimeOffset.FromUnixTimeMilliseconds((long)ms).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
     }
 
     /// <summary>
     /// Page boundaries in the API overlap: orders the events by time, then drops exact duplicate events. Duplicates have
-    /// one timestamp, so only the events of one timestamp are compared, and a fight's events are never held as text at once.
+    /// one timestamp, so an event is compared with the events of its timestamp alone.
     /// </summary>
-    private static List<JsonObject> Dedupe(JsonArray events)
+    private static List<RawFightValue> Dedupe(RawFightValue events)
     {
-        var ordered = events.OfType<JsonObject>().OrderBy(e => Num(e["timestamp"])).ToList();
-        var list = new List<JsonObject>(ordered.Count);
-        var seen = new HashSet<string>();
+        var ordered = events.Items.Where(e => e.Element.ValueKind == JsonValueKind.Object).OrderBy(e => Num(e["timestamp"])).ToList();
+        var list = new List<RawFightValue>(ordered.Count);
         for (int i = 0; i < ordered.Count;)
         {
             double t = Num(ordered[i]["timestamp"]);
             int end = i + 1;
             while (end < ordered.Count && Num(ordered[end]["timestamp"]) == t) end++;
-            if (end - i == 1) list.Add(ordered[i]);
-            else
+            for (int j = i; j < end; j++)
             {
-                seen.Clear();
-                for (int j = i; j < end; j++)
-                {
-                    if (seen.Add(Canonical(ordered[j]))) list.Add(ordered[j]);
-                }
+                bool seen = false;
+                for (int k = i; k < j && !seen; k++) seen = JsonElement.DeepEquals(ordered[k].Element, ordered[j].Element);
+                if (!seen) list.Add(ordered[j]);
             }
             i = end;
         }
         return list;
     }
-
-    private static string Canonical(JsonNode? node) => node switch
-    {
-        JsonObject o => "{" + string.Join(",", o.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"\"{kv.Key}\":{Canonical(kv.Value)}")) + "}",
-        JsonArray a => "[" + string.Join(",", a.Select(Canonical)) + "]",
-        null => "null",
-        _ => node.ToJsonString(),
-    };
 
     private static JsonObject With(JsonObject o, string key, JsonNode? value)
     {
@@ -432,15 +425,5 @@ public static class ReplayScriptBuilder
         return o;
     }
 
-    private static int Instance(JsonNode e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
-    private static string Str(JsonNode? n) => n?.GetValue<string>() ?? "";
-    private static int? Int(JsonNode? n) => n == null ? null : (int)Num(n);
-    private static double Num(JsonNode? n)
-    {
-        if (n is not JsonValue v) return 0;
-        if (v.TryGetValue<double>(out var d)) return d;
-        if (v.TryGetValue<long>(out var l)) return l;
-        if (v.TryGetValue<int>(out var i)) return i;
-        return 0;
-    }
+    private static int Instance(RawFightValue e, string prefix) => Int(e[$"{prefix}Instance"]) ?? 1;
 }
