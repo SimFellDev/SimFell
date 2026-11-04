@@ -20,11 +20,10 @@ public class TariqReplayTests(ITestOutputHelper output)
         foreach (var (reportCode, fightId) in library.ListDownloadedFights())
         {
             if (only != null && only != reportCode && only != $"{reportCode}_{fightId}") continue;
-            using var rawFight = await library.GetRawFightDocumentAsync(null, reportCode, fightId);
-            var raw = rawFight.RootElement;
+            byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId);
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero == "Tariq"))
             {
-                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
+                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
                 // TARIQ_CHARACTER_JSON writes the imported character (the smoke tests' fixture comes from fight 4's).
                 if (Environment.GetEnvironmentVariable("TARIQ_CHARACTER_JSON") is { } characterFile)
                 {

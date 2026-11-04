@@ -126,7 +126,9 @@ or the desktop app).
   methods: a sim's chunks (`SimChunks`, `MonteCarloSimulator.RunChunk`) spread over them and combine to the same result
   as `LocalSimEngine`'s. A replay downloads its fight and replays it on a worker (`WorkerFightReviewer`, the
   browser's `IFightReviewer`), so no fight sits in the page. A runtime's memory never shrinks, so a worker that replayed a
-  fight stops once its calls are done (`simPool.js`), and the review comes back as bytes (`ReviewReply.ToBytes`). The data folder is in the runtime's in-memory file system,
+  fight stops once its calls are done (`simPool.js`), and the review comes back as bytes (`ReviewReply.ToBytes`). A kept
+  fight comes in a call of its own (`SimWorker.HoldFight`), and the script's build empties its `RawFightHolder`, so the
+  replay runs without the raw fight. The data folder is in the runtime's in-memory file system,
   copied to IndexedDB (`BrowserDataFolder`).
 - **FellowshipSim.Cli** is `simfell`: one `LocalSimEngine.SimulateAsync` of a `.simc` profile, result on stdout,
   progress on stderr.

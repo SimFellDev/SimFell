@@ -59,8 +59,8 @@ public sealed class LocalSimEngine : ISimEngine
     }
 
     /// <summary>
-    /// The review of player <paramref name="playerId"/> in a raw fight's UTF-8 JSON, read in place: a long fight's events
-    /// as a JsonNode tree are over a GB.
+    /// The review of player <paramref name="playerId"/> in a raw fight's UTF-8 JSON, read in one pass over its bytes
+    /// (<see cref="ReplayScriptBuilder"/>).
     /// </summary>
     public async Task<ReviewArtifacts> ReviewAsync(ReadOnlyMemory<byte> rawFight, int playerId, IProgress<string>? progress = null,
         CancellationToken ct = default)

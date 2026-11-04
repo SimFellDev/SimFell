@@ -35,20 +35,33 @@ public static partial class SimWorker
         JsonSerializer.Serialize(new SimChunks(Read<SimcProfile>(profileJson), Read<SimSettings>(settingsJson))
             .Combine(chunksJson.Select(Read<MonteCarloChunk>).ToList()), SimChunks.Json);
 
+    // The raw fight the next Review replays (HoldFight).
+    private static RawFightHolder? HeldFight;
+
     /// <summary>
-    /// Replays player <paramref name="playerId"/> of a raw fight's UTF-8 JSON: a <see cref="ReviewReply"/> as bytes (a
-    /// Uint8Array), with the review's files or the reason the engine refused it. Its progress goes to the page as call
-    /// <paramref name="callId"/>'s.
+    /// Keeps a raw fight's UTF-8 JSON for the next <see cref="Review"/>. The fight comes in a call of its own, so no frame of
+    /// the replay holds it: the script's build empties the holder, and the fight is free through the replay.
     /// </summary>
     [JSExport]
-    public static async Task<JSObject> Review(byte[] rawFight, int playerId, int callId)
+    public static void HoldFight(byte[] rawFight) => HeldFight = new RawFightHolder(rawFight);
+
+    /// <summary>
+    /// Replays player <paramref name="playerId"/> of the raw fight from <see cref="HoldFight"/>: a <see cref="ReviewReply"/>
+    /// as bytes (a Uint8Array), with the review's files or the reason the engine refused it. Its progress goes to the page
+    /// as call <paramref name="callId"/>'s.
+    /// </summary>
+    [JSExport]
+    public static async Task<JSObject> Review(int playerId, int callId)
     {
+        var fight = HeldFight ?? throw new InvalidOperationException("No fight is held for a review.");
+        HeldFight = null;
         ReviewReply reply;
         try
         {
-            reply = new ReviewReply(await new LocalSimEngine().ReviewAsync(rawFight, playerId, new ProgressTo(callId)), null);
+            var progress = new ProgressTo(callId);
+            reply = new ReviewReply(await Task.Run(() => ReplayReview.Run(fight, playerId, progress: progress)), null);
         }
-        catch (SimEngineException e)
+        catch (Exception e) when (e is NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
         }
@@ -77,18 +90,30 @@ public static partial class SimWorker
         ReviewReply reply;
         try
         {
-            progress.Report("Downloading the fight from FellowshipLogs");
-            var fight = new MemoryStream();
-            await client.DownloadFightAsync(reportCode, fightId, fight, progress);
-            var text = new ArraySegment<byte>(fight.GetBuffer(), 0, (int)fight.Length);
-            await SaveFight(reportCode, fightId, text);
-            reply = new ReviewReply(ReplayReview.Run(text, playerId, progress: progress), null);
+            var fight = await Download(client, reportCode, fightId, progress);
+            // The replay runs on a stack of its own: inline, it would run under the download's resumed frame, which holds
+            // the fight's bytes.
+            reply = new ReviewReply(await Task.Run(() => ReplayReview.Run(fight, playerId, progress: progress)), null);
         }
         catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
         }
         return Bytes(reply.ToBytes());
+    }
+
+    /// <summary>
+    /// Downloads a fight and keeps it in the browser's storage. The fight is in the holder alone once this method returns,
+    /// so no frame of the replay holds it.
+    /// </summary>
+    private static async Task<RawFightHolder> Download(FellowshipLogsClient client, string reportCode, int fightId, IProgress<string> progress)
+    {
+        progress.Report("Downloading the fight from FellowshipLogs");
+        var download = new FightDownload();
+        await client.DownloadFightAsync(reportCode, fightId, download, progress);
+        byte[] text = download.ToArray();
+        await SaveFight(reportCode, fightId, text);
+        return new RawFightHolder(text);
     }
 
     /// <summary>
