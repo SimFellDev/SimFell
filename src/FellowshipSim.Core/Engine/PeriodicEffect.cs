@@ -13,15 +13,17 @@ namespace FellowshipSim.Core.Engine;
 /// </remarks>
 public sealed class PeriodicEffect
 {
-    private readonly List<ScheduledEvent> _events = new();
+    // Speed: sized for the events the effect schedules at its start, so the list does not grow through each size.
+    private readonly List<ScheduledEvent> _events;
     private readonly Action<SimulationContext, double> _onTick;
     private readonly Action<SimulationContext, bool>? _onEnd;
     private readonly Hero? _hastedBy;
 
     private PeriodicEffect(string name, SimTime start, SimTime end, double periodSeconds,
         Action<SimulationContext, double> onTick, Action<SimulationContext, bool>? onEnd, Hero source, int damageLogId,
-        EnemyTarget? target, Hero? hastedBy)
+        EnemyTarget? target, Hero? hastedBy, int events)
     {
+        _events = new List<ScheduledEvent>(events);
         Name = name;
         Start = start;
         End = end;
@@ -96,6 +98,12 @@ public sealed class PeriodicEffect
     /// <summary>A tick moved to the time <see cref="IOutcomeSource.TickAt"/> gave; the effect ends after it.</summary>
     private ScheduledEvent? _movedTick;
 
+    private void AddMovedTick(ScheduledEvent tick)
+    {
+        _events.Add(tick);
+        _movedTick = tick;
+    }
+
     /// <param name="onTick">Called per tick with the tick's fraction of a full tick (1.0, or less for a partial final tick).</param>
     /// <param name="onEnd">Called once when the effect ends; the flag is true when it was stopped early.</param>
     /// <param name="tickDelaySeconds">
@@ -123,13 +131,15 @@ public sealed class PeriodicEffect
 
         var start = ctx.CurrentTime;
         var end = start + SimTime.FromSeconds(durationSeconds);
-        var effect = new PeriodicEffect(name, start, end, periodSeconds, onTick, onEnd, ctx.Player, damageLogId, target, hastedBy: null);
-
         int fullTicks = (int)Math.Floor((durationSeconds + 1e-6) / periodSeconds);
         int firstTick = tickOnStart && tickDelaySeconds > 0 ? 0 : 1;
         double remainder = durationSeconds - fullTicks * periodSeconds;
         bool partial = partialFinalTick && remainder >= Math.Max(minPartialSeconds, 1e-6);
         bool tickNow = tickOnStart && tickDelaySeconds <= 0;
+        // The ticks, the partial tick and the end, and a tick moved by the outcome source.
+        int events = Math.Max(0, fullTicks - firstTick + 1) + (partial ? 1 : 0) + 1 + (damageLogId != 0 ? 1 : 0);
+        var effect = new PeriodicEffect(name, start, end, periodSeconds, onTick, onEnd, ctx.Player, damageLogId, target, hastedBy: null,
+            events);
         if (damageLogId != 0)
         {
             effect.BeginSlots(ctx, fullTicks, firstTick, remainder, partial, tickNow, durationSeconds, tickDelaySeconds);
@@ -205,7 +215,7 @@ public sealed class PeriodicEffect
             return;
         }
         original?.Cancel();
-        _events.Add(_movedTick = ctx.ScheduleAt(at, _fireSlot!, Name));
+        AddMovedTick(ctx.ScheduleAt(at, _fireSlot!, Name));
     }
 
     private void FireSlot(SimulationContext ctx)
@@ -221,7 +231,7 @@ public sealed class PeriodicEffect
     private void FinishAtEnd(SimulationContext ctx)
     {
         // A tick moved past the end fires before the effect ends.
-        if (_movedTick is { HasFired: false, IsCancelled: false } moved && moved.Time >= ctx.CurrentTime)
+        if (_movedTick is { IsPending: true } moved && moved.Time >= ctx.CurrentTime)
         {
             _events.Add(ctx.ScheduleAt(moved.Time, FinishAtEnd, Name));
             return;
@@ -275,12 +285,17 @@ public sealed class PeriodicEffect
         // Like any timed aura, the effect ends on the server frame after its duration runs out (see AuraContainer.ExpiryLagSeconds).
         var nominalEnd = start + SimTime.FromSeconds(durationSeconds);
         var end = nominalEnd + SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds);
-        var effect = new PeriodicEffect(name, start, end, basePeriodSeconds, onTick, onEnd, hero, damageLogId, target, hastedBy: hero);
+        // The ends and a moved tick; a fixed period also has its ticks, counted at no haste.
+        int events = 4 + (retimeOnHasteChange || damageOverTime ? 0 : (int)Math.Ceiling(durationSeconds / basePeriodSeconds));
+        var effect = new PeriodicEffect(name, start, end, basePeriodSeconds, onTick, onEnd, hero, damageLogId, target, hastedBy: hero,
+            events);
         var lastTick = start;
         // One handler for every tick, made once.
         Action<SimulationContext>? fire = null;
         Action<SimulationContext>? fireMoved = null;
         Action<SimulationContext>? predict = null;
+        Action<SimulationContext>? periodTick = null;
+        Action<SimulationContext>? askPeriodTick = null;
 
         void Fire(SimulationContext cc)
         {
@@ -336,7 +351,8 @@ public sealed class PeriodicEffect
             if (damageOverTime)
             {
                 if (effect._nextHastedTick is { IsActive: true }) return;
-                effect._nextHastedTick = HastedTimer.StartPeriod(c, hero, basePeriodSeconds, PeriodTick, name, damageLogId, AskPeriodTick);
+                effect._nextHastedTick = HastedTimer.StartPeriod(c, hero, basePeriodSeconds, periodTick ??= PeriodTick, name, damageLogId,
+                    askPeriodTick ??= AskPeriodTick);
                 AskPeriodTick(c);
                 return;
             }
@@ -351,7 +367,7 @@ public sealed class PeriodicEffect
                 // The tick fires at the time given; the timer only predicts.
                 timer.Cancel();
                 effect._nextHastedTick = HastedTimer.Start(c, hero, basePeriodSeconds, predict ??= Predict, name);
-                effect._events.Add(effect._movedTick = c.ScheduleAt(at, fireMoved ??= FireTick, name));
+                effect.AddMovedTick(c.ScheduleAt(at, fireMoved ??= FireTick, name));
                 return;
             }
             // The period is fixed by the haste when the previous tick fired.
@@ -362,7 +378,7 @@ public sealed class PeriodicEffect
                 if (at != next)
                 {
                     effect._events.Add(c.Kernel.ScheduleAt(next, predict ??= Predict, name));
-                    effect._events.Add(effect._movedTick = c.ScheduleAt(at, fireMoved ??= FireTick, name));
+                    effect.AddMovedTick(c.ScheduleAt(at, fireMoved ??= FireTick, name));
                     return;
                 }
             }
@@ -418,7 +434,7 @@ public sealed class PeriodicEffect
                 effect.Tick(c, fraction);
             }
             // A full tick moved past the end fires before the effect ends.
-            if (effect._movedTick is { HasFired: false, IsCancelled: false } moved && moved.Time >= c.CurrentTime)
+            if (effect._movedTick is { IsPending: true } moved && moved.Time >= c.CurrentTime)
             {
                 effect._events.Add(c.ScheduleAt(moved.Time, cc => effect.Finish(cc, clipped: false), name));
                 return;
@@ -438,7 +454,7 @@ public sealed class PeriodicEffect
             {
                 // The first tick fires at the time given; the next is asked for once it has.
                 effect.TickPredicted?.Invoke(ctx, effect, start);
-                effect._events.Add(effect._movedTick = ctx.ScheduleAt(at, fireMoved ??= FireTick, name));
+                effect.AddMovedTick(ctx.ScheduleAt(at, fireMoved ??= FireTick, name));
                 return effect;
             }
         }
@@ -474,10 +490,7 @@ public sealed class PeriodicEffect
         if (!IsActive) return;
         IsActive = false;
         _nextHastedTick?.Cancel();
-        foreach (var ev in _events)
-        {
-            if (!ev.HasFired) ev.Cancel();
-        }
+        foreach (var ev in _events) ev.Cancel();
         _onEnd?.Invoke(ctx, clipped);
         Ended?.Invoke(ctx, this);
     }

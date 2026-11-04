@@ -242,8 +242,11 @@ internal sealed class FightRecorder
             tally.Gaps++;
             tally.GapSeconds += (now - key.LastEnd).TotalSeconds;
         }
-        key.Active = new AuraState(key, watch.OnTarget, aura, tally) { Start = now, Changed = now, Stacks = aura.Stacks };
-        _active[aura] = key.Active;
+        // The key is inactive here, so its state from an earlier application is free.
+        var applied = key.State ??= new AuraState(key, watch.OnTarget);
+        (applied.Aura, applied.Tally, applied.Start, applied.Changed, applied.Stacks) = (aura, tally, now, now, aura.Stacks);
+        key.Active = applied;
+        _active[aura] = applied;
     }
 
     private static void Restack(AuraState state, Aura aura, SimTime now)
@@ -298,6 +301,8 @@ internal sealed class FightRecorder
     private sealed class AuraKeyState
     {
         public AuraState? Active;
+        /// <summary>The state of every application of the key, <see cref="Active"/> while one is up.</summary>
+        public AuraState? State;
         public bool HasEnded;
         public SimTime LastEnd;
         /// <summary>The tally of <see cref="TallyName"/> in <see cref="TallyOf"/>.</summary>
@@ -306,12 +311,12 @@ internal sealed class FightRecorder
         public string? TallyName;
     }
 
-    private sealed class AuraState(AuraKeyState key, bool onTarget, Aura aura, AuraTally tally)
+    private sealed class AuraState(AuraKeyState key, bool onTarget)
     {
         public AuraKeyState Key { get; } = key;
         public bool OnTarget { get; } = onTarget;
-        public Aura Aura { get; set; } = aura;
-        public AuraTally Tally { get; } = tally;
+        public Aura Aura = null!;
+        public AuraTally Tally = null!;
         public SimTime Start;
         public SimTime Changed;
         public int Stacks;

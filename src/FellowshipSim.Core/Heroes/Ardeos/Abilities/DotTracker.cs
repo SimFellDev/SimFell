@@ -206,7 +206,11 @@ public sealed class DotTracker
         var time = ticks ? tickAt : dot.ExpiresAt;
         var action = ticks ? dot.TickAction ??= c => TickDue(c, dot) : dot.ExpireAction ??= c => Expire(c, dot);
         // Speed: the queued event moves, so the queue keeps no cancelled copy of it.
-        if (dot.Event != null && ctx.Reschedule(dot.Event, time, action)) return;
+        if (dot.Event is { } ev && ctx.Reschedule(ref ev, time, action))
+        {
+            dot.Event = ev;
+            return;
+        }
         dot.Event = ctx.ScheduleAt(time, action, dot.Effect.Name);
     }
 

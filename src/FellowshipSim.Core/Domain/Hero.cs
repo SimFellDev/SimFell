@@ -305,11 +305,7 @@ public abstract class Hero : Actor
         if (_recentDamageIds[recent] == id) subscribers = _recentSubscribers[recent];
         else
         {
-            if (!_damageDealtById.TryGetValue(id, out subscribers!))
-            {
-                subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
-                _damageDealtById[id] = subscribers;
-            }
+            if (!_damageDealtById.TryGetValue(id, out subscribers!)) subscribers = DamageDealtSubscribers(id);
             _recentDamageIds[recent] = id;
             _recentSubscribers[recent] = subscribers;
         }
@@ -319,6 +315,15 @@ public abstract class Hero : Actor
             else subscriber.Handler!(in hit);
         }
     }
+    // A method of its own, so TriggerDamageDealt allocates the closure only for an ability ID new to the hero: a closure's
+    // captures are allocated where their scope begins.
+    private DamageDealtSubscriber[] DamageDealtSubscribers(int id)
+    {
+        var subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
+        _damageDealtById[id] = subscribers;
+        return subscribers;
+    }
+
     public void TriggerCastStarted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastStarted?.Invoke(a, t, now);
     public void TriggerCastCompleted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCompleted?.Invoke(a, t, now);
     public void TriggerCastCancelled(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCancelled?.Invoke(a, t, now);
@@ -352,12 +357,14 @@ public abstract class Hero : Actor
     /// <summary>Starts what runs for the whole fight on its own: the Spirit Point regeneration.</summary>
     public void BeginFight(SimulationContext ctx)
     {
+        Action<SimulationContext>? regen = null;
         void Regen(SimulationContext c)
         {
             GainResource(SpiritPoints, SpiritPointRegenAmount, c);
-            c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+            c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), regen, "Spirit Point regeneration");
         }
-        ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+        regen = Regen;
+        ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), regen, "Spirit Point regeneration");
         OnFightBegins(ctx);
     }
 

@@ -140,9 +140,12 @@ Trace files are not committed.
 
 `wasm/worker-memory.mjs` runs one sim worker of the browser app in Node: the published app's .NET runtime, started as
 `sim/worker.js` starts it, with `SimWorker`'s calls. Publish the app as the Deploy web app workflow does (with AOT), then
-give the harness the publish folder and one or more workloads:
+give the harness the publish folder and one or more workloads. The AOT publish needs the `wasm-tools` workload in the
+SDK that `global.json` selects (`dotnet --version` in the repository), and each publish goes to an empty folder: a
+reused one keeps the last build's fingerprinted `dotnet.*.js`.
 
 ```
+dotnet workload install wasm-tools
 dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish
 
 # a 1,000-fight sim at 1 and at 8 targets, then 100 fights of the default dungeon

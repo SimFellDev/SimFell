@@ -192,7 +192,7 @@ public class AuraContainer
     private void QueueExpiry()
     {
         if (_fight == null || _nextExpiry == SimTime.Infinite) return;
-        if (_expiry is { HasFired: false, IsCancelled: false } queued)
+        if (_expiry is { IsPending: true } queued)
         {
             if (queued.Time <= _nextExpiry) return;
             queued.Cancel();

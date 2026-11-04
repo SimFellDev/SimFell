@@ -175,8 +175,8 @@ public class SimulationContext
     /// Moves the queued <paramref name="ev"/> to <paramref name="time"/> with <paramref name="action"/>, as cancelling it and
     /// scheduling a new event would. False when it is no longer queued.
     /// </summary>
-    internal bool Reschedule(ScheduledEvent ev, SimTime time, Action<SimulationContext> action) =>
-        Kernel.Reschedule(ev, time < CurrentTime ? CurrentTime : time, action);
+    internal bool Reschedule(ref ScheduledEvent ev, SimTime time, Action<SimulationContext> action) =>
+        Kernel.Reschedule(ref ev, time < CurrentTime ? CurrentTime : time, action);
 
     /// <summary>
     /// Advances the clock to <paramref name="time"/>, firing every queued event due on the way in time order (the hero's
@@ -190,10 +190,9 @@ public class SimulationContext
     /// </summary>
     public bool RunUntil(SimTime time, Func<bool>? stop)
     {
-        while (Kernel.TryDequeueDue(time, out var ev))
+        while (Kernel.TryDequeueNode(time) is { } ev)
         {
             if (ev.Time > CurrentTime) CurrentTime = ev.Time;
-            ev.HasFired = true;
             if (ev.Hit is { } hit) Land(hit);
             else ev.Action!(this);
             if (stop != null && stop()) return true;
@@ -361,10 +360,17 @@ public class SimulationContext
             return CastAttempt.Resolved(castTime);
         }
 
+        BeginCast(hero, ability, target, castTime);
+        return CastAttempt.Casting(castTime);
+    }
+
+    // A method of its own, so Activate allocates the closure only for a cast with a cast time: a closure's captures are
+    // allocated where their scope begins.
+    private void BeginCast(Hero hero, Ability ability, EnemyTarget? target, SimTime castTime)
+    {
         var cast = new ActiveCast(ability, target, CurrentTime, CurrentTime + castTime);
         cast.CompletionEvent = ScheduleAt(cast.EndTime, c => c.CompleteCast(hero), ability.Name);
         hero.CurrentCast = cast;
-        return CastAttempt.Casting(castTime);
     }
 
     /// <summary>
@@ -563,12 +569,7 @@ public class SimulationContext
         if (hit.Tick is { } tick)
         {
             hit.Tick = null;
-            if (tick.IsActive && tick.LastTick == hit.Released.Time)
-            {
-                double inTick = 0.0;
-                tick.RunInLastTick(() => inTick = Land(hit));
-                return inTick;
-            }
+            if (tick.IsActive && tick.LastTick == hit.Released.Time) return LandInLastTick(tick, hit);
         }
         var outcome = hit.Outcome;
         var onLanded = hit.OnLanded;
@@ -593,6 +594,15 @@ public class SimulationContext
         onLanded?.Invoke(this, dealt);
         ReturnHit(hit);
         return dealt;
+    }
+
+    // A method of its own, so Land allocates the closure only for a hit in a tick's last execution: a closure's captures
+    // are allocated where their scope begins.
+    private double LandInLastTick(HastedTimer tick, PendingHit hit)
+    {
+        double inTick = 0.0;
+        tick.RunInLastTick(() => inTick = Land(hit));
+        return inTick;
     }
 
     /// <summary>
