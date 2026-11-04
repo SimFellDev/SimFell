@@ -135,3 +135,32 @@ dotnet run benchmarks/TraceSummary.cs -- mc-cpu.nettrace
 ```
 
 Trace files are not committed.
+
+## A browser worker's memory
+
+`wasm/worker-memory.mjs` runs one sim worker of the browser app in Node: the published app's .NET runtime, started as
+`sim/worker.js` starts it, with `SimWorker`'s calls. Publish the app as the Deploy web app workflow does (with AOT), then
+give the harness the publish folder and one or more workloads:
+
+```
+dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish
+
+# a 1,000-fight sim at 1 and at 8 targets, then 100 fights of the default dungeon
+node benchmarks/wasm/worker-memory.mjs publish sim:1000 sim:1000:8 dungeon:100
+
+# a replay of a fight the browser keeps, and a first replay with the fight downloaded
+node benchmarks/wasm/worker-memory.mjs publish review:data/fights/rf7qpV3tATCx86hN_fight6.raw.json:83
+node benchmarks/wasm/worker-memory.mjs publish download:data/fights/rf7qpV3tATCx86hN_fight6.raw.json:83
+```
+
+After the start and after each workload it prints the worker's WebAssembly memory, the process's resident memory, the
+managed heap after a full collection, the collections so far and the workload's time. A runtime's WebAssembly memory
+never shrinks and stops at 2 GB, so each line's WebAssembly memory is the worker's peak so far, and a workload past 2 GB
+fails with "Out of memory". The memory grows in steps of 20%.
+
+A `download` workload has FellowshipLogs' answers from the raw fight, in pages of 10,000 events, through
+`WorkerMeasures.ReviewFight`. `WorkerMeasures` is the harness's part of the app: its calls force a full collection, and
+the app never makes them. `MONO_GC_PARAMS` in the environment reaches the worker's GC.
+
+Run each workload in a process of its own for its peak: a review after another workload starts from that workload's
+memory.

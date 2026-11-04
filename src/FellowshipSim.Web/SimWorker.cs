@@ -1,7 +1,5 @@
 using System.Runtime.InteropServices.JavaScript;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
@@ -38,55 +36,59 @@ public static partial class SimWorker
             .Combine(chunksJson.Select(Read<MonteCarloChunk>).ToList()), SimChunks.Json);
 
     /// <summary>
-    /// Replays player <paramref name="playerId"/> of a raw fight: a <see cref="ReviewReply"/> as JSON, with the review's files
-    /// or the reason the engine refused it. Its progress goes to the page as call <paramref name="callId"/>'s.
+    /// Replays player <paramref name="playerId"/> of a raw fight's UTF-8 JSON: a <see cref="ReviewReply"/> as bytes (a
+    /// Uint8Array), with the review's files or the reason the engine refused it. Its progress goes to the page as call
+    /// <paramref name="callId"/>'s.
     /// </summary>
     [JSExport]
-    public static async Task<string> Review(string rawFight, int playerId, int callId)
+    public static async Task<JSObject> Review(byte[] rawFight, int playerId, int callId)
     {
         ReviewReply reply;
         try
         {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(rawFight));
-            var review = await new LocalSimEngine().ReviewAsync(stream, playerId, new ProgressTo(callId));
-            reply = new ReviewReply(review, null);
+            reply = new ReviewReply(await new LocalSimEngine().ReviewAsync(rawFight, playerId, new ProgressTo(callId)), null);
         }
         catch (SimEngineException e)
         {
             reply = new ReviewReply(null, e.Message);
         }
-        return JsonSerializer.Serialize(reply, SimChunks.Json);
+        return Bytes(reply.ToBytes());
     }
 
     /// <summary>
     /// Downloads fight <paramref name="fightId"/> of report <paramref name="reportCode"/> from FellowshipLogs with the
     /// signed-in user's token (<paramref name="accessToken"/>), else a developer's API client, and replays player
-    /// <paramref name="playerId"/>: a <see cref="ReviewReply"/> as JSON. The fight
+    /// <paramref name="playerId"/>: a <see cref="ReviewReply"/> as bytes (a Uint8Array). The fight
     /// is kept in the browser's storage for the next replay of it (sim/fights.js), never in the page's memory.
     /// </summary>
     [JSExport]
-    public static async Task<string> ReviewFight(string reportCode, int fightId, int playerId, string accessToken, string clientId,
+    public static async Task<JSObject> ReviewFight(string reportCode, int fightId, int playerId, string accessToken, string clientId,
         string clientSecret, int callId)
     {
-        var progress = new ProgressTo(callId);
+        using var http = new HttpClient();
+        var client = accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken) : new FellowshipLogsClient(http, clientId, clientSecret);
+        return await ReviewFight(client, reportCode, fightId, playerId, new ProgressTo(callId));
+    }
+
+    /// <summary><see cref="ReviewFight(string, int, int, string, string, string, int)"/> with <paramref name="client"/>.</summary>
+    internal static async Task<JSObject> ReviewFight(FellowshipLogsClient client, string reportCode, int fightId, int playerId,
+        IProgress<string> progress)
+    {
         ReviewReply reply;
         try
         {
-            using var http = new HttpClient();
             progress.Report("Downloading the fight from FellowshipLogs");
-            var client = accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken) : new FellowshipLogsClient(http, clientId, clientSecret);
-            // The fight is replayed from its text's JsonDocument; a long fight's events as a tree are more than a worker has.
-            string text = (await client.DownloadFightAsync(reportCode, fightId, progress)).ToJsonString();
+            var fight = new MemoryStream();
+            await client.DownloadFightAsync(reportCode, fightId, fight, progress);
+            var text = new ArraySegment<byte>(fight.GetBuffer(), 0, (int)fight.Length);
             await SaveFight(reportCode, fightId, text);
-            progress.Report("Replaying the fight");
-            using var fight = JsonDocument.Parse(text);
-            reply = new ReviewReply(ReplayReview.Run(fight.RootElement, playerId, progress: progress), null);
+            reply = new ReviewReply(ReplayReview.Run(text, playerId, progress: progress), null);
         }
         catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
         }
-        return JsonSerializer.Serialize(reply, SimChunks.Json);
+        return Bytes(reply.ToBytes());
     }
 
     /// <summary>
@@ -108,11 +110,16 @@ public static partial class SimWorker
         return JsonSerializer.Serialize(reply, SimChunks.Json);
     }
 
-
-
-    /// <summary>Keeps a downloaded fight in the browser's storage (sim/fights.js), for the next replay of it.</summary>
+    /// <summary>
+    /// Keeps a downloaded fight's UTF-8 JSON in the browser's storage (sim/fights.js), for the next replay of it. The
+    /// script copies the bytes before it returns.
+    /// </summary>
     [JSImport("saveFight", "simWorker")]
-    private static partial Task SaveFight(string reportCode, int fightId, string text);
+    private static partial Task SaveFight(string reportCode, int fightId, [JSMarshalAs<JSType.MemoryView>] ArraySegment<byte> text);
+
+    /// <summary>The bytes as a Uint8Array of the script's own.</summary>
+    [JSImport("bytes", "simWorker")]
+    private static partial JSObject Bytes(byte[] bytes);
 
     /// <summary>A replay's progress line, posted to the page (worker.js).</summary>
     [JSImport("progress", "simWorker")]
@@ -125,6 +132,3 @@ public static partial class SimWorker
         public void Report(string value) => Progress(callId, value);
     }
 }
-
-/// <summary>A replay's answer from a worker: its review, or the reason the engine refused it.</summary>
-public sealed record ReviewReply(ReviewArtifacts? Review, string? Error);

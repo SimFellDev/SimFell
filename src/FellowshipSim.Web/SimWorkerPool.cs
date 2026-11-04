@@ -56,14 +56,17 @@ public sealed class SimWorkerPool(IJSRuntime js)
         }
     }
 
-    /// <summary>Replays player <paramref name="playerId"/> of a raw fight on a worker; the worker's <see cref="ReviewReply"/> JSON.</summary>
-    public async Task<string> ReviewAsync(string rawFight, int playerId, IProgress<string>? progress)
+    /// <summary>
+    /// Replays player <paramref name="playerId"/> of a raw fight's UTF-8 JSON on a worker; the worker's
+    /// <see cref="ReviewReply"/> bytes.
+    /// </summary>
+    public async Task<byte[]> ReviewAsync(byte[] rawFight, int playerId, IProgress<string>? progress)
     {
         var pool = await PoolAsync();
         using var sink = DotNetObjectReference.Create(new Sink(null, progress));
         try
         {
-            return await pool.InvokeAsync<string>("review", CancellationToken.None, rawFight, playerId, sink);
+            return await pool.InvokeAsync<byte[]>("review", CancellationToken.None, rawFight, playerId, sink);
         }
         catch (JSException e)
         {
@@ -74,16 +77,16 @@ public sealed class SimWorkerPool(IJSRuntime js)
     /// <summary>
     /// Downloads a fight and replays player <paramref name="playerId"/> on a worker, as the signed-in user
     /// (<paramref name="accessToken"/>) or else with a developer's <paramref name="credentials"/>; the worker's
-    /// <see cref="ReviewReply"/> JSON.
+    /// <see cref="ReviewReply"/> bytes.
     /// </summary>
-    public async Task<string> ReviewFightAsync(string reportCode, int fightId, int playerId, string? accessToken, LogsCredentials? credentials,
+    public async Task<byte[]> ReviewFightAsync(string reportCode, int fightId, int playerId, string? accessToken, LogsCredentials? credentials,
         IProgress<string>? progress)
     {
         var pool = await PoolAsync();
         using var sink = DotNetObjectReference.Create(new Sink(null, progress));
         try
         {
-            return await pool.InvokeAsync<string>("reviewFight", CancellationToken.None, reportCode, fightId, playerId,
+            return await pool.InvokeAsync<byte[]>("reviewFight", CancellationToken.None, reportCode, fightId, playerId,
                 accessToken ?? "", credentials?.ClientId ?? "", credentials?.ClientSecret ?? "", sink);
         }
         catch (JSException e)

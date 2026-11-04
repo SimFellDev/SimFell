@@ -35,9 +35,9 @@ public sealed class WorkerSimEngine(SimWorkerPool workers) : ISimEngine
     public async Task<ReviewArtifacts> ReviewAsync(Stream rawFight, int playerId, IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
-        string raw = await new StreamReader(rawFight).ReadToEndAsync(ct);
-        string json = await workers.ReviewAsync(raw, playerId, progress);
-        var reply = JsonSerializer.Deserialize<ReviewReply>(json, SimChunks.Json)!;
+        var raw = new MemoryStream();
+        await rawFight.CopyToAsync(raw, ct);
+        var reply = ReviewReply.FromBytes(await workers.ReviewAsync(raw.ToArray(), playerId, progress));
         return reply.Review ?? throw new SimEngineException(reply.Error ?? "The replay gave no review.");
     }
 

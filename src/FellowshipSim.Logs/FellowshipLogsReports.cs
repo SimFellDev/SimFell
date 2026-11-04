@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace FellowshipSim.Logs;
@@ -172,10 +173,11 @@ public static class FellowshipLogsReports
     }
 
     /// <summary>
-    /// Downloads every event of one fight, with the report's actors and abilities, as a raw fight
-    /// (the input of the engine's <c>ReplayScriptBuilder</c>).
+    /// Downloads every event of one fight, with the report's actors and abilities, as a raw fight (the input of the
+    /// engine's <c>ReplayScriptBuilder</c>), and writes it to <paramref name="output"/> as UTF-8 JSON. Each page of events
+    /// is written as it arrives: a long fight's events as one tree are over a GB, more than the browser app's worker has.
     /// </summary>
-    public static async Task<JsonObject> DownloadFightAsync(this FellowshipLogsClient client, string reportCode, int fightId,
+    public static async Task DownloadFightAsync(this FellowshipLogsClient client, string reportCode, int fightId, Stream output,
         IProgress<string>? progress = null, CancellationToken ct = default)
     {
         var report = await ReportPartAsync(client, FightMetaQuery, new { code = reportCode, fightIDs = new[] { fightId } },
@@ -184,33 +186,44 @@ public static class FellowshipLogsReports
         var fight = report["fights"]!.AsArray()[0]!;
         double start = fight["startTime"]!.GetValue<double>(), end = fight["endTime"]!.GetValue<double>();
 
-        var events = new JsonArray();
+        await using var writer = new Utf8JsonWriter(output);
+        writer.WriteStartObject();
+        writer.WriteString("report_code", reportCode);
+        Write(writer, "report_start_time", report["startTime"]);
+        Write(writer, "fight", fight);
+        Write(writer, "master_data", report["masterData"]);
+        writer.WriteNull("character");
+        writer.WriteStartArray("events");
+        int events = 0;
         double? cursor = start;
         while (cursor is { } from && from < end)
         {
             var page = await ReportPartAsync(client, EventsQuery, new { code = reportCode, fightIDs = new[] { fightId }, startTime = from, endTime = end },
                 r => r["events"] is { } p && p["data"] is JsonArray ? p : null,
                 $"events for fight {fightId} of report '{reportCode}' from {(from - start) / 1000:F0}s", ct);
-            // Moved, not copied: a long fight's events are hundreds of MB as a tree, and the browser app has little room.
-            var data = page["data"]!.AsArray();
-            var moved = data.ToArray();
-            data.Clear();
-            foreach (var e in moved) events.Add(e);
-            progress?.Report($"Downloaded {events.Count:N0} events");
+            foreach (var e in page["data"]!.AsArray())
+            {
+                if (e == null) writer.WriteNullValue();
+                else e.WriteTo(writer);
+            }
+            events += page["data"]!.AsArray().Count;
+            await writer.FlushAsync(ct);
+            progress?.Report($"Downloaded {events:N0} events");
             double? next = page["nextPageTimestamp"]?.GetValue<double?>();
             if (next == null || next <= from) break;
             cursor = next;
         }
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+        await writer.FlushAsync(ct);
+    }
 
-        return new JsonObject
-        {
-            ["report_code"] = reportCode,
-            ["report_start_time"] = report["startTime"]?.DeepClone(),
-            ["fight"] = fight.DeepClone(),
-            ["master_data"] = report["masterData"]?.DeepClone(),
-            ["character"] = null,
-            ["events"] = events,
-        };
+    // A property with a node's value, or JSON null for none.
+    private static void Write(Utf8JsonWriter writer, string name, JsonNode? value)
+    {
+        writer.WritePropertyName(name);
+        if (value == null) writer.WriteNullValue();
+        else value.WriteTo(writer);
     }
 
     /// <summary>

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Debugging;
@@ -54,12 +53,21 @@ public sealed class LocalSimEngine : ISimEngine
     public async Task<ReviewArtifacts> ReviewAsync(Stream rawFight, int playerId, IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
-        // The fight's JsonDocument, read in place: a long fight's events as a JsonNode tree are over a GB.
-        using var raw = await JsonDocument.ParseAsync(rawFight, cancellationToken: ct);
-        if (raw.RootElement.ValueKind != JsonValueKind.Object) throw new SimEngineException("The raw fight is empty.");
+        var bytes = new MemoryStream(rawFight.CanSeek ? (int)(rawFight.Length - rawFight.Position) : 0);
+        await rawFight.CopyToAsync(bytes, ct);
+        return await ReviewAsync(bytes.GetBuffer().AsMemory(0, (int)bytes.Length), playerId, progress, ct);
+    }
+
+    /// <summary>
+    /// The review of player <paramref name="playerId"/> in a raw fight's UTF-8 JSON, read in place: a long fight's events
+    /// as a JsonNode tree are over a GB.
+    /// </summary>
+    public async Task<ReviewArtifacts> ReviewAsync(ReadOnlyMemory<byte> rawFight, int playerId, IProgress<string>? progress = null,
+        CancellationToken ct = default)
+    {
         try
         {
-            return await Task.Run(() => ReplayReview.Run(raw.RootElement, playerId, progress: progress, cancellationToken: ct), ct);
+            return await Task.Run(() => ReplayReview.Run(rawFight, playerId, progress: progress, cancellationToken: ct), ct);
         }
         catch (Exception e) when (e is NotSupportedException or ArgumentException)
         {

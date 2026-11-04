@@ -10,7 +10,29 @@ public static class ReplayReview
     /// <paramref name="cancellationToken"/> stops it between steps with an <see cref="OperationCanceledException"/>.
     /// </summary>
     public static ReviewArtifacts Run(JsonElement raw, int playerId, ReplayOptions? options = null, IProgress<string>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Replay(ScriptJson(raw, playerId, progress), playerId, options, progress, cancellationToken);
+
+    /// <summary>
+    /// <see cref="Run(JsonElement, int, ReplayOptions?, IProgress{string}?, CancellationToken)"/> for a raw fight's UTF-8
+    /// JSON, read in place. The fight's document is gone before the replay starts. A raw fight that is not a JSON object
+    /// throws <see cref="ArgumentException"/>.
+    /// </summary>
+    public static ReviewArtifacts Run(ReadOnlyMemory<byte> rawFight, int playerId, ReplayOptions? options = null,
+        IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
+        Replay(ScriptJson(rawFight, playerId, progress), playerId, options, progress, cancellationToken);
+
+    // The replay script of a raw fight's UTF-8 JSON. The document is not disposed: disposing returns its index (more than
+    // the fight's own size) to the shared array pool, and the pool keeps it. Undisposed, the index is freed by the
+    // collector once this method returns.
+    private static string ScriptJson(ReadOnlyMemory<byte> rawFight, int playerId, IProgress<string>? progress)
+    {
+        var raw = JsonDocument.Parse(rawFight);
+        if (raw.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("The raw fight is empty.");
+        return ScriptJson(raw.RootElement, playerId, progress);
+    }
+
+    private static string ScriptJson(JsonElement raw, int playerId, IProgress<string>? progress)
     {
         var player = ReplayScriptBuilder.Players(raw).FirstOrDefault(p => p.Id == playerId)
             ?? throw new ArgumentException($"Player {playerId} did not take part in fight {new RawFightValue(raw)["fight"]["id"].Element}.");
@@ -20,8 +42,12 @@ public static class ReplayReview
         }
 
         progress?.Report("Building the replay script");
-        var scriptJson = ReplayScriptBuilder.Build(raw, playerId).ToJsonString();
+        return ReplayScriptBuilder.Build(raw, playerId).ToJsonString();
+    }
 
+    private static ReviewArtifacts Replay(string scriptJson, int playerId, ReplayOptions? options, IProgress<string>? progress,
+        CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         progress?.Report("Replaying the fight");
         return Run(ReplayScript.FromJson(scriptJson), scriptJson, playerId, options, cancellationToken);

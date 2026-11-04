@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using FellowshipSim.Logs;
 
 namespace FellowshipSim.Tests;
@@ -50,7 +51,7 @@ public class FellowshipLogsDownloadTests
             var logs = new FellowshipLogs(answer, Events);
             var client = new FellowshipLogsClient(new HttpClient(logs), "id", "secret");
 
-            var e = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.DownloadFightAsync("rf7qpV3tATCx86hN", 6));
+            var e = await Assert.ThrowsAsync<FellowshipLogsException>(() => client.DownloadFightAsync("rf7qpV3tATCx86hN", 6, new MemoryStream()));
             Assert.Equal("FellowshipLogs returned no events for fight 6 of report 'rf7qpV3tATCx86hN' from 0s.", e.Message);
             Assert.Equal(1, logs.EventsQueries);
         }
@@ -60,10 +61,17 @@ public class FellowshipLogsDownloadTests
     public async Task A_Page_With_Events_Downloads()
     {
         var logs = new FellowshipLogs(Events);
-        var raw = await new FellowshipLogsClient(new HttpClient(logs), "id", "secret").DownloadFightAsync("rf7qpV3tATCx86hN", 6);
+        var raw = new MemoryStream();
+        await new FellowshipLogsClient(new HttpClient(logs), "id", "secret").DownloadFightAsync("rf7qpV3tATCx86hN", 6, raw);
 
         Assert.Equal(1, logs.EventsQueries);
-        Assert.Equal(2, raw["events"]!.AsArray().Count);
+        var fight = JsonDocument.Parse(raw.ToArray()).RootElement;
+        Assert.Equal("rf7qpV3tATCx86hN", fight.GetProperty("report_code").GetString());
+        Assert.Equal(1000, fight.GetProperty("report_start_time").GetInt32());
+        Assert.Equal(6, fight.GetProperty("fight").GetProperty("id").GetInt32());
+        Assert.Equal(JsonValueKind.Array, fight.GetProperty("master_data").GetProperty("actors").ValueKind);
+        Assert.Equal(JsonValueKind.Null, fight.GetProperty("character").ValueKind);
+        Assert.Equal(["dungeonstart", "death"], fight.GetProperty("events").EnumerateArray().Select(e => e.GetProperty("type").GetString()));
     }
 
     [Fact]
