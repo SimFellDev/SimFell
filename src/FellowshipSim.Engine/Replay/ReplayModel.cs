@@ -169,7 +169,7 @@ public sealed record ExpectedRange(double Low, double High, string Unit)
 }
 
 /// <param name="Subject">What the issue is about (ability or aura name), for grouping.</param>
-public sealed record ReplayIssue(double Time, int Step, IssueCategory Category, string Message, string? Subject = null)
+public sealed record ReplayIssue(double Time, int Step, IssueCategory Category, IssueEntity Entity, string Message, string? Subject = null)
 {
     /// <summary>The range the engine computes; null for a check with no numeric range.</summary>
     public ExpectedRange? Expected { get; init; }
@@ -257,6 +257,9 @@ public sealed class ReplayResult
     public int LoggedHitsDealt { get; set; }
     /// <summary>Engine hits on a target that dies in the log before they could land (no damage, no issue).</summary>
     public int MissedHits { get; set; }
+
+    /// <summary>The options the replay ran with.</summary>
+    public ReplayOptions Options { get; init; } = new();
 
     public string ReportCode { get; init; } = string.Empty;
     public int FightId { get; init; }

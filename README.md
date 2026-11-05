@@ -361,7 +361,8 @@ each enemy's health and debuffs, before the cast. **Previous** and **Next** (or 
 
 - **Exact replay** (the review pages): every crit, proc, target, landing time, damage amount and periodic tick time is
   the log's, and each logged value is checked against the range the engine computes for it. A review page lists each
-  value outside its range under Disagreements, with the engine's state at that moment. Good for finding which mechanic
+  value outside its range under one finding for its damage ID, resource, aura, ability or proc, ranked by the damage at
+  stake, with examples and the engine's state at each of them. Good for finding which mechanic
   is wrong.
 - **Free dice**: only the casts follow the log; the engine rolls its own crits and procs, many times over. The average
   should match the log, and the log should look like a typical run. Good for overall accuracy.

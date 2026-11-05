@@ -114,7 +114,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         else group = _hits.ClaimGroup(damageLogId, ctx.CurrentTime.TotalSeconds, _options, ctx.CurrentTickFraction);
         if (group == null)
         {
-            _verifier.Report(ctx, IssueCategory.Hits, $"Engine multi-target hit {damageLogId} at {ctx.CurrentTime} has no log hits", $"extra engine multi-target hit: {damageLogId}");
+            _verifier.Report(ctx, IssueCategory.Hits, IssueEntity.Damage(damageLogId, damageLogId.ToString()), $"Engine multi-target hit {damageLogId} at {ctx.CurrentTime} has no log hits", $"extra engine multi-target hit: {damageLogId}");
             return Array.Empty<EnemyTarget>();
         }
         var targets = new List<EnemyTarget>();
@@ -313,7 +313,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         var evidence = ProcEvidence.For(procKey);
         if (evidence == null)
         {
-            _verifier.Report(ctx, IssueCategory.Procs, $"Proc '{procKey}' has no evidence listed in ProcEvidence; treated as not procced", $"proc without evidence: {procKey}");
+            _verifier.Report(ctx, IssueCategory.Procs, IssueEntity.Proc(procKey), $"Proc '{procKey}' has no evidence listed in ProcEvidence; treated as not procced", $"proc without evidence: {procKey}");
             return false;
         }
 

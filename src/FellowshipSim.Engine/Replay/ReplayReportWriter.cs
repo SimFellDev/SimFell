@@ -7,6 +7,8 @@ namespace FellowshipSim.Engine.Replay;
 public static class ReplayReportWriter
 {
 
+    private const int SummaryFindings = 8;
+
     public static string Summary(ReplayResult r)
     {
         var sb = new StringBuilder();
@@ -19,14 +21,23 @@ public static class ReplayReportWriter
         {
             var first = r.Steps.First(s => !s.Passed);
             sb.AppendLine($"  first failing step: {first.Index} ({first.AbilityName} @ {first.Time:F3}s)");
-            foreach (var g in r.Steps.SelectMany(s => s.Issues).GroupBy(i => i.Category).OrderByDescending(g => g.Count()))
+        }
+        var findings = ReplayFindings.From(r);
+        foreach (var group in findings.GroupBy(f => f.Group))
+        {
+            sb.AppendLine($"  {group.Key}: {group.Count()} findings");
+            foreach (var f in group.Take(SummaryFindings))
             {
-                sb.AppendLine($"  {g.Key}: {g.Count()} issues in {g.Select(i => i.Step).Distinct().Count()} steps");
-                foreach (var sub in g.GroupBy(i => i.Subject ?? "other").OrderByDescending(x => x.Count()).Take(6))
+                string first = f.Issues.Count > 0 ? $" (first at step {f.Issues.Min(i => i.Step)})" : "";
+                string impact = f.Impact is { } share ? $"impact {share:0.00%}, " : "";
+                string id = f.Entity.Id > 0 ? $" ({f.Entity.Id})" : "";
+                sb.AppendLine($"      {f.Name}{id}: {impact}{f.Issues.Count} issues{first}: {f.Headline}");
+                foreach (var split in f.Splits)
                 {
-                    sb.AppendLine($"      {sub.Count(),6} x {sub.Key} (first at step {sub.Min(i => i.Step)})");
+                    sb.AppendLine($"          {split.Condition}: {split.RatioWith:F3} with (n={split.HitsWith}), {split.RatioWithout:F3} without (n={split.HitsWithout})");
                 }
             }
+            if (group.Count() > SummaryFindings) sb.AppendLine($"      and {group.Count() - SummaryFindings} more");
         }
         if (r.AllHits.Count > 0)
         {
@@ -107,28 +118,29 @@ public static class ReplayReportWriter
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Replay Parity Review</title>
 <style>
-:root{color-scheme:light dark;--bg:#f7f7f5;--panel:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e1dc;--ok:#1f7a4d;--ok-bg:#e5f3ec;--bad:#b42318;--bad-bg:#fdecea;--warn:#9a6700;--warn-bg:#fff4d6;--accent:#3b5bdb}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151514;--panel:#1e1e1c;--text:#ecebe6;--muted:#a3a29b;--line:#34332f;--ok:#5cc58f;--ok-bg:#16301f;--bad:#ff8a80;--bad-bg:#3a1a17;--warn:#f2c14e;--warn-bg:#3a3014;--accent:#8ea2ff}}
-:root[data-theme="dark"]{--bg:#151514;--panel:#1e1e1c;--text:#ecebe6;--muted:#a3a29b;--line:#34332f;--ok:#5cc58f;--ok-bg:#16301f;--bad:#ff8a80;--bad-bg:#3a1a17;--warn:#f2c14e;--warn-bg:#3a3014;--accent:#8ea2ff}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
-main{max-width:1180px;margin:0 auto;padding:24px 16px 64px}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 10px}
-.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0}
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap");
+:root{color-scheme:dark;--bg:#000000;--panel:#121215;--text:#ecedee;--muted:#a1a1aa;--line:#27272a;--row-line:#1e1e22;--row-hover:#18181c;--ok:#5fd69a;--ok-bg:rgba(95,214,154,.08);--bad:#f87191;--bad-bg:rgba(248,113,145,.1);--warn:#f5a524;--warn-bg:rgba(245,165,36,.1);--accent:#b08e58;--accent-text:#0f0f11;--heading:#d4af6e;--heading-font:Cinzel, Georgia, serif;--engine:#d4af6e;--log:#8ea2ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:24px 16px 64px}h1,h2,h3{font-family:var(--heading-font);color:var(--heading)}h1,h2{letter-spacing:.04em}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 10px}
+h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:20px 0 2px}
+.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0}
 .halt{border-color:var(--bad);background:var(--bad-bg)}.done{border-color:var(--ok);background:var(--ok-bg)}
 .tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--line);margin-right:6px}
-.tag.bad{background:var(--bad);color:var(--panel)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
-.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{font-size:12px;color:var(--muted);font-weight:600}td.num,th.num{text-align:right}tr.fail td{background:var(--bad-bg)}tr.skip td{color:var(--muted)}
+.tag.bad{background:var(--bad);color:var(--accent-text)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--row-line);white-space:nowrap}
+th{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-bottom-color:var(--line)}td.num,th.num{text-align:right}tr.fail td{background:var(--bad-bg)}tr.skip td{color:var(--muted)}
 details{margin:8px 0}summary{cursor:pointer;font-weight:600}ul{margin:6px 0;padding-left:20px}code{font-size:12px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-:root{--engine:#3b5bdb;--log:#d9480f}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--engine:#8ea2ff;--log:#ff922b}}
-:root[data-theme="dark"]{--engine:#8ea2ff;--log:#ff922b}
 .chart{width:100%;height:auto;display:block}.chart text{fill:var(--muted);font-size:11px}.chart .axis{stroke:var(--line)}
 .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:4px}.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
 td.diff-bad{color:var(--bad)}td.diff-ok{color:var(--ok)}tr.total td{font-weight:600;border-top:2px solid var(--line)}
 .fightnav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}.fightnav a{font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;color:var(--text);text-decoration:none;background:var(--panel)}
-button.state{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--accent);cursor:pointer}tr.state-row td{white-space:normal;background:var(--bg)}
-.fightnav a.cur{background:var(--accent);border-color:var(--accent);color:var(--panel)}a{color:var(--accent)}
+.fightnav a.cur{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}a{color:var(--heading)}
+button.state{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--heading);cursor:pointer}tr.state-row td{white-space:normal;background:var(--bg)}
+td.wrap{white-space:normal;min-width:260px}
+tr.finding{cursor:pointer}tr.finding:hover td,tr.finding.open td{background:var(--row-hover)}tr.finding td:first-child::before{content:"▸ ";color:var(--muted)}tr.finding.open td:first-child::before{content:"▾ "}
+tr.finding-detail>td{white-space:normal;background:var(--bg);padding:10px 12px}
+.timeline{display:block;width:100%;height:24px;margin-top:4px}.timeline rect{fill:var(--heading)}.timeline rect.track{fill:var(--line)}.timeline-axis{display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px}
 </style></head><body><main>
 """);
         return sb.ToString().Replace("<title>Replay Parity Review</title>", $"<title>{title}</title>");
@@ -159,17 +171,17 @@ button.state{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--
             sb.Append("</ul></details>");
         }
         RenderDamageOverview(sb, r);
-        DisagreementsSection.Render(sb, r.Issues.Count > 0 ? r.Issues : r.Steps.SelectMany(s => s.Issues).ToList());
+        var findings = ReplayFindings.From(r);
+        var exampleSteps = FindingsSection.Render(sb, findings, r);
+        if (r.HaltedAt != null) exampleSteps.Add(r.HaltedAt.Index);
 
-        // Every step with issues, collapsed (the halted step open); the "All steps" table links to them.
-        var failing = r.Steps.Where(s => !s.Passed).ToList();
-        if (failing.Count > 0)
+        // The steps of the findings' examples, collapsed (the halted step open); the examples and the "All steps" table link to them.
+        var detailed = r.Steps.Where(s => exampleSteps.Contains(s.Index)).ToList();
+        if (detailed.Count > 0)
         {
-            var byCategory = failing.SelectMany(s => s.Issues).GroupBy(i => i.Category).OrderByDescending(g => g.Count());
-            sb.Append($"<h2>Steps with issues ({failing.Count})</h2><div class=\"muted\">");
-            sb.Append(string.Join(" · ", byCategory.Select(g => $"{g.Key}: {g.Count()}")));
-            sb.Append("</div>");
-            foreach (var s in failing) RenderStepDetail(sb, s, open: s.Index == r.HaltedAt?.Index);
+            sb.Append($"<details class=\"panel\"><summary>Steps of the examples ({detailed.Count:N0})</summary>");
+            foreach (var s in detailed) RenderStepDetail(sb, s, open: s.Index == r.HaltedAt?.Index);
+            sb.Append("</details>");
         }
 
         sb.Append("<h2>All steps</h2><div class=\"panel scroll\"><table><thead><tr><th class=\"num\">#</th><th class=\"num\">Time</th><th>Action</th><th>Ability</th><th class=\"num\">Enemies</th><th class=\"num\">Hits</th><th class=\"num\">Log dmg / engine</th><th>State</th><th>Result</th></tr></thead><tbody>");
@@ -179,7 +191,7 @@ button.state{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--
             double engineSum = matched.Sum(h => h.EngineAmount), logSum = matched.Sum(h => h.Log!.UnblockedAmount);
             bool stateOk = s.Resources.All(c => c.Matches) && s.Auras.All(a => a.Matches);
             string cls = !s.Passed ? "fail" : !s.Modeled ? "skip" : "";
-            string index = s.Passed ? s.Index.ToString() : $"<a href=\"#step-{s.Index}\">{s.Index}</a>";
+            string index = exampleSteps.Contains(s.Index) ? $"<a href=\"#step-{s.Index}\">{s.Index}</a>" : s.Index.ToString();
             sb.Append($"<tr class=\"{cls}\"><td class=\"num\">{index}</td><td class=\"num\">{s.Time:F3}</td><td>{E(s.Kind)}</td><td>{E(s.AbilityName)}</td><td class=\"num\">{s.ActiveEnemies}</td>");
             sb.Append($"<td class=\"num\">{matched.Count}/{s.Hits.Count}</td><td class=\"num\">{(engineSum > 0 ? (logSum / engineSum).ToString("F3") : "—")}</td>");
             sb.Append($"<td>{(stateOk ? "<span class=ok>match</span>" : "<span class=bad>differs</span>")}</td>");

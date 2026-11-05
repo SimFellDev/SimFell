@@ -100,6 +100,7 @@ public sealed class ReplayDriver
             Hero = _script.Player.Hero,
             TotalSteps = order.PlayerActions,
             DurationSeconds = _script.DurationSeconds,
+            Options = _options,
         };
         // Free dice reads the log's damage from the script.
         if (!FreeDice) result.LogDamage.AddRange(_script.Observations.Damage);
@@ -242,7 +243,7 @@ public sealed class ReplayDriver
                 }
                 else
                 {
-                    if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
+                    if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, IssueEntity.Ability(cmd.AbilityName), $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
                 }
                 break;
         }
@@ -306,7 +307,7 @@ public sealed class ReplayDriver
             is not { } attempt) return;
         if (!attempt.Succeeded)
         {
-            if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
+            if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, IssueEntity.Ability(cmd.AbilityName), $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
             return;
         }
 
@@ -445,7 +446,7 @@ public sealed class ReplayDriver
             return; // completed by the engine at the log's completion time
         }
 
-        if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
+        if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, IssueEntity.Ability(cmd.AbilityName), $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
     }
 
     /// <summary>

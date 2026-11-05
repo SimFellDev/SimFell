@@ -80,19 +80,19 @@ public sealed class ReplayVerifier
         var crit = new ExpectedRange(0, 0, "crit");
         if (log.Crit && !landed.CanCrit)
         {
-            Report(ctx, IssueCategory.Hits,
+            Report(ctx, IssueCategory.Hits, IssueEntity.Damage(landed.AbilityId, landed.AbilityName),
                 $"Log hit {log.AbilityName} at {log.Time:F3} crit, but the engine says {landed.AbilityName} cannot crit",
                 $"crit on non-critable: {landed.AbilityName}", crit, 1, state);
         }
         if (landed.ForcedCrit is { } forced && forced != log.Crit)
         {
-            Report(ctx, IssueCategory.Hits,
+            Report(ctx, IssueCategory.Hits, IssueEntity.Damage(landed.AbilityId, landed.AbilityName),
                 $"{landed.AbilityName} at {log.Time:F3}: the engine forces {(forced ? "a crit" : "no crit")}, the log hit {(log.Crit ? "crit" : "did not crit")}",
                 $"forced crit: {landed.AbilityName}", new ExpectedRange(forced ? 1 : 0, forced ? 1 : 0, "crit"), log.Crit ? 1 : 0, state);
         }
         if (!range.Contains(log.UnblockedAmount))
         {
-            Report(ctx, IssueCategory.Damage,
+            Report(ctx, IssueCategory.Damage, IssueEntity.Damage(landed.AbilityId, landed.AbilityName),
                 $"{landed.AbilityName} on {target} at {log.Time:F3}: log {log.ComparedAmountText()}{(log.Crit ? " (crit)" : "")} vs engine {average:F0}",
                 $"damage {(log.UnblockedAmount < range.Low ? "too high" : "too low")}: {landed.AbilityName} ({landed.AbilityId})",
                 range, log.UnblockedAmount, state);
@@ -119,7 +119,7 @@ public sealed class ReplayVerifier
             TickFraction = released.TickFraction,
         };
         Record(pair);
-        Report(ctx, IssueCategory.Hits,
+        Report(ctx, IssueCategory.Hits, IssueEntity.Damage(released.AbilityId, released.AbilityName),
             $"Engine hit {released.AbilityName} ({released.AbilityId}) on {target?.ToString() ?? "no target"} has no matching log hit",
             $"extra engine hit: {released.AbilityName} ({released.AbilityId})", range, 0, state);
         return pair;
@@ -136,7 +136,7 @@ public sealed class ReplayVerifier
             State = state,
         };
         Record(pair);
-        Report(ctx, IssueCategory.Hits,
+        Report(ctx, IssueCategory.Hits, IssueEntity.Damage(log.AbilityId, log.AbilityName),
             $"Log hit {log.AbilityName} ({log.AbilityId}) on {log.Target} at {log.Time:F3} for {log.ComparedAmountText()}{(log.Crit ? " (crit)" : "")} was never produced by the engine",
             $"missing engine hit: {log.AbilityName} ({log.AbilityId})", new ExpectedRange(0, 0, "damage"), log.UnblockedAmount, state);
         return pair;
@@ -149,7 +149,7 @@ public sealed class ReplayVerifier
     {
         var range = CastTimeRange(engineSeconds);
         if (range.Contains(logSeconds)) return;
-        Report(ctx, IssueCategory.Casts, $"{ability.Name} cast takes {engineSeconds:F3}s in the engine and {logSeconds:F3}s in the log",
+        Report(ctx, IssueCategory.Casts, IssueEntity.Ability(ability.Name), $"{ability.Name} cast takes {engineSeconds:F3}s in the engine and {logSeconds:F3}s in the log",
             $"cast time: {ability.Name}", range, logSeconds, EngineState.Capture(ctx, _hero.CurrentTarget, cast: ability));
     }
 
@@ -164,7 +164,7 @@ public sealed class ReplayVerifier
         string message = kind == CommandKind.Cast
             ? $"Log cast {ability.Name} instantly, but the engine expects a {engineSeconds:F3}s cast"
             : $"Log shows a cast time for {ability.Name}, but the engine resolves it in {engineSeconds:F3}s";
-        Report(ctx, IssueCategory.Casts, message,
+        Report(ctx, IssueCategory.Casts, IssueEntity.Ability(ability.Name), message,
             kind == CommandKind.Cast ? $"engine has cast time: {ability.Name}" : $"engine instant: {ability.Name}",
             range, logSeconds, EngineState.Capture(ctx, _hero.CurrentTarget, cast: ability));
     }
@@ -179,7 +179,7 @@ public sealed class ReplayVerifier
         var range = new ExpectedRange(cast.EndTime.TotalSeconds, double.PositiveInfinity, "s");
         double now = ctx.CurrentTime.TotalSeconds;
         if (range.Contains(now)) return null;
-        return Issue(ctx, IssueCategory.Casts,
+        return Issue(ctx, IssueCategory.Casts, IssueEntity.Ability(cast.Ability.Name),
             $"Engine is still casting {cast.Ability.Name} (ends {cast.EndTime}) when the log casts {next.Name}",
             $"still casting: {cast.Ability.Name}", range, now, EngineState.Capture(ctx, cast.Target, cast: cast.Ability));
     }
@@ -202,7 +202,7 @@ public sealed class ReplayVerifier
             var gcd =new ExpectedRange(_hero.GlobalCooldownEndTime.TotalSeconds - _options.GlobalCooldownToleranceSeconds, double.PositiveInfinity, "s");
             if (!gcd.Contains(time))
             {
-                refusals.Add(Issue(ctx, IssueCategory.GlobalCooldown,
+                refusals.Add(Issue(ctx, IssueCategory.GlobalCooldown, IssueEntity.Ability(ability.Name),
                     $"Log casts {ability.Name} on the engine's global cooldown ({(_hero.GlobalCooldownEndTime - now).TotalSeconds:F2}s remaining)",
                     $"on global cooldown: {ability.Name}", gcd, time, state));
             }
@@ -213,14 +213,14 @@ public sealed class ReplayVerifier
         {
             onCooldown = true;
             var range = new ExpectedRange(time + _hero.GetCooldownRemains(ability.Name, now), double.PositiveInfinity, "s");
-            refusals.Add(Issue(ctx, IssueCategory.Cooldown,
+            refusals.Add(Issue(ctx, IssueCategory.Cooldown, IssueEntity.Ability(ability.Name),
                 $"Log casts {ability.Name} on the engine's cooldown ({range.Low - time:F2}s remaining)",
                 $"on cooldown: {ability.Name}", range, time, state));
         }
 
         if (!canCast && !onCooldown)
         {
-            refusals.Add(Issue(ctx, IssueCategory.Casts, $"Engine refuses {ability.Name}: {reason}", $"refused: {ability.Name}", null, null, state));
+            refusals.Add(Issue(ctx, IssueCategory.Casts, IssueEntity.Ability(ability.Name), $"Engine refuses {ability.Name}: {reason}", $"refused: {ability.Name}", null, null, state));
         }
         return refusals;
     }
@@ -233,7 +233,7 @@ public sealed class ReplayVerifier
         double tolerance = _options.TickTimeToleranceSeconds;
         var range = new ExpectedRange(predicted.TotalSeconds - tolerance, predicted.TotalSeconds + tolerance, "s");
         if (range.Contains(logTime)) return;
-        Report(ctx, IssueCategory.Ticks, $"{effect.Name} ticks at {logTime:F3} in the log; the engine predicts {predicted}",
+        Report(ctx, IssueCategory.Ticks, IssueEntity.Damage(effect.DamageLogId, effect.Name), $"{effect.Name} ticks at {logTime:F3} in the log; the engine predicts {predicted}",
             $"tick time: {effect.Name}", range, logTime, EngineState.Capture(ctx, effect.Target));
     }
 
@@ -242,7 +242,7 @@ public sealed class ReplayVerifier
     {
         var range = new ExpectedRange(effect.TicksFired, effect.TicksFired, "ticks");
         if (range.Contains(reserved)) return;
-        Report(ctx, IssueCategory.Ticks, $"{effect.Name} (from {effect.Start}) fired {effect.TicksFired} ticks; the log has {reserved} of them",
+        Report(ctx, IssueCategory.Ticks, IssueEntity.Damage(effect.DamageLogId, effect.Name), $"{effect.Name} (from {effect.Start}) fired {effect.TicksFired} ticks; the log has {reserved} of them",
             $"tick count: {effect.Name}", range, reserved, EngineState.Capture(ctx, effect.Target));
     }
 
@@ -252,7 +252,7 @@ public sealed class ReplayVerifier
     public void CheckProc(SimulationContext ctx, string procKey, double chance, bool procced, EnemyTarget? target)
     {
         if (!procced || chance > 0.0) return;
-        Report(ctx, IssueCategory.Procs, $"Log shows '{procKey}' procced at {ctx.CurrentTime.TotalSeconds:F3} but the engine's chance was {chance:P1}",
+        Report(ctx, IssueCategory.Procs, IssueEntity.Proc(procKey), $"Log shows '{procKey}' procced at {ctx.CurrentTime.TotalSeconds:F3} but the engine's chance was {chance:P1}",
             $"proc with zero chance: {procKey}", new ExpectedRange(0, 0, "procs"), 1, EngineState.Capture(ctx, target));
     }
 
@@ -324,7 +324,7 @@ public sealed class ReplayVerifier
         step.Resources.Add(check);
         var range = new ExpectedRange(engine - tolerance - 1e-9, engine + tolerance + 1e-9, resource);
         if (range.Contains(log)) return;
-        Report(ctx, IssueCategory.Resources, $"Pre-cast {resource}: engine {engine:0.##} vs log {log:0.##}",
+        Report(ctx, IssueCategory.Resources, IssueEntity.Resource(resource), $"Pre-cast {resource}: engine {engine:0.##} vs log {log:0.##}",
             $"{resource} {(engine > log ? "too high" : "too low")}", range, log, EngineState.Capture(ctx, _hero.CurrentTarget));
     }
 
@@ -335,16 +335,16 @@ public sealed class ReplayVerifier
         step.Auras.Add(check);
         if (check.Matches) return;
         string how = engine == 0 ? "missing in engine" : log == 0 ? "extra in engine" : "wrong stacks";
-        Report(ctx, IssueCategory.Auras, $"Pre-cast {aura}: engine {engine} stacks vs log {log}", $"{aura} {how}",
+        Report(ctx, IssueCategory.Auras, IssueEntity.Aura(logId, aura), $"Pre-cast {aura}: engine {engine} stacks vs log {log}", $"{aura} {how}",
             new ExpectedRange(engine, engine, "stacks"), log, EngineState.Capture(ctx, _hero.CurrentTarget));
     }
 
     // ------------------------------------------------------------------ issues
 
     /// <summary>Reports a disagreement with no numeric range (or one built by the caller).</summary>
-    public ReplayIssue Report(SimulationContext ctx, IssueCategory category, string message, string? subject = null,
+    public ReplayIssue Report(SimulationContext ctx, IssueCategory category, IssueEntity entity, string message, string? subject = null,
         ExpectedRange? expected = null, double? observed = null, EngineState? state = null) =>
-        Report(Issue(ctx, category, message, subject, expected, observed, state ?? EngineState.Capture(ctx, _hero.CurrentTarget)));
+        Report(Issue(ctx, category, entity, message, subject, expected, observed, state ?? EngineState.Capture(ctx, _hero.CurrentTarget)));
 
     public ReplayIssue Report(ReplayIssue issue)
     {
@@ -354,9 +354,9 @@ public sealed class ReplayVerifier
         return issue;
     }
 
-    private ReplayIssue Issue(SimulationContext ctx, IssueCategory category, string message, string? subject, ExpectedRange? expected,
+    private ReplayIssue Issue(SimulationContext ctx, IssueCategory category, IssueEntity entity, string message, string? subject, ExpectedRange? expected,
         double? observed, EngineState? state) =>
-        new(ctx.CurrentTime.TotalSeconds, CurrentStep?.Index ?? 0, category, message, subject)
+        new(ctx.CurrentTime.TotalSeconds, CurrentStep?.Index ?? 0, category, entity, message, subject)
         {
             Expected = expected,
             Observed = observed,

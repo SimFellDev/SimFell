@@ -22,7 +22,7 @@ public sealed class VisitorReviewsTests : IDisposable
     {
         var summary = new ReviewSummary(ReplayLibrary.ReviewId(reportCode, 1, 2), reportCode, 1, "Fight", null, 2, "Player", "Rime",
             1, 1, 1, 1, 100, 100, 0, DateTime.UtcNow);
-        _library.Save(new ReviewArtifacts(summary, "{}"u8.ToArray(), "<html></html>", "", ""));
+        _library.Save(new ReviewArtifacts(summary, "{}"u8.ToArray(), "<html></html>", "", "", "", "{}"));
         return summary;
     }
 

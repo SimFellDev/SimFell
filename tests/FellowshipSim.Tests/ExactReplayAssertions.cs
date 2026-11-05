@@ -13,6 +13,8 @@ internal static class ExactReplayAssertions
         // The replay deals the log's damage.
         double logTotal = result.LogDamage.Sum(d => d.UnblockedAmount);
         Assert.Equal(logTotal, result.DamageDealt, Math.Max(1e-6, logTotal * 1e-9));
+        // The findings hold every issue once.
+        Assert.Equal(result.Issues.Count, ReplayFindings.From(result).Sum(f => f.Issues.Count));
         foreach (var issue in result.Issues.Where(i => i.Expected != null))
         {
             Assert.True(issue.Observed.HasValue, issue.ToString());

@@ -8,7 +8,7 @@ namespace FellowshipSim.Web;
 
 /// <summary>
 /// A replay's answer from a worker: its review, or the reason the engine refused it. It crosses from the worker to the page
-/// as bytes (<see cref="ToBytes"/>): the review's script, page, summary text and hits are tens of MB, and as JSON string
+/// as bytes (<see cref="ToBytes"/>): the review's script, page, summary text, hits, issues and findings are tens of MB, and as JSON string
 /// values each one's escaping rents buffers several times its size. The shared array pool keeps those buffers for the
 /// worker's life.
 /// </summary>
@@ -18,14 +18,14 @@ public sealed record ReviewReply(ReviewArtifacts? Review, string? Error)
     private sealed record Head(ReviewSummary? Summary, string? Error);
 
     /// <summary>
-    /// The reply as bytes: the head's UTF-8 JSON, then the review's script, page, summary text and hits as UTF-8, each after
+    /// The reply as bytes: the head's UTF-8 JSON, then the review's script, page, summary text, hits, issues and findings as UTF-8, each after
     /// its length as a 32-bit little-endian integer.
     /// </summary>
     public byte[] ToBytes()
     {
         byte[] head = JsonSerializer.SerializeToUtf8Bytes(new Head(Review?.Summary, Error), SimChunks.Json);
         byte[] script = Review?.ScriptJson ?? [];
-        string[] texts = Review is { } r ? [r.Html, r.SummaryText, r.HitsCsv] : [];
+        string[] texts = Review is { } r ? [r.Html, r.SummaryText, r.HitsCsv, r.IssuesCsv, r.FindingsJson] : [];
         var bytes = new byte[4 + head.Length + (Review is null ? 0 : 4 + script.Length) + texts.Sum(t => 4 + Encoding.UTF8.GetByteCount(t))];
         var rest = bytes.AsSpan();
         BinaryPrimitives.WriteInt32LittleEndian(rest, head.Length);
@@ -54,8 +54,9 @@ public sealed record ReviewReply(ReviewArtifacts? Review, string? Error)
         if (head.Summary is not { } summary) return new ReviewReply(null, head.Error);
         byte[] scriptJson = Next(ref bytes).ToArray();
         string html = Encoding.UTF8.GetString(Next(ref bytes));
-        string summaryText = Encoding.UTF8.GetString(Next(ref bytes)), hitsCsv = Encoding.UTF8.GetString(Next(ref bytes));
-        return new ReviewReply(new ReviewArtifacts(summary, scriptJson, html, summaryText, hitsCsv), head.Error);
+        string summaryText = Encoding.UTF8.GetString(Next(ref bytes)), hitsCsv = Encoding.UTF8.GetString(Next(ref bytes)),
+            issuesCsv = Encoding.UTF8.GetString(Next(ref bytes)), findingsJson = Encoding.UTF8.GetString(Next(ref bytes));
+        return new ReviewReply(new ReviewArtifacts(summary, scriptJson, html, summaryText, hitsCsv, issuesCsv, findingsJson), head.Error);
     }
 
     // The next length-prefixed part, and the bytes after it.
