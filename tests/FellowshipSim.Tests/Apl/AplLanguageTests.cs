@@ -159,11 +159,15 @@ public class AplLanguageTests
     [InlineData("Tariq")]
     [InlineData("Mara")]
     [InlineData("Elarion")]
-    public void Each_Heros_Default_List_Binds_And_Casts(string heroName)
+    public void Each_Heros_Lists_Bind_And_Cast(string heroName)
     {
-        Assert.Equal([DefaultActionLists.DefaultName], DefaultActionLists.Names(heroName));
-        var (hero, ctx) = Fight([], heroName);
-        Assert.True(AplParser.ParseScript(DefaultActionLists.Read(heroName, DefaultActionLists.DefaultName)!).TryAct(hero, ctx), heroName);
+        var names = DefaultActionLists.Names(heroName);
+        Assert.Equal(DefaultActionLists.DefaultName, names[0]);
+        foreach (string name in names)
+        {
+            var (hero, ctx) = Fight([], heroName);
+            Assert.True(AplParser.ParseScript(DefaultActionLists.Read(heroName, name)!).TryAct(hero, ctx), $"{heroName} {name}");
+        }
     }
 
     [Theory]

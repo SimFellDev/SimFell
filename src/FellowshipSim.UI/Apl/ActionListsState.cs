@@ -24,16 +24,19 @@ public sealed class ActionListsState(ISimEngine engine)
 
     public string Name { get; set; } = "";
 
+    /// <summary>
+    /// The name and text of the list last opened from text (an imported profile's or a sim's), null before one: the
+    /// embedded picker keeps it as an option after a saved list is picked.
+    /// </summary>
+    public (string Name, string Text)? TextList { get; set; }
+
     public string NewList { get; set; } = "";
 
     /// <summary>The action-list text.</summary>
     public string Text { get; set; } = "";
 
-    /// <summary>True when the text's section is open, as it is when a saved list does not parse.</summary>
+    /// <summary>True when the Action list text tab shows, as it does when a saved list does not parse.</summary>
     public bool TextOpen { get; set; }
-
-    /// <summary>Key of the text's section: a new key renders it anew with its open attribute.</summary>
-    public int TextKey { get; set; }
 
     public MessageState TextStatus { get; set; } = MessageState.None;
 

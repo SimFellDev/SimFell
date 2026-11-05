@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FellowshipSim.Engine;
 using FellowshipSim.Engine.Jobs;
 using FellowshipSim.Logs;
@@ -18,8 +17,7 @@ public sealed class WorkerFightReviewer(SimWorkerPool workers, LogsSettingsStore
         string? token = await signIn.AccessTokenAsync(context.CancellationToken);
         var credentials = token == null ? settings.Credentials : null;
         if (token == null && credentials == null) throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
-        string json = await workers.ReviewFightAsync(reportCode, fightId, playerId, token, credentials, context);
-        var reply = JsonSerializer.Deserialize<ReviewReply>(json, SimChunks.Json)!;
+        var reply = ReviewReply.FromBytes(await workers.ReviewFightAsync(reportCode, fightId, playerId, token, credentials, context));
         return reply.Review ?? throw new SimEngineException(reply.Error ?? "The replay gave no review.");
     }
 }

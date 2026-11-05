@@ -5,9 +5,15 @@
 @inject IJSRuntime JS
 @inject AplDebuggerState Debugger
 @inject IAppViews Views
-@* A done sim's report: its DPS, each damage source, and each buff and debuff. Save keeps it as its own HTML file. *@
+@inject SimPageState Sim
+@* A done sim's report: its DPS, each damage source, each buff and debuff, and its profile under Advanced. Save keeps it as
+   its own HTML file. *@
 <div @ref="_report" class="report">
     <div class="save-bar" data-save-skip>
+        @if (Profile != null)
+        {
+            <button type="button" class="secondary-button load" data-tooltip="Put this sim's build, action list and settings in the Sim page" @onclick="Load">Load</button>
+        }
         <button type="button" class="secondary-button" disabled="@(!CanReplay)" data-tooltip="@ReplayTip" @onclick="ReplayInDebugger">Replay in debugger</button>
         <button type="button" class="secondary-button" data-tooltip="Save this sim's report as an HTML file" @onclick="SaveAsync">Save as HTML</button>
     </div>
@@ -31,6 +37,22 @@
                 <span>Boss DPS</span>
                 <strong>@N(Result.BossDps!.Value)</strong>
                 <em>to bosses, over the time of boss fighting</em>
+            </div>
+        }
+        @if (Result.PartyDps is { } party)
+        {
+            <div class="tile">
+                <span>Party DPS</span>
+                <strong>@N(party)</strong>
+                <em>the health the dungeon's enemies lost each second</em>
+            </div>
+        }
+        @if (Result.GroupDamageShare is { } share)
+        {
+            <div class="tile">
+                <span>Share of group damage</span>
+                <strong>@Percent(share)</strong>
+                <em>the hero's damage, up to each enemy's health</em>
             </div>
         }
         <div class="tile">
@@ -60,27 +82,32 @@
         <section class="card">
             <div class="card-head">
                 <h3>DPS</h3>
-                <span class="legend"><i class="mean"></i>Mean <i class="band"></i>5–95% of fights <i class="average"></i>Mean DPS</span>
+                <span class="legend"><i class="mean"></i>Mean of every fight <i class="average"></i>Mean DPS
+                    @if (timeline.PartyDps is { Count: > 1 })
+                    {
+                        <i class="party"></i><text>Party DPS</text>
+                    }
+                </span>
             </div>
             <div class="chart">
-                @{ double dpsMax = Max(timeline.DpsHigh, timeline.Dps); }
+                @{ double dpsMax = Math.Max(Math.Max(timeline.Dps.Max(), Result.MeanDps), timeline.PartyDps is { Count: > 0 } p ? p.Max() : 0); }
                 <div class="y">@foreach (var tick in Ticks(dpsMax).Reverse())
                 {
                     <span>@tick</span>
                 }</div>
-                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="DPS: the mean of every fight and the 5 to 95 percent band">
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="DPS: the mean of every fight">
                     @for (int g = 1; g < 4; g++)
                     {
                         <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
                     }
-                    <path d="@Band(timeline.DpsLow, timeline.DpsHigh, dpsMax)" class="band" />
                     <line x1="0" x2="1000" y1="@Y(Result.MeanDps, Nice(dpsMax))" y2="@Y(Result.MeanDps, Nice(dpsMax))" class="average" />
+                    @if (timeline.PartyDps is { Count: > 1 } partyDps)
+                    {
+                        <path d="@Line(partyDps, dpsMax)" class="party" />
+                    }
                     <path d="@Line(timeline.Dps, dpsMax)" class="mean" />
                 </svg>
-                <div class="x">@foreach (var label in TimeLabels(timeline.Dps.Count))
-                {
-                    <span>@label</span>
-                }</div>
+                @TimeAxis(timeline.Dps.Count)
             </div>
         </section>
     }
@@ -107,10 +134,7 @@
                     <path d="@Line(spirit.Mean, spiritTop, nice: false)" class="spirit-mean" />
                     <path d="@Steps(spirit.Typical, spirit.Mean.Count, spiritTop)" class="mean" />
                 </svg>
-                <div class="x">@foreach (var label in TimeLabels(spirit.Mean.Count))
-                {
-                    <span>@label</span>
-                }</div>
+                @TimeAxis(spirit.Mean.Count)
             </div>
         </section>
     }
@@ -259,18 +283,28 @@
                         <tbody>
                             <Virtualize Items="sequence.Rows" Context="row" ItemSize="SequenceRowHeight" OverscanCount="20" SpacerElement="tr">
                                 <tr class="@(row.Kind is null or HitKind ? null : "aura-row")">
-                                    <td class="time">@Clock(row.Time, tenths: true)</td>
+                                    <td class="time">@Clock(row.Time, decimals: 2)</td>
                                     <td class="name">
                                         <GameIcon Url="@BuildCatalog.IconUrl(row.IconId, row.Name)" Size="22" />
                                         <span>@row.Name</span>
-                                        @if (row.Kind != null)
+                                        @if (row.Kind == HitKind)
+                                        {
+                                            <span class="meta" data-tooltip="@($"Damage ID {row.IconId}")">@row.Kind</span>
+                                        }
+                                        else if (row.Kind != null)
                                         {
                                             <span class="meta">@row.Kind</span>
                                         }
                                     </td>
                                     <td class="hits">
+                                        @if (row.Hits.Count > 1)
+                                        {
+                                            <span class="count" data-tooltip="@($"{row.Hits.Count} hits at this moment")">@(row.Hits.Count)×</span>
+                                        }
                                         @foreach (var hit in row.Hits)
                                         {
+                                            @* A space between amounts, so a copied line keeps them apart. *@
+                                            @(" ")
                                             @if (hit.Crit)
                                             {
                                                 <strong class="hit crit" data-tooltip="Critical hit">@N(hit.Amount)</strong>
@@ -297,7 +331,7 @@
                             <ol class="cast-list">
                                 @foreach (var cast in window)
                                 {
-                                    <li data-tooltip="@($"{cast.Name} at {Clock(cast.Time, tenths: true)}")">
+                                    <li data-tooltip="@($"{cast.Name} at {Clock(cast.Time, decimals: 2)}")">
                                         <GameIcon Url="@BuildCatalog.IconUrl(cast.Id, cast.Name)" Size="30" />
                                         <span>@cast.Time.ToString("0.0", CultureInfo.CurrentCulture)</span>
                                     </li>
@@ -329,15 +363,26 @@
             <div class="table-wrap">@AuraTable(debuffs, "Debuff")</div>
         </section>
     }
+
+    @if (Profile != null)
+    {
+        <details class="card advanced">
+            <summary>Advanced</summary>
+            <p class="hint">The <code>.simc</code> profile this sim ran: the build, the sim settings, the dungeon of a dungeon fight, then the action list.</p>
+            <pre class="profile">@Profile</pre>
+        </details>
+    }
 </div>
 
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
     [Parameter, EditorRequired] public SimResult Result { get; set; } = null!;
 
     /// <summary>The sim's title: the saved file's name and heading.</summary>
     [Parameter] public string Title { get; set; } = "Sim";
 
-    /// <summary>The profile the sim ran, for Replay in debugger.</summary>
+    /// <summary>The profile the sim ran, for Load, Replay in debugger and the Advanced section.</summary>
     [Parameter] public string? Profile { get; set; }
 
     /// <summary>The sim's settings, for Replay in debugger; null for a sim saved before they were kept.</summary>
@@ -355,6 +400,14 @@
         if (!CanReplay) return;
         Debugger.OpenSimFight(Title, Profile!, Settings!, Result);
         Views.ShowDebugger();
+    }
+
+    // The Sim page's Import step with the sim's profile in the editor.
+    private void Load()
+    {
+        if (Profile == null) return;
+        if (Sim.LoadSim(Profile)) Toasts.Ok($"Loaded {Sim.Build.Name} from a sim.");
+        Views.ShowPage(AppPage.Sim);
     }
 
     private ElementReference _report;
@@ -433,8 +486,9 @@
     private bool _castList, _castListAuras;
 
     /// <summary>
-    /// A line of the list: a cast (<see cref="Kind"/> null), hits with no cast at their moment (<see cref="HitKind"/>), or
-    /// a buff or debuff starting or ending. <see cref="Hits"/> are the line's hits.
+    /// A line of the list: a cast (<see cref="Kind"/> null), hits of one damage ID with no cast at their moment
+    /// (<see cref="HitKind"/>, the ID in <see cref="IconId"/>), or a buff or debuff starting or ending. <see cref="Hits"/>
+    /// are the line's hits.
     /// </summary>
     private sealed record SequenceRow(double Time, string Name, int IconId, string? Kind, IReadOnlyList<HitReport> Hits);
 
@@ -470,7 +524,11 @@
         var rows = new List<SequenceRow>();
         foreach (var c in casts)
         {
-            rows.Add(new SequenceRow(c.Time, c.Name, c.Id, null, hitsAt.Remove((c.Time, c.Name), out var hits) ? hits : []));
+            // Every damage ID of the cast's name at its moment: an ability's hits may log under IDs other than the cast's.
+            var keys = hitsAt.Keys.Where(k => k.Time == c.Time && k.Name == c.Name).ToList();
+            var hits = keys.SelectMany(k => hitsAt[k]).ToList();
+            foreach (var k in keys) hitsAt.Remove(k);
+            rows.Add(new SequenceRow(c.Time, c.Name, c.Id, null, hits));
         }
         rows.AddRange(hitsAt.Values.SelectMany(h => h.GroupBy(hit => hit.Id)
             .Select(id => new SequenceRow(h[0].Time, h[0].Name, id.Key, HitKind, id.ToList()))));
@@ -507,7 +565,7 @@
     /// </summary>
     private static SequenceWidths SequenceColumnWidths(List<SequenceRow> rows, string nameHeading)
     {
-        int time = rows.Count == 0 ? 0 : rows.Max(r => Clock(r.Time, tenths: true).Length);
+        int time = rows.Count == 0 ? 0 : rows.Max(r => Clock(r.Time, decimals: 2).Length);
         double name = Math.Max(nameHeading.Length * HeadingCharWidth, rows.Count == 0 ? 0 : rows.Max(r => r.Name.Length + (r.Kind is { } kind ? kind.Length * 11.0 / 13 : 0)));
         var widest = rows.Count == 0 ? null : rows.MaxBy(r => r.Hits.Sum(h => N(h.Amount).Length + 1));
         int hitChars = widest?.Hits.Sum(h => N(h.Amount).Length) ?? 0;
@@ -523,8 +581,9 @@
     /// <summary>An aura ending this close to the fight's end ended with the fight.</summary>
     private const double FightEndSeconds = 0.05;
 
-    private static string Clock(double seconds, bool tenths = false) =>
-        $"{(int)seconds / 60}:{(tenths ? (seconds % 60).ToString("00.0", CultureInfo.CurrentCulture) : ((int)seconds % 60).ToString("00", CultureInfo.CurrentCulture))}";
+    /// <summary>Minutes and seconds, the seconds whole or with <paramref name="decimals"/> decimals.</summary>
+    private static string Clock(double seconds, int decimals = 0) =>
+        $"{(int)seconds / 60}:{(decimals > 0 ? (seconds % 60).ToString("00." + new string('0', decimals), CultureInfo.CurrentCulture) : ((int)seconds % 60).ToString("00", CultureInfo.CurrentCulture))}";
 
     /// <summary>The table of buffs or debuffs: uptime, applications, refreshes, duration, stacks and gaps.</summary>
     private RenderFragment AuraTable(IReadOnlyList<BuffReport> auras, string kind) =>
@@ -598,15 +657,16 @@
         return d.ToString();
     }
 
-    private static double Max(IReadOnlyList<double> a, IReadOnlyList<double> b) => Math.Max(a.Count > 0 ? a.Max() : 0, b.Count > 0 ? b.Max() : 0);
-
-    /// <summary>A round axis top at or above <paramref name="max"/>: 1, 2, 2.5 or 5 times a power of ten, times 4 ticks.</summary>
+    /// <summary>
+    /// A round axis top at or above <paramref name="max"/>: 4 ticks of 1, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of
+    /// ten, the smallest that fits, so the line fills most of the chart's height.
+    /// </summary>
     private static double Nice(double max)
     {
         if (max <= 0) return 1;
         double step = max / 4;
         double power = Math.Pow(10, Math.Floor(Math.Log10(step)));
-        double unit = new[] { 1, 2, 2.5, 5, 10 }.Select(m => m * power).First(s => s >= step);
+        double unit = new[] { 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 }.Select(m => m * power).First(s => s >= step);
         return unit * 4;
     }
 
@@ -654,23 +714,21 @@
         return d.Append('H').Append(X(Math.Min(values.Count, seconds - 1), seconds)).ToString();
     }
 
-    private static string Band(IReadOnlyList<double> low, IReadOnlyList<double> high, double max)
-    {
-        double top = Nice(max);
-        var d = new System.Text.StringBuilder(Line(high, max));
-        for (int i = low.Count - 1; i >= 0; i--) d.Append('L').Append(X(i, low.Count)).Append(' ').Append(Y(low[i], top)).Append(' ');
-        return d.Append('Z').ToString();
-    }
+    /// <summary>
+    /// The time axis under a chart of <paramref name="seconds"/> values: each label at its own time along the chart
+    /// (<see cref="X"/>), so a fight that does not end on a label keeps its labels over their seconds.
+    /// </summary>
+    private static RenderFragment TimeAxis(int seconds) =>
+        @<div class="x">@foreach (int t in TimeLabelSeconds(seconds))
+        {
+            double left = seconds <= 1 ? 0 : t * 100.0 / (seconds - 1);
+            <span style="left: @(Math.Min(left, 100).ToString("0.##", CultureInfo.InvariantCulture))%">@($"{t / 60}:{t % 60:00}")</span>
+        }</div>;
 
-    /// <summary>Time labels along the fight: at most about ten, on round minutes or half minutes.</summary>
-    private static IEnumerable<string> TimeLabels(int seconds)
+    /// <summary>The seconds of the time labels: at most about ten, on round minutes or half minutes.</summary>
+    private static IEnumerable<int> TimeLabelSeconds(int seconds)
     {
         int step = new[] { 15, 30, 60, 120, 300, 600 }.FirstOrDefault(s => seconds / s <= 10, 600);
-        int labels = Math.Max(1, (seconds - 1) / step);
-        for (int i = 0; i <= labels; i++)
-        {
-            int t = Math.Min(seconds, i * step);
-            yield return $"{t / 60}:{t % 60:00}";
-        }
+        for (int t = 0; t < seconds; t += step) yield return t;
     }
 }

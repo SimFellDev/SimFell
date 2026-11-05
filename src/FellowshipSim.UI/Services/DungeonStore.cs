@@ -28,7 +28,7 @@ public sealed class DungeonStore(IBlobStore store)
     /// <summary>The profile text of a dungeon, or null when there is none.</summary>
     public async Task<string?> ReadAsync(Visitor visitor, DungeonEntry entry, CancellationToken ct = default) =>
         entry.BuiltIn ? DefaultDungeons.Read(entry.Name)
-        : ActionListStore.IsValidName(entry.Name) ? await store.ReadAsync(KeyOf(visitor, entry.Name), ct)
+        : ActionListStore.IsStoredName(entry.Name) ? await store.ReadAsync(KeyOf(visitor, entry.Name), ct)
         : null;
 
     /// <summary>Saves <paramref name="dungeon"/> as the visitor's dungeon of its name; the name follows <see cref="ActionListStore.IsValidName"/>.</summary>
@@ -42,7 +42,7 @@ public sealed class DungeonStore(IBlobStore store)
     }
 
     public Task DeleteAsync(Visitor visitor, DungeonEntry entry, CancellationToken ct = default) =>
-        !entry.BuiltIn && ActionListStore.IsValidName(entry.Name) ? store.DeleteAsync(KeyOf(visitor, entry.Name), ct) : Task.CompletedTask;
+        !entry.BuiltIn && ActionListStore.IsStoredName(entry.Name) ? store.DeleteAsync(KeyOf(visitor, entry.Name), ct) : Task.CompletedTask;
 
     private static string KeyOf(Visitor visitor, string name) => visitor.Key($"dungeons/{name}{Extension}");
 }

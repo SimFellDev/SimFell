@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 using FellowshipSim.Core.Heroes.Ardeos.Talents;
 
@@ -66,13 +67,11 @@ public sealed class Ardeos : Hero, ITargetEffects
 
     public IEnumerable<string> TargetEffectNames => AllDots.Select(d => d.Name);
 
-    // Each kind's action-list name, worked out once.
-    private readonly Dictionary<DamageOverTime, string> _dotSlugs = new();
-
     /// <summary>
     /// A damage over time effect on <paramref name="target"/>, as one: running until its last copy runs out, with the
     /// stacks of every copy (Engulfing Flames runs as copies side by side). <see cref="TargetEffectPick.Oldest"/> and
-    /// <see cref="TargetEffectPick.Newest"/> read the copy applied first or last, with its own expiry and stacks.
+    /// <see cref="TargetEffectPick.Newest"/> read the copy applied first or last, and <see cref="TargetEffectPick.ExpiresFirst"/>
+    /// the copy that runs out first, with its own expiry and stacks.
     /// </summary>
     public TargetEffect? FindOn(EnemyTarget target, string slug, SimTime now, TargetEffectPick pick = TargetEffectPick.All)
     {
@@ -84,13 +83,13 @@ public sealed class Ardeos : Hero, ITargetEffects
         {
             var dot = on[i];
             if (!dot.IsActive || dot.ExpiresAt <= now) continue;
-            if (!_dotSlugs.TryGetValue(dot.Effect, out var dotSlug)) _dotSlugs[dot.Effect] = dotSlug = APL.AplNames.Slug(dot.Effect.Name);
-            if (dotSlug != slug) continue;
+            if (dot.Effect.AplSlug != slug) continue;
             stacks += dot.Stacks;
             if (dot.ExpiresAt > expiresAt) expiresAt = dot.ExpiresAt;
             if (picked == null
                 || (pick == TargetEffectPick.Oldest && dot.AppliedAt < picked.AppliedAt)
-                || (pick == TargetEffectPick.Newest && dot.AppliedAt >= picked.AppliedAt))
+                || (pick == TargetEffectPick.Newest && dot.AppliedAt >= picked.AppliedAt)
+                || (pick == TargetEffectPick.ExpiresFirst && dot.ExpiresAt < picked.ExpiresAt))
             {
                 picked = dot;
             }
@@ -122,6 +121,16 @@ public sealed class Ardeos : Hero, ITargetEffects
         Abilities.Add(new Pyromania(this));
         Abilities.Add(new Apocalypse(this));
         Abilities.Add(new Incinerate(this));
+    }
+
+    /// <summary>
+    /// With a legendary item worn, its +10% cooldown recovery (<see cref="LegendaryStats.StrandOfEternity"/>) shortens Detonate's global cooldown
+    /// from 31 to 29 server frames. The combat logs' 896 Detonates in a row, 0.96-0.97s apart, are from builds with a legendary item; 31 frames
+    /// without one is as observed in game.
+    /// </summary>
+    public override void FinalizeBuild()
+    {
+        if (PassiveAuras.Contains(LegendaryStats.StrandOfEternity)) GetAbility<Detonate>()?.ModifyGlobalCooldownFromStrandOfEternity();
     }
 
     /// <summary>Adds Cinders (every 100 are a Burning Ember).</summary>

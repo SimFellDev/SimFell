@@ -12,11 +12,13 @@ public abstract class Hero : Actor
     protected Hero()
     {
         AddResource(SpiritPoints);
-        // Spirit Points from damage: a hit earns its share of the enemy's health times the enemy's Spirit Point value.
+        // Spirit Points from damage: a hit earns its share of the enemy's health times the enemy's Spirit Point value, up to
+        // the enemy's whole value over the hero's damage to it (the hit is already in HeroDamage).
         OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target is not { SpiritPointValue: > 0, MaxHealth: > 0 } enemy || dmg.Amount <= 0) return;
-            GainResource(SpiritPoints, Math.Min(dmg.Amount, enemy.MaxHealth) / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
+            double counted = Math.Clamp(enemy.MaxHealth - (enemy.HeroDamage - dmg.Amount), 0, dmg.Amount);
+            if (counted > 0) GainResource(SpiritPoints, counted / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
         };
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
@@ -24,11 +26,9 @@ public abstract class Hero : Actor
         Auras.OnRemoved += (aura, now) => AuraChanged(aura, now);
     }
 
-    /// <summary>The stats <see cref="CooldownRate"/> reads (a weapon ability's own recovery auras are cooldown recovery too).</summary>
+    /// <summary>The stats <see cref="CooldownRate"/> reads.</summary>
     private static readonly int CooldownRateStats =
         AuraDef.MaskOf(StatType.CooldownRecovery) | AuraDef.MaskOf(StatType.Haste) | AuraDef.MaskOf(StatType.HasteRating);
-
-    private static readonly int CooldownRecoveryStat = AuraDef.MaskOf(StatType.CooldownRecovery);
 
     /// <summary>
     /// An aura with cooldown recovery or haste, or one a cooldown acceleration reads, progresses every recharge to now at
@@ -44,8 +44,10 @@ public abstract class Hero : Actor
 
     // Speed: CooldownRate reads only the auras' cooldown recovery and haste, the auras a cooldown acceleration reads (counted
     // as they change), the accelerations and the stat block. A recharge reads its rate again only after one of them changed;
-    // the rate it would read is the rate it has.
-    private (int Recovery, int Haste, int HasteRating, int Accelerations, int AccelerationAuras, StatBlock? Stats, int StatsVersion) _rateInputs;
+    // the rate it would read is the rate it has. Each input is its own field and is compared on its own: nearly every read
+    // finds them unchanged.
+    private int _rateRecovery, _rateHaste, _rateHasteRating, _rateAccelerations, _rateAccelerationAuras, _rateStatsVersion;
+    private StatBlock? _rateStats;
     private long _rateInputsVersion;
     private int _accelerationAuraChanges;
 
@@ -53,14 +55,19 @@ public abstract class Hero : Actor
     /// Changes whenever something <see cref="CooldownRate"/> reads may have changed. Expired auras are removed first, as the
     /// rate's own read of the auras does.
     /// </summary>
-    private long CooldownRateInputs(SimTime now)
+    internal long CooldownRateInputs(SimTime now)
     {
         Auras.CleanExpired(now);
-        var inputs = (Auras.StatVersion(StatType.CooldownRecovery), Auras.StatVersion(StatType.Haste), Auras.StatVersion(StatType.HasteRating),
-            CooldownAccelerations.Count, _accelerationAuraChanges, Stats, Stats.Version);
-        if (inputs != _rateInputs)
+        int recovery = Auras.StatVersion(StatType.CooldownRecovery), haste = Auras.StatVersion(StatType.Haste),
+            hasteRating = Auras.StatVersion(StatType.HasteRating);
+        var stats = Stats;
+        if (recovery != _rateRecovery || haste != _rateHaste || hasteRating != _rateHasteRating
+            || CooldownAccelerations.Count != _rateAccelerations || _accelerationAuraChanges != _rateAccelerationAuras
+            || !ReferenceEquals(stats, _rateStats) || stats.Version != _rateStatsVersion)
         {
-            _rateInputs = inputs;
+            (_rateRecovery, _rateHaste, _rateHasteRating) = (recovery, haste, hasteRating);
+            (_rateAccelerations, _rateAccelerationAuras, _rateStats, _rateStatsVersion) =
+                (CooldownAccelerations.Count, _accelerationAuraChanges, stats, stats.Version);
             _rateInputsVersion++;
         }
         return _rateInputsVersion;
@@ -193,7 +200,7 @@ public abstract class Hero : Actor
             int i = _damageDealt.FindLastIndex(s => s.Ability == null && s.DamageId == null && s.Handler == value);
             if (i < 0) return;
             _damageDealt.RemoveAt(i);
-            _damageDealtById.Clear();
+            ForgetDamageDealtTables();
         }
     }
 
@@ -217,11 +224,29 @@ public abstract class Hero : Actor
     private readonly List<DamageDealtSubscriber> _damageDealt = new();
     // Speed: each damage ID has its own subscribers, in subscription order, so a hit reaches only the handlers it concerns.
     private readonly Dictionary<int, DamageDealtSubscriber[]> _damageDealtById = new();
+    // Speed: the tables of recent damage IDs, one per low bits of the ID, ahead of the dictionary.
+    private const int RecentDamageIds = 64;
+    private readonly int[] _recentDamageIds = NoRecentDamageIds();
+    private readonly DamageDealtSubscriber[][] _recentSubscribers = new DamageDealtSubscriber[RecentDamageIds][];
+
+    private static int[] NoRecentDamageIds()
+    {
+        var ids = new int[RecentDamageIds];
+        Array.Fill(ids, int.MinValue);
+        return ids;
+    }
+
+    private void ForgetDamageDealtTables()
+    {
+        _damageDealtById.Clear();
+        Array.Fill(_recentDamageIds, int.MinValue);
+        Array.Clear(_recentSubscribers);
+    }
 
     private void Subscribe(DamageDealtSubscriber subscriber)
     {
         _damageDealt.Add(subscriber);
-        _damageDealtById.Clear();
+        ForgetDamageDealtTables();
     }
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastStarted;
     public event Action<Ability, EnemyTarget?, SimTime>? OnCastCompleted;
@@ -274,11 +299,15 @@ public abstract class Hero : Actor
 
     public void TriggerDamageDealt(in DamageContext hit)
     {
-        if (!_damageDealtById.TryGetValue(hit.AbilityId, out var subscribers))
+        int id = hit.AbilityId;
+        int recent = id & (RecentDamageIds - 1);
+        DamageDealtSubscriber[] subscribers;
+        if (_recentDamageIds[recent] == id) subscribers = _recentSubscribers[recent];
+        else
         {
-            int id = hit.AbilityId;
-            subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
-            _damageDealtById[id] = subscribers;
+            if (!_damageDealtById.TryGetValue(id, out subscribers!)) subscribers = DamageDealtSubscribers(id);
+            _recentDamageIds[recent] = id;
+            _recentSubscribers[recent] = subscribers;
         }
         foreach (var subscriber in subscribers)
         {
@@ -286,6 +315,15 @@ public abstract class Hero : Actor
             else subscriber.Handler!(in hit);
         }
     }
+    // A method of its own, so TriggerDamageDealt allocates the closure only for an ability ID new to the hero: a closure's
+    // captures are allocated where their scope begins.
+    private DamageDealtSubscriber[] DamageDealtSubscribers(int id)
+    {
+        var subscribers = _damageDealt.Where(s => s.Receives(id)).ToArray();
+        _damageDealtById[id] = subscribers;
+        return subscribers;
+    }
+
     public void TriggerCastStarted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastStarted?.Invoke(a, t, now);
     public void TriggerCastCompleted(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCompleted?.Invoke(a, t, now);
     public void TriggerCastCancelled(Ability a, EnemyTarget? t, SimTime now = default) => OnCastCancelled?.Invoke(a, t, now);
@@ -319,12 +357,14 @@ public abstract class Hero : Actor
     /// <summary>Starts what runs for the whole fight on its own: the Spirit Point regeneration.</summary>
     public void BeginFight(SimulationContext ctx)
     {
+        Action<SimulationContext>? regen = null;
         void Regen(SimulationContext c)
         {
             GainResource(SpiritPoints, SpiritPointRegenAmount, c);
-            c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+            c.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), regen, "Spirit Point regeneration");
         }
-        ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), Regen, "Spirit Point regeneration");
+        regen = Regen;
+        ctx.Schedule(SimTime.FromSeconds(SpiritPointRegenSeconds), regen, "Spirit Point regeneration");
         OnFightBegins(ctx);
     }
 
@@ -366,9 +406,9 @@ public abstract class Hero : Actor
     }
 
     /// <summary>Lets talents add to a cast about to resolve (<see cref="OnCastResolving"/>); see <see cref="Ability.ResolveCast(SimulationContext, EnemyTarget, object?)"/>.</summary>
-    public CastBonus PrepareCast(Ability ability, EnemyTarget? target, SimTime now, object? source = null)
+    public CastBonus PrepareCast(Ability ability, EnemyTarget? target, SimTime now, object? source = null, SimulationContext? ctx = null)
     {
-        var cast = new CastBonus(ability, target, now, source);
+        var cast = new CastBonus(ability, target, now, source, ctx);
         OnCastResolving?.Invoke(cast);
         return cast;
     }
@@ -481,32 +521,14 @@ public abstract class Hero : Actor
     /// <summary>
     /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
     /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top. Weapon abilities ignore the pool except for their own
-    /// effects: Chronoshift recovers at 8x while channeling it (per the user; 10 Rime logs: no early casts, and ruru's
-    /// fastest comes back 1.1s before it is pressed, against 7.7s if weapons took the whole pool).
+    /// Charge abilities that recharge with haste add the haste on top.
+    /// Weapon abilities always recover a base rate.
     /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
-        bool weaponOwnOnly = ability.IgnoresCooldownRecovery;
-        double pool = 1.0 + (weaponOwnOnly ? 0.0 : CooldownAcceleration(ability, now));
-        if (!weaponOwnOnly)
-        {
-            pool += Auras.SumBonuses(StatType.CooldownRecovery, now);
-        }
-        else
-        {
-            foreach (var aura in Auras.Active(now))
-            {
-                // Weapon abilities only speed up from their own recovery effects (Chronoshift's barrier, per the user).
-                if (!aura.Def.Changes(CooldownRecoveryStat) || !ability.OwnRecoveryAuraLogIds.Contains(aura.Def.LogId)) continue;
-                var mods = aura.Modifiers;
-                for (int i = 0; i < mods.Count; i++)
-                {
-                    if (mods[i].Type == StatType.CooldownRecovery) pool += mods[i].Value - 1.0;
-                }
-            }
-        }
+        if (ability.IgnoresCooldownRecovery) return 1.0;
+        double pool = 1.0 + CooldownAcceleration(ability, now) + Auras.SumBonuses(StatType.CooldownRecovery, now);
         return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
     }
 
@@ -641,11 +663,7 @@ public abstract class Hero : Actor
         return state;
     }
 
-    // Its own method: the rate's closure over the ability is made only for a new state, not on every CooldownOf.
-    private CooldownState NewCooldownState(Ability ability) =>
-        new(ability.MaxCharges, rateAt: now => CooldownRate(ability, now), rateInputs: _rateInputsReader ??= CooldownRateInputs);
-
-    private Func<SimTime, long>? _rateInputsReader;
+    private CooldownState NewCooldownState(Ability ability) => new(ability.MaxCharges, this, ability);
 
     public bool IsCooldownReady(string name, SimTime now) =>
         !Cooldowns.TryGetValue(name, out var state) || state.ChargesAt(now) > 0;
@@ -679,6 +697,12 @@ public abstract class Hero : Actor
     }
 
     public abstract void Initialize();
+
+    /// <summary>
+    /// The last step of building the hero (<see cref="Import.HeroImporter"/>), once its talents, gear and legendaries are bound: what
+    /// depends on the whole build is set here (Ardeos: the global cooldown a legendary item shortens).
+    /// </summary>
+    public virtual void FinalizeBuild() { }
     public abstract void ResetForIteration();
 
     public Ability? GetAbility(string name) =>
@@ -743,8 +767,9 @@ public abstract class Hero : Actor
 /// </summary>
 public sealed class CooldownState
 {
-    private readonly Func<SimTime, double> _rateAt;
-    private readonly Func<SimTime, long>? _rateInputs;
+    // Speed: the rate and its inputs are read from the hero directly, not through delegates (a read on nearly every Advance).
+    private readonly Hero? _hero;
+    private readonly Ability? _ability;
     private int _charges;
     private double _remaining;   // cooldown-seconds left on the charge recharging
     private double _rechargeBase;
@@ -752,31 +777,30 @@ public sealed class CooldownState
     private double _rate = 1.0;
     // The version of the rate's inputs when it was last read (-1: never read).
     private long _rateReadAt = -1;
-    // Set when Advance skipped reading the rate of a full cooldown.
-    private bool _rateStale;
+    // Set while the cooldown is full: no rate is read until a recharge starts (Spend). A new state is full, so it starts set.
+    private bool _rateStale = true;
     private bool _advancing;
 
-    /// <param name="rateAt">The rate at a time.</param>
-    /// <param name="rateInputs">
-    /// A version of what the rate reads, at a time: while it is unchanged, the rate is not read again (the same rate).
-    /// </param>
-    public CooldownState(int maxCharges, Func<SimTime, double>? rateAt = null, Func<SimTime, long>? rateInputs = null)
+    /// <summary>A cooldown that recharges in real time.</summary>
+    public CooldownState(int maxCharges)
     {
         MaxCharges = Math.Max(1, maxCharges);
         _charges = MaxCharges;
-        _rateAt = rateAt ?? (_ => 1.0);
-        _rateInputs = rateInputs;
     }
+
+    /// <summary>
+    /// <paramref name="ability"/>'s cooldown, at <paramref name="hero"/>'s <see cref="Hero.CooldownRate"/>. While the
+    /// hero's <see cref="Hero.CooldownRateInputs"/> is unchanged, the rate is not read again (the same rate).
+    /// </summary>
+    internal CooldownState(int maxCharges, Hero hero, Ability ability) : this(maxCharges) => (_hero, _ability) = (hero, ability);
 
     private void ReadRate(SimTime now)
     {
-        if (_rateInputs != null)
-        {
-            long inputs = _rateInputs(now);
-            if (inputs == _rateReadAt) return;
-            _rateReadAt = inputs;
-        }
-        _rate = _rateAt(now);
+        if (_hero == null) return;
+        long inputs = _hero.CooldownRateInputs(now);
+        if (inputs == _rateReadAt) return;
+        _rateReadAt = inputs;
+        _rate = _hero.CooldownRate(_ability!, now);
     }
 
     public int MaxCharges { get; }
@@ -852,6 +876,7 @@ public sealed class CooldownState
     {
         _charges = MaxCharges;
         _remaining = 0;
+        _rateStale = true;
     }
 
     /// <summary>Gives back one charge now (a forced cast in a replay); the recharge in progress carries on.</summary>
@@ -866,7 +891,7 @@ public sealed class CooldownState
     /// <summary>Progresses the recharge to <paramref name="now"/> at the rate last read, then reads the rate at <paramref name="now"/>.</summary>
     public void Advance(SimTime now)
     {
-        if (now == default || now < _last || _advancing) return;
+        if (now < _last || _advancing) return;
         _advancing = true;
         try
         {

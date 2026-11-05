@@ -20,7 +20,7 @@ installed.
 | `data/reviews/<review>.hits.csv` | every engine hit with the log hit it matched: times, amounts, crits, crit chance, tick fraction, the player's auras |
 | `data/reviews/<review>.html` | every step where the engine and the log disagree |
 | `data/scripts/<review>.replay.json` | the replay script: the character, casts, enemies and auras the replay follows |
-| `data/fights/<code>_fight<id>.raw.json` | every logged event of the fight: `events`, with `master_data` naming actors and abilities |
+| `data/fights/<code>_fight<id>_p<player>.raw.json` | one player's fight: `events` has the player's events (as source or as target), every buff and debuff on an enemy, every enemy's death and its casts except melee swings, the dungeon start and every player's `combatantinfo`; `master_data` names actors and abilities |
 
 Log IDs are game IDs plus an offset: effects + 1,000,000, talents + 2,000,000, augmentations + 3,000,000
 (`src/FellowshipSim.Core/Domain/LogIds.cs`). `docs/REPLAY_ACCURACY.md` lists the ways a log is inexact.

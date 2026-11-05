@@ -20,22 +20,29 @@ public class BraveMachinations : Aspect
         if (hero.WeaponAbility is not { } weapon) return;
         weapon.CritChanceBonus += ForRank(CritChanceByRank);
         double reduction = ForRank(CooldownReductionByRank);
-        bool reducedThisCast = false;
-        // The fight the flag belongs to (each sim iteration and replay has its own).
+        // Each completed cast of the weapon ability arms one cooldown reduction, and the first crit takes it. The cast resolving is its
+        // completion, before any of its hits (OnCastCompleted comes after an instant weapon ability's hits).
+        bool armed = false;
+        // The fight the flag belongs to (each sim iteration and replay has its own, and the hero is reused).
         SimulationContext? fight = null;
-        hero.OnCastCompleted += (ability, _, _) =>
+        hero.OnCastResolving += cast =>
         {
-            if (ability == weapon) reducedThisCast = false;
+            if (fight != cast.SimContext)
+            {
+                fight = cast.SimContext;
+                armed = false;
+            }
+            if (cast.Ability == weapon) armed = true;
         };
         weapon.Hit += (in hit) =>
         {
             if (fight != hit.SimContext)
             {
                 fight = hit.SimContext;
-                reducedThisCast = false;
+                armed = false;
             }
-            if (!hit.IsCrit || reducedThisCast) return;
-            reducedThisCast = true;
+            if (!hit.IsCrit || !armed) return;
+            armed = false;
             hero.ReduceCooldown(weapon.Name, SimTime.FromSeconds(reduction * weapon.Cooldown.TotalSeconds), hit.Timestamp);
         };
     }

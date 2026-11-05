@@ -37,6 +37,19 @@ public class SimcProfileTests
     }
 
     [Fact]
+    public void Source_Line_Is_The_Build_Log_Link_And_Is_Written_Back()
+    {
+        const string link = "https://www.fellowshiplogs.com/reports/V9QGwXzvZhPKMTaN?fight=7&source=64";
+        string text = Profile.ReplaceLineEndings("\n").Replace("rime=\"sww\"\n", $"rime=\"sww\"\nsource={link}\n");
+        Assert.Contains("source=", text);
+        var parsed = SimcProfile.Parse(text);
+        Assert.Equal(link, parsed.Build.LogSource);
+        Assert.Equal(text.ReplaceLineEndings(), parsed.Format().ReplaceLineEndings());
+        Assert.Equal("", SimcProfile.Parse(Profile).Build.LogSource);
+        Assert.DoesNotContain("source=", SimcProfile.Parse(Profile).Format());
+    }
+
+    [Fact]
     public void Profile_Imports_Every_Talent_And_The_Helm()
     {
         var profile = SimcProfile.Parse(Profile);

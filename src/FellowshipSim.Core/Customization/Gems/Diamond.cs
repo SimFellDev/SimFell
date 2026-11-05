@@ -31,14 +31,12 @@ public class Diamond : Gem
         new(338, 1, "Harmonious Soul", 80, V(("StatBonus", HarmoniousSoulStatPerStack), ("Duration", HarmoniousSoulSeconds), ("MaxStacks", 4), ("StackLoss", 1))),
         new(298, 2, "Stoic's Teachings", 150, V(("ArmorBonus", 40), ("PrimaryStatBonus", 4))),
         new(302, 3, "Tranquil Resolve", 220, V(("DamageReduction", 0.08), ("Duration", 6), ("Cooldown", 20))),
-        new(292, 4, "Ancient's Wisdom", 300, V(("PrimaryStatBonus", 1.02)),
-            AuraDef.Effect("Ancient's Wisdom", 1917, modifiers: StatModifier.More(StatType.PrimaryAttributeMultiplier, 1.02))),
+        new(292, 4, "Ancient's Wisdom", 300, V(("PrimaryStatBonus", 1.02))),
         new(290, 5, "Blessing of the Artisan", 450, V(("CooldownReduction", 0.08))),
         new(339, 6, "Harmonious Soul - II", 600, V(("StatBonus", HarmoniousSoulStatPerStack), ("Duration", HarmoniousSoulSeconds), ("MaxStacks", 12), ("StackLoss", 1))),
         new(299, 7, "Stoic's Teachings - II", 800, V(("ArmorBonus", 120), ("PrimaryStatBonus", 12))),
         new(303, 8, "Tranquil Resolve - II", 1000, V(("DamageReduction", 0.24), ("Duration", 6), ("Cooldown", 20))),
-        new(293, 9, "Ancient's Wisdom - II", 1250, V(("PrimaryStatBonus", 1.06)),
-            AuraDef.Effect("Ancient's Wisdom - II", 1918, modifiers: StatModifier.More(StatType.PrimaryAttributeMultiplier, 1.06))),
+        new(293, 9, "Ancient's Wisdom - II", 1250, V(("PrimaryStatBonus", 1.06))),
         new(291, 10, "Blessing of the Artisan - II", 1500, V(("CooldownReduction", 0.24))),
     ];
 
@@ -61,7 +59,8 @@ public class Diamond : Gem
                 hero.Stats.PrimaryStat += node.Value("PrimaryStatBonus");
                 return true;
             case 4: // Ancient's Wisdom: Main Stat.
-                hero.PassiveAuras.Add(node.Grants!);
+                // Not a node's Grants: a live power change moves its Main Stat through StatEffects, and a swapped grant would count twice.
+                hero.PassiveAuras.Add(hero.Register(AuraDef.Effect(node.Name, node.IsRankTwo ? 1918 : 1917, modifiers: StatModifier.More(StatType.PrimaryAttributeMultiplier, node.Value("PrimaryStatBonus")))));
                 return true;
             default: // Tranquil Resolve (defensive) and Blessing of the Artisan (Relic cooldowns) do not affect damage.
                 return true;

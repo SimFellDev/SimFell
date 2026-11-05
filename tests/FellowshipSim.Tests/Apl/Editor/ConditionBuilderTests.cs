@@ -1,5 +1,6 @@
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Editing;
 using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.UI.Apl;
 
@@ -24,6 +25,7 @@ public class ConditionBuilderTests
     [InlineData("(a or b) * 2 = 0 and (a and (b or c)) > 1")]
     [InlineData("floor(dot.x.oldest.remains) < 3 and max(worb, spirit * 2, 1) >= 2 or not prev.frost_bolt")]
     [InlineData("-abs(worb - 1) + min(a and b, (c or d)) * ceil(not x)")]
+    [InlineData("min:dot.engulfing_flames.remains < gcd and max:debuff.x.remains >= 2")]
     public void Rows_write_the_text_they_were_read_from(string text)
     {
         var rows = ConditionRow.From(AplCondition.Rows(AplParser.ParseExpression(text)));
@@ -108,6 +110,48 @@ public class ConditionBuilderTests
         Assert.True(missing.Count == 0, string.Join(Environment.NewLine, missing));
     }
 
+    /// <summary>
+    /// Every path the code fields complete, and each debuff's min: and max: remains, is a value the builder offers: its
+    /// kind lists its name and its property.
+    /// </summary>
+    [Fact]
+    public void Every_path_the_text_completes_is_a_value_of_the_builder()
+    {
+        string[] variables = ["orbs"];
+        var kinds = ConditionBuilder.Kinds(_v, variables);
+        var paths = new List<string>();
+        void Walk(CompletionNode node, string prefix)
+        {
+            foreach (var (text, child) in node.Children)
+            {
+                string path = prefix.Length > 0 ? $"{prefix}.{text}" : text;
+                if (child.Leaf && child.Kind is not (AplTokenKind.Function or AplTokenKind.Operator)) paths.Add(path);
+                Walk(child, path);
+            }
+        }
+        Walk(Completions.TreeOf(_v), "");
+        foreach (var aura in _v.Auras)
+        {
+            foreach (var aggregate in Enum.GetValues<AplEnemyAggregate>())
+            {
+                paths.Add($"{aggregate.Prefix()}:{PropertyExpression.DotScope}.{aura.Slug}.{AplEnemyAggregates.Property}");
+                paths.Add($"{aggregate.Prefix()}:{PropertyExpression.DebuffScope}.{aura.Slug}.{AplEnemyAggregates.Property}");
+            }
+        }
+        paths.AddRange(variables.Select(v => $"{PropertyExpression.VariableScope}.{v}"));
+        Assert.Contains("buff.chill.up", paths);
+        Assert.Contains("winter_orbs.deficit", paths);
+        Assert.Contains("prev_gcd.frost_bolt", paths);
+
+        var missing = paths.Where(path =>
+        {
+            var parts = ConditionBuilder.SplitPath(_v, path);
+            var kind = kinds.SingleOrDefault(k => k.Id == parts.Kind);
+            return kind == null || !ConditionBuilder.Knows(kind, parts.Name) || (kind.Properties != null && !kind.Properties.Contains(parts.Property!));
+        }).ToList();
+        Assert.True(missing.Count == 0, string.Join(Environment.NewLine, missing));
+    }
+
     private static IEnumerable<string> Paths(IEnumerable<AplConditionItem> rows) => rows.SelectMany(row =>
         row.Items is { } items ? Paths(items)
         : (row.Left ?? []).Concat((row.Comparisons ?? []).SelectMany(c => c.Terms)).SelectMany(Paths));
@@ -157,6 +201,11 @@ public class ConditionBuilderTests
         Assert.Equal(new PathParts(PropertyExpression.TalentScope, "icy_talons"), ConditionBuilder.SplitPath(_v, "talent.icy_talons"));
         Assert.Equal(new PathParts(PropertyExpression.ActiveDotScope, "chill"), ConditionBuilder.SplitPath(_v, "active_dot.chill"));
         Assert.Equal(new PathParts(PropertyExpression.VariableScope, "x"), ConditionBuilder.SplitPath(_v, "variable.x"));
+        Assert.Equal(new PathParts("dot", "chill", "min:remains"), ConditionBuilder.SplitPath(_v, "min:dot.chill.remains"));
+        Assert.Equal(new PathParts("debuff", "chill", "max:remains"), ConditionBuilder.SplitPath(_v, "max:debuff.chill.remains"));
+        Assert.Equal(new PathParts(ConditionBuilder.NamedKind, "min:buff.chill.remains"), ConditionBuilder.SplitPath(_v, "min:buff.chill.remains"));
+        Assert.Equal("min:dot.chill.remains", ConditionBuilder.JoinPath(_v, new PathParts("dot", "chill", "min:remains")));
+        Assert.Equal("max:debuff.chill.remains", ConditionBuilder.JoinPath(_v, new PathParts("debuff", "chill", "max:remains")));
 
         Assert.Equal("cooldown.ice_comet.ready", ConditionBuilder.JoinPath(_v, new PathParts("cooldown", "ice_comet", "ready")));
         Assert.Equal("worb", ConditionBuilder.JoinPath(_v, new PathParts(ConditionBuilder.ResourceKind, "worb", ConditionBuilder.CurrentProperty)));
@@ -282,6 +331,27 @@ public class ConditionBuilderTests
 
         ConditionBuilder.Apply(term, new ValuePick(PropertyExpression.TalentScope, "icy_talons"), _v, kinds);
         Assert.Equal("talent.icy_talons", term.Path);
+    }
+
+    [Fact]
+    public void A_debuffs_min_and_max_are_properties_of_its_kind_with_a_doc()
+    {
+        var kinds = ConditionBuilder.Kinds(_v, []);
+        foreach (string scope in new[] { PropertyExpression.DebuffScope, PropertyExpression.DotScope })
+        {
+            var properties = kinds.Single(k => k.Id == scope).Properties!;
+            Assert.Contains("min:remains", properties);
+            Assert.Contains("max:remains", properties);
+            Assert.Equal("Shortest time remaining on any enemy", ConditionBuilder.PropertyDoc(scope, "min:remains")!.Label);
+        }
+        Assert.DoesNotContain("min:remains", kinds.Single(k => k.Id == PropertyExpression.BuffScope).Properties!);
+
+        // A name picked in the same kind keeps the term's aggregate; another kind takes its first property.
+        var term = new ConditionTerm { Path = "min:dot.chill.remains" };
+        ConditionBuilder.Apply(term, new ValuePick(PropertyExpression.DotScope, "glacial_assault"), _v, kinds);
+        Assert.Equal("min:dot.glacial_assault.remains", term.Path);
+        ConditionBuilder.Apply(term, new ValuePick(PropertyExpression.BuffScope, "chill"), _v, kinds);
+        Assert.Equal("buff.chill.up", term.Path);
     }
 
     [Fact]

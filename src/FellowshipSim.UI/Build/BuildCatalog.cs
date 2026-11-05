@@ -79,6 +79,7 @@ public sealed class BuildCatalog
         Sigils = OfKind<Sigil>();
         ProtectiveEnchants = OfKind<ProtectiveEnchant>();
         var mainStat = heroClass.MainStat;
+        MainStatShort = mainStat switch { MainStat.Strength => "Str", MainStat.Agility => "Agi", _ => "Int" };
         StatEnchants = StatEnchant.All
             .Select(e => new StatEnchantOption(e, e.NameFor(mainStat)))
             .ToList();
@@ -91,6 +92,9 @@ public sealed class BuildCatalog
     public static BuildCatalog For(string hero) => Heroes.GetOrAdd(hero, h => new BuildCatalog(h));
 
     public string Hero { get; }
+
+    /// <summary>The hero's main stat, short as the gear's stat columns name it ("Int").</summary>
+    public string MainStatShort { get; }
 
     /// <summary>The talent tree, row by row and column by column.</summary>
     public IReadOnlyList<TalentOption> Talents { get; }

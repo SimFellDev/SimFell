@@ -11,7 +11,7 @@ namespace FellowshipSim.Tests;
 
 /// <summary>
 /// Dungeon fights: the dungeon profile's text and its problems, the pulls in turn with their enemies, joins, chains and
-/// downtime, enemies dying from damage at the hero's share, enemy casts and interrupts, the dungeon_event and target
+/// downtime, enemies dying at their pull durations, the party's damage, enemy casts and interrupts, the dungeon_event and target
 /// conditions that read them, and old action-list names in the new ones.
 /// </summary>
 public class DungeonTests
@@ -19,12 +19,16 @@ public class DungeonTests
     private static CharacterBuild Build(string hero = "Rime") => JsonSerializer.Deserialize<CharacterBuild>(
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"{hero.ToLowerInvariant()}_character.json")))!;
 
-    private static DungeonProfile Dungeon(params DungeonPull[] pulls) => new("Test", DungeonProfile.DefaultHeroShare, 600, pulls, DifficultyScaling.Base.Eternal);
+    private static DungeonProfile Dungeon(params DungeonPull[] pulls) => new("Test", 600, pulls, DifficultyScaling.Base.Eternal);
 
-    private static DungeonPull Trash(int number, int count, double hitPoints) => new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(count, "Trash Mob", 3, HitPoints: hitPoints)]);
+    private const double TrashHitPoints = 10_000, BossHitPoints = 60_000;
 
-    private static DungeonPull Boss(int number, double hitPoints, bool final = false) =>
-        new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(1, "Boss", 45, HitPoints: hitPoints, Boss: true)], Final: final);
+    // A pull of trash or of a boss, 'seconds' long.
+    private static DungeonPull Trash(int number, int count, double seconds) =>
+        new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(count, "Trash Mob", 3, HitPoints: TrashHitPoints)], seconds);
+
+    private static DungeonPull Boss(int number, double seconds, bool final = false) =>
+        new(number.ToString(CultureInfo.InvariantCulture), [new EnemyGroup(1, "Boss", 45, HitPoints: BossHitPoints, Boss: true)], seconds, Final: final);
 
     // A cast is reported as it completes, so one begun before a pull ends can complete up to a cast time after it.
     private const double CastTime = 2.5;
@@ -77,13 +81,6 @@ public class DungeonTests
             .Run(SimTime.FromSeconds(dungeon.TimeLimitSeconds), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon))
             .Casts.Where(c => c.Name == "Frost Bolt").ToList();
 
-    // The hero's frost bolt damage per second on one target, from a training dummy fight.
-    private static readonly Lazy<double> Dps = new(() =>
-        new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts)).Run(SimTime.FromSeconds(60), iterations: 1, degreeOfParallelism: 1).MeanDps);
-
-    // Hit points the hero's share of takes about this many seconds of frost bolts.
-    private static double HitPointsFor(double seconds) => Math.Round(Dps.Value * seconds / (DungeonProfile.DefaultHeroShare / 100.0) / DifficultyScaling.Base.Health);
-
     [Fact]
     public void The_Default_Dungeon_Reads_Back_From_Its_Text()
     {
@@ -92,9 +89,7 @@ public class DungeonTests
         Assert.Null(dungeon.Problem());
         Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
         Assert.Contains(dungeon.Pulls, p => p.IsBoss && p.Final);
-        Assert.Contains(dungeon.Pulls, p => p.ChainWith != null);
-        Assert.Contains(dungeon.Pulls, p => p.Join != null);
-        Assert.Contains(dungeon.Pulls, p => p.Groups.Any(g => g.Cast != null));
+        Assert.All(dungeon.Pulls, p => Assert.True(p.DurationSeconds > 0));
     }
 
     [Fact]
@@ -102,11 +97,11 @@ public class DungeonTests
     {
         const string text = """
             dungeon=X
-            pull.first=/count=2,name=Imp,hit_points=900000
-            pull.last_boss=/downtime=25,final=0
+            pull.first=/duration=30,count=2,name=Imp,hit_points=900000
+            pull.last_boss=/duration=90,downtime=25,final=0
             pull.last_boss+=/boss.1,name=Koros,hit_points=4000000
-            pull.2=/count=1,name=Bat,hit_points=600000,chain_with=first,pull_with=adds_1,after_deaths=1
-            pull.adds_1=/count=2,name=Wisp,hit_points=500000
+            pull.2=/duration=20,count=1,name=Bat,hit_points=600000,chain_with=first,pull_with=adds_1,after_deaths=1
+            pull.adds_1=/duration=15,count=2,name=Wisp,hit_points=500000
             """;
         var dungeon = DungeonProfile.Parse(text);
         Assert.Equal(["first", "last_boss", "2", "adds_1"], dungeon.Pulls.Select(p => p.Name));
@@ -124,24 +119,23 @@ public class DungeonTests
     {
         const string text = """
             dungeon=X
-            hero_share=40
             time_limit=900
             difficulty=12
-            pull.3=/count=4,name=Ghoul,pull_duration=45
+            pull.3=/count=4,name=Ghoul,hit_points=5000,duration=45
             pull.3+=/downtime=20
-            pull.1=/count=5,name=Imp,spirit_points=3,hit_points=900000
+            pull.1=/duration=60,count=5,name=Imp,spirit_points=3,hit_points=900000
             pull.1+=/count=1,name="Ogre, Captain",spirit_points=10,priority=1,hit_points=3000000,interrupt_ability="Big Cast",cooldown=20
             pull.1+=/pull_with=4,offset_pct=50
-            pull.4=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000,final=1
-            pull.2=/count=3,name=Bat,hit_points=600000,chain_with=1,downtime=5
-            pull.5=/count=1,name=Wisp,hit_points=1
+            pull.4=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=40000000,final=1,duration=120
+            pull.2=/duration=30,count=3,name=Bat,hit_points=600000,chain_with=1,downtime=5
+            pull.5=/duration=10,count=1,name=Wisp,hit_points=1
             pull.5+=/pull_with=3,after_deaths=50%
-            pull.6=/count=1,name=Wisp,hit_points=1
+            pull.6=/duration=10,count=1,name=Wisp,hit_points=1
             pull.6+=/pull_with=5,after_deaths_total=2
             """;
         var dungeon = DungeonProfile.Parse(text);
         Assert.Equal(["3", "1", "4", "2", "5", "6"], dungeon.Pulls.Select(p => p.Name));
-        Assert.Equal(40, dungeon.HeroShare);
+        Assert.Equal([45, 60, 120, 30, 10, 10], dungeon.Pulls.Select(p => p.DurationSeconds));
         Assert.Equal(900, dungeon.TimeLimitSeconds);
         Assert.Equal(12, dungeon.Difficulty);
         var first = dungeon.Pull("1")!;
@@ -162,15 +156,15 @@ public class DungeonTests
             # Line one of the dungeon.
             dungeon=X
             # Line two of the dungeon.
-            hero_share=40
+            time_limit=1800
             # The imps first.
             #
             pull.1=/count=5,name=Imp,hit_points=900000
             # The ogre casts.
             pull.1+=/count=1,name=Ogre,hit_points=900000
             # Pull 1's options.
-            pull.1+=/downtime=5
-            pull.2=/
+            pull.1+=/duration=40,downtime=5
+            pull.2=/duration=20
             # The bats.
             pull.2+=/count=3,name=Bat,hit_points=600000
             # After the last pull.
@@ -187,16 +181,15 @@ public class DungeonTests
             # Line two of the dungeon.
             dungeon=X
             difficulty=10
-            hero_share=40
             time_limit=1800
             # The imps first.
             # Pull 1's options.
-            pull.1=/downtime=5
+            pull.1=/duration=40,downtime=5
             pull.1+=/count=5,name=Imp,hit_points=900000
             # The ogre casts.
             pull.1+=/count=1,name=Ogre,hit_points=900000
             # After the last pull.
-            pull.2=/
+            pull.2=/duration=20
             # The bats.
             pull.2+=/count=3,name=Bat,hit_points=600000
 
@@ -205,35 +198,49 @@ public class DungeonTests
     }
 
     [Fact]
-    public void The_Hero_Share_Varies_In_Its_Range_Each_Fight()
+    public void A_Hero_Who_Never_Acts_Still_Ends_Each_Pull_At_Its_Duration()
     {
-        var fight = new FightOptions(Dungeon: DefaultDungeons.Default, HeroShareVariance: 0.2);
-        var shares = Enumerable.Range(1, 200).Select(fight.HeroShare).ToList();
-        Assert.All(shares, s => Assert.InRange(s, 0.30, 0.45));
-        Assert.Equal(200, shares.Distinct().Count());
-        Assert.True(shares.Min() < 0.31 && shares.Max() > 0.44);
-        Assert.Equal(0.375, new FightOptions(Dungeon: DefaultDungeons.Default).HeroShare(7));
-        // At most all the damage: 90% ± 50% stops at 100%.
-        var high = new FightOptions(Dungeon: DefaultDungeons.Default with { HeroShare = 90 }, HeroShareVariance: 0.5);
-        var highShares = Enumerable.Range(1, 50).Select(high.HeroShare).ToList();
-        Assert.Contains(1.0, highShares);
-        Assert.All(highShares, s => Assert.InRange(s, 0.45, 1.0));
+        // An action list whose one action never casts: the hero takes no action in the whole fight.
+        var dungeon = Dungeon(Trash(1, 3, 20), Boss(2, 30, final: true) with { DowntimeSeconds = 10 });
+        var log = Fight(dungeon, "actions+=/frost_bolt,if=0");
+        Assert.Empty(log.Hits);
+        Assert.Equal(60, log.Result.DurationSeconds, 3);
+        Assert.Equal(20, log.DeathOf(1), 3);
+        Assert.Equal(60, log.DeathOf(2), 3);
     }
 
     [Fact]
-    public void A_Fight_Uses_Its_Own_Hero_Share()
+    public void A_Dungeon_Reports_The_Party_Dps_And_The_Heros_Share_Of_It()
     {
-        var dungeon = Dungeon(Boss(1, HitPointsFor(20), final: true));
-        var varied = new FightOptions(Dungeon: dungeon, HeroShareVariance: 0.2);
-        foreach (int seed in new[] { 3, 4 })
-        {
-            double share = varied.HeroShare(seed) * 100;
-            Assert.Equal(Duration(new FightOptions(Dungeon: dungeon with { HeroShare = share }), seed), Duration(varied, seed));
-        }
-        Assert.NotEqual(Duration(varied, 3), Duration(varied, 4));
+        var dungeon = Dungeon(Trash(1, 3, 20), Boss(2, 30, final: true) with { DowntimeSeconds = 10 });
+        var result = Fight(dungeon, FrostBolts).Result;
+        double health = (3 * TrashHitPoints + BossHitPoints) * DifficultyScaling.Base.Health;
+        Assert.Equal(health / 60, result.PartyDps!.Value, 6);
+        Assert.InRange(result.GroupDamageShare!.Value, 0.0001, 1.0);
+        var party = result.Timeline!.PartyDps!;
+        Assert.Equal(result.Timeline.Dps.Count, party.Count);
+        // No enemy in the downtime from 20 to 30 s: the rolling party DPS falls to 0 by its end.
+        Assert.Equal(0, party[29], 6);
+        // Training dummies have no party.
+        var dummies = new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts)).Run(SimTime.FromSeconds(30), iterations: 1, degreeOfParallelism: 1);
+        Assert.Null(dummies.PartyDps);
+        Assert.Null(dummies.GroupDamageShare);
+        Assert.Null(dummies.Timeline!.PartyDps);
+    }
 
-        double Duration(FightOptions fight, int seed) => new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts))
-            .Run(SimTime.FromSeconds(600), iterations: 1, firstSeed: seed, degreeOfParallelism: 1, fight: fight).DurationSeconds;
+    [Fact]
+    public void The_Heros_Spirit_From_An_Enemy_Is_At_Most_Its_Worth()
+    {
+        var ctx = new SimulationContext(HeroImporter.Import(Build()));
+        var hero = (Hero)ctx.Player;
+        var enemy = ctx.AddEnemy(1001, 1, "Trash Mob", maxHealth: 1000);
+        enemy.SpiritPointValue = 3;
+        enemy.FollowTime(ctx, SimTime.Zero, SimTime.FromSeconds(100));
+        double before = hero.ResourceAmount(Hero.SpiritPoints);
+        // Three times the enemy's health: Spirit Points for its health alone.
+        for (int i = 0; i < 6; i++) ctx.DealLoggedHit(hero, enemy, 1, "Hit", 500, false);
+        Assert.Equal(3, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
+        Assert.Equal(3000, enemy.HeroDamage);
     }
 
     [Fact]
@@ -255,39 +262,40 @@ public class DungeonTests
     [InlineData("pull.1=/count=1,name=A,hit_points=1", "no dungeon=<name> line")]
     [InlineData("dungeon=X", "no pull line")]
     [InlineData("dungeon=X\npull.1+=/count=1,name=A,hit_points=1", "pull 1 has no pull.1= line")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1\npull.1=/count=1,name=A,hit_points=1", "pull 1 starts twice")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1\npull.1=/duration=1,count=1,name=A,hit_points=1", "pull 1 starts twice")]
     [InlineData("dungeon=X\npull.x-y=/count=1,name=A,hit_points=1", "'x-y' is not a pull name")]
-    [InlineData("dungeon=X\npull.a=/count=1,name=A,hit_points=1,chain_with=b c", "'b c' is not a pull name")]
-    [InlineData("dungeon=X\npull.a=/count=1,name=A,hit_points=1,pull_with=b", "Pull a: pull_with names pull b, and there is no pull b.")]
-    [InlineData("dungeon=X\npull.1=/name=A,hit_points=1", "an enemy group line starts with count= or boss.N")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,size=3", "'size' is not a pull option")]
-    [InlineData("dungeon=X\npull.1=/boss.1,count=2,name=A", "a boss line is one boss")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,cooldown=5", "cooldown and cast_time need interrupt_ability")]
-    [InlineData("dungeon=X\npull.1=/count=0,name=A,hit_points=1", "Pull 1: A: the count is at least 1.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=0", "Pull 1: A: the hit points are more than 0.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,spirit_points=-1", "Pull 1: A: the Spirit Points are 0 or more.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A", "Pull 1: a group without hit points needs the pull's pull_duration.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,downtime=-1", "Pull 1: the downtime is 0 seconds or more.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,final=1", "Pull 1: only a pull with a boss is the final boss.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,interrupt_ability=B,cooldown=2,cast_time=3", "Pull 1: A: the cast time is more than 0 seconds and at most the cooldown.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,interrupt_ability=B", "Pull 1: A: the cooldown is more than 0 seconds.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,offset_ms=5", "Pull 1: a trigger needs pull_with.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,offset_ms=5,offset_pct=50\npull.2=/count=1,name=A,hit_points=1", "pull_with has one trigger at most")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,offset_pct=100\npull.2=/count=1,name=A,hit_points=1", "offset_pct is more than 0 and less than 100")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,after_deaths=1.5\npull.2=/count=1,name=A,hit_points=1", "after_deaths: a death count is a whole number of at least 1")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,after_deaths=2\npull.2=/count=1,name=A,hit_points=1", "Pull 1: after_deaths is at most the pull's 1 enemies.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,after_deaths_total=0%\npull.2=/count=1,name=A,hit_points=1", "after_deaths_total: a death percent is more than 0 and at most 100")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=3", "Pull 1: pull_with names pull 3, and there is no pull 3.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,chain_with=1", "Pull 1: chain_with names the pull itself.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=3\npull.2=/count=1,name=A,hit_points=1,pull_with=3\npull.3=/count=1,name=A,hit_points=1", "Pull 3: two pulls take it in with pull_with.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=3\npull.2=/count=1,name=A,hit_points=1\npull.3=/count=1,name=A,hit_points=1,chain_with=2", "Pull 3: a pull taken in with pull_with has no chain_with.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=4\npull.4=/count=1,name=A,hit_points=1,chain_with=1", "Pull 4: a pull taken in with pull_with has no chain_with.")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2\npull.2=/count=1,name=A,hit_points=1,pull_with=1", "in a circle through pull_with and chain_with")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,chain_with=2\npull.2=/count=1,name=A,hit_points=1,chain_with=1", "in a circle through pull_with and chain_with")]
-    [InlineData("dungeon=X\npull.1=/count=1,name=A,hit_points=1,pull_with=2,chain_with=3\npull.2=/count=1,name=A,hit_points=1\npull.3=/count=1,name=A,hit_points=1,chain_with=2", "in a circle through pull_with and chain_with")]
-    [InlineData("dungeon=X\nhero_share=0\npull.1=/count=1,name=A,hit_points=1", "The hero share is more than 0% and at most 100%.")]
-    [InlineData("dungeon=X\ntime_limit=0\npull.1=/count=1,name=A,hit_points=1", "The time limit is more than 0 seconds.")]
-    [InlineData("dungeon=X\ndifficulty=33\npull.1=/count=1,name=A,hit_points=1", "The difficulty is an Eternal level from 0 (Base) to 32.")]
+    [InlineData("dungeon=X\npull.a=/duration=1,count=1,name=A,hit_points=1,chain_with=b c", "'b c' is not a pull name")]
+    [InlineData("dungeon=X\npull.a=/duration=1,count=1,name=A,hit_points=1,pull_with=b", "Pull a: pull_with names pull b, and there is no pull b.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,name=A,hit_points=1", "an enemy group line starts with count= or boss.N")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,size=3", "'size' is not a pull option")]
+    [InlineData("dungeon=X\npull.1=/boss.1,count=2,name=A,duration=1", "a boss line is one boss")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,cooldown=5", "cooldown and cast_time need interrupt_ability")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=0,name=A,hit_points=1", "Pull 1: A: the count is at least 1.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=0", "Pull 1: A: the hit points are more than 0.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,spirit_points=-1", "Pull 1: A: the Spirit Points are 0 or more.")]
+    [InlineData("dungeon=X\npull.1=/count=1,name=Unknown,hit_points=1", "Pull 1 has no duration=<seconds>.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=Unknown", "Pull 1: Unknown: the enemy has hit_points, or the name of one creature of the game data.")]
+    [InlineData("dungeon=X\npull.1=/duration=0,count=1,name=A,hit_points=1", "Pull 1: the duration is more than 0 seconds.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,downtime=-1", "Pull 1: the downtime is 0 seconds or more.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,final=1", "Pull 1: only a pull with a boss is the final boss.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,interrupt_ability=B,cooldown=2,cast_time=3", "Pull 1: A: the cast time is more than 0 seconds and at most the cooldown.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,interrupt_ability=B", "Pull 1: A: the cooldown is more than 0 seconds.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,offset_ms=5", "Pull 1: a trigger needs pull_with.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,offset_ms=5,offset_pct=50\npull.2=/duration=1,count=1,name=A,hit_points=1", "pull_with has one trigger at most")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,offset_pct=100\npull.2=/duration=1,count=1,name=A,hit_points=1", "offset_pct is more than 0 and less than 100")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,after_deaths=1.5\npull.2=/duration=1,count=1,name=A,hit_points=1", "after_deaths: a death count is a whole number of at least 1")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,after_deaths=2\npull.2=/duration=1,count=1,name=A,hit_points=1", "Pull 1: after_deaths is at most the pull's 1 enemies.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,after_deaths_total=0%\npull.2=/duration=1,count=1,name=A,hit_points=1", "after_deaths_total: a death percent is more than 0 and at most 100")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=3", "Pull 1: pull_with names pull 3, and there is no pull 3.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,chain_with=1", "Pull 1: chain_with names the pull itself.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=3\npull.2=/duration=1,count=1,name=A,hit_points=1,pull_with=3\npull.3=/duration=1,count=1,name=A,hit_points=1", "Pull 3: two pulls take it in with pull_with.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=3\npull.2=/duration=1,count=1,name=A,hit_points=1\npull.3=/duration=1,count=1,name=A,hit_points=1,chain_with=2", "Pull 3: a pull taken in with pull_with has no chain_with.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=4\npull.4=/duration=1,count=1,name=A,hit_points=1,chain_with=1", "Pull 4: a pull taken in with pull_with has no chain_with.")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2\npull.2=/duration=1,count=1,name=A,hit_points=1,pull_with=1", "in a circle through pull_with and chain_with")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,chain_with=2\npull.2=/duration=1,count=1,name=A,hit_points=1,chain_with=1", "in a circle through pull_with and chain_with")]
+    [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,chain_with=3\npull.2=/duration=1,count=1,name=A,hit_points=1\npull.3=/duration=1,count=1,name=A,hit_points=1,chain_with=2", "in a circle through pull_with and chain_with")]
+    [InlineData("dungeon=X\ntime_limit=0\npull.1=/duration=1,count=1,name=A,hit_points=1", "The time limit is more than 0 seconds.")]
+    [InlineData("dungeon=X\ndifficulty=33\npull.1=/duration=1,count=1,name=A,hit_points=1", "The difficulty is an Eternal level from 0 (Base) to 32.")]
     public void A_Dungeon_Text_Names_What_Is_Wrong(string text, string problem)
     {
         var e = Assert.Throws<FormatException>(() => DungeonProfile.Parse(text));
@@ -343,41 +351,9 @@ public class DungeonTests
     }
 
     [Fact]
-    public void An_Enemy_With_Hit_Points_Dies_As_The_Heros_Damage_Reaches_Their_Share()
-    {
-        var hero = HeroImporter.Import(Build());
-        var ctx = new SimulationContext(hero);
-        var enemy = ctx.AddEnemy(1001, 1, "Trash Mob", maxHealth: 1000);
-        enemy.FollowDamage(ctx, 0.4);
-        ctx.DealLoggedHit(hero, enemy, 1, "Hit", 200, isCrit: false);
-        Assert.Equal(500, enemy.CurrentHealth, 6);
-        ctx.DealLoggedHit(hero, enemy, 1, "Hit", 199, isCrit: false);
-        ctx.RunUntil(SimTime.Zero);
-        Assert.False(enemy.IsSleeping);
-        ctx.DealLoggedHit(hero, enemy, 1, "Hit", 1, isCrit: false);
-        ctx.DealLoggedHit(hero, enemy, 1, "Hit", 1, isCrit: false);
-        ctx.RunUntil(SimTime.Zero);
-        Assert.True(enemy.IsSleeping);
-    }
-
-    [Fact]
-    public void The_Heros_Share_Of_An_Enemys_Health_Holds_In_A_Fight()
-    {
-        double hp = HitPointsFor(20), health = hp * DifficultyScaling.Base.Health;
-        var log = Fight(Dungeon(Boss(1, hp, final: true)), FrostBolts);
-        double dealt = log.Hits.Where(h => h.Enemy.Id == 1001).Sum(h => h.Amount);
-        double lastHit = log.Hits.Where(h => h.Enemy.Id == 1001).Max(h => h.Amount);
-        Assert.InRange(dealt, health * 0.375, health * 0.375 + lastHit);
-        // The fight ends as the boss dies, and its DPS is over its own length.
-        Assert.Equal(log.DeathOf(1), log.Result.DurationSeconds, 3);
-        Assert.InRange(log.Result.MeanDps, dealt / log.DeathOf(1) * 0.999, dealt / log.DeathOf(1) * 1.001);
-        Assert.Single(log.Deaths);
-    }
-
-    [Fact]
     public void A_Chained_Pull_Starts_As_Its_Pull_Ends_And_A_Pull_After_Downtime_Waits()
     {
-        double hp = HitPointsFor(8);
+        double hp = 8;
         var log = Fight(Dungeon(Trash(1, 1, hp), Trash(2, 1, hp) with { ChainWith = "1" }, Trash(3, 1, hp) with { DowntimeSeconds = 20 }), FrostBolts);
         Assert.InRange(log.FirstHitOn(2) - log.DeathOf(1), 0, CastTime);
         Assert.InRange(log.FirstHitOn(3) - log.DeathOf(2), 20, 20 + CastTime);
@@ -387,7 +363,7 @@ public class DungeonTests
     [Fact]
     public void The_Hero_Does_Not_Act_In_Downtime()
     {
-        var dungeon = Dungeon(Trash(1, 3, HitPointsFor(5)), Boss(2, HitPointsFor(10)) with { DowntimeSeconds = 20 });
+        var dungeon = Dungeon(Trash(1, 3, 5), Boss(2, 10) with { DowntimeSeconds = 20 });
         var log = Fight(dungeon, FrostBolts);
         double end = log.DeathOf(1);
         var casts = log.Result.Casts.Where(c => c.Name == "Frost Bolt").ToList();
@@ -401,8 +377,8 @@ public class DungeonTests
     [InlineData(true)]
     public void A_Pull_Joins_At_Its_Offset(bool boss)
     {
-        var host = (boss ? Boss(1, HitPointsFor(30)) : Trash(1, 1, HitPointsFor(30))) with { Join = new PullJoin("2", OffsetMs: 10_000) };
-        var log = Fight(Dungeon(host, Trash(2, 1, HitPointsFor(3))), FrostBolts);
+        var host = (boss ? Boss(1, 30) : Trash(1, 1, 30)) with { Join = new PullJoin("2", OffsetMs: 10_000) };
+        var log = Fight(Dungeon(host, Trash(2, 1, 3)), FrostBolts);
         var hostHits = log.Hits.Where(h => h.Enemy.Id == 1001).ToList();
         Assert.All(hostHits.Where(h => h.Time < 10), h => Assert.Equal(1, h.Active));
         Assert.All(hostHits.Where(h => h.Time >= 10 && h.Time < 12), h => Assert.Equal(2, h.Active));
@@ -413,8 +389,8 @@ public class DungeonTests
     [InlineData(true)]
     public void A_Pull_Joins_As_The_Hosts_Health_Falls_To_Its_Percent(bool boss)
     {
-        var host = (boss ? Boss(1, HitPointsFor(20)) : Trash(1, 1, HitPointsFor(20))) with { Join = new PullJoin("2", OffsetPct: 50) };
-        var log = Fight(Dungeon(host, Trash(2, 1, HitPointsFor(3))), FrostBolts);
+        var host = (boss ? Boss(1, 20) : Trash(1, 1, 20)) with { Join = new PullJoin("2", OffsetPct: 50) };
+        var log = Fight(Dungeon(host, Trash(2, 1, 3)), FrostBolts);
         // The hit taking the host to 50% brings pull 2 in: the hero keeps the host as its target until it dies.
         var hostHits = log.Hits.Where(h => h.Enemy.Id == 1001).ToList();
         Assert.All(hostHits.Where(h => h.HealthPct > 50), h => Assert.Equal(1, h.Active));
@@ -427,22 +403,20 @@ public class DungeonTests
     public void A_Pull_Joins_After_Its_Deaths(bool boss)
     {
         var host = boss
-            ? new DungeonPull("1", [new EnemyGroup(1, "Boss", HitPoints: HitPointsFor(20), Boss: true), new EnemyGroup(2, "Add", HitPoints: HitPointsFor(3))],
+            ? new DungeonPull("1", [new EnemyGroup(1, "Boss", HitPoints: BossHitPoints, Boss: true), new EnemyGroup(2, "Add", HitPoints: TrashHitPoints)], 10,
                 Join: new PullJoin("2", AfterDeaths: new DeathCount(2)))
-            : Trash(1, 3, HitPointsFor(3)) with { Join = new PullJoin("2", AfterDeaths: new DeathCount(2)) };
-        // The host has three enemies; the hero keeps a target until it dies.
-        var log = Fight(Dungeon(host, Trash(2, 1, HitPointsFor(3))), FrostBolts);
-        double secondDeath = log.Deaths.Where(d => d.Enemy.Id == 1001).Select(d => d.Time).Order().ElementAt(1);
-        // Before the second death every enemy in combat is the host's; after it, pull 2's enemy is in combat too.
-        Assert.All(log.Hits.Where(h => h.Time < secondDeath), h => Assert.True(h.Active <= 3));
-        Assert.Contains(log.Hits, h => h.Time >= secondDeath && h.Enemy.Id == 1001 && h.Active == 2);
-        Assert.Contains(log.Deaths, d => d.Enemy.Id == 1002);
+            : Trash(1, 3, 10) with { Join = new PullJoin("2", AfterDeaths: new DeathCount(2)) };
+        // The host's three enemies die together at its duration, and the second death brings pull 2 in.
+        var log = Fight(Dungeon(host, Trash(2, 1, 3)), FrostBolts);
+        Assert.All(log.Deaths.Where(d => d.Enemy.Id == 1001), d => Assert.Equal(10, d.Time, 3));
+        Assert.Equal(13, log.DeathOf(2), 3);
+        Assert.All(log.Hits.Where(h => h.Time < 10), h => Assert.Equal(3, h.Active));
     }
 
     [Fact]
     public void A_Pull_Taken_In_By_A_Later_Pull_Runs_With_It()
     {
-        var hp = HitPointsFor(4);
+        var hp = 4;
         var dungeon = Dungeon(Trash(1, 1, hp) with { Join = new PullJoin("3") }, Trash(2, 1, hp), Trash(3, 1, hp));
         var log = Fight(dungeon, FrostBolts);
         // Pulls 1 and 3 are one pull, then pull 2.
@@ -454,7 +428,7 @@ public class DungeonTests
     public void An_Enemy_Has_Its_Hit_Points_Times_The_Difficulty_Health_Scale()
     {
         // Deathless Katrine: game data health 29,075.305, logged with 6,581,643 health at Eternal 27.
-        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Deathless Katrine", HitPoints: 29_075.305, Boss: true)], Final: true))
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Deathless Katrine", HitPoints: 29_075.305, Boss: true)], 60, Final: true))
             with { Difficulty = 27 };
         Assert.Equal(226.36, dungeon.HealthScale);
         Assert.Equal(175.45, dungeon.DamageScale);
@@ -465,20 +439,29 @@ public class DungeonTests
     }
 
     [Fact]
-    public void An_Enemy_Without_Hit_Points_Dies_At_Its_Pull_Duration()
+    public void An_Enemy_Dies_At_Its_Pull_Duration_With_Its_Groups_Spirit_Points()
     {
-        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(2, "Trash Mob", 3)], PullDurationSeconds: 30), Boss(2, HitPointsFor(5)));
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(2, "Trash Mob", 3, HitPoints: TrashHitPoints)], 30), Boss(2, 5));
         var log = Fight(dungeon, FrostBolts);
         Assert.All(log.Deaths.Where(d => d.Enemy.Id == 1001), d => Assert.Equal(30, d.Time, 3));
         Assert.InRange(log.FirstHitOn(2), 30, 30 + 2 * CastTime);
-        // Spirit Points from an enemy whose health follows time: none.
-        Assert.All(log.Deaths.Where(d => d.Enemy.Id == 1001), d => Assert.Equal(0, d.Enemy.SpiritPointValue));
+        Assert.All(log.Deaths.Where(d => d.Enemy.Id == 1001), d => Assert.Equal(3, d.Enemy.SpiritPointValue));
+    }
+
+    [Fact]
+    public void A_Group_Without_Values_Takes_Its_Creatures_Game_Data()
+    {
+        var group = new EnemyGroup(1, "Ancient Koros");
+        Assert.Equal(AncientKorosGameCreature.BASE_HEALTH, group.Health);
+        Assert.Equal(AncientKorosGameCreature.SPIRIT_POINTS, group.Spirit);
+        Assert.Null(group.Problem());
+        Assert.Null(new EnemyGroup(1, "No Such Creature").Health);
     }
 
     [Fact]
     public void A_Pull_Duration_Varies_With_The_Length_Variance()
     {
-        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob")], PullDurationSeconds: 30));
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob", HitPoints: TrashHitPoints)], 30));
         var fight = new FightOptions(LengthVariance: 0.2, Dungeon: dungeon);
         var result = new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts))
             .Run(SimTime.FromSeconds(600), iterations: 1, firstSeed: 3, degreeOfParallelism: 1, fight: fight);
@@ -486,9 +469,21 @@ public class DungeonTests
     }
 
     [Fact]
+    public void A_Join_Offset_Varies_With_The_Length_Variance()
+    {
+        // Pull 2 joins 28 s into pull 1's 30 s; in a fight 10% shorter both scale, so pull 2 still joins before pull 1 ends.
+        var dungeon = Dungeon(Trash(1, 1, 30) with { Join = new PullJoin("2", OffsetMs: 28_000) }, Trash(2, 1, 10));
+        var fight = new FightOptions(LengthVariance: 0.2, Dungeon: dungeon);
+        int seed = Enumerable.Range(1, 100).First(s => fight.VarianceScale(s) < 0.9);
+        var result = new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts))
+            .Run(SimTime.FromSeconds(600), iterations: 1, firstSeed: seed, degreeOfParallelism: 1, fight: fight);
+        Assert.Equal(38 * fight.VarianceScale(seed), result.DurationSeconds, 2);
+    }
+
+    [Fact]
     public void The_Fight_Ends_At_Its_Time_Limit()
     {
-        var dungeon = Dungeon(Boss(1, HitPointsFor(1000), final: true)) with { TimeLimitSeconds = 40 };
+        var dungeon = Dungeon(Boss(1, 1000, final: true)) with { TimeLimitSeconds = 40 };
         var log = Fight(dungeon, FrostBolts);
         Assert.Equal(40, log.Result.DurationSeconds, 3);
         Assert.Empty(log.Deaths);
@@ -523,7 +518,7 @@ public class DungeonTests
     [InlineData("Gunde", "jawbreaker", "Jawbreaker", "attack")]
     public void An_Interrupt_Ends_A_Casting_Target(string heroName, string interrupt, string interruptName, string filler)
     {
-        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Caster", HitPoints: 1e12, Cast: new EnemyCast("Big Cast", 30, 2))]))
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Caster", HitPoints: 1e12, Cast: new EnemyCast("Big Cast", 30, 2))], 1000))
             with { TimeLimitSeconds = 100 };
         int interrupts = 0;
         var casts = new List<double>();
@@ -587,7 +582,7 @@ public class DungeonTests
     public void Boss_And_Trash_Conditions_Follow_The_Enemies_In_Combat()
     {
         // The boss pull takes trash in at its start: both are in combat, then the boss alone.
-        var dungeon = Dungeon(Trash(1, 2, HitPointsFor(4)), Boss(2, HitPointsFor(10), final: true) with { Join = new PullJoin("3") }, Trash(3, 1, HitPointsFor(2)));
+        var dungeon = Dungeon(Trash(1, 2, 4), Boss(2, 10, final: true) with { Join = new PullJoin("3") }, Trash(3, 1, 2));
         var log = Fight(dungeon, FrostBolts);
         Assert.All(log.Hits.Where(h => h.Enemy.Id == 1001), h => Assert.True(h.Trash && !h.Boss && !h.Final));
         Assert.All(log.Hits.Where(h => h.Enemy.Id == 1003), h => Assert.True(h.Trash && h.Boss && h.Final));
@@ -597,13 +592,10 @@ public class DungeonTests
     [Fact]
     public void Countdowns_Estimate_The_Next_Pulls()
     {
-        var dungeon = Dungeon(Trash(1, 1, HitPointsFor(10)), Boss(2, HitPointsFor(10)) with { DowntimeSeconds = 20 });
+        var dungeon = Dungeon(Trash(1, 1, 10), Boss(2, 10) with { DowntimeSeconds = 20 });
         var log = Fight(dungeon, FrostBolts);
-        // The boss starts 20 s after the trash dies; the estimate from the trash's health loss nears it as the pull goes on.
-        double bossStart = log.DeathOf(1) + 20;
-        var trashHits = log.Hits.Where(h => h.Enemy.Id == 1001).ToList();
-        Assert.InRange(trashHits[^1].NextBossAt.TotalSeconds, bossStart - 2, bossStart + 2);
-        Assert.InRange(trashHits[trashHits.Count / 2].NextBossAt.TotalSeconds, bossStart - 5, bossStart + 5);
+        // The boss starts 20 s after the trash dies at its 10 s.
+        Assert.All(log.Hits.Where(h => h.Enemy.Id == 1001), h => Assert.Equal(30, h.NextBossAt.TotalSeconds, 3));
         Assert.All(log.Hits.Where(h => h.Enemy.Id == 1002), h => Assert.Equal(SimTime.Infinite, h.NextBossAt));
     }
 
@@ -656,7 +648,7 @@ public class DungeonTests
     [Fact]
     public void A_Dungeon_With_Trash_Reports_The_Damage_To_Bosses()
     {
-        var dungeon = Dungeon(Trash(1, 3, HitPointsFor(5)), Boss(2, HitPointsFor(15)));
+        var dungeon = Dungeon(Trash(1, 3, 5), Boss(2, 15));
         var result = new MonteCarloSimulator(Build(), AplParser.ParseScript(FrostBolts))
             .Run(SimTime.FromSeconds(600), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon));
         Assert.True(result.BossDps > 0);
@@ -703,21 +695,6 @@ public class DungeonTests
 
         var bound = BoundExpression.Bind(AplParser.ParseExpression("dungeon_event.fight.remains<10"), hero);
         Assert.Equal(SimTime.FromSeconds(90).Milliseconds, bound.NextChange(ctx).Milliseconds, 2.0);
-    }
-
-    [Fact]
-    public void An_Enemy_Dying_From_Damage_Estimates_Its_Time_To_Die()
-    {
-        var hero = HeroImporter.Import(Build());
-        var ctx = new SimulationContext(hero);
-        // Health so large that the hero's procs on the hit take next to none of it.
-        var enemy = ctx.AddEnemy(1001, 1, "Trash Mob", maxHealth: 1e12);
-        enemy.FollowDamage(ctx, 0.5);
-        Assert.Equal(SimTime.Infinite, enemy.DiesAt);
-        ctx.RunUntil(SimTime.FromSeconds(10));
-        ctx.DealLoggedHit(hero, enemy, 1, "Hit", 1e11, isCrit: false);
-        // A fifth of the health in 10 s: the rest takes 40 s.
-        Assert.Equal(50, enemy.DiesAt.TotalSeconds, 1);
     }
 
     [Fact]

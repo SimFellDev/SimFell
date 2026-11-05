@@ -44,7 +44,7 @@ The spec's items are worked in order. For each:
 1. **Pattern.** Count the subject in every fight: hits, crits, matched, missing, engine-only, and the log/engine ratio
    of each matched hit. Split the counts until the ratio is constant within each group: crit or not, target count,
    haste, tick fraction, the player's auras, time since the cast, the enemy, the fight. Read the raw events
-   (`data/fights/<code>_fight<id>.raw.json`) around three or more occurrences of each group in at least two fights.
+   (`data/fights/<code>_fight<id>_p<player>.raw.json`) around three or more occurrences of each group in at least two fights.
    `docs/REPLAY_ACCURACY.md` lists the ways a log is inexact.
 2. **Question.** SendMessage to `game-data-authority` with the subject, its log ID, the pattern with its numbers, and
    the question: the coefficient, period, chance, cap, formula or interaction that would give the pattern. Work on the

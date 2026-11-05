@@ -15,12 +15,12 @@ public class MaraReplayTests(ITestOutputHelper output)
     public async Task Mara_Fights_Replay()
     {
         var library = new ReplayLibrary(Path.Combine(TestPaths.RepositoryRoot, "data"));
-        foreach (var (reportCode, fightId) in library.ListDownloadedFights())
+        foreach (var (reportCode, fightId, playerId) in library.ListDownloadedFights())
         {
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId);
-            foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero == "Mara"))
+            byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId, playerId);
+            foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero == "Mara"))
             {
-                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
+                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
                 if (Environment.GetEnvironmentVariable("MARA_CHARACTER_FOLDER") is { } characterFolder)
                 {
                     File.WriteAllText(Path.Combine(characterFolder, $"character_{reportCode}_{fightId}.json"), System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));

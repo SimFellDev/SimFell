@@ -6,8 +6,9 @@ namespace FellowshipSim.Core.APL;
 /// <summary>
 /// One action of an action list as the visual editor holds it: expressions are text, and <see cref="Comment"/> is the
 /// '#' lines above the action. <see cref="List"/> is the list the action belongs to. <see cref="ActionList"/> is the list
-/// a <c>run_action_list</c> or <c>call_action_list</c> action names. <see cref="Arguments"/> holds the other arguments
-/// ("line_cd=5").
+/// a <c>run_action_list</c> or <c>call_action_list</c> action names. <see cref="Variable"/> is the variable a
+/// <c>variable</c> action changes. <see cref="UseOffGcd"/> and <see cref="UseWhileCasting"/> are an ability actions
+/// <c>use_off_gcd=1</c> and <c>use_while_casting=1</c>. <see cref="Arguments"/> holds the other arguments ("line_cd=5").
 /// </summary>
 public sealed record AplDocumentAction(
     string Ability,
@@ -17,7 +18,16 @@ public sealed record AplDocumentAction(
     string? Comment = null,
     string List = AplActionLine.DefaultList,
     string? Arguments = null,
-    string? ActionList = null);
+    string? ActionList = null,
+    AplDocumentVariable? Variable = null,
+    bool UseOffGcd = false,
+    bool UseWhileCasting = false);
+
+/// <summary>
+/// The variable a <c>variable</c> action changes, as the visual editor holds it: its name, its op, its value as text
+/// (none for <see cref="AplVariableOp.Reset"/>), and its value at the start of each fight.
+/// </summary>
+public sealed record AplDocumentVariable(string Name, AplVariableOp Op = AplVariableOp.Set, string? Value = null, double Default = 0);
 
 /// <summary>A problem with one field of one action: its index in the list, the field ("condition"), and the parse error.</summary>
 public sealed record AplDocumentError(int Action, string Field, string Message);
@@ -44,8 +54,11 @@ public static class AplDocument
     {
         var syntax = AplParser.ParseActionSyntax(line);
         bool listAction = AplListActions.Parse(syntax.Name) != null;
+        bool variableAction = syntax.Name == AplVariable.ActionName;
         var arguments = syntax.Arguments
             .Where(a => !(listAction && a.Key.Equals(AplActionLine.ListNameKey, StringComparison.OrdinalIgnoreCase)))
+            .Where(a => !(variableAction && VariableKeys.Contains(a.Key)))
+            .Where(a => listAction || variableAction || !FlagKeys.Contains(a.Key))
             .ToList();
         return new AplDocumentAction(
             syntax.Name,
@@ -55,7 +68,30 @@ public static class AplDocument
             null,
             syntax.List,
             arguments.Count > 0 ? string.Join(",", arguments) : null,
-            listAction ? syntax.ListName : null);
+            listAction ? syntax.ListName : null,
+            variableAction ? VariableOf(syntax) : null,
+            !listAction && !variableAction && syntax.Flag(AplActionLine.UseOffGcdKey),
+            !listAction && !variableAction && syntax.Flag(AplActionLine.UseWhileCastingKey));
+    }
+
+    // The arguments of an ability action the editor holds as switches.
+    private static readonly HashSet<string> FlagKeys = new([AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey], StringComparer.OrdinalIgnoreCase);
+
+    private static readonly HashSet<string> VariableKeys = new([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey],
+        StringComparer.OrdinalIgnoreCase);
+
+    // The variable of a variable action line. A line without a name, or with an op outside the enum, is still read: Write
+    // reports the problem with its field.
+    private static AplDocumentVariable VariableOf(AplActionLine syntax)
+    {
+        Expressions.IAplExpression? Argument(string key) =>
+            syntax.Arguments.FirstOrDefault(a => a.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        string name = Argument(AplVariable.NameKey) is Expressions.PropertyExpression path ? path.PropertyPath : "";
+        var op = Argument(AplVariable.OpKey) is Expressions.PropertyExpression opPath
+                 && Enum.TryParse<AplVariableOp>(opPath.PropertyPath, true, out var parsed) ? parsed : AplVariableOp.Set;
+        var value = Argument(AplVariable.ValueKey);
+        double @default = Argument(AplVariable.DefaultKey) is Expressions.ConstantExpression c ? c.Value : 0;
+        return new AplDocumentVariable(name, op, value != null ? AplFormatter.Format(value, AplOperatorStyle.Words) : null, @default);
     }
 
     /// <summary>
@@ -126,7 +162,11 @@ public static class AplDocument
             if (!IsName(list)) errors.Add(new AplDocumentError(i, "list", $"`{list}` is not a list name."));
 
             var arguments = ParseArguments(i, action.Arguments, errors).ToList();
-            if (AplListActions.Parse(ability) != null)
+            if (ability == AplVariable.ActionName)
+            {
+                arguments.InsertRange(0, VariableArguments(i, action.Variable, errors));
+            }
+            else if (AplListActions.Parse(ability) != null)
             {
                 string actionList = action.ActionList?.Trim() ?? "";
                 if (IsName(actionList) && lists.Contains(actionList))
@@ -137,6 +177,11 @@ public static class AplDocument
                 {
                     errors.Add(new AplDocumentError(i, "actionList", "Pick an action list with at least one action."));
                 }
+            }
+            else
+            {
+                if (action.UseOffGcd) arguments.Add(new AplArgument(AplActionLine.UseOffGcdKey, new Expressions.ConstantExpression(1)));
+                if (action.UseWhileCasting) arguments.Add(new AplArgument(AplActionLine.UseWhileCastingKey, new Expressions.ConstantExpression(1)));
             }
 
             var lines = blocks[list];
@@ -154,6 +199,31 @@ public static class AplDocument
 
         var blockTexts = lists.Where(l => blocks[l].Count > 0).Select(l => string.Join("\n", blocks[l]) + "\n");
         return (string.Join("\n", blockTexts), errors);
+    }
+
+    // The name, value, op and default arguments of a variable action. The op is left out when it is set, and the default
+    // when it is 0: each is what a line without it means.
+    private static IEnumerable<AplArgument> VariableArguments(int action, AplDocumentVariable? variable, List<AplDocumentError> errors)
+    {
+        if (variable == null || !IsName(variable.Name))
+        {
+            errors.Add(new AplDocumentError(action, "variable", "Name the variable with letters, digits and '_', starting with a letter."));
+        }
+        else
+        {
+            yield return new AplArgument(AplVariable.NameKey, new Expressions.PropertyExpression(variable.Name));
+        }
+        if (variable == null) yield break;
+        if (variable.Op != AplVariableOp.Reset)
+        {
+            if (string.IsNullOrWhiteSpace(variable.Value)) errors.Add(new AplDocumentError(action, "value", "Enter the variable's value."));
+            else if (ParseField(action, "value", variable.Value, errors) is { } value) yield return new AplArgument(AplVariable.ValueKey, value);
+        }
+        if (variable.Op != AplVariableOp.Set)
+        {
+            yield return new AplArgument(AplVariable.OpKey, new Expressions.PropertyExpression(variable.Op.ToString().ToLowerInvariant()));
+        }
+        if (variable.Default != 0) yield return new AplArgument(AplVariable.DefaultKey, new Expressions.ConstantExpression(variable.Default));
     }
 
     private static string ListOf(AplDocumentAction action) =>

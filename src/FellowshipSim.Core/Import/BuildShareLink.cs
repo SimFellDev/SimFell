@@ -21,13 +21,19 @@ namespace FellowshipSim.Core.Import;
 /// <item>Relic 1 and relic 2, then (after its count) each legendary, then the weapon ability: 0 for none, else 1 + the
 /// zigzag of its ID less <see cref="RelicBase"/>, <see cref="LegendaryBase"/> or <see cref="WeaponBase"/> (EG1;
 /// a legendary is never none, so it has no 1 +).</item>
+/// <item>Version 2 on: the gear worn, its count, then each piece in slot order: its slot (<see cref="GearSlot"/>, EG0),
+/// the zigzag of its item ID less <see cref="GearBase"/> (EG6) and its tempers (EG2).</item>
 /// </list>
-/// Close IDs cost a few bits each, so most of a build is its stats and gem power.
+/// Close IDs cost a few bits each, so most of a build is its stats and gem power. A build with no gear worn writes as
+/// version 1, which has no gear list, so a link made before gear makes the same link again.
 /// </para>
 /// </summary>
 public static class BuildShareLink
 {
-    public const int Version = 1;
+    public const int Version = 2;
+
+    /// <summary>The first version with the gear worn.</summary>
+    private const int GearVersion = 2;
 
     /// <summary>What a link has between the site's address and the build.</summary>
     public const string Marker = "build#";
@@ -38,8 +44,12 @@ public static class BuildShareLink
     public const int LegendaryBase = 5898;
     public const int WeaponBase = 1558;
 
+    /// <summary>The ID the dungeon items are near (Harbinger of Winter's Furs, 5898, of items 5800 to 6010).</summary>
+    public const int GearBase = 5900;
+
     // Exp-Golomb orders: each fits the size of what it holds.
     private const int StatOrder = 7, HealthOrder = 14, GemPowerOrder = 9, ThousandthsExtraOrder = 10;
+    private const int GearItemOrder = 6, TempersOrder = 2;
     private const int TalentFirstOrder = 7, TalentGapOrder = 2;
     private const int AugmentationFirstOrder = 3, AugmentationGapOrder = 1;
     private const int GlyphFirstOrder = 8, GlyphGapOrder = 1;
@@ -87,7 +97,9 @@ public static class BuildShareLink
     public static string Code(CharacterBuild b)
     {
         var w = new BitWriter();
-        w.EG(Version, 0);
+        // A build with no gear worn writes as version 1, so a link made before gear makes the same link again.
+        int version = b.Gear.Count > 0 ? GearVersion : 1;
+        w.EG(version, 0);
         double[] stats = Stats(b);
         bool thousandths = stats.Append(b.MaxHealth).Concat(b.GemPower.Values).Any(v => v != Math.Floor(v));
         int extra = thousandths ? ThousandthsExtraOrder : 0;
@@ -116,6 +128,17 @@ public static class BuildShareLink
         w.EG(b.LegendaryItemIds.Count, 0);
         foreach (int id in b.LegendaryItemIds) w.EG(Zigzag(id - LegendaryBase), OffsetOrder);
         WriteOptional(w, b.WeaponAbilityId, WeaponBase);
+        if (version >= GearVersion)
+        {
+            var gear = b.Gear.OrderBy(p => p.Slot).ToList();
+            w.EG(gear.Count, 0);
+            foreach (var piece in gear)
+            {
+                w.EG((int)piece.Slot, 0);
+                w.EG(Zigzag(Whole(piece.ItemId) - GearBase), GearItemOrder);
+                w.EG(Whole(piece.Tempers), TempersOrder);
+            }
+        }
         return w.Text();
     }
 
@@ -124,7 +147,7 @@ public static class BuildShareLink
     {
         var r = new BitReader(code);
         long version = r.EG(0);
-        if (version != Version) throw new FormatException($"The share link is of version {version}; this SimFell reads version {Version}.");
+        if (version is < 1 or > Version) throw new FormatException($"The share link is of version {version}; this SimFell reads versions 1 to {Version}.");
         bool thousandths = r.Bit(), old = r.Bit(), health = r.Bit();
         int extra = thousandths ? ThousandthsExtraOrder : 0;
         double N(int order) => thousandths ? r.EG(order + extra) / 1000.0 : r.EG(order);
@@ -155,6 +178,17 @@ public static class BuildShareLink
         if (legendaries > MaxListItems) throw r.Broken();
         for (int i = 0; i < legendaries; i++) b.LegendaryItemIds.Add(Id(LegendaryBase + Unzigzag(r.EG(OffsetOrder)), r));
         b.WeaponAbilityId = ReadOptional(r, WeaponBase);
+        if (version >= GearVersion)
+        {
+            long pieces = r.EG(0);
+            if (pieces > GearSlots.All.Count) throw r.Broken();
+            for (int i = 0; i < pieces; i++)
+            {
+                long slot = r.EG(0);
+                if (slot >= GearSlots.All.Count) throw r.Broken();
+                b.Gear.Add(new GearPiece((GearSlot)slot, Id(GearBase + Unzigzag(r.EG(GearItemOrder)), r), r.Int(TempersOrder)));
+            }
+        }
         r.End();
         return b;
     }

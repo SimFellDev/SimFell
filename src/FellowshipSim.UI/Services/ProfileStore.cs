@@ -27,7 +27,7 @@ public sealed class ProfileStore(IBlobStore store)
 
     /// <summary>The profile text of a saved build, or null when there is none.</summary>
     public Task<string?> ReadAsync(Visitor visitor, ProfileEntry entry, CancellationToken ct = default) =>
-        ActionListStore.IsValidName(entry.Name) ? store.ReadAsync(KeyOf(visitor, entry), ct) : Task.FromResult<string?>(null);
+        ActionListStore.IsStoredName(entry.Name) ? store.ReadAsync(KeyOf(visitor, entry), ct) : Task.FromResult<string?>(null);
 
     /// <summary>Saves <paramref name="profile"/> as the visitor's build <paramref name="entry"/>; the name follows <see cref="ActionListStore.IsValidName"/>.</summary>
     public Task SaveAsync(Visitor visitor, ProfileEntry entry, string profile, CancellationToken ct = default)
@@ -40,7 +40,7 @@ public sealed class ProfileStore(IBlobStore store)
     }
 
     public Task DeleteAsync(Visitor visitor, ProfileEntry entry, CancellationToken ct = default) =>
-        ActionListStore.IsValidName(entry.Name) ? store.DeleteAsync(KeyOf(visitor, entry), ct) : Task.CompletedTask;
+        ActionListStore.IsStoredName(entry.Name) ? store.DeleteAsync(KeyOf(visitor, entry), ct) : Task.CompletedTask;
 
     private static string KeyOf(Visitor visitor, ProfileEntry entry) => visitor.Key($"profiles/{entry.Hero}/{entry.Name}{Extension}");
 }

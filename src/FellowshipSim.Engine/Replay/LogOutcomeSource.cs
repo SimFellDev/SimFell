@@ -203,6 +203,9 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     public void HitFinished(SimulationContext ctx) { }
 
+    /// <summary>A replay casts at the log's times, so the player's delays are already in them.</summary>
+    public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => SimTime.Zero;
+
     // ------------------------------------------------------------------ periodic ticks
 
     /// <summary>A periodic effect's log ticks: each tick's reserved log time (null without one) and each predicted time, paired in order.</summary>

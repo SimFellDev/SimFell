@@ -28,10 +28,10 @@ public class BossFightTests
         Assert.Equal(boss, Mean(null));
         Assert.Equal(1.05, boss / noBoss, 2);
 
-        // Health follows a 60 s pull duration, so each pull lasts as long as the training dummies.
-        double DungeonOf(EnemyGroup group) => Mean(new FightOptions(Dungeon: new DungeonProfile("One", DungeonProfile.DefaultHeroShare, 60,
-            [new DungeonPull("1", [group], PullDurationSeconds: 60)])));
-        Assert.Equal(1.05, DungeonOf(new EnemyGroup(1, "Boss", Boss: true)) / DungeonOf(new EnemyGroup(1, "Trash Mob")), 2);
+        // Health follows a 60 s pull, so each pull lasts as long as the training dummies.
+        double DungeonOf(EnemyGroup group) => Mean(new FightOptions(Dungeon: new DungeonProfile("One", 60,
+            [new DungeonPull("1", [group], 60)])));
+        Assert.Equal(1.05, DungeonOf(new EnemyGroup(1, "Boss", HitPoints: 1000, Boss: true)) / DungeonOf(new EnemyGroup(1, "Trash Mob", HitPoints: 1000)), 2);
     }
 
     [Fact]

@@ -32,10 +32,11 @@ public static class SimFellUIServiceCollectionExtensions
         services.AddSingleton<ActionListStore>();
         services.AddSingleton(new SimJobQueue(jobs));
         services.TryAddSingleton<IFightReviewer, DiskFightReviewer>();
-        services.TryAddSingleton<IDungeonImport, DiskDungeonImport>();
+        services.TryAddSingleton<DungeonImport>();
         services.AddSingleton<ReviewJobs>();
         services.AddSingleton<ReportLookup>();
         services.AddSingleton<CharacterImport>();
+        services.AddSingleton<LogPlayerLookup>();
         services.AddSingleton<ProfileStore>();
         services.AddSingleton<DungeonStore>();
         services.TryAddSingleton<SimResultLibrary>();

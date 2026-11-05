@@ -121,24 +121,125 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.settings {
+/* The Advanced settings card's fields, as the Fight settings card has them (FightCards.razor.css). */
+.fields {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 8px 12px;
-  margin-top: 12px;
+  gap: 24px 40px;
+  margin-top: 14px;
 }
 
-.settings label {
+.field {
   display: flex;
   flex-direction: column;
   gap: 4px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
-.settings input {
-  width: 160px;
-  color: var(--text);
-  font-size: 15px;
+.field input {
+  width: 90px;
+  height: 36px;
+  font-size: 14px;
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* The Import dialog: the cards on the page's black, as the Import tab had them. */
+.import-dialog {
+  max-width: 860px;
+}
+
+.import-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg);
+}
+
+/* Each card's own space would add to the gap: the body's padding and gap space them evenly. */
+.import-body ::deep .card {
+  margin: 0;
+}
+
+.profile-file {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The steps' short names and the summary line show on a phone alone. */
+.tab .short,
+.summary-line {
+  display: none;
+}
+
+/* A phone: the steps and Run sim on one 48px line, the steps scrolling sideways when they do not fit; the summary moves
+   under the bar, as the page's first line. The bar moves up with the top bar (headerHeight.js). */
+@media (max-width: 600px) {
+  .steps {
+    flex-wrap: nowrap;
+    gap: 0 8px;
+    transition: top 0.2s;
+  }
+
+  .tabs {
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab {
+    flex: none;
+    height: 48px;
+    padding: 0 14px;
+  }
+
+  .tab .long,
+  .run .summary {
+    display: none;
+  }
+
+  .tab .short {
+    display: inline;
+  }
+
+  .run {
+    flex: none;
+    padding: 0;
+  }
+
+  .run-button {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .summary-line {
+    display: block;
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
+
+/* A phone: the Import dialog's cards are sections of one sheet (Card.razor.css), on its surface. */
+@media (max-width: 600px) {
+  .import-body {
+    padding: 16px;
+    background: var(--surface);
+  }
 }

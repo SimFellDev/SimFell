@@ -20,6 +20,7 @@ namespace FellowshipSim.Core.Import;
 /// until its stats are edited.
 /// <code>
 /// rime="sww"
+/// source=https://www.fellowshiplogs.com/reports/CODE?fight=7&amp;source=2
 /// primary_stat=161
 /// stamina=306
 /// crit_rating=89
@@ -32,14 +33,19 @@ namespace FellowshipSim.Core.Import;
 /// gems=sapphire:1500/...
 /// gem_sockets=splendid_amethyst/large_emerald/...
 /// gear_gem_bonuses=sapphire:6/amethyst:5/...
-/// relic1=orb_of_inner_seas,id=5926
+/// relic1=orb_of_inner_seas,id=5926,tempers=8
 /// relic2=orb_of_gathering_storms,id=5924
 /// legendary=frostwyrms_spite,id=5899
-/// weapon=ashas_chronoshift_spire
+/// weapon=ashas_chronoshift_spire,id=5984,tempers=8
+/// head=harbinger_of_winter_helm,id=5899,tempers=0
+/// ring1=beguiling_ring,id=5932,tempers=8
 /// actions+=/frost_bolt
 /// </code>
 /// Lines starting with '#' are comments. <c>actions</c> lines are the profile's action list, with the comments directly
-/// above them and the comments after the last line when it is an <c>actions</c> line.
+/// above them, and the comments right after an <c>actions</c> line that end at a blank line or at the end of the text. A
+/// gear slot's line (<see cref="GearSlots.Key"/>) names the item worn there, its ID and its tempers; a relic or weapon
+/// line with an <c>id</c> and <c>tempers</c> is its slot's item too (a weapon line's name is its weapon's). <c>source</c>
+/// is the FellowshipLogs link of a build read from a log (<see cref="CharacterBuild.LogSource"/>).
 /// </summary>
 public sealed record SimcProfile(CharacterBuild Build, string ActionList)
 {
@@ -65,7 +71,16 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         {
             lineNumber++;
             string line = raw.Trim();
-            if (line.Length == 0) continue;
+            if (line.Length == 0)
+            {
+                // Comments after an actions line with a blank line under them are the action list's.
+                if (afterActions)
+                {
+                    foreach (string comment in comments) actions.AppendLine(comment);
+                    comments.Clear();
+                }
+                continue;
+            }
             if (line.StartsWith('#'))
             {
                 comments.Add(line);
@@ -121,6 +136,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
     {
         switch (key)
         {
+            case "source": build.LogSource = value; break;
             case "primary_stat": build.PrimaryStat = Number(value); break;
             case "stamina": build.Stamina = Number(value); break;
             case "armor": build.Armor = Number(value); break;
@@ -196,8 +212,14 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                     build.StatEnchantCounts[enchant.Id] = count;
                 }
                 break;
-            case "relic1": build.Relic1ItemId = RelicItemId(value); break;
-            case "relic2": build.Relic2ItemId = RelicItemId(value); break;
+            case "relic1":
+                build.Relic1ItemId = RelicItemId(value);
+                AddWornWithTempers(build, GearSlot.Relic1, value);
+                break;
+            case "relic2":
+                build.Relic2ItemId = RelicItemId(value);
+                AddWornWithTempers(build, GearSlot.Relic2, value);
+                break;
             case "legendary":
             {
                 var options = Options(value);
@@ -208,12 +230,21 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                 break;
             }
             case "weapon":
+            {
                 // A weapon the engine does not model is named by its ability.
-                build.WeaponAbilityId = Catalog.AllWeapons.FirstOrDefault(w => AplNames.Slug(w.Name) == value)?.WeaponAbilityId
-                                        ?? GameHeroData.WeaponAbilityNames.Where(w => AplNames.Slug(w.Value) == value).Select(w => (int?)w.Key).FirstOrDefault()
-                                        ?? throw new FormatException($"no weapon '{value}'");
+                string weapon = Options(value)[""];
+                build.WeaponAbilityId = Catalog.AllWeapons.FirstOrDefault(w => AplNames.Slug(w.Name) == weapon)?.WeaponAbilityId
+                                        ?? GameHeroData.WeaponAbilityNames.Where(w => AplNames.Slug(w.Value) == weapon).Select(w => (int?)w.Key).FirstOrDefault()
+                                        ?? throw new FormatException($"no weapon '{weapon}'");
+                AddWornWithTempers(build, GearSlot.Weapon, value);
                 break;
+            }
             default:
+                if (GearSlots.All.FirstOrDefault(s => GearSlots.Key(s) == key) is var slot && GearSlots.Key(slot) == key)
+                {
+                    build.Gear.Add(Worn(build.Hero, slot, value));
+                    break;
+                }
                 throw new FormatException($"unknown key '{key}'");
         }
     }
@@ -224,6 +255,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         var build = Build;
         var s = new StringBuilder();
         s.AppendLine($"{AplNames.Slug(build.Hero)}=\"{build.Name}\"");
+        if (build.LogSource.Length > 0) s.AppendLine($"source={build.LogSource}");
         s.AppendLine($"primary_stat={Text(build.PrimaryStat)}");
         if (build.Stamina > 0) s.AppendLine($"stamina={Text(build.Stamina)}");
         if (build.Armor > 0) s.AppendLine($"armor={Text(build.Armor)}");
@@ -271,8 +303,8 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         {
             s.AppendLine($"stat_enchant_counts={string.Join('/', build.StatEnchantCounts.Select(e => $"{(StatEnchant.Find(e.Key) ?? throw new InvalidOperationException($"Stat enchant {e.Key} is not known")).Key}:{e.Value}"))}");
         }
-        RelicLine(s, "relic1", build.Relic1ItemId);
-        RelicLine(s, "relic2", build.Relic2ItemId);
+        RelicLine(s, build, GearSlot.Relic1, build.Relic1ItemId);
+        RelicLine(s, build, GearSlot.Relic2, build.Relic2ItemId);
         foreach (int itemId in build.LegendaryItemIds)
         {
             string legendary = BuildHeroes.LegendaryName(build.Hero, itemId) ?? throw new InvalidOperationException($"Legendary item {itemId} is not in the catalog");
@@ -282,7 +314,13 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         {
             string weapon = Catalog.CreateWeapon(build.WeaponAbilityId)?.Name ?? GameHeroData.WeaponAbilityNames.GetValueOrDefault(build.WeaponAbilityId)
                             ?? throw new InvalidOperationException($"Weapon ability {build.WeaponAbilityId} is not in the catalog");
-            s.AppendLine($"weapon={AplNames.Slug(weapon)}");
+            s.AppendLine($"weapon={AplNames.Slug(weapon)}{TempersOptions(build, GearSlot.Weapon)}");
+        }
+        // The other slots' items; the relics and the weapon are on their own lines above.
+        foreach (var piece in build.Gear.Where(p => GearSlots.Kind(p.Slot) is not (GearKind.Relic or GearKind.Weapon)).OrderBy(p => p.Slot))
+        {
+            var item = GearItem.Find(build.Hero, piece.ItemId) ?? throw new InvalidOperationException($"{build.Hero} has no item {piece.ItemId}");
+            s.AppendLine($"{GearSlots.Key(piece.Slot)}={AplNames.Slug(item.Name)},id={piece.ItemId},tempers={piece.Tempers}");
         }
         if (ActionList.Length > 0)
         {
@@ -325,11 +363,46 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         return itemId;
     }
 
-    private static void RelicLine(StringBuilder s, string key, int itemId)
+    private static void RelicLine(StringBuilder s, CharacterBuild build, GearSlot slot, int itemId)
     {
         if (itemId == 0) return;
         var relic = Catalog.RelicItemOf(itemId) ?? throw new InvalidOperationException($"Relic item {itemId} is not in the catalog");
-        s.AppendLine($"{key}={AplNames.Slug(relic.Name)},id={itemId}");
+        string options = build.Gear.Any(p => p.Slot == slot && p.ItemId == itemId) ? $",tempers={build.Gear.First(p => p.Slot == slot).Tempers}" : "";
+        s.AppendLine($"{GearSlots.Key(slot)}={AplNames.Slug(relic.Name)},id={itemId}{options}");
+    }
+
+    /// <summary>",id=...,tempers=..." for the item worn in <paramref name="slot"/>, or nothing for none.</summary>
+    private static string TempersOptions(CharacterBuild build, GearSlot slot) =>
+        build.Gear.FirstOrDefault(p => p.Slot == slot) is { } piece ? $",id={piece.ItemId},tempers={piece.Tempers}" : "";
+
+    /// <summary>
+    /// The item a gear slot's line names: "item,id=item id,tempers=count", checked against the hero's item of that ID.
+    /// </summary>
+    private static GearPiece Worn(string hero, GearSlot slot, string value)
+    {
+        var options = Options(value);
+        int itemId = (int)Number(options.GetValueOrDefault("id") ?? throw new FormatException($"a {GearSlots.Key(slot)} line is <item>,id=<item id>,tempers=<count>"));
+        var item = GearItem.Find(hero, itemId) ?? throw new FormatException($"{hero} has no item {itemId}");
+        if (item.Kind != GearSlots.Kind(slot)) throw new FormatException($"item {itemId} is a {item.Kind.ToString().ToLowerInvariant()}, not a {GearSlots.Label(slot).ToLowerInvariant()}");
+        if (AplNames.Slug(item.Name) != options[""]) throw new FormatException($"item {itemId} is {AplNames.Slug(item.Name)}");
+        int tempers = (int)Number(options.GetValueOrDefault("tempers") ?? "0");
+        if (tempers < 0 || tempers > item.MaxTempers) throw new FormatException($"{AplNames.Slug(item.Name)} takes 0 to {item.MaxTempers} tempers");
+        return new GearPiece(slot, itemId, tempers);
+    }
+
+    /// <summary>
+    /// The relic or weapon line's item as its slot's piece, when the line gives its <c>id</c> and <c>tempers</c> (a line
+    /// written before builds held their gear has none). A relic the hero has no item of stays a relic alone.
+    /// </summary>
+    private static void AddWornWithTempers(CharacterBuild build, GearSlot slot, string value)
+    {
+        var options = Options(value);
+        if (!options.ContainsKey("tempers") || !options.TryGetValue("id", out string? id)) return;
+        var item = GearItem.Find(build.Hero, (int)Number(id));
+        if (item == null || item.Kind != GearSlots.Kind(slot)) return;
+        int tempers = (int)Number(options["tempers"]);
+        if (tempers < 0 || tempers > item.MaxTempers) throw new FormatException($"{AplNames.Slug(item.Name)} takes 0 to {item.MaxTempers} tempers");
+        build.Gear.Add(new GearPiece(slot, item.Id, tempers));
     }
 
     /// <summary>"name,key=value,...": the name under the empty key.</summary>

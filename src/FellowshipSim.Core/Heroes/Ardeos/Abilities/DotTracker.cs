@@ -51,7 +51,27 @@ public sealed class DotTracker
     /// <summary>The enemies with an effect on them.</summary>
     public IEnumerable<EnemyTarget> Targets => _byTarget.Where(kv => kv.Value.Count > 0).Select(kv => kv.Key);
 
-    public IReadOnlyList<DotInstance> On(EnemyTarget target) => _byTarget.TryGetValue(target, out var on) ? on : None;
+    /// <summary>Fills <paramref name="targets"/> with <see cref="Targets"/>, in the same order.</summary>
+    public void TargetsInto(List<EnemyTarget> targets)
+    {
+        targets.Clear();
+        foreach (var (target, on) in _byTarget)
+        {
+            if (on.Count > 0) targets.Add(target);
+        }
+    }
+
+    public IReadOnlyList<DotInstance> On(EnemyTarget target)
+    {
+        // Speed: the reads of one hit or tick are mostly of one enemy. Its list changes in place and stays its list.
+        if (ReferenceEquals(target, _lastTarget)) return _lastOn!;
+        if (!_byTarget.TryGetValue(target, out var on)) return None;
+        (_lastTarget, _lastOn) = (target, on);
+        return on;
+    }
+
+    private EnemyTarget? _lastTarget;
+    private List<DotInstance>? _lastOn;
 
     public IEnumerable<DotInstance> On(EnemyTarget target, DamageOverTime effect) => On(target).Where(d => d.Effect == effect);
 
@@ -134,6 +154,7 @@ public sealed class DotTracker
         }
         _active.Clear();
         _byTarget.Clear();
+        (_lastTarget, _lastOn) = (null, null);
         _fight = null;
     }
 
@@ -179,12 +200,18 @@ public sealed class DotTracker
     /// <summary>Queues the next tick, or the end when it comes first.</summary>
     private void Schedule(SimulationContext ctx, DotInstance dot)
     {
-        dot.Event?.Cancel();
         double toTick = Math.Max(0.0, dot.Effect.BasePeriod - dot.Progress) / dot.Rate;
         var tickAt = dot.LastUpdate + SimTime.FromSeconds(toTick);
-        dot.Event = tickAt < dot.ExpiresAt
-            ? ctx.ScheduleAt(tickAt, c => TickDue(c, dot), dot.Effect.Name)
-            : ctx.ScheduleAt(dot.ExpiresAt, c => Expire(c, dot), dot.Effect.Name);
+        bool ticks = tickAt < dot.ExpiresAt;
+        var time = ticks ? tickAt : dot.ExpiresAt;
+        var action = ticks ? dot.TickAction ??= c => TickDue(c, dot) : dot.ExpireAction ??= c => Expire(c, dot);
+        // Speed: the queued event moves, so the queue keeps no cancelled copy of it.
+        if (dot.Event is { } ev && ctx.Reschedule(ref ev, time, action))
+        {
+            dot.Event = ev;
+            return;
+        }
+        dot.Event = ctx.ScheduleAt(time, action, dot.Effect.Name);
     }
 
     private void TickDue(SimulationContext ctx, DotInstance dot)

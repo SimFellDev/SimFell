@@ -16,7 +16,7 @@ public class DeathsArc : Talent
     public const double CritChance = 1.0;
     public const string ProcKey = "deaths_arc";
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

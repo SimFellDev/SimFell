@@ -19,7 +19,7 @@ public class ReignOfFire : Talent
     public const double CritChance = 2.0;
     public const string ProcKey = "reign_of_fire";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Reign of Fire", EffectId, BuffSeconds, MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect("Reign of Fire", EffectId, BuffSeconds, MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

@@ -172,6 +172,100 @@ public sealed class BuildEditor(CharacterBuild build)
     /// <summary>True when the stats came from an old profile and likely count bonuses twice.</summary>
     public bool StatsFromOldProfile => Build.StatsFromOldProfile;
 
+    /// <summary>The most tempers an item takes, and the tempers a slot starts with.</summary>
+    public const int DefaultTempers = 8;
+
+    // The tempers picked for each slot in the picker, for the items shown there; a slot not here has its piece's, else 8.
+    private readonly Dictionary<GearSlot, int> _slotTempers = new();
+
+    /// <summary>The items the hero can wear in <paramref name="slot"/>.</summary>
+    public IEnumerable<GearItem> ItemsFor(GearSlot slot) => GearItem.Of(Build.Hero).Where(i => i.Kind == GearSlots.Kind(slot));
+
+    /// <summary>
+    /// The piece worn in <paramref name="slot"/>, or null. A build made before builds held their gear shows its relics,
+    /// legendary and weapon in their slots, at their most tempers.
+    /// </summary>
+    public GearPiece? Piece(GearSlot slot) => Build.Gear.Count > 0 ? Build.Gear.FirstOrDefault(p => p.Slot == slot) : Implied().FirstOrDefault(p => p.Slot == slot);
+
+    /// <summary>The item worn in <paramref name="slot"/>, or null.</summary>
+    public GearItem? Item(GearSlot slot) => Piece(slot) is { } piece ? GearItem.Find(Build.Hero, piece.ItemId) : null;
+
+    /// <summary>The slots with an item worn.</summary>
+    public int GearWorn => GearSlots.All.Count(s => Item(s) != null);
+
+    /// <summary>
+    /// The tempers of <paramref name="slot"/>: the ones picked for it, else its piece's (a legendary, which takes none,
+    /// leaves the slot at <see cref="DefaultTempers"/>).
+    /// </summary>
+    public int Tempers(GearSlot slot) =>
+        _slotTempers.TryGetValue(slot, out int tempers) ? tempers
+        : Item(slot) is { MaxTempers: > 0 } && Piece(slot) is { } piece ? piece.Tempers
+        : DefaultTempers;
+
+    /// <summary>Wears item <paramref name="itemId"/> in <paramref name="slot"/> at the slot's tempers, or empties it for null.</summary>
+    public void Wear(GearSlot slot, int? itemId)
+    {
+        var gear = GearSlots.All.Select(Piece).OfType<GearPiece>().Where(p => p.Slot != slot).ToList();
+        if (itemId is { } id && GearItem.Find(Build.Hero, id) is { } item && item.Kind == GearSlots.Kind(slot))
+        {
+            gear.Add(new GearPiece(slot, id, Math.Min(Tempers(slot), item.MaxTempers)));
+        }
+        SetGear(gear);
+    }
+
+    /// <summary>Sets the tempers of <paramref name="slot"/> (0 to <see cref="DefaultTempers"/>), and of its piece when it takes them.</summary>
+    public void SetTempers(GearSlot slot, int tempers)
+    {
+        _slotTempers[slot] = Math.Clamp(tempers, 0, DefaultTempers);
+        if (Piece(slot) is { } piece && Item(slot) is { MaxTempers: > 0 } item)
+        {
+            var gear = GearSlots.All.Select(Piece).OfType<GearPiece>().Where(p => p.Slot != slot).ToList();
+            gear.Add(piece with { Tempers = Math.Min(_slotTempers[slot], item.MaxTempers) });
+            SetGear(gear);
+        }
+    }
+
+    /// <summary>
+    /// Wears <paramref name="gear"/>: the raw stats become its pieces' stats summed, and the relics, legendary and weapon
+    /// its own. A log's maximum health no longer holds.
+    /// </summary>
+    private void SetGear(List<GearPiece> gear)
+    {
+        Build.Gear = gear.OrderBy(p => p.Slot).ToList();
+        var worn = Build.Gear.Select(p => (Piece: p, Item: GearItem.Find(Build.Hero, p.ItemId))).Where(w => w.Item != null).ToList();
+        var stats = worn.Aggregate(new GearStats(), (sum, w) => sum + w.Item!.StatsAt(w.Piece.Tempers));
+        Build.Stamina = stats.Stamina;
+        Build.PrimaryStat = stats.Primary;
+        Build.CritRating = stats.Crit;
+        Build.ExpertiseRating = stats.Expertise;
+        Build.HasteRating = stats.Haste;
+        Build.SpiritRating = stats.Spirit;
+        Build.MaxHealth = 0;
+        Build.StatsFromOldProfile = false;
+        int RelicOf(GearSlot slot) => worn.FirstOrDefault(w => w.Piece.Slot == slot).Piece is { } p && CoreCatalog.RelicItemOf(p.ItemId) != null ? p.ItemId : 0;
+        Build.Relic1ItemId = RelicOf(GearSlot.Relic1);
+        Build.Relic2ItemId = RelicOf(GearSlot.Relic2);
+        Build.WeaponAbilityId = worn.FirstOrDefault(w => w.Piece.Slot == GearSlot.Weapon).Item?.WeaponAbilityId ?? 0;
+        Build.LegendaryItemIds = worn.Where(w => w.Item!.Legendary && BuildHeroes.LegendaryName(Build.Hero, w.Item.Id) != null)
+            .Select(w => w.Item!.Id).ToList();
+    }
+
+    // A build made before builds held their gear: its relics, legendaries and weapon as pieces at their most tempers.
+    private IEnumerable<GearPiece> Implied()
+    {
+        var items = GearItem.Of(Build.Hero);
+        if (items.FirstOrDefault(i => i.Id == Build.Relic1ItemId && i.Kind == GearKind.Relic) is { } relic1) yield return new GearPiece(GearSlot.Relic1, relic1.Id, relic1.MaxTempers);
+        if (items.FirstOrDefault(i => i.Id == Build.Relic2ItemId && i.Kind == GearKind.Relic) is { } relic2) yield return new GearPiece(GearSlot.Relic2, relic2.Id, relic2.MaxTempers);
+        if (Build.WeaponAbilityId != 0 && items.FirstOrDefault(i => i.Kind == GearKind.Weapon && i.WeaponAbilityId == Build.WeaponAbilityId) is { } weapon)
+        {
+            yield return new GearPiece(GearSlot.Weapon, weapon.Id, weapon.MaxTempers);
+        }
+        foreach (var legendary in items.Where(i => i.Legendary && Build.LegendaryItemIds.Contains(i.Id)))
+        {
+            yield return new GearPiece(GearSlots.Of(legendary.Kind).First(), legendary.Id, legendary.MaxTempers);
+        }
+    }
+
     /// <summary>The weapon's ability ID, or null for no weapon.</summary>
     public int? Weapon
     {
@@ -234,17 +328,39 @@ public sealed class BuildEditor(CharacterBuild build)
 
     /// <summary>
     /// How many more of <paramref name="slot"/> the build can take: as many as still fit on its gear with the rest of its
-    /// enchants (<see cref="GearFit"/>); protective enchants, up to their limit.
+    /// enchants (<see cref="GearFit"/>); protective enchants, up to their limit. With <paramref name="optionId"/>, more of
+    /// that one: the weapon's tree takes one of each at most, so one the build has already may fit fewer times.
     /// </summary>
-    public int Room(EnchantSlot slot) => slot == EnchantSlot.Protective
+    public int Room(EnchantSlot slot, int? optionId = null) => slot == EnchantSlot.Protective
         ? Math.Max(0, Limit(slot) - Used(slot))
-        : GearFit.Room(slot, Used, HasWeapon);
+        : GearFit.Room(slot, Used, HasWeapon, Distinct, another: optionId is not { } id || Worn(slot, id) == 0);
 
     /// <summary>True when every enchant the build has can be worn on its gear (an import can have more).</summary>
-    public bool FitsGear => GearFit.Fits(Used, HasWeapon);
+    public bool FitsGear => GearFit.Fits(Used, HasWeapon, Distinct);
 
-    /// <summary>The part of <paramref name="slot"/>'s count the weapon's tree holds: it fills first.</summary>
-    public int WeaponUsed(EnchantSlot slot) => Math.Min(Used(slot), GearFit.WeaponLimit(slot, HasWeapon));
+    /// <summary>
+    /// The part of <paramref name="slot"/>'s count the weapon's tree holds: it fills first, with one of each different
+    /// one at most.
+    /// </summary>
+    public int WeaponUsed(EnchantSlot slot) => Math.Min(Math.Min(Used(slot), Distinct(slot)), GearFit.WeaponLimit(slot, HasWeapon));
+
+    /// <summary>How many different ones of <paramref name="slot"/> the build has (stat enchants, aspects, sigils, glyphs).</summary>
+    public int Distinct(EnchantSlot slot) => slot switch
+    {
+        EnchantSlot.StatEnchants => Build.StatEnchants.Count(e => StatEnchantCount(e.Id) > 0),
+        EnchantSlot.Aspects => Catalog.Aspects.Count(o => AugmentationRank(o.Id) > 0),
+        EnchantSlot.Sigils => Catalog.Sigils.Count(o => AugmentationRank(o.Id) > 0),
+        EnchantSlot.Glyphs => Catalog.Glyphs.Count(o => GlyphRank(o.Id) > 0),
+        _ => Build.GearGemBonuses.Count(g => g.Value > 0),
+    };
+
+    // How many of one stat enchant, aspect, sigil or glyph the build has.
+    private int Worn(EnchantSlot slot, int id) => slot switch
+    {
+        EnchantSlot.StatEnchants => StatEnchantCount(id),
+        EnchantSlot.Glyphs => GlyphRank(id),
+        _ => AugmentationRank(id),
+    };
 
     /// <summary>The part of <paramref name="slot"/>'s count on the armor and other pieces.</summary>
     public int GearUsed(EnchantSlot slot) => Used(slot) - WeaponUsed(slot);
@@ -265,7 +381,7 @@ public sealed class BuildEditor(CharacterBuild build)
     public void SetStatEnchantCount(StatEnchant enchant, int count)
     {
         int now = StatEnchantCount(enchant.Id);
-        count = Math.Clamp(count, 0, now + Room(EnchantSlot.StatEnchants));
+        count = Math.Clamp(count, 0, now + Room(EnchantSlot.StatEnchants, enchant.Id));
         if (count == now) return;
         SetStatEnchantRating(enchant, count * EnchantSlots.RatingPerStatEnchant);
         if (count > 0) Build.StatEnchantCounts[enchant.Id] = count;
@@ -280,7 +396,7 @@ public sealed class BuildEditor(CharacterBuild build)
 
     // A rank raised no further than the room its slot has.
     private int Allowed(BuildOption option, int current, int rank) =>
-        rank <= current ? rank : Math.Min(rank, current + Room(SlotOf(option)));
+        rank <= current ? rank : Math.Min(rank, current + Room(SlotOf(option), option.Id));
 
     public bool HasRelic(int itemId) => itemId != 0 && (Build.Relic1ItemId == itemId || Build.Relic2ItemId == itemId);
 
@@ -441,6 +557,11 @@ public sealed class BuildEditor(CharacterBuild build)
         {
             removed.Add($"relic item {build.Relic2ItemId}");
             build.Relic2ItemId = 0;
+        }
+        foreach (var piece in build.Gear.Where(p => GearItem.Find(build.Hero, p.ItemId)?.Kind != GearSlots.Kind(p.Slot)).ToList())
+        {
+            build.Gear.Remove(piece);
+            removed.Add($"{GearSlots.Label(piece.Slot).ToLowerInvariant()} item {piece.ItemId}");
         }
         // A legendary of the hero's the engine does not model stays: a sim lists it as not modeled.
         foreach (int id in build.LegendaryItemIds.Where(id => BuildHeroes.LegendaryName(build.Hero, id) == null).ToList())

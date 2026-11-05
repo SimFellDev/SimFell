@@ -1,34 +1,52 @@
-using System.Text.Json.Nodes;
-
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>A replay review of one player in a raw fight: the replay script, the replay, and the review's files.</summary>
 public static class ReplayReview
 {
     /// <summary>
-    /// Builds the player's replay script from the raw fight, replays it and renders the review.
-    /// <paramref name="cancellationToken"/> stops it between steps with an <see cref="OperationCanceledException"/>.
+    /// Builds the player's replay script from a raw fight's UTF-8 JSON, replays it and renders the review.
+    /// <paramref name="cancellationToken"/> stops it between steps with an <see cref="OperationCanceledException"/>. A raw
+    /// fight that is not a JSON object throws <see cref="ArgumentException"/>.
     /// </summary>
-    public static ReviewArtifacts Run(JsonObject raw, int playerId, ReplayOptions? options = null, IProgress<string>? progress = null,
-        CancellationToken cancellationToken = default)
+    public static ReviewArtifacts Run(ReadOnlyMemory<byte> rawFight, int playerId, ReplayOptions? options = null,
+        IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
+        Run(new RawFightHolder(rawFight), playerId, options, progress, cancellationToken);
+
+    /// <summary>
+    /// <see cref="Run(ReadOnlyMemory{byte}, int, ReplayOptions?, IProgress{string}?, CancellationToken)"/> for the raw fight
+    /// in <paramref name="rawFight"/>, which the script's build empties: nothing keeps the raw fight through the replay.
+    /// </summary>
+    public static ReviewArtifacts Run(RawFightHolder rawFight, int playerId, ReplayOptions? options = null,
+        IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
+        Replay(ScriptJson(rawFight, playerId, progress), playerId, options, progress, cancellationToken);
+
+    // The replay script's UTF-8 JSON. The raw fight is held by this method's frame alone, so it is free once the script is
+    // built.
+    private static byte[] ScriptJson(RawFightHolder rawFight, int playerId, IProgress<string>? progress)
     {
-        var player = ReplayScriptBuilder.Players(raw).FirstOrDefault(p => p.Id == playerId)
-            ?? throw new ArgumentException($"Player {playerId} did not take part in fight {raw["fight"]?["id"]}.");
+        var raw = rawFight.Take();
+        var players = ReplayScriptBuilder.Players(raw.Span);
+        var player = players.FirstOrDefault(p => p.Id == playerId)
+            ?? throw new ArgumentException($"Player {playerId} did not take part in fight {RawFightHead.Read(raw.Span)["fight"]["id"].Element}.");
         if (!ReplayDriver.SupportsHero(player.Hero))
         {
             throw new NotSupportedException($"{player.Name} plays {player.Hero}, which is not supported yet (supported: {string.Join(", ", ReplayDriver.SupportedHeroes)}).");
         }
 
         progress?.Report("Building the replay script");
-        var scriptJson = ReplayScriptBuilder.Build(raw, playerId).ToJsonString();
+        return ReplayScriptBuilder.Build(raw, playerId);
+    }
 
+    private static ReviewArtifacts Replay(byte[] scriptJson, int playerId, ReplayOptions? options, IProgress<string>? progress,
+        CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         progress?.Report("Replaying the fight");
         return Run(ReplayScript.FromJson(scriptJson), scriptJson, playerId, options, cancellationToken);
     }
 
     /// <summary>Replays a script and renders its review.</summary>
-    public static ReviewArtifacts Run(ReplayScript script, string scriptJson, int playerId, ReplayOptions? options = null,
+    public static ReviewArtifacts Run(ReplayScript script, byte[] scriptJson, int playerId, ReplayOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         options ??= new ReplayOptions { StopOnFirstFailure = false };
@@ -37,8 +55,8 @@ public static class ReplayReview
         return Artifacts(result, script, scriptJson, playerId);
     }
 
-    /// <summary>The review's files for a finished replay of <paramref name="script"/>.</summary>
-    public static ReviewArtifacts Artifacts(ReplayResult result, ReplayScript script, string scriptJson, int playerId)
+    /// <summary>The review's files for a finished replay of <paramref name="script"/>, whose UTF-8 JSON is <paramref name="scriptJson"/>.</summary>
+    public static ReviewArtifacts Artifacts(ReplayResult result, ReplayScript script, byte[] scriptJson, int playerId)
     {
         string id = ReplayLibrary.ReviewId(script.ReportCode, script.FightId, playerId);
         var (engineDamage, logDamage) = ReplayReportWriter.DamageTotals(result);

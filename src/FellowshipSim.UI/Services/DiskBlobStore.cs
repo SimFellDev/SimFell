@@ -5,7 +5,7 @@ namespace FellowshipSim.UI.Services;
 /// <summary>An <see cref="IBlobStore"/> in the folder <paramref name="root"/>: each key is a file path under it.</summary>
 public sealed partial class DiskBlobStore(string root) : IBlobStore
 {
-    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,127}$")]
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,127}$")]
     private static partial Regex SegmentPattern();
 
     /// <summary>True when <paramref name="segment"/> can be one segment of a key.</summary>

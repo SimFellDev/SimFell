@@ -1,0 +1,59 @@
+@implements IDisposable
+@*
+    The frame's toasts: short confirmations of an action, over the page. Each frame (MainLayout, DesktopShell) wraps its
+    content in one, and every component inside it takes it as a cascading parameter:
+        [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+    Several toasts show at once, the newest last; each closes with its X or after Duration.
+*@
+<CascadingValue Value="this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+<ToastStack @ref="_stack" Toasts="_shown" OnClose="Hide" />
+
+@code {
+    /// <summary>How long each toast shows.</summary>
+    public static readonly TimeSpan Duration = TimeSpan.FromSeconds(6);
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    // The stack redraws alone, so a toast does not redraw the frame's content.
+    private ToastStack? _stack;
+    private readonly List<Toast> _shown = [];
+    private readonly CancellationTokenSource _closed = new();
+    private int _next;
+
+    /// <summary>Shows <paramref name="text"/> in green.</summary>
+    public void Ok(string text) => Show(MessageState.Ok(text));
+
+    public void Show(MessageState message)
+    {
+        var toast = new Toast(++_next, message);
+        _shown.Add(toast);
+        _stack?.Refresh();
+        _ = HideLaterAsync(toast);
+    }
+
+    public void Hide(Toast toast)
+    {
+        if (_shown.Remove(toast)) _stack?.Refresh();
+    }
+
+    private async Task HideLaterAsync(Toast toast)
+    {
+        try
+        {
+            await Task.Delay(Duration, _closed.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        await InvokeAsync(() => Hide(toast));
+    }
+
+    public void Dispose()
+    {
+        _closed.Cancel();
+        _closed.Dispose();
+    }
+}

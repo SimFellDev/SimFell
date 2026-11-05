@@ -19,7 +19,7 @@ public class FocusedExpanse : Talent
     public const int MaxCharges = 2;
     public const string ProcKey = "focused_expanse";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Focused Expanse", BuffEffectId, BuffSeconds, MaxCharges);
+    public static readonly AuraDef Buff = AuraDef.Effect("Focused Expanse", BuffEffectId, BuffSeconds, MaxCharges) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

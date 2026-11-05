@@ -41,7 +41,7 @@
                         <div class="fight-head">
                             <span class="fight-name">@f.Name</span>
                             <span class="meta">
-                                Fight @f.Id · @FormatDuration(f.DurationSeconds) · @(f.Kill ? "kill" : "wipe/ongoing")@(f.Downloaded ? " · downloaded" : "")
+                                Fight @f.Id · @FormatDuration(f.DurationSeconds) · @(f.Kill ? "kill" : "wipe/ongoing")
                             </span>
                         </div>
                         <div class="players">
@@ -52,7 +52,7 @@
                                 string kind = !pickable ? "player unsupported" : picked ? "player picked" : "player";
                                 <button @key="p.Id" type="button" class="@kind" aria-pressed="@picked"
                                         disabled="@(!pickable || Busy)"
-                                        data-tooltip="@(pickable ? $"Pick {p.Name}'s {p.Hero}" : $"{p.Hero} is not supported yet")"
+                                        data-tooltip="@(pickable ? $"Pick {p.Name}'s {p.Hero}{(p.Downloaded ? " (downloaded)" : "")}" : $"{p.Hero} is not supported yet")"
                                         @onclick="() => State.Picked = (f.Id, p.Id)">
                                     <span class="player-name">@p.Name</span>
                                     <span class="player-hero">@p.Hero</span>
@@ -66,18 +66,7 @@
             <div class="import-bar">
                 <span class="meta">@(pick is { } chosen ? $"{chosen.Player.Name} ({chosen.Player.Hero}) in {chosen.Fight.Name}, fight {chosen.Fight.Id}" : "Pick a player above.")</span>
                 <div class="import-actions">
-                    @if (OnImport.HasDelegate)
-                    {
-                        <label class="switch" data-tooltip="The player's hero, talents, gear and stats">
-                            <input type="checkbox" @bind="State.ImportBuild" />
-                            <span>Build</span>
-                        </label>
-                        <label class="switch" data-tooltip="The fight's pulls and enemies as the dungeon, with the player's hero share">
-                            <input type="checkbox" @bind="State.ImportDungeon" />
-                            <span>Dungeon</span>
-                        </label>
-                    }
-                    <button type="button" class="import-button" disabled="@(pick == null || Busy || OnImport.HasDelegate && !State.ImportBuild && !State.ImportDungeon)"
+                    <button type="button" class="import-button" disabled="@(pick == null || Busy)"
                             @onclick="() => OnPick(report, pick!.Value.Fight, pick!.Value.Player)">Import</button>
                 </div>
             </div>
@@ -86,19 +75,16 @@
 </Card>
 
 @code {
-    /// <summary>True while a replay runs: the player buttons are disabled.</summary>
     /// <summary>The card's title: what the import is for.</summary>
     [Parameter] public string Title { get; set; } = "Import a fight";
 
+    /// <summary>True while a replay runs: the player buttons are disabled.</summary>
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback<ReviewTarget> OnReplay { get; set; }
 
-    /// <summary>
-    /// Called with the player picked and the parts switched on (build, dungeon), instead of <see cref="OnReplay"/>, when
-    /// set; the switches show then.
-    /// </summary>
-    [Parameter] public EventCallback<LogImport> OnImport { get; set; }
+    /// <summary>Called with the player picked instead of <see cref="OnReplay"/>, when set.</summary>
+    [Parameter] public EventCallback<PickedPlayer> OnImport { get; set; }
 
     /// <summary>
     /// True when a player of a hero the engine does not have yet can be picked too: for their build, which the build editor
@@ -120,7 +106,7 @@
 
     private Task OnPick(Report report, ReportFight fight, FightPlayer player) =>
         OnImport.HasDelegate
-            ? OnImport.InvokeAsync(new LogImport(new PickedPlayer(report.Code, fight, player, report.CurrentPatch), State.ImportBuild, State.ImportDungeon))
+            ? OnImport.InvokeAsync(new PickedPlayer(report.Code, fight, player, report.CurrentPatch))
             : OnReplay.InvokeAsync(new ReviewTarget(report.Code, fight.Id, player.Id));
 
     private static string OldPatchWarning(Report report) =>

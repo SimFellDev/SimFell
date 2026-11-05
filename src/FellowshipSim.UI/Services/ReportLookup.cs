@@ -17,7 +17,7 @@ public sealed class ReportLookup(ReplayLibrary library, LogsSettingsStore settin
                      ?? throw new FellowshipLogsException("Sign in with FellowshipLogs first.");
         var summary = await client.GetSummaryAsync(parsed.ReportCode, ct);
         var heroes = (await engine.GetHeroesAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var downloaded = library.ListDownloadedFights().Where(f => f.ReportCode == parsed.ReportCode).Select(f => f.FightId).ToHashSet();
+        var downloaded = library.ListDownloadedFights().Where(f => f.ReportCode == parsed.ReportCode).Select(f => (f.FightId, f.PlayerId)).ToHashSet();
         return new Report(
             summary.Code,
             summary.Title,
@@ -25,8 +25,8 @@ public sealed class ReportLookup(ReplayLibrary library, LogsSettingsStore settin
             parsed.FightId,
             parsed.PlayerId,
             summary.Fights.Select(f => new ReportFight(
-                f.Id, f.Name, f.Kill, f.DurationSeconds, downloaded.Contains(f.Id),
-                f.Players.Select(p => new FightPlayer(p.Id, p.Name, p.Hero, heroes.Contains(p.Hero))).ToList())).ToList(),
+                f.Id, f.Name, f.Kill, f.DurationSeconds,
+                f.Players.Select(p => new FightPlayer(p.Id, p.Name, p.Hero, heroes.Contains(p.Hero), downloaded.Contains((f.Id, p.Id)))).ToList())).ToList(),
             summary.LogVersion);
     }
 }

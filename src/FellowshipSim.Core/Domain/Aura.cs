@@ -37,7 +37,16 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// </summary>
     public bool ExpiryRemovesOneStack { get; init; }
 
-    public string Key { get; private init; } = KeyOf(Name, LogId, 0);
+    /// <summary>
+    /// True for a proc: an aura a random chance applies. An action list sees a gain of it only after the proc reaction time
+    /// (<see cref="Aura.Seen"/>).
+    /// </summary>
+    public bool IsProc { get; init; }
+
+    public string Key { get; private init { field = value; Slot = AuraSlots.Of(value); } } = KeyOf(Name, LogId, 0);
+
+    /// <summary>The slot of <see cref="Key"/> (<see cref="AuraSlots"/>).</summary>
+    internal int Slot { get; private init; } = AuraSlots.Of(KeyOf(Name, LogId, 0));
 
     // Speed: StatMask is built once. Setting Modifiers rebuilds it.
     public IReadOnlyList<StatModifier> Modifiers { get; init { field = value; StatMask = MaskOf(value); } } = Modifiers;
@@ -112,7 +121,35 @@ public class Aura
     public SimTime ExpiresAt { get; internal set; } = SimTime.Infinite;
     public int Stacks { get; internal set; } = 1;
 
+    /// <summary>The time of the last gain: the aura's application, a refresh or a stack.</summary>
+    public SimTime GainedAt { get; internal set; }
+
+    /// <summary>The stacks before the last gain; 0 when the gain applied the aura.</summary>
+    public int StacksBeforeGain { get; internal set; }
+
+    /// <summary>The expiry before the last gain.</summary>
+    public SimTime ExpiresBeforeGain { get; internal set; }
+
     public bool IsExpired(SimTime now) => now >= ExpiresAt;
+
+    /// <summary>
+    /// The aura as an action list sees it at <paramref name="now"/> with <paramref name="reaction"/> as the proc reaction
+    /// time. A proc gained less than <paramref name="reaction"/> ago is in its state before the gain: its stacks and expiry
+    /// then (no more stacks than it has now), or null when it was down or that expiry has passed. Any other aura is as it is.
+    /// </summary>
+    public TargetEffect? Seen(SimTime now, SimTime reaction)
+    {
+        if (!Def.IsProc || now >= GainedAt + reaction) return TargetEffect.Of(this);
+        if (StacksBeforeGain == 0 || ExpiresBeforeGain <= now) return null;
+        return new TargetEffect(ExpiresBeforeGain, Math.Min(StacksBeforeGain, Stacks), MaxStacks, Duration);
+    }
+
+    /// <summary>
+    /// The time an action list sees the last gain with <paramref name="reaction"/> as the proc reaction time, when it is
+    /// after <paramref name="now"/>; otherwise <see cref="SimTime.Infinite"/>.
+    /// </summary>
+    public SimTime SeenGainAt(SimTime now, SimTime reaction) =>
+        Def.IsProc && now < GainedAt + reaction ? GainedAt + reaction : SimTime.Infinite;
 }
 
 public class AuraContainer
@@ -155,7 +192,7 @@ public class AuraContainer
     private void QueueExpiry()
     {
         if (_fight == null || _nextExpiry == SimTime.Infinite) return;
-        if (_expiry is { HasFired: false, IsCancelled: false } queued)
+        if (_expiry is { IsPending: true } queued)
         {
             if (queued.Time <= _nextExpiry) return;
             queued.Cancel();
@@ -235,7 +272,7 @@ public class AuraContainer
     {
         CleanExpired(now);
         var expires = def.Duration == SimTime.Infinite ? SimTime.Infinite : now + def.Duration + SimTime.FromSeconds(ExpiryLagSeconds);
-        if (_auras.TryGetValue(def.Key, out var existing))
+        if (Find(def) is { } existing)
         {
             int before = existing.Stacks;
             var previousExpiry = existing.ExpiresAt;
@@ -246,6 +283,8 @@ public class AuraContainer
                 changedStats = existing.Def.StatMask | def.StatMask;
                 existing = new Aura(def) { AppliedAt = existing.AppliedAt, Stacks = existing.Stacks };
                 _auras[def.Key] = existing;
+                Place(def.Slot, existing);
+                Membership++;
             }
             if (def.ReapplyKeepsExpiry && previousExpiry > now)
             {
@@ -260,6 +299,9 @@ public class AuraContainer
                 double left = (previousExpiry - now).TotalSeconds;
                 expires += SimTime.FromSeconds(Math.Min(left, def.Duration.TotalSeconds * def.RefreshCarryoverFraction));
             }
+            existing.GainedAt = now;
+            existing.StacksBeforeGain = before;
+            existing.ExpiresBeforeGain = previousExpiry;
             existing.ExpiresAt = expires;
             existing.Stacks = Math.Clamp(setStacks ?? (existing.Stacks + stacks), 1, existing.MaxStacks);
             if (existing.Stacks != before) changedStats |= existing.Def.StatMask;
@@ -273,10 +315,13 @@ public class AuraContainer
         var aura = new Aura(def)
         {
             AppliedAt = now,
+            GainedAt = now,
             ExpiresAt = expires,
             Stacks = Math.Clamp(setStacks ?? stacks, 1, def.MaxStacks)
         };
         _auras[def.Key] = aura;
+        Place(def.Slot, aura);
+        Membership++;
         _activeSince[def.Key] = now;
         StatsChanged(def.StatMask);
         ExpiryChanged(expires);
@@ -302,16 +347,57 @@ public class AuraContainer
     /// <summary>Changes whenever the auras with a modifier of <paramref name="type"/> or their stacks change.</summary>
     internal int StatVersion(StatType type) => _statVersions[(int)type];
 
+    /// <summary>
+    /// Changes whenever an aura is added or removed, or is replaced by an aura of other values. Between two changes
+    /// <see cref="FindActive"/> finds the same aura for a name.
+    /// </summary>
+    internal int Membership { get; private set; }
+
     /// <summary>Applies an engine-internal aura built inline (not a game effect).</summary>
     public void Apply(Aura aura, SimTime now = default, int? explicitStacks = null) =>
         Apply(aura.Def, now, aura.Stacks, explicitStacks);
 
-    public bool HasAura(AuraDef def, SimTime now = default) => HasAura(def.Key, now);
-    public int GetStacks(AuraDef def, SimTime now = default) => GetStacks(def.Key, now);
+    public bool HasAura(AuraDef def, SimTime now = default)
+    {
+        CleanExpired(now);
+        return Find(def) != null;
+    }
+
+    public int GetStacks(AuraDef def, SimTime now = default)
+    {
+        CleanExpired(now);
+        return Find(def)?.Stacks ?? 0;
+    }
+
     public void Remove(AuraDef def, SimTime now = default) => Remove(def.Key, now);
     public void ConsumeStack(AuraDef def, SimTime now = default, int count = 1) => ConsumeStack(def.Key, now, count);
     public void Extend(AuraDef def, SimTime duration) => Extend(def.Key, duration);
-    public Aura? Get(AuraDef def, SimTime now = default) => Get(def.Key, now);
+
+    public Aura? Get(AuraDef def, SimTime now = default)
+    {
+        CleanExpired(now);
+        return Find(def);
+    }
+
+    // Speed: the auras of _auras by their key's slot too, so a read by definition hashes no string.
+    private Aura?[] _bySlot = [];
+
+    /// <summary>The aura of <paramref name="def"/>'s key, run out or not.</summary>
+    private Aura? Find(AuraDef def)
+    {
+        int slot = def.Slot;
+        return slot < _bySlot.Length ? _bySlot[slot] : null;
+    }
+
+    private void Place(int slot, Aura? aura)
+    {
+        if (slot >= _bySlot.Length)
+        {
+            if (aura == null) return;
+            Array.Resize(ref _bySlot, Math.Max(slot + 1, AuraSlots.Count));
+        }
+        _bySlot[slot] = aura;
+    }
 
     public Aura? Get(string key, SimTime now = default)
     {
@@ -348,6 +434,8 @@ public class AuraContainer
     {
         if (_auras.Remove(key, out var aura))
         {
+            Place(aura.Def.Slot, null);
+            Membership++;
             StatsChanged(aura.Def.StatMask);
             if (_activeSince.Remove(key, out var start))
             {
@@ -514,6 +602,8 @@ public class AuraContainer
     public void ClearAll()
     {
         _auras.Clear();
+        Array.Clear(_bySlot);
+        Membership++;
         _activeSince.Clear();
         for (int t = 0; t < StatTypes; t++) _statVersions[t]++;
         _nextExpiry = SimTime.Infinite;

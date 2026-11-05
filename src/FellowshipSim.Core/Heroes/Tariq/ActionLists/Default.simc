@@ -1,24 +1,45 @@
-# Tariq's default action list: FellowSimc's SimC list (apl/tariq/tariq_apl.simc) in SimFell's names.
-# Left out: Earthbreaker, a weapon the engine does not have.
-actions.precombat=snapshot_stats
-actions=thunder_call
-actions+=/raging_tempest,if=!buff.thunder_call.up
-actions+=/leap_smash
+actions+=/thunder_call
+# Get Leap Smash on CD before using Fated Strike
+actions+=/call_action_list,name=fated_strike_pre_sequence_into_fated_strike,if=cooldown.fated_strike.ready
+# Don't use Raging Tempest if Fated Strike is about to come off cooldown if running Visions of Grandeur
+actions+=/raging_tempest,if=!(cooldown.fated_strike.remains <= 5 & weapon_trait.visions_of_grandeur) | !weapon.fated_strike | !weapon_trait.visions_of_grandeur
+actions+=/leap_smash,if=fury.deficit >= 15 | !talent.high_road
 actions+=/voidbringers_touch
-actions+=/sahrils_wrath,if=buff.thunder_call.up
-actions+=/focused_wrath,if=buff.focused_wrath.stack<2
-actions+=/culling_strike,if=active_enemies<=20&fury>=10|buff.executioners_grin.up|talent.pneuma
-actions+=/heavy_strike,if=buff.kill_em_all.up
-actions+=/chain_lightning,if=fury.deficit>=10
-actions+=/heavy_strike,if=fury.deficit>=12
-actions+=/call_action_list,name=finishers
-actions+=/face_breaker,if=fury.deficit>=7
-actions+=/fated_strike
-actions+=/wild_swing
+actions+=/sahrils_wrath,if=buff.thunder_call.up | buff.raging_tempest.up
+# Don't overcap Focused Wrath stacks above 3, don't clip Philosopher buff, and use inside Thunder Call/Raging Tempest with Hammer Storm Schism stacks if running Schism
+actions+=/focused_wrath,if=buff.focused_wrath.stack < 2 & (((buff.thunder_call.remains >= 8 | buff.raging_tempest.remains >= 8 | cooldown.thunder_call.remains <= buff.raging_tempest.remains) & !buff.the_philosopher.up & blessing.the_philosopher) | ((buff.thunder_call.up | buff.raging_tempest.up) & (buff.schism__hammer_storm.stack = 2 | (!talent.schism & !blessing.the_philosopher))))
+actions+=/culling_strike,if=active_enemies <= 20
+# Prioritize spending down fury over generating it if not running Schism
+actions+=/call_action_list,name=spenders,if=!talent.schism
+actions+=/heavy_strike,if=fury.deficit >= 12
+# Prioritize spenders above Chain Lightning and Face Breaker while inside Thunder Call/Raging Tempest
+actions+=/call_action_list,name=spenders,if=buff.thunder_call.up | buff.raging_tempest.up
+# Chain Lightning prioritized over Face Breaker in Lightning build
+actions+=/chain_lightning,if=talent.thunderstruck
+actions+=/face_breaker,if=fury.deficit >= 7
+# Chain Lightning is the lowest priority builder if not in Lightning build
+actions+=/chain_lightning
+# Spend down fury before using Wild Swing
+actions+=/call_action_list,name=spenders
+# Don't use Wild Swing if it would cause a Vehement proc
+actions+=/wild_swing,if=fury.deficit >= 3 & (!(buff.the_vehement.stack = 5) | !blessing.the_vehement | active_enemies = 1)
 
-# ---- Finishers: a Schism stack first, then Skull Crusher or Hammer Storm above 50 Fury.
-actions.finishers=hammer_storm,if=buff.schism__hammer_storm.up&(buff.focused_wrath.up|active_enemies>=2&(buff.schism__hammer_storm.stack=2|buff.schism__hammer_storm.remains<=gcd.max*3))
-actions.finishers+=/skull_crusher,if=buff.schism__skull_crusher.up&(buff.schism__skull_crusher.stack=2|buff.schism__skull_crusher.remains<=gcd.max*3|buff.focused_wrath.up)
-actions.finishers+=/skull_crusher,if=talent.schism&fury>50
-actions.finishers+=/hammer_storm,if=active_enemies>=3&(fury>50|dungeon_event.fight.remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
-actions.finishers+=/skull_crusher,if=active_enemies<3&(fury>50|dungeon_event.fight.remains<=10|buff.thunder_call.up&buff.thunder_call.remains<=gcd.max)
+actions.precombat+=/snapshot_stats
+
+# Use Hammer Storm in AOE if you have 2 Hammer Storm Schism stacks
+actions.spenders+=/hammer_storm,if=talent.schism & buff.schism__hammer_storm.at_max_stacks & active_enemies > 1
+# Consume Hammer Storm Schism stacks in AOE with Slayer's Mosh debuff in Thunder Call/Raging Tempest
+actions.spenders+=/hammer_storm,if=talent.schism & buff.schism__hammer_storm.up & active_enemies > 1 & debuff.slayers_mosh.remains > gcd & (buff.thunder_call.up | buff.raging_tempest.up)
+# Consume Hammer Storm Schism stacks in AOE if Thunder Call/Raging Tempest is about to end
+actions.spenders+=/hammer_storm,if=talent.schism & buff.schism__hammer_storm.up & active_enemies > 1 & (buff.thunder_call.remains < gcd * 2 | buff.raging_tempest.remains < gcd * 2)
+# Consume Hammer Storm Schism stacks in single target with Focused Wrath
+actions.spenders+=/hammer_storm,if=talent.schism & buff.schism__hammer_storm.up & active_enemies = 1 & buff.focused_wrath.up
+# Without Schism, use Hammer Storm with at least 3 enemies
+actions.spenders+=/hammer_storm,if=!talent.schism & active_enemies >= 3
+# With Schism, don't use Skull Crusher if it would munch Hammer Storm Schism stacks in AOE. Without Schism, use Skull Crusher with 2 or fewer enemies.
+actions.spenders+=/skull_crusher,if=(talent.schism & !(buff.schism__hammer_storm.at_max_stacks & active_enemies > 1)) | (!talent.schism & active_enemies <= 2)
+
+actions.fated_strike_pre_sequence_into_fated_strike+=/hammer_storm,if=buff.schism__hammer_storm.at_max_stacks & fury > 85 & cooldown.leap_smash.ready & talent.high_road
+actions.fated_strike_pre_sequence_into_fated_strike+=/skull_crusher,if=fury > 85 & cooldown.leap_smash.ready & talent.high_road
+actions.fated_strike_pre_sequence_into_fated_strike+=/leap_smash,if=fury.deficit >= 15 & talent.high_road
+actions.fated_strike_pre_sequence_into_fated_strike+=/fated_strike

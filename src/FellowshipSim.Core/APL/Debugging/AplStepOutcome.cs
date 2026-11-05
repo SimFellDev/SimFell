@@ -14,7 +14,10 @@ public enum AplStepOutcome
     NoTarget,
     /// <summary>The condition held and the ability could not be cast: a cooldown, a resource or a cast already running.</summary>
     NotReady,
-    /// <summary>The ability could be cast and the cast was refused.</summary>
+    /// <summary>
+    /// The ability could be cast and the cast was refused, or the action would go if the action lists saw a proc's gain
+    /// inside the proc reaction time (<see cref="SimulationContext.ProcReactionTime"/>).
+    /// </summary>
     CastRefused,
     /// <summary>A <c>variable</c> action set its variable.</summary>
     VariableSet,

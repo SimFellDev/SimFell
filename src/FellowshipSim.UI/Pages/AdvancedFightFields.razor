@@ -1,0 +1,64 @@
+@using System.Globalization
+@*
+    The fight's advanced settings: its length's variance, the training dummies' health, and the hero's reactions. Its
+    fields are in the parent's row of fields, on the Sim page's Advanced settings card and the APL Debugger's Fight
+    settings card.
+*@
+<div class="toggle-block">
+    <label class="switch">
+        <input type="checkbox" @bind="State.VaryLength" />
+        <span data-tooltip="@(State.Mode == SimMode.Dungeon ? DungeonLengthTip : null)">Vary the fight length</span>
+    </label>
+    @if (State.Mode == SimMode.TrainingDummies && State.VaryLength && State.LengthVariancePercent > 0)
+    {
+        <span class="meta">@LengthText()</span>
+    }
+</div>
+<label class="field @(State.VaryLength ? "" : "off")">
+    By ± %
+    <input type="number" min="0" max="90" step="1" disabled="@(!State.VaryLength)"
+           @bind:get="State.LengthVariancePercent" @bind:set="v => State.LengthVariancePercent = Math.Clamp(v, 0, 90)" />
+</label>
+<div class="toggle-block">
+    <label class="switch" data-tooltip="@HealthTip">
+        <input type="checkbox" @bind="State.HealthFollowsTime" />
+        <span>Health follows time</span>
+    </label>
+</div>
+<div class="toggle-block">
+    <label class="switch" data-tooltip="@ReactionTip">
+        <input type="checkbox" @bind="State.ReactionDelays" />
+        <span>Player reaction time</span>
+    </label>
+</div>
+<label class="field" data-tooltip="@ProcReactionTip">
+    Proc reaction (ms)
+    <input type="number" min="0" step="1"
+           @bind:get="State.ProcReactionMilliseconds" @bind:set="v => State.ProcReactionMilliseconds = Math.Max(0, v)" />
+</label>
+
+@code {
+    /// <summary>The fight's settings: the Sim page's, or the APL Debugger's own.</summary>
+    [Parameter, EditorRequired] public SimPageState State { get; set; } = null!;
+
+    private const string DungeonLengthTip = "In a dungeon, this changes only the pull duration of enemies with no hit points.";
+
+    private const string HealthTip = "The training dummies go from full health at the start to none at the fight's end, whatever damage they take, "
+        + "so effects gated on a target's health come at their share of the fight.";
+
+    private const string ReactionTip = "A random delay before the cast after a channel, as players took in the combat logs (about 0.17 s): "
+        + "nothing is queued out of a channel. A cast queued during the global cooldown or a cast time goes off as it ends either way. "
+        + "Off, the hero casts the moment a channel ends.";
+
+    private const string ProcReactionTip = "The action list sees a proc's gain this long after it happens. Until then, buff.<proc> reads "
+        + "the proc as it was before the gain: down, its stacks before the gain, or its time left before the gain. 0 shows the gain at once.";
+
+    /// <summary>The training dummies' fight length range.</summary>
+    private string LengthText()
+    {
+        double share = State.LengthVariancePercent / 100;
+        return $"Each fight lasts {N(State.FightSeconds * (1 - share))} – {N(State.FightSeconds * (1 + share))} s.";
+    }
+
+    private static string N(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
+}

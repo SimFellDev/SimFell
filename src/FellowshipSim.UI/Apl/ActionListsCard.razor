@@ -4,85 +4,222 @@
 @inject ActionListStore Store
 @inject Visitor Visitor
 @inject IJSRuntime JS
-@inject ActionListsState State
+@inject ActionListsState SharedState
 @inject AplDebuggerState Debugger
 @inject IAppViews Views
-@* Visual action-list editor: one section per action list, each with its actions in priority order. *@
+@*
+    Visual action-list editor: one section per action list, each with its actions in priority order, and the text on a
+    second tab. On the APL Editor page it edits any hero's lists. Embedded (the Sim page's Modes tab, Hero set) it is the
+    sim's Selected APL: the picker of the hero's lists, then the picked list's editor under the edit button.
+*@
 <Card>
     <div @ref="_root" class="apl-editor">
+        @if (Embedded)
+        {
+            <div class="selected-apl @(Disabled ? "off" : "")">
+                <label class="selected-label" for="@_selectId">Selected APL</label>
+                <select id="@_selectId" @key="_pickerKey" disabled="@(Disabled || State.Editor.Vocabulary == null)" @bind:get="State.SelectedSaved" @bind:set="PickSavedAsked">
+                    @if (State.TextList is { } textList)
+                    {
+                        <option value="">@(textList.Name.Length > 0 ? textList.Name : "Imported list")</option>
+                    }
+                    else if (State.SelectedSaved.Length == 0)
+                    {
+                        <option value="">@(State.Name.Length > 0 ? State.Name : "Imported list")</option>
+                    }
+                    @foreach (var saved in State.Saved.Where(s => s.Hero.Equals(Hero, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : saved.Shared ? " (shared)" : "")</option>
+                    }
+                </select>
+                <button type="button" class="icon-button edit-button @(EditorShown ? "on" : "")" aria-label="Edit action list" aria-expanded="@(EditorShown ? "true" : "false")"
+                        disabled="@Disabled" data-tooltip="@(EditorShown ? "Hide the editor" : "Edit this action list here")" @onclick="ToggleOpen">
+                    <Icon Shape="IconShape.Pencil" />
+                </button>
+            </div>
+            @if (Disabled)
+            {
+                <p class="hint">Compare is on: each of its runs picks its own action list.</p>
+            }
+        }
+        @if (_pending is { } pending)
+        {
+            <div class="confirm" role="alertdialog" aria-label="Unsaved changes">
+                <span>@(State.Name.Trim().Length > 0 ? State.Name.Trim() : "This list") has changes that are not saved. Save them before @pending.What?</span>
+                <button type="button" @onclick="SaveThenContinue">Save</button>
+                <button type="button" class="secondary-button" @onclick="DiscardThenContinue">Discard</button>
+                <button type="button" class="secondary-button" @onclick="CancelPending">Cancel</button>
+            </div>
+        }
         @if (State.Editor.Vocabulary is not { } v)
         {
             <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>
         }
-        else
+        else if (!Embedded || EditorShown)
         {
             <CascadingValue Value="State.Editor" IsFixed="true">
-                <p class="hint">
-                    Each time the hero can act, they cast the first action from the top of the default list with a ready ability and
-                    a true condition. Run action list and Call action list run the actions of another list.
-                    <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
-                </p>
                 <ConditionReference @ref="_reference" />
-                <div class="row toolbar">
-                    <label class="field">
-                        Hero
-                        <select @key="_pickerKey" @bind:get="v.Hero" @bind:set="SelectHero">
-                            @foreach (string hero in State.Heroes)
+                @if (!Embedded)
+                {
+                    <div class="row toolbar">
+                        <label class="field">
+                            Hero
+                            <select @key="_pickerKey" @bind:get="v.Hero" @bind:set="SelectHero">
+                                @foreach (string hero in State.Heroes)
+                                {
+                                    <option @key="hero">@hero</option>
+                                }
+                            </select>
+                        </label>
+                        <input @ref="_nameInput" aria-label="Action list name" placeholder="Action list name" autocomplete="off" @bind="State.Name" />
+                        <select @key="_pickerKey" aria-label="Saved action lists" @bind:get="State.SelectedSaved" @bind:set="PickSavedAsked">
+                            <option value="">Load list...</option>
+                            @foreach (var saved in State.Saved.Where(s => s.Hero.Equals(v.Hero, StringComparison.OrdinalIgnoreCase)))
                             {
-                                <option @key="hero">@hero</option>
+                                <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : saved.Shared ? " (shared)" : "")</option>
                             }
                         </select>
-                    </label>
-                    <input @ref="_nameInput" aria-label="Action list name" placeholder="Action list name" autocomplete="off" @bind="State.Name" />
-                    <select @key="_pickerKey" aria-label="Saved action lists" @bind:get="State.SelectedSaved" @bind:set="PickSavedAsked">
-                        <option value="">Load list...</option>
-                        @foreach (var saved in State.Saved.Where(s => s.Hero.Equals(v.Hero, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            <option @key="SavedValue(saved)" value="@SavedValue(saved)">@saved.Name@(saved.BuiltIn ? " (built in)" : saved.Shared ? " (shared)" : "")</option>
-                        }
-                    </select>
-                    <button type="button" class="secondary-button" @onclick="Save">Save</button>
-                    <button type="button" class="secondary-button" @onclick="NewAsked">New</button>
-                    <button type="button" class="secondary-button" @onclick="Duplicate">Duplicate</button>
-                    <button type="button" class="secondary-button delete" disabled="@(!CanDelete)" data-tooltip="@(CanDelete ? null : "Only your own saved lists can be deleted")" @onclick="Delete">Delete</button>
-                    <button type="button" class="secondary-button" data-tooltip="Step through one fight of this action list in the APL Debugger, with a build and a fight picked there" @onclick="DebugAsync">Debug</button>
-                </div>
-                @if (_pending is { } pending)
-                {
-                    <div class="confirm" role="alertdialog" aria-label="Unsaved changes">
-                        <span>@(State.Name.Trim().Length > 0 ? State.Name.Trim() : "This list") has changes that are not saved. Save them before @pending.What?</span>
-                        <button type="button" @onclick="SaveThenContinue">Save</button>
-                        <button type="button" class="secondary-button" @onclick="DiscardThenContinue">Discard</button>
-                        <button type="button" class="secondary-button" @onclick="CancelPending">Cancel</button>
                     </div>
                 }
+                <div class="editor-bar">
+                    <nav class="editor-tabs" role="tablist" aria-label="Action list views">
+                        <button type="button" role="tab" class="editor-tab @(State.TextOpen ? "" : "selected")" aria-selected="@(State.TextOpen ? "false" : "true")"
+                                @onclick="() => State.TextOpen = false">Actions</button>
+                        <button type="button" role="tab" class="editor-tab @(State.TextOpen ? "selected" : "")" aria-selected="@(State.TextOpen ? "true" : "false")"
+                                @onclick="() => State.TextOpen = true">Action list text</button>
+                    </nav>
+                    <div class="row editor-actions">
+                        <button type="button" class="link-button" aria-haspopup="dialog" @onclick="() => _reference.Open()">Condition reference</button>
+                        @if (State.HasEdits)
+                        {
+                            <span class="edited">Edited</span>
+                        }
+                        <button type="button" class="icon-button" aria-label="Revert" disabled="@(!State.HasEdits || State.SelectedSaved.Length == 0)"
+                                data-tooltip="Undo the changes not saved" @onclick="Revert"><Icon Shape="IconShape.Revert" /></button>
+                        <button type="button" class="icon-button" aria-label="Save" data-tooltip="@(!Embedded || PickedOwnList != null ? "Save" : "Save as your own list")"
+                                @onclick="Save"><Icon Shape="IconShape.Save" /></button>
+                        @if (!Embedded)
+                        {
+                            <button type="button" class="icon-button" aria-label="New list" data-tooltip="New list" @onclick="NewAsked"><Icon Shape="IconShape.Plus" /></button>
+                            <button type="button" class="icon-button" aria-label="Duplicate" data-tooltip="Duplicate" @onclick="Duplicate"><Icon Shape="IconShape.Duplicate" /></button>
+                        }
+                        <span class="divider" aria-hidden="true"></span>
+                        <label class="icon-button file-button" aria-label="Import" data-tooltip="Open a .simc file's action list as a new list">
+                            <Icon Shape="IconShape.Import" />
+                            <InputFile accept=".simc,.txt" OnChange="ImportFileAsync" />
+                        </label>
+                        <button type="button" class="icon-button" aria-label="Download" data-tooltip="Download the action list as a .simc file"
+                                @onclick="Download"><Icon Shape="IconShape.Download" /></button>
+                        @if (!Embedded)
+                        {
+                            <button type="button" class="icon-button" aria-label="Debug" data-tooltip="Step through one fight of this action list in the APL Debugger, with a build and a fight picked there"
+                                    @onclick="DebugAsync"><Icon Shape="IconShape.Debug" /></button>
+                            <span class="divider" aria-hidden="true"></span>
+                            <button type="button" class="icon-button danger-button" aria-label="Delete" disabled="@(!CanDelete)"
+                                    data-tooltip="@(CanDelete ? "Delete" : "Only your own saved lists can be deleted")" @onclick="Delete"><Icon Shape="IconShape.Bin" /></button>
+                        }
+                    </div>
+                </div>
                 <Message Kind="State.Editor.Status.Kind">@State.Editor.Status.Text</Message>
-                <div>
-                    @foreach (var list in State.Editor.Lists)
-                    {
-                        <ListSection @key="list.Name" Vocabulary="v" Lists="State.Editor.Lists" List="list" Open="State.Editor.Open" DragFrom="State.Editor.DragFrom" />
-                    }
-                </div>
-                <div class="row add-list">
-                    <input @ref="_newListInput" placeholder="New action list name (aoe)" spellcheck="false" autocomplete="off" @bind="State.NewList" />
-                    <button type="button" class="secondary-button" @onclick="AddList">Add action list</button>
-                </div>
-                <details @key="State.TextKey" class="text" open="@State.TextOpen">
-                    <summary>Action list text</summary>
-                    <div class="text-field">
-                        <CodeField Vocabulary="v" Lines="true" Value="@State.Text" OnChange="TextChanged" Placeholder="actions+=/ability,if=condition" />
+                @if (!State.TextOpen)
+                {
+                    <div>
+                        @foreach (var list in State.Editor.Lists)
+                        {
+                            <ListSection @key="list.Name" Vocabulary="v" Lists="State.Editor.Lists" List="list" Open="State.Editor.Open" DragFrom="State.Editor.DragFrom" />
+                        }
                     </div>
-                    <div class="row">
-                        <button type="button" class="secondary-button" data-tooltip="Save the action list as a .simc file" @onclick="Download">Download</button>
+                    <div class="row add-list">
+                        <input @ref="_newListInput" placeholder="New action list name (aoe)" spellcheck="false" autocomplete="off" @bind="State.NewList" />
+                        <button type="button" class="secondary-button" @onclick="AddList">Add action list</button>
                     </div>
-                    <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>
-                </details>
+                }
+                else
+                {
+                    @TextPane(v)
+                }
             </CascadingValue>
         }
     </div>
 </Card>
 
+@if (_naming)
+{
+    @* Save of a built-in, shared or imported list: the visitor's own copy, under its name. *@
+    <div class="modal-layer" @onclick="CloseNaming" @onkeydown="OnNamingKeyDown">
+        <div class="modal small-dialog" role="dialog" aria-modal="true" aria-labelledby="@($"{_selectId}-save")" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h2 id="@($"{_selectId}-save")" class="title">Save action list</h2>
+                <button type="button" class="icon-button" aria-label="Close" @onclick="CloseNaming">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                </button>
+            </div>
+            <form class="dialog-body" @onsubmit="ConfirmNamingAsync" @onsubmit:preventDefault="true">
+                <label class="name-field">
+                    Action list name
+                    <input @ref="_namingInput" autocomplete="off" spellcheck="false" maxlength="64" @bind="_namingText" @bind:event="oninput" />
+                </label>
+                <p class="hint">Saves a copy to your action lists and picks it.</p>
+                @if (_namingError.Length > 0)
+                {
+                    <p class="field-error">@_namingError</p>
+                }
+                <div class="row dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CloseNaming">Cancel</button>
+                    <button type="submit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 @code {
+    [CascadingParameter] private ToastProvider Toasts { get; set; } = null!;
+
+    /// <summary>The lists and fields to edit; the APL Editor page's own when null.</summary>
+    [Parameter] public ActionListsState? Lists { get; set; }
+
+    /// <summary>The hero whose lists the embedded editor picks from; null on the APL Editor page.</summary>
+    [Parameter] public string? Hero { get; set; }
+
+    /// <summary>The list the Sim page runs (kept/hero/name, empty for an imported list), its name and its text (null for the hero's default list).</summary>
+    [Parameter] public string Selected { get; set; } = "";
+
+    [Parameter] public string SelectedName { get; set; } = "";
+
+    [Parameter] public string? SelectedText { get; set; }
+
+    /// <summary>Called with the list picked and its text after every pick and edit.</summary>
+    [Parameter] public EventCallback<ActionListPick> OnPicked { get; set; }
+
+    /// <summary>Called after a save, so the Sim page's other pickers list the new list.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>The picker and editor are off (Compare picks each run's list).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>The embedded editor shows under the picker.</summary>
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    private ActionListsState State => Lists ?? SharedState;
+
+    private bool Embedded => Hero != null;
+
+    private bool EditorShown => Open && !Disabled;
+
+    private readonly string _selectId = $"apl-{Guid.NewGuid():N}";
+
+    // The name dialog of a save as the visitor's own list, and the step it was opened for.
+    private bool _naming;
+    private string _namingText = "";
+    private string _namingError = "";
+    private ElementReference _namingInput;
+    private bool _focusNaming;
+    // The last save did not go through; the reason is in the editor's status.
+    private bool _saveFailed;
+
     private SavedActionLists _savedLists = null!;
     private ElementReference _root, _nameInput, _newListInput;
     private ConditionReference _reference = null!;
@@ -123,6 +260,31 @@
         {
             if (State.TextEdited) ReadLater(State.Text);
             else WriteText();
+            // A list saved in the other editor since (the APL Editor's or the Modes tab's) shows in the picker.
+            try
+            {
+                State.Saved = await _savedLists.ListAsync();
+            }
+            catch (Exception e)
+            {
+                Fail(e);
+            }
+            return;
+        }
+        if (Embedded)
+        {
+            try
+            {
+                var heroVocabulary = await VocabularyOf(Hero!);
+                State.Saved = await _savedLists.ListAsync();
+                State.Editor.Load(heroVocabulary, []);
+                State.Loaded = true;
+                await LoadSelected();
+            }
+            catch (Exception e)
+            {
+                Fail(e);
+            }
             return;
         }
         try
@@ -140,6 +302,124 @@
         }
     }
 
+    // The Sim page's list changed outside the editor (an import, a sim run again, another hero's list): the editor opens it.
+    // A pick or load under way has set the editor's list already. The page has its list once it ends.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Embedded || !State.Loaded || _loading) return;
+        if (Selected == State.SelectedSaved && (SelectedText == null || SelectedText == State.Text)) return;
+        await LoadSelected();
+    }
+
+    // A pick or load of the embedded editor's list is under way.
+    private bool _loading;
+
+    /// <summary>Opens the Sim page's list: the saved one picked, or an imported list's text.</summary>
+    private async Task LoadSelected()
+    {
+        if (Selected.Length > 0)
+        {
+            await PickSaved(Selected);
+            return;
+        }
+        await LoadText(SelectedName, SelectedText ?? "");
+    }
+
+    /// <summary>Opens a list from its text, kept as the picker's text list.</summary>
+    private async Task LoadText(string name, string text)
+    {
+        State.TextList = (name, text);
+        _loading = true;
+        try
+        {
+            _read?.Cancel();
+            _write?.Cancel();
+            State.SelectedSaved = "";
+            State.Name = name;
+            State.Text = text;
+            State.TextEdited = false;
+            State.Editor.SetStatus(MessageState.None);
+            try
+            {
+                LoadFromText(await Engine.ParseActionListAsync(State.Text));
+            }
+            catch (Exception e)
+            {
+                State.TextEdited = true;
+                State.TextOpen = true;
+                State.Editor.SetStatus(MessageState.Error($"The list does not parse: {e.Message}"));
+            }
+            State.MarkClean();
+        }
+        finally
+        {
+            _loading = false;
+        }
+        await Report();
+    }
+
+    /// <summary>Gives the Sim page the embedded editor's list and its text, edits included.</summary>
+    private Task Report() =>
+        Embedded ? OnPicked.InvokeAsync(new ActionListPick(State.SelectedSaved, State.Name, State.Text)) : Task.CompletedTask;
+
+    private Task ToggleOpen() => OpenChanged.InvokeAsync(!Open);
+
+    // The saved list again, without the edits.
+    private Task Revert() => State.SelectedSaved.Length > 0 ? PickSaved(State.SelectedSaved) : Task.CompletedTask;
+
+    private void OpenNaming()
+    {
+        _naming = true;
+        _namingText = PickedOwnList != null || State.Name.Length == 0 ? State.Name : $"{State.Name} copy";
+        _namingError = "";
+        _focusNaming = true;
+    }
+
+    private void CloseNaming() => _naming = false;
+
+    private void OnNamingKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseNaming();
+    }
+
+    private async Task ConfirmNamingAsync()
+    {
+        string name = _namingText.Trim();
+        if (!ActionListStore.IsValidName(name))
+        {
+            _namingError = "Name the list with letters, digits, spaces, '_' and '-' (up to 64 characters).";
+            return;
+        }
+        if (State.Saved.Any(s => s is { BuiltIn: false, Shared: false } && s.Hero.Equals(Hero, StringComparison.OrdinalIgnoreCase)
+                                 && s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            _namingError = $"You have a {Hero} list named {name}.";
+            return;
+        }
+        State.Name = name;
+        await Save(named: true);
+        if (_saveFailed)
+        {
+            _namingError = State.Editor.Status.Text;
+            return;
+        }
+        _naming = false;
+        if (_pending is { } pending)
+        {
+            _pending = null;
+            await pending.Then();
+        }
+    }
+
+    // The Action list text tab: the action list's text and its problem.
+    private RenderFragment TextPane(AplVocabulary v) => __builder =>
+    {
+        <div class="text-field">
+            <CodeField Vocabulary="v" Lines="true" Value="@State.Text" OnChange="TextChanged" Placeholder="actions+=/ability,if=condition" />
+        </div>
+        <Message Kind="State.TextStatus.Kind">@State.TextStatus.Text</Message>
+    };
+
     protected override bool ShouldRender()
     {
         if (!_keystroke) return true;
@@ -149,6 +429,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusNaming)
+        {
+            _focusNaming = false;
+            await _namingInput.FocusAsync();
+        }
         if (!firstRender) return;
         try
         {
@@ -233,6 +518,7 @@
             {
                 State.Text = text;
                 State.TextStatus = MessageState.None;
+                _ = Report();
             }
             else
             {
@@ -300,6 +586,50 @@
         }
     }
 
+    /// <summary>Largest action list file the editor reads.</summary>
+    private const long MaxFileBytes = 1024 * 1024;
+
+    // A file's action list as a new list named after the file, not saved yet: Save keeps it. A profile file gives its
+    // action list.
+    private async Task ImportFileAsync(InputFileChangeEventArgs e)
+    {
+        string text;
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(MaxFileBytes));
+            text = await reader.ReadToEndAsync();
+        }
+        catch (IOException ex)
+        {
+            State.Editor.SetStatus(MessageState.Error(ex.Message));
+            return;
+        }
+        string name = ActionListStore.ValidName(Path.GetFileNameWithoutExtension(e.File.Name), "Imported list");
+        await AskFirst($"importing {e.File.Name}", () =>
+        {
+            State.SelectedSaved = "";
+            State.Name = name;
+            ReadLater(ActionListOf(text));
+            State.Editor.SetStatus(MessageState.None);
+            Toasts.Ok($"Imported {name}; save it to keep it.");
+            return Task.CompletedTask;
+        });
+    }
+
+    // The action list of a profile's text, or the text as it is when it is an action list alone.
+    private static string ActionListOf(string text)
+    {
+        try
+        {
+            string list = SimProfile.Parse(text).Profile.ActionList;
+            return list.Trim().Length > 0 ? list : text;
+        }
+        catch (FormatException)
+        {
+            return text;
+        }
+    }
+
     private Task Download() =>
         FileDownloads.SaveAsync(JS, State.Name.Trim().Length > 0 ? State.Name : State.Editor.Vocabulary?.Hero ?? "action list", ".simc", State.Text);
 
@@ -319,6 +649,7 @@
         _read?.Cancel();
         _read = new CancellationTokenSource();
         _ = Read(text, _read.Token);
+        _ = Report();
     }
 
     /// <summary>Puts the text edit waiting for its delay into the lists; false, with the problem in the status, when it does not parse.</summary>
@@ -393,6 +724,20 @@
 
     private async Task PickSaved(string value)
     {
+        _loading = true;
+        try
+        {
+            await PickSavedNow(value);
+        }
+        finally
+        {
+            _loading = false;
+        }
+        await Report();
+    }
+
+    private async Task PickSavedNow(string value)
+    {
         // Another list replaces the text, with any edit of it.
         _read?.Cancel();
         State.TextEdited = false;
@@ -418,11 +763,12 @@
                 State.Text = list.Text.ReplaceLineEndings("\n");
                 State.TextEdited = true;
                 State.TextOpen = true;
-                State.TextKey++;
                 State.Editor.SetStatus(MessageState.Error($"The saved text does not parse: {list.Error}"));
                 State.MarkClean();
                 return;
             }
+            // The saved text is the list's text until the editor writes its own.
+            State.Text = list.Text.ReplaceLineEndings("\n");
             State.Editor.Load(heroVocabulary, list.Actions ?? []);
             State.MarkClean();
         }
@@ -442,6 +788,10 @@
 
     private Task PickSavedAsked(string value)
     {
+        if (Embedded && value.Length == 0 && State.TextList is { } textList)
+        {
+            return AskFirst($"opening {textList.Name}", () => LoadText(textList.Name, textList.Text));
+        }
         var picked = State.Saved.FirstOrDefault(s => SavedValue(s) == value);
         return AskFirst(picked != null ? $"opening {picked.Name}" : "starting a new list", () => PickSaved(value));
     }
@@ -479,7 +829,8 @@
     {
         State.Name = State.Name.Length > 0 ? $"{State.Name} copy" : "copy";
         State.SelectedSaved = "";
-        State.Editor.SetStatus(MessageState.Ok($"Copied to {State.Name}; save it to keep it."));
+        State.Editor.SetStatus(MessageState.None);
+        Toasts.Ok($"Copied to {State.Name}; save it to keep it.");
     }
 
     private async Task Delete()
@@ -489,7 +840,8 @@
         {
             await _savedLists.DeleteAsync(list);
             await LoadSavedLists();
-            State.Editor.SetStatus(MessageState.Ok($"Deleted {list.Name}. The editor keeps its actions until you change them."));
+            State.Editor.SetStatus(MessageState.None);
+            Toasts.Ok($"Deleted {list.Name}. The editor keeps its actions until you change them.");
         }
         catch (Exception e)
         {
@@ -497,8 +849,17 @@
         }
     }
 
-    private async Task Save()
+    // The embedded editor saves the visitor's own list under its name, and any other as a copy named in the save dialog.
+    private async Task Save() => await Save(named: false);
+
+    private async Task Save(bool named)
     {
+        if (Embedded && !named && PickedOwnList == null)
+        {
+            OpenNaming();
+            return;
+        }
+        _saveFailed = true;
         var v = State.Editor.Vocabulary!;
         string listName = State.Name.Trim();
         if (listName.Length == 0)
@@ -514,8 +875,15 @@
             var saved = await _savedLists.SaveAsync(v.Hero, listName, ActionListModel.DocumentActions(lists));
             State.MarkClean();
             // No folder in the message: on a stream it would show the user's name.
-            State.Editor.SetStatus(MessageState.Ok($"Saved {saved.Name} to your action lists."));
+            State.Editor.SetStatus(MessageState.None);
+            Toasts.Ok($"Saved {saved.Name} to your action lists.");
             await LoadSavedLists(SavedValue(saved));
+            _saveFailed = false;
+            if (Embedded)
+            {
+                await Report();
+                await OnSaved.InvokeAsync();
+            }
         }
         catch (ActionListNotSavedException e)
         {

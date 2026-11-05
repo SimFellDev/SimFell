@@ -18,17 +18,21 @@ jobs:
     name: Build and publish
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
       # Ahead-of-time compiled: sims run about three times as fast as interpreted, for a larger first download.
       - name: Install the WebAssembly tools
         run: dotnet workload install wasm-tools
+
+      - name: Download the Codex export
+        shell: bash
+        run: tools/download-codex-export.sh
 
       - name: Publish
         run: dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish

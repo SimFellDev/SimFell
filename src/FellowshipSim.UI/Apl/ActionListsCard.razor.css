@@ -25,10 +25,6 @@
   flex: 1 1 260px;
 }
 
-.delete {
-  color: var(--bad);
-}
-
 .field {
   display: flex;
   align-items: center;
@@ -47,19 +43,123 @@
   flex: 0 1 280px;
 }
 
-.text {
-  margin-top: 14px;
-}
-
-.text summary {
-  cursor: pointer;
-  color: var(--muted);
-}
-
 .text-field {
   margin: 8px 0;
 }
 
-.hint {
-  max-width: 90ch;
+/* The Sim page's Selected APL: its label, the picker filling the row, then the edit button. */
+.selected-apl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.selected-label {
+  font-family: var(--heading-font);
+  color: var(--heading);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.selected-apl select {
+  width: 100%;
+  min-height: 40px;
+}
+
+/* Compare is on: each run picks its own list, so the picker is grey. */
+.selected-apl.off {
+  opacity: 0.45;
+}
+
+.selected-apl.off select,
+.selected-apl.off .edit-button {
+  cursor: not-allowed;
+}
+
+.edit-button {
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  align-items: center;
+}
+
+.edit-button.on {
+  color: var(--heading);
+  border-color: var(--accent);
+}
+
+/* The editor's tabs, then its actions on the right. */
+.editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 16px 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-tabs {
+  display: flex;
+}
+
+.editor-tab {
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editor-tab:hover {
+  color: var(--text);
+}
+
+.editor-tab.selected {
+  color: var(--heading);
+  border-bottom-color: var(--heading);
+}
+
+.editor-actions {
+  align-items: center;
+  padding-bottom: 6px;
+}
+
+.editor-actions .icon-button {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Between the editor bar's groups of icons, as the Hero tab's toolbar has them. */
+.divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.edited {
+  padding: 2px 8px;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .selected-apl {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .selected-label {
+    grid-column: 1 / -1;
+  }
 }

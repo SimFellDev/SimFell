@@ -26,6 +26,12 @@ public sealed partial class ActionListStore(ReplayLibrary library, IBlobStore st
     public static bool IsValidName(string name) => NamePattern().IsMatch(name);
 
     /// <summary>
+    /// True when <paramref name="name"/> can name a file already saved: a list shows every file in its folder, one saved
+    /// by hand or an earlier version among them, so reading and deleting take more than <see cref="IsValidName"/>.
+    /// </summary>
+    public static bool IsStoredName(string name) => DiskBlobStore.IsSegment($"{name}.simc");
+
+    /// <summary>
     /// <paramref name="name"/> without the characters a file name cannot have (<see cref="IsValidName"/>), up to 64 characters;
     /// <paramref name="fallback"/> when nothing is left.
     /// </summary>
@@ -58,7 +64,7 @@ public sealed partial class ActionListStore(ReplayLibrary library, IBlobStore st
     /// <summary>The text of a saved list, or null when there is none.</summary>
     public async Task<string?> ReadAsync(Visitor visitor, ActionListEntry entry, CancellationToken ct = default)
     {
-        if (!IsValidName(entry.Name)) return null;
+        if (!IsStoredName(entry.Name)) return null;
         if (!entry.Shared) return await store.ReadAsync(KeyOf(visitor, entry.Hero, entry.Name), ct);
         string path = PathOf(entry.Hero, entry.Name);
         return File.Exists(path) ? await File.ReadAllTextAsync(path, ct) : null;
@@ -70,7 +76,7 @@ public sealed partial class ActionListStore(ReplayLibrary library, IBlobStore st
 
     /// <summary>Removes one of the visitor's own lists; a shared or built-in list stays.</summary>
     public Task DeleteAsync(Visitor visitor, string hero, string name, CancellationToken ct = default) =>
-        IsValidName(name) ? store.DeleteAsync(KeyOf(visitor, hero, name), ct) : Task.CompletedTask;
+        IsStoredName(name) ? store.DeleteAsync(KeyOf(visitor, hero, name), ct) : Task.CompletedTask;
 
     /// <summary>Path of the list in <see cref="SharedDirectory"/>.</summary>
     public string PathOf(string hero, string name) => Path.Combine(SharedDirectory, hero, $"{name}.simc");

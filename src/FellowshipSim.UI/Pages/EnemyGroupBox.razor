@@ -1,4 +1,5 @@
 @using FellowshipSim.Core.Dungeons
+@using FellowshipSim.Core.Domain
 @*
     One enemy group of a pull as a tinted box: its kind on the top-left edge, its duplicate and delete buttons on the
     top-right edge, its values and its comment.
@@ -31,11 +32,11 @@
         </label>
         <label class="value short">
             Spirit Points
-            <input type="number" min="0" step="any" @bind:get="Group.SpiritPoints" @bind:set="SetSpirit" />
+            <input type="number" min="0" step="any" placeholder="@(GameCreatures.ByName(Group.Name)?.SpiritPoints.ToString() ?? "0")" @bind:get="Group.SpiritPoints" @bind:set="SetSpirit" />
         </label>
         <label class="value">
             Hit points
-            <input type="number" min="1" step="any" placeholder="Follows time" @bind:get="Group.HitPoints" @bind:set="SetHitPoints" />
+            <input type="number" min="1" step="any" placeholder="@(GameCreatures.ByName(Group.Name)?.BaseHealth.ToString("0.##") ?? "Required")" @bind:get="Group.HitPoints" @bind:set="SetHitPoints" />
         </label>
         <label class="value check">
             Priority
@@ -83,7 +84,7 @@
 
     private Task SetName(string name) => OnChange.InvokeAsync(Group with { Name = name.Trim() });
 
-    private Task SetSpirit(double spirit) => OnChange.InvokeAsync(Group with { SpiritPoints = Math.Max(0, spirit) });
+    private Task SetSpirit(double? spirit) => OnChange.InvokeAsync(Group with { SpiritPoints = spirit is { } s ? Math.Max(0, s) : null });
 
     private Task SetHitPoints(double? hitPoints) => OnChange.InvokeAsync(Group with { HitPoints = hitPoints is > 0 ? hitPoints : null });
 

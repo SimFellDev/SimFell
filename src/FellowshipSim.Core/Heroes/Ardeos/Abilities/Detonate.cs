@@ -21,11 +21,13 @@ public class Detonate : ArdeosAbility
     public List<AuraDef> FreeCastBuffs { get; } = new();
 
     /// <summary>
-    /// Combat logs (5 fights, 896 Detonates in a row): they come 0.96-0.97s apart at every haste from 0.2 to 1.3, while
-    /// the other instants take the hero's 1.5s global cooldown, hasted. Detonate's global cooldown is 29 server frames, not
-    /// hasted.
+    /// Detonate's global cooldown, not hasted: 31 server frames without a legendary item, 29 with one (combat logs; see
+    /// <see cref="UseLegendaryGlobalCooldown"/>). The other instants take the hero's 1.5s global cooldown, hasted.
     /// </summary>
-    public const double GlobalCooldown = 29.0 / 30.0;
+    public const double GlobalCooldown = 31.0 / 30.0;
+
+    /// <summary>The global cooldown with a legendary item worn: 29 server frames.</summary>
+    public const double GlobalCooldownWithLegendary = 29.0 / 30.0;
 
     public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
@@ -33,7 +35,23 @@ public class Detonate : ArdeosAbility
         GlobalCooldownScalesWithHaste = false;
     }
 
-    private AuraDef? FreeCastBuff(SimTime now) => FreeCastBuffs.FirstOrDefault(b => Owner.Auras.HasAura(b, now));
+    // Speed: the enemies with an effect at the cast, in a list kept between casts.
+    private readonly List<EnemyTarget> _targets = new();
+
+    private AuraDef? FreeCastBuff(SimTime now)
+    {
+        foreach (var buff in FreeCastBuffs)
+        {
+            if (Owner.Auras.HasAura(buff, now)) return buff;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// A legendary item's +10% cooldown recovery (Strand of Eternity) shortens Detonate's global cooldown from <see cref="GlobalCooldown"/> to
+    /// <see cref="GlobalCooldownWithLegendary"/>. Called once when the hero is built (<see cref="Hero.FinalizeBuild"/>).
+    /// </summary>
+    public void ModifyGlobalCooldownFromStrandOfEternity() => GlobalCooldownSeconds = GlobalCooldownWithLegendary;
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
@@ -52,10 +70,12 @@ public class Detonate : ArdeosAbility
         else Owner.SpendResource(Ardeos.Cinders, CinderCost, ctx);
 
         var dots = Ardeos.Dots;
-        foreach (var enemy in dots.Targets.ToList())
+        dots.TargetsInto(_targets);
+        foreach (var enemy in _targets)
         {
             double perSecond = 0.0;
-            foreach (var dot in dots.On(enemy)) perSecond += dot.Effect.DamagePerSecond(ctx, dot);
+            var on = dots.On(enemy);
+            for (int i = 0; i < on.Count; i++) perSecond += on[i].Effect.DamagePerSecond(ctx, on[i]);
             double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier;
             if (damage <= 0) continue;
             double critChance = Owner.CritChanceAgainst(enemy, now) + CritChanceBonus + (CurrentCast?.CritChance ?? 0.0);

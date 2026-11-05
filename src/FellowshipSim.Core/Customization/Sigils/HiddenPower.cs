@@ -21,7 +21,7 @@ public class HiddenPower : Sigil
 
     // Combat logs: the stacks and Power Revealed stay through the hero's death (6 deaths with stacks, 4 with Power
     // Revealed, none removed them; Fc8v6yWxD14GQMnV fight 19 @ 473.014).
-    public static readonly AuraDef Stack = AuraDef.Effect("Hidden Power", StackEffectId, StackSeconds, StacksNeeded) with { KeepsOnDeath = true };
+    public static readonly AuraDef Stack = AuraDef.Effect("Hidden Power", StackEffectId, StackSeconds, StacksNeeded) with { KeepsOnDeath = true, IsProc = true };
 
     public override int Id => SigilId;
     public override string Name => SigilName;
@@ -29,7 +29,7 @@ public class HiddenPower : Sigil
     public override void Bind(Hero hero)
     {
         var revealed = hero.Register(AuraDef.Effect("Power Revealed", BuffEffectId, BuffSeconds,
-            modifiers: StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + ForRank(MainStatByRank))) with { KeepsOnDeath = true });
+            modifiers: StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + ForRank(MainStatByRank))) with { KeepsOnDeath = true, IsProc = true });
         var rppm = new RealPpm(ProcKey, ProcsPerMinute);
         hero.OnCastCompleted += (_, _, now) =>
         {

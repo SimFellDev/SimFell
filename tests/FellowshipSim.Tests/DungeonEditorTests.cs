@@ -5,7 +5,7 @@ namespace FellowshipSim.Tests;
 
 public class DungeonEditorTests
 {
-    private static DungeonPull Pull(string name) => new(name, [new EnemyGroup(1, "Imp", HitPoints: 1000)]);
+    private static DungeonPull Pull(string name) => new(name, [new EnemyGroup(1, "Imp", HitPoints: 1000)], 30);
 
     private static readonly IReadOnlyList<DungeonPull> Pulls =
     [

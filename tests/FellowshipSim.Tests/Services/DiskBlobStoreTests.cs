@@ -22,6 +22,20 @@ public sealed class DiskBlobStoreTests : IDisposable
         Assert.Empty(await _store.ListAsync("visitors/b2"));
     }
 
+    [Fact]
+    public async Task A_Listed_Build_Whose_Name_A_Save_Refuses_Reads_And_Deletes()
+    {
+        await _store.WriteAsync("profiles/Rime/sww (old).simc", "hero=rime");
+        var profiles = new ProfileStore(_store);
+        var listed = Assert.Single(await profiles.ListAsync(Visitor.DataFolderOwner, ["Rime"]));
+
+        Assert.Equal("sww (old)", listed.Name);
+        Assert.Equal("hero=rime", await profiles.ReadAsync(Visitor.DataFolderOwner, listed));
+        await Assert.ThrowsAsync<ArgumentException>(() => profiles.SaveAsync(Visitor.DataFolderOwner, listed, "hero=rime"));
+        await profiles.DeleteAsync(Visitor.DataFolderOwner, listed);
+        Assert.Empty(await profiles.ListAsync(Visitor.DataFolderOwner, ["Rime"]));
+    }
+
     [Theory]
     [InlineData("../escape.json")]
     [InlineData("visitors/../../escape.json")]

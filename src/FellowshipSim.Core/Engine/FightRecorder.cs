@@ -21,7 +21,9 @@ internal sealed class FightRecorder
     private string? _lastName;
     private SourceTally? _lastSource;
     private readonly Dictionary<Aura, AuraState> _active = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<(AuraContainer Owner, string Key), SimTime> _lastEnd = new();
+    // Speed: each watched container's aura keys this fight, found by the key alone (a tuple key runs in the browser
+    // build's interpreter).
+    private int _generation;
     /// <summary>This fight's aura spans (start and end seconds in turn), by name and side; null for a fight not sampled.</summary>
     private Dictionary<(string Name, bool OnTarget), List<double>>? _spans;
     /// <summary>This fight's casts in the order they started; null for a fight not sampled.</summary>
@@ -91,7 +93,7 @@ internal sealed class FightRecorder
         if (_damage.Length == seconds) Array.Clear(_damage);
         else _damage = new double[seconds];
         _active.Clear();
-        _lastEnd.Clear();
+        _generation++;
         _spans = fight < SpanFights ? new() : null;
         _castStarts.Clear();
         _casts = fight < SpanFights || KeepFight ? new() : null;
@@ -136,13 +138,15 @@ internal sealed class FightRecorder
     /// <summary>
     /// Ends the fight at <paramref name="duration"/>: the auras still up count until then (or their expiry).
     /// <paramref name="targetSeconds"/> is the seconds each enemy was in combat, summed, and <paramref name="bossSeconds"/>
-    /// the seconds of boss fighting.
+    /// the seconds of boss fighting. <paramref name="party"/> is a dungeon fight's enemies, for the party's damage: the health
+    /// each lost each second up to <paramref name="duration"/>, and the hero's damage to each up to that health.
     /// </summary>
-    public void End(SimTime duration, double targetSeconds, double bossSeconds)
+    public void End(SimTime duration, double targetSeconds, double bossSeconds, IReadOnlyList<PartyEnemy>? party = null)
     {
         var tally = _tally!;
         tally.TargetSeconds += targetSeconds;
         tally.BossSeconds += bossSeconds;
+        if (party != null) tally.AddParty(party, duration);
         foreach (var state in _active.Values) Close(state, Earlier(state.Aura.ExpiresAt, duration));
         _active.Clear();
         int seconds = Math.Min(_spirit.Length, (int)Math.Ceiling(duration.TotalSeconds));
@@ -177,18 +181,21 @@ internal sealed class FightRecorder
 
     private void Watch(AuraContainer auras, bool onTarget)
     {
-        auras.OnGained += (aura, _, now) => Gained(auras, onTarget, aura, now);
+        var watch = new AuraWatch(onTarget);
+        auras.OnGained += (aura, _, now) => Gained(watch, aura, now);
         auras.OnStacksLost += (aura, _, now) =>
         {
-            if (_tally != null && Active(auras, aura) is { } state) Restack(state, aura, now);
+            if (_tally != null && Active(watch, aura) is { } state) Restack(state, aura, now);
         };
         auras.OnRemoved += (aura, now) =>
         {
-            if (_tally == null || Active(auras, aura) is not { } state) return;
+            if (_tally == null || Active(watch, aura) is not { } state) return;
             _active.Remove(state.Aura);
             var end = Earlier(aura.ExpiresAt, now);
             Close(state, end);
-            _lastEnd[(auras, aura.Key)] = end;
+            state.Key.Active = null;
+            state.Key.LastEnd = end;
+            state.Key.HasEnded = true;
         };
     }
 
@@ -196,42 +203,50 @@ internal sealed class FightRecorder
     /// The active aura's state. An aura re-applied with other values is a new <see cref="Aura"/> of the same key: its
     /// state carries over to it.
     /// </summary>
-    private AuraState? Active(AuraContainer owner, Aura aura)
+    private AuraState? Active(AuraWatch watch, Aura aura)
     {
-        if (_active.TryGetValue(aura, out var state)) return state;
-        foreach (var other in _active.Values)
+        if (!KeysOf(watch).TryGetValue(aura.Key, out var key) || key.Active is not { } state) return null;
+        if (!ReferenceEquals(state.Aura, aura))
         {
-            if (other.Owner != owner || other.Aura.Key != aura.Key) continue;
-            _active.Remove(other.Aura);
-            other.Aura = aura;
-            _active[aura] = other;
-            return other;
+            _active.Remove(state.Aura);
+            state.Aura = aura;
+            _active[aura] = state;
         }
-        return null;
+        return state;
     }
 
-    private void Gained(AuraContainer owner, bool onTarget, Aura aura, SimTime now)
+    private void Gained(AuraWatch watch, Aura aura, SimTime now)
     {
         if (_tally == null) return;
-        if (Active(owner, aura) is { } state)
+        if (Active(watch, aura) is { } state)
         {
             state.Tally.Refreshes++;
             state.Tally.MaxStacks = Math.Max(state.Tally.MaxStacks, aura.Stacks);
             Restack(state, aura, now);
             return;
         }
-        var key = (owner, aura.Key);
-        var tally = _tally.Aura(aura.Name, onTarget);
+        if (!KeysOf(watch).TryGetValue(aura.Key, out var key)) watch.Keys[aura.Key] = key = new AuraKeyState();
+        AuraTally tally;
+        if (ReferenceEquals(key.TallyOf, _tally) && ReferenceEquals(key.TallyName, aura.Name)) tally = key.Tally!;
+        else
+        {
+            tally = _tally.Aura(aura.Name, watch.OnTarget);
+            (key.Tally, key.TallyOf, key.TallyName) = (tally, _tally, aura.Name);
+        }
         if (tally.LogId == 0) tally.LogId = aura.LogId;
         tally.MaxStacks = Math.Max(tally.MaxStacks, aura.Stacks);
         tally.StackCap = Math.Max(tally.StackCap, aura.MaxStacks);
         tally.Applications++;
-        if (_lastEnd.TryGetValue(key, out var lastEnd))
+        if (key.HasEnded)
         {
             tally.Gaps++;
-            tally.GapSeconds += (now - lastEnd).TotalSeconds;
+            tally.GapSeconds += (now - key.LastEnd).TotalSeconds;
         }
-        _active[aura] = new AuraState(owner, onTarget, aura, tally) { Start = now, Changed = now, Stacks = aura.Stacks };
+        // The key is inactive here, so its state from an earlier application is free.
+        var applied = key.State ??= new AuraState(key, watch.OnTarget);
+        (applied.Aura, applied.Tally, applied.Start, applied.Changed, applied.Stacks) = (aura, tally, now, now, aura.Stacks);
+        key.Active = applied;
+        _active[aura] = applied;
     }
 
     private static void Restack(AuraState state, Aura aura, SimTime now)
@@ -262,12 +277,46 @@ internal sealed class FightRecorder
 
     private static SimTime Earlier(SimTime a, SimTime b) => a < b ? a : b;
 
-    private sealed class AuraState(AuraContainer owner, bool onTarget, Aura aura, AuraTally tally)
+    /// <summary><paramref name="watch"/>'s aura keys this fight (a key from an earlier fight is gone).</summary>
+    private Dictionary<string, AuraKeyState> KeysOf(AuraWatch watch)
     {
-        public AuraContainer Owner { get; } = owner;
+        if (watch.Generation != _generation)
+        {
+            watch.Keys.Clear();
+            watch.Generation = _generation;
+        }
+        return watch.Keys;
+    }
+
+    /// <summary>One watched aura container: the hero's (<see cref="OnTarget"/> false) or an enemy's.</summary>
+    private sealed class AuraWatch(bool onTarget)
+    {
         public bool OnTarget { get; } = onTarget;
-        public Aura Aura { get; set; } = aura;
-        public AuraTally Tally { get; } = tally;
+        /// <summary>The fight <see cref="Keys"/> is of.</summary>
+        public int Generation = -1;
+        public readonly Dictionary<string, AuraKeyState> Keys = new(StringComparer.Ordinal);
+    }
+
+    /// <summary>One aura key of a watched container this fight: its active state, its last end and its tally.</summary>
+    private sealed class AuraKeyState
+    {
+        public AuraState? Active;
+        /// <summary>The state of every application of the key, <see cref="Active"/> while one is up.</summary>
+        public AuraState? State;
+        public bool HasEnded;
+        public SimTime LastEnd;
+        /// <summary>The tally of <see cref="TallyName"/> in <see cref="TallyOf"/>.</summary>
+        public AuraTally? Tally;
+        public Tally? TallyOf;
+        public string? TallyName;
+    }
+
+    private sealed class AuraState(AuraKeyState key, bool onTarget)
+    {
+        public AuraKeyState Key { get; } = key;
+        public bool OnTarget { get; } = onTarget;
+        public Aura Aura = null!;
+        public AuraTally Tally = null!;
         public SimTime Start;
         public SimTime Changed;
         public int Stacks;
@@ -366,6 +415,36 @@ internal sealed class FightRecorder
         public double TargetSeconds;
         /// <summary>The whole seconds of the longest fight: the timeline ends there.</summary>
         public int LongestSeconds;
+        /// <summary>
+        /// A dungeon's party damage each second (the health its enemies lost), added up over the fights; empty for training
+        /// dummies.
+        /// </summary>
+        public double[] PartyDamageSum = [];
+        /// <summary>
+        /// The party's damage, and the hero's damage to each enemy up to the health it lost, each added up over the fights.
+        /// </summary>
+        public double PartyDamage, HeroPartyDamage;
+
+        /// <summary>Adds a dungeon fight's party damage up to <paramref name="end"/>.</summary>
+        public void AddParty(IReadOnlyList<PartyEnemy> enemies, SimTime end)
+        {
+            int seconds = (int)Math.Ceiling(end.TotalSeconds);
+            if (PartyDamageSum.Length < seconds) Array.Resize(ref PartyDamageSum, seconds);
+            foreach (var enemy in enemies)
+            {
+                double lost = enemy.HealthLost(end);
+                PartyDamage += lost;
+                HeroPartyDamage += Math.Min(enemy.HeroDamage, lost);
+                int first = Math.Max(0, (int)enemy.Start.TotalSeconds);
+                for (int s = first; s < seconds; s++)
+                {
+                    var from = SimTime.FromSeconds(s);
+                    var to = SimTime.FromSeconds(s + 1) < end ? SimTime.FromSeconds(s + 1) : end;
+                    if (from >= enemy.DiesAt) break;
+                    PartyDamageSum[s] += enemy.HealthLost(to) - enemy.HealthLost(from);
+                }
+            }
+        }
 
         public SourceTally Source(string name)
         {
@@ -402,6 +481,10 @@ internal sealed class FightRecorder
             BossSeconds += other.BossSeconds;
             TargetSeconds += other.TargetSeconds;
             LongestSeconds = Math.Max(LongestSeconds, other.LongestSeconds);
+            PartyDamage += other.PartyDamage;
+            HeroPartyDamage += other.HeroPartyDamage;
+            if (PartyDamageSum.Length < other.PartyDamageSum.Length) Array.Resize(ref PartyDamageSum, other.PartyDamageSum.Length);
+            for (int i = 0; i < other.PartyDamageSum.Length; i++) PartyDamageSum[i] += other.PartyDamageSum[i];
             if (DamageSum.Length < other.DamageSum.Length) Array.Resize(ref DamageSum, other.DamageSum.Length);
             for (int i = 0; i < other.DamageSum.Length; i++) DamageSum[i] += other.DamageSum[i];
             Band.AddRange(other.Band);
@@ -440,6 +523,9 @@ internal sealed class FightRecorder
             BossSeconds = BossSeconds,
             TargetSeconds = TargetSeconds,
             LongestSeconds = LongestSeconds,
+            PartyDamageSum = UpToLongest(PartyDamageSum),
+            PartyDamage = PartyDamage,
+            HeroPartyDamage = HeroPartyDamage,
         };
 
         private T[] UpToLongest<T>(T[] perSecond) =>
@@ -460,6 +546,9 @@ internal sealed class FightRecorder
                 BossSeconds = totals.BossSeconds,
                 TargetSeconds = totals.TargetSeconds,
                 LongestSeconds = totals.LongestSeconds,
+                PartyDamageSum = totals.PartyDamageSum,
+                PartyDamage = totals.PartyDamage,
+                HeroPartyDamage = totals.HeroPartyDamage,
             };
             tally.Band.AddRange(totals.Band.Select(b => (b.Fight, b.Damage)));
             tally.Samples.AddRange(totals.Samples.Select(s => (s.Fight, s.Damage,
@@ -490,8 +579,10 @@ internal sealed class FightRecorder
             var rolling = Rolling(mean);
             var bandCumulative = Band.Select(b => Cumulative(Seconds(b.Damage, seconds))).ToList();
             var bandRolling = Band.Select(b => Rolling(Seconds(b.Damage, seconds))).ToList();
+            double[]? partyDps = PartyDamageSum.Length == 0 ? null
+                : Rolling(Enumerable.Range(0, seconds).Select(i => i < PartyDamageSum.Length && Fights > 0 ? PartyDamageSum[i] / Fights : 0).ToArray());
             return new SimTimeline(cumulative, Percentile(bandCumulative, seconds, 0.05), Percentile(bandCumulative, seconds, 0.95),
-                rolling, Percentile(bandRolling, seconds, 0.05), Percentile(bandRolling, seconds, 0.95), RollingSeconds);
+                rolling, Percentile(bandRolling, seconds, 0.05), Percentile(bandRolling, seconds, 0.95), RollingSeconds, partyDps);
         }
 
         /// <summary>

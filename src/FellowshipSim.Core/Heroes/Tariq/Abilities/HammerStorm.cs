@@ -46,6 +46,9 @@ public class HammerStorm : TariqAbility
         // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, 3 spins in all (see
         // OnChannelTick).
         ChannelTicksOnStart = true;
+        // Combat logs (tests/ReactionTimeTests, 16 Tariq fights, 378 channels): the next cast comes a median 0.035s after
+        // the channel ends, 207 of them within a server frame, as after a cast time; Rime's Freezing Torrent 0.171s.
+        ChannelQueuesNextCast = true;
         AoeTargetThreshold = TargetThreshold;
     }
 

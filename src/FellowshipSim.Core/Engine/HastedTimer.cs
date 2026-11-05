@@ -99,10 +99,10 @@ public sealed class HastedTimer
     public int DamageLogId { get; private init; }
 
     /// <summary>When the timer fires at the current haste: a period timer's repeated tick when one is pending.</summary>
-    public SimTime DueTime => RepeatPending ? _repeatEvent!.Time : _event?.Time ?? _ctx.CurrentTime;
+    public SimTime DueTime => RepeatPending ? _repeatEvent!.Value.Time : _event?.Time ?? _ctx.CurrentTime;
 
     /// <summary>A period timer's tick is to come again a server frame after the last.</summary>
-    public bool RepeatPending => _repeatEvent is { HasFired: false, IsCancelled: false };
+    public bool RepeatPending => _repeatEvent is { IsPending: true };
 
     /// <summary>Hasted progress made so far, in base seconds.</summary>
     public double ElapsedBaseSeconds =>
@@ -142,7 +142,7 @@ public sealed class HastedTimer
         if (RepeatPending)
         {
             _movedRepeatTo = at;
-            _repeatEvent!.Cancel();
+            _repeatEvent!.Value.Cancel();
             _repeatEvent = _ctx.ScheduleAt(at, _repeat!, _label);
             return;
         }
@@ -202,7 +202,7 @@ public sealed class HastedTimer
             }
             _remainingBase -= (now - _lastUpdate).TotalSeconds * (1.0 + _haste);
             _lastUpdate = now;
-            if (Math.Abs(haste - _haste) < 1e-12 && _event is { HasFired: false, IsCancelled: false }) return;
+            if (Math.Abs(haste - _haste) < 1e-12 && _event is { IsPending: true }) return;
             if (_period && _ctx.AbilityActivation != 0 && _ctx.AbilityActivation != _shiftedActivation)
             {
                 // Before the frame's timers, GetTimerRemaining reads the timer against the last frame's time, and the

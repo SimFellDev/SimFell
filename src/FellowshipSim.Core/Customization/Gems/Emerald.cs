@@ -69,8 +69,15 @@ public class Emerald : Gem
         if (node.Slot == 1) BindFirstStrike(hero, node);
     }
 
-    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now) =>
+    /// <summary>First Strike's rank and Blessing of the Commander's cooldown reduction follow the active nodes.</summary>
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
+    {
         FirstStrike = NodeInSlot(1)?.Grants is { } strike ? hero.Register(strike) : null;
+        var commander = NodeInSlot(5);
+        var old = before.FirstOrDefault(n => n.Slot == 5);
+        if (old != commander)
+            hero.Stats.CooldownReductionPct += (commander?.Value("CooldownReduction") ?? 0.0) - (old?.Value("CooldownReduction") ?? 0.0);
+    }
 
     protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
     {

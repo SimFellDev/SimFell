@@ -50,4 +50,10 @@ public static class DifficultyScaling
 
     /// <summary>The difficulty of Eternal level <paramref name="eternal"/> (0 for Base); null when there is none.</summary>
     public static DifficultyLevel? At(int eternal) => Levels.FirstOrDefault(l => l.Eternal == eternal);
+
+    /// <summary>
+    /// The difficulty of the game's difficulty number <paramref name="difficulty"/> (a fight's <c>difficultyLevel</c> in
+    /// FellowshipLogs: 50 for Eternal 30); null when there is none.
+    /// </summary>
+    public static DifficultyLevel? WithDifficulty(int difficulty) => Levels.FirstOrDefault(l => l.Difficulty == difficulty);
 }

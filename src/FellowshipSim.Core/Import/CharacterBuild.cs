@@ -14,6 +14,12 @@ public class CharacterBuild
 {
     public string Name { get; set; } = "";
 
+    /// <summary>
+    /// The FellowshipLogs link the build was read from: a report link with its fight and player, or a character's page.
+    /// Empty for a build not read from a log.
+    /// </summary>
+    public string LogSource { get; set; } = "";
+
     /// <summary>The hero's name, e.g. "Rime" (its class in Heroes/).</summary>
     public string Hero { get; set; } = "";
 
@@ -68,6 +74,13 @@ public class CharacterBuild
     public List<int> LegendaryItemIds { get; set; } = new();
     /// <summary>The weapon's ability ID (the weapon tree's ability, e.g. 1558 for Asha's Chronoshift Spire).</summary>
     public int WeaponAbilityId { get; set; }
+
+    /// <summary>
+    /// The items worn, one piece per filled slot, with their tempers. Picking gear sets the raw stats above to the pieces'
+    /// stats summed, and the relics, legendary and weapon to theirs; a log gives both. Empty for a build made before
+    /// builds held their gear: its stats stand as they are.
+    /// </summary>
+    public List<GearPiece> Gear { get; set; } = new();
 
     /// <summary>The rating the stat enchants add to <paramref name="rating"/> (<see cref="StatType.CritRating"/> ...).</summary>
     public double EnchantRating(StatType rating) =>

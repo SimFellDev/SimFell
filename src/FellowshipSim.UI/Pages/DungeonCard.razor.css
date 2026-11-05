@@ -6,9 +6,6 @@
   flex: 1 1 200px;
 }
 
-.toolbar button {
-  min-height: 40px;
-}
 
 .confirm {
   display: flex;
@@ -25,8 +22,32 @@
   flex: 1 1 260px;
 }
 
-.delete {
+.icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.icons .icon-button {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Between the groups of icons, as the Hero tab's toolbar has them. */
+.divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+/* Delete: red, as the Hero tab's is. */
+.icons .delete:not(:disabled) {
   color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 55%, var(--border));
 }
 
 /* The dungeon's comment: muted italic, as tall as its lines. */
@@ -44,7 +65,7 @@
   field-sizing: content;
 }
 
-/* The hero share and its variance and time limit, as the fields of the Fight card. */
+/* The time limit, as the fields of the Fight card. */
 .fields {
   display: flex;
   flex-wrap: wrap;
@@ -66,35 +87,8 @@
   text-align: right;
 }
 
-.field input.short {
-  width: 90px;
-}
-
 .field select {
   width: 140px;
-}
-
-/* A field its switch has turned off: the label dimmed, and the number greyed out with no box to type in. */
-.field.off {
-  opacity: 0.5;
-}
-
-.field input:disabled {
-  color: var(--muted);
-  background: transparent;
-  border-style: dashed;
-  cursor: not-allowed;
-}
-
-.toggle-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.toggle-block .switch span {
-  color: var(--text);
-  font-size: 14px;
 }
 
 /* The pulls in number order, as the actions of an action list. */
@@ -120,7 +114,6 @@
 }
 
 .add {
-  min-height: 0;
   padding: 8px 14px;
   border: 1px dashed #3a3a40;
   border-radius: 8px;
@@ -134,30 +127,44 @@
   border-color: var(--accent);
 }
 
-
-.text {
-  margin-top: 14px;
+/* The dungeon's profile text from Export, with Copy, Download and Close under it, as the Hero tab's. */
+.export {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.text summary {
-  cursor: pointer;
-  color: var(--muted);
-}
-
-.text textarea {
-  display: block;
+.export textarea {
   width: 100%;
-  margin: 8px 0;
-  font: 13px/1.5 var(--code-font);
+  box-sizing: border-box;
+  font: 12px/1.5 var(--code-font);
   resize: vertical;
 }
 
-/* The file picker above the dungeon text, as on the Import tab. */
-.text ::deep .file {
-  display: block;
-  max-width: 100%;
-  margin-top: 8px;
-  padding: 0;
-  border: none;
-  background: transparent;
+/* The Import dialog: the log link, then the profile with its upload icon. */
+.import-dialog {
+  max-width: 560px;
+}
+
+.text-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.text-head .icon-button {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+}
+
+.dialog-body textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: 13px/1.5 var(--code-font);
+  resize: vertical;
 }

@@ -68,6 +68,7 @@ public abstract class BoundExpression
     // The same order as PropertyExpression.EvaluateNumeric: a named value, then a resource, then a scoped path; else 0.
     private static BoundExpression BindProperty(PropertyExpression p, Hero hero, BoundVariables? variables)
     {
+        if (p.Aggregate is { } aggregate) return p.IsEnemyAggregate ? new BoundEnemyAggregate(hero, p.Name!, aggregate) : new BoundConstant(0.0);
         if (p.PropertyPath == "time") return new BoundTime();
         if (p.PropertyPath == "target.cast.remains") return new BoundCastRemains();
         if (PropertyExpression.Countdowns.TryGetValue(p.PropertyPath, out var end)) return new BoundCountdown(end);
@@ -438,11 +439,23 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         return Read(Find(ctx, now), now);
     }
 
-    private TargetEffect? Find(SimulationContext ctx, SimTime now)
+    private TargetEffect? Find(SimulationContext ctx, SimTime now) => Find(ctx, now, out _);
+
+    // Speed: the aura of the name is searched for again only once its container's auras change.
+    private AuraSearch _search;
+
+    // The aura as the action lists see it, and the time they see a proc's last gain when it is after now.
+    private TargetEffect? Find(SimulationContext ctx, SimTime now, out SimTime seenGainAt)
     {
-        if (!debuff) return hero.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
+        seenGainAt = SimTime.Infinite;
+        if (!debuff)
+        {
+            if (_search.Find(hero.Auras, slug, now) is not { } aura) return null;
+            seenGainAt = aura.SeenGainAt(now, ctx.ProcReactionTime);
+            return aura.Seen(now, ctx.ProcReactionTime);
+        }
         var target = ctx.Player.CurrentTarget;
-        return target == null ? null : AuraLookup.On(hero, target, slug, now, pick);
+        return target == null ? null : AuraLookup.On(hero, target, slug, now, pick, ref _search);
     }
 
     private double Read(TargetEffect? aura, SimTime now) => property switch
@@ -455,12 +468,18 @@ internal sealed class BoundAura(Hero hero, bool debuff, string slug, BoundAura.A
         _ => aura is not { } r ? 0.0 : r.ExpiresAt == SimTime.Infinite ? double.MaxValue : (r.ExpiresAt - now).TotalSeconds,
     };
 
-    // The aura found now runs out at its expiry; another aura of the name appears only in an event. A refreshable read
-    // also changes at the first millisecond the aura is in its refresh window.
+    // The aura found now runs out at its expiry; another aura of the name appears only in an event, or as the action lists
+    // see a proc's gain. A refreshable read also changes at the first millisecond the aura is in its refresh window.
     internal override SimTime Until(SimulationContext ctx)
     {
         var now = ctx.CurrentTime;
-        if (Find(ctx, now) is not { } aura) return SimTime.Infinite;
+        var seen = Find(ctx, now, out var seenGainAt);
+        return Crossing.Earlier(seenGainAt, UntilSeen(seen, now));
+    }
+
+    private SimTime UntilSeen(TargetEffect? seen, SimTime now)
+    {
+        if (seen is not { } aura) return SimTime.Infinite;
         if (property == AuraProperty.Refreshable && aura.ExpiresAt != SimTime.Infinite)
         {
             double window = aura.ExpiresAt.Milliseconds - PropertyExpression.RefreshableFraction * aura.Duration.Milliseconds;
@@ -512,9 +531,11 @@ internal sealed class BoundActiveDot(Hero hero, string slug) : BoundNumeric
     {
         var now = ctx.CurrentTime;
         var first = SimTime.Infinite;
-        foreach (var enemy in ctx.ActiveEnemies)
+        // By index: a foreach over the list interface allocates its enumerator.
+        var enemies = ctx.ActiveEnemies;
+        for (int i = 0; i < enemies.Count; i++)
         {
-            if (AuraLookup.On(hero, enemy, slug, now) is { } effect && effect.ExpiresAt < first) first = effect.ExpiresAt;
+            if (AuraLookup.On(hero, enemies[i], slug, now) is { } effect && effect.ExpiresAt < first) first = effect.ExpiresAt;
         }
         return first;
     }
@@ -523,12 +544,35 @@ internal sealed class BoundActiveDot(Hero hero, string slug) : BoundNumeric
     {
         var now = ctx.CurrentTime;
         int count = 0;
-        foreach (var enemy in ctx.ActiveEnemies)
+        var enemies = ctx.ActiveEnemies;
+        for (int i = 0; i < enemies.Count; i++)
         {
-            if (AuraLookup.On(hero, enemy, slug, now) is { } effect && time < effect.ExpiresAt) count++;
+            if (AuraLookup.On(hero, enemies[i], slug, now) is { } effect && time < effect.ExpiresAt) count++;
         }
         return count;
     }
+}
+
+/// <summary>
+/// A debuff's remaining time over every application on every enemy in combat (<c>min:dot.&lt;name&gt;.remains</c>,
+/// <see cref="AplEnemyAggregate"/>). It falls by a second per second until the application it reads runs out, and another
+/// application appears only in an event.
+/// </summary>
+internal sealed class BoundEnemyAggregate(Hero hero, string slug, AplEnemyAggregate aggregate) : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => NumericAt(ctx, ctx.CurrentTime);
+
+    private SimTime? Expiry(SimulationContext ctx) => AuraLookup.ExpiryAcross(hero, ctx, slug, aggregate, ctx.CurrentTime);
+
+    internal override SimTime Until(SimulationContext ctx) => Expiry(ctx) ?? SimTime.Infinite;
+
+    internal override bool IsLevel(SimulationContext ctx) => Expiry(ctx) is not { } expiry || expiry == SimTime.Infinite;
+
+    internal override TimeCurve Curve(SimulationContext ctx) =>
+        IsLevel(ctx) ? TimeCurve.Constant(EvaluateNumeric(ctx)) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
+
+    internal override double NumericAt(SimulationContext ctx, SimTime time) =>
+        PropertyExpression.RemainsAcross(Expiry(ctx), aggregate, time);
 }
 
 /// <summary>

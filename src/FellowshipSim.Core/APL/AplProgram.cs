@@ -10,10 +10,37 @@ namespace FellowshipSim.Core.APL;
 /// </summary>
 public sealed class AplProgram
 {
+    private readonly Hero _hero;
     private readonly BoundAplList? _default;
     private readonly BoundAplList[] _lists;
 
-    private AplProgram(BoundAplList? defaultList, BoundAplList[] lists) => (_default, _lists) = (defaultList, lists);
+    private AplProgram(Hero hero, BoundAplList? defaultList, BoundAplList[] lists)
+    {
+        (_hero, _default, _lists) = (hero, defaultList, lists);
+        foreach (var action in lists.SelectMany(list => list.Steps).OfType<BoundAplAction>())
+        {
+            HasOffGcdActions |= action.UseOffGcd;
+            HasWhileCastingActions |= action.UseWhileCasting && action.Ability.IgnoresGcd;
+        }
+    }
+
+    /// <summary>True when an action of the lists is a candidate during <see cref="AplDecisionHold.GlobalCooldown"/>.</summary>
+    public bool HasOffGcdActions { get; }
+
+    /// <summary>True when an action of the lists is a candidate during <see cref="AplDecisionHold.Cast"/>.</summary>
+    public bool HasWhileCastingActions { get; }
+
+    /// <summary>
+    /// The hold on the hero now: <see cref="AplDecisionHold.Cast"/> while a cast or a channel runs,
+    /// <see cref="AplDecisionHold.GlobalCooldown"/> while the global cooldown (past <see cref="SimulationContext.GlobalCooldownToleranceSeconds"/>)
+    /// or the reaction after a hold runs.
+    /// </summary>
+    public AplDecisionHold HoldOf(SimulationContext ctx)
+    {
+        if (_hero.CurrentCast != null || _hero.CurrentChannel != null) return AplDecisionHold.Cast;
+        double left = (_hero.GlobalCooldownEndTime - ctx.CurrentTime).TotalSeconds;
+        return left > ctx.GlobalCooldownToleranceSeconds || ctx.CurrentTime < ctx.ReactionEndTime ? AplDecisionHold.GlobalCooldown : AplDecisionHold.None;
+    }
 
     /// <summary>The steps of <see cref="AplActionLine.DefaultList"/>.</summary>
     public IReadOnlyList<BoundAplStep> Actions => _default?.Steps ?? [];
@@ -31,7 +58,7 @@ public sealed class AplProgram
         {
             bound[name].Steps = actions.Select(action => BindStep(action, hero, bound, variables)).OfType<BoundAplStep>().ToArray();
         }
-        return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
+        return new AplProgram(hero, bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray());
     }
 
     /// <summary>
@@ -65,7 +92,7 @@ public sealed class AplProgram
             bound[name].Steps = steps.ToArray();
         }
         var lines = sourceLines.Select(line => new AplTraceLine(line.List, line.Action.LineNumber, line.Action.RawLine, inBuild.Contains(line.Action))).ToList();
-        return new AplProgram(bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray())
+        return new AplProgram(hero, bound.GetValueOrDefault(AplActionLine.DefaultList), bound.Values.ToArray())
         {
             Log = new AplDecisionLog(hero, lines, variables),
         };
@@ -132,7 +159,7 @@ public sealed class AplProgram
             throw new InvalidOperationException($"APL: {hero.GetType().Name} has no ability named `{action.AbilityName}`.");
         }
         var targetIf = action.TargetIf == null ? null : new BoundTargetIf(action.TargetIf.Selection, BoundExpression.Bind(action.TargetIf.Expression, hero, variables));
-        return new BoundAplAction(hero, ability, condition, targetIf);
+        return new BoundAplAction(hero, ability, condition, targetIf, action.UseOffGcd, action.UseWhileCasting);
     }
 
     // The abilities of every build of a hero in the catalog (with every weapon's), by the hero's class.
@@ -146,18 +173,23 @@ public sealed class AplProgram
         return abilities.Any(a => a.Slug.Replace("_", "") == key);
     }
 
-    /// <summary>Casts the first ready action, starting at <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.</summary>
+    /// <summary>
+    /// Casts the first ready candidate action for the hold on the hero (<see cref="HoldOf"/>), starting at
+    /// <see cref="AplActionLine.DefaultList"/>. False when nothing was cast.
+    /// </summary>
     public bool TryAct(SimulationContext ctx)
     {
-        if (Log is not { } log) return TryAct(ctx, _default, default(NoDecisionTrace));
+        var hold = HoldOf(ctx);
+        if (Log is not { } log) return TryAct(ctx, _default, hold, default(NoDecisionTrace));
         log.Begin(ctx);
-        bool acted = TryAct(ctx, _default, new LoggedDecisionTrace(log));
+        bool acted = TryAct(ctx, _default, hold, new LoggedDecisionTrace(log));
         log.End();
         return acted;
     }
 
-    // A list already running in this decision is skipped, so lists that name each other end.
-    private static bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, TTrace trace) where TTrace : struct, IAplDecisionTrace
+    // A list already running in this decision is skipped, so lists that name each other end. An ability action that is no
+    // candidate for the hold is skipped and left out of the trace.
+    private static bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, AplDecisionHold hold, TTrace trace) where TTrace : struct, IAplDecisionTrace
     {
         if (list == null || list.Running) return false;
         list.Running = true;
@@ -183,12 +215,13 @@ public sealed class AplProgram
                     trace.ListAction(listAction, ctx,
                         running ? AplStepOutcome.ListRunning : enters ? AplStepOutcome.ListEntered : AplStepOutcome.ConditionFalse);
                     if (!enters) continue;
-                    bool acted = TryAct(ctx, listAction.List, trace);
+                    bool acted = TryAct(ctx, listAction.List, hold, trace);
                     trace.ListEnded();
                     if (acted || listAction.Kind == AplListAction.Run) return acted;
                     continue;
                 }
                 var action = (BoundAplAction)step;
+                if (!action.IsCandidate(hold)) continue;
                 bool canExecute = action.CanExecute(ctx);
                 trace.Action(action, ctx, canExecute);
                 if (!canExecute) continue;
@@ -283,14 +316,34 @@ public sealed class BoundAplAction : BoundAplStep
     private readonly Hero _hero;
     private readonly BoundTargetIf? _targetIf;
 
-    internal BoundAplAction(Hero hero, Ability ability, BoundExpression? condition, BoundTargetIf? targetIf) : base(condition)
+    internal BoundAplAction(Hero hero, Ability ability, BoundExpression? condition, BoundTargetIf? targetIf, bool useOffGcd = false,
+        bool useWhileCasting = false) : base(condition)
     {
         _hero = hero;
         Ability = ability;
         _targetIf = targetIf;
+        UseOffGcd = useOffGcd;
+        UseWhileCasting = useWhileCasting;
     }
 
     public Ability Ability { get; }
+
+    /// <summary><c>use_off_gcd=1</c>.</summary>
+    public bool UseOffGcd { get; }
+
+    /// <summary><c>use_while_casting=1</c>.</summary>
+    public bool UseWhileCasting { get; }
+
+    /// <summary>
+    /// True when the action is a candidate in a decision under <paramref name="hold"/>. During a cast or a channel only an
+    /// ability that ignores the global cooldown is one: any other cast ends the channel or is refused.
+    /// </summary>
+    public bool IsCandidate(AplDecisionHold hold) => hold switch
+    {
+        AplDecisionHold.GlobalCooldown => UseOffGcd,
+        AplDecisionHold.Cast => UseWhileCasting && Ability.IgnoresGcd,
+        _ => true,
+    };
 
     /// <summary>The <c>target_if</c> selection, or null for an action with none.</summary>
     internal AplTargetSelection? TargetSelection => _targetIf?.Selection;

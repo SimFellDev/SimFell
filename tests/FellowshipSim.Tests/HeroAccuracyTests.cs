@@ -53,12 +53,12 @@ public class HeroAccuracyTests(ITestOutputHelper output)
         var fights = new List<FightAccuracy>();
         var results = new List<ReplayResult>();
         var freeDice = new List<FreeDiceReplay.Result>();
-        foreach (var (reportCode, fightId) in library.ListDownloadedFights())
+        foreach (var (reportCode, fightId, playerId) in library.ListDownloadedFights())
         {
-            var raw = await library.GetRawFightAsync(null, reportCode, fightId);
-            foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Hero.Equals(hero, StringComparison.OrdinalIgnoreCase)))
+            byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId, playerId);
+            foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero.Equals(hero, StringComparison.OrdinalIgnoreCase)))
             {
-                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id).ToJsonString());
+                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
                 if (script.FightDate is not { } date || !GamePatch.Current.Covers(date, null)) continue;
 
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false }).Run();

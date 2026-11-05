@@ -26,7 +26,11 @@ SimFell runs in three ways. They share the same engine:
 
 ## Build
 
+The engine's creatures are generated from the Codex's data export, which git ignores. Download it once after cloning,
+and again after a new datamine:
+
 ```
+tools/download-codex-export.sh
 dotnet build -c Release
 ```
 
@@ -69,8 +73,8 @@ Without either, the app reads the repository's `settings.json` (see above).
 To download and replay a fight:
 
 1. On **Import**, paste a FellowshipLogs report link and load it.
-2. Click a player. The fight is downloaded and replayed as a job. When the job is done, its review page opens. The
-   **Reviews** page lists your reviews.
+2. Click a player. The fight is downloaded for that player and replayed as a job. When the job is done, its review
+   page opens. The **Reviews** page lists your reviews.
 
 ## Run the desktop app
 
@@ -113,9 +117,17 @@ fine-grained token with "Contents: Read and write" on that repository alone.
 A profile is a `.simc` file: the hero, stats, talents, traits, blessings, gear and its `actions` lines, which are the
 action list. Keep profiles in `data/profiles/<Hero>/`.
 
+A sim's profile also has the sim settings: `iterations`, `threads`, `seed`, `duration` and `targets` (training
+dummies), `length_variance` (a fraction), `health_follows_time`, `boss`, `starting_spirit`,
+`reaction_delays` and `proc_reaction` (seconds). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
+order. The last line of a setting is the setting, and a `dungeon=` line starts a dungeon that replaces the one before.
+Every option of the **Sim** page is a line of this text, and a sim's job is the text alone.
+
 The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
-standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file.
+standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
+end, has the sim's profile. **Load** puts its build, action list and settings in the Sim page, as a compare run's
+**Load** does.
 
 ### Fights
 
@@ -123,57 +135,62 @@ The **Modes** tab has two kinds of fight:
 
 - **Training dummies** (the default): a number of training dummies for the whole duration. **The dummies are bosses**
   sets whether boss-only effects (Ruby's Blessing of the Conqueror) count.
-- **Dungeon**: the pulls of a dungeon in turn, each until its enemies are dead, up to the dungeon's time limit. An enemy
-  with hit points dies from damage: the hero deals the dungeon's hero share of it (37.5% by default) and the party the
-  rest. An enemy without hit points has health falling over its pull's duration. Between pulls is downtime, with no
-  enemies and no actions. The fight's DPS is over its whole length, downtime included, and the result adds the DPS to
-  bosses. The Dungeon card starts with the built-in `Default` dungeon: Cithrel's Fall's creatures in four trash pulls and
-  two bosses, Cithrel the final boss.
+- **Dungeon**: the pulls of a dungeon in turn, up to the dungeon's time limit. Each enemy's health falls from full to
+  none over its pull's duration, whatever the hero does, and the enemy dies at the duration's end. A hero who does
+  nothing still ends each pull at its duration. Between pulls is downtime, with no enemies and no actions. The fight's
+  DPS is over its whole length, downtime included. The result adds the DPS to bosses, the party DPS (the health the
+  enemies lost each second, also a line of the DPS chart) and the hero's share of the group's damage: the hero's damage
+  to each enemy, up to its health, over the party's. The Dungeon card starts with the built-in `Default` dungeon: Cithrel's Fall's
+  creatures in four trash pulls and two bosses, Cithrel the final boss.
 
-The **Dungeon** card has a comment, the hero share, the time limit, the difficulty and the pulls. **Vary
-the hero share** gives each fight a hero share in a range: ± 20% by default, so 37.5% is 30 – 45%. Each pull has a
+**Proc reaction (ms)** in the **Fight settings** card is the time a proc's gain takes to reach the action list: 300 ms by
+default, as SimulationCraft's player `reaction_mean`. Until it passes, `buff.<proc>` reads the proc as it was before the gain:
+down for a new proc, the stacks before a new stack, and the time left before a refresh. 0 shows each gain at once. The
+command line's `--proc-reaction <ms>` is the same setting.
+
+The **Dungeon** card has a comment, the time limit, the difficulty and the pulls. Each pull has a
 comment and a name in its head, and opens to its name, its start (after downtime, or chained to another pull's end), its
-pull duration, the final boss, another pull it takes in with that pull's trigger, and its enemy groups. A group has a
+duration, the final boss, another pull it takes in with that pull's trigger, and its enemy groups. A group has a
 comment, a count (trash), a name, Spirit Points, hit points, priority, and an interrupt ability with its cooldown and cast
-time. A new pull's name is the lowest whole number no pull has. Renaming a pull renames it in every `chain_with` and
+time. Empty Spirit Points and hit points are the game data values of the creature with the group's name. A new pull's name is the lowest whole number no pull has. Renaming a pull renames it in every `chain_with` and
 `pull_with`. **Save** writes `data/dungeons/<name>.simc` in the desktop app and `data/visitors/<visitor id>/dungeons/` in
 the web app.
 
-**Import from a log** on the **Import** tab imports the player picked: their build with **Build** on, the
-dungeon of the run (with their hero share) with **Dungeon** on, and both at once with both on. The dungeon import
-downloads the fight as a replay does (`Engine/Replay/DungeonReader`):
+The Dungeon card's toolbar has **Revert**, **Save**, **Duplicate**, **Import**, **Export** and **Delete**. **Import** takes a
+FellowshipLogs fight link, a `.simc` file (the upload icon) or pasted dungeon text. A fight link's import reads the
+fight's enemy deaths and one player's damage events, dealt and taken: the fight's tank's, or with no tank, a damage
+dealer's (`Engine/Replay/DungeonReader`):
 
-- The enemies are the ones the party damaged and killed. Each has its hit points from its log health at the run's
-  difficulty, and its Spirit Points from game data.
-- The pulls are FellowshipLogs' pulls of the fight, numbered as FellowshipLogs lists them. Each enemy is in the pull it
-  died in, and a pull in which no enemy died is left out. A pull's downtime is the time since the pull before it
-  ended.
-- An enemy arrives at its first hit with the party in its pull, and enemies arriving within 5 seconds of each other are a
-  wave. A pull's later waves (`pull.<pull>_<n>`) join the wave before them through `pull_with` at their log offset, so
-  the enemies in combat at once are the log's.
-- An enemy's interrupt ability is the ability of its name the party interrupted most, with its cooldown and cast time from
-  the log.
-- The hero share is the player's damage to those enemies over their health.
+- The difficulty is the Eternal level of the fight's `difficultyLevel` (50 is Eternal 30).
+- The enemies are the enemies that player hit or was hit by, and the enemies dying without either. Each enemy's name, hit
+  points, Spirit Points and boss rank are its creature's in the game data; an enemy of no creature is left out and named
+  in the dungeon's comment.
+- The pulls are the dungeon's packs: its creature placements in the Codex's data export, a patrol's placements together
+  and every other placement with those within 1,200 units of it. Each enemy is in the pack of the nearest placement of its
+  creature to its first contact, or of a pack met in the 30 seconds before. An enemy with neither is a spawn, a pull of
+  its own with the spawns of its creature met within 3 seconds of it.
+- A pull's duration runs from its first contact to its last death. Its downtime is the time since the pulls before it
+  ended; a pull starting before that end joins the pull before it through `pull_with` at its log offset.
 
-**Dungeon text** has the dungeon as text:
+**Export** shows the dungeon as text, with **Copy** and **Download**:
 
 ```
 # Cithrel's Fall, two trash pulls before the first boss.
 dungeon=Default
 difficulty=10
-hero_share=37.5
 time_limit=1800
 # Imps and their captain.
-pull.1=/count=5,name=Imp,spirit_points=3,hit_points=7857
+pull.1=/duration=40
+pull.1+=/count=5,name=Imp,spirit_points=3,hit_points=7857
 # Big Cast is interruptible.
 pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=11546,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
-pull.2=/count=4,name=Ghoul
-pull.2+=/pull_duration=45,downtime=20
+pull.2=/count=4,name=Ghoul,hit_points=5000
+pull.2+=/duration=45,downtime=20
 pull.3=/count=3,name=Bat,spirit_points=2,hit_points=3374
-pull.3+=/chain_with=2
-pull.last_boss=/final=1,downtime=30,pull_with=wisps,offset_pct=50
-pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
-pull.wisps=/count=2,name=Wisp,hit_points=15145
+pull.3+=/duration=30,chain_with=2
+pull.last_boss=/duration=90,final=1,downtime=30,pull_with=wisps,offset_pct=50
+pull.last_boss+=/boss.1,name="Ancient Koros"
+pull.wisps=/count=2,name=Wisp,hit_points=15145,duration=20
 ```
 
 A `#` line is a comment. A comment above a `pull.X+=/` enemy group line belongs to that group, a comment above any other
@@ -185,20 +202,22 @@ for it: 1.31 at Base, 58.26 at Eternal 10 and 351.49 at Eternal 32 for health.
 
 `pull.X=/` starts pull X and `pull.X+=/` adds a line to it. A pull name has letters, digits and `_`. A line is an enemy
 group (`count=`), a boss (`boss.N`; several make a council) or the pull's options. Group values: `count`, `name` (in
-quotes when it has a comma), `spirit_points` (each enemy's), `priority=1`, `hit_points` (the creature's game data
-health, before the difficulty scale), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast
-is one cooldown after the enemy arrives). Pull options:
+quotes when it has a comma), `spirit_points` (each enemy's), `priority=1`, `hit_points` (the creature's health, before
+the difficulty scale), `interrupt_ability`, `cooldown` and `cast_time` (2.5 s unless given; the first cast is one
+cooldown after the enemy arrives). A group without `spirit_points` or `hit_points` takes the value of the game data's
+creature of its name, so `name="Ancient Koros"` alone is the boss with its game data health and Spirit Points. Pull
+options:
 
+- `duration`: seconds over which the pull's enemies' health falls from full to none. Every pull has one.
 - `downtime`: seconds before the pull starts, after the pull before it ends.
 - `chain_with=X`: the pull starts as pull X ends, with no downtime.
 - `pull_with=X`: pull X's enemies join this pull, at its start or at one trigger: `offset_ms` after the start,
   `offset_pct` (the pull's average health %), `after_deaths` (the pull's own enemies dead) or `after_deaths_total` (all
   enemies of the combined pull dead). A death count is a number or a percent (`50%`).
-- `pull_duration`: seconds over which the health of enemies without hit points falls.
 - `final=1`: the pull's boss is the final boss.
 
 Pulls run in the order of their `pull.X=/` lines. A pull taken in by another runs with it, and a chained pull runs as the
-pull it names ends. The fight's length variance varies each `pull_duration`.
+pull it names ends. The fight's length variance varies each `duration`.
 
 Action lists read the fight with these values:
 
@@ -240,10 +259,11 @@ dotnet run --project src/FellowshipSim.Cli -c Release -- --profile data/profiles
 Replace `PROFILE` with the name of your profile file.
 
 `simfell` writes the result to stdout and its progress to stderr. Ctrl+C cancels the sim. You can run several at once.
-Its options are the following:
+Each option is a line added at the end of the profile, so it replaces the profile's own line for that setting. The
+options are the following:
 
 - `--profile <file>`: the profile to sim (required)
-- `--iterations <n>`: fights (default 100)
+- `--iterations <n>`: fights (default 100 for a profile with no sim settings)
 - `--dungeon <name|file>`: fights of a dungeon, built in (`Default`) or a dungeon `.simc` file; its pulls set the enemies and its time limit the longest fight. Without it, the fights are training dummies
 - `--duration <seconds>`: length of each fight of training dummies (default 300)
 - `--targets <n>`: training dummies in each fight (default 1)
@@ -254,7 +274,12 @@ Its options are the following:
 ## Edit action lists
 
 The **Action lists** page edits an action list without writing its text. Each action has an
-ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. Each name in a
+ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. An action's **Type**
+is an ability to cast, **Run action list** or **Call action list** with the list to run, or **Set a variable** with the
+variable's name, its op (set, add to, subtract from or reset), its value and its default at the start of each fight;
+conditions read the variable as `variable.<name>`. An ability's **Timing** switches are **Use off the global cooldown**
+(`use_off_gcd=1`) and **Use while casting** (`use_while_casting=1`). The condition, a target's **Target by** and a
+variable's value each have **Builder** and **Text**. Each name in a
 condition has a colour for its kind (buff, debuff, cooldown, resource), and a wavy underline marks a name the hero
 does not have. Conditions in the editor chain with `and`, `or` and `not`; the text has `&`, `|` and `!`. A `&`, `|`
 or `!` typed in the editor becomes its word when you leave the field. Parentheses stay as written. **Builder** shows a
@@ -262,7 +287,8 @@ condition as rows: each row has its `and` or `or`, its `not`, and a value compar
 **Group** is a box of rows in parentheses; its chevron closes it to one line of its text, and **Close all groups** closes
 every group. Each value is terms joined by `+`, `-`, `*`, `%` or `%%`. Each term's picker lists the names by kind (buff,
 debuff, dot, cooldown, action, resource, fight value, value of the action itself, talent, blessing, legendary, weapon
-trait, weapon, enemies with a debuff, variable, previous action), then **Number** and **Group** for a condition in
+trait, weapon, enemies with a debuff, variable, previous action; a debuff's and a dot's properties include the shortest and
+longest time remaining on any enemy, `min:` and `max:`), then **Number** and **Group** for a condition in
 parentheses, then each **Function**, then `not` or `-` before the term; typing filters the list. A function takes the term
 as its first argument and shows each argument in its own box. The empty select after a value adds a term, a comparison, or inside
 parentheses an `and` or `or` row; an emptied operator or comparison removes its term or value. **Text** shows the
@@ -279,6 +305,15 @@ A target picks the enemy for the cast, written `target_if=` in the text:
 
 `target.*` and `debuff.*` in the action's `if` read the enemy picked.
 
+A decision runs whenever the hero is free to cast. Two options of an ability action add decisions while a hold runs, as
+in SimulationCraft:
+
+- `use_off_gcd=1`: the action is a candidate while the global cooldown runs (Ardeos's `incinerate,use_off_gcd=1`)
+- `use_while_casting=1`: the action is a candidate while a cast or a channel runs, for an ability off the global cooldown
+  (Rime's `ice_blitz,use_while_casting=1`)
+
+Without them, the action waits for the global cooldown, the cast or the channel to end.
+
 Conditions also have these values and functions:
 
 - `prev.<ability>`: 1 when the last cast the hero started is that ability (`prev.frost_bolt`)
@@ -286,6 +321,9 @@ Conditions also have these values and functions:
   cooldown (Ice Blitz) leaves it as it is (`prev_gcd.frost_bolt`)
 - `debuff.<name>.oldest.remains` and `debuff.<name>.newest.remains` (and `.refreshable`): the application applied first or
   last, for a debuff whose every application runs on its own (`debuff.engulfing_flames.oldest.remains`)
+- `min:debuff.<name>.remains` and `max:debuff.<name>.remains`: the shortest or longest remaining time of any application on
+  any enemy in combat. Enemies without the debuff are left out. With no application anywhere, `min:` is a very large
+  number and `max:` is 0 (`incinerate,if=min:dot.engulfing_flames.remains<gcd`)
 - `abs(x)`, `ceil(x)`, `floor(x)`, `round(x)`, `min(a, b, ...)` and `max(a, b, ...)`
 - decimal numbers (`1.5`, `.25`)
 
@@ -317,7 +355,7 @@ each list entered. Each line has its outcome: **Cast**, **Condition false**, **N
 cast already running), **No target**, **Cast refused**, a variable's value, or a list **Entered**. A line opens to show
 its condition as a tree of expressions with each one's value, and its `target_if` value at each enemy. A side of
 `&` or `|` the decision never read shows as not read. A **Cast refused** line opens to the engine's reason, such as the
-global cooldown. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and
+global cooldown, or to each proc gained inside the proc reaction time. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and
 each enemy's health and debuffs, before the cast. **Previous** and **Next** (or the arrow keys) step one decision;
 **Previous cast** and **Next cast** step to the next decision that cast, and **Go to** (seconds or `m:ss`, then Enter) shows the last decision at or before that time.
 
@@ -402,7 +440,7 @@ Runs the engine tests and replays every downloaded fight, rewriting its review p
 | `src/FellowshipSim.VsCode` | The VS Code extension for `.simc` files, with the language server in it |
 | `tests/FellowshipSim.Tests` | Tests, including the free-dice runner |
 | `docs/` | [Adding a hero](docs/ADDING_A_HERO.md) |
-| `data/` | Your local data, not committed: `fights/` downloaded fights, `scripts/` replay scripts, `reviews/` all pages and results, `results/` finished sims, `apls/` saved action lists, `dungeons/` saved dungeons, `profiles/` `.simc` profiles, `settings.json`; for the web app, `visitors/` each visitor's sims, reviews, action lists and dungeons, and `keys/` the visitor cookie keys |
+| `data/` | Your local data, not committed: `fights/` downloaded fights (one file per player), `scripts/` replay scripts, `reviews/` all pages and results, `results/` finished sims, `apls/` saved action lists, `dungeons/` saved dungeons, `profiles/` `.simc` profiles, `settings.json`; for the web app, `visitors/` each visitor's sims, reviews, action lists and dungeons, and `keys/` the visitor cookie keys |
 
 Game values are constants at the top of each class. Rime (`src/FellowshipSim.Core/Heroes/Rime`) is the complete
 example; its `NOTES.md` lists what the combat logs showed.

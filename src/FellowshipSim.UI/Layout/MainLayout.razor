@@ -6,32 +6,43 @@
 @inject FollowedReviews Followed
 @inject IAppViews Views
 @* The web app's frame: the name, the sections, the FellowshipLogs status (which opens the settings) and the sim results. *@
-<UpdateBanner />
-<header @ref="_header" class="top">
-    <a class="brand" href="">
-        <span class="name"><span class="white">SIM</span><span class="gold">FELL</span></span>
-        <span class="tagline">Fellowship simulator</span>
-    </a>
-    <nav class="nav" aria-label="Sections">
-        @foreach (var item in AppPage.Sections)
-        {
-            <NavLink @key="item.Route" href="@item.Route" Match="NavLinkMatch.All">@item.Title</NavLink>
-        }
-    </nav>
-    <div class="actions">
-        <LogsAccount />
-        <ResultsSidebar />
-    </div>
-</header>
+<ToastProvider>
+    <UpdateBanner />
+    <header @ref="_header" class="top">
+        <a class="brand" href="">
+            <span class="name"><span class="white">SIM</span><span class="gold">FELL</span></span>
+            <span class="tagline">Fellowship simulator</span>
+        </a>
+        <nav class="nav" aria-label="Sections">
+            @foreach (var item in AppPage.Sections)
+            {
+                <NavLink @key="item.Route" href="@item.Route" Match="NavLinkMatch.All">
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="@NavIcon(item)" /></svg>
+                    <span>@item.Title</span>
+                </NavLink>
+            }
+        </nav>
+        <div class="actions">
+            <LogsAccount />
+            <ResultsSidebar />
+        </div>
+    </header>
 
+    <main class="main">
+        @Body
+    </main>
+</ToastProvider>
 <TooltipLayer />
-<main class="main">
-    @Body
-</main>
 
 @code {
     /// <summary>Name of the section each page fills with its line under the heading. The frame shows none.</summary>
     public const string SubtitleSection = "subtitle";
+
+    // A section's icon in the bottom bar a phone shows in place of the top bar's sections.
+    private static string NavIcon(AppPage page) =>
+        page == AppPage.Sim ? "M13 3L5 14h6l-1 7 8-11h-6z"
+        : page == AppPage.LogReplay ? "M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 2"
+        : "M8 6l-6 6 6 6M16 6l6 6-6 6";
 
     private ElementReference _header;
     private IJSObjectReference? _module, _height;

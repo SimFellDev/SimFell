@@ -5,19 +5,18 @@ namespace FellowshipSim.Core.Engine;
 /// <summary>
 /// One fight of a dungeon's pulls (<see cref="DungeonProfile.RunOrder"/>), to its last pull's end or its time limit. A pull
 /// starts as the fight starts, as the pull its <c>chain_with</c> names ends, or its downtime after the pull before it ends.
-/// Downtime has no enemies and no actions. A pull ends as its enemies, joined ones included, are all dead: an enemy with hit
-/// points dies from damage, and an enemy without them as its pull duration ends. The hero's boss auras are on while a boss is
-/// in combat.
+/// Downtime has no enemies and no actions. Each enemy's health falls from full to none over its pull's
+/// <see cref="DungeonPull.DurationSeconds"/> (times the fight's variance scale), whatever the hero does, and the enemy dies
+/// as it reaches none. A <c>pull_with</c> offset in milliseconds scales with the duration. A pull ends as its enemies, joined
+/// ones included, are all dead. The hero's boss auras are on while a
+/// boss is in combat.
 /// </summary>
 internal sealed class DungeonFight
 {
-    /// <summary>The health of an enemy whose health follows time; its size sets only damage-to-health ratios.</summary>
-    private const double TimeHealth = 100_000_000;
-
     private readonly Hero _hero;
     private readonly SimulationContext _ctx;
     private readonly DungeonProfile _dungeon;
-    private readonly double _varianceScale, _heroShare;
+    private readonly double _varianceScale;
     private readonly Func<SimTime, Func<bool>, bool> _act;
     private readonly IReadOnlyList<RunPlan> _plans;
     // Each pull's enemy id: 1001 for the first pull of the dungeon text, 1002 for the second, and so on.
@@ -31,36 +30,32 @@ internal sealed class DungeonFight
     private bool _bossAuras = true;
     private SimTime _bossSince = SimTime.Infinite;
     private double _targetSeconds, _bossSeconds;
-    // The health damage took from enemies with hit points, and the seconds of pulls so far, for the time-to-die estimates.
-    private double _healthTaken;
-    private SimTime _pullTime, _runStart, _downtimeEnd;
+    private SimTime _downtimeEnd;
 
     /// <summary>
     /// A fight of <paramref name="dungeon"/>: <paramref name="act"/> has the hero act until a time or until a condition
     /// holds, and returns true when the condition stopped it. <paramref name="varianceScale"/> scales each pull duration.
-    /// <paramref name="heroShare"/> (0 to 1) is the hero's share of the damage to enemies with hit points.
     /// </summary>
-    public DungeonFight(Hero hero, SimulationContext ctx, DungeonProfile dungeon, double varianceScale, double heroShare, Func<SimTime, Func<bool>, bool> act)
+    public DungeonFight(Hero hero, SimulationContext ctx, DungeonProfile dungeon, double varianceScale, Func<SimTime, Func<bool>, bool> act)
     {
         _hero = hero;
         _ctx = ctx;
         _dungeon = dungeon;
         _varianceScale = varianceScale;
-        _heroShare = heroShare;
         _act = act;
         _limit = SimTime.FromSeconds(dungeon.TimeLimitSeconds);
         var order = dungeon.RunOrder() ?? throw new ArgumentException(dungeon.Problem() ?? "The pulls refer to each other in a circle.", nameof(dungeon));
-        _plans = order.Select(root => new RunPlan(root, dungeon.RunMembers(root), dungeon.HealthScale, varianceScale)).ToList();
+        _plans = order.Select(root => new RunPlan(root, dungeon.RunMembers(root), varianceScale)).ToList();
         _enemyIds = dungeon.Pulls.Select((p, i) => (p.Name, Id: 1001 + i)).ToDictionary(x => x.Name, x => x.Id);
         _runEnded = () => _current is { Alive: 0 };
         ctx.EnemyDemising += Demising;
-        ctx.EnemyHurt += Hurt;
     }
 
     /// <summary>
-    /// Runs the fight. Returns its end, the seconds each enemy was in combat, summed, and the seconds a boss was in combat.
+    /// Runs the fight. Returns its end, the seconds each enemy was in combat, summed, the seconds a boss was in combat, and
+    /// each enemy that entered combat.
     /// </summary>
-    public (SimTime End, double TargetSeconds, double BossSeconds) Run()
+    public (SimTime End, double TargetSeconds, double BossSeconds, IReadOnlyList<PartyEnemy> Enemies) Run()
     {
         for (_run = 0; _run < _plans.Count; _run++)
         {
@@ -74,24 +69,23 @@ internal sealed class DungeonFight
                 if (_ctx.CurrentTime >= _limit) break;
             }
             _current = new RunState();
-            _runStart = _ctx.CurrentTime;
             Spawn(plan.Root);
             _ctx.Player.CurrentTarget = _current.Pulls[0].Enemies.FirstOrDefault(e => !e.IsPriority) ?? _current.Pulls[0].Enemies[0];
             Refresh();
             bool ended = _act(_limit, _runEnded);
-            _pullTime += _ctx.CurrentTime - _runStart;
             _current = null;
             if (!ended) break;
         }
         var end = _ctx.CurrentTime < _limit ? _ctx.CurrentTime : _limit;
+        var enemies = new List<PartyEnemy>(_arrivals.Count);
         foreach (var (enemy, arrival) in _arrivals)
         {
             if (!arrival.Gone) _targetSeconds += (end - arrival.At).TotalSeconds;
+            enemies.Add(new PartyEnemy(arrival.At, enemy.DiesAt, enemy.MaxHealth, enemy.HeroDamage));
         }
         if (_bossSince != SimTime.Infinite) _bossSeconds += (end - _bossSince).TotalSeconds;
         _ctx.EnemyDemising -= Demising;
-        _ctx.EnemyHurt -= Hurt;
-        return (end, _targetSeconds, _bossSeconds);
+        return (end, _targetSeconds, _bossSeconds, enemies);
     }
 
     // A pull's enemies enter combat in the current run, and its join is armed.
@@ -101,29 +95,19 @@ internal sealed class DungeonFight
         var state = new PullState(pull);
         run.Pulls.Add(state);
         var now = _ctx.CurrentTime;
+        var dies = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale);
         int slot = 0;
         // A pull's priority targets come after its other enemies, so the hero starts on one of the others.
         foreach (var group in pull.Groups.OrderBy(g => g.Priority))
         {
             for (int i = 0; i < group.Count; i++)
             {
-                double? hitPoints = group.HitPoints * _dungeon.HealthScale;
-                var enemy = _ctx.AddEnemy(_enemyIds[pull.Name], ++slot, group.Name, maxHealth: hitPoints ?? TimeHealth);
+                var enemy = _ctx.AddEnemy(_enemyIds[pull.Name], ++slot, group.Name, maxHealth: group.Health!.Value * _dungeon.HealthScale);
                 enemy.IsBoss = group.Boss;
                 enemy.IsPriority = group.Priority;
-                if (hitPoints != null)
-                {
-                    enemy.SpiritPointValue = group.SpiritPoints;
-                    enemy.FollowDamage(_ctx, _heroShare);
-                }
-                else
-                {
-                    // TODO: Spirit Points from an enemy whose health follows time.
-                    enemy.SpiritPointValue = 0;
-                    var dies = now + SimTime.FromSeconds(pull.PullDurationSeconds!.Value * _varianceScale);
-                    enemy.FollowTime(_ctx, now, dies);
-                    _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true), "Pull duration");
-                }
+                enemy.SpiritPointValue = group.Spirit;
+                enemy.FollowTime(_ctx, now, dies);
+                _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true), "Pull duration");
                 if (group.Cast is { } cast) enemy.CastOnCooldown(_ctx, cast);
                 state.Enemies.Add(enemy);
                 _arrivals[enemy] = new Arrival(now, run, state, enemy.IsBoss && pull.Final);
@@ -134,11 +118,12 @@ internal sealed class DungeonFight
 
         if (pull.Join is not { } join) return;
         if (join.Triggers == 0) JoinNow(state);
-        else if (join.OffsetMs is { } ms) _ctx.Schedule(SimTime.FromMilliseconds((long)Math.Round(ms)), _ => JoinNow(state), "Pull with");
-        else if (join.OffsetPct is { } pct && pull.Groups.All(g => g.HitPoints == null))
+        // The offset scales with the pull's duration.
+        else if (join.OffsetMs is { } ms) _ctx.Schedule(SimTime.FromMilliseconds((long)Math.Round(ms * _varianceScale)), _ => JoinNow(state), "Pull with");
+        else if (join.OffsetPct is { } pct)
         {
-            // The pull's health follows time: its average falls to the percent at that share of its duration.
-            var at = now + SimTime.FromSeconds(pull.PullDurationSeconds!.Value * _varianceScale * (1 - pct / 100.0));
+            // The pull's health falls to the percent at that share of its duration.
+            var at = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale * (1 - pct / 100.0));
             _ctx.ScheduleAt(at, _ => JoinNow(state), "Pull with");
         }
     }
@@ -150,18 +135,6 @@ internal sealed class DungeonFight
         host.Joined = true;
         Spawn(_dungeon.Pull(host.Pull.Join!.Pull)!);
         Refresh();
-    }
-
-    private void Hurt(SimulationContext ctx, EnemyTarget enemy, double healthLost)
-    {
-        if (!_arrivals.TryGetValue(enemy, out var arrival)) return;
-        _healthTaken += healthLost;
-        var host = arrival.Pull;
-        if (host is { Joined: false, Pull.Join.OffsetPct: { } pct } && host.Enemies.Average(e => e.IsSleeping ? 0 : e.HealthPercent) <= pct)
-        {
-            JoinNow(host);
-        }
-        Estimate();
     }
 
     private void Demising(SimulationContext ctx, EnemyTarget enemy)
@@ -226,38 +199,31 @@ internal sealed class DungeonFight
     }
 
     /// <summary>
-    /// Sets the next trash pull's and boss's starts and the fight's end from the current pull's time to die, the downtime and
-    /// the pulls left. Health from damage falls at the rate it has fallen in the pulls so far; before any damage, a pull with
-    /// hit points has no estimate.
+    /// Sets the next trash pull's and boss's starts and the fight's end from the current run's enemies left, the pulls it has
+    /// not joined yet, the downtime and the pulls left, each at its duration.
     /// </summary>
     private void Estimate()
     {
         var now = _ctx.CurrentTime;
-        double pullSeconds = (_pullTime + (_current != null ? now - _runStart : SimTime.Zero)).TotalSeconds;
-        double rate = pullSeconds > 0 ? _healthTaken / pullSeconds : 0;
         // The time the run in progress ends, or the end of the downtime before the next run.
         double at;
         if (_current != null)
         {
-            // The current pull: its enemies left, and the pulls not joined yet.
-            double health = 0, timed = 0;
+            double left = 0;
             foreach (var pull in _current.Pulls)
             {
                 foreach (var enemy in pull.Enemies)
                 {
-                    if (_arrivals[enemy].Gone) continue;
-                    if (enemy.HeroShare != null) health += enemy.CurrentHealth;
-                    else timed = Math.Max(timed, (enemy.DiesAt - now).TotalSeconds);
+                    if (!_arrivals[enemy].Gone) left = Math.Max(left, (enemy.DiesAt - now).TotalSeconds);
                 }
             }
             var plan = _plans[_run];
             foreach (var member in plan.Members)
             {
                 if (_current.Pulls.Any(p => p.Pull == member)) continue;
-                health += plan.HealthOf(member);
-                timed = Math.Max(timed, plan.TimedOf(member));
+                left = Math.Max(left, plan.SecondsOf(member));
             }
-            at = now.TotalSeconds + Math.Max(timed, Seconds(health, rate));
+            at = now.TotalSeconds + left;
         }
         else at = _downtimeEnd.TotalSeconds;
 
@@ -268,43 +234,37 @@ internal sealed class DungeonFight
             var plan = _plans[i];
             // In downtime, the next run starts at the downtime's end.
             if ((_current != null || i > first) && plan.Root.ChainWith == null) at += plan.Root.DowntimeSeconds;
-            var start = double.IsInfinity(at) ? SimTime.Infinite : SimTime.FromSeconds(at);
+            var start = SimTime.FromSeconds(at);
             if (plan.HasTrash && nextTrash == SimTime.Infinite) nextTrash = start;
             if (plan.HasBoss && nextBoss == SimTime.Infinite) nextBoss = start;
-            at += Math.Max(plan.Timed, Seconds(plan.Health, rate));
+            at += plan.Seconds;
         }
         _ctx.NextTrashAt = nextTrash;
         _ctx.NextBossAt = nextBoss;
-        _ctx.FightEnd = double.IsInfinity(at) || at >= _limit.TotalSeconds ? _limit : SimTime.FromSeconds(at);
+        _ctx.FightEnd = at >= _limit.TotalSeconds ? _limit : SimTime.FromSeconds(at);
     }
 
-    private static double Seconds(double health, double rate) => health <= 0 ? 0 : rate > 0 ? health / rate : double.PositiveInfinity;
-
-    /// <summary>A run's pulls with the health and time of each, from the profile.</summary>
+    /// <summary>A run's pulls with the seconds of each, from the profile.</summary>
     private sealed class RunPlan
     {
         public readonly DungeonPull Root;
         public readonly IReadOnlyList<DungeonPull> Members;
-        public readonly double Health, Timed;
+        /// <summary>The run's seconds: its longest pull's.</summary>
+        public readonly double Seconds;
         public readonly bool HasTrash, HasBoss;
-        private readonly double _healthScale, _varianceScale;
+        private readonly double _varianceScale;
 
-        public RunPlan(DungeonPull root, IReadOnlyList<DungeonPull> members, double healthScale, double varianceScale)
+        public RunPlan(DungeonPull root, IReadOnlyList<DungeonPull> members, double varianceScale)
         {
             Root = root;
             Members = members;
-            _healthScale = healthScale;
             _varianceScale = varianceScale;
-            Health = members.Sum(HealthOf);
-            Timed = members.Max(TimedOf);
+            Seconds = members.Max(SecondsOf);
             HasTrash = members.Any(m => m.Groups.Any(g => !g.Boss));
             HasBoss = members.Any(m => m.IsBoss);
         }
 
-        public double HealthOf(DungeonPull pull) => pull.Groups.Sum(g => g.Count * (g.HitPoints ?? 0)) * _healthScale;
-
-        public double TimedOf(DungeonPull pull) =>
-            pull.Groups.Any(g => g.HitPoints == null) ? pull.PullDurationSeconds!.Value * _varianceScale : 0;
+        public double SecondsOf(DungeonPull pull) => pull.DurationSeconds * _varianceScale;
     }
 
     /// <summary>The run in progress: its pulls in combat, its enemies alive, dead and in all.</summary>

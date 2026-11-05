@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Generators over the Codex's data export (codex-export/, from tools/download-codex-export.sh), read as AdditionalFiles
+    through FellowshipAnalyzer.Codex.SDK. The SDK is a net10.0 library, so this generator is net10.0 too: it runs in the
+    .NET SDK's compiler, which is .NET.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- RS1041: a compiler extension for .NET Framework hosts targets netstandard2.0; this one needs the net10.0 SDK. -->
+    <NoWarn>$(NoWarn);RS1041</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+    <PackageReference Include="FellowshipAnalyzer.Codex.SDK" Version="1.0.34" PrivateAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <!-- The compiler loads the SDK beside the generator: a project referencing this one as an Analyzer gets both. -->
+  <PropertyGroup>
+    <GetTargetPathDependsOn>$(GetTargetPathDependsOn);AddCodexSdkToAnalyzer</GetTargetPathDependsOn>
+  </PropertyGroup>
+
+  <Target Name="AddCodexSdkToAnalyzer">
+    <ItemGroup>
+      <TargetPathWithTargetPlatformMoniker Include="$(PkgFellowshipAnalyzer_Codex_SDK)\lib\net10.0\Fellowship.SDK.dll" IncludeRuntimeDependency="false" />
+    </ItemGroup>
+  </Target>
+
+</Project>

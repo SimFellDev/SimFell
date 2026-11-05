@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace FellowshipSim.Logs;
 
@@ -37,14 +37,14 @@ public sealed record FreeDiceSummary(
 /// damage calibration per ability), and every engine hit with the log hit it matched, for checking damage formulas in a
 /// spreadsheet.
 /// </summary>
-public sealed record ReviewArtifacts(ReviewSummary Summary, string ScriptJson, string Html, string SummaryText, string HitsCsv);
+public sealed record ReviewArtifacts(ReviewSummary Summary, byte[] ScriptJson, string Html, string SummaryText, string HitsCsv);
 
 /// <summary>
 /// The local library of fights and replay reviews, kept in a data folder:
-/// <c>fights/</c> raw fights downloaded from FellowshipLogs, <c>scripts/</c> replay scripts built from them, and
+/// <c>fights/</c> raw fights downloaded from FellowshipLogs (each player's own), <c>scripts/</c> replay scripts built from them, and
 /// <c>reviews/</c> the review pages with a summary of each.
 /// </summary>
-public sealed class ReplayLibrary
+public sealed partial class ReplayLibrary
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
@@ -63,27 +63,37 @@ public sealed class ReplayLibrary
 
     public static string ReviewId(string reportCode, int fightId, int playerId) => $"{reportCode}_fight{fightId}_p{playerId}";
 
-    private string RawFightPath(string reportCode, int fightId) => Path.Combine(FightsDirectory, $"{reportCode}_fight{fightId}.raw.json");
+    private string RawFightPath(string reportCode, int fightId, int playerId) =>
+        Path.Combine(FightsDirectory, $"{ReviewId(reportCode, fightId, playerId)}.raw.json");
 
-    /// <summary>True when the fight's raw events are already downloaded.</summary>
-    public bool HasRawFight(string reportCode, int fightId) => File.Exists(RawFightPath(reportCode, fightId));
-
-    /// <summary>The fight's raw events, downloaded from FellowshipLogs the first time and read from disk after that.</summary>
-    public async Task<JsonObject> GetRawFightAsync(FellowshipLogsClient? client, string reportCode, int fightId,
-        IProgress<string>? progress = null, CancellationToken ct = default)
-    {
-        string path = await GetRawFightFileAsync(client, reportCode, fightId, progress, ct);
-        return JsonNode.Parse(await File.ReadAllTextAsync(path, ct))!.AsObject();
-    }
+    /// <summary>True when the player's raw fight is already downloaded.</summary>
+    public bool HasRawFight(string reportCode, int fightId, int playerId) => File.Exists(RawFightPath(reportCode, fightId, playerId));
 
     /// <summary>
-    /// The path of the fight's raw events, downloaded from FellowshipLogs the first time. One download runs at a time, so
-    /// two callers of one fight (a replay and a dungeon import) download it once.
+    /// The player's raw fight as a <see cref="JsonDocument"/> over the file's bytes, downloaded from FellowshipLogs the first
+    /// time.
     /// </summary>
-    public async Task<string> GetRawFightFileAsync(FellowshipLogsClient? client, string reportCode, int fightId,
+    public async Task<JsonDocument> GetRawFightDocumentAsync(FellowshipLogsClient? client, string reportCode, int fightId,
+        int playerId, IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        string path = await GetRawFightFileAsync(client, reportCode, fightId, playerId, progress, ct);
+        // Read in place: a document parsed from a stream copies the text into buffers it rents, doubling as it reads.
+        return JsonDocument.Parse(await File.ReadAllBytesAsync(path, ct));
+    }
+
+    /// <summary>The player's raw fight as UTF-8 JSON, downloaded from FellowshipLogs the first time.</summary>
+    public async Task<byte[]> GetRawFightBytesAsync(FellowshipLogsClient? client, string reportCode, int fightId, int playerId,
+        IProgress<string>? progress = null, CancellationToken ct = default) =>
+        await File.ReadAllBytesAsync(await GetRawFightFileAsync(client, reportCode, fightId, playerId, progress, ct), ct);
+
+    /// <summary>
+    /// The path of the player's raw fight, downloaded from FellowshipLogs the first time. One download runs at a time, so
+    /// two callers of one player's fight download it once.
+    /// </summary>
+    public async Task<string> GetRawFightFileAsync(FellowshipLogsClient? client, string reportCode, int fightId, int playerId,
         IProgress<string>? progress = null, CancellationToken ct = default)
     {
-        string path = RawFightPath(reportCode, fightId);
+        string path = RawFightPath(reportCode, fightId, playerId);
         await _oneDownloadAtATime.WaitAsync(ct);
         try
         {
@@ -94,8 +104,20 @@ public sealed class ReplayLibrary
             }
             if (client == null) throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
             progress?.Report("Downloading the fight from FellowshipLogs");
-            var raw = await client.DownloadFightAsync(reportCode, fightId, progress, ct);
-            await File.WriteAllTextAsync(path, raw.ToJsonString(), ct);
+            // Written to a file of its own and moved into place once whole, so a failed download leaves no fight.
+            string part = path + ".part";
+            try
+            {
+                await using (var file = File.Create(part))
+                {
+                    await client.DownloadFightAsync(reportCode, fightId, playerId, file, progress, ct);
+                }
+                File.Move(part, path, overwrite: true);
+            }
+            finally
+            {
+                File.Delete(part);
+            }
             return path;
         }
         finally
@@ -106,25 +128,11 @@ public sealed class ReplayLibrary
 
     private readonly SemaphoreSlim _oneDownloadAtATime = new(1, 1);
 
-    /// <summary>Writes a downloaded fight's raw events back, as <see cref="GetRawFightAsync"/> reads them.</summary>
-    public async Task SaveRawFightAsync(string reportCode, int fightId, JsonObject raw, CancellationToken ct = default)
-    {
-        await _oneDownloadAtATime.WaitAsync(ct);
-        try
-        {
-            await File.WriteAllTextAsync(RawFightPath(reportCode, fightId), raw.ToJsonString(), ct);
-        }
-        finally
-        {
-            _oneDownloadAtATime.Release();
-        }
-    }
-
     /// <summary>Writes a review's replay script, page, summary, text and hits.</summary>
     public void Save(ReviewArtifacts review)
     {
         string id = review.Summary.Id;
-        File.WriteAllText(Path.Combine(ScriptsDirectory, $"{id}.replay.json"), review.ScriptJson);
+        File.WriteAllBytes(Path.Combine(ScriptsDirectory, $"{id}.replay.json"), review.ScriptJson);
         File.WriteAllText(Path.Combine(ReviewsDirectory, review.Summary.HtmlFile), review.Html);
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.summary.json"), JsonSerializer.Serialize(review.Summary, Indented));
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.summary.txt"), review.SummaryText);
@@ -154,12 +162,15 @@ public sealed class ReplayLibrary
         return File.Exists(path) ? JsonSerializer.Deserialize<FreeDiceSummary>(File.ReadAllText(path)) : null;
     }
 
-    /// <summary>Fights already downloaded (report code, fight ID).</summary>
-    public IReadOnlyList<(string ReportCode, int FightId)> ListDownloadedFights() =>
+    /// <summary>Players' fights already downloaded (report code, fight ID, player ID).</summary>
+    public IReadOnlyList<(string ReportCode, int FightId, int PlayerId)> ListDownloadedFights() =>
         Directory.GetFiles(FightsDirectory, "*.raw.json")
-            .Select(f => Path.GetFileName(f).Replace(".raw.json", ""))
-            .Select(n => n.Split("_fight"))
-            .Where(p => p.Length == 2 && int.TryParse(p[1], out _))
-            .Select(p => (p[0], int.Parse(p[1])))
+            .Select(f => RawFightName().Match(Path.GetFileName(f)))
+            .Where(m => m.Success)
+            .Select(m => (m.Groups[1].Value, int.Parse(m.Groups[2].Value), int.Parse(m.Groups[3].Value)))
             .ToList();
+
+    // A raw fight's file name: <report code>_fight<fight ID>_p<player ID>.raw.json.
+    [GeneratedRegex(@"^(.+)_fight(\d+)_p(\d+)\.raw\.json$")]
+    private static partial Regex RawFightName();
 }

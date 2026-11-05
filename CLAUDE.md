@@ -10,6 +10,11 @@ game content.
 ## Commands
 
 ```
+# the Codex's data export into codex-export/ (git-ignored), from which FellowshipSim.Codex.Generators writes each
+# creature's <Name>GameCreature class and GameDungeons, each dungeon's creature placements; once after cloning, and after
+# a new datamine
+tools/download-codex-export.sh
+
 # the solution (the desktop app needs the maui workload)
 dotnet build -c Release
 
@@ -31,11 +36,17 @@ dotnet test -c Release
 # one test class or method
 dotnet test tests/FellowshipSim.Tests -c Release --filter "FullyQualifiedName~AplParserTests"
 
+# every hero's gear items and their stats from the Codex into Core/Import/GameGearData.cs (after a new datamine)
+dotnet run tools/generate-gear.cs
+
 # one hero's current-patch fights from FellowshipLogs into data/fights (credentials from the environment or the simfell user secrets)
 dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 
 # one hero's accuracy over those fights, saved as data/accuracy/<Hero>/<label>.txt (docs/REPLAY_ACCURACY.md)
 ACCURACY_HERO=Rime ACCURACY_LABEL=baseline dotnet test tests/FellowshipSim.Tests -c Release --filter HeroAccuracyTests
+
+# one browser worker's memory and time in Node, from an AOT publish (benchmarks/README.md)
+node benchmarks/wasm/worker-memory.mjs publish sim:1000 review:data/fights/<fight>_p<player>.raw.json:<player>
 
 # free dice over downloaded fights (FREEDICE_REVIEW=all or one review ID; FREEDICE_SEED, default 1)
 FREEDICE_REVIEW=all FREEDICE_ITERATIONS=1000 dotnet test tests/FellowshipSim.Tests -c Release --filter FreeDice
@@ -54,7 +65,10 @@ or the desktop app).
   outcome (crit, proc, spread, travel time), each hit's damage (`Land`) and each periodic tick's time with a damage log ID
   (`TickAt`) go through `IOutcomeSource`. `RandomOutcomeSource` rolls dice;
   `LogOutcomeSource` (exact replay) and `FreeDiceOutcomeSource` (free dice) in FellowshipSim.Engine are the other two.
-  `Import/SimcProfile` reads and writes `.simc` profiles.
+  `Import/SimcProfile` reads and writes `.simc` character profiles. A sim's profile (`FellowshipSim.Engine/SimProfile`) is
+  the character's lines and action list, the `SimSettings` lines and a dungeon fight's dungeon lines, in any order. The
+  last line of a setting wins, and the last dungeon replaces the ones before. The Sim page writes every option into it, a
+  sim's job is that text alone, and the CLI's options are lines added at its end.
 - **Catalog** (`Core/Catalog.cs`) finds heroes, talents, traits, blessings, sets, legendaries and weapons by reflection
   over their ID constants. A new class with its ID constant and a parameterless constructor needs no registration.
 - **Talents** attach to the hero in `Bind` through events and multiplier lists on `Hero` and `Ability`. Abilities never
@@ -112,7 +126,10 @@ or the desktop app).
   sims and replays on web workers (`wwwroot/sim/`), each a .NET runtime of its own calling `SimWorker`'s `[JSExport]`
   methods: a sim's chunks (`SimChunks`, `MonteCarloSimulator.RunChunk`) spread over them and combine to the same result
   as `LocalSimEngine`'s. A replay downloads its fight and replays it on a worker (`WorkerFightReviewer`, the
-  browser's `IFightReviewer`), so no fight sits in the page. The data folder is in the runtime's in-memory file system,
+  browser's `IFightReviewer`), so no fight sits in the page. A runtime's memory never shrinks, so a worker that replayed a
+  fight stops once its calls are done (`simPool.js`), and the review comes back as bytes (`ReviewReply.ToBytes`). A kept
+  fight comes in a call of its own (`SimWorker.HoldFight`), and the script's build empties its `RawFightHolder`, so the
+  replay runs without the raw fight. The data folder is in the runtime's in-memory file system,
   copied to IndexedDB (`BrowserDataFolder`).
 - **FellowshipSim.Cli** is `simfell`: one `LocalSimEngine.SimulateAsync` of a `.simc` profile, result on stdout,
   progress on stderr.

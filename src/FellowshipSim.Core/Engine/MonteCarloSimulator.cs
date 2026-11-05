@@ -39,6 +39,13 @@ public class MonteCarloResult
     public double PrimaryTargetDps { get; init; }
     /// <summary>The DPS to bosses over the time of boss fighting in every fight; 0 when the fights had no enemies besides bosses, or no boss.</summary>
     public double BossDps { get; init; }
+    /// <summary>A dungeon's party DPS: the health its enemies lost in every fight over their lengths; null for training dummies.</summary>
+    public double? PartyDps { get; init; }
+    /// <summary>
+    /// The hero's share of a dungeon's party damage, from 0 to 1, the hero's damage to each enemy counted up to the health it
+    /// lost; null for training dummies.
+    /// </summary>
+    public double? GroupDamageShare { get; init; }
 }
 
 /// <summary>
@@ -273,6 +280,8 @@ public class MonteCarloSimulator
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
             // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.
             BossDps = total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999 ? total.Report.BossDamage / total.Report.BossSeconds : 0,
+            PartyDps = total.Report.PartyDamage > 0 && total.LengthSum > 0 ? total.Report.PartyDamage / total.LengthSum : null,
+            GroupDamageShare = total.Report.PartyDamage > 0 ? total.Report.HeroPartyDamage / total.Report.PartyDamage : null,
         };
     }
 
@@ -291,7 +300,11 @@ public class MonteCarloSimulator
         FightOptions options, Totals totals)
     {
         var hero = worker.Hero;
-        var ctx = new SimulationContext(hero);
+        var ctx = new SimulationContext(hero)
+        {
+            Reactions = options.ReactionDelays ? ReactionDelays.Measured : null,
+            ProcReactionTime = SimTime.FromSeconds(options.ProcReactionSeconds),
+        };
         ctx.Rng.Seed(seed);
         hero.ResetForIteration();
         worker.Recorder.Begin(fight, seconds, totals.Report);
@@ -300,12 +313,13 @@ public class MonteCarloSimulator
         ctx.FightEnd = duration;
 
         double targetSeconds, bossSeconds;
+        IReadOnlyList<PartyEnemy>? party = null;
         var end = duration;
         if (options.Dungeon is { } dungeon)
         {
             // A dungeon has no main target: its enemies come and go.
             worker.Recorder.WatchTargets(ctx);
-            (end, targetSeconds, bossSeconds) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed), options.HeroShare(seed),
+            (end, targetSeconds, bossSeconds, party) = new DungeonFight(hero, ctx, dungeon, options.VarianceScale(seed),
                 (until, stop) => RunUntil(worker, ctx, until, stop)).Run();
         }
         else
@@ -326,7 +340,7 @@ public class MonteCarloSimulator
         }
 
         hero.Auras.FinalizeUptimes(end);
-        worker.Recorder.End(end, targetSeconds, bossSeconds);
+        worker.Recorder.End(end, targetSeconds, bossSeconds, party);
 
         foreach (var (ability, dmg) in ctx.AbilityDamage)
         {
@@ -352,23 +366,25 @@ public class MonteCarloSimulator
     private static bool RunUntil(Worker worker, SimulationContext ctx, SimTime end, Func<bool>? stop)
     {
         var hero = worker.Hero;
-        bool castsDuringGcd = hero.Abilities.Any(a => a.UsableDuringGcd);
+        var program = worker.Program;
         while (ctx.CurrentTime < end)
         {
             if (stop != null && stop()) return true;
-            bool acted = IsFreeToAct(hero, ctx, castsDuringGcd) && worker.Program.TryAct(ctx);
+            var hold = program.HoldOf(ctx);
+            bool acted = Decides(program, hold) && program.TryAct(ctx);
+            NoteHold(hero, ctx);
 
-            var next = NextDecisionTime(hero);
+            var next = NextDecisionTime(hero, ctx);
             if (!acted && next <= ctx.CurrentTime)
             {
                 // Nothing was cast: decide again at the next event or when something the action list reads changes.
-                next = worker.Program.NextDecision(ctx);
+                next = program.NextDecision(ctx);
             }
-            else if (castsDuringGcd && OnGcdOnly(hero, ctx))
+            else if (Decides(program, program.HoldOf(ctx)))
             {
-                // An ability usable during the global cooldown can go now, after the cast that started it, or once it
-                // becomes ready before the global cooldown ends.
-                var decision = acted ? ctx.CurrentTime : worker.Program.NextDecision(ctx);
+                // A use_off_gcd or use_while_casting action can go now, after the cast before it, or once it becomes ready
+                // before the hold ends.
+                var decision = acted ? ctx.CurrentTime : program.NextDecision(ctx);
                 if (decision < next) next = decision;
             }
             if (ctx.RunUntil(next < end ? next : end, stop)) return true;
@@ -376,18 +392,36 @@ public class MonteCarloSimulator
         return stop != null && stop();
     }
 
-    // While the global cooldown runs, a hero with an ability usable during it acts too: the others refuse
-    // (SimulationContext.Activate).
-    private static bool IsFreeToAct(Hero hero, SimulationContext ctx, bool castsDuringGcd) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && (castsDuringGcd || ctx.CurrentTime >= hero.GlobalCooldownEndTime);
-
-    // The hero is held by the global cooldown alone.
-    private static bool OnGcdOnly(Hero hero, SimulationContext ctx) =>
-        hero.CurrentCast == null && hero.CurrentChannel == null && ctx.CurrentTime < hero.GlobalCooldownEndTime;
-
-    private static SimTime NextDecisionTime(Hero hero)
+    // A decision runs under a hold only when an action of the lists is a candidate under it (BoundAplAction.IsCandidate).
+    private static bool Decides(AplProgram program, AplDecisionHold hold) => hold switch
     {
-        var next = hero.GlobalCooldownEndTime;
+        AplDecisionHold.GlobalCooldown => program.HasOffGcdActions,
+        AplDecisionHold.Cast => program.HasWhileCastingActions,
+        _ => true,
+    };
+
+    private static SimTime GcdOrReactionEnd(Hero hero, SimulationContext ctx) =>
+        ctx.ReactionEndTime > hero.GlobalCooldownEndTime ? ctx.ReactionEndTime : hero.GlobalCooldownEndTime;
+
+    /// <summary>
+    /// The hold the hero is under now, the last to end of a channel, a cast and the global cooldown, so the reaction to it
+    /// is rolled once (<see cref="SimulationContext.HoldEnds"/>).
+    /// </summary>
+    private static void NoteHold(Hero hero, SimulationContext ctx)
+    {
+        if (ctx.Reactions == null) return;
+        var (end, hold) = (hero.GlobalCooldownEndTime, ReactionHold.GlobalCooldown);
+        if (hero.CurrentCast is { } cast && cast.EndTime >= end) (end, hold) = (cast.EndTime, ReactionHold.CastTime);
+        if (hero.CurrentChannel is { } channel && channel.Ticks.End >= end)
+        {
+            (end, hold) = (channel.Ticks.End, channel.Ability.ChannelQueuesNextCast ? ReactionHold.CastTime : ReactionHold.Channel);
+        }
+        if (end > ctx.CurrentTime) ctx.HoldEnds(end, hold);
+    }
+
+    private static SimTime NextDecisionTime(Hero hero, SimulationContext ctx)
+    {
+        var next = GcdOrReactionEnd(hero, ctx);
         if (hero.CurrentCast != null && hero.CurrentCast.EndTime > next) next = hero.CurrentCast.EndTime;
         if (hero.CurrentChannel != null && hero.CurrentChannel.Ticks.End > next) next = hero.CurrentChannel.Ticks.End;
         return next;

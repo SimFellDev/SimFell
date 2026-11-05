@@ -1,7 +1,5 @@
 using System.Runtime.InteropServices.JavaScript;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
@@ -37,102 +35,86 @@ public static partial class SimWorker
         JsonSerializer.Serialize(new SimChunks(Read<SimcProfile>(profileJson), Read<SimSettings>(settingsJson))
             .Combine(chunksJson.Select(Read<MonteCarloChunk>).ToList()), SimChunks.Json);
 
+    // The raw fight the next Review replays (HoldFight).
+    private static RawFightHolder? HeldFight;
+
     /// <summary>
-    /// Replays player <paramref name="playerId"/> of a raw fight: a <see cref="ReviewReply"/> as JSON, with the review's files
-    /// or the reason the engine refused it. Its progress goes to the page as call <paramref name="callId"/>'s.
+    /// Keeps a raw fight's UTF-8 JSON for the next <see cref="Review"/>. The fight comes in a call of its own, so no frame of
+    /// the replay holds it: the script's build empties the holder, and the fight is free through the replay.
     /// </summary>
     [JSExport]
-    public static async Task<string> Review(string rawFight, int playerId, int callId)
+    public static void HoldFight(byte[] rawFight) => HeldFight = new RawFightHolder(rawFight);
+
+    /// <summary>
+    /// Replays player <paramref name="playerId"/> of the raw fight from <see cref="HoldFight"/>: a <see cref="ReviewReply"/>
+    /// as bytes (a Uint8Array), with the review's files or the reason the engine refused it. Its progress goes to the page
+    /// as call <paramref name="callId"/>'s.
+    /// </summary>
+    [JSExport]
+    public static async Task<JSObject> Review(int playerId, int callId)
     {
+        var fight = HeldFight ?? throw new InvalidOperationException("No fight is held for a review.");
+        HeldFight = null;
         ReviewReply reply;
         try
         {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(rawFight));
-            var review = await new LocalSimEngine().ReviewAsync(stream, playerId, new ProgressTo(callId));
-            reply = new ReviewReply(review, null);
+            var progress = new ProgressTo(callId);
+            reply = new ReviewReply(await Task.Run(() => ReplayReview.Run(fight, playerId, progress: progress)), null);
         }
-        catch (SimEngineException e)
+        catch (Exception e) when (e is NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
         }
-        return JsonSerializer.Serialize(reply, SimChunks.Json);
+        return Bytes(reply.ToBytes());
     }
 
     /// <summary>
     /// Downloads fight <paramref name="fightId"/> of report <paramref name="reportCode"/> from FellowshipLogs with the
     /// signed-in user's token (<paramref name="accessToken"/>), else a developer's API client, and replays player
-    /// <paramref name="playerId"/>: a <see cref="ReviewReply"/> as JSON. The fight
+    /// <paramref name="playerId"/>: a <see cref="ReviewReply"/> as bytes (a Uint8Array). The fight
     /// is kept in the browser's storage for the next replay of it (sim/fights.js), never in the page's memory.
     /// </summary>
     [JSExport]
-    public static async Task<string> ReviewFight(string reportCode, int fightId, int playerId, string accessToken, string clientId,
+    public static async Task<JSObject> ReviewFight(string reportCode, int fightId, int playerId, string accessToken, string clientId,
         string clientSecret, int callId)
     {
-        var progress = new ProgressTo(callId);
+        using var http = new HttpClient();
+        var client = accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken) : new FellowshipLogsClient(http, clientId, clientSecret);
+        return await ReviewFight(client, reportCode, fightId, playerId, new ProgressTo(callId));
+    }
+
+    /// <summary><see cref="ReviewFight(string, int, int, string, string, string, int)"/> with <paramref name="client"/>.</summary>
+    internal static async Task<JSObject> ReviewFight(FellowshipLogsClient client, string reportCode, int fightId, int playerId,
+        IProgress<string> progress)
+    {
         ReviewReply reply;
         try
         {
-            using var http = new HttpClient();
-            progress.Report("Downloading the fight from FellowshipLogs");
-            var client = accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken) : new FellowshipLogsClient(http, clientId, clientSecret);
-            var raw = await client.DownloadFightAsync(reportCode, fightId, progress);
-            await SaveFight(reportCode, fightId, raw.ToJsonString());
-            progress.Report("Replaying the fight");
-            reply = new ReviewReply(ReplayReview.Run(raw, playerId, progress: progress), null);
+            var fight = await Download(client, reportCode, fightId, playerId, progress);
+            // The replay runs on a stack of its own: inline, it would run under the download's resumed frame, which holds
+            // the fight's bytes.
+            reply = new ReviewReply(await Task.Run(() => ReplayReview.Run(fight, playerId, progress: progress)), null);
         }
         catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
         {
             reply = new ReviewReply(null, e.Message);
         }
-        return JsonSerializer.Serialize(reply, SimChunks.Json);
+        return Bytes(reply.ToBytes());
     }
 
     /// <summary>
-    /// Reads the dungeon of fight <paramref name="fightId"/> of report <paramref name="reportCode"/> with player
-    /// <paramref name="playerId"/>'s hero share: a <see cref="DungeonReply"/> as JSON. The fight is
-    /// <paramref name="keptFight"/>, the one the browser keeps, or else downloaded as <see cref="ReviewFight"/> does and kept.
-    /// A fight kept without its pulls gets them from FellowshipLogs and is kept again.
+    /// Downloads a player's fight and keeps it in the browser's storage. The fight is in the holder alone once this method
+    /// returns, so no frame of the replay holds it.
     /// </summary>
-    [JSExport]
-    public static async Task<string> ReadDungeonFight(string reportCode, int fightId, int playerId, string keptFight, string accessToken,
-        string clientId, string clientSecret, int callId)
+    private static async Task<RawFightHolder> Download(FellowshipLogsClient client, string reportCode, int fightId, int playerId,
+        IProgress<string> progress)
     {
-        var progress = new ProgressTo(callId);
-        DungeonReply reply;
-        try
-        {
-            using var http = new HttpClient();
-            FellowshipLogsClient Client() =>
-                accessToken.Length > 0 ? FellowshipLogsClient.ForUser(http, accessToken)
-                : clientId.Length > 0 ? new FellowshipLogsClient(http, clientId, clientSecret)
-                : throw new FellowshipLogsException("Sign in with FellowshipLogs to download fights.");
-            JsonObject raw;
-            if (keptFight.Length > 0)
-            {
-                raw = JsonNode.Parse(keptFight)!.AsObject();
-            }
-            else
-            {
-                var client = Client();
-                progress.Report("Downloading the fight from FellowshipLogs");
-                raw = await client.DownloadFightAsync(reportCode, fightId, progress);
-                await SaveFight(reportCode, fightId, raw.ToJsonString());
-            }
-            if (!DungeonReader.HasPulls(raw))
-            {
-                var client = Client();
-                progress.Report("Downloading the fight's pulls from FellowshipLogs");
-                await client.AddDungeonPullsAsync(raw);
-                await SaveFight(reportCode, fightId, raw.ToJsonString());
-            }
-            progress.Report("Reading the dungeon");
-            reply = new DungeonReply(DungeonReader.FromRawFight(raw, playerId).Format(), null);
-        }
-        catch (Exception e) when (e is FellowshipLogsException or HttpRequestException or NotSupportedException or ArgumentException)
-        {
-            reply = new DungeonReply(null, e.Message);
-        }
-        return JsonSerializer.Serialize(reply, SimChunks.Json);
+        progress.Report("Downloading the fight from FellowshipLogs");
+        var download = new FightDownload();
+        await client.DownloadFightAsync(reportCode, fightId, playerId, download, progress);
+        byte[] text = download.ToArray();
+        await SaveFight(reportCode, fightId, playerId, text);
+        return new RawFightHolder(text);
     }
 
     /// <summary>
@@ -154,11 +136,17 @@ public static partial class SimWorker
         return JsonSerializer.Serialize(reply, SimChunks.Json);
     }
 
-
-
-    /// <summary>Keeps a downloaded fight in the browser's storage (sim/fights.js), for the next replay of it.</summary>
+    /// <summary>
+    /// Keeps a downloaded fight's UTF-8 JSON in the browser's storage (sim/fights.js), for the next replay of it. The
+    /// script copies the bytes before it returns.
+    /// </summary>
     [JSImport("saveFight", "simWorker")]
-    private static partial Task SaveFight(string reportCode, int fightId, string text);
+    private static partial Task SaveFight(string reportCode, int fightId, int playerId,
+        [JSMarshalAs<JSType.MemoryView>] ArraySegment<byte> text);
+
+    /// <summary>The bytes as a Uint8Array of the script's own.</summary>
+    [JSImport("bytes", "simWorker")]
+    private static partial JSObject Bytes(byte[] bytes);
 
     /// <summary>A replay's progress line, posted to the page (worker.js).</summary>
     [JSImport("progress", "simWorker")]
@@ -171,6 +159,3 @@ public static partial class SimWorker
         public void Report(string value) => Progress(callId, value);
     }
 }
-
-/// <summary>A replay's answer from a worker: its review, or the reason the engine refused it.</summary>
-public sealed record ReviewReply(ReviewArtifacts? Review, string? Error);

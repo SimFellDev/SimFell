@@ -2,8 +2,8 @@
 //
 // The fights come from the hero's ranking lists in the latest zone, from rank 1 down, one encounter after another, so the
 // set spans the zone's dungeons. A run is taken when it started on or after the patch's release day, its report has the
-// patch's log format, and its fight has a player of the hero. A fight already in data/fights counts and is not
-// downloaded again.
+// patch's log format, and its fight has a player of the hero. The download is the ranked player's events of the fight (one
+// raw fight per player); a player's fight already in data/fights counts and is not downloaded again.
 //
 //     dotnet run tools/fetch-fights.cs -- --hero Rime [--count 12] [--max-per-player 2] [--pages 10]
 //
@@ -117,14 +117,17 @@ async Task<string?> Reject(JsonNode run)
     }
     if (!patch.Covers(DateTimeOffset.FromUnixTimeMilliseconds(report.StartTime).UtcDateTime, report.LogVersion)) return "older log format";
     var fight = report.Fights.FirstOrDefault(f => f.Id == fightId);
-    if (fight == null || !fight.Players.Any(p => p.Hero.Equals(spec.Name, StringComparison.OrdinalIgnoreCase))) return "hero not in the fight";
+    var heroes = fight?.Players.Where(p => p.Hero.Equals(spec.Name, StringComparison.OrdinalIgnoreCase)).ToList() ?? [];
+    if (heroes.Count == 0) return "hero not in the fight";
+    // The ranked player, or the fight's first player of the hero when no name matches.
+    var logged = heroes.FirstOrDefault(p => p.Name.Trim().Equals(player, StringComparison.OrdinalIgnoreCase)) ?? heroes[0];
 
     await WaitForPointsAsync();
-    try { await library.GetRawFightFileAsync(client, code, fightId.Value); }
+    try { await library.GetRawFightFileAsync(client, code, fightId.Value, logged.Id); }
     catch (FellowshipLogsException e) when (!Throttled(e)) { return "download failed"; }
     string encounter = queues.First(q => q.Holds(run)).Name;
     taken.Add((encounter, player, code, fightId.Value));
-    Console.WriteLine($"  {encounter}: {player} {code} fight {fightId} ({fight.Name}, {fight.DurationSeconds / 60:F0} min)");
+    Console.WriteLine($"  {encounter}: {player} {code} fight {fightId} ({fight!.Name}, {fight.DurationSeconds / 60:F0} min)");
     return null;
 }
 

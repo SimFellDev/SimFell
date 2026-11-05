@@ -1,6 +1,7 @@
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.APL.Editing;
+using FellowshipSim.UI.Apl;
 
 namespace FellowshipSim.Tests.Apl.Editor;
 
@@ -17,7 +18,7 @@ public class CompletionsTests
     }
 
     [Fact]
-    public void Empty_word_lists_scopes_resources_named_values_prev_functions_and_operators_in_that_order()
+    public void Empty_word_lists_every_kind_of_value_functions_and_operators_in_that_order()
     {
         string resourceScope = PropertyExpression.ResourcePrefix.TrimEnd('.');
         var expected = PropertyExpression.Scopes.Keys
@@ -25,6 +26,10 @@ public class CompletionsTests
             .Append(resourceScope)
             .Concat(_v.Resources.Select(r => r.Slug).Skip(1))
             .Concat(PropertyExpression.Named.Keys.Select(n => n.Split('.')[0]))
+            .Concat(PropertyExpression.ActionValues.Keys)
+            .Concat(_v.BuildNames.Where(b => b.Value.Count > 0).Select(b => b.Key))
+            .Append(PropertyExpression.ActiveDotScope)
+            .Append(PropertyExpression.VariableScope)
             .Append(PropertyExpression.PrevScope)
             .Append(PropertyExpression.PrevGcdScope)
             .Concat(Enum.GetValues<AplFunction>().Select(f => f.Name()))
@@ -32,7 +37,43 @@ public class CompletionsTests
             .Distinct()
             .ToList();
 
-        Assert.Equal(expected, Completions.For(_v, "").Select(c => c.Text).ToList());
+        Assert.Equal(expected, Completions.For(_v, "", ["orbs"]).Select(c => c.Text).ToList());
+        Assert.DoesNotContain(PropertyExpression.VariableScope, Completions.For(_v, "").Select(c => c.Text));
+    }
+
+    [Fact]
+    public void Every_value_the_condition_builder_offers_completes()
+    {
+        string[] variables = ["orbs"];
+        foreach (var kind in ConditionBuilder.Kinds(_v, variables))
+        {
+            foreach (var name in kind.Names)
+            {
+                var properties = kind.Properties is { Count: > 0 } p ? p : [null];
+                foreach (string? property in properties)
+                {
+                    // A code field completes the path after an aggregate's ':' ("min:dot.chill.remains").
+                    string path = ConditionBuilder.JoinPath(_v, new PathParts(kind.Id, name.Slug, property));
+                    path = path[(path.IndexOf(':') + 1)..];
+                    int dot = path.LastIndexOf('.');
+                    var found = Completions.For(_v, path[..(dot + 1)], variables).Select(c => c.Text);
+                    Assert.Contains(path[(dot + 1)..], found);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void Build_parts_active_dots_variables_action_values_and_deficits_have_their_parts()
+    {
+        Assert.Equal(_v.BuildNames[PropertyExpression.TalentScope].Select(t => t.Slug), Completions.For(_v, "talent.").Select(c => c.Text));
+        Assert.Equal(_v.Auras.Select(a => a.Slug), Completions.For(_v, "active_dot.").Select(c => c.Text));
+        Assert.All(Completions.For(_v, "active_dot."), c => Assert.Equal(AplTokenKind.Debuff, c.Node.Kind));
+        Assert.Equal(["orbs", "spent"], Completions.For(_v, "variable.", ["orbs", "spent"]).Select(c => c.Text));
+        Assert.Contains("full_recharge_time", Completions.For(_v, "full_rech").Select(c => c.Text));
+        Assert.Equal(["deficit"], Completions.For(_v, "winter_orbs.").Select(c => c.Text));
+        Assert.Equal(["deficit"], Completions.For(_v, "resource.winter_orbs.").Select(c => c.Text));
+        Assert.All(Completions.For(_v, "action.ice_comet."), c => Assert.Equal(AplTokenKind.Cooldown, c.Node.Kind));
     }
 
     [Fact]
@@ -40,8 +81,9 @@ public class CompletionsTests
     {
         var found = Completions.For(_v, "w").Select(c => c.Text).ToList();
 
-        Assert.Equal(["winter_orbs", "worb"], found.Take(2));
-        Assert.All(found.Skip(2), text => Assert.False(text.StartsWith('w')));
+        int starting = found.TakeWhile(text => text.StartsWith('w')).Count();
+        Assert.Equal(["weapon", "winter_orbs", "worb"], found.Take(starting).Order(StringComparer.Ordinal));
+        Assert.All(found.Skip(starting), text => Assert.False(text.StartsWith('w')));
         Assert.All(found, text => Assert.Contains("w", text));
     }
 

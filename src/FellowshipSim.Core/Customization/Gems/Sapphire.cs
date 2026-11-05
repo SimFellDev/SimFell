@@ -52,22 +52,44 @@ public class Sapphire : Gem
         }
     }
 
-    protected override void BindLater(Hero hero, GemNode node, SimTime now)
-    {
-        if (node.Slot != 1) return;
-        hero.AddMaxSpiritPoints(node.Value("SpiritPointsBonus"));
-        hero.SpiritOfHeroismAuras.Add(hero.Register(node.Grants!));
-    }
-
-    /// <summary>Spirit of Heroism gives the active rank's Ancestral Surge, and the maximum Spirit Points follow the rank.</summary>
+    /// <summary>
+    /// Ancestral Surge's Spirit Points and aura and Blessing of the Prophet's cost and duration follow the active nodes of slots 1 and 5
+    /// (a rank, or a node reached or lost in a fight, or back to the bound ones).
+    /// </summary>
     protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
     {
-        var old = before.FirstOrDefault(n => n.Slot == 1);
-        var next = NodeInSlot(1);
-        if (old == null || next == null || old == next) return;
-        int i = hero.SpiritOfHeroismAuras.IndexOf(old.Grants!);
-        if (i >= 0) hero.SpiritOfHeroismAuras[i] = hero.Register(next.Grants!);
-        hero.AddMaxSpiritPoints(next.Value("SpiritPointsBonus") - old.Value("SpiritPointsBonus"));
+        var oldSurge = before.FirstOrDefault(n => n.Slot == 1);
+        var surge = NodeInSlot(1);
+        if (oldSurge != surge)
+        {
+            if (oldSurge != null)
+            {
+                hero.AddMaxSpiritPoints(-oldSurge.Value("SpiritPointsBonus"));
+                hero.SpiritOfHeroismAuras.Remove(oldSurge.Grants!);
+            }
+            if (surge != null)
+            {
+                hero.AddMaxSpiritPoints(surge.Value("SpiritPointsBonus"));
+                hero.SpiritOfHeroismAuras.Add(hero.Register(surge.Grants!));
+            }
+        }
+        var oldProphet = before.FirstOrDefault(n => n.Slot == 5);
+        var prophet = NodeInSlot(5);
+        if (oldProphet != prophet)
+        {
+            if (oldProphet != null)
+            {
+                hero.SpiritAbilityCostReduction -= oldProphet.Value("CostReduction");
+                hero.SpiritOfHeroismDurationBonus -= HeroismDurationBonus;
+                HeroismDurationBonus = 0;
+            }
+            if (prophet != null)
+            {
+                hero.SpiritAbilityCostReduction += prophet.Value("CostReduction");
+                HeroismDurationBonus = prophet.Value("DurationBonus");
+                hero.SpiritOfHeroismDurationBonus += HeroismDurationBonus;
+            }
+        }
     }
 
     protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch

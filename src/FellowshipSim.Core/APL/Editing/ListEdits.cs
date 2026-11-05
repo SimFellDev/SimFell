@@ -84,18 +84,17 @@ public static partial class ListEdits
             case AplActionLine.ListNameKey when v.ListActions.Contains(actionName):
                 return Filter(Lists(otherLines()), partial, always);
             case AplVariable.NameKey when actionName == AplVariable.ActionName:
-                return Filter(VariableLine.Matches(otherLines()).Select(m => m.Groups[1].Value).Distinct()
-                    .Select(n => Item(n, AplTokenKind.Named)).ToList(), partial, always);
+                return Filter(Variables(otherLines()).Select(n => Item(n, AplTokenKind.Named)).ToList(), partial, always);
             case AplVariable.OpKey when actionName == AplVariable.ActionName:
                 return Filter(Enum.GetValues<AplVariableOp>().Select(op => Item(op.ToString().ToLowerInvariant(), AplTokenKind.Keyword)).ToList(),
                     partial, always);
             case AplActionLine.TargetIfKey when !value.Contains(':') && Key().IsMatch(value):
                 return Filter(v.TargetSelections.Select(s => Item(s.Prefix, AplTokenKind.Keyword, s.Label))
-                    .Concat(Completions.For(v, value.Trim())).ToList(), partial, always);
+                    .Concat(Completions.For(v, value.Trim(), Variables(otherLines()))).ToList(), partial, always);
             case AplActionLine.ConditionKey or AplActionLine.TargetIfKey or AplVariable.ValueKey:
                 string path = CodeEdits.PathBefore().Match(value).Value;
                 if ((path.Length > 0 && char.IsAsciiDigit(path[0])) || (path.Length == 0 && !always)) return null;
-                return Completions.For(v, path);
+                return Completions.For(v, path, Variables(otherLines()));
             default:
                 return null;
         }
@@ -132,6 +131,8 @@ public static partial class ListEdits
         else keys.Add(AplActionLine.TargetIfKey);
         return keys.Select(k => Item(k, AplTokenKind.Keyword)).ToList();
     }
+
+    private static List<string> Variables(string text) => VariableLine.Matches(text).Select(m => m.Groups[1].Value).Distinct().ToList();
 
     private static List<Completion> Lists(string text) =>
         ListLine.Matches(text).Select(m => m.Groups[1].Value).Distinct().Select(l => Item(l, AplTokenKind.List)).ToList();

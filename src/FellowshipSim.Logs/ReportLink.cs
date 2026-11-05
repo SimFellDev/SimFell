@@ -5,6 +5,16 @@ namespace FellowshipSim.Logs;
 /// <summary>A FellowshipLogs report, optionally narrowed to a fight and a player (from a pasted link or a bare code).</summary>
 public sealed record ReportLink(string ReportCode, int? FightId, int? PlayerId)
 {
+    /// <summary>The report's FellowshipLogs page, with its fight and player when set.</summary>
+    public string Url
+    {
+        get
+        {
+            string query = string.Join('&', new[] { FightId is { } f ? $"fight={f}" : null, PlayerId is { } p ? $"source={p}" : null }.OfType<string>());
+            return $"https://www.fellowshiplogs.com/reports/{ReportCode}{(query.Length > 0 ? "?" + query : "")}";
+        }
+    }
+
     /// <summary>
     /// Reads "https://www.fellowshiplogs.com/reports/CODE?fight=7&amp;source=1" or just "CODE".
     /// </summary>

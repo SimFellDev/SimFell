@@ -2,7 +2,11 @@ using FellowshipSim.Core.APL.Expressions;
 
 namespace FellowshipSim.Core.APL;
 
-/// <summary>An action argument other than <c>if</c> and <c>target_if</c> (<c>name=aoe</c>, <c>line_cd=5</c>). The engine ignores it.</summary>
+/// <summary>
+/// An action argument other than <c>if</c> and <c>target_if</c> (<c>name=aoe</c>, <c>use_off_gcd=1</c>, <c>line_cd=5</c>). The
+/// engine reads <see cref="AplActionLine.ListNameKey"/>, <see cref="AplActionLine.UseOffGcdKey"/>,
+/// <see cref="AplActionLine.UseWhileCastingKey"/> and the <c>variable</c> arguments, and ignores the others.
+/// </summary>
 public sealed record AplArgument(string Key, IAplExpression Value)
 {
     public override string ToString() => $"{Key}={AplFormatter.Format(Value)}";
@@ -23,6 +27,18 @@ public sealed record AplActionLine(string List, string Name, IAplExpression? Con
     /// <summary>Argument of <c>run_action_list</c> and <c>call_action_list</c> holding the list's name.</summary>
     public const string ListNameKey = "name";
 
+    /// <summary>
+    /// Argument of an ability action, 1 when the action is a candidate in a decision while the global cooldown or the
+    /// reaction after it runs. Without it, the action waits for both to end.
+    /// </summary>
+    public const string UseOffGcdKey = "use_off_gcd";
+
+    /// <summary>
+    /// Argument of an ability action, 1 when the action is a candidate in a decision while a cast or a channel runs.
+    /// Without it, the action waits for both to end.
+    /// </summary>
+    public const string UseWhileCastingKey = "use_while_casting";
+
     /// <summary>The list's name for <paramref name="prefix"/> (<c>actions.aoe</c> is <c>aoe</c>), or null for a prefix other than <c>actions</c>.</summary>
     public static string? ListOf(string prefix) =>
         prefix == ListPrefix ? DefaultList
@@ -35,6 +51,10 @@ public sealed record AplActionLine(string List, string Name, IAplExpression? Con
     /// <summary>The list a <c>run_action_list</c> or <c>call_action_list</c> line names in its <c>name=</c> argument.</summary>
     public string? ListName =>
         Arguments.LastOrDefault(a => a.Key.Equals(ListNameKey, StringComparison.OrdinalIgnoreCase))?.Value is PropertyExpression list ? list.PropertyPath : null;
+
+    /// <summary>True when the argument <paramref name="key"/> is a number other than 0.</summary>
+    public bool Flag(string key) =>
+        Arguments.LastOrDefault(a => a.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value is ConstantExpression { Value: not 0 };
 
     /// <summary>The line in canonical form, with expressions in <see cref="AplFormatter"/> form.</summary>
     public override string ToString()

@@ -71,7 +71,7 @@ public sealed class VisitorCookieTests : IAsyncLifetime
         Assert.NotEqual(VisitorId(a), VisitorId(b));
         var summary = new ReviewSummary(ReplayLibrary.ReviewId("aaaa", 1, 2), "aaaa", 1, "Fight", null, 2, "Player", "Rime",
             1, 1, 1, 1, 100, 100, 0, DateTime.UtcNow);
-        _app.Services.GetRequiredService<ReplayLibrary>().Save(new ReviewArtifacts(summary, "{}", "<html>review</html>", "", "hits"));
+        _app.Services.GetRequiredService<ReplayLibrary>().Save(new ReviewArtifacts(summary, "{}"u8.ToArray(), "<html>review</html>", "", "hits"));
         await _app.Services.GetRequiredService<VisitorReviews>().AddAsync(new Visitor(VisitorId(a), OwnsDataFolder: false), summary);
 
         using (var page = await GetAsync($"/reviews/{summary.HtmlFile}", a))

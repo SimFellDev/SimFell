@@ -1,0 +1,207 @@
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using Fellowship.SDK;
+using Fellowship.SDK.Documents;
+using Fellowship.SDK.Models;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
+
+namespace FellowshipSim.Codex.Generators;
+
+/// <summary>
+/// Writes a <c>public partial class &lt;Name&gt;GameCreature</c> in <c>FellowshipSim.Core.Domain</c> for each creature of
+/// the Codex's data export, deriving from <c>GameCreature</c>, with the export's values as constants: <c>ID</c> (a
+/// FellowshipLogs NPC actor's gameID), <c>NAME</c>, <c>RANK</c> (a <c>CreatureRank</c>, the SDK's ranks), <c>BASE_HEALTH</c>
+/// (before the difficulty's scale), <c>SPIRIT_POINTS</c> and <c>KILL_SCORE</c>. The export is the AdditionalFiles <c>entities.jsonl</c> and <c>settings.json</c>, read through
+/// FellowshipAnalyzer.Codex.SDK. A class name is the creature's name in Pascal case, letters and digits only; the creatures
+/// sharing a name, and a creature without one, have their ID after it. <c>GameCreatures</c> has every class's values as a
+/// <c>CodexCreature</c>, by ID and by name.
+/// </summary>
+[Generator(LanguageNames.CSharp)]
+public sealed class CreatureGenerator : IIncrementalGenerator
+{
+    private const string EntitiesName = "entities.jsonl";
+    private const string SettingsName = "settings.json";
+    private const string Namespace = "FellowshipSim.Core.Domain";
+
+    private static readonly DiagnosticDescriptor MissingExport = new(
+        "CODEX001", "The Codex export is missing",
+        "The Codex export has no {0}: run tools/download-codex-export.sh", "Codex", DiagnosticSeverity.Error, true);
+
+    private static readonly DiagnosticDescriptor UnreadableLine = new(
+        "CODEX002", "A Codex export line does not read",
+        "{0} line {1} does not read as an entity: {2}", "Codex", DiagnosticSeverity.Error, true);
+
+    /// <summary>One creature's values, as the generated class has them.</summary>
+    private sealed record Creature(int Id, string Name, string? Rank, double BaseHealth, int SpiritPoints, int KillScore);
+
+    /// <summary>The export's creatures, the build date its settings name, and the problems reading it.</summary>
+    private sealed record Export(EquatableArray<Creature> Creatures, string? BuildDate, EquatableArray<string> Problems);
+
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        context.RegisterPostInitializationOutput(WriteRanks);
+        var files = context.AdditionalTextsProvider
+            .Where(f => Path.GetFileName(f.Path) is EntitiesName or SettingsName)
+            .Collect();
+        var export = files.Select((all, ct) => Read(all, ct));
+        context.RegisterSourceOutput(export, Write);
+    }
+
+    private static Export Read(ImmutableArray<AdditionalText> files, CancellationToken ct)
+    {
+        var problems = new List<string>();
+        var entities = files.FirstOrDefault(f => Path.GetFileName(f.Path) == EntitiesName)?.GetText(ct);
+        var settings = files.FirstOrDefault(f => Path.GetFileName(f.Path) == SettingsName)?.GetText(ct);
+        if (entities == null) problems.Add($"missing|{EntitiesName}");
+        if (settings == null) problems.Add($"missing|{SettingsName}");
+
+        string? buildDate = null;
+        if (settings != null)
+        {
+            var file = JsonSerializer.Deserialize<SettingsFile>(settings.ToString(), EntityDocuments.Options);
+            buildDate = file?.BuildDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        }
+
+        var creatures = new List<Creature>();
+        if (entities != null)
+        {
+            foreach (var line in entities.Lines)
+            {
+                ct.ThrowIfCancellationRequested();
+                string text = line.ToString();
+                // Only creature lines are read in full.
+                if (!text.Contains("\"$type\":\"creature\"")) continue;
+                try
+                {
+                    if (JsonSerializer.Deserialize<EntityDocument>(text, EntityDocuments.Options) is CreatureDocument c)
+                    {
+                        creatures.Add(new Creature(c.Id, (c.Name ?? "").Trim(), c.Rank?.ToString(), c.Health ?? 0,
+                            c.SpiritPoints ?? 0, c.KillScore ?? 0));
+                    }
+                }
+                catch (JsonException e)
+                {
+                    problems.Add($"line|{line.LineNumber + 1}|{e.Message}");
+                }
+            }
+        }
+        return new Export(new([.. creatures.OrderBy(c => c.Id)]), buildDate, new([.. problems]));
+    }
+
+    // The SDK's creature ranks, as an enum of the generated code's own: the generated code has no reference to the SDK.
+    private static void WriteRanks(IncrementalGeneratorPostInitializationContext context)
+    {
+        var source = new StringBuilder()
+            .Append("// <auto-generated> by FellowshipSim.Codex.Generators from FellowshipAnalyzer.Codex.SDK's CreatureRank. </auto-generated>\n")
+            .Append("namespace ").Append(Namespace).Append(";\n\n")
+            .Append("/// <summary>A creature's rank in the Codex's data export.</summary>\n")
+            .Append("public enum CreatureRank\n{\n");
+        foreach (var rank in Enum.GetValues<CreatureRank>())
+        {
+            source.Append("    ").Append(rank).Append(" = ").Append((int)rank).Append(",\n");
+        }
+        source.Append("}\n");
+        context.AddSource("CreatureRank.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
+    }
+
+    private static void Write(SourceProductionContext context, Export export)
+    {
+        foreach (string problem in export.Problems)
+        {
+            var parts = problem.Split(['|'], 3);
+            context.ReportDiagnostic(parts[0] == "missing"
+                ? Diagnostic.Create(MissingExport, Location.None, parts[1])
+                : Diagnostic.Create(UnreadableLine, Location.None, EntitiesName, parts[1], parts[2]));
+        }
+
+        var shared = export.Creatures.GroupBy(c => PascalCase(c.Name)).Where(g => g.Count() > 1).Select(g => g.Key).ToImmutableHashSet();
+        var classNames = new List<string>();
+        foreach (var creature in export.Creatures)
+        {
+            string name = PascalCase(creature.Name);
+            if (name.Length == 0 || shared.Contains(name) || !char.IsLetter(name[0])) name = $"{(name.Length == 0 ? "Creature" : name)}{creature.Id}";
+            string className = $"{name}GameCreature";
+            classNames.Add(className);
+            var source = new StringBuilder()
+                .Append("// <auto-generated> by FellowshipSim.Codex.Generators from the Codex's data export")
+                .Append(export.BuildDate != null ? $" of {export.BuildDate}" : "").Append(". </auto-generated>\n")
+                .Append("namespace ").Append(Namespace).Append(";\n\n")
+                .Append("/// <summary>").Append(Escape(creature.Name.Length > 0 ? creature.Name : $"Creature {creature.Id}"))
+                .Append(", creature ").Append(creature.Id).Append(" of the Codex's data export.</summary>\n")
+                .Append("public partial class ").Append(className).Append(" : GameCreature\n{\n")
+                .Append("    /// <summary>The creature's game ID: a FellowshipLogs NPC actor's gameID.</summary>\n")
+                .Append("    public const int ID = ").Append(creature.Id).Append(";\n\n")
+                .Append("    public const string NAME = ").Append(Literal(creature.Name)).Append(";\n\n")
+                .Append("    /// <summary>The creature's rank; null for a creature the export has no rank for.</summary>\n")
+                .Append("    public static readonly CreatureRank? RANK = ")
+                .Append(creature.Rank != null ? $"CreatureRank.{creature.Rank}" : "null").Append(";\n\n")
+                .Append("    /// <summary>The creature's health before the difficulty's scale.</summary>\n")
+                .Append("    public const double BASE_HEALTH = ").Append(Number(creature.BaseHealth)).Append(";\n\n")
+                .Append("    /// <summary>The Spirit Points the creature is worth.</summary>\n")
+                .Append("    public const int SPIRIT_POINTS = ").Append(creature.SpiritPoints).Append(";\n\n")
+                .Append("    public const int KILL_SCORE = ").Append(creature.KillScore).Append(";\n")
+                .Append("}\n");
+            context.AddSource($"{className}.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
+        }
+        WriteLookup(context, classNames);
+    }
+
+    // GameCreatures: every creature class's values as a CodexCreature, by ID and by name.
+    private static void WriteLookup(SourceProductionContext context, List<string> classNames)
+    {
+        var source = new StringBuilder()
+            .Append("// <auto-generated> by FellowshipSim.Codex.Generators from the Codex's data export. </auto-generated>\n")
+            .Append("#nullable enable\n")
+            .Append("namespace ").Append(Namespace).Append(";\n\n")
+            .Append("/// <summary>One creature of the Codex's data export: the static values of its <c>&lt;Name&gt;GameCreature</c> class.</summary>\n")
+            .Append("public sealed record CodexCreature(int Id, string Name, CreatureRank? Rank, double BaseHealth, int SpiritPoints, int KillScore);\n\n")
+            .Append("/// <summary>Every creature of the Codex's data export.</summary>\n")
+            .Append("public static partial class GameCreatures\n{\n")
+            .Append("    /// <summary>Every creature, by ID.</summary>\n")
+            .Append("    public static IReadOnlyList<CodexCreature> All { get; } =\n    [\n");
+        foreach (string c in classNames)
+        {
+            source.Append("        new(").Append(c).Append(".ID, ").Append(c).Append(".NAME, ").Append(c).Append(".RANK, ")
+                .Append(c).Append(".BASE_HEALTH, ").Append(c).Append(".SPIRIT_POINTS, ").Append(c).Append(".KILL_SCORE),\n");
+        }
+        source.Append("    ];\n\n")
+            .Append("    private static readonly Dictionary<int, CodexCreature> _byId = All.ToDictionary(c => c.Id);\n\n")
+            .Append("    private static readonly Dictionary<string, CodexCreature[]> _byName = All.GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)\n")
+            .Append("        .ToDictionary(g => g.Key, g => g.ToArray(), StringComparer.OrdinalIgnoreCase);\n\n")
+            .Append("    /// <summary>The creature with game ID <paramref name=\"id\"/> (a FellowshipLogs NPC actor's gameID); null when there is none.</summary>\n")
+            .Append("    public static CodexCreature? ById(int id) => _byId.GetValueOrDefault(id);\n\n")
+            .Append("    /// <summary>The one creature named <paramref name=\"name\"/>; null when none or several have the name.</summary>\n")
+            .Append("    public static CodexCreature? ByName(string name) => Named(name) is [var one] ? one : null;\n\n")
+            .Append("    /// <summary>Every creature named <paramref name=\"name\"/>, by ID.</summary>\n")
+            .Append("    public static IReadOnlyList<CodexCreature> Named(string name) => _byName.GetValueOrDefault(name.Trim()) ?? [];\n")
+            .Append("}\n");
+        context.AddSource("GameCreatures.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
+    }
+
+    /// <summary>The name's words, each starting upper case, with letters and digits only.</summary>
+    private static string PascalCase(string name)
+    {
+        var result = new StringBuilder();
+        bool start = true;
+        foreach (char c in name)
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                result.Append(start ? char.ToUpperInvariant(c) : c);
+                start = false;
+            }
+            // An apostrophe stays inside its word: Al'zerac is Alzerac.
+            else if (c != '\'') start = true;
+        }
+        return result.ToString();
+    }
+
+    private static string Literal(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+
+    private static string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+
+    private static string Escape(string value) => value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+}

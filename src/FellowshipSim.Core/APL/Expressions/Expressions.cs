@@ -313,11 +313,28 @@ public class PropertyExpression : IAplExpression
     public string? Property { get; }
     /// <summary>The application a debuff path reads (<see cref="OldestPick"/>, <see cref="NewestPick"/>); every application as one when not written.</summary>
     public TargetEffectPick Pick { get; }
+    /// <summary>
+    /// The aggregate over every enemy in combat written before the path and a ':' (<c>min:dot.engulfing_flames.remains</c>);
+    /// null for a path that reads the current target. It reads a debuff's <see cref="AplEnemyAggregates.Property"/> alone
+    /// (<see cref="IsEnemyAggregate"/>).
+    /// </summary>
+    public AplEnemyAggregate? Aggregate { get; }
+
+    /// <summary>True for an <see cref="Aggregate"/> of a debuff's remaining time with no oldest or newest pick.</summary>
+    public bool IsEnemyAggregate => Aggregate != null && Scope == DebuffScope && Property == AplEnemyAggregates.Property && Pick == TargetEffectPick.All;
 
     public PropertyExpression(string propertyPath)
     {
-        PropertyPath = AplPaths.Migrate(propertyPath.Trim().ToLowerInvariant());
-        var parts = PropertyPath.Split('.');
+        string path = propertyPath.Trim().ToLowerInvariant();
+        int colon = path.IndexOf(':');
+        if (colon > 0 && AplEnemyAggregates.ByPrefix.TryGetValue(path[..colon], out var aggregate))
+        {
+            Aggregate = aggregate;
+            path = path[(colon + 1)..].Trim();
+        }
+        path = AplPaths.Migrate(path);
+        PropertyPath = Aggregate is { } prefix ? $"{prefix.Prefix()}:{path}" : path;
+        var parts = path.Split('.');
         if (parts.Length == 4 && parts[0] is DotScope or DebuffScope && PickOf(parts[2]) is { } pick)
         {
             (Scope, Name, Pick, Property) = (DebuffScope, parts[1], pick, parts[3]);
@@ -359,6 +376,8 @@ public class PropertyExpression : IAplExpression
     {
         var now = ctx.CurrentTime;
 
+        if (Aggregate is { } aggregate) return IsEnemyAggregate ? AcrossEnemies(hero, ctx, Name!, aggregate) : 0.0;
+
         if (Named.TryGetValue(PropertyPath, out var named)) return named.Value(hero, ctx);
 
         if (hero.FindResource(ResourceName) is { } resource)
@@ -370,7 +389,7 @@ public class PropertyExpression : IAplExpression
         switch (Scope)
         {
             case BuffScope:
-                return AuraProperty(Property!)(AuraLookup.Find(hero.Auras, Name!, now) is { } aura ? TargetEffect.Of(aura) : null, now);
+                return AuraProperty(Property!)(AuraLookup.Find(hero.Auras, Name!, now)?.Seen(now, ctx.ProcReactionTime), now);
 
             case DebuffScope:
                 var target = ctx.Player.CurrentTarget;
@@ -400,6 +419,21 @@ public class PropertyExpression : IAplExpression
 
         return 0.0;
     }
+
+    /// <summary>
+    /// <paramref name="aggregate"/> of the remaining time of debuff <paramref name="slug"/> over every application on every
+    /// enemy in combat; <see cref="AplEnemyAggregate"/> has the value when no enemy has it.
+    /// </summary>
+    internal static double AcrossEnemies(Hero hero, SimulationContext ctx, string slug, AplEnemyAggregate aggregate) =>
+        RemainsAcross(AuraLookup.ExpiryAcross(hero, ctx, slug, aggregate, ctx.CurrentTime), aggregate, ctx.CurrentTime);
+
+    /// <summary>The value of an aggregate whose application expires at <paramref name="expiresAt"/>, null for none.</summary>
+    internal static double RemainsAcross(SimTime? expiresAt, AplEnemyAggregate aggregate, SimTime time) => expiresAt switch
+    {
+        null => aggregate == AplEnemyAggregate.Min ? double.MaxValue : 0.0,
+        { } e when e == SimTime.Infinite => double.MaxValue,
+        { } e => (e - time).TotalSeconds,
+    };
 
     /// <summary>The value of an action property ("execute_time"); a property actions lack reads as 0.</summary>
     public static Func<Ability?, SimTime, double> ActionProperty(string property) =>
@@ -547,4 +581,25 @@ internal static class AuraLookup
     public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now, TargetEffectPick pick = TargetEffectPick.All) =>
         hero is ITargetEffects effects && effects.FindOn(enemy, slug, now, pick) is { } effect ? effect
         : enemy.Auras.FindActive(slug, now) is { } aura ? TargetEffect.Of(aura) : null;
+
+    /// <summary><see cref="On(Hero, EnemyTarget, string, SimTime, TargetEffectPick)"/>, with the enemy's auras searched by <paramref name="search"/>.</summary>
+    public static TargetEffect? On(Hero hero, EnemyTarget enemy, string slug, SimTime now, TargetEffectPick pick, ref AuraSearch search) =>
+        hero is ITargetEffects effects && effects.FindOn(enemy, slug, now, pick) is { } effect ? effect
+        : search.Find(enemy.Auras, slug, now) is { } aura ? TargetEffect.Of(aura) : null;
+
+    /// <summary>
+    /// The expiry of the application of <paramref name="slug"/> that runs out first (<see cref="AplEnemyAggregate.Min"/>) or
+    /// last (<see cref="AplEnemyAggregate.Max"/>) over every enemy in combat; null when no enemy has it.
+    /// </summary>
+    public static SimTime? ExpiryAcross(Hero hero, SimulationContext ctx, string slug, AplEnemyAggregate aggregate, SimTime now)
+    {
+        var pick = aggregate == AplEnemyAggregate.Min ? TargetEffectPick.ExpiresFirst : TargetEffectPick.All;
+        SimTime? found = null;
+        foreach (var enemy in ctx.ActiveEnemies)
+        {
+            if (On(hero, enemy, slug, now, pick) is not { } effect) continue;
+            if (found is not { } best || (aggregate == AplEnemyAggregate.Min ? effect.ExpiresAt < best : effect.ExpiresAt > best)) found = effect.ExpiresAt;
+        }
+        return found;
+    }
 }

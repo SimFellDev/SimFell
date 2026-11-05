@@ -1,0 +1,38 @@
+# Mara in a dungeon, from sbt's Cithrel's Fall run at Eternal 30 (FellowshipLogs T2qLPpmMkrAtJ9B1 fight 18).
+# Build: Sinner's Pride, Assassin's Guile, Feed the Queen, Malevolence, Deadly Scheme, Venomous Delight, Macabre Stratagem.
+# Auto attacks run all fight.
+actions+=/attack
+# Macabre Stratagem on cooldown: sbt used it 9 times in 1,555 s, close to its 180 s cooldown.
+actions+=/macabre_stratagem
+# Matriarch Macabre as soon as Spirit allows: sbt spent Spirit 11 times, at 88 to 130 Spirit.
+actions+=/matriarch_macabre
+# Sahril's Wrath on cooldown, with Matriarch Macabre: 16 casts, 12 of them within a second of Matriarch Macabre or Macabre Stratagem.
+actions+=/sahrils_wrath
+# Maiden of Death on cooldown: 69 casts, one every 22 s, as Sinner's Pride shortens its cooldown with each finisher.
+actions+=/maiden_of_death
+# Stealth after a finisher, or at 2 charges so no charge is lost: 141 casts, 100 at 0 Combo Points and 28 at 6.
+actions+=/brooding_shadows,if=buff.brooding_shadows.down&(combo_points<5|cooldown.brooding_shadows.charges>=2)
+# Seething Poison from Stealth on a boss, or on trash at more than half health: 20 casts, 13 on bosses (about every 50 s per boss), and 5 of the 7 on trash at 55% health or more.
+actions+=/widows_bite,if=buff.brooding_shadows.up&dot.seething_poison.remains<10&(target.is_boss|target.health.pct>50)
+# Volatile Poison on the pack from Stealth: 92 of 141 Stealths were followed by Skittering Blades.
+actions+=/stealth_skittering_blades,if=combo_points<5&active_enemies>=2
+# Caustic Poison from Stealth on a single enemy, or when Energy is below Skittering Blades' 35: sbt's 6 Stealth Backstabs were at the ends of boss fights, at 2 or 3 enemies.
+actions+=/stealth_backstab,if=combo_points<5
+# Hemorrhage on a boss that lives for 20 s or more: 19 casts, 15 in boss pulls.
+actions+=/hemorrhaging_strike,if=combo_points>=5&dungeon_event.boss.exists&dot.hemorrhage.down&target.time_to_die>20
+# Queen's Fang while its Malevolence buff is up: 380 of 383 Queen's Fangs had it, with any number of enemies.
+actions+=/queens_fang,if=combo_points>=5&buff.malevolence_queens_fang.up
+# Arachnid Assault while its Malevolence buff is up: 379 of 384 had it. The two finishers alternate, 14.8 casts a minute each.
+actions+=/arachnid_assault,if=combo_points>=5&buff.malevolence_arachnid_assault.up
+# The first finisher of a pull, before any Malevolence buff: Arachnid Assault on 3 or more enemies.
+actions+=/arachnid_assault,if=combo_points>=5&active_enemies>=3
+# The first finisher on one or two enemies.
+actions+=/queens_fang,if=combo_points>=5
+# Widow's Bite for its 30 Energy when Energy is below Skittering Blades' 35, or before a charge is lost: 134 of 150 casts at 0 Combo Points.
+actions+=/widows_bite,if=energy<35&cooldown.widows_bite.charges>=2|cooldown.widows_bite.charges_fractional>=2.9
+# Skittering Blades is the generator on 2 or more enemies: 15.5 casts a minute, 7.4 enemies hit on average, 6 Combo Points.
+actions+=/skittering_blades,if=active_enemies>=2
+# Widow's Bite generates Combo Points on a single enemy.
+actions+=/widows_bite,if=active_enemies=1
+# Backstab generates Combo Points on a single enemy once Widow's Bite has no charge.
+actions+=/backstab,if=active_enemies=1

@@ -71,7 +71,7 @@ public sealed class AplDebuggerState
     {
         Source = AplDebuggerSource.SimFight;
         SimTitle = title;
-        SimProfile = SimcProfile.Parse(profile);
+        SimProfile = FellowshipSim.Engine.SimProfile.Parse(profile).Profile;
         SimSettings = settings with { Iterations = 1, FirstSeed = settings.FirstSeed + result.TypicalFight!.Value };
         SimResult = result;
         Open(runs: true);
