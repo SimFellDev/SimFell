@@ -38,6 +38,8 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   the shortest gap, 21.309s (GXFz3pZ94aQr2chV fight 3 @ 645.307, Prvc4XmbdHBaVRKy fight 12 @ 138.322), sits on 30s x 0.78 /
   1.1 = 21.27s. It lasts 4s, 8s with The Tower: the 6 fights with The Tower have it up 8.00s to 8.04s and the 17 without it
   4.00s to 4.05s. The applybuff has duration 4000 in both, since The Tower raises the duration after it is applied.
+  A cast rolls Hidden Power: 4 gains fall on a Shadow Ward cast with no other cast of Mara's within 60ms (Fc8v6yWxD14GQMnV
+  fight 19 @ 571.657, p8VJDcBdxa7ghqG3 fight 124 @ 1041.55 and 1277.118, T2qLPpmMkrAtJ9B1 fight 18 @ 1290.901).
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.
