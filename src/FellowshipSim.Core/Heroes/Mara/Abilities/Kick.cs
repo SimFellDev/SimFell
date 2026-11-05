@@ -7,7 +7,8 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// The cooldown starts before the interrupt is tried (FellowshipCommitHeroAbility at ubergraph offset 10).
 /// Combat logs (23 Mara fights, 416 Kicks): 16.062s apart at the least. Kicks with no interrupt trigger the cooldown too
 /// (WcTBrQNX46m9axqP fight 12 @ 462.034 and 478.331: the next Kick 16.297s and 16.062s later).
-/// UNVERIFIED: <see cref="FinalStratagem"/>'s reset of Kick; its reset list has no tag of Kick's, and the native body is unread.
+/// <see cref="FinalStratagem"/> ends the cooldown: ReduceCooldownForAllAbilities skips abilities with an ignored tag, Kick has
+/// none, and the function reaches GE_Shared_Cooldown_Static (exe 0x1452417A0).
 /// </summary>
 public class Kick : MaraAbility
 {
