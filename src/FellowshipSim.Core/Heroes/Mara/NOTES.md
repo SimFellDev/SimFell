@@ -106,8 +106,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   and the 26 removals 0.070s or less after a tick have none, on `MinimumPartialTickTime` 0.1 (`DefaultGame.ini`). In the game
   data (build 26320967), effect 101 has `EffectType.Dot`, a crit on a running effect sets its value to (crit x share + left x
   value / 2) / 4 and refreshes its duration with the period timer left alone (`GA_Trait_GemDotHotOnCrit` offsets 493 to 1428,
-  exe 0x145241E40), and a crit after it ran out applies a new effect (offsets 1861 to 2201). CheckDuration (0x144A6FAB0, 0x1452D4B70)
-  gives the partial tick, factor elapsed / period. A tick follows the log's tick (`IOutcomeSource.TickAt`), so one missing log
+  exe 0x145241E40 resets the duration timer alone), the next tick reads the new magnitude (0x144A911F0), and a crit after it ran
+  out applies a new effect (offsets 1861 to 2201). CheckDuration (0x144A6FAB0, 0x1452D4B70) gives the partial tick, factor elapsed
+  / period, skipped under `MinimumPartialTickTime`. A tick follows the log's tick (`IOutcomeSource.TickAt`), so one missing log
   tick shifts no later pairing: with the free-running timer, ticks 0.15s behind the log paired with the next log tick, up to
   1.05s late at the 90th percentile in T2qLPpmMkrAtJ9B1 fight 18.
 - **Amethyst Splinter on Mara's death:** effect 101 has `EffectLogic.RemoveOnSourceDeath`. X82J6bGRNBracxLg fight 7: Mara dies at
@@ -157,6 +158,14 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   +46ms, 99% late). `HastedTimer` predicts from the tick before. Sources checked: `HastedTimer.Update`, and Vexira's Venom on
   the same enemies, whose log ticks fall behind the engine's in the same stretch (Prvc4XmbdHBaVRKy fight 12 @ 812 to 825: +0.03s
   to +0.17s).
+- **Amethyst Splinter's Haste on a running effect:** the binary (build 26320967) has the period divided by the instigator's Haste
+  once at application, with nothing re-reading it for a running effect (0x144A6B413 to 0x1452D5C70). The engine differs: with
+  `damageOverTime`, `BeginHasted` runs on `HastedTimer.StartPeriod`, ahead of the `retimeOnHasteChange` branch, and
+  `HastedTimer.Update` re-arms the period at each Haste change. The log's periods follow the change inside one application.
+  T2qLPpmMkrAtJ9B1 fight 18, enemy 6.1, applied at 22.886 and removed at 53.144: ticks 1.87s to 1.90s apart at 24.8 to 28.6, 1.70s
+  to 1.74s at 30.4 to 39.0, 1.84s to 1.90s at 39.0 to 50.2. Prvc4XmbdHBaVRKy fight 12, enemy 78.9, applied at 809.717 with no
+  removal by 855: 1.67s to 1.70s at 811.5 to 818.2, 1.84s to 1.87s at 818.2 to 827.5, 1.67s to 1.70s at 827.5 to 834.3. Sources
+  checked: `HastedTimer.Update`, the raw ticks, and the binary answer. No source gives what shortens a running effect's period.
 
 ## Not yet checked against a log
 
