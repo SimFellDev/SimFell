@@ -492,10 +492,18 @@ public abstract class Hero : Actor
     public const double RisingSpiritPrimaryStatPerStack = 0.05;
     /// <summary>Combat logs (10 Rime logs): each further Spirit Refund adds 2s to the time left instead of restarting it.</summary>
     public const double RisingSpiritReapplySeconds = 2.0;
+    /// <summary>
+    /// Game data (build 26320967): <c>Hero.SpiritProcRefundResource.Buff.MaxDuration</c> 20.
+    /// <c>GA_Shared_Passive_SpiritRefund_BuffDurationManager</c> adds 2s per stack to the effect's total (offsets 1870, 2122) and
+    /// stops at 20 (offset 2342), so a stack past that leaves the expiry. Combat logs (23 Mara fights of data/fights): of 1,303
+    /// buffs none runs over 20.1s, and the 22 at 7 and 8 stacks run 19.970s to 20.041s. T2qLPpmMkrAtJ9B1 fight 18: applied 95.261,
+    /// 7 stacks by 114.065, removed 115.267.
+    /// </summary>
+    public const double RisingSpiritDurationLimitSeconds = 20.0;
 
     public static readonly AuraDef RisingSpirit = AuraDef.Effect("Rising Spirit", RisingSpiritEffectId, RisingSpiritSeconds,
         RisingSpiritMaxStacks, StatModifier.Add(StatType.PrimaryAttributeMultiplier, RisingSpiritPrimaryStatPerStack))
-        with { ReapplyExtendsSeconds = RisingSpiritReapplySeconds };
+        with { ReapplyExtendsSeconds = RisingSpiritReapplySeconds, ExtendedDurationLimitSeconds = RisingSpiritDurationLimitSeconds };
 
     /// <summary>Effects that make a Spirit Refund certain (e.g. Undulating Spirit): each returns true if it guaranteed this one.</summary>
     public List<Func<SimTime, bool>> GuaranteedSpiritRefunds { get; } = new();

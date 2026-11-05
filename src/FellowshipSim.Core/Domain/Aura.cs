@@ -24,6 +24,9 @@ public sealed partial record AuraDef(string Name, int LogId, SimTime Duration, i
     /// <summary>When above 0, a re-application adds this many seconds to the time left instead of restarting the duration.</summary>
     public double ReapplyExtendsSeconds { get; init; }
 
+    /// <summary>When above 0, <see cref="ReapplyExtendsSeconds"/> stops at this many seconds after the aura's application.</summary>
+    public double ExtendedDurationLimitSeconds { get; init; }
+
     /// <summary>When true, a re-application adds its stacks and leaves the time left as it is.</summary>
     public bool ReapplyKeepsExpiry { get; init; }
 
@@ -293,6 +296,11 @@ public class AuraContainer
             else if (def.ReapplyExtendsSeconds > 0 && expires != SimTime.Infinite && previousExpiry > now)
             {
                 expires = previousExpiry + SimTime.FromSeconds(def.ReapplyExtendsSeconds);
+                if (def.ExtendedDurationLimitSeconds > 0)
+                {
+                    var limit = existing.AppliedAt + SimTime.FromSeconds(def.ExtendedDurationLimitSeconds + ExpiryLagSeconds);
+                    if (expires > limit) expires = limit;
+                }
             }
             else if (def.RefreshCarryoverFraction > 0 && expires != SimTime.Infinite && previousExpiry > now)
             {

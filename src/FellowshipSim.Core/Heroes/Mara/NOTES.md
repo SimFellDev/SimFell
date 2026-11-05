@@ -239,6 +239,16 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   `ControlledRandomBool` (0x1452C6800), one sequence per stream: A = A x T[10] 0.984358 at each roll, reset at a success, so the k-th
   roll after a success has 1 - 0.984358^k and the rolls per success average 10. The engine's sims roll a plain 10%.
 - **Malevolence:** a finisher uses one stack of its own buff, then grants the other.
+- **Rising Spirit:** each further stack adds 2s, and the buff ends 20s after its application at the most. Over the 1,303 buffs in the 23
+  Mara fights of `data/fights`, the buffs running out are 10s + 2s per further stack, 18.013s at the median at 5 stacks and 20.011s at 6,
+  and none is over 20.1s: the 22 at 7 and 8 stacks run 19.970s to 20.041s. T2qLPpmMkrAtJ9B1 fight 18: applied 95.261, 7 stacks by 114.065,
+  removed 115.267; applied 219.100, 7 stacks by 233.928, removed 239.104; applied 1356.138, 8 stacks by 1374.943, removed 1376.145. In the
+  game data (build 26320967), `GA_Shared_Passive_SpiritRefund_BuffDurationManager` starts from the effect's total, 10s, and on each stack
+  adds `Hero.SpiritProcRefundResource.Buff.DurationIncreasePerStack` 2 (offsets 1870, 2122). At `MaxDuration` 20 it ends its stack-change
+  task (offset 2342), so a later stack comes with the expiry unchanged. Effect 3115 has `StackDurationRefreshPolicy` `NeverRefresh`, and a
+  new application after a removal starts from 10s again. The log's `duration` on `applybuffstack` shows the 2s of every second stack:
+  stacks 2, 3, 4, 5 show +2, +0, +4 and +0. The removal fits 2s per stack (applied 137.607, 3 stacks, logged expiry 149.605, removed
+  151.636), and the graph adds 2s on every stack. The field's writer is native and unread, so the alternation has no source.
 
 ## Not yet explained
 
@@ -327,7 +337,18 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   regeneration with the talent and none without it (Fc8v6yWxD14GQMnV fight 19 @ 623.634 to 623.706: 49.92, Prvc4XmbdHBaVRKy fight 12 @
   25.885 to 26.085: 55.10). In T2qLPpmMkrAtJ9B1 fight 18 the Energy finding has 25 issues (19 low, 6 high), net +46.95 of gross 88.47,
   Attack +24.08 over 14 steps. Sources checked: the rises in `LogOutcomeSource`, `GA_Mara_Passive_PosionDamage_Monitor` offsets 487 to
-  729, and `GA_Mara_Passive_SpiritProcHandler`'s 0.2s delay.- **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
+  729, and `GA_Mara_Passive_SpiritProcHandler`'s 0.2s delay.
+- **Rising Spirit stack at its expiry:** 13 issues remain over the 23 Mara fights of `data/fights`, from 38, in 6 fights, each at a Spirit
+  Refund within 57ms of the expiry. In 5 of the 6, the log's buff has the stack after the first application's 10s + 2s per stack have run
+  out, and the engine has a new buff at 1 stack with 10s. X82J6bGRNBracxLg fight 7: applied 631.715, stack 4 @
+  645.740 on an end of 645.715, removed 647.744. pWmcV42K39GHTLQX fight 23: applied 856.130, stack 4 @ 870.146, removed 872.158.
+  d1LvbCpBWXRM8Hcm fight 14: applied 218.906, stack 4 @ 232.963, removed 234.970. xkGbdm8aNDwTcgjF fight 2: applied 605.639, stack 2 @ 615.669,
+  removed 617.642. xkGbdm8aNDwTcgjF fight 17: applied 365.457, stack 8 @ 385.489, removed 385.495. 3M2vWr8taxVfTQFY fight 53 has the opposite
+  order: the 12s end at 445.890, the log has a removal and a new buff at 445.896, and the engine's buff, ending at 445.907 with its lag, has
+  the stack. Sources
+  checked: `GA_Shared_Passive_SpiritRefund_BuffDurationManager` and `AuraContainer.ExpiryLagSeconds`. The engine has no server frame grid
+  (see "A generator in Maiden of Death's last frame").
+- **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
 
