@@ -45,8 +45,6 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     ];
 
     [Theory]
-    // Red Ledger's few % of crit chance is lost in the crit rolls of 50 fights.
-    [InlineData(RedLedger.TalentId, "more:dps", 1, 1, 200)]
     [InlineData(CorrosiveSpill.TalentId, "damage:Corrosive Spill")]
     [InlineData(AssassinsGuile.TalentId, "aura:Assassin's Guile")]
     [InlineData(Bloodrush.TalentId, "more:damage:Hemorrhage")]
@@ -63,14 +61,13 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     [InlineData(ArachnidOnslaught.TalentId, "more:damage:Arachnid Assault", 8)]
     [InlineData(CausticWounds.TalentId, "more:damage:Caustic Poison", 1, 1)]
     [InlineData(Puncture.TalentId, "more:damage:Widow's Bite")]
-    public void Talent_Is_Modeled_And_Takes_Effect(int talentId, string evidence, int minTargets = 1, int maxTargets = 8,
-        int iterations = 10)
+    public void Talent_Is_Modeled_And_Takes_Effect(int talentId, string evidence, int minTargets = 1, int maxTargets = 8)
     {
         foreach (int targets in new[] { 1, 8 }.Where(t => t >= minTargets && t <= maxTargets))
         {
             // The base leaves the talent out, so only the talent can show the evidence.
             int[] without = BaseTalents.Where(t => t != talentId).ToArray();
-            var (result, hero, gained) = Run([.. without, talentId], targets, iterations);
+            var (result, hero, gained) = Run([.. without, talentId], targets);
             Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
             Assert.Contains(hero.Talents, t => t.Id == talentId);
             Assert.True(result.MeanDps > 0);
@@ -81,7 +78,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
             double baseline = 0.0;
             if (more)
             {
-                var (baseResult, _, baseGained) = Run(without, targets, iterations);
+                var (baseResult, _, baseGained) = Run(without, targets);
                 baseline = Amount(baseResult, baseGained, shown);
             }
             output.WriteLine($"Talent {talentId} on {targets} target(s): {result.MeanDps:N0} DPS, {shown} -> {amount:N0} (without: {baseline:N0})");
@@ -286,6 +283,44 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
     }
 
+    /// <summary>Talent 108: +5% with one bleeding enemy, +1% for each further one, +10% at most.</summary>
+    [Fact]
+    public void Red_Ledger_Crit_Chance_Follows_The_Bleeding_Enemies()
+    {
+        var hero = (Mara)HeroImporter.Import(new CharacterBuild { Hero = "Mara", PrimaryStat = 1000, Talents = [RedLedger.TalentId] });
+        Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var enemies = Enumerable.Range(0, 7).Select(i => ctx.AddEnemy(100 + i, 1, "Dummy", 1e12)).ToList();
+        double without = hero.CritChanceAgainst(enemies[0], ctx.CurrentTime);
+
+        double[] expected = [0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.10];
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            hero.Hemorrhage.ApplyTo(ctx, enemies[i], HemorrhagingStrike.BleedSeconds(6));
+            Assert.Equal(without + expected[i], hero.CritChanceAgainst(enemies[0], ctx.CurrentTime), 9);
+        }
+    }
+
+    /// <summary>
+    /// FellowSimc's Hemotoxin lines (apl/mara/mara.simc) have no bleed test: a stack is the line's condition, and each cast
+    /// uses one up. The single-target line reaches the burst. The four-enemy list's line needs 6 Combo Points, and that list
+    /// spends at 4.
+    /// </summary>
+    [Fact]
+    public void Hemotoxin_Bursts_On_The_Default_List()
+    {
+        int bursts = 0;
+        Run([.. BaseTalents, Hemotoxin.TalentId], 1, apl: DefaultActionLists.Read("Mara", DefaultActionLists.DefaultName)!,
+            watch: hero => hero.OnDamageDealt += (in DamageContext dmg) =>
+            {
+                if (dmg.AbilityId == LogIds.Effect(Hemotoxin.BurstEffectId)) bursts++;
+            });
+
+        Assert.True(bursts > 0, "No Hemotoxin burst");
+    }
+
     /// <summary>T2qLPpmMkrAtJ9B1 fight 18 @ 1062.844 and 1063.878: two casts one global cooldown apart.</summary>
     [Fact]
     public void Hemorrhaging_Strike_Has_No_Cooldown()
@@ -331,7 +366,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.InRange(casts[2] - casts[0], recharge / hero.CooldownRate(hero.GetAbility<StalkerStep>()!, SimTime.Zero) - 0.01, recharge + 1.5);
     }
 
-    /// <summary>Gains of an "aura:" evidence, the DPS of a "damage:" one, the Energy gained ("energy") or the DPS ("dps").</summary>
+    /// <summary>Gains of an "aura:" evidence, the DPS of a "damage:" one, or the Energy gained ("energy").</summary>
     private static double Amount(MonteCarloResult result, Dictionary<string, int> gained, string evidence)
     {
         string[] parts = evidence.Split(':', 2);
@@ -339,7 +374,6 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         {
             "aura" => gained.GetValueOrDefault(parts[1]),
             "energy" => gained.GetValueOrDefault(EnergyGained),
-            "dps" => result.MeanDps,
             _ => result.AbilityDpsBreakdown.GetValueOrDefault(parts[1]),
         };
     }
@@ -348,7 +382,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     private const string EnergyGained = "energy gained";
 
     private static (MonteCarloResult Result, Hero Hero, Dictionary<string, int> Gained) Run(IEnumerable<int> talentIds, int targets,
-        int iterations = 10, int? legendaryItemId = null, string apl = Apl)
+        int iterations = 10, int? legendaryItemId = null, string apl = Apl, Action<Hero>? watch = null)
     {
         // The Mara from Fc8v6yWxD14GQMnV fight 19 (Culex), as the replay imported it.
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
@@ -356,6 +390,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         build.Talents = talentIds.ToList();
         build.LegendaryItemIds = legendaryItemId is { } id ? [id] : [];
         var hero = HeroImporter.Import(build);
+        watch?.Invoke(hero);
         var gained = new Dictionary<string, int>();
         hero.Auras.OnGained += (aura, _, _) => gained[aura.Def.Name] = gained.GetValueOrDefault(aura.Def.Name) + 1;
         hero.OnResourceGained += (resource, amount, _, _) =>
