@@ -54,7 +54,13 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 
 ## Timing
 
-- **Global cooldown:** 1s, not hasted (casts 1.032s apart at the least, during Spirit of Heroism too).
+- **Global cooldown:** 1s, not hasted (casts 1.032s apart at the least, during Spirit of Heroism too). A mount waits
+  for none: `GA_Mount_MountUp_Base` has no `GlobalCooldownGameplayEffectClass`, and its begincast comes inside the global
+  cooldown of Arachnid Assault (`GE_GlobalCooldownStatic`): 3M2vWr8taxVfTQFY fight 53 @ 109.634, 0.43s after it;
+  dBgbn8wD1RxL7Kma fight 9 @ 145.358, 0.40s after it, and @ 275.670, 0.30s after it; X82J6bGRNBracxLg fight 7 @ 994.128,
+  0.60s after it. The replay at fix-16 refused 37 of the 122 mount begincasts in the 23 Mara fights this way. That a mount
+  applies none is UNVERIFIED: the native default on `CRGameplayAbilityMounting` is unread, and its 1.5s cast covers a global
+  cooldown in the logs.
 - **Auto attacks:** a 1.5s swing shortened by Haste (1.30s apart at 13% Haste, 1.035s during Spirit of Heroism); none
   in Stealth.
 - **Stealth** (Brooding Shadows): ends with the next Backstab, Widow's Bite or Skittering Blades, 0.67s after it starts

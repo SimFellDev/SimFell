@@ -2,13 +2,20 @@ namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
 /// Summoning a mount. Every mount has its own ability (the 55 abilities whose owner is a mount in the game data), with no
-/// cast time or cooldown in the game data. Combat logs: each casts in 1.5s whatever the haste (begincast to cast
-/// 1.504-1.517s, 8 mounts in the 15 Rime fights of patch 0.5.0.0). No damage. UNVERIFIED: whether it starts the global
-/// cooldown.
+/// cooldown in the game data. It casts in 1.5s whatever the haste. No damage.
+/// It waits for no global cooldown: `GA_Mount_MountUp_Base` and `GA_Mount_Raptor_Armored` have no
+/// `GlobalCooldownGameplayEffectClass`, and the check 0x1450DC780 passes on the null class (0x1450DC804). Combat logs:
+/// 3M2vWr8taxVfTQFY fight 53 Arachnid Assault 109.202, Mount 109.634; dBgbn8wD1RxL7Kma fight 9 Arachnid Assault 144.957,
+/// Mount 145.358. UNVERIFIED: that it applies none (0x1450E2870 applies nothing on the null class, 0x1450E2887): the
+/// native default on `CRGameplayAbilityMounting` is unread, and its 1.5s cast covers a global cooldown in the logs.
+/// `GA_Mount_MountUp_Base` `CancelAbilitiesWithTag` `AbilityPrio.Low` and `BlockAbilitiesWithTag` `AbilityType.Mounting`:
+/// a running mount cast blocks another.
 /// </summary>
 public class MountSummon : Ability
 {
     public const string AbilityName = "Mount";
+
+    /// <summary>`CT_AbilityConstants` row `PlayerAction.Mount.CastingDuration`, `GA_Mount_MountUp_Base` CastingTaskData.</summary>
     public const double CastTimeSeconds = 1.5;
 
     /// <summary>The game's mount abilities (datamine export 26136736: abilities with a mount as owner).</summary>
@@ -23,6 +30,7 @@ public class MountSummon : Ability
     {
         CastTime = SimTime.FromSeconds(CastTimeSeconds);
         CastTimeScalesWithHaste = false;
+        IgnoresGcd = true;
     }
 
     public override bool IsAbility(int abilityId) => Array.IndexOf(MountAbilityIds, abilityId) >= 0;
