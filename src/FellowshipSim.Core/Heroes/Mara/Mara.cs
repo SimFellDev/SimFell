@@ -112,6 +112,7 @@ public sealed class Mara : Hero
         Abilities.Add(new ArachnidAssault(this));
         Abilities.Add(new HemorrhagingStrike(this));
         Abilities.Add(new BroodingShadows(this));
+        Abilities.Add(new Kick(this));
         Abilities.Add(new MaidenOfDeath(this));
         Abilities.Add(_matriarch = new MatriarchMacabre(this));
         Abilities.Add(new FinalStratagem(this));

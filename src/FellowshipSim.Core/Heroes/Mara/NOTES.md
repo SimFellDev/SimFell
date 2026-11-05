@@ -28,6 +28,10 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   in Stealth.
 - **Stealth** (Brooding Shadows): ends with the next Backstab, Widow's Bite or Skittering Blades, 0.67s after it starts
   at the median; Kick and Stalker Step keep it.
+- **Kick:** a 16s cooldown Haste leaves unchanged, usable during the Global Cooldown, with no Energy cost, over 416 Kicks
+  in the 23 Mara fights of `data/fights`: 16.062s apart at the least, 384 under 1s after another cast and 390 under 1s
+  before the next. The 53 Kicks with no interrupt trigger the cooldown too (WcTBrQNX46m9axqP fight 12 @ 462.034 and
+  478.331: the next Kick 16.297s and 16.062s later).
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.

@@ -516,6 +516,7 @@ public class DungeonTests
     [Theory]
     [InlineData("Rime", "brain_freeze", "Brain Freeze", "frost_bolt")]
     [InlineData("Gunde", "jawbreaker", "Jawbreaker", "attack")]
+    [InlineData("Mara", "kick", "Kick", "backstab")]
     public void An_Interrupt_Ends_A_Casting_Target(string heroName, string interrupt, string interruptName, string filler)
     {
         var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Caster", HitPoints: 1e12, Cast: new EnemyCast("Big Cast", 30, 2))], 1000))
