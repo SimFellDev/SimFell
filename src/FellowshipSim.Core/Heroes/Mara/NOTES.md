@@ -376,6 +376,16 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
+- **Hemorrhaging Strike inside its cooldown:** 1 of the 228 gaps between casts in the 23 Mara fights of `data/fights`. T2qLPpmMkrAtJ9B1
+  fight 18 @ 1062.844 and 1063.878: 1.034s apart on Noor, The Betrayer, a hit each (4,146 crit, 2,326 normal), with 0.566s left on
+  the engine's cooldown. The first cast has a Spirit Refund, and the second spends the 5 Combo Points back. The other gaps are
+  1.934s or more, and the 1.934s gap (Fc8v6yWxD14GQMnV fight 19 @ 321.816) is outside the engine's cooldown. Of the 75 gaps after a
+  refund, this one alone is inside the cooldown, so a refund ending the cooldown has one occurrence. Mara has no aura event between
+  the casts that bears on a cooldown, and no Final Stratagem cast. Sources checked: `GA_Mara_BleedAttackSpender` (commit at ubergraph
+  offset 15, no branch on target, hit or tag), `GA_Mara_Passive_SpiritProcHandler`, `HeroUtils_ModifyResourceDelayed`,
+  `HeroUtils_RollForSpiritProc` and `GA_Shared_Passive_SpiritMechanic` (no cooldown node), effects 1724, 2068, 2163, 2164, 2195, 2430,
+  2431 and 2434, and Noor's five named abilities. Unread: the native defaults of `CooldownCommitmentPolicy` and
+  `CooldownEffectBaseClass`, and listeners on `Event.Heroes.SpiritProc`.
 
 ## Not yet checked against a log
 
