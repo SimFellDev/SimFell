@@ -291,6 +291,11 @@ public abstract class Hero : Actor
 
     public void TriggerHarmfulEffectApplied(SimulationContext ctx, EnemyTarget enemy) => OnHarmfulEffectApplied?.Invoke(ctx, enemy);
 
+    /// <summary>The hero died.</summary>
+    public event Action<SimulationContext>? OnDied;
+
+    public void TriggerDied(SimulationContext ctx) => OnDied?.Invoke(ctx);
+
     /// <summary>The cast in progress, if any (abilities with a cast time between begin and completion).</summary>
     public ActiveCast? CurrentCast { get; internal set; }
 

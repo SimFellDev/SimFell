@@ -99,7 +99,20 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   Arachnid Assault hits one enemy per server frame, in an order of its own (329 of 1,017 clone pairs in the same order).
 - **Vexira's Venom:** ticks every 2s shortened by Haste, with a partial tick as it runs out; a new crit restarts its 6
   seconds and keeps the tick timing.
-
+- **Amethyst Splinter:** ends with a partial tick 8s after the last crit, and the next crit starts a new rhythm. In the 23 Mara
+  fights of `data/fights`, 583 of the 799 removals off a death are 7.9s to 8.1s after the last crit, and 569 of the 799 have a tick
+  in their frame. T2qLPpmMkrAtJ9B1 fight 18 @ 53.144: a tick of 673 after ticks of 985, 1.17s after the last, with the removal
+  in the same frame and the new crit at 53.712. The 558 partial ticks with a tick before them are 0.098s or more after it,
+  and the 26 removals 0.070s or less after a tick have none, on `MinimumPartialTickTime` 0.1 (`DefaultGame.ini`). In the game
+  data (build 26320967), effect 101 has `EffectType.Dot`, a crit on a running effect sets its value to (crit x share + left x
+  value / 2) / 4 and refreshes its duration with the period timer left alone (`GA_Trait_GemDotHotOnCrit` offsets 493 to 1428,
+  exe 0x145241E40), and a crit after it ran out applies a new effect (offsets 1861 to 2201). CheckDuration (0x144A6FAB0, 0x1452D4B70)
+  gives the partial tick, factor elapsed / period. A tick follows the log's tick (`IOutcomeSource.TickAt`), so one missing log
+  tick shifts no later pairing: with the free-running timer, ticks 0.15s behind the log paired with the next log tick, up to
+  1.05s late at the 90th percentile in T2qLPpmMkrAtJ9B1 fight 18.
+- **Amethyst Splinter on Mara's death:** effect 101 has `EffectLogic.RemoveOnSourceDeath`. X82J6bGRNBracxLg fight 7: Mara dies at
+  690.024 and the splinters leave at 690.026 with no partial tick, and ending them there took 249 engine-only ticks off the 23
+  fights (646 to 397).
 ## Resources
 
 - **Energy:** 200 at most, full at the start. It regenerates at about 15 per second raised by Haste (17.3 per second with no
@@ -133,6 +146,17 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   of one such frame. The clone tests no range and no line of sight per enemy. Sources checked: `GA_Mara_Passive_CopySpawner`
   offsets 120 (`WaitDelayCR` 0.01s, native), 3954 and 4200 (`TargetPassesFilters`, `CreateAoeTargetFilterCollection`:
   `AddFilter_CharacterContext`, native, and `AddFilter_Relationship`).
+
+- **Amethyst Splinter ticks with no log tick:** 397 engine-only ticks over the 23 Mara fights of `data/fights`. 245 fall after a
+  log removal with no death event, with no death of Mara's and before the 8 seconds end (CwmX2Tb8GA6hyc1v fight 8 @ 279.177: every
+  debuff on enemy 15.1 leaves in one frame at 318,138 health). 119 fall in a running splinter with no log tick in its period, on
+  several enemies in one frame (X82J6bGRNBracxLg fight 7 @ 47.604). Sources checked: the raw events on those enemies and effect
+  101's tags. The log gives no reason for the removals.
+- **Amethyst Splinter tick times:** 10,269 log ticks are outside the engine's predicted time by 33ms or more. Over the 22 fights
+  with a tick offset, 19 have a median of +35ms to +54ms (log later) and 3 a median of -54ms to -169ms (Prvc4XmbdHBaVRKy fight 12:
+  +46ms, 99% late). `HastedTimer` predicts from the tick before. Sources checked: `HastedTimer.Update`, and Vexira's Venom on
+  the same enemies, whose log ticks fall behind the engine's in the same stretch (Prvc4XmbdHBaVRKy fight 12 @ 812 to 825: +0.03s
+  to +0.17s).
 
 ## Not yet checked against a log
 

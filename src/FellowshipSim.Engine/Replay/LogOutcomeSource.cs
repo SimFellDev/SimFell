@@ -241,6 +241,15 @@ public sealed class LogOutcomeSource : IOutcomeSource
         // takes its place, and the log tick it reserved.
         if (ticks.TicksFiredAtLastAsk == effect.TicksFired)
         {
+            // A log tick after a partial tick's time belongs to the next application on the enemy (Amethyst Splinter, 146 new
+            // applications under 1s after a partial tick and its removal, in 22 of the 23 Mara fights: w7khnMKAa4TxXrmC fight 23
+            // @ 85.189 +0.034s, T2qLPpmMkrAtJ9B1 fight 18 @ 53.144 +0.568s).
+            if (ticks.LastAt is { } later && tick.Target != null && tick.Fraction < 1.0 && later > tick.Scheduled.TotalSeconds + _options.TickTimeToleranceSeconds)
+            {
+                _hits.ReleaseTick(effect, later);
+                ticks.ReservedCount--;
+                ticks.LastAt = null;
+            }
             if (ticks.LastAt is { } reservedAt)
             {
                 ticks.Group = ticks.LastGroup;
@@ -609,6 +618,16 @@ public sealed class HitLedger
         _claimedGroups.Add(best[0]);
         foreach (var h in best) Own(h, owner);
         return best;
+    }
+
+    /// <summary>The log hit <paramref name="owner"/> reserved at <paramref name="time"/> is free again.</summary>
+    public void ReleaseTick(PeriodicEffect owner, double time)
+    {
+        if (!_owned.TryGetValue(owner, out var list)) return;
+        int at = list.FindLastIndex(h => h.Time == time && !_matched.Contains(h));
+        if (at < 0) return;
+        _ownerOf.Remove(list[at]);
+        list.RemoveAt(at);
     }
 
     /// <summary>The log hits <paramref name="owner"/> reserved and no engine hit took are free again.</summary>

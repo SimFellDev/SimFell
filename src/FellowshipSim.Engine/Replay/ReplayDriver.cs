@@ -559,12 +559,14 @@ public sealed class ReplayDriver
 
     /// <summary>
     /// The player dies: the cast or channel ends and the hero loses every aura but its passive and situational ones and
-    /// those that keep on death (<see cref="AuraDef.KeepsOnDeath"/>). Damage over time on enemies goes on.
+    /// those that keep on death (<see cref="AuraDef.KeepsOnDeath"/>). Damage over time on enemies goes on, but for an effect
+    /// that ends on its source's death (<see cref="Hero.OnDied"/>).
     /// </summary>
     private void Die()
     {
         if (_hero.CurrentCast != null) _ctx.CancelCast(_hero);
         if (_hero.CurrentChannel != null) _ctx.StopChannel(_hero);
+        _hero.TriggerDied(_ctx);
         var now = _ctx.CurrentTime;
         foreach (var aura in _hero.Auras.Active(now).ToList())
         {

@@ -39,7 +39,7 @@ public sealed class PeriodicEffect
 
     public string Name { get; }
     public SimTime Start { get; }
-    public SimTime End { get; }
+    public SimTime End { get; private set; }
     public double Period { get; }
     public int TicksFired { get; private set; }
     public bool IsActive { get; private set; } = true;
@@ -285,8 +285,9 @@ public sealed class PeriodicEffect
         // Like any timed aura, the effect ends on the server frame after its duration runs out (see AuraContainer.ExpiryLagSeconds).
         var nominalEnd = start + SimTime.FromSeconds(durationSeconds);
         var end = nominalEnd + SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds);
-        // The ends and a moved tick; a fixed period also has its ticks, counted at no haste.
-        int events = 4 + (retimeOnHasteChange || damageOverTime ? 0 : (int)Math.Ceiling(durationSeconds / basePeriodSeconds));
+        // RestartDuration moves both ends.
+        // A moved tick; a fixed period also has its ticks, counted at no haste.
+        int events = 2 + (retimeOnHasteChange || damageOverTime ? 0 : (int)Math.Ceiling(durationSeconds / basePeriodSeconds));
         var effect = new PeriodicEffect(name, start, end, basePeriodSeconds, onTick, onEnd, hero, damageLogId, target, hastedBy: hero,
             events);
         var lastTick = start;
@@ -387,7 +388,7 @@ public sealed class PeriodicEffect
 
         // The duration runs out at the nominal end (no more ticks; the partial tick is measured there) ...
         double partial = 0.0;
-        effect._events.Add(ctx.Kernel.ScheduleAt(nominalEnd, c =>
+        Action<SimulationContext> durationOut = c =>
         {
             if (!effect.IsActive) return;
             var timer = effect._nextHastedTick;
@@ -402,10 +403,10 @@ public sealed class PeriodicEffect
             {
                 partial = Math.Min(fraction, 1.0);
             }
-        }, name));
+        };
         // ... and the partial tick and the end happen on the next server frame.
         Action<SimulationContext>? finishAfterPartial = null;
-        effect._events.Add(ctx.Kernel.ScheduleAt(end, c =>
+        Action<SimulationContext> finishAtEnd = c =>
         {
             if (!effect.IsActive) return;
             if (partial > 0)
@@ -440,7 +441,19 @@ public sealed class PeriodicEffect
                 return;
             }
             effect.Finish(c, clipped: false);
-        }, name));
+        };
+        effect._durationOut = ctx.Kernel.ScheduleAt(nominalEnd, durationOut, name);
+        effect._ending = ctx.Kernel.ScheduleAt(end, finishAtEnd, name);
+        effect._restartDuration = (c, seconds) =>
+        {
+            nominalEnd = c.CurrentTime + SimTime.FromSeconds(seconds);
+            end = nominalEnd + SimTime.FromSeconds(AuraContainer.ExpiryLagSeconds);
+            effect.End = end;
+            effect._durationOut?.Cancel();
+            effect._ending?.Cancel();
+            effect._durationOut = c.Kernel.ScheduleAt(nominalEnd, durationOut, name);
+            effect._ending = c.Kernel.ScheduleAt(end, finishAtEnd, name);
+        };
 
         if (tickOnStart)
         {
@@ -461,6 +474,17 @@ public sealed class PeriodicEffect
         if (effect.IsActive) ScheduleNext(ctx);
         return effect;
     }
+
+    // The two ends of a BeginHasted effect, and how a refresh moves them.
+    private ScheduledEvent? _durationOut;
+    private ScheduledEvent? _ending;
+    private Action<SimulationContext, double>? _restartDuration;
+
+    /// <summary>
+    /// A refresh of a <see cref="BeginHasted"/> effect before its duration runs out: the duration restarts from now with
+    /// <paramref name="durationSeconds"/>, and the ticks keep their timing.
+    /// </summary>
+    public void RestartDuration(SimulationContext ctx, double durationSeconds) => _restartDuration?.Invoke(ctx, durationSeconds);
 
     /// <summary>Ends the effect now, cancelling every tick that has not fired yet.</summary>
     public void Stop(SimulationContext ctx)
@@ -491,6 +515,8 @@ public sealed class PeriodicEffect
         IsActive = false;
         _nextHastedTick?.Cancel();
         foreach (var ev in _events) ev.Cancel();
+        _durationOut?.Cancel();
+        _ending?.Cancel();
         _onEnd?.Invoke(ctx, clipped);
         Ended?.Invoke(ctx, this);
     }
