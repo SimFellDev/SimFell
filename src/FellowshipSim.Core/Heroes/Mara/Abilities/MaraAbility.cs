@@ -60,6 +60,7 @@ public abstract class MaraAbility : Ability
         if (EnergyCost > 0) Mara.SpendEnergy(EnergyCost, ctx);
         if (!BreaksStealth || !Mara.IsStealthed(ctx.CurrentTime)) return;
         Mara.Auras.Remove(BroodingShadows.Stealth, ctx.CurrentTime);
+        Mara.GetAbility<BroodingShadows>()!.EndedBySecondarySkill(ctx);
         Mara.RaiseAttackedFromStealth(ctx, this);
     }
 

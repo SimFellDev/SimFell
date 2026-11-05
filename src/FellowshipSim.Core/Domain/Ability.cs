@@ -213,11 +213,14 @@ public abstract class Ability
         return true;
     }
 
+    /// <summary>The aura a cast of the ability applies, and a cast while it is up ends instead. Null for most abilities.</summary>
+    public virtual AuraDef? RecastEnds => null;
+
     /// <summary>
     /// The earliest time after now at which <see cref="CanCast(SimulationContext)"/> can change with no event before it:
     /// the return of a charge while none is left. The resources and auras the checks read change in events.
     /// </summary>
-    public SimTime NextCastChange(SimulationContext ctx) =>
+    public virtual SimTime NextCastChange(SimulationContext ctx) =>
         Cooldown > SimTime.Zero && Owner.Cooldowns.TryGetValue(Name, out var state) && state.ChargesAt(ctx.CurrentTime) == 0
             ? state.NextChargeAt
             : SimTime.Infinite;

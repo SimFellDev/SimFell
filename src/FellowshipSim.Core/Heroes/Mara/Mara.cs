@@ -285,5 +285,6 @@ public sealed class Mara : Hero
         _energyRegeneratedAt = SimTime.Zero;
         _energyRate = 0;
         _lastFinisherEnergy = 0;
+        GetAbility<BroodingShadows>()!.ResetState();
     }
 }

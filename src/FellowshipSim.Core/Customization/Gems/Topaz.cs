@@ -91,9 +91,10 @@ public class Topaz : Gem
     /// <summary>
     /// Each activation of slot 5 gives the Essence unless Spirit of Heroism is running. The node's augmentation
     /// (DT_GemDefinitions, Topaz row, CA_GemBonus_HastePercentageBonusWhileNotHeroismSmall) holds effect 1937, Infinite, with
-    /// OngoingTagRequirements IgnoreTags CharacterStatus.SpiritBuffed, and no field limits it to one activation. Every
-    /// Anomalous Residue: Topaz window of T2qLPpmMkrAtJ9B1 fight 18 (383.829, 530.946, 1400.233) and Fc8v6yWxD14GQMnV
-    /// fight 19 (809.379, 958.352, 1120.143) has effect 1937 in the Residue's frame.
+    /// OngoingTagRequirements IgnoreTags CharacterStatus.SpiritBuffed. UCRGemPowerComponent's handler (exe 0x145398640,
+    /// build 26320967) grants a node's augmentation at every rise past its RequiredGemPower and removes it at every fall
+    /// below, with no first-activation state. Every Anomalous Residue: Topaz window of T2qLPpmMkrAtJ9B1 fight 18 (383.829,
+    /// 530.946, 1400.233) and Fc8v6yWxD14GQMnV fight 19 (809.379, 958.352, 1120.143) has effect 1937 in the Residue's frame.
     /// </summary>
     protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
     {

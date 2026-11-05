@@ -210,6 +210,83 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Brooding_Shadows_Spends_Its_Charge_When_An_Attack_Ends_Stealth_In_Combat()
+    {
+        var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!);
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var target = ctx.AddEnemy(1, 1, "Target", maxHealth: 1_000_000);
+        var stealth = hero.GetAbility<BroodingShadows>()!;
+        Assert.NotEmpty(ctx.ActiveEnemies);
+
+        stealth.Execute(ctx, target);
+        Assert.Equal(BroodingShadows.Charges, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
+
+        hero.GetAbility<StealthBackstab>()!.Execute(ctx, target);
+        Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.Charges - 1, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
+    }
+
+    [Fact]
+    public void Brooding_Shadows_Spends_No_Charge_When_An_Attack_Ends_Stealth_Out_Of_Combat()
+    {
+        var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!);
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var target = ctx.GetOrSpawnEnemy(1, 1);
+        target.Demise(ctx);
+        var stealth = hero.GetAbility<BroodingShadows>()!;
+        Assert.Empty(ctx.ActiveEnemies);
+
+        stealth.Execute(ctx, target);
+        hero.GetAbility<StealthBackstab>()!.Execute(ctx, target);
+
+        Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.Charges, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
+    }
+
+    [Fact]
+    public void Brooding_Shadows_Waits_Out_Its_Padding_Cooldown()
+    {
+        var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!);
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var stealth = hero.GetAbility<BroodingShadows>()!;
+
+        stealth.Execute(ctx, new EnemyTarget(1) { MaxHealth = 100, CurrentHealth = 100 });
+
+        Assert.False(stealth.CanCast(ctx));
+        Assert.Equal(BroodingShadows.PaddingCooldownSeconds / (1.0 + hero.GetHaste(ctx.CurrentTime)), stealth.NextCastChange(ctx).TotalSeconds, 3);
+    }
+
+    [Fact]
+    public void Brooding_Shadows_In_Stealth_Ends_It_With_No_Charge_Spent()
+    {
+        var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!);
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var stealth = hero.GetAbility<BroodingShadows>()!;
+        var target = new EnemyTarget(1) { MaxHealth = 100, CurrentHealth = 100 };
+        var cooldown = hero.CooldownOf(stealth);
+
+        stealth.Execute(ctx, target);
+        Assert.True(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
+
+        stealth.Execute(ctx, target);
+        Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
+    }
+
+    [Fact]
     public void Stalker_Step_Has_Two_Charges_On_One_Recharge_And_Keeps_Stealth()
     {
         var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

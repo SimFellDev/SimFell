@@ -58,7 +58,16 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Auto attacks:** a 1.5s swing shortened by Haste (1.30s apart at 13% Haste, 1.035s during Spirit of Heroism); none
   in Stealth.
 - **Stealth** (Brooding Shadows): ends with the next Backstab, Widow's Bite or Skittering Blades, 0.67s after it starts
-  at the median; Kick and Stalker Step keep it.
+  at the median; Kick and Stalker Step keep it. The cast spends no charge (`CooldownCommitmentPolicy` CCP_Manual:
+  `CommitExecute` 0x1450DCB70 applies cost alone). `GA_Mara_Passive_StealthMonitor` `Remove Stealth Effect` spends it when
+  it ends Stealth (offset 231, `K2_CommitAbilityCooldown(false, true)`, 0x1449DEE10): outgoing damage and incoming damage
+  after a 2s window always, a Secondary skill in combat alone. A recast in Stealth ends it and spends no charge
+  (`GA_Mara_Stealth` offsets 103 to 266): all 12 recasts in the 23 Mara fights of `data/fights` log the removal in the frame
+  of the cast, with no application (T2qLPpmMkrAtJ9B1 fight 18 @ 800.613, next cast @ 808.295; 3M2vWr8taxVfTQFY fight 53 @
+  318.142, next cast @ 319.238). `Mara.Stealth.PaddingCooldown` is 0.7s / Haste between casts, in real time from the Haste at the cast
+  (`GE_Hero_Shared_PaddingCooldown`, `GEC_HasteMagnitude`, 0x1450E2F8A-0x1450E2FA0). A mount removes Stealth with no
+  charge spent: `GE_Mara_Stealth` IgnoreTags `CharacterContext.Mounted` (WcTBrQNX46m9axqP fight 7 @ 517.728; 3 more
+  removals beside a mount cast).
 - **Kick:** a 16s cooldown Haste leaves unchanged, usable during the Global Cooldown, with no Energy cost, over 416 Kicks
   in the 23 Mara fights of `data/fights`: 16.062s apart at the least, 384 under 1s after another cast and 390 under 1s
   before the next. The 53 Kicks with no interrupt trigger the cooldown too (WcTBrQNX46m9axqP fight 12 @ 462.034 and
@@ -160,7 +169,8 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   in the Residue's frame, and Spirit of Heroism takes it off and gives it back. T2qLPpmMkrAtJ9B1 fight 18 @ 383.829, 530.946 and
   1400.233; Fc8v6yWxD14GQMnV fight 19 @ 809.379, 958.352 and 1120.143. In the game data (`DT_GemDefinitions`, Topaz row), the node
   grants `CA_GemBonus_HastePercentageBonusWhileNotHeroismSmall`, and effect 1937 is Infinite, with `OngoingTagRequirements` IgnoreTags
-  `CharacterStatus.SpiritBuffed`. Without it from the second window on, Mara's Haste was 0.02
+  `CharacterStatus.SpiritBuffed`. `UCRGemPowerComponent`'s handler (exe 0x145398640) grants a node's augmentation at every rise past
+  its `RequiredGemPower` and removes it at every fall below. Without it from the second window on, Mara's Haste was 0.02
   low: Seething Poison ticks 1.832s apart against the log's 1.803s at T2qLPpmMkrAtJ9B1 fight 18 @ 420 to 430, and Hemorrhage ticks
   over 0.15s behind the log, with no pair, left their crits' Vengeful Soul gains out (430.757, 1422.421; Fc8v6yWxD14GQMnV fight 19
   @ 1166.032). Each activation of the node gives the Essence: 21 more Hemorrhage hits matched and Vengeful Soul's issues over the

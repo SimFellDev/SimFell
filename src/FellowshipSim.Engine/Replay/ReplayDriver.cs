@@ -36,9 +36,9 @@ public sealed class ReplayDriver
         // Free dice matches no log hits.
         _ledger = new HitLedger(_options.FreeDiceSeed.HasValue ? [] : script.Observations.Damage);
         // The log's aura states, for the state checks (free dice makes none).
-        var logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero),
+        _logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero),
             logId => hero.Auras.Active(_ctx.CurrentTime).FirstOrDefault(a => a.LogId == logId)?.Stacks ?? 0);
-        _verifier = new ReplayVerifier(script, _options, hero, logAuras);
+        _verifier = new ReplayVerifier(script, _options, hero, _logAuras);
         _oracle = new LogOutcomeSource(script, _options, _ledger, _verifier);
         _ctx.Outcomes = _options.FreeDiceSeed is { } seed
             ? new FreeDiceOutcomeSource(script, new SimulationRng(seed))
@@ -131,7 +131,7 @@ public sealed class ReplayDriver
                 {
                     _hero.RegenerateResources(_ctx.CurrentTime);
                     _verifier.CheckState(_ctx, step, cmd);
-                    SyncToLog(step);
+                    SyncToLog(step, cmd);
                 }
             }
 
@@ -677,6 +677,7 @@ public sealed class ReplayDriver
     /// <summary>Each enemy's health fraction at the log's last reading.</summary>
     private readonly Dictionary<EnemyTarget, double> _loggedEnemyHealth = new();
 
+    private readonly LogAuraTimeline? _logAuras;
     private Dictionary<int, AuraDef>? _modeledAuras;
     private HashSet<int>? _sharedAuraIds;
 
@@ -684,7 +685,7 @@ public sealed class ReplayDriver
     /// The engine takes the log's state wherever the pre-cast check found it different: each resource takes the log's
     /// reading, and each tracked aura the log's stacks (gained, changed or removed). The step's note lists each change.
     /// </summary>
-    private void SyncToLog(ReplayStep step)
+    private void SyncToLog(ReplayStep step, ReplayCommand cmd)
     {
         var now = _ctx.CurrentTime;
         var changes = new List<string>();
@@ -711,6 +712,16 @@ public sealed class ReplayDriver
             if (check.LogStacks == 0) _hero.Auras.Remove(def, now);
             else _hero.Auras.Apply(def, now, setStacks: check.LogStacks);
             changes.Add($"{check.Aura} {check.EngineStacks} -> {check.LogStacks} stacks");
+        }
+        // The pre-cast check matches an aura against the log's state within the tolerance after the step, and there a cast
+        // that toggles the aura gains it. An engine still holding the aura then ends it on the cast the log shows gaining it
+        // (a mount's end of Stealth: WcTBrQNX46m9axqP fight 7 @ 517.728 before Brooding Shadows @ 533.934, 35 Seething Poison
+        // hits behind it; p8VJDcBdxa7ghqG3 fight 124 @ 509.279; pWmcV42K39GHTLQX fight 23 @ 1566.089).
+        if (FindAbility(cmd)?.RecastEnds is { } toggled && _hero.Auras.HasAura(toggled, now)
+            && _logAuras!.GainedAfterAbsence(toggled.LogId, cmd.Time, _options.AuraToleranceSeconds))
+        {
+            _hero.Auras.Remove(toggled, now);
+            changes.Add($"{toggled.Name} 1 -> 0 stacks");
         }
         if (changes.Count > 0) step.Note = (step.Note == null ? "" : step.Note + "; ") + "Synced to the log: " + string.Join(", ", changes);
     }
@@ -798,6 +809,26 @@ public sealed class LogAuraTimeline
     /// <summary>Times of the log's aura changes in [<paramref name="from"/>, <paramref name="to"/>].</summary>
     public IEnumerable<double> ChangeTimesBetween(double from, double to) =>
         _events.Where(e => e.Time >= from && e.Time <= to).Select(e => e.Time).Distinct();
+
+    /// <summary>
+    /// The log has the aura absent for the <paramref name="seconds"/> before <paramref name="time"/>, and gains it within
+    /// <paramref name="seconds"/> of <paramref name="time"/>.
+    /// </summary>
+    public bool GainedAfterAbsence(int logId, double time, double seconds)
+    {
+        bool gained = false;
+        foreach (var e in _events)
+        {
+            if (e.AbilityId != logId || e.Time < time - seconds) continue;
+            if (e.Time > time + seconds) break;
+            if (e.Time < time - ShownBeforeCastSeconds) return false;
+            gained |= e.Type is "applybuff" or "applydebuff";
+        }
+        return gained && StacksAt(time - seconds).GetValueOrDefault(logId) == 0;
+    }
+
+    /// <summary>The offset of the log's state a pre-cast check shows from the cast's time (<see cref="ReplayVerifier"/>).</summary>
+    private const double ShownBeforeCastSeconds = 0.001;
 
     public List<string> UntrackedActiveAt(double time) =>
         StacksAt(time).Where(kv => kv.Value > 0 && !IsTracked(kv.Key)).Select(kv => _names[kv.Key]).OrderBy(n => n).ToList();
