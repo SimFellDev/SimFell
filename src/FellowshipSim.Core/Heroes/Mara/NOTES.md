@@ -156,6 +156,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   1.87s to 1.90s apart at 24.8 to 28.6, 1.70s to 1.74s at 30.4 to 39.0, 1.84s to 1.90s at 39.0 to 50.2. Prvc4XmbdHBaVRKy fight 12,
   enemy 78.9, applied at 809.717 with no removal by 855: 1.67s to 1.70s at 811.5 to 818.2, 1.84s to 1.87s at 818.2 to 827.5, 1.67s
   to 1.70s at 827.5 to 834.3.
+- **Essence of the Virtuoso from Anomalous Residue:** with no Topaz power in the gear, each Residue: Topaz window gives effect 1937
+  in the Residue's frame, and Spirit of Heroism takes it off and gives it back. T2qLPpmMkrAtJ9B1 fight 18 @ 383.829, 530.946 and
+  1400.233; Fc8v6yWxD14GQMnV fight 19 @ 809.379, 958.352 and 1120.143. In the game data (`DT_GemDefinitions`, Topaz row), the node
+  grants `CA_GemBonus_HastePercentageBonusWhileNotHeroismSmall`, and effect 1937 is Infinite, with `OngoingTagRequirements` IgnoreTags
+  `CharacterStatus.SpiritBuffed`. Without it from the second window on, Mara's Haste was 0.02
+  low: Seething Poison ticks 1.832s apart against the log's 1.803s at T2qLPpmMkrAtJ9B1 fight 18 @ 420 to 430, and Hemorrhage ticks
+  over 0.15s behind the log, with no pair, left their crits' Vengeful Soul gains out (430.757, 1422.421; Fc8v6yWxD14GQMnV fight 19
+  @ 1166.032). Each activation of the node gives the Essence: 21 more Hemorrhage hits matched and Vengeful Soul's issues over the
+  23 fights went from 8 to 4.
 ## Resources
 
 - **Energy:** 200 at most, full at the start. It regenerates at 15 per second x (1 + Haste), times 1.2 with Predator's Rush and
