@@ -1,6 +1,7 @@
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.Customization.Legendaries;
+using FellowshipSim.Core.Customization.ProtectiveEnchants;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Mara;
@@ -160,6 +161,29 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         foreach (var slot in Mara.TalentTree) Assert.NotNull(Catalog.CreateTalent(slot.TalentId));
         var (_, hero, _) = Run(Mara.TalentTree.Select(s => s.TalentId), 1, iterations: 1);
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
+    }
+
+    [Theory]
+    [InlineData(false, ShadowWard.BuffSeconds)]
+    [InlineData(true, ShadowWard.BuffSeconds + TheTower.ShadowWardBonusSeconds)]
+    public void Shadow_Ward_Lasts_Its_Duration_And_Waits_For_Its_Cooldown(bool theTower, double seconds)
+    {
+        var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!;
+        if (theTower) build.Augmentations.Add(new BuildEntry(TheTower.ProtectiveEnchantId));
+        var hero = HeroImporter.Import(build);
+        var gains = new List<double>();
+        var ends = new List<double>();
+        hero.Auras.OnGained += (aura, _, now) => { if (aura.Def.Key == ShadowWard.Buff.Key) gains.Add(now.TotalSeconds); };
+        hero.Auras.OnRemoved += (aura, now) => { if (aura.Def.Key == ShadowWard.Buff.Key) ends.Add(now.TotalSeconds); };
+
+        new MonteCarloSimulator(() => hero, AplParser.ParseScript("actions+=/shadow_ward\nactions+=/backstab"))
+            .Run(SimTime.FromSeconds(100), 1, 1, degreeOfParallelism: 1);
+
+        Assert.True(gains.Count >= 2, $"Shadow Ward was gained {gains.Count} times");
+        Assert.Equal(seconds + AuraContainer.ExpiryLagSeconds, ends[0] - gains[0], 2);
+        double cooldown = ShadowWard.CooldownSeconds * (1.0 - hero.Stats.CooldownReductionPct);
+        Assert.InRange(gains[1] - gains[0], cooldown / hero.CooldownRate(hero.GetAbility<ShadowWard>()!, SimTime.Zero) - 0.01, cooldown + 1.5);
     }
 
     /// <summary>Gains of an "aura:" evidence, the DPS of a "damage:" one, the Energy gained ("energy") or the DPS ("dps").</summary>
