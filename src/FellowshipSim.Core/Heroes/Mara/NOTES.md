@@ -274,8 +274,23 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   new application after a removal starts from 10s again. The log's `duration` on `applybuffstack` shows the 2s of every second stack:
   stacks 2, 3, 4, 5 show +2, +0, +4 and +0. The removal fits 2s per stack (applied 137.607, 3 stacks, logged expiry 149.605, removed
   151.636), and the graph adds 2s on every stack. The field's writer is native and unread, so the alternation has no source.
+- **Emerald Judgement:** the spike lands with the hit that rolled it, on that hit's enemy. In the game data (build 26320967),
+  `GA_Trait_GemTargetedSpikeProc` rolls `RollProcPerMinute` on `Event.Damage` (offset 297) and applies the spike in the same graph run
+  (offset 758) with no delay task, on the event's `Target`. Over the 443 spikes in the 23 Mara fights of `data/fights`, 441 are logged in the
+  row before a hit on their enemy. T2qLPpmMkrAtJ9B1 fight 18: 137.946 on
+  8.1 with a tick of Amethyst Splinter, 724.639 on 6.5, 1386.370 on 22.1. A log spike proves a roll a frame either side of it: a roll up to
+  1s before, as the replay took it, gave the spike's First Strike to the hit that rolled it, and those hits' log amounts have none
+  (GXFz3pZ94aQr2chV fight 3 @ 175.855: Queen's Fang 14,473 in the log, 15,978 with First Strike and 14,609 without).
 
 ## Not yet explained
+
+- **Emerald Judgement on a later hit of one instant:** 40 `proc with zero chance` issues over the 23 Mara fights: the spike's hit is a
+  later hit of a millisecond in the engine's order, and the roll before it in that millisecond leaves `t` 0. In the log, the frame's first
+  damage row is on the spike's enemy for 430 of 442 spikes, and the replay's order in one millisecond is the engine's. CwmX2Tb8GA6hyc1v
+  fight 8 @ 82.187 (spike on 87.2, Amethyst Splinter on 87.5 first in the engine), @ 946.407 and @ 1141.426; d1LvbCpBWXRM8Hcm fight 14 @ 244.791.
+  At `t` 0 the game's chance is 0 after the stream's first proc and `R / 8` before it, a floor `RealPpm` lacks: 2 of the 40 are a
+  fight's first spike (dBgbn8wD1RxL7Kma fight 9 @ 14.965, v8rhNxVc3PwDqzBA fight 4 @ 12.026). Sources checked: `GA_Trait_GemTargetedSpikeProc`,
+  `RollProcPerMinute` 0x1452CBD20 (settings `procPerMinuteRoll`). The time source of its `t` in one frame is unread.
 
 - **A generator in Maiden of Death's last frame:** 5 `Combo Points too low` issues over the 23 Mara fights, one each: a generator
   cast 10.017 to 10.023s after the buff's application and 1 to 3ms before its removal gets the full refill in the log, and the
@@ -384,8 +399,11 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   the casts that bears on a cooldown, and no Final Stratagem cast. Sources checked: `GA_Mara_BleedAttackSpender` (commit at ubergraph
   offset 15, no branch on target, hit or tag), `GA_Mara_Passive_SpiritProcHandler`, `HeroUtils_ModifyResourceDelayed`,
   `HeroUtils_RollForSpiritProc` and `GA_Shared_Passive_SpiritMechanic` (no cooldown node), effects 1724, 2068, 2163, 2164, 2195, 2430,
-  2431 and 2434, and Noor's five named abilities. Unread: the native defaults of `CooldownCommitmentPolicy` and
-  `CooldownEffectBaseClass`, and listeners on `Event.Heroes.SpiritProc`.
+  2431 and 2434, Noor's five named abilities, and Mara's Blueprint folder: Final Stratagem is the one reducer that reaches 1208, no
+  Mara graph removes `Cooldown.Mara.BleedAttackSpender`, and the one `Event.Heroes.SpiritProc` listener has no cooldown call. None of
+  the 23 fights has a Final Stratagem cast. The engine's 2s is `CooldownDuration`'s row `Mara.BleedAttackSpender.Cooldown`, and 1208
+  alone writes that field with no `Value` and no registry, with no `CooldownEffectBaseClass`, so the game's applied value is
+  unconfirmed: the native defaults are unread. Gaps by second: 2 under 2s, 5 at 2s to 3s, 3 at 3s to 4s, 218 at 5s or more.
 
 ## Not yet checked against a log
 
