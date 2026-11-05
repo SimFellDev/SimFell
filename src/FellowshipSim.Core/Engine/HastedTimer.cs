@@ -25,7 +25,7 @@ public sealed class HastedTimer
     private readonly Hero _hero;
     private readonly Action<SimulationContext> _onFire;
     private readonly string _label;
-    private readonly double _baseSeconds;
+    private double _baseSeconds;
     private readonly bool _period;
     private double _remainingBase;
     private double _haste;
@@ -154,6 +154,18 @@ public sealed class HastedTimer
     {
         if (!IsActive) return;
         Finish();
+    }
+
+    /// <summary>Gives the timer a new length of base seconds; the time left keeps its fraction of the length.</summary>
+    public void ChangeBaseSeconds(double baseSeconds)
+    {
+        if (!IsActive) return;
+        var now = _ctx.CurrentTime;
+        _remainingBase -= (now - _lastUpdate).TotalSeconds * (1.0 + _haste);
+        _lastUpdate = now;
+        _remainingBase *= baseSeconds / _baseSeconds;
+        _baseSeconds = baseSeconds;
+        Reschedule();
     }
 
     /// <summary>

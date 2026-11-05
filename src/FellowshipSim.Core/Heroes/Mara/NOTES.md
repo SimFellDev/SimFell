@@ -105,8 +105,27 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.
-- **Volatile Poison:** lasts between 6 and 8 seconds (effect 1731 DurationMagnitude 6 to 8) and ticks 6 times raised
-  by Haste, rounded (7 at 13% Haste, 9 during Spirit of Heroism), evenly spread; it erupts 0.2s after its last tick.
+- **Volatile Poison:** each application and refresh rolls a duration of 6 to 8 seconds, the ticks are a sixth of it apart, shortened
+  by Haste, and the poison ends with a partial tick. In the game data (build 26320967), `GMMC_Mara_AoeAttackBuilder_Poison_DurationManager`
+  rolls `MinRandomDuration` to `MaxRandomDuration`, and `GA_Mara_Passive_Stealth_Poison_Manager` offsets 354 to 552 set the tick period
+  scaler to the duration / `MaxTicks` 6 on each application. `SetGameplayEffectCustomTickPeriodScaler` (exe 0x145243620) stores
+  `SetByCaller.System.TickRateOverride` and re-arms the period (0x1452F2A70, 0x1452DC7E0): new period = Period / Haste x scaler, first
+  delay = new period x remaining / old rate, no tick. A re-application replaces the spec, rolls the duration again with no carry-over,
+  since the effect lacks `EffectLogic.CarryOverDuration`, and leaves the period timer (`StackPeriodResetPolicy` NeverReset, 0x144A6A660),
+  and the applied delegate re-arms it with the new scaler. Each tick reads Mara's attributes at the tick
+  (`RecaptureSourceAttributesBeforeEveryExecution`, 0x144A808C4). The 10,664 durations in the 23 Mara fights of `data/fights` are spread
+  evenly from 6.000s to 7.999s. T2qLPpmMkrAtJ9B1 fight 18 @ 28.264: one cast gives enemy 8.1 6.089s with ticks 0.87s apart and enemy 8.2
+  7.980s with ticks 1.14s apart. Over the 181 refreshes where the rescaled time to the next tick and the old period's are 0.1s or more
+  apart, in 22 fights, the first tick is within a server frame of the rescaled one 73 times, of the old period's 14 times and of a
+  restarted period's 19 times (b649dhNptyW132Tm fight 5 @ 92.110: durations 6.246s to 6.719s, ticks 0.97s to 1.03s apart). The partial
+  tick reads the period timer on the frame CheckDuration runs (0x144A6FAB0, 0x1452D4B70): read as the duration runs out, the 7,615
+  partial ticks are 1.075x the engine's at the median, and read on that frame 1.028x.
+- **Volatile Poison's eruption:** a natural expiry alone erupts. `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offset 37 cancels on
+  `bPrematureRemoval`, false from CheckDuration and true from `EffectLogic.RemoveOnDeath`'s removal (0x144A80C20), and a refresh removes
+  nothing. Offset 75 delays it `RandomFloatInRange(0, 0.2)`, and offset 1122 applies effect 1730 to the poisoned enemy alone. A sim rolls
+  the delay, and a replay lands the hit at the log's time. The 8,218 eruptions come 0.008s to 0.228s after the removal. Of the 1,182
+  removals with no eruption, 1,132 are within 0.1s of the enemy's death, 38 come before the duration ends, and 9 come as it ends with
+  the enemy dying up to 0.2s later, inside the delay.
 - **Shadowy clones:** the first strikes 0.335s after the cast, the second 0.335s after the first is done; a clone's
   Arachnid Assault hits one enemy per server frame, in an order of its own (329 of 1,017 clone pairs in the same order).
 - **Vexira's Venom:** ticks every 2s shortened by Haste, with a partial tick as it runs out; a new crit restarts its 6
@@ -189,6 +208,20 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   rule above with a negative time left). The engine's period timer is off by then, so a new venom starts and the old one deals
   its partial tick. Sources checked: `PeriodicEffect.BeginHasted`'s end events and `CrAddToAndRecalculatePeriodicEffect`
   (exe 0x14521C1D0).
+
+- **Volatile Poison tick times:** 7,429 log ticks are outside the engine's predicted time by 33ms or more. Over the 23 fights, 20
+  have a median of +40ms to +49ms (log later) and 3 a median of -34ms to -88ms, the pattern of Amethyst Splinter's tick times above.
+  A log tick 40ms late pairs at times with the next: 513 full ticks are 0.505x the engine's at the median, where the engine's last
+  full tick reserves the log's partial tick (CwmX2Tb8GA6hyc1v fight 8 @ 952.219, a 451 tick, and @ 952.320, a 72 partial tick).
+  Sources checked: `HastedTimer.Update` and the period rule above.
+- **Volatile Poison partial ticks:** the 7,615 matched partial ticks are 1.028x the engine's at the median, against 1.0023x for the
+  65,989 full ticks. Sources checked: the duration and the removal times.
+- **Volatile Poison refresh in the frame after its duration:** a refresh up to 0.003s after the duration ran out keeps the ticks
+  (3M2vWr8taxVfTQFY fight 53 @ 546.738: duration left -0.003s, a tick 0.370s later). The engine's period timer is off by then, so 118
+  log ticks after a refresh with 0.05s or less left have no engine tick.
+- **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
+  fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
+  events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
 
 ## Not yet checked against a log
 

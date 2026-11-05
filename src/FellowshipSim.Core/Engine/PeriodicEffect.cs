@@ -40,7 +40,7 @@ public sealed class PeriodicEffect
     public string Name { get; }
     public SimTime Start { get; }
     public SimTime End { get; private set; }
-    public double Period { get; }
+    public double Period { get; private set; }
     public int TicksFired { get; private set; }
     public bool IsActive { get; private set; } = true;
 
@@ -321,6 +321,7 @@ public sealed class PeriodicEffect
 
         // A damage over time ticks on its period timer, a repeated tick included.
         bool tickMoved = false;
+        HastedTimer? predictor = null;
         void PeriodTick(SimulationContext cc)
         {
             if (cc.CurrentTime > nominalEnd || !effect.IsActive) return;
@@ -342,7 +343,7 @@ public sealed class PeriodicEffect
             // server frame after the last).
             tickMoved = true;
             if (timer.RepeatPending) effect.TickPredicted?.Invoke(c, effect, due);
-            else HastedTimer.Start(c, hero, basePeriodSeconds, predict ??= Predict, name);
+            else predictor = HastedTimer.Start(c, hero, basePeriodSeconds, predict ??= Predict, name);
             timer.MoveNextTick(at);
         }
 
@@ -454,6 +455,13 @@ public sealed class PeriodicEffect
             effect._durationOut = c.Kernel.ScheduleAt(nominalEnd, durationOut, name);
             effect._ending = c.Kernel.ScheduleAt(end, finishAtEnd, name);
         };
+        effect._changePeriod = seconds =>
+        {
+            basePeriodSeconds = seconds;
+            effect.Period = seconds;
+            effect._nextHastedTick?.ChangeBaseSeconds(seconds);
+            predictor?.ChangeBaseSeconds(seconds);
+        };
 
         if (tickOnStart)
         {
@@ -479,12 +487,19 @@ public sealed class PeriodicEffect
     private ScheduledEvent? _durationOut;
     private ScheduledEvent? _ending;
     private Action<SimulationContext, double>? _restartDuration;
+    private Action<double>? _changePeriod;
 
     /// <summary>
     /// A refresh of a <see cref="BeginHasted"/> effect before its duration runs out: the duration restarts from now with
     /// <paramref name="durationSeconds"/>, and the ticks keep their timing.
     /// </summary>
     public void RestartDuration(SimulationContext ctx, double durationSeconds) => _restartDuration?.Invoke(ctx, durationSeconds);
+
+    /// <summary>
+    /// A new unhasted period for a running <see cref="BeginHasted"/> effect: the time left to the next tick keeps its fraction
+    /// of the period.
+    /// </summary>
+    public void ChangePeriod(double basePeriodSeconds) => _changePeriod?.Invoke(basePeriodSeconds);
 
     /// <summary>Ends the effect now, cancelling every tick that has not fired yet.</summary>
     public void Stop(SimulationContext ctx)

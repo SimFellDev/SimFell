@@ -26,6 +26,14 @@ public readonly record struct TickRequest(
     SimTime Scheduled,
     double Fraction);
 
+/// <summary>An application of an effect on an enemy with a random duration.</summary>
+public readonly record struct EffectDurationRequest(
+    Hero Source,
+    EnemyTarget Target,
+    int EffectLogId,
+    double MinSeconds,
+    double MaxSeconds);
+
 /// <summary>
 /// What is decided when a hit is released: whether it crits, how long it travels before landing, and a damage
 /// spread roll. Damage itself is computed when the hit lands, from the stats at that moment.
@@ -73,6 +81,15 @@ public interface IOutcomeSource
 
     /// <summary>Firing time of a periodic tick with a damage log ID.</summary>
     SimTime TickAt(in TickRequest tick, SimulationContext ctx);
+
+    /// <summary>Seconds of an application with a random duration. Simulations roll it; a replay answers from the log.</summary>
+    double RollDuration(in EffectDurationRequest application, SimulationContext ctx);
+
+    /// <summary>
+    /// Seconds of a random delay of up to <paramref name="maxSeconds"/> before a hit is released. Simulations roll it; a replay
+    /// answers 0, and the hit lands at the log's time.
+    /// </summary>
+    double RollDelay(double maxSeconds, SimulationContext ctx);
 
     /// <summary>Called once a landed hit has been dealt and everything it triggered (procs, follow-up hits) has run.</summary>
     void HitFinished(SimulationContext ctx);
@@ -122,6 +139,11 @@ public class RandomOutcomeSource : IOutcomeSource
     }
 
     public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => tick.Scheduled;
+
+    public double RollDuration(in EffectDurationRequest application, SimulationContext ctx) =>
+        application.MinSeconds + (_rng.NextDouble() * (application.MaxSeconds - application.MinSeconds));
+
+    public double RollDelay(double maxSeconds, SimulationContext ctx) => _rng.NextDouble() * maxSeconds;
 
     public void HitFinished(SimulationContext ctx) { }
 

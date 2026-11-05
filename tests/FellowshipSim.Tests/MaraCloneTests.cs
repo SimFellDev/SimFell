@@ -108,6 +108,8 @@ public class MaraCloneTests
             return inner.Land(landed, outcome, ctx);
         }
         public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => inner.TickAt(tick, ctx);
+        public double RollDuration(in EffectDurationRequest application, SimulationContext ctx) => inner.RollDuration(application, ctx);
+        public double RollDelay(double maxSeconds, SimulationContext ctx) => inner.RollDelay(maxSeconds, ctx);
         public void HitFinished(SimulationContext ctx) => inner.HitFinished(ctx);
         public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => inner.ReactionDelay(hold, reactions, ctx);
     }

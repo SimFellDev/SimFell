@@ -279,6 +279,32 @@ public sealed class LogOutcomeSource : IOutcomeSource
         return at is { } time ? SimTime.FromSeconds(time) : tick.Scheduled;
     }
 
+    /// <summary>
+    /// The duration of the log's application or refresh of the effect on the enemy in the server frames of now; the middle of
+    /// the range when the log has none.
+    /// </summary>
+    public double RollDuration(in EffectDurationRequest application, SimulationContext ctx)
+    {
+        double now = ctx.CurrentTime.TotalSeconds;
+        if (_enemyDebuffApplications.TryGetValue((application.EffectLogId, new UnitRef(application.Target.Id, application.Target.InstanceId)), out var applied))
+        {
+            foreach (var a in applied)
+            {
+                if (a.Time < now - _options.SameTickSeconds || _claimedDurations.Contains(a)) continue;
+                if (a.Time > now + _options.SameTickSeconds) break;
+                if (a.DurationMs is not { } ms) continue;
+                _claimedDurations.Add(a);
+                return ms / 1000.0;
+            }
+        }
+        return (application.MinSeconds + application.MaxSeconds) / 2.0;
+    }
+
+    private readonly HashSet<LogAura> _claimedDurations = new();
+
+    /// <summary>The hit is released now, and <see cref="ResolveHit"/> lands it at the log hit's time.</summary>
+    public double RollDelay(double maxSeconds, SimulationContext ctx) => 0.0;
+
     private void OnTickPredicted(SimulationContext ctx, PeriodicEffect effect, SimTime predicted)
     {
         if (!_ticks.TryGetValue(effect, out var ticks)) return;
