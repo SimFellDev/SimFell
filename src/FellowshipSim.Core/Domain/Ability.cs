@@ -298,6 +298,33 @@ public abstract class Ability
     /// <summary>Outgoing damage multiplier from auras for this ability (abilities excluded from some auras override this).</summary>
     protected virtual double DamageScaleFor(SimulationContext ctx) => Owner.DamageScale(ctx.CurrentTime);
 
+    /// <summary>
+    /// The numbers of a hit of this ability from the state now: its damage, crit chance and crit power, with the hit's
+    /// <paramref name="damageMultiplier"/> and added <paramref name="critChance"/>.
+    /// </summary>
+    public SimulationContext.HitNumbers NumbersNow(SimulationContext ctx, EnemyTarget? target, double damageMultiplier, double critChance)
+    {
+        double hitCrit = 0.0;
+        var bonuses = HitCritChanceBonuses;
+        for (int i = 0; i < bonuses.Count; i++) hitCrit += bonuses[i](ctx);
+        var now = ctx.CurrentTime;
+        return new SimulationContext.HitNumbers(
+            BaseDamage(ctx, target, damageMultiplier),
+            Owner.CritChanceAgainst(target, now) + CritChanceBonus + critChance + hitCrit,
+            CritMultiplierAt(now));
+    }
+
+    /// <summary>
+    /// Deals one hit of this ability with <paramref name="numbers"/> from <see cref="NumbersNow"/> at an earlier moment.
+    /// </summary>
+    public double DealKeptHit(SimulationContext ctx, EnemyTarget target, SimulationContext.HitNumbers numbers, string name)
+    {
+        var hit = ctx.RentHit(Owner, target, DamageLogId, name, canCrit: true, forcedCrit: null, onLanded: null, snapshot: true);
+        hit.FromAbility(this, 1.0, 0.0, 0.0);
+        hit.KeepNumbers(numbers);
+        return ctx.ApplyDamage(hit);
+    }
+
     /// <param name="extraCritChance">Crit chance this hit alone gets (e.g. from a buff the cast consumed).</param>
     public virtual double DealDamage(SimulationContext ctx, EnemyTarget target, double damageMultiplier = 1.0, bool canCrit = true, string? overrideName = null, int? overrideId = null, bool? forcedCrit = null,
         Action<SimulationContext, double>? onLanded = null, double extraCritChance = 0.0)

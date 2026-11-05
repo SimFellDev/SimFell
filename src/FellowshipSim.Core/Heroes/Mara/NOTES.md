@@ -14,6 +14,17 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   with the cast's bonuses (Malevolence, Assassin's Guile, Deadly Scheme's crit) but not Feed the Queen (clone Queen's
   Fangs came in 0.71x the engine's with it). A clone's Arachnid Assault hits each enemy as a single-target strike, with
   no target falloff (clone hits 1.17x the engine's with the falloff). Their hits are logged under the attack's own ID.
+  Both clones of a Queen's Fang keep Mara's numbers at the cast, with Maiden of Death. Over the 2,580 clone hits in the 23
+  Mara fights of `data/fights`, read at the strike: the 1,715 with no player aura change since the cast are 1.0023x the
+  engine's, the 77 after Matriarch Macabre ended 1.36x, the 56 after Maiden of Death ended 1.27x, the 46 after Maiden of Death
+  came 0.79x and the 39 after The Philosopher came 0.79x. T2qLPpmMkrAtJ9B1 fight 18 @ 1249.421: Matriarch Macabre and
+  Drakheim's Absolution end at 1250.056 between clone hits of 26,814 and 26,400. pWmcV42K39GHTLQX fight 23 @ 276.428: The
+  Philosopher and Maiden of Death come at 276.592, before clone hits of 29,035 and 30,143 (0.76x and 0.79x read at the strike).
+  In the game data (build 26320967), a clone applies a copy of the cast's spec: `GA_Mara_Passive_CopySpawner` offset 4412
+  `CloneSpecHandle` (0x144A62970 keeps captures and SetByCaller values) and offset 2688, with `SetEffectContext` at offset 4600
+  re-snapshotting in the cast's frame (0x144A6F7D0). `CRAgilityDamageCalculation` (0x1450D73F0) has source attributes as
+  snapshots and target attributes read at the strike, and each application rolls its own crit (`Execute_Implementation`
+  0x1450DCF40, roll 0x14510C4D0).
 - **Volatile Poison:** each tick deals the 31.2% of Agility the tooltip gives for the whole poison; the eruption deals
   124.8%.
 - **Caustic Poison:** every hit is a grievous crit (its +100% crit chance on top of Mara's).
@@ -95,6 +106,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 
 ## Not yet explained
 
+- **Blocked Queen's Fang hits:** the 59 hits of type 4 in the 23 Mara fights of `data/fights`, all without a crit flag, are
+  0.82x the engine's normal hit with the blocked part added back (41 cast hits 0.823, 18 clone hits 0.827). The blocked part is
+  81% to 83% of that amount in each one. Sources checked: the raw `blocked` field and `LogDamage.UnblockedAmount`.
 - **Web Crack with no stun:** 2 of 204 casts have no debuff (p8VJDcBdxa7ghqG3 fight 124 @ 448.011, w7khnMKAa4TxXrmC fight 23
   @ 337.767), and 2 stuns end early with no death (Fc8v6yWxD14GQMnV fight 19 @ 197.864 at 2.798s, @ 1613.444 at 2.563s). Effect
   1583 has no application tag requirements. Sources checked: `GA_Mara_StunSpender`, `GE_Mara_StunSpender_Stun` and

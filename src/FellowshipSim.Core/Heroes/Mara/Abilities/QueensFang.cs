@@ -25,13 +25,14 @@ public class QueensFang : Finisher
     protected override void Strike(SimulationContext ctx, EnemyTarget target, int points)
     {
         double multiplier = ComboPointMultiplier(points);
+        // Read before the cast's own hit and its procs.
+        var clones = Mara.Matriarch.KeepCast(this, ctx, multiplier * CastDamageMultiplier, CurrentCast?.CritChance ?? 0.0);
         double own = 1.0;
         foreach (var m in OwnHitMultipliers) own *= m(ctx);
         DealDamage(ctx, target, damageMultiplier: multiplier * own);
-        double castDamage = CastDamageMultiplier, castCrit = CurrentCast?.CritChance ?? 0.0;
-        Mara.Matriarch.Imitate(ctx, 1, (c, power) =>
+        Mara.Matriarch.Imitate(ctx, 1, (c, _) =>
         {
-            if (!target.IsSleeping) DealDamage(c, target, damageMultiplier: multiplier * castDamage * power, overrideName: MatriarchMacabre.CloneHitName(Name), extraCritChance: castCrit);
+            if (!target.IsSleeping) DealKeptHit(c, target, Mara.Matriarch.StrikeNumbers(c, clones, target), MatriarchMacabre.CloneHitName(Name));
         });
     }
 
