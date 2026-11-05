@@ -209,6 +209,31 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.InRange(casts[1] - casts[0], cooldown / hero.CooldownRate(hero.GetAbility<WebCrack>()!, SimTime.Zero) - 0.01, cooldown + 1.5);
     }
 
+    [Fact]
+    public void Stalker_Step_Has_Two_Charges_On_One_Recharge_And_Keeps_Stealth()
+    {
+        var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!);
+        var casts = new List<double>();
+        var stealthKept = true;
+        hero.OnCastCompleted += (ability, _, now) =>
+        {
+            if (ability is not StalkerStep) return;
+            casts.Add(now.TotalSeconds);
+            Assert.True(hero.Auras.HasAura(StalkerStep.Buff, now));
+            stealthKept &= hero.Auras.HasAura(BroodingShadows.Stealth, now) || casts.Count > 1;
+        };
+
+        new MonteCarloSimulator(() => hero, AplParser.ParseScript("actions+=/brooding_shadows\nactions+=/stalker_step\nactions+=/hemorrhaging_strike"))
+            .Run(SimTime.FromSeconds(60), 1, 1, degreeOfParallelism: 1);
+
+        Assert.True(casts.Count >= 3, $"Stalker Step was cast {casts.Count} times");
+        Assert.True(stealthKept, "Stalker Step ended Stealth");
+        Assert.InRange(casts[1] - casts[0], 0, 0.5);
+        double recharge = StalkerStep.CooldownSeconds * (1.0 - hero.Stats.CooldownReductionPct);
+        Assert.InRange(casts[2] - casts[0], recharge / hero.CooldownRate(hero.GetAbility<StalkerStep>()!, SimTime.Zero) - 0.01, recharge + 1.5);
+    }
+
     /// <summary>Gains of an "aura:" evidence, the DPS of a "damage:" one, the Energy gained ("energy") or the DPS ("dps").</summary>
     private static double Amount(MonteCarloResult result, Dictionary<string, int> gained, string evidence)
     {
