@@ -1,20 +1,27 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Editing;
+using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Engine;
 
 namespace FellowshipSim.LanguageServer;
 
 /// <summary>
-/// The language server of .simc files: semantic tokens of each <see cref="AplTokenKind"/>, a diagnostic for the parse error
-/// and for each name the hero does not have, and the action-list editor's completion list. Documents sync in full.
+/// The language server of .simc files, over the action list and the profile lines: semantic tokens of each
+/// <see cref="AplTokenKind"/>, a diagnostic for each line that does not read and each name the hero does not have, and a
+/// completion list. Documents sync in full.
 /// </summary>
-public sealed class SimcLanguageServer(LspConnection connection)
+public sealed partial class SimcLanguageServer(LspConnection connection)
 {
     // The protocol's numbers (Language Server Protocol 3.17).
     private const int FullSync = 1;
     private const int ErrorSeverity = 1, WarningSeverity = 2;
-    private const int InvokedTrigger = 1;
+    private const int InvokedTrigger = 1, CharacterTrigger = 2;
     private const int MethodNotFound = -32601;
+
+    // The characters a key or a name starts after, in an action line or a profile line.
+    private static readonly string[] TriggerCharacters = [".", "=", "/", ",", ":"];
 
     private readonly SimcLanguage _language = new();
     private readonly Dictionary<string, string> _documents = [];
@@ -83,7 +90,7 @@ public sealed class SimcLanguageServer(LspConnection connection)
         ["capabilities"] = new JsonObject
         {
             ["textDocumentSync"] = FullSync,
-            ["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".") },
+            ["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray([.. TriggerCharacters.Select(c => JsonValue.Create(c))]) },
             ["semanticTokensProvider"] = new JsonObject
             {
                 ["legend"] = new JsonObject
@@ -110,23 +117,60 @@ public sealed class SimcLanguageServer(LspConnection connection)
         ["params"] = new JsonObject { ["uri"] = uri, ["diagnostics"] = diagnostics },
     });
 
-    /// <summary>The parse error as an error, and each token's problem as a warning: the editor's field error and warnings.</summary>
-    public static JsonArray Diagnostics(string text, AplExpressionCheck? check)
+    /// <summary>
+    /// The action list's parse error and each profile problem as an error, and each token's problem as a warning: the
+    /// editor's field error and warnings.
+    /// </summary>
+    public static JsonArray Diagnostics(string text, SimcCheck? check)
     {
         var diagnostics = new JsonArray();
         if (check == null) return diagnostics;
         var lines = new LineMap(text);
-        if (check.Error != null)
+        if (check.ActionList is { Error: not null } list)
         {
-            int at = check.ErrorStart ?? text.Length;
-            diagnostics.Add(Diagnostic(lines, at, Math.Min(at + 1, text.Length), ErrorSeverity, check.Error));
+            int at = list.ErrorStart ?? text.Length;
+            diagnostics.Add(Diagnostic(lines, at, Math.Min(at + 1, text.Length), ErrorSeverity, list.Error));
         }
         foreach (var token in check.Tokens)
         {
             if (token.Problem != null) diagnostics.Add(Diagnostic(lines, token.Start, token.Start + token.Length, WarningSeverity, token.Problem));
         }
+        foreach (var problem in check.Problems) diagnostics.Add(ProfileDiagnostic(text, lines, problem));
         return diagnostics;
     }
+
+    // A problem's range is the name it quotes, else the line's value. A problem of the whole dungeon is on the line of the
+    // pull it names, else the dungeon's first line.
+    private static JsonObject ProfileDiagnostic(string text, LineMap lines, SimProfileProblem problem)
+    {
+        string[] all = text.Split('\n');
+        int index = problem.Line is { } number ? number - 1 : DungeonLine(all, problem.Problem);
+        string line = all[index].TrimEnd('\r');
+        int start = lines.OffsetOf(index, 0);
+        int valueAt = line.IndexOf('=') + 1;
+        var (from, to) = (valueAt, line.TrimEnd().Length);
+        if (Quoted().Match(problem.Problem) is { Success: true } quoted && line.IndexOf(quoted.Groups[1].Value, valueAt, StringComparison.Ordinal) is >= 0 and var name)
+        {
+            (from, to) = (name, name + quoted.Groups[1].Length);
+        }
+        if (from >= to) (from, to) = (line.Length - line.TrimStart().Length, line.TrimEnd().Length);
+        string message = problem.Line is { } n ? $"Line {n}: {problem.Problem}." : problem.Problem;
+        return Diagnostic(lines, start + from, start + to, ErrorSeverity, message);
+    }
+
+    private static int DungeonLine(string[] lines, string problem)
+    {
+        string key = PullProblem().Match(problem) is { Success: true } pull ? DungeonProfile.PullPrefix + pull.Groups[1].Value : "";
+        int found = key.Length > 0 ? Array.FindIndex(lines, l => SimProfile.KeyOf(l.Trim()) == key) : -1;
+        if (found < 0) found = Array.FindIndex(lines, SimProfile.IsDungeonLine);
+        return Math.Max(found, 0);
+    }
+
+    [GeneratedRegex("'([^']+)'")]
+    private static partial Regex Quoted();
+
+    [GeneratedRegex(@"^Pull ([A-Za-z0-9_]+)\b")]
+    private static partial Regex PullProblem();
 
     private static JsonObject Diagnostic(LineMap lines, int from, int to, int severity, string message) => new()
     {
@@ -146,7 +190,7 @@ public sealed class SimcLanguageServer(LspConnection connection)
     /// The protocol's relative encoding of the check's tokens: five numbers each, the line after the last token's, the
     /// start (after the last token's start on the same line), the length, the type's index and no modifiers.
     /// </summary>
-    public static List<int> SemanticTokenData(string text, AplExpressionCheck? check)
+    public static List<int> SemanticTokenData(string text, SimcCheck? check)
     {
         var data = new List<int>();
         if (check == null) return data;
@@ -167,7 +211,7 @@ public sealed class SimcLanguageServer(LspConnection connection)
         string text = _documents.GetValueOrDefault(uri, "");
         var lines = new LineMap(text);
         int offset = lines.OffsetOf((int)p["position"]!["line"]!, (int)p["position"]!["character"]!);
-        bool always = (int?)p["context"]?["triggerKind"] == InvokedTrigger;
+        bool always = (int?)p["context"]?["triggerKind"] is InvokedTrigger or CharacterTrigger;
         if (_language.Complete(PathOf(uri), text, offset, always) is not { } list) return null;
         var range = Range(lines, list.From, list.To);
         var items = new JsonArray();
@@ -183,12 +227,12 @@ public sealed class SimcLanguageServer(LspConnection connection)
             ["label"] = item.Text,
             ["kind"] = CompletionKind(item.Node.Kind),
             ["sortText"] = order.ToString("D4"),
-            ["filterText"] = item.Text,
+            ["filterText"] = item.Insert ?? item.Text,
             ["textEdit"] = new JsonObject { ["range"] = range.DeepClone(), ["newText"] = item.Written },
         };
         if (item.Node.Detail.Length > 0) json["detail"] = item.Node.Detail;
         // A pick with parts after it opens the list again on them.
-        if (item.HasMore) json["command"] = new JsonObject { ["title"] = "Complete", ["command"] = "editor.action.triggerSuggest" };
+        if (item.OpensNext) json["command"] = new JsonObject { ["title"] = "Complete", ["command"] = "editor.action.triggerSuggest" };
         return json;
     }
 

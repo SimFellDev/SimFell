@@ -298,7 +298,7 @@ public class DungeonTests
     [InlineData("dungeon=X\ndifficulty=33\npull.1=/duration=1,count=1,name=A,hit_points=1", "The difficulty is an Eternal level from 0 (Base) to 32.")]
     public void A_Dungeon_Text_Names_What_Is_Wrong(string text, string problem)
     {
-        var e = Assert.Throws<FormatException>(() => DungeonProfile.Parse(text));
+        var e = Assert.ThrowsAny<FormatException>(() => DungeonProfile.Parse(text));
         Assert.Contains(problem, e.Message);
     }
 

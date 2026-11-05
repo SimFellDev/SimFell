@@ -128,7 +128,7 @@ public static partial class ListEdits
         var keys = new List<string> { AplActionLine.ConditionKey };
         if (v.ListActions.Contains(action)) keys.Add(AplActionLine.ListNameKey);
         else if (action == AplVariable.ActionName) keys.AddRange([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey]);
-        else keys.Add(AplActionLine.TargetIfKey);
+        else keys.AddRange([AplActionLine.TargetIfKey, AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey]);
         return keys.Select(k => Item(k, AplTokenKind.Keyword)).ToList();
     }
 
@@ -141,7 +141,7 @@ public static partial class ListEdits
         new(text, new CompletionNode(kind) { Leaf = true, Detail = detail });
 
     // Items starting with the part first, then those containing it; none for a finished name, or for an empty part unless always.
-    private static List<Completion>? Filter(IReadOnlyList<Completion> items, string partial, bool always)
+    public static List<Completion>? Filter(IReadOnlyList<Completion> items, string partial, bool always)
     {
         if (partial.Length == 0 && !always) return null;
         var found = items.Where(i => i.Text.StartsWith(partial, StringComparison.Ordinal))

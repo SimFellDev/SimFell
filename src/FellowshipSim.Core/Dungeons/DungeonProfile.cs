@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Core.Dungeons;
 
@@ -38,6 +39,25 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
 
     /// <summary>The Eternal level of a dungeon whose text names none.</summary>
     public const int DefaultDifficulty = 10;
+
+    /// <summary>The start of a pull line's key (<c>pull.X</c>).</summary>
+    public const string PullPrefix = "pull.";
+
+    /// <summary>The start of a boss line (<c>boss.N</c>).</summary>
+    public const string BossPrefix = "boss.";
+
+    public const string CountKey = "count", ChainWithKey = "chain_with", PullWithKey = "pull_with";
+
+    /// <summary>The dungeon's own keys, apart from its pulls' <c>pull.X</c>.</summary>
+    public static IReadOnlyList<string> Keys { get; } = ["dungeon", "difficulty", "time_limit"];
+
+    /// <summary>The values of an enemy group line.</summary>
+    public static IReadOnlyList<string> GroupKeys { get; } =
+        ["count", "name", "spirit_points", "priority", "hit_points", "interrupt_ability", "cooldown", "cast_time"];
+
+    /// <summary>The options of a pull, on its options line or a group line.</summary>
+    public static IReadOnlyList<string> PullKeys { get; } =
+        ["duration", "downtime", "final", "chain_with", "pull_with", "offset_ms", "offset_pct", "after_deaths", "after_deaths_total"];
 
     /// <summary>The difficulty's health and damage scale; null when <see cref="Difficulty"/> is no Eternal level.</summary>
     public DifficultyLevel? Level => DifficultyScaling.At(Difficulty);
@@ -177,10 +197,10 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                         difficulty = Integer(key, value);
                         break;
                     default:
-                        if (!key.StartsWith("pull.", StringComparison.Ordinal))
-                            throw new FormatException($"'{key}' is not a dungeon option (dungeon, difficulty, time_limit, pull.X)");
+                        if (!key.StartsWith(PullPrefix, StringComparison.Ordinal))
+                            throw new FormatException($"'{key}' is not a dungeon option ({string.Join(", ", Keys)}, {PullPrefix}X)");
                         bool append = key.EndsWith('+');
-                        string pullName = PullName(key[5..(append ? ^1 : ^0)]);
+                        string pullName = PullName(key[PullPrefix.Length..(append ? ^1 : ^0)]);
                         if (append && !pulls.ContainsKey(pullName)) throw new FormatException($"pull {pullName} has no pull.{pullName}= line before this one");
                         if (!append && pulls.ContainsKey(pullName)) throw new FormatException($"pull {pullName} starts twice");
                         if (!append) pulls[pullName] = new PullText();
@@ -254,10 +274,10 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         // An empty pull.N=/ line: the start of a pull whose first group has a comment.
         if (value.Trim().Length == 0) return;
         var parts = SplitOptions(value);
-        bool boss = parts[0].StartsWith("boss.", StringComparison.Ordinal);
+        bool boss = parts[0].StartsWith(BossPrefix, StringComparison.Ordinal);
         if (boss)
         {
-            if (!int.TryParse(parts[0][5..], NumberStyles.None, CultureInfo.InvariantCulture, out _))
+            if (!int.TryParse(parts[0][BossPrefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out _))
                 throw new FormatException($"'{parts[0]}' is not boss.N");
             parts.RemoveAt(0);
         }
@@ -294,9 +314,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                 case "after_deaths": pull.AfterDeaths = DeathCount.Parse(key, v); break;
                 case "after_deaths_total": pull.AfterDeathsTotal = DeathCount.Parse(key, v); break;
                 default:
-                    throw new FormatException($"'{key}' is not a pull option (count, name, spirit_points, priority, hit_points, " +
-                        "interrupt_ability, cooldown, cast_time, duration, downtime, final, chain_with, pull_with, offset_ms, " +
-                        "offset_pct, after_deaths, after_deaths_total)");
+                    throw new FormatException($"'{key}' is not a pull option ({string.Join(", ", GroupKeys.Concat(PullKeys))})");
             }
         }
         if (count is not { } n)
@@ -409,6 +427,6 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
 
     private static string Quote(string value) => value.Contains(',') || value.Contains('"') || value != value.Trim() ? $"\"{value}\"" : value;
 
-    private static FormatException Error(int lineNumber, string line, string problem) =>
-        new($"Dungeon line {lineNumber} '{line}': {problem}.");
+    private static SimcLineException Error(int lineNumber, string line, string problem) =>
+        new("Dungeon", lineNumber, line, problem);
 }

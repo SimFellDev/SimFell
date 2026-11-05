@@ -361,15 +361,20 @@ each enemy's health and debuffs, before the cast. **Previous** and **Next** (or 
 
 ## Edit .simc files in VS Code
 
-The VS Code extension in `src/FellowshipSim.VsCode` colours, checks and completes `.simc` profiles and action lists with
-the APL Editor's own check and completion list. It runs SimFell's language server (`src/FellowshipSim.LanguageServer`)
-on the user's machine, offline and with no .NET install.
+The VS Code extension in `src/FellowshipSim.VsCode` colours, checks and completes every line of a `.simc` file: the
+action list, the character, the sim's settings and a dungeon. Action lists have the APL Editor's own check and completion
+list, and the other lines have the engine's own parsers. It runs SimFell's language server
+(`src/FellowshipSim.LanguageServer`) on the user's machine, offline and with no .NET install.
 
-- A profile's hero is its first line's (`rime="sww"`). A file of action lines alone has the hero of the nearest folder
-  in its path named after one, such as `Heroes/Rime/ActionLists` or `data/apls/Rime`.
-- Each `actions` line and comment has the editor's colours. A name the hero does not have is a warning, and the first
-  line that does not parse is an error.
-- Typing a name or a `.`, or Ctrl+Space, opens the completion list on an `actions` line.
+- A profile's hero is its first character line's (`rime="sww"`). A file of action lines alone has the hero of the nearest
+  folder in its path named after one, such as `Heroes/Rime/ActionLists` or `data/apls/Rime`. A file of settings or a
+  dungeon alone has no hero.
+- Each line and comment has its colours, and those of `actions` lines are the editor's.
+- A name the hero does not have is a warning. The first `actions` line that does not parse is an error, and so is each
+  profile line the engine does not read, such as an unknown key, talent or item, or a pull naming no pull.
+- Typing a name or one of `.`, `=`, `/`, `,` or `:`, or Ctrl+Space, opens the completion list. It has the keys the file
+  does not have yet, and the values of a key: talents, aspects, sigils, blessings, gems, stat enchants, gear with its ID,
+  `true` or `false`, and in a pull its options, the creatures and the other pulls.
 
 Each release has a .vsix for each platform. Package it for one platform (`win32-x64`, `win32-arm64`, `linux-x64`,
 `linux-arm64`, `darwin-x64` or `darwin-arm64`), or for every platform with `all`; `--version <x.y.z>` sets the version
@@ -436,7 +441,7 @@ Runs the engine tests and replays every downloaded fight, rewriting its review p
 | `src/FellowshipSim.Desktop` | The desktop app: FellowshipSim.UI in a .NET MAUI BlazorWebView, with the engine in-process |
 | `src/FellowshipSim.Web` | The browser app: FellowshipSim.UI in Blazor WebAssembly, sims and replays on web workers (`wwwroot/sim/`), its files in the browser's IndexedDB (`BrowserDataFolder`) |
 | `src/FellowshipSim.Cli` | `simfell`, the command-line sim |
-| `src/FellowshipSim.LanguageServer` | The language server of `.simc` files: the action-list editor's check and completion list over the Language Server Protocol |
+| `src/FellowshipSim.LanguageServer` | The language server of `.simc` files: colours, checks and completion for action lists, characters, settings and dungeons over the Language Server Protocol |
 | `src/FellowshipSim.VsCode` | The VS Code extension for `.simc` files, with the language server in it |
 | `tests/FellowshipSim.Tests` | Tests, including the free-dice runner |
 | `docs/` | [Adding a hero](docs/ADDING_A_HERO.md) |

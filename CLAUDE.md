@@ -136,8 +136,11 @@ or the desktop app).
 - **FellowshipSim.LanguageServer** is the language server of `.simc` files over stdio, for the VS Code extension in
   `src/FellowshipSim.VsCode` (`vscode-languageclient`, packaged per platform with the server self-contained in it). It
   has the APL Editor's check (`AplListCheck`) as semantic tokens and diagnostics, and its completion list
-  (`Core/APL/Editing`: `ListEdits`, `Completions`) on `actions` lines. `SimcFile` blanks a profile's other lines and finds
-  the hero. The extension's token types and colours in `package.json` come from `AplTokenKind` and the `.tok-<kind>`
+  (`Core/APL/Editing`: `ListEdits`, `Completions`) on `actions` lines. The character, setting and dungeon lines have
+  `SimcProfileTokens`, `SimcProfileEdits` and the engine's own parsers: `SimProfile.Problems` reads the text through
+  `SimProfile.Parse`, one problem per bad line (`SimcLineException`). Their keys are `SimcProfile.Keys`,
+  `SimProfile.SettingNames` and `DungeonProfile`'s `Keys`, `GroupKeys` and `PullKeys`. `SimcFile` splits a file into its
+  action list and profile and finds the hero. The extension's token types and colours in `package.json` come from `AplTokenKind` and the `.tok-<kind>`
   rules of FellowshipSim.UI's CSS (`ExtensionContributes`, written by `npm run package`; `SimcLanguageServerTests` checks
   them).
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to

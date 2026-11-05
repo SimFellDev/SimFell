@@ -1,7 +1,7 @@
 {
   "name": "simfell-simc",
   "displayName": "SimFell .simc",
-  "description": "Colours, problems and completion for SimFell\u0027s .simc profiles and action lists, from SimFell\u0027s own action-list check.",
+  "description": "Colours, problems and completion for every line of SimFell's .simc files, from SimFell's own parsers.",
   "version": "0.1.0",
   "publisher": "simfell",
   "private": true,

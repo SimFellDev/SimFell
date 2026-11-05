@@ -49,6 +49,20 @@ namespace FellowshipSim.Core.Import;
 /// </summary>
 public sealed record SimcProfile(CharacterBuild Build, string ActionList)
 {
+    /// <summary>The problem of a character line above the hero line.</summary>
+    public const string NoHeroProblem = "the first line names the hero: <hero>=\"<name>\"";
+
+    /// <summary>
+    /// The keys <see cref="Read"/> takes and <see cref="Format"/> writes, each gear slot's key among them. The hero line's
+    /// key is the hero's (<see cref="HeroOf"/>).
+    /// </summary>
+    public static IReadOnlyList<string> Keys { get; } = new[]
+    {
+        "source", "primary_stat", "stamina", "armor", "crit_rating", "haste_rating", "expertise_rating", "spirit_rating",
+        "stats_from_old_profile", "talents", "aspects", "sigils", "protective_enchant", "glyphs", "gems", "gem_sockets",
+        "gear_gem_bonuses", "stat_enchants", "stat_enchant_counts", "legendary",
+    }.Concat(GearSlots.All.Select(GearSlots.Key)).ToList();
+
     public static SimcProfile Load(string path) => Parse(File.ReadAllText(path));
 
     /// <summary>True for a trimmed line of the action list: its key starts with <c>actions</c>.</summary>
@@ -105,7 +119,7 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
                 if (hero == null)
                 {
                     var heroName = HeroOf(key)
-                                   ?? throw new FormatException("the first line names the hero: <hero>=\"<name>\"");
+                                   ?? throw new FormatException(NoHeroProblem);
                     build.Hero = heroName;
                     build.Name = value.Trim('"');
                     hero = BuildHeroes.Create(heroName);
@@ -330,8 +344,8 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
         return s.ToString();
     }
 
-    private static FormatException Error(int lineNumber, string line, string problem) =>
-        new($"Profile line {lineNumber} '{line}': {problem}.");
+    private static SimcLineException Error(int lineNumber, string line, string problem) =>
+        new("Profile", lineNumber, line, problem);
 
     /// <summary>Ranked augmentations of one kind (<typeparamref name="T"/>): "name:rank/...".</summary>
     private static void AddAugmentations<T>(CharacterBuild build, string value, string kind) where T : Augmentation
