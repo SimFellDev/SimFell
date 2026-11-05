@@ -186,6 +186,27 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   3M2vWr8taxVfTQFY fight 53 and 761 against 244 in Prvc4XmbdHBaVRKy fight 12, and Inspired Allegiance 944 against 103 over the 23 fights.
 - **Spirit Refund:** a finisher's refund gives back its Combo Points and its Energy (fight 19 @ 25.691: 6 Combo Points
   and 40 Energy), and 1 Spirit Point.
+- **Spirit Points from health lost:** each player gains SpiritPointValue x the fraction of the enemy's health lost x 0.25, from the
+  party's damage. In the game data (build 26320967), `GA_Shared_Passive_SpiritMechanic` offsets 626 to 888 compute SpiritPointValue x
+  min(MaxHealth, |TotalHealthChange|) / MaxHealth x `Hero.SpiritPointGain.SpiritPointsFromDamageScaler` 0.25 on each `Event.Damage`
+  (offset 1189), offset 145 skips a heal, and a healed enemy gives Spirit Points again. The ability keeps no state per enemy, and offset
+  1079 applies the gain to `AcquireTargets_AllPartyAndRaidMembers`. `GEC_Shared_SpiritPointGainCalculation` offset 173 multiplies it by
+  4 under `ShouldGiveDungeonTimerExpiredBonus`, which the engine has no model of. T2qLPpmMkrAtJ9B1 fight 18, Ancient Koros (value 45,
+  18,873,188 health): Mara's hits of 180,371, 139,767 and 96,669 raise Spirit 0.11, 0.09 and 0.06, a quarter of each hit's share of the
+  value. Health lost to the party counts: Mara's own damage x value x 0.25 gives a quarter of the old sum (T2qLPpmMkrAtJ9B1 fight 18:
+  34.38), and the log's small gains are 0.36 to 0.97 of that sum in the 23 Mara fights of `data/fights` (T2qLPpmMkrAtJ9B1 fight 18: 85.89
+  of 137.51). In the binary, each member's `WaitForCombatEvents` hears that member's outgoing damage alone (exe 0x1451260E0, raiser
+  0x1452E4900, with the call into the raiser untraced), and `AcquireTargets_AllPartyAndRaidMembers` returns every living, targetable member,
+  the owner included (0x1450F96D0). A shadowy clone's hit gains like the cast's: its spec's context names Mara (`GA_Mara_Passive_CopySpawner`
+  offset 4412 `CloneSpecHandle`), and isolated clone Queen's Fangs on bosses rise 0.68 for a rule of 0.50 over 16 hits in 4 fights
+  (T2qLPpmMkrAtJ9B1 fight 18, Fc8v6yWxD14GQMnV fight 19, pWmcV42K39GHTLQX fight 23, mThk4v1f8WGbBd7Q fight 1), where cast hits are 1.11x to
+  1.24x the rule. `TotalHealthChange` includes overkill and absorbed damage and excludes blocked damage (0x1450DD4C8 to
+  0x1450DD6F9), so a killing blow counts whole up to MaxHealth. The engine reads health and has no overkill. A raw fight has one player's
+  damage alone, so a replay cannot know the party's overkill. Mara's 790 killing blows in the 23 fights (hit points wrapped under 0) add 3.70
+  Spirit Points in all, 0.64 at most in a fight and under 0.2 each, inside the 2.0 tolerance, so the engine leaves it out. Spirit Points stay
+  in [0, MaxSpiritPoints] (0x1450F0DB5), as `Hero.AddToResource` does, and a creature with no row has value 0 (0x14503C7EE), as
+  `SimulationContext.GetOrSpawnEnemy` and `EnemyGroup.Spirit` do. Over the 23 fights the replay's
+  `Spirit too high` goes from 404 to 71 issues, with 35 `Spirit too low`. T2qLPpmMkrAtJ9B1 fight 18 goes from 25 issues to 3.
 - **Deadly Scheme:** a stack per 5 Energy spent; the stacks past 40 carry over, and while it is active the stacks keep
   counting without the buff. The log shows 1 stack as the buff comes back, until the next stack.
 - **Venomous Delight:** a proc is a 10 Energy jump right after a poison hit (172 jumps of 8 to 12 in fight 19). A proc
@@ -201,6 +222,23 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Malevolence:** a finisher uses one stack of its own buff, then grants the other.
 
 ## Not yet explained
+
+- **Spirit Points in two fights:** 50 of the 106 Spirit issues over the 23 Mara fights of `data/fights` are in two fights.
+  Fc8v6yWxD14GQMnV fight 19 has 24 `Spirit too high`, net -78.91, around Emissary of the Shadow Lord (value 400): @ 283.401 the engine has
+  66.05 and the log 59. gd6ByNrf81jc9aWw fight 3 has 23 `Spirit too low`, net +84.68, with rises of 2 or 3 every 0.5s for 2s (@ 58.117 to
+  59.653, 146.978 to 147.846, 198.244 to 199.947). The Emissary's 400 x 0.25 is 1 Spirit Point per 1% of its health, so the 7.05 gap
+  is 7.05% of its health, with the log at 46.67 @ 280.629 and 59 @ 283.401, under a maximum of 130. From 0.354 of its health @ 278.224 to
+  0.019 @ 284.442 the log rises 26.88 with regeneration and Spirit Refunds in it, and the rule gives 33.5. Overkill counts the other way, since it adds to the log. Health lost to a
+  source that is its own instigator reaches no Spirit listener (0x1450DD6D6), and a raw fight has no other player's damage to test this.
+  Sources checked:
+  `GA_Shared_Passive_SpiritMechanic`, which has no creature branch, creature 274's `spiritPoints` 400 and its passives 155, 120, 2242,
+  2118 and 2835, none changing `SpiritPointValue`, `MaxHealth` or the health change, `CT_CharacterScalingBaseAttributes`, which has
+  no Spirit row, and the enemy health samples.
+- **Spirit Point regeneration's start:** the engine's timer starts with the fight, and T2qLPpmMkrAtJ9B1 fight 18 has 5 Spirit Points @
+  22.884 against the engine's 7. Over a fight the log's +1 rises are 3.00s to 3.02s apart, with a phase moving about 3s in 1,500s. Sources
+  checked: `Default.CRHeroAttributeSet.SpiritRegenPeriod` 3 and `Hero.Spirit.PassiveGainPeriod` 3. No Blueprint in `DS_MaraAbilitySet` runs
+  the timer, and no native code reads `SpiritRegenRate` or `SpiritRegenPeriod` (`CRHeroAttributeSet` +0x188 and +0x198), so Blueprint or
+  effect data runs it.
 
 - **Blocked Queen's Fang hits:** the 59 hits of type 4 in the 23 Mara fights of `data/fights`, all without a crit flag, are
   0.82x the engine's normal hit with the blocked part added back (41 cast hits 0.823, 18 clone hits 0.827). The blocked part is

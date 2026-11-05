@@ -202,6 +202,10 @@ public sealed class ReplayDriver
                 {
                     hurt.MaxHealth = cmd.MaxHp;
                     hurt.CurrentHealth = cmd.Hp;
+                    // Two of the log's readings show a heal. An engine hit in between lowers the health with no heal after it.
+                    if (_loggedEnemyHealth.TryGetValue(hurt, out double loggedBefore) && hurt.HealthFraction > loggedBefore) hurt.HealedTo(hurt.HealthFraction);
+                    _loggedEnemyHealth[hurt] = hurt.HealthFraction;
+                    _hero.EarnSpiritPoints(hurt, hurt.HealthFraction, _ctx);
                 }
                 break;
 
@@ -668,6 +672,9 @@ public sealed class ReplayDriver
         // For the review page only (free dice has none).
         ExternalAurasOnPlayer = FreeDice ? [] : _externalAurasOnPlayer.Values.Distinct().OrderBy(n => n).ToList(),
     };
+
+    /// <summary>Each enemy's health fraction at the log's last reading.</summary>
+    private readonly Dictionary<EnemyTarget, double> _loggedEnemyHealth = new();
 
     private Dictionary<int, AuraDef>? _modeledAuras;
     private HashSet<int>? _sharedAuraIds;

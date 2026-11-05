@@ -12,14 +12,11 @@ public abstract class Hero : Actor
     protected Hero()
     {
         AddResource(SpiritPoints);
-        // Spirit Points from damage: a hit earns its share of the enemy's health times the enemy's Spirit Point value, up to
-        // the enemy's whole value over the hero's damage to it (the hit is already in HeroDamage).
         OnDamageDealt += (in dmg) =>
         {
-            if (dmg.Target is not { SpiritPointValue: > 0, MaxHealth: > 0 } enemy || dmg.Amount <= 0) return;
-            double counted = Math.Clamp(enemy.MaxHealth - (enemy.HeroDamage - dmg.Amount), 0, dmg.Amount);
-            if (counted > 0) GainResource(SpiritPoints, counted / enemy.MaxHealth * enemy.SpiritPointValue, dmg.SimContext);
+            if (dmg.Target is { } enemy) EarnSpiritPoints(enemy, enemy.HealthFraction, dmg.SimContext);
         };
+        OnEnemyDefeated += (ctx, enemy) => EarnSpiritPoints(enemy, 0.0, ctx);
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
         Auras.OnGained += (aura, _, now) => AuraChanged(aura, now);
@@ -340,13 +337,36 @@ public abstract class Hero : Actor
     /// <summary>Spirit Points toward the Spirit ability (every hero).</summary>
     /// <summary>
     /// Spirit Points: they fill the Spirit ability (hero_data Attributes MaxSpiritPoints 100). Every hero regains 1 every
-    /// 3 seconds in combat and earns enemies' Spirit Points through damage (combat logs report them as resource type 4).
+    /// 3 seconds in combat and earns them as enemies lose health (combat logs report them as resource type 4).
     /// </summary>
     public static readonly ResourceDef SpiritPoints = new("Spirit", Max: 100);
     public const double SpiritPointRegenSeconds = 3.0;
     public const double SpiritPointRegenAmount = 1.0;
     /// <summary>The Spirit ability's cost (hero_data Ultimate SpiritPointCost 100).</summary>
     public const double SpiritAbilityBaseCost = 100.0;
+
+    /// <summary>
+    /// CT_AbilityConstants Hero.SpiritPointGain.SpiritPointsFromDamageScaler 0.25 (`GA_Shared_Passive_SpiritMechanic` offset 822, build
+    /// 26320967), with no party size or keystone term.
+    /// </summary>
+    public const double SpiritFromDamageScaler = 0.25;
+
+    /// <summary>
+    /// Spirit Points for the enemy's health lost down to <paramref name="healthFraction"/>. `GA_Shared_Passive_SpiritMechanic` offsets 626
+    /// to 888: SpiritPointValue x min(MaxHealth, |TotalHealthChange|) / MaxHealth x <see cref="SpiritFromDamageScaler"/> on each damage
+    /// event. A heal runs no gain (offset 145), and a healed enemy gives Spirit Points again. Each party member's ability hears that
+    /// member's outgoing `Event.Damage` alone (`WaitForCombatEvents`, offset 1189, exe 0x1451260E0, raiser 0x1452E4900) and grants the gain to
+    /// every living party member, the owner included (`AcquireTargets_AllPartyAndRaidMembers`, offset 1079, exe 0x1450F96D0), so health lost
+    /// to any member counts. `TotalHealthChange` includes overkill (exe 0x1450DD4C8), and this method reads health, which has none: 3.70 Spirit
+    /// Points over 790 killing blows. Heroes/Mara/NOTES.md, section Resources, has the fights.
+    /// </summary>
+    public void EarnSpiritPoints(EnemyTarget enemy, double healthFraction, SimulationContext ctx)
+    {
+        if (enemy.SpiritPointValue <= 0 || healthFraction >= enemy.SpiritHealthFraction) return;
+        double lost = enemy.SpiritHealthFraction - healthFraction;
+        enemy.SpiritHealthFraction = healthFraction;
+        GainResource(SpiritPoints, lost * enemy.SpiritPointValue * SpiritFromDamageScaler, ctx);
+    }
 
     /// <summary>Spirit Points a Spirit Refund grants (hero_data SpiritProc FlatSpiritPointGain: 1, Rime 2).</summary>
     public double SpiritPointsPerSpiritRefund { get; protected set; } = 1.0;
