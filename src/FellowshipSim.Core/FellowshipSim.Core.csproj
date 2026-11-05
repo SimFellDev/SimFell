@@ -24,15 +24,45 @@
     <ProjectReference Include="..\FellowshipSim.Codex.Generators\FellowshipSim.Codex.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <!-- The Codex's data export (tools/download-codex-export.sh): each creature's class (CreatureGenerator) and each dungeon's creature placements (DungeonGenerator). -->
+  <!-- The Codex's data export: each creature's class (CreatureGenerator) and each dungeon's creature placements (DungeonGenerator). -->
   <PropertyGroup>
-    <CodexExportFolder>$(MSBuildThisFileDirectory)..\..\codex-export\</CodexExportFolder>
+    <CodexExportFolder>$(MSBuildThisFileDirectory)../../codex-export/</CodexExportFolder>
+    <CodexExportUrl>https://codex.fellowshipanalyzer.com/api/export</CodexExportUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="$(CodexExportFolder)entities.jsonl" Condition="Exists('$(CodexExportFolder)entities.jsonl')" />
-    <AdditionalFiles Include="$(CodexExportFolder)settings.json" Condition="Exists('$(CodexExportFolder)settings.json')" />
+    <AdditionalFiles Include="$(CodexExportFolder)entities.jsonl" />
+    <AdditionalFiles Include="$(CodexExportFolder)settings.json" />
   </ItemGroup>
+
+  <!--
+    Each build compares the Codex's export.json, which names its game build, with the copy in codex-export/, and downloads
+    the export when they differ. An offline build keeps the copy it has. A build without a copy, as on every CI run, needs
+    the download and retries it. Every file arrives in the intermediate folder and export.json is copied last, so an
+    interrupted download reads as out of date on the next build.
+  -->
+  <Target Name="DownloadCodexExport" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <CodexExportDownloadFolder>$(IntermediateOutputPath)codex-export/</CodexExportDownloadFolder>
+    </PropertyGroup>
+
+    <DownloadFile Condition="Exists('$(CodexExportFolder)export.json')" SourceUrl="$(CodexExportUrl)" DestinationFolder="$(CodexExportDownloadFolder)" DestinationFileName="export.json" SkipUnchangedFiles="false" Timeout="5000" ContinueOnError="true">
+      <Output TaskParameter="DownloadedFile" PropertyName="CodexExportLatestFile" />
+    </DownloadFile>
+    <DownloadFile Condition="!Exists('$(CodexExportFolder)export.json')" SourceUrl="$(CodexExportUrl)" DestinationFolder="$(CodexExportDownloadFolder)" DestinationFileName="export.json" SkipUnchangedFiles="false" Retries="3">
+      <Output TaskParameter="DownloadedFile" PropertyName="CodexExportLatestFile" />
+    </DownloadFile>
+
+    <PropertyGroup>
+      <CodexExportHeld Condition="Exists('$(CodexExportFolder)export.json')">$([System.IO.File]::ReadAllText('$(CodexExportFolder)export.json'))</CodexExportHeld>
+      <CodexExportLatest Condition="'$(CodexExportLatestFile)' != ''">$([System.IO.File]::ReadAllText('$(CodexExportDownloadFolder)export.json'))</CodexExportLatest>
+      <CodexExportOutOfDate Condition="'$(CodexExportHeld)' == '' Or ('$(CodexExportLatest)' != '' And '$(CodexExportLatest)' != '$(CodexExportHeld)')">true</CodexExportOutOfDate>
+    </PropertyGroup>
+
+    <DownloadFile Condition="'$(CodexExportOutOfDate)' == 'true'" SourceUrl="$(CodexExportUrl)/entities.jsonl" DestinationFolder="$(CodexExportDownloadFolder)" SkipUnchangedFiles="false" Retries="3" />
+    <DownloadFile Condition="'$(CodexExportOutOfDate)' == 'true'" SourceUrl="$(CodexExportUrl)/settings.json" DestinationFolder="$(CodexExportDownloadFolder)" SkipUnchangedFiles="false" Retries="3" />
+    <Copy Condition="'$(CodexExportOutOfDate)' == 'true'" SourceFiles="$(CodexExportDownloadFolder)entities.jsonl;$(CodexExportDownloadFolder)settings.json;$(CodexExportDownloadFolder)export.json" DestinationFolder="$(CodexExportFolder)" />
+  </Target>
 
   <ItemGroup>
     <Folder Include="Enemies\" />

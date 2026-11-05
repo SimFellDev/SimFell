@@ -28,7 +28,7 @@ public sealed class CreatureGenerator : IIncrementalGenerator
 
     private static readonly DiagnosticDescriptor MissingExport = new(
         "CODEX001", "The Codex export is missing",
-        "The Codex export has no {0}: run tools/download-codex-export.sh", "Codex", DiagnosticSeverity.Error, true);
+        "The Codex export has no {0}", "Codex", DiagnosticSeverity.Error, true);
 
     private static readonly DiagnosticDescriptor UnreadableLine = new(
         "CODEX002", "A Codex export line does not read",

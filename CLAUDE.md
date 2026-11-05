@@ -10,11 +10,6 @@ game content.
 ## Commands
 
 ```
-# the Codex's data export into codex-export/ (git-ignored), from which FellowshipSim.Codex.Generators writes each
-# creature's <Name>GameCreature class and GameDungeons, each dungeon's creature placements; once after cloning, and after
-# a new datamine
-tools/download-codex-export.sh
-
 # the solution (the desktop app needs the maui workload)
 dotnet build -c Release
 
@@ -135,6 +130,9 @@ or the desktop app).
   progress on stderr.
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to
   the engine.
+- `FellowshipSim.Core`'s build keeps the Codex's data export in `codex-export/` (git-ignored) at the Codex's game build.
+  `FellowshipSim.Codex.Generators` writes each creature's `<Name>GameCreature` class and `GameDungeons`, each dungeon's
+  creature placements, from it.
 - Each component has its styles in `X.razor.css` beside `X.razor`. `wwwroot/css/app.css` in FellowshipSim.UI has
   colours, fonts and element defaults; `wwwroot/css/design-system.css` has classes several components share.
 

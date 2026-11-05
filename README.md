@@ -26,11 +26,10 @@ SimFell runs in three ways. They share the same engine:
 
 ## Build
 
-The engine's creatures are generated from the Codex's data export, which git ignores. Download it once after cloning,
-and again after a new datamine:
+The engine's creatures are generated from the Codex's data export. The build downloads it into `codex-export/`, which git
+ignores, and downloads it again after a new datamine.
 
 ```
-tools/download-codex-export.sh
 dotnet build -c Release
 ```
 
