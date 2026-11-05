@@ -65,11 +65,11 @@ public class MatriarchMacabre : MaraAbility
     /// Mara's numbers at a cast with no enemy's multipliers, and whether Maiden of Death was active: a target multiplier
     /// of the engine's, and a buff of Mara's.
     /// </summary>
-    public readonly record struct CloneCast(SimulationContext.HitNumbers Numbers, bool MaidenOfDeathActive);
+    public readonly record struct CloneCast(MaraAbility Attack, SimulationContext.HitNumbers Numbers, bool MaidenOfDeathActive);
 
     /// <summary>The numbers both clones keep from a cast of <paramref name="attack"/>, at 50% of its power.</summary>
-    public CloneCast KeepCast(Ability attack, SimulationContext ctx, double damageMultiplier, double critChance) =>
-        new(attack.NumbersNow(ctx, null, damageMultiplier * ClonePower, critChance), Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime));
+    public CloneCast KeepCast(MaraAbility attack, SimulationContext ctx, double damageMultiplier, double critChance) =>
+        new(attack, attack.NumbersNow(ctx, null, damageMultiplier * ClonePower, critChance), Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime));
 
     /// <summary>A clone's hit on <paramref name="enemy"/>: Mara's numbers at the cast, the enemy's multipliers at the strike.</summary>
     public SimulationContext.HitNumbers StrikeNumbers(SimulationContext ctx, CloneCast cast, EnemyTarget enemy)
@@ -82,6 +82,7 @@ public class MatriarchMacabre : MaraAbility
             double maiden = Mara.GetAbility<MaidenOfDeath>()!.DamageAgainst(enemy);
             against = maidenNow ? against / maiden : against * maiden;
         }
+        foreach (var multiplier in cast.Attack.TargetMultipliers) against *= multiplier(enemy, ctx);
         var numbers = cast.Numbers;
         return numbers with
         {

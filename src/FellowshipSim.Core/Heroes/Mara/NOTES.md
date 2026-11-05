@@ -12,8 +12,16 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   Sahril's Wrath 1.
 - **Shadowy clones** (Matriarch Macabre, Macabre Stratagem): each clone repeats the attack at 50% of the cast's damage,
   with the cast's bonuses (Malevolence, Assassin's Guile, Deadly Scheme's crit) but not Feed the Queen (clone Queen's
-  Fangs came in 0.71x the engine's with it). A clone's Arachnid Assault hits each enemy as a single-target strike, with
-  no target falloff (clone hits 1.17x the engine's with the falloff). Their hits are logged under the attack's own ID.
+  Fangs came in 0.71x the engine's with it). Their hits are logged under the attack's own ID.
+  A clone's Arachnid Assault has the cast's target falloff and strikes the enemies the cast struck. In the 23 Mara fights of
+  `data/fights`, a clone's hit on an enemy over the cast's hit on that enemy, crits removed, has a median of 0.49 to 0.51 at
+  every target count from 2 to 26 (858 casts, 11,351 hits at 9 enemies or more), and 14,227 of 14,239 clone hits over 1,104
+  casts are on the cast's enemies. T2qLPpmMkrAtJ9B1 fight 18 @ 349.933: the cast strikes 6 enemies, and each clone strikes
+  those 6 alone. A clone's Arachnid Assault keeps Mara's numbers at the cast as a Queen's Fang's does. In the game data (build
+  26320967), `GA_Mara_AoeAttackSpender` offset 1415 writes SetByCaller.DamageScaleTargetCount from the cast's target count, and
+  offset 1883 passes that spec and the cast's target data to `GA_Mara_Passive_CopySpawner`, with no target query of its own:
+  each clone shuffles that list (offset 79), and `GE_Mara_AoeAttackSpender_Damage` applies the falloff to the cast and both
+  clones.
   Both clones of a Queen's Fang keep Mara's numbers at the cast, with Maiden of Death. Over the 2,580 clone hits in the 23
   Mara fights of `data/fights`, read at the strike: the 1,715 with no player aura change since the cast are 1.0023x the
   engine's, the 77 after Matriarch Macabre ended 1.36x, the 56 after Maiden of Death ended 1.27x, the 46 after Maiden of Death
@@ -88,7 +96,7 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Volatile Poison:** lasts between 6 and 8 seconds (effect 1731 DurationMagnitude 6 to 8) and ticks 6 times raised
   by Haste, rounded (7 at 13% Haste, 9 during Spirit of Heroism), evenly spread; it erupts 0.2s after its last tick.
 - **Shadowy clones:** the first strikes 0.335s after the cast, the second 0.335s after the first is done; a clone's
-  Arachnid Assault hits one enemy per server frame.
+  Arachnid Assault hits one enemy per server frame, in an order of its own (329 of 1,017 clone pairs in the same order).
 - **Vexira's Venom:** ticks every 2s shortened by Haste, with a partial tick as it runs out; a new crit restarts its 6
   seconds and keeps the tick timing.
 
@@ -118,6 +126,13 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   undecoded, and the log gives no target, so no source says why this teleport failed. The engine has no positions and spends
   a charge and applies the buff on this cast. Sources checked: `GA_Mara_ChargedTeleportBehindTarget` and effect 2190's
   `IgnoreTags` `CharacterContext.Dead`.
+
+- **A clone's sweep with a frame and no hit:** a clone's Arachnid Assault at times has a frame with no hit on an enemy that
+  lives on and takes the other clone's hit (3M2vWr8taxVfTQFY fight 53 @ 172.949, enemy 98.3). Over the 23 Mara fights of
+  `data/fights`, 212 engine clone hits have no log hit and 244 of 52,855 log hits have no engine hit, some of them both ends
+  of one such frame. The clone tests no range and no line of sight per enemy. Sources checked: `GA_Mara_Passive_CopySpawner`
+  offsets 120 (`WaitDelayCR` 0.01s, native), 3954 and 4200 (`TargetPassesFilters`, `CreateAoeTargetFilterCollection`:
+  `AddFilter_CharacterContext`, native, and `AddFilter_Relationship`).
 
 ## Not yet checked against a log
 

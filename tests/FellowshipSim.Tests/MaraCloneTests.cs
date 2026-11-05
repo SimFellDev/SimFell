@@ -42,17 +42,40 @@ public class MaraCloneTests
         Assert.All(clones, clone => Assert.Equal(cast * MatriarchMacabre.ClonePower, clone, 6));
     }
 
+    [Fact]
+    public void Arachnid_Assault_Clones_Keep_The_Casts_Numbers_And_Its_Target_Falloff()
+    {
+        const int enemies = 12;
+
+        var (cast, clones) = CloneHits<ArachnidAssault>(ArachnidAssault.AbilityName, _ => { }, enemies: enemies);
+
+        Assert.Equal(MatriarchMacabre.Clones * enemies, clones.Count);
+        Assert.All(clones, clone => Assert.Equal(cast * MatriarchMacabre.ClonePower, clone, 6));
+    }
+
+    [Fact]
+    public void Arachnid_Assault_Clones_Strike_The_Enemies_The_Cast_Struck()
+    {
+        const int enemies = 3;
+
+        var (_, clones) = CloneHits<ArachnidAssault>(ArachnidAssault.AbilityName, _ => { }, enemies: enemies, enemiesAfterCast: 2);
+
+        Assert.Equal(MatriarchMacabre.Clones * enemies, clones.Count);
+    }
+
     /// <summary>
-    /// The cast's hit and its clones' hits before crit and spread, from a finisher cast 0.2s before Matriarch Macabre ends
-    /// with <paramref name="afterCast"/> running right after it.
+    /// The cast's hit and its clones' hits before crit and spread, from a finisher cast at <paramref name="enemies"/>
+    /// enemies 0.2s before Matriarch Macabre ends, with <paramref name="afterCast"/> running right after it and
+    /// <paramref name="enemiesAfterCast"/> more enemies joining.
     /// </summary>
-    private static (double Cast, List<double> Clones) CloneHits<T>(string name, Action<Mara> afterCast, Action<Mara>? beforeCast = null) where T : Finisher
+    private static (double Cast, List<double> Clones) CloneHits<T>(string name, Action<Mara> afterCast, Action<Mara>? beforeCast = null, int enemies = 1, int enemiesAfterCast = 0) where T : Finisher
     {
         var hero = (Mara)HeroImporter.Import(new CharacterBuild { Hero = "Mara", PrimaryStat = 1000 });
         var ctx = new SimulationContext(hero);
         hero.ResetForIteration();
         hero.BeginFight(ctx);
         var enemy = ctx.AddEnemy(100, 1, "Dummy", 1e12);
+        for (int i = 1; i < enemies; i++) ctx.AddEnemy(100, 1 + i, "Dummy", 1e12);
         hero.CurrentTarget = enemy;
         var outcomes = new BaseDamages(ctx.Outcomes);
         ctx.Outcomes = outcomes;
@@ -64,9 +87,10 @@ public class MaraCloneTests
         hero.GainComboPoints(6, ctx);
         Assert.True(ctx.BeginCast(hero, hero.GetAbility<T>()!, enemy).Succeeded);
         afterCast(hero);
-        ctx.RunUntil(SimTime.FromSeconds(CastTime + 1.0));
+        for (int i = 0; i < enemiesAfterCast; i++) ctx.AddEnemy(100, 1 + enemies + i, "Dummy", 1e12);
+        ctx.RunUntil(SimTime.FromSeconds(CastTime + 2.0));
 
-        return (outcomes.Hits.Single(h => h.Name == name).Damage,
+        return (outcomes.Hits.First(h => h.Name == name).Damage,
             outcomes.Hits.Where(h => h.Name == MatriarchMacabre.CloneHitName(name)).Select(h => h.Damage).ToList());
     }
 

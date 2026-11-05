@@ -92,10 +92,15 @@ public class ReplayOptions
     /// Damage IDs that do not travel, with how late their log hits may land instead of <see cref="HitLateSeconds"/>: a
     /// longer window lets an engine hit with no log hit of its own take a later cast's. Combat logs (q3y7pWgXrjN2dftw fight
     /// 12): Chain Lightning lands at the engine's time, a free one's chain 0.2s later (0.50s after the proc, not 0.30s).
+    /// Mara's Arachnid Assault does not travel: over the 52,610 paired hits in 23 Mara fights, 4 land 0.2s or more after the
+    /// engine's, 0.235s at most. A shadowy clone's next sweep starts 0.334s after the last hit, and a clone's sweep skips a
+    /// frame at times, so with 2.0s a clone's last hit took the next sweep's or the next cast's (3M2vWr8taxVfTQFY fight 53 @
+    /// 172.949, T2qLPpmMkrAtJ9B1 fight 18 @ 182.831).
     /// </summary>
     public Dictionary<int, double> HitLateSecondsById { get; set; } = new()
     {
         [Core.Domain.LogIds.Effect(Core.Heroes.Tariq.Abilities.ChainLightning.DamageEffectId)] = 0.25,
+        [Core.Heroes.Mara.Abilities.ArachnidAssault.AbilityId] = 0.25,
     };
     /// <summary>How late a log hit with damage ID <paramref name="logId"/> may land after the engine hit.</summary>
     public double LateSecondsOf(int logId) => HitLateSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitLateSeconds;

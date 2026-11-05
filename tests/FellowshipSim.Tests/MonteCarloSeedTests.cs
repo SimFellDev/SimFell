@@ -79,7 +79,7 @@ public class MonteCarloSeedTests
     /// Schism had bad luck protection, and again once Bloodline was unhasted, Ride the Lightning snapshotted and Kill Em All
     /// left Heavy Strike out. Rime's, Ardeos's, Mara's and Tariq's again for the engine fixes of the functional tests branch
     /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
-    /// Tariq's again for his new default list.
+    /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers.
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 3103846.9857844426, 3146941.0664216764, 2661851.3885713113, 2817501.47229399 })]
@@ -88,8 +88,8 @@ public class MonteCarloSeedTests
     [InlineData("Ardeos", 300, 1, new[] { 4880401.459850469, 4756376.690589438, 4909095.667185546, 4970616.393990371 })]
     [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
     [InlineData("Gunde", 300, 1, new[] { 7589315.0879662065, 7860490.4554016367, 7145894.9954196177, 7482946.3632446928 })]
-    [InlineData("Mara", 120, 3, new[] { 2440956.3761566584, 2523958.1828004178, 2020063.9459987921, 2580987.1909531415 })]
-    [InlineData("Mara", 300, 1, new[] { 4729819.8202547915, 6452915.6077009067, 5318416.1834521564, 5314205.2633375116 })]
+    [InlineData("Mara", 120, 3, new[] { 2440956.3761566584, 2537462.0861795172, 2033183.6552544837, 2580987.1909531415 })]
+    [InlineData("Mara", 300, 1, new[] { 4731897.3439448252, 6456797.1215118933, 5318416.1834521564, 5315674.4868539879 })]
     [InlineData("Tariq", 120, 3, new[] { 1693530.682890242, 2424288.0936405938, 2202817.0745414351, 1898456.3845911967 })]
     [InlineData("Tariq", 300, 1, new[] { 3583787.245763781, 3830425.3795905053, 3372158.792518341, 3295629.6778827147 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
