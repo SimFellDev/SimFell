@@ -5,7 +5,9 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// Strike's bleed replenishes 2 energy." Creeping Death adds 0.5% per 1% Haste.
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19, 32 bleeds): ticks every 3s shortened by Haste, a partial tick as it runs out;
 /// a refresh keeps the tick timing, and up to 30% of the new duration of the time left carries over (@ 21.458: 27.1s
-/// left, a 30s refresh, gone 39.0s later).
+/// left, a 30s refresh, gone 39.0s later). Every enemy's bleed pays 2 Energy at each tick, a partial one too, with Maiden of Death's
+/// 1.2: `GA_Mara_BleedAttackSpender.OnEffectSignalFromExecution` offset 158 reads no PartialTickFactor, and
+/// `CRSendSignalToSourceAbilityExecution` (0x145109C30) runs in the partial tick's executions.
 /// </summary>
 public class Hemorrhage : MaraDot
 {
@@ -27,7 +29,7 @@ public class Hemorrhage : MaraDot
 
     protected override void DealTick(SimulationContext ctx, Instance dot, double fraction)
     {
-        Mara.GainEnergy(EnergyPerTick, ctx);
+        Mara.GainEnergyWithMaiden(EnergyPerTick, ctx);
         base.DealTick(ctx, dot, fraction);
     }
 

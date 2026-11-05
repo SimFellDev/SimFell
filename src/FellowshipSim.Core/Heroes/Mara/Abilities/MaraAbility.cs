@@ -13,6 +13,9 @@ public abstract class MaraAbility : Ability
     /// <summary>Energy the ability costs (game data "cost", resource Energy).</summary>
     public double EnergyCost { get; protected set; }
 
+    /// <summary>Energy a cast spends less the Energy the cast gives.</summary>
+    public virtual double NetEnergyCost => EnergyCost;
+
     /// <summary>Using the ability ends Stealth (every attack; Kick, Stalker Step and the cooldowns do not).</summary>
     protected bool BreaksStealth { get; set; }
 

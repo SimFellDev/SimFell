@@ -354,7 +354,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
         double now = ctx.CurrentTime.TotalSeconds;
         bool procced = evidence.Resource != null
-            ? ClaimResourceEvidence(evidence, now)
+            ? ClaimResourceEvidence(evidence, ctx)
             : evidence.EnemyDebuffApplied
             ? ClaimEnemyDebuffEvidence(evidence, now, target)
             : evidence.StackJump > 0
@@ -369,33 +369,44 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     /// <summary>
     /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within 30%) between two
-    /// readings, the first at most a frame after the roll and the second within 0.5s of it, beyond what it regenerates
-    /// meanwhile. A reading at a cast is before its cost, so a cast's reading never starts a jump.
+    /// neighbouring readings at most 1.5s apart, the first at most a frame after the roll, beyond what it regenerates
+    /// meanwhile at the rate now. A reading at a cast is before its cost, so a rise from one counts the cost back. A rise from
+    /// a cast's reading has no proc before the cast: the replay checks the resource at that reading. A rise of several gains
+    /// is proof of as many procs, and a rise to the maximum of one.
     /// </summary>
-    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, double now)
+    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, SimulationContext ctx)
     {
-        if (!_resourceJumps.TryGetValue(evidence, out var jumps))
+        if (!_resourceRises.TryGetValue(evidence, out var rises))
         {
-            jumps = ResourceJumps(evidence);
-            _resourceJumps[evidence] = jumps;
+            rises = ResourceRises(evidence, ctx.Player);
+            _resourceRises[evidence] = rises;
         }
-        for (int i = 0; i < jumps.Count; i++)
+        double now = ctx.CurrentTime.TotalSeconds;
+        double regenPerSecond = evidence.ResourceRegen?.Invoke(ctx.Player, ctx.CurrentTime) ?? 0.0;
+        for (int i = 0; i < rises.Count; i++)
         {
-            var jump = jumps[i];
-            if (jump.To < now - _options.SameTickSeconds) continue;
-            if (jump.From > now + PeriodicEffect.ServerFrameSeconds) break;
-            if (jump.To > now + ResourceEvidenceWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
-            _claimedResourceJumps.Add((evidence, i));
+            var rise = rises[i];
+            if (rise.To < now - _options.SameTickSeconds) continue;
+            if (rise.From > now + PeriodicEffect.ServerFrameSeconds) break;
+            if (rise.FromCast && rise.From >= now) continue;
+            double excess = rise.Amount - regenPerSecond * (rise.To - rise.From);
+            double slack = 0.3 * evidence.ResourceGain;
+            int gains = rise.ToMaximum ? (excess >= evidence.ResourceGain - slack ? 1 : 0) : (int)Math.Round(excess / evidence.ResourceGain);
+            if (gains < 1 || gains > evidence.ResourceGainsAtOnce || (!rise.ToMaximum && Math.Abs(excess - gains * evidence.ResourceGain) > slack)) continue;
+            int claimed = _claimedResourceRises.GetValueOrDefault((evidence, i));
+            if (claimed >= gains) continue;
+            _claimedResourceRises[(evidence, i)] = claimed + 1;
             return true;
         }
         return false;
     }
 
-    private List<(double From, double To)> ResourceJumps(ProcEvidence.Evidence evidence)
+    /// <summary>The rises between neighbouring readings that can hold a gain: a reading at the resource's maximum starts none.</summary>
+    private List<ResourceRise> ResourceRises(ProcEvidence.Evidence evidence, Hero hero)
     {
-        var jumps = new List<(double From, double To)>();
+        var rises = new List<ResourceRise>();
         var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
-        if (log == null) return jumps;
+        if (log == null) return rises;
         string type = log.LogResourceType.ToString();
         double max = evidence.Resource!.Max;
         LogResourceSnapshot? previous = null;
@@ -404,22 +415,29 @@ public sealed class LogOutcomeSource : IOutcomeSource
         {
             if (!reading.Resources.TryGetValue(type, out var value)) continue;
             double amount = log.EngineAmount(value);
-            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds
-                && amount < max - 0.5 && previousAmount < max - 0.5)
+            if (previous != null && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds && previousAmount < max - 0.5)
             {
-                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
-                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
+                bool fromCast = previous.Event == "cast" && previous.Activation;
+                double spent = fromCast && previous.AbilityId is { } abilityId ? evidence.ResourceSpent?.Invoke(hero, abilityId) ?? 0.0 : 0.0;
+                double rise = amount - previousAmount + spent;
+                if (rise >= 0.7 * evidence.ResourceGain) rises.Add(new ResourceRise(previous.Time, reading.Time, rise, fromCast, amount >= max - 0.5));
             }
             previous = reading;
             previousAmount = amount;
         }
-        return jumps;
+        return rises;
     }
 
-    private const double ResourceEvidenceWindowSeconds = 0.5;
+    private readonly record struct ResourceRise(double From, double To, double Amount, bool FromCast, bool ToMaximum);
+
+    /// <summary>
+    /// Readings at most this far apart: the 23 Mara fights of <c>data/fights</c> have 245 rises of 8 to 12 above regeneration with
+    /// Venomous Delight at 0.5s to 1.5s apart and 9 further apart, and none with no talent.
+    /// </summary>
+    private const double ResourceEvidenceWindowSeconds = 1.5;
     private readonly List<LogResourceSnapshot> _resourceReadings = [];
-    private readonly Dictionary<ProcEvidence.Evidence, List<(double From, double To)>> _resourceJumps = new();
-    private readonly HashSet<(ProcEvidence.Evidence, int)> _claimedResourceJumps = new();
+    private readonly Dictionary<ProcEvidence.Evidence, List<ResourceRise>> _resourceRises = new();
+    private readonly Dictionary<(ProcEvidence.Evidence, int), int> _claimedResourceRises = new();
 
     /// <summary>Proof of a proc that adds extra stacks: the debuff on <paramref name="target"/> gains <paramref name="jump"/> stacks at once.</summary>
     private bool ClaimStackEvidence(int logId, int jump, double now, EnemyTarget? target)

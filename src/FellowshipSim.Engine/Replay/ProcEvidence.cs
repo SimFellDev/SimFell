@@ -36,7 +36,8 @@ public static class ProcEvidence
     /// <paramref name="FollowingSlackSeconds"/> off, for spacing the log rounds to whole server frames): they belong to that
     /// proc and are no proof of another. With <paramref name="Resource"/>, the proof is instead that resource jumping by
     /// <paramref name="ResourceGain"/> between two of the log's readings around the roll, beyond what
-    /// <paramref name="ResourceRegenPerSecond"/> regenerates between them. With <paramref name="HitTypes"/>, only a hit of
+    /// <paramref name="ResourceRegen"/> gives per second now and what <paramref name="ResourceSpent"/> gives for a cast
+    /// reading's ability, up to <paramref name="ResourceGainsAtOnce"/> gains in one jump. With <paramref name="HitTypes"/>, only a hit of
     /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%). With
     /// <paramref name="StackLossLogId"/>, a hit is proof only when that debuff on the hit's enemy loses a stack in the
     /// same server frame (<paramref name="StackLoss"/> true) or does not (false). With <paramref name="ReservesHit"/>, the
@@ -50,7 +51,8 @@ public static class ProcEvidence
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, double FollowingSlackSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
-        double ResourceRegenPerSecond = 0.0, IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
+        Func<Hero, SimTime, double>? ResourceRegen = null, Func<Hero, int, double>? ResourceSpent = null, int ResourceGainsAtOnce = 1,
+        IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
         bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false, bool AnyEnemy = false, double QuietBeforeSeconds = 0.0);
 
     public static readonly Evidence[] All =
@@ -134,8 +136,12 @@ public static class ProcEvidence
             FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
 
         // Mara
-        // 10 Energy at once (Fc8v6yWxD14GQMnV fight 19: 172 jumps of 8-12 Energy right after a poison hit, regeneration aside).
-        new(VenomousDelight.ProcKey, 0, Resource: Mara.Energy, ResourceGain: VenomousDelight.EnergyGained, ResourceRegenPerSecond: 25),
+        // 10 Energy at once. Between neighbouring readings up to 1.5s apart in the 23 Mara fights of data/fights, regeneration
+        // and a cast's cost aside, 5,940 jumps are 8 to 12 with the talent and none without it, 216 are 18 to 22 (13 with no
+        // talent), and 17 are 28 to 32 (25 with no talent), so one jump is proof of two procs at most.
+        new(VenomousDelight.ProcKey, 0, Resource: Mara.Energy, ResourceGain: VenomousDelight.EnergyGained,
+            ResourceRegen: (hero, now) => ((Mara)hero).EnergyRate(now), ResourceSpent: (hero, abilityId) => ((Mara)hero).EnergySpentBy(abilityId),
+            ResourceGainsAtOnce: 2),
         new(CausticWounds.ProcKey, LogIds.Effect(CausticPoison.EffectId)),
         new(Hemotoxin.ProcKey, LogIds.Effect(Hemotoxin.PoisonEffectId), StackJump: 1),
         // The spill's first tick comes 1.5s (hasted) after the proc.

@@ -21,6 +21,8 @@ public class WidowsBite : MaraAbility
     /// <summary>Widow's Bite hit an enemy (Hemotoxin).</summary>
     public event Action<SimulationContext, EnemyTarget>? Struck;
 
+    public override double NetEnergyCost => EnergyCost - EnergyGained;
+
     public WidowsBite(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
     {
         BaseCoefficient = RightHandCoefficient;

@@ -376,6 +376,9 @@ public abstract class Hero : Actor
     /// <summary>Starts what runs for the whole fight on its own for one hero (Mara: Energy regeneration).</summary>
     protected virtual void OnFightBegins(SimulationContext ctx) { }
 
+    /// <summary>Adds what a resource regenerated since its last event, up to <paramref name="now"/> (Mara: Energy).</summary>
+    public virtual void RegenerateResources(SimTime now) { }
+
     /// <summary>The resources this hero has (declared with <see cref="AddResource"/> in <see cref="Initialize"/>).</summary>
     public List<ResourceDef> ResourceDefs { get; } = new();
 

@@ -128,6 +128,7 @@ public sealed class ReplayDriver
                 _verifier.CurrentStep = step;
                 if (!FreeDice)
                 {
+                    _hero.RegenerateResources(_ctx.CurrentTime);
                     _verifier.CheckState(_ctx, step, cmd);
                     SyncToLog(step);
                 }
@@ -552,6 +553,7 @@ public sealed class ReplayDriver
         var resource = logged.Resource;
         _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(from, first.Time - 0.001)), c =>
         {
+            _hero.RegenerateResources(c.CurrentTime);
             var state = _hero.Resources.Get(resource);
             state.Current = Math.Min(state.Max, value);
         }, $"{resource.Name} from the log");

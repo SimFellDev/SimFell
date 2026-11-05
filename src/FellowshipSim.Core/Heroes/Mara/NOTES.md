@@ -158,14 +158,46 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   to 1.70s at 827.5 to 834.3.
 ## Resources
 
-- **Energy:** 200 at most, full at the start. It regenerates at about 15 per second raised by Haste (17.3 per second with no
-  buff at 13% Haste), times 1.2 with Predator's Rush and 1.2 with Maiden of Death.
+- **Energy:** 200 at most, full at the start. It regenerates at 15 per second x (1 + Haste), times 1.2 with Predator's Rush and
+  1.2 with Maiden of Death. Between neighbouring log readings in the 23 Mara fights of `data/fights`, log over this rate has a
+  median of 0.997 to 0.999 in all four buff states, over 11,258 pairs. In the game data (build 26320967), `GA_Mara_Passive_EnergyManager`
+  has a looping timer (TickAsync, offset 1899, 0x14511CE40) of `Mara.Energy.GainInterval` 0.01s / Haste, / 1.2 with Predator's Rush.
+  Each tick gains `Mara.Energy.GainAmount` 0.15 through `MaraUtils_GainEnergy`, which multiplies it by 1.2 with Maiden of Death
+  (offsets 232 to 507). The timer fires as many ticks as fit in a frame (FTimerManager::Tick 0x144058163 to 0x1440583B0).
+  Regeneration has `IsPassiveRegen`, so it does not log.
+- **Energy gains and Maiden of Death:** Hemorrhage's ticks and Efficient Killer go through `MaraUtils_GainEnergy`, so Maiden of Death
+  multiplies them. Widow's Bite (offset 586), Venomous Delight (`HeroUtils_ModifyResource`, offset 729) and a Spirit Refund's Energy
+  (`HeroUtils_ModifyResourceDelayed`, 0.2s, offset 1207) do not go through it.
+- **Energy at a change of Haste or Predator's Rush:** the change restarts the regeneration timer, and one server frame of
+  regeneration is lost. `GA_Mara_Passive_EnergyManager` watches Haste (offset 856) and the Predator's Rush tag (offset 2284). Either
+  ends the timer (offset 691) and starts a new one after `DelayUntilNextTick` (offset 732), TickAtStart false, so the frame and the
+  old timer's remainder are lost, and a second change in that frame finds no watcher. Maiden of Death has no watcher. The size is a log pattern: the remainder and the order of the timer and latent ticks in a frame have
+  no decoded value. Over the 8 players with no Venomous Delight (3M2vWr8taxVfTQFY fight 53, b649dhNptyW132Tm fight 5, gd6ByNrf81jc9aWw
+  fight 3, mThk4v1f8WGbBd7Q fight 1, p8VJDcBdxa7ghqG3 fight 124, T2qLPpmMkrAtJ9B1 fight 18, v8rhNxVc3PwDqzBA fight 4 player 28,
+  w7khnMKAa4TxXrmC fight 23), with no frame lost, log minus engine Energy moves 0.035 per second over 4,666s with no change, -0.64 at
+  a Haste drop (478 steps), -0.85 at a Haste rise (383), -0.63 and -0.79 at a Predator's Rush change (59 and 38): 0.02s to 0.04s of
+  regeneration at rates of 15 to 30 per second. A step with Maiden of Death alone moves +0.22 as it ends (235) and +0.01 as it comes
+  (101). With the frame, those steps move +0.17, +0.08, -0.02 and -0.07, and +0.20 and +0.04 for Maiden of Death. A step with one
+  source of Haste changed moves -0.10 and +0.09 for The Philosopher (598 and 449 steps), -0.05 and +0.01 for Inspired Allegiance (175
+  and 187), and -0.14 and +0.09 for Spirit of Heroism (97 and 51). T2qLPpmMkrAtJ9B1 fight 18 @ 748.881: The Philosopher and Maiden of
+  Death come, and log minus engine goes from 0.13 to -0.86 by 749.152 with no frame. 3M2vWr8taxVfTQFY fight 53 @ 143.227 to 144.530:
+  Maiden of Death and a Haste change leave it at 0.53 and 0.47 with the frame. A Trait : Focused Haste or Inspired Allegiance change
+  of the engine's with no log event restarts the engine's timer alone: Focused Haste has 986 engine changes against 342 log events in
+  3M2vWr8taxVfTQFY fight 53 and 761 against 244 in Prvc4XmbdHBaVRKy fight 12, and Inspired Allegiance 944 against 103 over the 23 fights.
 - **Spirit Refund:** a finisher's refund gives back its Combo Points and its Energy (fight 19 @ 25.691: 6 Combo Points
   and 40 Energy), and 1 Spirit Point.
 - **Deadly Scheme:** a stack per 5 Energy spent; the stacks past 40 carry over, and while it is active the stacks keep
   counting without the buff. The log shows 1 stack as the buff comes back, until the next stack.
 - **Venomous Delight:** a proc is a 10 Energy jump right after a poison hit (172 jumps of 8 to 12 in fight 19). A proc
-  at full Energy shows nothing.
+  at full Energy shows nothing. With the rate above, the jumps between neighbouring readings up to 1.5s apart in the 23 Mara fights
+  of `data/fights` are 5,940 of 8 to 12 with the talent and none without it, and 216 of 18 to 22 (13 without it), two procs in
+  one jump. A reading at a cast is before its cost, and 245 of the jumps fall at readings 0.5s to 1.5s apart: not every damage
+  event has a reading. A replay proves a proc from these rises with a cast's cost counted back, at the rate at the roll, and a
+  rise from a cast's reading after that cast, since the replay checks Energy at the cast's reading: 5,086 procs proved of 9,383
+  expected became 7,209. In the game data (build 26320967), `GA_Mara_Passive_PosionDamage_Monitor` rolls on every damage event with
+  `EffectType.Poison` or `EffectType.Magic.Poison`, Vexira's Venom too, with no internal cooldown and no delay. The roll is
+  `ControlledRandomBool` (0x1452C6800), one sequence per stream: A = A x T[10] 0.984358 at each roll, reset at a success, so the k-th
+  roll after a success has 1 - 0.984358^k and the rolls per success average 10. The engine's sims roll a plain 10%.
 - **Malevolence:** a finisher uses one stack of its own buff, then grants the other.
 
 ## Not yet explained
@@ -219,7 +251,12 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Volatile Poison refresh in the frame after its duration:** a refresh up to 0.003s after the duration ran out keeps the ticks
   (3M2vWr8taxVfTQFY fight 53 @ 546.738: duration left -0.003s, a tick 0.370s later). The engine's period timer is off by then, so 118
   log ticks after a refresh with 0.05s or less left have no engine tick.
-- **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
+- **Energy gains with no proof:** 679 `Energy too low` and 33 `Energy too high` rows remain over the 23 Mara fights of `data/fights`,
+  212 of the cast steps at +10 from the step before. A Spirit Refund and a proc in one rise stay unproved: 54 rises of 48 to 57 above
+  regeneration with the talent and none without it (Fc8v6yWxD14GQMnV fight 19 @ 623.634 to 623.706: 49.92, Prvc4XmbdHBaVRKy fight 12 @
+  25.885 to 26.085: 55.10). In T2qLPpmMkrAtJ9B1 fight 18 the Energy finding has 25 issues (19 low, 6 high), net +46.95 of gross 88.47,
+  Attack +24.08 over 14 steps. Sources checked: the rises in `LogOutcomeSource`, `GA_Mara_Passive_PosionDamage_Monitor` offsets 487 to
+  729, and `GA_Mara_Passive_SpiritProcHandler`'s 0.2s delay.- **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
 
