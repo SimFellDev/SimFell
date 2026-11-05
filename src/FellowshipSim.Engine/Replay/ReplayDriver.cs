@@ -36,7 +36,8 @@ public sealed class ReplayDriver
         // Free dice matches no log hits.
         _ledger = new HitLedger(_options.FreeDiceSeed.HasValue ? [] : script.Observations.Damage);
         // The log's aura states, for the state checks (free dice makes none).
-        var logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
+        var logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero),
+            logId => hero.Auras.Active(_ctx.CurrentTime).FirstOrDefault(a => a.LogId == logId)?.Stacks ?? 0);
         _verifier = new ReplayVerifier(script, _options, hero, logAuras);
         _oracle = new LogOutcomeSource(script, _options, _ledger, _verifier);
         _ctx.Outcomes = _options.FreeDiceSeed is { } seed
@@ -767,9 +768,14 @@ public sealed class LogAuraTimeline
     private readonly HashSet<int> _tracked;
     private readonly Dictionary<int, string> _names = new();
 
-    public LogAuraTimeline(IEnumerable<LogAura> playerAuraEvents, IEnumerable<int> modeledLogIds)
+    /// <param name="engineStacks">
+    /// The engine's stacks of an aura by log ID. The log has no number for the stacks of an inhibited effect's return
+    /// (<see cref="InhibitedAuras.StackNotLogged"/>), so until its next number the state reads as the engine's.
+    /// </param>
+    public LogAuraTimeline(IEnumerable<LogAura> playerAuraEvents, IEnumerable<int> modeledLogIds, Func<int, int> engineStacks)
     {
-        _events = playerAuraEvents.OrderBy(e => e.Time).ToList();
+        _engineStacks = engineStacks;
+        _events = InhibitedAuras.Read(playerAuraEvents.OrderBy(e => e.Time).ToList());
         _tracked = modeledLogIds.ToHashSet();
         foreach (var e in _events)
         {
@@ -779,6 +785,7 @@ public sealed class LogAuraTimeline
     }
 
     private readonly Dictionary<int, int> _initial = new();
+    private readonly Func<int, int> _engineStacks;
 
     public bool IsTracked(int logId) => logId > 0 && _tracked.Contains(logId);
 
@@ -804,7 +811,7 @@ public sealed class LogAuraTimeline
             switch (e.Type)
             {
                 case "applybuff" or "applydebuff" or "applybuffstack" or "applydebuffstack" or "removebuffstack" or "removedebuffstack":
-                    stacks[e.AbilityId] = e.Stack ?? 1;
+                    stacks[e.AbilityId] = e.Stack == InhibitedAuras.StackNotLogged ? _engineStacks(e.AbilityId) : e.Stack ?? 1;
                     break;
                 case "refreshbuff" or "refreshdebuff":
                     if (stacks.GetValueOrDefault(e.AbilityId) == 0) stacks[e.AbilityId] = e.Stack ?? 1;

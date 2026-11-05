@@ -8,6 +8,11 @@ namespace FellowshipSim.Core.Heroes.Mara.Talents;
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19, 176 activations): the stacks past 40 carry over; while it is active the
 /// stacks keep counting without the buff, and come back as the finisher uses it up (@ 25.692: 37 stacks, a 40 Energy
 /// Queen's Fang activates it with 5 over; a 45 Energy Arachnid Assault uses it up with 14 stacks).
+/// Effect 2434 is off while Active is on (asset `GE_Mara_Talent_ResourceAttackSpenderCritChance_Stacker`,
+/// `OngoingTagRequirements` IgnoreTags `CustomGrantedTags.Mara.Talent.ResourceAttackSpenderCritChance.Proc`) and keeps its
+/// stack count: the count a spend set, or 40 with no spend during Active. `GA_Mara_Passive_Talent_ResourceAttackSpenderCritChance`
+/// sets it with `SetGameplayEffectStackCount` (offset 3094), and no node runs as Active runs out (T2qLPpmMkrAtJ9B1 fight 18
+/// @ 544.776: the buff back at 40, and the next spend shows the count, 15).
 /// </summary>
 public class DeadlyScheme : Talent
 {
@@ -40,7 +45,11 @@ public class DeadlyScheme : Talent
                 _fight = ctx;
             }
             _energy += amount;
-            if (hero.Auras.HasAura(Active, now)) return;
+            if (hero.Auras.HasAura(Active, now))
+            {
+                _spentWhileActive = true;
+                return;
+            }
             Show(hero, now);
         };
         hero.OnCastResolving += cast =>
@@ -58,11 +67,32 @@ public class DeadlyScheme : Talent
         {
             if (_changing) return;
             if (aura.Def.Key == Stacks.Key || (aura.Def.Key == Active.Key && at < aura.ExpiresAt)) _energy = 0;
+            else if (aura.Def.Key == Active.Key && HeldStacks > 0)
+            {
+                _changing = true;
+                hero.Auras.Apply(Stacks, at, setStacks: HeldStacks);
+                _changing = false;
+            }
+        };
+        // The stack count is the count (`Update Stacks`, `GA_Mara_Passive_Talent_ResourceAttackSpenderCritChance` offset 2961):
+        // stacks given from outside set it (combat logs, GXFz3pZ94aQr2chV fight 3 @ 1.036: the first spend shows 14 for a 35
+        // Energy cost, 7 stacks held from before the fight).
+        hero.Auras.OnGained += (aura, _, _) =>
+        {
+            if (_changing || aura.Def.Key != Stacks.Key) return;
+            _fight = hero.SimContext;
+            _energy = aura.Stacks * EnergyPerStack + _energy % EnergyPerStack;
         };
     }
 
     /// <summary>The talent itself is changing the buffs.</summary>
     private bool _changing;
+
+    /// <summary>A spend came during Deadly Scheme: Active.</summary>
+    private bool _spentWhileActive;
+
+    /// <summary>Effect 2434's stack count as Active ends: 40 until a spend sets it to the count.</summary>
+    private int HeldStacks => _spentWhileActive ? (int)(_energy / EnergyPerStack) : StacksToActivate;
 
     /// <summary>Shows the stacks counted; at 40 they activate Deadly Scheme and the rest carry over.</summary>
     private void Show(Hero hero, SimTime now)
@@ -71,12 +101,16 @@ public class DeadlyScheme : Talent
         if (stacks >= StacksToActivate)
         {
             _energy -= StacksToActivate * EnergyPerStack;
+            _spentWhileActive = false;
             _changing = true;
             hero.Auras.Remove(Stacks, now);
             _changing = false;
             hero.Auras.Apply(Active, now);
             return;
         }
-        if (stacks > 0) hero.Auras.Apply(Stacks, now, setStacks: stacks);
+        if (stacks == 0) return;
+        _changing = true;
+        hero.Auras.Apply(Stacks, now, setStacks: stacks);
+        _changing = false;
     }
 }

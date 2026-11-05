@@ -83,8 +83,10 @@ public abstract class MaraAbility : Ability
     /// `Event.Damage` calls `BFL_Mara_Utils.MaraUtils_GainComboPoints` (`GA_Mara_AoeAttackBuilder` offsets 1908 to 2302), so a
     /// cast with no hit generates none: combat logs have 33 Skittering Blades with no hit over the 8,255 generator casts in 23
     /// Mara fights, 7 of them inside Maiden of Death, and every one leaves Combo Points unchanged (T2qLPpmMkrAtJ9B1 fight 18 @
-    /// 1139.361, xkGbdm8aNDwTcgjF fight 17 @ 289.281). A hit in the cast's server frame reads the frame's Maiden of Death:
-    /// v8rhNxVc3PwDqzBA fight 4 player 28 @ 183.304 has the hit 1ms and the buff's end 4ms after the cast, and 6 Combo Points.
+    /// 1139.361, xkGbdm8aNDwTcgjF fight 17 @ 289.281). The hit reads Maiden of Death in the cast's server frame:
+    /// `BP_FellowshipApplyGameplayEffect` applies at once (binary 0x1450DF9C0; `VisualDelay` stamps the effect context for the
+    /// client alone), and v8rhNxVc3PwDqzBA fight 4 player 28 @ 183.304 has the hit 1ms and the buff's end 4ms after the cast,
+    /// and 6 Combo Points.
     /// </summary>
     protected void GenerateComboPoints(SimulationContext ctx, double points, EnemyTarget? from) =>
         Mara.GainComboPoints(_maidenAtCast ? MaidenOfDeath.ComboPointsPerGenerator : points, ctx, from);

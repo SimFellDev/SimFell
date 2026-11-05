@@ -216,8 +216,18 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   in [0, MaxSpiritPoints] (0x1450F0DB5), as `Hero.AddToResource` does, and a creature with no row has value 0 (0x14503C7EE), as
   `SimulationContext.GetOrSpawnEnemy` and `EnemyGroup.Spirit` do. Over the 23 fights the replay's
   `Spirit too high` goes from 404 to 71 issues, with 35 `Spirit too low`. T2qLPpmMkrAtJ9B1 fight 18 goes from 25 issues to 3.
-- **Deadly Scheme:** a stack per 5 Energy spent; the stacks past 40 carry over, and while it is active the stacks keep
-  counting without the buff. The log shows 1 stack as the buff comes back, until the next stack.
+- **Deadly Scheme:** a stack per 5 Energy spent, and the stacks past 40 carry over. `GA_Mara_Passive_Talent_ResourceAttackSpenderCritChance`
+  keeps the count in its own variables and sets it on effect 2434 at each spend (offset 3094), Active or not. Effect 2434 is off while
+  effect 2068 is on (`OngoingTagRequirements` IgnoreTags on the tag of 2068) and holds its stack count, clamped at 40: no logged stack is
+  above 40 in the 23 Mara fights, and T2qLPpmMkrAtJ9B1 fight 18 goes 39, 48 past the clamp, then 15 @ 548.345 for 8 carried and 7. The
+  log shows the effect's switch as `removebuff` and `applybuff`. Under Active a falling count logs `refreshbuff` with no number, a rising
+  count `applybuffstack` (fight 18 @ 36.846, then 21 @ 37.881, 12 + 9 stacks), and the `applybuff` at the end has no number after a spend:
+  3,335 of the 3,341 uses and 8 of the 20 run-outs in the 23 fights. A number-less `applybuff` is no reading of 1. `InhibitedAuras` reads these events:
+  the buff is off under Active, comes back with the last number, and a return with none reads as the engine's until the next number.
+  With no spend during Active, the run-out brings it back at 40 (12 of 20, fight 18 @ 544.776), and the next spend shows the count.
+  The stacks given to the hero set the count: GXFz3pZ94aQr2chV fight 3 starts with 7 stacks held, its first spend showing 14 for a 35
+  Energy cost, and a replay's sync brings the count level. Over the 23 fights `Deadly Scheme` goes from 4,972 issues to 1, that fight's
+  first check.
 - **Venomous Delight:** a proc is a 10 Energy jump right after a poison hit (172 jumps of 8 to 12 in fight 19). A proc
   at full Energy shows nothing. With the rate above, the jumps between neighbouring readings up to 1.5s apart in the 23 Mara fights
   of `data/fights` are 5,940 of 8 to 12 with the talent and none without it, and 216 of 18 to 22 (13 without it), two procs in
@@ -240,7 +250,12 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   Bite 31ms after the removal gains 5, no refill (T2qLPpmMkrAtJ9B1 fight 18 @ 335.423), and log ID 1001714 has no event in the
   two fights checked (T2qLPpmMkrAtJ9B1 fight 18, xkGbdm8aNDwTcgjF fight 17). Sources checked: effect 2194's duration 10, the asset
   `GE_Mara_Talent_ChargedResourceRefillSelfBuff_IncreasedDamage_Buff` (`HasDuration`, no period, no field for expiry timing),
-  `DefaultEngine.ini` (no tick rate setting). The binary's expiry processing is unread.
+  `DefaultEngine.ini` (no tick rate setting), and the binary (build 26320967): the effect's duration timer calls `CheckDuration`
+  0x144A6FAB0 from `FTimerManager::Tick`, on the first Tick past the expiry, so the removal is at the frame boundary after the 10s.
+  The refill's query 0x14523B630 matches child tags, so effect 1714 counts as 2194 does, and `EffectDelay` 0.35 delays no
+  application. `UWorld::Tick` 0x143B79680 dispatches a client's RPCs (0x143B797DC) before `FTimerManager::Tick` (0x143B7A097), so a
+  generator activated in the frame of the expiry reads the buff as present. The engine has no server frame grid and ends the buff
+  at the mean lag, and no tick rate has a source: the client binary and its config state none.
 - **Spirit Points in two fights:** 50 of the 106 Spirit issues over the 23 Mara fights of `data/fights` are in two fights.
   Fc8v6yWxD14GQMnV fight 19 has 24 `Spirit too high`, net -78.91, around Emissary of the Shadow Lord (value 400): @ 283.401 the engine has
   66.05 and the log 59. gd6ByNrf81jc9aWw fight 3 has 23 `Spirit too low`, net +84.68, with rises of 2 or 3 every 0.5s for 2s (@ 58.117 to
