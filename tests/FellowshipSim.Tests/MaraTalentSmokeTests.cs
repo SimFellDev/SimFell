@@ -29,7 +29,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         actions+=/stealth_skittering_blades,if=active_enemies>=3
         actions+=/widows_bite,if=buff.brooding_shadows.up
         actions+=/stealth_backstab
-        actions+=/hemorrhaging_strike,if=combo_points>=6&(active_enemies<3|buff.maiden_of_death.up)
+        actions+=/hemorrhaging_strike,if=combo_points>=6&dot.hemorrhage.refreshable&(active_enemies<3|buff.maiden_of_death.up)
         actions+=/arachnid_assault,if=combo_points>=6&active_enemies>=3
         actions+=/queens_fang,if=combo_points>=6
         actions+=/widows_bite,if=energy<170
@@ -45,8 +45,8 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     ];
 
     [Theory]
-    // Red Ledger's few % of crit chance is lost in the crit rolls of 10 fights.
-    [InlineData(RedLedger.TalentId, "more:dps", 1, 1, 50)]
+    // Red Ledger's few % of crit chance is lost in the crit rolls of 50 fights.
+    [InlineData(RedLedger.TalentId, "more:dps", 1, 1, 200)]
     [InlineData(CorrosiveSpill.TalentId, "damage:Corrosive Spill")]
     [InlineData(AssassinsGuile.TalentId, "aura:Assassin's Guile")]
     [InlineData(Bloodrush.TalentId, "more:damage:Hemorrhage")]
@@ -284,6 +284,26 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         stealth.Execute(ctx, target);
         Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
         Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
+    }
+
+    /// <summary>T2qLPpmMkrAtJ9B1 fight 18 @ 1062.844 and 1063.878: two casts one global cooldown apart.</summary>
+    [Fact]
+    public void Hemorrhaging_Strike_Has_No_Cooldown()
+    {
+        var hero = (Mara)HeroImporter.Import(new CharacterBuild { Hero = "Mara", PrimaryStat = 1000 });
+        var ctx = new SimulationContext(hero);
+        hero.ResetForIteration();
+        hero.BeginFight(ctx);
+        var enemy = ctx.AddEnemy(100, 1, "Dummy", 1e12);
+        hero.CurrentTarget = enemy;
+        var strike = hero.GetAbility<HemorrhagingStrike>()!;
+
+        hero.GainComboPoints(6, ctx);
+        Assert.True(ctx.BeginCast(hero, strike, enemy).Succeeded);
+        ctx.RunUntil(ctx.CurrentTime + SimTime.FromSeconds(1.034));
+        hero.GainComboPoints(6, ctx);
+
+        Assert.True(ctx.BeginCast(hero, strike, enemy).Succeeded);
     }
 
     [Fact]

@@ -80,7 +80,8 @@ public class MonteCarloSeedTests
     /// left Heavy Strike out. Rime's, Ardeos's, Mara's and Tariq's again for the engine fixes of the functional tests branch
     /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
     /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers. The rows
-    /// with a Spirit Refund past 20s of Rising Spirit again once its duration stopped at 20s.
+    /// with a Spirit Refund past 20s of Rising Spirit again once its duration stopped at 20s. Mara's 3-target row again once
+    /// Hemorrhaging Strike had no cooldown.
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 2886896.5396548128, 3140791.71285178, 2661851.3885713113, 2817501.4722939902 })]
@@ -89,7 +90,7 @@ public class MonteCarloSeedTests
     [InlineData("Ardeos", 300, 1, new[] { 4880401.459850469, 4756376.690589438, 4909095.667185546, 4970616.393990371 })]
     [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
     [InlineData("Gunde", 300, 1, new[] { 7549389.792077887, 7756467.6351271225, 7099551.352428161, 7482946.363244693 })]
-    [InlineData("Mara", 120, 3, new[] { 2389169.1310920333, 2503142.7810848616, 2033183.6552544837, 2570996.255008929 })]
+    [InlineData("Mara", 120, 3, new[] { 2327297.3009151565, 2136945.3009689823, 2350089.806487434, 2248342.7922929917 })]
     [InlineData("Mara", 300, 1, new[] { 4731897.343944825, 6314891.69350536, 5046014.224090264, 5206802.756799455 })]
     [InlineData("Tariq", 120, 3, new[] { 1745218.5575917773, 2328126.319739133, 1978643.208110513, 2032778.326228643 })]
     [InlineData("Tariq", 300, 1, new[] { 3579469.9825650672, 3818359.0767493173, 3358372.535505664, 3295629.6778827147 })]

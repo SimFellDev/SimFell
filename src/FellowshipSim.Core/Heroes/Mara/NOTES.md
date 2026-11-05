@@ -117,6 +117,16 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   Final Stratagem's reset removes every stack, so both charges return (exe 0x1452D62C0). The 0.4s `Hero.AbilitySpamProtectionCooldown.Default.Duration` row sits
   under the shortest gap, 0.734s (zgxBpVKw2m71cDdk fight 5 @ 353.947). None of the 23 fights has Nightstalker (effect 2189),
   and no talent class of the engine grants it.
+- **Hemorrhaging Strike:** no cooldown. The 1s global cooldown limits a recast, and Combo Points and 20 Energy are its other needs.
+  In the game data (build 26320967), `GA_Mara_BleedAttackSpender/defaults.json` has `CooldownDuration` with the row
+  `Mara.BleedAttackSpender.Cooldown` and no `Value`, table or registry, and no `CooldownEffectBaseClass`. Constructor 0x1450D7D60 gives
+  them `Value` 0 and null, evaluator 0x144AA85B0 returns that `Value` with the row's 2 unread, and `ApplyCooldown` 0x1450D9990 makes no
+  spec. The export's `cooldown` 2 is that row, read by name. `FellowshipCommitHeroAbility` 0x1450E0060 still applies the global cooldown
+  and `GE_Hero_Shared_PaddingCooldown`, 0.3s (`Hero.AbilityPaddingCooldown.Default.Duration`) from `GEC_HasteMagnitude`. The engine models
+  padding for Brooding Shadows alone, and 0.3s sits under the global cooldown. T2qLPpmMkrAtJ9B1 fight 18 @ 1062.844 and 1063.878: 1.034s
+  apart on Noor, The Betrayer, a hit each (4,146 crit, 2,326 normal), the second spending the 5 Combo Points of the first's Spirit Refund.
+  Of the 228 gaps between casts in the 23 Mara fights of `data/fights`, 2 are under 2s (also Fc8v6yWxD14GQMnV fight 19 @ 321.816, 1.934s),
+  5 at 2s to 3s, 3 at 3s to 4s and 218 at 5s or more, with no Final Stratagem cast in any fight.
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.
@@ -290,7 +300,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   fight 8 @ 82.187 (spike on 87.2, Amethyst Splinter on 87.5 first in the engine), @ 946.407 and @ 1141.426; d1LvbCpBWXRM8Hcm fight 14 @ 244.791.
   At `t` 0 the game's chance is 0 after the stream's first proc and `R / 8` before it, a floor `RealPpm` lacks: 2 of the 40 are a
   fight's first spike (dBgbn8wD1RxL7Kma fight 9 @ 14.965, v8rhNxVc3PwDqzBA fight 4 @ 12.026). Sources checked: `GA_Trait_GemTargetedSpikeProc`,
-  `RollProcPerMinute` 0x1452CBD20 (settings `procPerMinuteRoll`). The time source of its `t` in one frame is unread.
+  `RollProcPerMinute` 0x1452CBD20 (settings `procPerMinuteRoll`). Its `t` is the frame's world time (0x143A19920), so a later roll of a frame
+  has `t` 0 and only the frame's first roll procs after the first proc. The engine's first roll of a millisecond is on another enemy
+  in these 38, and the log has no field for the game's order within a frame beyond its rows.
 
 - **A generator in Maiden of Death's last frame:** 5 `Combo Points too low` issues over the 23 Mara fights, one each: a generator
   cast 10.017 to 10.023s after the buff's application and 1 to 3ms before its removal gets the full refill in the log, and the
@@ -391,19 +403,6 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Volatile Poison with no eruption:** 3 removals at the duration's end have no eruption and no death within 0.2s (HgamNcX24tJ3qVQA
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
-- **Hemorrhaging Strike inside its cooldown:** 1 of the 228 gaps between casts in the 23 Mara fights of `data/fights`. T2qLPpmMkrAtJ9B1
-  fight 18 @ 1062.844 and 1063.878: 1.034s apart on Noor, The Betrayer, a hit each (4,146 crit, 2,326 normal), with 0.566s left on
-  the engine's cooldown. The first cast has a Spirit Refund, and the second spends the 5 Combo Points back. The other gaps are
-  1.934s or more, and the 1.934s gap (Fc8v6yWxD14GQMnV fight 19 @ 321.816) is outside the engine's cooldown. Of the 75 gaps after a
-  refund, this one alone is inside the cooldown, so a refund ending the cooldown has one occurrence. Mara has no aura event between
-  the casts that bears on a cooldown, and no Final Stratagem cast. Sources checked: `GA_Mara_BleedAttackSpender` (commit at ubergraph
-  offset 15, no branch on target, hit or tag), `GA_Mara_Passive_SpiritProcHandler`, `HeroUtils_ModifyResourceDelayed`,
-  `HeroUtils_RollForSpiritProc` and `GA_Shared_Passive_SpiritMechanic` (no cooldown node), effects 1724, 2068, 2163, 2164, 2195, 2430,
-  2431 and 2434, Noor's five named abilities, and Mara's Blueprint folder: Final Stratagem is the one reducer that reaches 1208, no
-  Mara graph removes `Cooldown.Mara.BleedAttackSpender`, and the one `Event.Heroes.SpiritProc` listener has no cooldown call. None of
-  the 23 fights has a Final Stratagem cast. The engine's 2s is `CooldownDuration`'s row `Mara.BleedAttackSpender.Cooldown`, and 1208
-  alone writes that field with no `Value` and no registry, with no `CooldownEffectBaseClass`, so the game's applied value is
-  unconfirmed: the native defaults are unread. Gaps by second: 2 under 2s, 5 at 2s to 3s, 3 at 3s to 4s, 218 at 5s or more.
 
 ## Not yet checked against a log
 
