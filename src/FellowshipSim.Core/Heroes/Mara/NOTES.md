@@ -40,6 +40,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   4.00s to 4.05s. The applybuff has duration 4000 in both, since The Tower raises the duration after it is applied.
   A cast rolls Hidden Power: 4 gains fall on a Shadow Ward cast with no other cast of Mara's within 60ms (Fc8v6yWxD14GQMnV
   fight 19 @ 571.657, p8VJDcBdxa7ghqG3 fight 124 @ 1041.55 and 1277.118, T2qLPpmMkrAtJ9B1 fight 18 @ 1290.901).
+- **Web Crack:** usable during the Global Cooldown, with no Energy cost and no damage, over 204 casts in the 23 Mara fights
+  of `data/fights`: 192 under 1s after another cast and 184 under 1s before the next. It keeps Stealth (2 casts in Stealth,
+  each keeping it), and Haste leaves its cooldown unchanged. Its 24s cooldown has the shortest gaps 17.066s
+  (v8rhNxVc3PwDqzBA fight 4 @ 440.448) and 17.235s (GXFz3pZ94aQr2chV fight 3 @ 156.206), on 24s x 0.78 / 1.1 = 17.02s. The
+  stun lasts 4s, 4.011s at the median of 202, and 18 of the 20 under 3.9s end as the enemy dies. A cast rolls Hidden Power:
+  4 gains fall on a Web Crack with no other cast of Mara's within 60ms (pWmcV42K39GHTLQX fight 23 @ 586.597 and 876.178,
+  T2qLPpmMkrAtJ9B1 fight 18 @ 147.822 and 813.535). No enemy begins a cast under a stun, over 202 stuns. Of 16 enemy casts
+  in progress at a stun, in 10 fights, none has an interrupt event and 14 have no finish, with no death (T2qLPpmMkrAtJ9B1
+  fight 18 @ 147.823, pWmcV42K39GHTLQX fight 23 @ 334.810).
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.
@@ -61,6 +70,19 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Venomous Delight:** a proc is a 10 Energy jump right after a poison hit (172 jumps of 8 to 12 in fight 19). A proc
   at full Energy shows nothing.
 - **Malevolence:** a finisher uses one stack of its own buff, then grants the other.
+
+## Not yet explained
+
+- **Web Crack on an enemy's cast:** the stun's effect 136 runs `CRCancelAbilitiesBlockedByThisEffectsParentExecution`, which
+  calls `CancelAbility` on an active ability with `AbilityType.Skill`, without `AbilityLogic.AtomicExecution`, and with an
+  `ActivationBlockedTag` the stun grants (exe 0x1451085F0 -> 0x1452D21A0). This path has no interrupt and no lockout. Enemy
+  ability 2315 finishes under the stun both times, 0.037s and 0.172s later (WcTBrQNX46m9axqP fight 7 @ 166.835 and 547.561),
+  and the other 14 casts in progress at a stun have no finish. Ability 2315 is a candidate for the exception to that rule,
+  unconfirmed: its tags are unread. The engine leaves an enemy's cast running under the stun.
+- **Web Crack with no stun:** 2 of 204 casts have no debuff (p8VJDcBdxa7ghqG3 fight 124 @ 448.011, w7khnMKAa4TxXrmC fight 23
+  @ 337.767), and 2 stuns end early with no death (Fc8v6yWxD14GQMnV fight 19 @ 197.864 at 2.798s, @ 1613.444 at 2.563s). Effect
+  1583 has no application tag requirements. Sources checked: `GA_Mara_StunSpender`, `GE_Mara_StunSpender_Stun` and
+  `GA_Passive_StatusEffect_Stun`.
 
 ## Not yet checked against a log
 

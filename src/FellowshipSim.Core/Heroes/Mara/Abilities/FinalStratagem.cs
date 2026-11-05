@@ -3,7 +3,9 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// <summary>
 /// Ability 1468: "Your Energy and Combo Points are instantly refilled and all your Hero Ability cooldowns are reset. Can
 /// be used during Global Cooldown." 180s cooldown. Macabre Stratagem replaces it (<see cref="MacabreStratagem"/>).
-/// UNVERIFIED: no combat log has it; the reset covers every ability of Mara's but this one and the Spirit ability.
+/// GA_Mara_ResetCooldownRefillResources offset 155 calls ReduceCooldownForAllAbilities (exe 0x1452417A0): it skips an ability
+/// with AbilityType.Skill.Secondary, AbilityType.Weapon, CustomAssetTags.Mara.ResetCooldownRefillResources, AbilityType.SetBonus
+/// or AbilityType.Trait in its AbilityTags or ParentTags, and leaves the global cooldown alone.
 /// </summary>
 public class FinalStratagem : MaraAbility
 {

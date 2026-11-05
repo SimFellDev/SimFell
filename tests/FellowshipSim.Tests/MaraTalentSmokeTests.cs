@@ -186,6 +186,29 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.InRange(gains[1] - gains[0], cooldown / hero.CooldownRate(hero.GetAbility<ShadowWard>()!, SimTime.Zero) - 0.01, cooldown + 1.5);
     }
 
+    [Fact]
+    public void Web_Crack_Stuns_For_Its_Duration_And_Waits_For_Its_Cooldown()
+    {
+        var hero = HeroImporter.Import(System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "mara_character.json")))!);
+        var casts = new List<double>();
+        var stunEnds = new List<double>();
+        hero.OnCastCompleted += (ability, target, now) =>
+        {
+            if (ability is not WebCrack) return;
+            casts.Add(now.TotalSeconds);
+            stunEnds.Add(target!.Auras.Active(now).Single(a => a.Def.Key == WebCrack.Stun.Key).ExpiresAt.TotalSeconds);
+        };
+
+        new MonteCarloSimulator(() => hero, AplParser.ParseScript("actions+=/web_crack\nactions+=/backstab"))
+            .Run(SimTime.FromSeconds(60), 1, 1, degreeOfParallelism: 1);
+
+        Assert.True(casts.Count >= 2, $"Web Crack was cast {casts.Count} times");
+        Assert.Equal(WebCrack.StunSeconds + AuraContainer.ExpiryLagSeconds, stunEnds[0] - casts[0], 2);
+        double cooldown = WebCrack.CooldownSeconds * (1.0 - hero.Stats.CooldownReductionPct);
+        Assert.InRange(casts[1] - casts[0], cooldown / hero.CooldownRate(hero.GetAbility<WebCrack>()!, SimTime.Zero) - 0.01, cooldown + 1.5);
+    }
+
     /// <summary>Gains of an "aura:" evidence, the DPS of a "damage:" one, the Energy gained ("energy") or the DPS ("dps").</summary>
     private static double Amount(MonteCarloResult result, Dictionary<string, int> gained, string evidence)
     {
