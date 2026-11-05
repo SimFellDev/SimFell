@@ -36,7 +36,19 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Volatile Poison:** each tick deals the 31.2% of Agility the tooltip gives for the whole poison; the eruption deals
   124.8%.
 - **Caustic Poison:** every hit is a grievous crit (its +100% crit chance on top of Mara's).
-- **Vexira's Venom:** a tick deals a third of the venom held; the shadowy clones' crits add none.
+- **Vexira's Venom:** the first crit gives ticks of 28% of it / 3. Crits and grievous crits count (`HitTypeIsCritical` exe
+  0x14523BFF0), and the shadowy clones' crits add none: `GA_Mara_Passive_Talent_AoeAttackSpender_DamageToPoisonDot` offsets 251
+  to 507 reject `CustomAssetTags.Mara.CopyCharacterDamage.Damage`, a dynamic asset tag in the event's `EffectAssetTags` (exe
+  0x144A76EA0). A crit on a running venom gives (tick x ticks in the time left + 28% of the crit) / ticks in 6s, where ticks in s
+  seconds, with the next tick r away and the last e ago, is 1 + (s - r) / 2 when s >= r and (s + e) / 2 when s < r, in unhasted 2s
+  ticks and the period timer's real time. In the game data (build 26320967), offset 1187 calls
+  `CrAddToAndRecalculatePeriodicEffect` (exe 0x14521C1D0), with this rule at 0x14521C6D8 to 0x14521C782. It moves the effect's
+  start times (0x144A83160) and sets the magnitude, leaves the period timer alone and applies nothing, so
+  `EffectLogic.CarryOverDuration` and its 0.3 limit (stacking re-applications alone, 0x1452D7CD0) give no carry-over, and the log has
+  no refreshdebuff for effect 2364 (8,371 applydebuff, all duration 6000). 98.0% of the 16,849 refreshes with one crit between two
+  ticks in the 19 Mara fights of `data/fights` with the venom are within 1% of this, and 99.4% within 3%, at 94.8% or more in each
+  fight. T2qLPpmMkrAtJ9B1 fight 18 @ 31.671: a 1,787 tick, 3.931s left, r 1.401s and a 15,061 crit give 2,506; enemy 8.2 in that
+  frame, a 2,023 tick and a 14,326 crit, gives 2,606. The ticks never crit (effect 2364's preset `Empty`).
 - **Blocked hits** (hit type 4; 40 in fight 19, Queen's Fang and auto attacks): the logged amount is what the block
   left, so a replay compares the engine's hit with the amount plus the blocked part.
 
@@ -98,7 +110,10 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Shadowy clones:** the first strikes 0.335s after the cast, the second 0.335s after the first is done; a clone's
   Arachnid Assault hits one enemy per server frame, in an order of its own (329 of 1,017 clone pairs in the same order).
 - **Vexira's Venom:** ticks every 2s shortened by Haste, with a partial tick as it runs out; a new crit restarts its 6
-  seconds and keeps the tick timing.
+  seconds and keeps the tick timing. The 6,304 removals after a tick in their frame are 6.01s to 6.03s after the last crit, and
+  the partial tick reads its progress on that frame. A tick follows the log's tick (`IOutcomeSource.TickAt`): with the
+  free-running timer 562 engine ticks had no log tick, and on the period timer of an effect tagged EffectType.Dot 226 have none.
+  Effect 2364 has `EffectType.Dot`, no `EffectLogic.TickrateNotAffectedByHaste` and no `EffectLogic.IgnorePartialTicks`.
 - **Amethyst Splinter:** ends with a partial tick 8s after the last crit, and the next crit starts a new rhythm. In the 23 Mara
   fights of `data/fights`, 583 of the 799 removals off a death are 7.9s to 8.1s after the last crit, and 569 of the 799 have a tick
   in their frame. T2qLPpmMkrAtJ9B1 fight 18 @ 53.144: a tick of 673 after ticks of 985, 1.17s after the last, with the removal
@@ -114,6 +129,14 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 - **Amethyst Splinter on Mara's death:** effect 101 has `EffectLogic.RemoveOnSourceDeath`. X82J6bGRNBracxLg fight 7: Mara dies at
   690.024 and the splinters leave at 690.026 with no partial tick, and ending them there took 249 engine-only ticks off the 23
   fights (646 to 397).
+- **Haste on a running Amethyst Splinter:** each Haste change of Mara's re-arms the running period with the fraction left carried
+  over, no tick and no partial tick, as `HastedTimer.Update` does. In the game data (build 26320967), the period is divided by the
+  instigator's Haste at application (0x144A6B413 to 0x1452D5C70), and the Haste attribute's change delegate reaches every live Dot
+  or Hot effect Mara applied (0x1452EFC60, 0x1452F2830, 0x1452F2A70) through the re-arm 0x1452DC7E0: new period = Period / Haste, first
+  delay = new period x remaining / old period. T2qLPpmMkrAtJ9B1 fight 18, enemy 6.1, applied at 22.886 and removed at 53.144: ticks
+  1.87s to 1.90s apart at 24.8 to 28.6, 1.70s to 1.74s at 30.4 to 39.0, 1.84s to 1.90s at 39.0 to 50.2. Prvc4XmbdHBaVRKy fight 12,
+  enemy 78.9, applied at 809.717 with no removal by 855: 1.67s to 1.70s at 811.5 to 818.2, 1.84s to 1.87s at 818.2 to 827.5, 1.67s
+  to 1.70s at 827.5 to 834.3.
 ## Resources
 
 - **Energy:** 200 at most, full at the start. It regenerates at about 15 per second raised by Haste (17.3 per second with no
@@ -158,14 +181,14 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   +46ms, 99% late). `HastedTimer` predicts from the tick before. Sources checked: `HastedTimer.Update`, and Vexira's Venom on
   the same enemies, whose log ticks fall behind the engine's in the same stretch (Prvc4XmbdHBaVRKy fight 12 @ 812 to 825: +0.03s
   to +0.17s).
-- **Amethyst Splinter's Haste on a running effect:** the binary (build 26320967) has the period divided by the instigator's Haste
-  once at application, with nothing re-reading it for a running effect (0x144A6B413 to 0x1452D5C70). The engine differs: with
-  `damageOverTime`, `BeginHasted` runs on `HastedTimer.StartPeriod`, ahead of the `retimeOnHasteChange` branch, and
-  `HastedTimer.Update` re-arms the period at each Haste change. The log's periods follow the change inside one application.
-  T2qLPpmMkrAtJ9B1 fight 18, enemy 6.1, applied at 22.886 and removed at 53.144: ticks 1.87s to 1.90s apart at 24.8 to 28.6, 1.70s
-  to 1.74s at 30.4 to 39.0, 1.84s to 1.90s at 39.0 to 50.2. Prvc4XmbdHBaVRKy fight 12, enemy 78.9, applied at 809.717 with no
-  removal by 855: 1.67s to 1.70s at 811.5 to 818.2, 1.84s to 1.87s at 818.2 to 827.5, 1.67s to 1.70s at 827.5 to 834.3. Sources
-  checked: `HastedTimer.Update`, the raw ticks, and the binary answer. No source gives what shortens a running effect's period.
+
+- **Vexira's Venom partial ticks:** the 6,256 matched partial ticks are 1.0128x the engine's in sum, 31.6% within 1%, against
+  0.9998x and 98.0% for the 59,139 full ticks. Sources checked: effect 2364's period and duration, and the removal times.
+- **Vexira's Venom crit in the frame after its 6 seconds:** 29 crits up to 0.03s after the 6 seconds, in 9 fights, refresh the
+  venom with no partial tick (T2qLPpmMkrAtJ9B1 fight 18 @ 68.775: a 7,370 tick and a 5,762 crit give 1,842, within 2.6% of the
+  rule above with a negative time left). The engine's period timer is off by then, so a new venom starts and the old one deals
+  its partial tick. Sources checked: `PeriodicEffect.BeginHasted`'s end events and `CrAddToAndRecalculatePeriodicEffect`
+  (exe 0x14521C1D0).
 
 ## Not yet checked against a log
 

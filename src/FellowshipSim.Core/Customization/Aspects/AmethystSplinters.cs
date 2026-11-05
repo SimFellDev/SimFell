@@ -12,8 +12,9 @@ namespace FellowshipSim.Core.Customization.Aspects;
 /// on the same effect; ticks keep their rhythm (`GA_Trait_GemDotHotOnCrit` offsets 493 to 1428, new value = (crit x share
 /// + left x value / 2) / 4; RefreshActiveEffectDuration 0x145241E40 resets the duration timer alone, and the next tick
 /// reads the new magnitude, 0x144A911F0, build 26320967). The period is divided by the instigator's Haste at application
-/// (0x144A6B413 to 0x1452D5C70); the timer here also re-arms on a Haste change, as the log's running splinters do (NOTES.md,
-/// "Not yet explained"). When the 8 seconds run out the splinter ends with a partial tick (CheckDuration 0x144A6FAB0), its
+/// (0x144A6B413 to 0x1452D5C70), and each Haste change of the hero re-arms a running splinter's period with the fraction left
+/// carried over, no tick and no partial tick (0x1452F2830, 0x1452F2A70, 0x1452DC7E0), as `HastedTimer.Update` does. When the 8
+/// seconds run out the splinter ends with a partial tick (CheckDuration 0x144A6FAB0), its
 /// factor elapsed / period, skipped under MinimumPartialTickTime 0.1 (`DefaultGame.ini`, 0x1452D4B70), and the next crit
 /// applies a new effect with a new period timer (`GA_Trait_GemDotHotOnCrit` offsets 1861 to 2201). Combat logs, 23 Mara
 /// fights: 569 of 799 removals not on a death have a tick in their frame, T2qLPpmMkrAtJ9B1 fight 18 @ 53.144: a tick of
