@@ -37,7 +37,6 @@ public class SkitteringBlades : MaraAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         Pay(ctx);
-        GenerateMaidenComboPoints(ctx, target);
         DealAoeDamage(ctx, EnemiesAround(ctx, target));
     }
 

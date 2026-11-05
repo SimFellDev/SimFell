@@ -96,11 +96,17 @@ public class ReplayOptions
     /// engine's, 0.235s at most. A shadowy clone's next sweep starts 0.334s after the last hit, and a clone's sweep skips a
     /// frame at times, so with 2.0s a clone's last hit took the next sweep's or the next cast's (3M2vWr8taxVfTQFY fight 53 @
     /// 172.949, T2qLPpmMkrAtJ9B1 fight 18 @ 182.831).
+    /// Mara's Skittering Blades does not travel: over its 46,053 log hits in 23 Mara fights, the latest lands 0.017s after
+    /// its cast. A cast with no hit (33 in those fights) took the next cast's hits, 1.03s later, with 2.0s
+    /// (T2qLPpmMkrAtJ9B1 fight 18 @ 1139.361). Any window from 0.017s to 1.03s keeps such a cast off them; 0.25s is
+    /// Arachnid Assault's window.
     /// </summary>
     public Dictionary<int, double> HitLateSecondsById { get; set; } = new()
     {
         [Core.Domain.LogIds.Effect(Core.Heroes.Tariq.Abilities.ChainLightning.DamageEffectId)] = 0.25,
         [Core.Heroes.Mara.Abilities.ArachnidAssault.AbilityId] = 0.25,
+        [Core.Heroes.Mara.Abilities.SkitteringBlades.AbilityId] = 0.25,
+        [Core.Heroes.Mara.Abilities.StealthSkitteringBlades.AbilityId] = 0.25,
     };
     /// <summary>How late a log hit with damage ID <paramref name="logId"/> may land after the engine hit.</summary>
     public double LateSecondsOf(int logId) => HitLateSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitLateSeconds;

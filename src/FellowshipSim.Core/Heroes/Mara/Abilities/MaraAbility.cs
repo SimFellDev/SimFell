@@ -56,6 +56,7 @@ public abstract class MaraAbility : Ability
     /// <summary>Pays the Energy cost and ends Stealth: the first thing every Mara ability's cast does.</summary>
     protected void Pay(SimulationContext ctx)
     {
+        _maidenAtCast = Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime);
         if (EnergyCost > 0) Mara.SpendEnergy(EnergyCost, ctx);
         if (!BreaksStealth || !Mara.IsStealthed(ctx.CurrentTime)) return;
         Mara.Auras.Remove(BroodingShadows.Stealth, ctx.CurrentTime);
@@ -77,20 +78,16 @@ public abstract class MaraAbility : Ability
     }
 
     /// <summary>
-    /// A generator's Combo Points: <paramref name="points"/>, or 6 for the whole cast while Maiden of Death is active
-    /// ("all combo point generating abilities generate 6 Combo Points").
+    /// A generator's Combo Points from a hit: <paramref name="points"/>, or a full refill when Maiden of Death is active at the
+    /// cast ("all combo point generating abilities generate 6 Combo Points"). Each generator's `EventReceived` callback on
+    /// `Event.Damage` calls `BFL_Mara_Utils.MaraUtils_GainComboPoints` (`GA_Mara_AoeAttackBuilder` offsets 1908 to 2302), so a
+    /// cast with no hit generates none: combat logs have 33 Skittering Blades with no hit over the 8,255 generator casts in 23
+    /// Mara fights, 7 of them inside Maiden of Death, and every one leaves Combo Points unchanged (T2qLPpmMkrAtJ9B1 fight 18 @
+    /// 1139.361, xkGbdm8aNDwTcgjF fight 17 @ 289.281). A hit in the cast's server frame reads the frame's Maiden of Death:
+    /// v8rhNxVc3PwDqzBA fight 4 player 28 @ 183.304 has the hit 1ms and the buff's end 4ms after the cast, and 6 Combo Points.
     /// </summary>
-    protected void GenerateComboPoints(SimulationContext ctx, double points, EnemyTarget? from)
-    {
-        if (Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime)) return;
-        Mara.GainComboPoints(points, ctx, from);
-    }
+    protected void GenerateComboPoints(SimulationContext ctx, double points, EnemyTarget? from) =>
+        Mara.GainComboPoints(_maidenAtCast ? MaidenOfDeath.ComboPointsPerGenerator : points, ctx, from);
 
-    /// <summary>Maiden of Death gives a generator's cast its 6 Combo Points at once.</summary>
-    protected bool GenerateMaidenComboPoints(SimulationContext ctx, EnemyTarget? from)
-    {
-        if (!Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime)) return false;
-        Mara.GainComboPoints(MaidenOfDeath.ComboPointsPerGenerator, ctx, from);
-        return true;
-    }
+    private bool _maidenAtCast;
 }

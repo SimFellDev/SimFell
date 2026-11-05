@@ -40,7 +40,6 @@ public class Backstab : MaraAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         Pay(ctx);
-        GenerateMaidenComboPoints(ctx, target);
         DealDamage(ctx, target, damageMultiplier: BehindMultiplier);
         Struck?.Invoke(ctx, target);
     }

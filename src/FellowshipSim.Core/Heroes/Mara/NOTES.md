@@ -186,6 +186,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   3M2vWr8taxVfTQFY fight 53 and 761 against 244 in Prvc4XmbdHBaVRKy fight 12, and Inspired Allegiance 944 against 103 over the 23 fights.
 - **Spirit Refund:** a finisher's refund gives back its Combo Points and its Energy (fight 19 @ 25.691: 6 Combo Points
   and 40 Energy), and 1 Spirit Point.
+- **Maiden of Death's Combo Points need a hit:** in the game data (build 26320967), each generator's `EventReceived` callback
+  on `Event.Damage` calls `BFL_Mara_Utils.MaraUtils_GainComboPoints`, which refills to `MaxResourcesSecond` with
+  `CustomAssetTags.Mara.ChargedResourceRefillSelfBuff` active (`GA_Mara_AoeAttackBuilder` offsets 1908 to 2302, the utility's
+  offset 133). Over the 8,255 generator casts in the 23 Mara fights, 33 have no hit, all
+  Skittering Blades, and each costs its Energy and leaves Combo Points unchanged. 7 of the 33 are inside Maiden of Death:
+  T2qLPpmMkrAtJ9B1 fight 18 @ 1139.361, 1264.047 and 1515.854, v8rhNxVc3PwDqzBA fight 4 player 28 @ 582.959 and 678.261,
+  xkGbdm8aNDwTcgjF fight 17 @ 289.281, xkGbdm8aNDwTcgjF fight 2 @ 220.343. Skittering Blades does not travel: its 46,053 log
+  hits land 0.017s after the cast at most. A hit reads Maiden of Death as it stood at the cast: v8rhNxVc3PwDqzBA fight 4
+  player 28 @ 183.304 has the hit 1ms and the buff's end 4ms after the cast, and 6 Combo Points.
 - **Spirit Points from health lost:** each player gains SpiritPointValue x the fraction of the enemy's health lost x 0.25, from the
   party's damage. In the game data (build 26320967), `GA_Shared_Passive_SpiritMechanic` offsets 626 to 888 compute SpiritPointValue x
   min(MaxHealth, |TotalHealthChange|) / MaxHealth x `Hero.SpiritPointGain.SpiritPointsFromDamageScaler` 0.25 on each `Event.Damage`
@@ -223,6 +232,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
 
 ## Not yet explained
 
+- **A generator in Maiden of Death's last frame:** 5 `Combo Points too low` issues over the 23 Mara fights, one each: a generator
+  cast 10.017 to 10.023s after the buff's application and 1 to 3ms before its removal gets the full refill in the log, and the
+  engine's buff has ended, at 10.0167s (`AuraContainer.ExpiryLagSeconds`). T2qLPpmMkrAtJ9B1 fight 18 @ 1389.776 (engine 4, log 6),
+  CwmX2Tb8GA6hyc1v fight 8 @ 1321.340 (1, 6), Prvc4XmbdHBaVRKy fight 12 @ 1259.330 (2, 6), gd6ByNrf81jc9aWw fight 3 @ 544.840 (5, 6),
+  zgxBpVKw2m71cDdk fight 5 @ 705.439 (5, 6). In 927 of the 937 buffs the removal is 10.002 to 10.043s after the application, mode 10.020. A Widow's
+  Bite 31ms after the removal gains 5, no refill (T2qLPpmMkrAtJ9B1 fight 18 @ 335.423), and log ID 1001714 has no event in the
+  two fights checked (T2qLPpmMkrAtJ9B1 fight 18, xkGbdm8aNDwTcgjF fight 17). Sources checked: effect 2194's duration 10, the asset
+  `GE_Mara_Talent_ChargedResourceRefillSelfBuff_IncreasedDamage_Buff` (`HasDuration`, no period, no field for expiry timing),
+  `DefaultEngine.ini` (no tick rate setting). The binary's expiry processing is unread.
 - **Spirit Points in two fights:** 50 of the 106 Spirit issues over the 23 Mara fights of `data/fights` are in two fights.
   Fc8v6yWxD14GQMnV fight 19 has 24 `Spirit too high`, net -78.91, around Emissary of the Shadow Lord (value 400): @ 283.401 the engine has
   66.05 and the log 59. gd6ByNrf81jc9aWw fight 3 has 23 `Spirit too low`, net +84.68, with rises of 2 or 3 every 0.5s for 2s (@ 58.117 to

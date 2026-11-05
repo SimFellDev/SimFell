@@ -40,7 +40,6 @@ public class WidowsBite : MaraAbility
         TriggerCooldown(ctx);
         Pay(ctx);
         Mara.GainEnergy(EnergyGained, ctx);
-        GenerateMaidenComboPoints(ctx, target);
         DealDamage(ctx, target);
         DealDamage(ctx, target, damageMultiplier: LeftHandCoefficient / RightHandCoefficient);
         Struck?.Invoke(ctx, target);
