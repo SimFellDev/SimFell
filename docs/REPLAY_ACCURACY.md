@@ -13,8 +13,8 @@ context:
 
 `<branch>` is `<hero>-accuracy-v<N>`, the name of both worktrees.
 
-`/replay-fix <Hero> [count]` works a hero's findings on the current branch: one `replay-finding-fixer` run per finding,
-each change kept when the findings comparison shows a gain on its own finding.
+`/replay-fix <findings.json>` works the findings of one downloaded review on the current branch: one
+`replay-finding-fixer` run per finding, each change kept when the measure shows a gain on its own finding.
 
 ## The measure
 
@@ -38,28 +38,19 @@ It reads the hero's ranking lists in the latest zone from rank 1 down, one encou
 started on or after the patch's release day, its report has the patch's log format, and its fight has a player of the
 hero. Its last lines give the fights found against the count asked for, and the candidates skipped by reason.
 
-## The findings documents
+## The findings document
 
-The findings of `ReplayFindings` are also JSON (`ReplayFindingsDocument`), for an agent working a finding. `/replay-fix`
-reads them.
-
-| File | Written by | Contents |
-| --- | --- | --- |
-| `data/accuracy/<Hero>/<label>.findings.json` | `HeroAccuracyTests` | every fight of the measure pooled, each finding's numbers per fight, and the comparison with an earlier label |
-| `data/reviews/<review>.findings.json` | every review, and `HeroAccuracyTests` for its fights | one fight: the same findings with `examples` and `sampleHits` |
-
-`ACCURACY_COMPARE=<label>` names the earlier document (default `baseline`). `ACCURACY_FREEDICE_ITERATIONS=0` leaves out
-free dice, and the findings are unchanged.
+A review's page has a **Findings JSON** button. The file has the review's findings for an agent, from
+`ReplayFindingsDocument`, and it is the input of `/replay-fix`.
 
 | Field | Contents |
 | --- | --- |
 | `schema` | the format's version (`ReplayFindingsDocument.Schema`) |
-| `hero`, `label`, `patch` | what the document measures |
+| `hero`, `patch` | the hero and the patch of the engine that wrote the document |
 | `thresholds` | the tests' values, from `ReplayFindings` and `ReplayOptions` |
-| `totals` | the fights' damage, hits, steps, forced casts and issues, findings per group, and `impact`: the sum over findings off target |
+| `totals` | the fight's damage, hits, steps, forced casts and issues, findings per group, and `impact`: the sum over findings off target |
 | `unmodeled` | `abilities`, `customizations`, `externalAuras` and `untrackedLogAuras`: step 1 of the order of work |
-| `fights[]` | `review`, the fight, the player, their numbers, and `files`: repository paths of each file of the fight |
-| `comparison` | `against`, `impactBefore`, `impactAfter`, `issuesBefore`, `issuesAfter`, `fightsAdded`, `fightsRemoved`, `unmodeledResolved`, `unmodeledAppeared`, and by key: `resolved` (off target before, within it now), `appeared` (the reverse) and `changed` |
+| `fight` | `review`, the fight, the player, and `files`: repository paths of each file of the fight |
 | `findings[]` | one per `IssueEntity`, in the order of work, each group by `impact` |
 
 A finding has:
@@ -67,16 +58,15 @@ A finding has:
 | Field | Contents |
 | --- | --- |
 | `key` | `IssueEntity.KeyText`, the same in every review and every run: `DamageId:1001242`, `Resource:Mana`, `Aura:1001395`, `Ability:<name>`, `Proc:<key>` |
-| `rank`, `group`, `kind`, `id`, `name` | the place in the order of work and the entity. `kind` and `id` are `entity_kind` and `entity_id` in `issues.csv`, and `id` is `ability_id` in `hits.csv` |
+| `rank`, `group`, `kind`, `id`, `name` | the place in the order of work and the entity. `id` is `ability_id` in `hits.csv` |
 | `impact` | the damage at stake as a fraction of the log's damage; absent for a resource, aura, ability or proc |
 | `issues`, `issueKinds` | the count, and the count of each kind of issue |
 | `damage` | a damage ID's numbers, and in `gates` the tests that placed it in its group |
 | `drift` | a resource's or aura's `net` and `gross` log minus engine, `cancelling`, and `afterAbilities` |
 | `proc` | `rolls`, `expectedProcs`, `procs` |
 | `splits` | conditions dividing the ratio: the condition, then hits and mean ratio on each side |
-| `fightsOff`, `byFight` | hero document: fights off target, and each fight's group and numbers, most at stake first |
-| `examples` | fight document: the first, median and worst issue of each kind, with the step's ability; each kind's first has `state`, the engine's state |
-| `sampleHits` | fight document: a damage ID's median and worst normal and crit hits, first engine-only and first missing hit, each with `state` |
+| `examples` | the first, median and worst issue of each kind, with the step's ability; each kind's first has `state`, the engine's state |
+| `sampleHits` | a damage ID's median and worst normal and crit hits, first engine-only and first missing hit, each with `state` |
 
 A finding in `WithinTargets` has its numbers alone.
 

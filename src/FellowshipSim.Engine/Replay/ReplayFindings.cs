@@ -40,38 +40,31 @@ public static class ReplayFindings
     private const double CancellingShare = 0.25;
     private const int DriftAbilitiesShown = 3;
 
-    public static IReadOnlyList<Finding> From(ReplayResult r) => From([r]);
-
-    /// <summary>
-    /// The findings of several fights pooled: the same tests over all their hits and issues. Releases and steps belong to
-    /// their own fight, since neither is unique across fights.
-    /// </summary>
-    public static IReadOnlyList<Finding> From(IReadOnlyList<ReplayResult> results)
+    public static IReadOnlyList<Finding> From(ReplayResult r)
     {
-        var byEntity = results.SelectMany(r => IssuesOf(r).Select(i => new FightIssue(r, i)))
-            .GroupBy(i => i.Issue.Entity.Key).ToDictionary(g => g.Key, g => g.ToList());
-        var fights = results.Select(r => (Hits: r.AllHits.ToLookup(h => h.AbilityId), Log: r.LogDamage.ToLookup(d => d.AbilityId))).ToList();
-        double logTotal = results.Sum(r => r.LogDamage.Sum(d => d.UnblockedAmount));
-        var options = results[0].Options;
+        var issues = IssuesOf(r);
+        var byEntity = issues.GroupBy(i => i.Entity.Key).ToDictionary(g => g.Key, g => g.ToList());
+        var hitsById = r.AllHits.ToLookup(h => h.AbilityId);
+        var logById = r.LogDamage.ToLookup(d => d.AbilityId);
+        double logTotal = r.LogDamage.Sum(d => d.UnblockedAmount);
 
         var findings = new List<Finding>();
-        foreach (int id in fights.SelectMany(f => f.Hits.Select(g => g.Key).Concat(f.Log.Select(g => g.Key))).Distinct())
+        foreach (int id in hitsById.Select(g => g.Key).Union(logById.Select(g => g.Key)))
         {
-            var ofId = fights.Select(f => new FightDamage(f.Hits[id].ToList(), f.Log[id].ToList())).Where(f => f.Hits.Count + f.LogHits.Count > 0).ToList();
-            var entity = IssueEntity.Damage(id, ofId[0].Hits.FirstOrDefault()?.AbilityName ?? ofId[0].LogHits[0].AbilityName);
+            var entity = IssueEntity.Damage(id, hitsById[id].FirstOrDefault()?.AbilityName ?? logById[id].First().AbilityName);
             byEntity.Remove(entity.Key, out var own);
-            if (Damage(entity, ofId, own?.Select(i => i.Issue).ToList() ?? [], logTotal, options) is { } finding) findings.Add(finding);
+            if (Damage(entity, hitsById[id].ToList(), logById[id].ToList(), own ?? [], logTotal, r.Options) is { } finding) findings.Add(finding);
         }
         foreach (var own in byEntity.Values)
         {
-            var entity = own[0].Issue.Entity;
+            var entity = own[0].Entity;
             findings.Add(entity.Kind switch
             {
-                IssueEntityKind.DamageId => Damage(entity, [], own.Select(i => i.Issue).ToList(), logTotal, options)!,
-                IssueEntityKind.Resource => Drift(entity, FindingGroup.Resources, own, results.Sum(r => r.Steps.Sum(s => s.Resources.Count(c => c.Resource == entity.Name)))),
-                IssueEntityKind.Aura => Drift(entity, FindingGroup.Auras, own, results.Sum(r => r.Steps.Sum(s => s.Auras.Count(a => a.Aura == entity.Name)))),
-                IssueEntityKind.Proc => Proc(entity, own.Select(i => i.Issue).ToList(), results),
-                _ => Plain(entity, FindingGroup.CastsAndCooldowns, own.Select(i => i.Issue).ToList()),
+                IssueEntityKind.DamageId => Damage(entity, [], [], own, logTotal, r.Options)!,
+                IssueEntityKind.Resource => Drift(entity, FindingGroup.Resources, own, r, r.Steps.Sum(s => s.Resources.Count(c => c.Resource == entity.Name))),
+                IssueEntityKind.Aura => Drift(entity, FindingGroup.Auras, own, r, r.Steps.Sum(s => s.Auras.Count(a => a.Aura == entity.Name))),
+                IssueEntityKind.Proc => Proc(entity, own, r),
+                _ => Plain(entity, FindingGroup.CastsAndCooldowns, own),
             });
         }
         return findings.OrderBy(f => f.Group).ThenByDescending(f => f.Impact ?? 0).ThenByDescending(f => f.Issues.Count).ToList();
@@ -80,16 +73,12 @@ public static class ReplayFindings
     /// <summary>The issues of a replay: those reported before its first step too.</summary>
     public static IReadOnlyList<ReplayIssue> IssuesOf(ReplayResult r) => r.Issues.Count > 0 ? r.Issues : r.Steps.SelectMany(s => s.Issues).ToList();
 
-    private sealed record FightIssue(ReplayResult Result, ReplayIssue Issue);
 
-    private sealed record FightDamage(List<HitPair> Hits, List<LogDamage> LogHits);
 
     // ------------------------------------------------------------------ damage IDs
 
-    private static Finding? Damage(IssueEntity entity, List<FightDamage> fights, List<ReplayIssue> issues, double logTotal, ReplayOptions options)
+    private static Finding? Damage(IssueEntity entity, List<HitPair> hits, List<LogDamage> logHits, List<ReplayIssue> issues, double logTotal, ReplayOptions options)
     {
-        var hits = fights.SelectMany(f => f.Hits).ToList();
-        var logHits = fights.SelectMany(f => f.LogHits).ToList();
         var matched = hits.Where(h => h.Ratio.HasValue).ToList();
         var normal = matched.Where(h => !h.Crit).ToList();
         var crit = matched.Where(h => h.Crit).ToList();
@@ -114,8 +103,8 @@ public static class ReplayFindings
         var ticks = issues.Where(i => i.Category == IssueCategory.Ticks).ToList();
         if (issues.Count == 0 && !calibrationOff && !countsOff) return null;
 
-        int fits = fights.Sum(f => ReleaseFits(f.Hits.Where(h => h.Ratio.HasValue && !h.WithinRange).ToList(), f.Hits, options));
-        var totals = fights.SelectMany(f => ReleaseTotals(f.Hits.Where(h => h.Ratio.HasValue).ToList())).ToList();
+        int fits = ReleaseFits(outOfRange, hits, options);
+        var totals = ReleaseTotals(matched);
         double totalsMean = totals.Count > 0 ? totals.Average() : 0, totalsDeviation = StandardDeviation(totals);
         bool mispaired = inScope && outOfRange.Count > matched.Count * PairingOutOfRangeShare && fits >= outOfRange.Count * PairingShare
             && totals.Count >= PairingMinimumReleases && Math.Abs(1.0 - totalsMean) <= CalibrationTolerance
@@ -137,8 +126,8 @@ public static class ReplayFindings
         if (missing.Count > 0) headline.Add(Invariant($"{missing.Count:N0} missing hits"));
         if (ticks.Count > 0) headline.Add(Invariant($"{ticks.Count:N0} tick issues"));
 
-        int EngineOnlyGroups() => fights.Sum(f => Events(f.Hits.Where(h => h.Log == null).Select(h => h.EngineTime), options.GroupSecondsOf(entity.Id)));
-        int MissingGroups() => fights.Sum(f => Events(f.Hits.Where(h => h.Log != null && !h.Ratio.HasValue).Select(h => h.Log!.Time), options.GroupSecondsOf(entity.Id)));
+        int engineOnlyGroups = Events(engineOnly.Select(h => h.EngineTime), options.GroupSecondsOf(entity.Id));
+        int missingGroups = Events(missing.Select(h => h.Log!.Time), options.GroupSecondsOf(entity.Id));
         var tickOffsets = Ticks(ticks);
         var lags = matched.Select(h => h.Log!.Time - h.EngineTime).Order().ToList();
         double lagMedian = Percentile(lags, 0.5), lag90 = Percentile(lags, 0.9);
@@ -150,11 +139,11 @@ public static class ReplayFindings
         }
         if (engineOnly.Count > 0 && logHits.Count > 0)
         {
-            facts.Add(Invariant($"Engine-only hits: {(double)engineOnly.Count / logHits.Count:0.0%} of the ID's log hits, in {EngineOnlyGroups():N0} groups."));
+            facts.Add(Invariant($"Engine-only hits: {(double)engineOnly.Count / logHits.Count:0.0%} of the ID's log hits, in {engineOnlyGroups:N0} groups."));
         }
         if (missing.Count > 0 && logHits.Count > 0)
         {
-            facts.Add(Invariant($"Missing hits: {(double)missing.Count / logHits.Count:0.0%} of the ID's log hits, in {MissingGroups():N0} groups."));
+            facts.Add(Invariant($"Missing hits: {(double)missing.Count / logHits.Count:0.0%} of the ID's log hits, in {missingGroups:N0} groups."));
         }
         if (outOfRange.Count > 0)
         {
@@ -178,7 +167,7 @@ public static class ReplayFindings
         return new Finding(entity, name, group, impact, string.Join(" · ", headline), facts, splits, issues, Examples(issues))
         {
             Damage = new DamageMetrics(logDamage, share, logHits.Count, matched.Count, Stats(normal), Stats(crit), outOfRange.Count,
-                engineOnly.Count, EngineOnlyGroups(), missing.Count, MissingGroups(), ratioDeviation, spreadDeviation, fits,
+                engineOnly.Count, engineOnlyGroups, missing.Count, missingGroups, ratioDeviation, spreadDeviation, fits,
                 new RatioStats(totals.Count, totalsMean, totalsDeviation), lagMedian, lag90, tickOffsets,
                 new DamageGates(inScope, normalOff, critOff, inScope && scattered, engineOnlyOff, missingOff, mispaired)),
             SampleHits = Samples(normal, crit, engineOnly, missing),
@@ -319,16 +308,15 @@ public static class ReplayFindings
     /// difference and the differences add up. A difference on one step and its opposite on the next is one event logged on
     /// the other side of the reading.
     /// </summary>
-    private static Finding Drift(IssueEntity entity, FindingGroup group, List<FightIssue> fightIssues, int checks)
+    private static Finding Drift(IssueEntity entity, FindingGroup group, List<ReplayIssue> issues, ReplayResult r, int checks)
     {
-        var issues = fightIssues.Select(i => i.Issue).ToList();
-        var offsets = fightIssues.Select(i => (i.Result, i.Issue, Offset: Offset(i.Issue))).ToList();
+        var offsets = issues.Select(i => (Issue: i, Offset: Offset(i))).ToList();
         double net = offsets.Sum(o => o.Offset), gross = offsets.Sum(o => Math.Abs(o.Offset));
         int cancelling = 0;
         for (int i = 1; i < offsets.Count; i++)
         {
             var (before, after) = (offsets[i - 1], offsets[i]);
-            bool adjacent = ReferenceEquals(before.Result, after.Result) && after.Issue.Step - before.Issue.Step == 1 && before.Offset * after.Offset < 0;
+            bool adjacent = after.Issue.Step - before.Issue.Step == 1 && before.Offset * after.Offset < 0;
             if (!adjacent || Math.Abs(before.Offset + after.Offset) > CancellingShare * Math.Max(Math.Abs(before.Offset), Math.Abs(after.Offset))) continue;
             cancelling += 2;
             i++;
@@ -338,8 +326,8 @@ public static class ReplayFindings
         if (cancelling > 0) facts.Add(Invariant($"{cancelling:N0} of them cancel on adjacent steps."));
         // A step's difference built up since the step before it.
         var abilities = offsets
-            .Where(o => o.Issue.Step >= 2 && o.Issue.Step - 2 < o.Result.Steps.Count)
-            .GroupBy(o => o.Result.Steps[o.Issue.Step - 2].AbilityName)
+            .Where(o => o.Issue.Step >= 2 && o.Issue.Step - 2 < r.Steps.Count)
+            .GroupBy(o => r.Steps[o.Issue.Step - 2].AbilityName)
             .Select(g => new DriftAbility(g.Key, g.Count(), g.Sum(o => o.Offset)))
             .OrderByDescending(a => Math.Abs(a.Net)).Take(DriftAbilitiesShown).ToList();
         if (abilities.Count > 0)
@@ -360,10 +348,9 @@ public static class ReplayFindings
     private static Finding Plain(IssueEntity entity, FindingGroup group, List<ReplayIssue> issues) =>
         new(entity, entity.Name, group, null, Kinds(issues), [], [], issues, Examples(issues));
 
-    private static Finding Proc(IssueEntity entity, List<ReplayIssue> issues, IReadOnlyList<ReplayResult> results)
+    private static Finding Proc(IssueEntity entity, List<ReplayIssue> issues, ReplayResult r)
     {
-        var stats = results.SelectMany(r => r.ProcStats.Where(p => p.Key == entity.Name)).ToList();
-        var metrics = stats.Count == 0 ? null : new ProcMetrics(stats.Sum(p => p.Rolls), stats.Sum(p => p.ExpectedProcs), stats.Sum(p => p.Procs));
+        var metrics = r.ProcStats.FirstOrDefault(p => p.Key == entity.Name) is { } stats ? new ProcMetrics(stats.Rolls, stats.ExpectedProcs, stats.Procs) : null;
         var facts = metrics == null ? new List<string>() : [Invariant($"{metrics.Rolls:N0} rolls, {metrics.ExpectedProcs:F1} expected procs, {metrics.Procs:N0} log procs.")];
         return new Finding(entity, entity.Name, FindingGroup.Procs, null, Kinds(issues), facts, [], issues, Examples(issues)) { Proc = metrics };
     }

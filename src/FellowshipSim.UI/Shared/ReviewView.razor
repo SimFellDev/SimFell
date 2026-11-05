@@ -8,11 +8,18 @@
 @inject IAppViews Views
 @*
     A review page from the reviews folder, shown in the app page itself (reviewView.js), so the app page's scroll bar
-    scrolls it. Save keeps it as its own HTML file.
+    scrolls it. Save keeps it as its own HTML file. Findings JSON reads the review's findings file in .NET, so it works in
+    the web, desktop and browser apps alike.
 *@
 <div class="review-bar">
     <div class="leading">@Leading</div>
-    <button type="button" class="secondary-button" disabled="@(!_loaded)" data-tooltip="Save this review as an HTML file" @onclick="SaveAsync">Save as HTML</button>
+    <div class="downloads">
+        @if (_hasFindings)
+        {
+            <button type="button" class="secondary-button" data-tooltip="Download the review's findings as JSON, the input of /replay-fix" @onclick="DownloadFindingsAsync">Findings JSON</button>
+        }
+        <button type="button" class="secondary-button" disabled="@(!_loaded)" data-tooltip="Save this review as an HTML file" @onclick="SaveAsync">Save as HTML</button>
+    </div>
 </div>
 <div @ref="_host" class="review-host"></div>
 
@@ -22,6 +29,7 @@
     private DotNetObjectReference<ReviewView>? _self;
     private string? _shown;
     private bool _loaded;
+    private bool _hasFindings;
 
     [Parameter, EditorRequired] public string HtmlFile { get; set; } = "";
 
@@ -37,7 +45,10 @@
             _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/FellowshipSim.UI/review/reviewView.js");
             _self ??= DotNetObjectReference.Create(this);
             _loaded = false;
+            _hasFindings = false;
             _loaded = await _module.InvokeAsync<bool>("show", _host, ReviewPages.Url(HtmlFile), _self);
+            // A free-dice page and a review from before the file existed have none.
+            _hasFindings = _loaded && File.Exists(FindingsPath);
             StateHasChanged();
         }
         catch (JSDisconnectedException)
@@ -48,12 +59,22 @@
 
     /// <summary>The review page's file, when the visitor ran the review; for the desktop app, whose review host is another origin.</summary>
     [JSInvokable]
-    public async Task<string?> Read()
+    public Task<string?> Read() => ReadFileAsync(Path.Combine(Library.ReviewsDirectory, Path.GetFileName(HtmlFile)));
+
+    private string FindingsName => Path.GetFileNameWithoutExtension(HtmlFile) + ".findings";
+
+    private string FindingsPath => Path.Combine(Library.ReviewsDirectory, FindingsName + ".json");
+
+    private async Task<string?> ReadFileAsync(string path)
     {
-        string name = Path.GetFileName(HtmlFile);
-        string path = Path.Combine(Library.ReviewsDirectory, name);
+        string name = Path.GetFileName(path);
         if (!await VisitorReviews.HasAsync(Visitor, name.Split('.')[0]) || !File.Exists(path)) return null;
         return await File.ReadAllTextAsync(path);
+    }
+
+    private async Task DownloadFindingsAsync()
+    {
+        if (await ReadFileAsync(FindingsPath) is { } text) await FileDownloads.SaveAsync(JS, FindingsName, ".json", text);
     }
 
     /// <summary>Opens another review page a link of this one names (the free-dice page links its replay review).</summary>

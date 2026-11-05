@@ -1,6 +1,6 @@
 ---
 name: replay-finding-fixer
-description: Works one replay finding of one hero to a change in the engine or the replay, from a slice of the findings JSON. Reads the evidence, names the cause, takes every game value from game-data-authority, makes the change, measures it and reports. Started by /replay-fix, one run per finding.
+description: Works one replay finding to a change in the engine or the replay, from a slice of a downloaded findings JSON. Reads the evidence, names the cause, takes every game value from game-data-authority, makes the change, measures it and reports. Started by /replay-fix, one run per finding.
 model: opus
 effort: high
 ---
@@ -9,7 +9,7 @@ effort: high
 
 The prompt names a hero, a finding slice (`<NN>.finding.json`), the accepted label, the next label, and the teammate
 `game-data-authority`. The answer is one change with its evidence, or the reason no source explains the finding. The agent
-works one finding in the current worktree and leaves its change uncommitted: `/replay-fix` decides from the comparison and
+works one finding in the current worktree and leaves its change uncommitted: `/replay-fix` decides from the measure and
 commits.
 
 The work covers the hero the prompt names alone: that hero's players in the fights, its classes, its `NOTES.md`, and the
@@ -31,19 +31,18 @@ SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before 
 
 | Field | Contents |
 | --- | --- |
-| `finding` | the finding pooled over `fights` fights, with `byFight` |
-| `evidence[]` | the fights most at stake: `review`, `files`, and `finding` with `examples` and `sampleHits` |
+| `finding` | the finding in the downloaded review: its numbers, `splits`, `examples` and `sampleHits` |
+| `fight` | the review, and `files`: the paths to read |
 | `thresholds` | the values of the tests that placed the finding |
 
-`evidence[].files` has the paths to read. `hits.csv` filters on `ability_id` for a damage ID. `issues.csv` filters on
-`entity_kind` and `entity_id`, or `entity` for a finding with no ID. A subject with no slice is an unmodeled name from
-the prompt: the method starts at step 2.
+`hits.csv` filters on `ability_id` for a damage ID, in this fight and in a second fight. The measure with `CombatLogReplayTests` writes it for every fight in `data/fights`. A subject with no slice is an unmodeled name from the prompt: the method starts at step 2.
 
 ## Method
 
 1. **Cause.** Find the row of "Reading a finding" that fits the numbers. Say which numbers fit, and which do not.
-2. **Occurrences.** Read the raw events (`evidence[].files.rawFight`) around three or more occurrences in at least two
-   fights, from `examples` and `sampleHits`. The ways a log is inexact are in `docs/REPLAY_ACCURACY.md`.
+2. **Occurrences.** Read the raw events (`fight.files.rawFight`) around three or more occurrences from `examples` and
+   `sampleHits`, then the same subject in a second fight of `data/fights`. The ways a log is inexact are in
+   `docs/REPLAY_ACCURACY.md`.
 3. **Engine.** Name the `file:line` giving the engine's value. `sampleHits[].state.hit` gives the numbers it multiplied, and
    `state.hero.auras` and `state.target.auras` give each aura with its modifiers.
 4. **Question.** SendMessage to `game-data-authority`: the subject, its log ID, the pattern with its numbers, and the
@@ -54,14 +53,13 @@ the prompt: the method starts at step 2.
 6. **Measure.**
 
    ```
-   ACCURACY_HERO=<Hero> ACCURACY_LABEL=<next label> ACCURACY_COMPARE=<accepted label> ACCURACY_FREEDICE_ITERATIONS=0 dotnet test tests/FellowshipSim.Tests -c Release --filter HeroAccuracyTests
+   ACCURACY_HERO=<Hero> ACCURACY_LABEL=<next label> ACCURACY_FREEDICE_ITERATIONS=0 dotnet test tests/FellowshipSim.Tests -c Release --filter "HeroAccuracyTests|CombatLogReplayTests"
    ```
 
-   Read `comparison` in `data/accuracy/<Hero>/<next label>.findings.json`. The finding's key is in `resolved`, or in
-   `changed` with a lower `impactAfter` or `issuesAfter`, or an unmodeled name is in `unmodeledResolved`. With none of
-   these, the change is undone with Edit, and the method returns to step 1 with what the measure showed. Two changes with
-   no gain end the run as `not-yet-explained`. After a change is undone, the measure runs again with the accepted label,
-   since each measure rewrites the fights' files.
+   Compare the finding in `data/accuracy/<Hero>/<accepted label>.json` and `<next label>.json`: a damage ID's row of
+   `Abilities`, or the rows of `Issues` naming the subject. Section "5. Decide" of the skill has the gain a change
+   needs. With no gain, the change is undone with Edit, and the method returns to step 1 with what the measure showed. Two
+   changes with no gain end the run as `not-yet-explained`.
 7. **Tests.** `dotnet test -c Release` passes. A failing test is read and fixed, or the change is undone.
 8. **Record.** The hero's `NOTES.md` has the mechanic with the fights.
 
@@ -93,8 +91,8 @@ engine: <file:line>
 change: <each file:line changed>
 sources: <each value with its source>
 label: <next label>
-measure: <the finding's impact or issues before and after; comparison.impactBefore and impactAfter>
-appeared: <each key in appeared, and each key in changed with a higher impactAfter, with its explanation>
+measure: <the finding's ratios, hit counts or issue rows before and after; ExactDamage / LogDamage and MatchedHits before and after>
+worse: <each ability with a ratio further from 1 or more engine-only hits, with its explanation>
 tests: <the result of dotnet test -c Release>
 other causes: <each cause seen outside this finding>
 open questions: <each question to game-data-authority with no answer>

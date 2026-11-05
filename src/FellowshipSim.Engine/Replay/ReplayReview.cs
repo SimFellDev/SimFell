@@ -64,25 +64,10 @@ public static class ReplayReview
             result.PlayerName, script.Player.Hero, result.PassedSteps, result.Steps.Count, result.MatchedLogHits, result.LogHits,
             engineDamage, logDamage, result.ForcedCasts.Count, DateTime.UtcNow);
 
-        return new ReviewArtifacts(summary, scriptJson, ReplayReportWriter.Render(result), ReplayReportWriter.Summary(result), HitsCsv(result), IssuesCsv(result),
+        return new ReviewArtifacts(summary, scriptJson, ReplayReportWriter.Render(result), ReplayReportWriter.Summary(result), HitsCsv(result),
             ReplayFindingsDocument.ForFight(new ReviewedFight(result, script, playerId)));
     }
 
-    private static string IssuesCsv(ReplayResult result)
-    {
-        var sb = new System.Text.StringBuilder("time,step,category,entity_kind,entity_id,entity,subject,expected_low,expected_high,unit,observed,deviation,relative_deviation,message\n");
-        var inv = System.Globalization.CultureInfo.InvariantCulture;
-        string Quoted(string? text) => '"' + (text ?? "").Replace("\"", "\"\"") + '"';
-        string Number(double? value) => value?.ToString("0.###", inv) ?? "";
-        foreach (var i in result.Issues)
-        {
-            sb.Append(string.Format(inv, "{0:F3},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}\n",
-                i.Time, i.Step, i.Category, i.Entity.Kind, i.Entity.Id, Quoted(i.Entity.Name), Quoted(i.Subject),
-                Number(i.Expected?.Low), Number(i.Expected?.High), Quoted(i.Expected?.Unit), Number(i.Observed), Number(i.Deviation), Number(i.RelativeDeviation),
-                Quoted(i.Message)));
-        }
-        return sb.ToString();
-    }
 
     private static string HitsCsv(ReplayResult result)
     {

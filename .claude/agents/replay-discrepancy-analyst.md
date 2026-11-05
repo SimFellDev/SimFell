@@ -16,10 +16,8 @@ installed.
 | File | Contents |
 | --- | --- |
 | `data/accuracy/<Hero>/<label>.txt` | the measure: totals, each fight, calibration per damage ID, the most common issues |
-| `data/accuracy/<Hero>/<label>.findings.json` | the hero's findings pooled over the fights, each with its numbers per fight (`docs/REPLAY_ACCURACY.md`) |
 | `data/reviews/<review>.findings.json` | one fight's findings with examples, sample hits and engine states |
 | `data/reviews/<review>.summary.txt` | one fight's findings by group, the conditions dividing each damage ID's ratio, and its calibration |
-| `data/reviews/<review>.issues.csv` | every issue: time, step, category, entity, expected range, observed, deviation, message |
 | `data/reviews/<review>.hits.csv` | every engine hit with the log hit it matched: times, amounts, crits, crit chance, tick fraction, the player's auras |
 | `data/reviews/<review>.html` | one fight's findings, with examples, each example's engine state and step, and every step's result |
 | `data/scripts/<review>.replay.json` | the replay script: the character, casts, enemies and auras the replay follows |

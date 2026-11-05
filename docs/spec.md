@@ -226,15 +226,14 @@ lists them for each halt issue.
 - A condition shows when its two sides pass the `Split` constants in `ReplayFindings`.
 - A resource or aura finding has net and gross log minus engine, since `SyncToLog` makes each issue one step's
   difference, and the abilities of the steps before them.
-- `IssuesCsv` has every issue: `time, step, category, entity_kind, entity_id, entity, subject, expected_low,
-  expected_high, unit, observed, deviation, relative_deviation, message`.
+
 - `FindingsJson` is `ReplayFindingsDocument.ForFight`: the findings with their numbers from `DamageMetrics`, `DriftMetrics`
-  and `ProcMetrics`, the same records the page's text reads. `ReplayFindingsDocument.ForHero` pools a hero's fights
-  through `ReplayFindings.From(results)`, the same tests over every hit and issue, with releases and steps kept per
-  fight. `docs/REPLAY_ACCURACY.md` has the fields.
+  and `ProcMetrics`, the same records the page's text reads. `docs/REPLAY_ACCURACY.md` has the fields.
+- `ReviewView` has a **Findings JSON** button for a review with a findings file.
 - The hit table shows engine `avg`, expected low and high, log amount and deviation.
 - `HitsCsv` columns: `time, ability_id, ability, target, engine_amount, expected_low, expected_high, engine_crit,
   crit_chance, log_amount, log_crit, log_time, deviation, tick_fraction, player_auras, target_auras`.
+
 - `ReplayOptions.StopOnFirstFailure` halts at the first step with a `ReplayIssue` from the verifier.
 
 ## Tests

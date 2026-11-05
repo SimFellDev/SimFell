@@ -21,7 +21,7 @@ internal static class FindingsSection
         var linkedSteps = new HashSet<int>();
         var states = new List<(ReplayIssue Issue, EngineState State)>();
         int issues = findings.Sum(f => f.Issues.Count);
-        sb.Append($"<h2>Findings ({findings.Count:N0})</h2><div class=\"muted\">{issues:N0} issues, one finding for each damage ID, resource, aura, ability and proc, in the order of work of docs/REPLAY_ACCURACY.md. A row opens to its numbers and examples. The review's issues.csv has every issue, and its findings.json has these findings for an agent.</div>");
+        sb.Append($"<h2>Findings ({findings.Count:N0})</h2><div class=\"muted\">{issues:N0} issues, one finding for each damage ID, resource, aura, ability and proc, in the order of work of docs/REPLAY_ACCURACY.md. A row opens to its numbers and examples. Findings JSON has these findings for /replay-fix.</div>");
 
         if (r.UnmodeledAbilities.Count > 0 || r.UnmodeledCustomizations.Count > 0)
         {

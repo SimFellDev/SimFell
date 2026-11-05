@@ -10,10 +10,8 @@ namespace FellowshipSim.Tests;
 /// The engine's accuracy for one hero over every downloaded fight (data/fights) of the patch it models
 /// (<see cref="GamePatch.Current"/>): an exact replay and a free-dice run of each of the hero's players, then the totals,
 /// the calibration per damage ID, and the most common issues. ACCURACY_HERO names the hero; without it the test does
-/// nothing. The result is saved as data/accuracy/&lt;Hero&gt;/&lt;label&gt;.txt and .json, and the hero's findings as
-/// &lt;label&gt;.findings.json, the label from ACCURACY_LABEL (default: the time). Each fight's review files are saved in
-/// data/reviews. With a saved baseline.json beside it, the headline numbers print next to the baseline's.
-/// ACCURACY_COMPARE names the label the findings compare with (default: baseline).
+/// nothing. The result is saved as data/accuracy/&lt;Hero&gt;/&lt;label&gt;.txt and .json, the label from ACCURACY_LABEL
+/// (default: the time). With a saved baseline.json beside it, the headline numbers print next to the baseline's.
 /// ACCURACY_FREEDICE_ITERATIONS sets the free-dice runs per fight (default 100, 0 for none), on ACCURACY_THREADS threads
 /// (default 8).
 /// Run with: ACCURACY_HERO=Rime ACCURACY_LABEL=baseline dotnet test -c Release --filter HeroAccuracyTests
@@ -54,15 +52,13 @@ public class HeroAccuracyTests(ITestOutputHelper output)
 
         var fights = new List<FightAccuracy>();
         var results = new List<ReplayResult>();
-        var reviewed = new List<ReviewedFight>();
         var freeDice = new List<FreeDiceReplay.Result>();
         foreach (var (reportCode, fightId, playerId) in library.ListDownloadedFights())
         {
             byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId, playerId);
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero.Equals(hero, StringComparison.OrdinalIgnoreCase)))
             {
-                byte[] scriptJson = ReplayScriptBuilder.Build(raw, player.Id);
-                var script = ReplayScript.FromJson(scriptJson);
+                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
                 if (script.FightDate is not { } date || !GamePatch.Current.Covers(date, null)) continue;
 
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false }).Run();
@@ -70,8 +66,6 @@ public class HeroAccuracyTests(ITestOutputHelper output)
                 var dice = iterations > 0 ? FreeDiceReplay.Run(script, iterations, maxThreads: threads) : null;
                 if (dice != null) freeDice.Add(dice);
                 results.Add(result);
-                reviewed.Add(new ReviewedFight(result, script, player.Id));
-                library.Save(ReplayReview.Artifacts(result, script, scriptJson, player.Id));
                 fights.Add(new FightAccuracy(reportCode, fightId, script.FightName, script.FightDate, result.PlayerName,
                     result.LogHits, result.MatchedLogHits, logDamage, exactDamage, result.PassedSteps, result.Steps.Count,
                     result.ForcedCasts.Count, dice?.EngineTotals.Count ?? 0, dice?.Mean ?? 0, dice?.LogPercentile ?? 0));
@@ -101,11 +95,6 @@ public class HeroAccuracyTests(ITestOutputHelper output)
         string text = Format(accuracy, baseline);
         File.WriteAllText(Path.Combine(folder, $"{label}.txt"), text);
         File.WriteAllText(Path.Combine(folder, $"{label}.json"), JsonSerializer.Serialize(accuracy, Indented));
-        string compareLabel = Environment.GetEnvironmentVariable("ACCURACY_COMPARE") ?? "baseline";
-        string comparePath = Path.Combine(folder, $"{compareLabel}.findings.json");
-        bool compares = compareLabel != label && File.Exists(comparePath);
-        File.WriteAllText(Path.Combine(folder, $"{label}.findings.json"),
-            ReplayFindingsDocument.ForHero(hero, label, reviewed, compares ? compareLabel : null, compares ? File.ReadAllText(comparePath) : null));
         output.WriteLine(text);
         output.WriteLine($"-> {Path.Combine(folder, label)}.txt");
         Assert.True(accuracy.MatchedHits > 0);

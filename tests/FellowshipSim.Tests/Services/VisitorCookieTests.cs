@@ -71,7 +71,7 @@ public sealed class VisitorCookieTests : IAsyncLifetime
         Assert.NotEqual(VisitorId(a), VisitorId(b));
         var summary = new ReviewSummary(ReplayLibrary.ReviewId("aaaa", 1, 2), "aaaa", 1, "Fight", null, 2, "Player", "Rime",
             1, 1, 1, 1, 100, 100, 0, DateTime.UtcNow);
-        _app.Services.GetRequiredService<ReplayLibrary>().Save(new ReviewArtifacts(summary, "{}"u8.ToArray(), "<html>review</html>", "", "hits", "issues", "{}"));
+        _app.Services.GetRequiredService<ReplayLibrary>().Save(new ReviewArtifacts(summary, "{}"u8.ToArray(), "<html>review</html>", "", "hits", "{}"));
         await _app.Services.GetRequiredService<VisitorReviews>().AddAsync(new Visitor(VisitorId(a), OwnsDataFolder: false), summary);
 
         using (var page = await GetAsync($"/reviews/{summary.HtmlFile}", a))
@@ -80,6 +80,7 @@ public sealed class VisitorCookieTests : IAsyncLifetime
             Assert.Equal("<html>review</html>", await page.Content.ReadAsStringAsync());
         }
         using (var hits = await GetAsync($"/reviews/{summary.Id}.hits.csv", a)) Assert.Equal(HttpStatusCode.OK, hits.StatusCode);
+        using (var findings = await GetAsync($"/reviews/{summary.Id}.findings.json", a)) Assert.Equal(HttpStatusCode.OK, findings.StatusCode);
         using (var other = await GetAsync($"/reviews/{summary.HtmlFile}", b)) Assert.Equal(HttpStatusCode.NotFound, other.StatusCode);
         using (var none = await GetAsync($"/reviews/{summary.HtmlFile}", null)) Assert.Equal(HttpStatusCode.NotFound, none.StatusCode);
     }
