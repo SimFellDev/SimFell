@@ -63,9 +63,10 @@ public static class ProcEvidence
         // 297 to 758). In the 23 Mara fights of data/fights, 441 of the 443 spikes are logged in the row before a hit on their
         // enemy. An engine hit lands up to a frame from its log hit (T2qLPpmMkrAtJ9B1 fight 18: Seething Poison 604.844 in the
         // engine, spike and log hit 604.828; 3M2vWr8taxVfTQFY fight 53: spike 1110.110, Queen's Fang 1110.117): with no frame
-        // either side, 428 of the 443 match, and with it 442.
+        // either side, 428 of the 443 match, and with it 442. A periodic tick lands about 40ms from its log hit, over a frame: on
+        // the 78 fights of Rime, Ardeos, Tariq, Gunde and Elarion, two frames either side match 1,868 of 1,918 spikes, and one 1,852.
         new(EmeraldJudgement.ProcKey, LogIds.Effect(EmeraldJudgement.DamageEffectId),
-            DelaySeconds: PeriodicEffect.ServerFrameSeconds, MinDelaySeconds: -PeriodicEffect.ServerFrameSeconds),
+            DelaySeconds: 2 * PeriodicEffect.ServerFrameSeconds, MinDelaySeconds: -2 * PeriodicEffect.ServerFrameSeconds),
         new(DragonboneDice.ProcKey, DragonboneDice.Buff.LogId),
         new(VengefulSoul.ProcKey, VengefulSoul.Buff.LogId),
         new(HiddenPower.ProcKey, HiddenPower.Stack.LogId),
