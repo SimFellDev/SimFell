@@ -18,7 +18,7 @@ public class TheMonarch : Glyph
     public override void Bind(Hero hero)
     {
         double acceleration = ForRank(AccelerationByRank);
-        hero.CooldownAccelerations.Add((ability, now) =>
+        hero.CooldownAccelerationTargetedSources.Add((ability, now) =>
             ability.Category == AbilityCategory.Major
                 ? acceleration + Math.Min(MaxHasteBonus, HasteBonusPerPercent * hero.GetHaste(now) * 100.0)
                 : 0.0);

@@ -28,7 +28,7 @@ public class EventHorizon : ElarionAbility
         GlobalCooldownSeconds = CastTimeSeconds;
         GlobalCooldownScalesWithHaste = true;
         owner.FocusCostMultipliers.Add(now => owner.Auras.HasAura(Buff, now) ? CostMultiplier : 1.0);
-        owner.CooldownAccelerations.Add((_, now) => owner.Auras.HasAura(Buff, now) ? owner.GetHaste(now) : 0.0);
+        owner.CooldownAccelerationCompoundSources.Add((_, now) => owner.Auras.HasAura(Buff, now) ? 1.0 + owner.GetHaste(now) : 1.0);
         owner.CooldownAccelerationAuraKeys.Add(Buff.Key);
     }
 
