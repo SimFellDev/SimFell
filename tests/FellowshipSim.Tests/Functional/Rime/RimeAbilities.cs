@@ -6,8 +6,8 @@ namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
 /// Rime's abilities, on a bare Rime (no talents unless the test is about one): each ability's own rule first, then how it works with the
-/// others. Resource gains and costs, cast times and cooldowns have their own files; Spirit Refund, which every hero shares, is in
-/// Generic/SpiritRefund.cs.
+/// others. Resource gains and costs, cast times and cooldowns have their own files, and his legendaries Specific/RimeLegendaries.cs;
+/// Spirit Refund, which every hero shares, is in Generic/SpiritRefund.cs.
 /// </summary>
 public class RimeAbilities
 {
