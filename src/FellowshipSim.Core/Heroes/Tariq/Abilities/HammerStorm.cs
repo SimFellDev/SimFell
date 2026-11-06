@@ -4,6 +4,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// Ability 1242: "Spin with your Hammer up to 3 times, dealing physical damage to all nearby enemies every 0.5 seconds.
 /// Hammer Storm deals 35% more damage with each spin. Thunder Call: Hammer Storm causes lightning to strike you as you
 /// spin, shocking enemies for an additional lightning damage each time they are hit." Costs 50 Fury.
+/// No cooldown: ApplyCooldown 0x1450D9990 starts none for it (extractor 36f0a5a5, build 26320967).
+/// Combat logs (1,600 intervals): as short as 0.668s.
 /// </summary>
 public class HammerStorm : TariqAbility
 {
@@ -14,8 +16,6 @@ public class HammerStorm : TariqAbility
     /// <summary>Placeholder HamrStormLightningDmg: 78% of Strength per spin.</summary>
     public const double LightningCoefficient = 0.78;
     public const double FuryCost = 50.0;
-    /// <summary>Game data cooldown 1.5; haste shortens it, as it does Skull Crusher's.</summary>
-    public const double CooldownSeconds = 1.5;
     /// <summary>Game data channelTime 1 and channelTick 0.5 (HamrStormPeriod, a tick rate).</summary>
     public const double ChannelSeconds = 1.0;
     public const double SpinPeriodSeconds = 0.5;
@@ -41,7 +41,6 @@ public class HammerStorm : TariqAbility
     public HammerStorm(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
         SetChannel(ChannelSeconds, SpinPeriodSeconds);
         // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, 3 spins in all (see
         // OnChannelTick).
@@ -57,7 +56,6 @@ public class HammerStorm : TariqAbility
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
-        TriggerCooldown(ctx);
         // The spins come after the cast has resolved: they keep what the cast got (Focused Wrath, Schism).
         _castMultiplier = FocusedWrath.Spend(Tariq, FuryCost, ctx) * CastDamageMultiplier;
         _castCritChance = CurrentCast?.CritChance ?? 0.0;
