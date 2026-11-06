@@ -28,7 +28,10 @@ public class HeartseekerBarrage : ElarionAbility
     /// <summary>Arrows ricochet to one more enemy for this share of the arrow (Piercing Seekers; 0 = none).</summary>
     public double RicochetMultiplier { get; set; }
 
-    /// <summary>One arrow or its ricochet landed (Event Horizon).</summary>
+    /// <summary>
+    /// One arrow's first hit dealt damage (Event Horizon). The ricochet carries the Bounce asset tag the manager excludes
+    /// (BP_Bowguy_Talent_ChanneledMultiProjectileDebuff_Riccochet_BouncyProjectile offset 1325, manager offset 589).
+    /// </summary>
     public event Action<SimulationContext>? ArrowLanded;
 
     public HeartseekerBarrage(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
@@ -68,13 +71,16 @@ public class HeartseekerBarrage : ElarionAbility
         _arrow++;
         double multiplier = _cast.Damage * (_impending ? 1.0 + ImpendingDamagePerArrow * _arrow : 1.0);
         double crit = _cast.Crit + ArrowCritChance;
-        DealDamage(ctx, target, damageMultiplier: multiplier, extraCritChance: crit, onLanded: (c, _) => ArrowLanded?.Invoke(c));
+        DealDamage(ctx, target, damageMultiplier: multiplier, extraCritChance: crit, onLanded: (c, dealt) =>
+        {
+            if (dealt > 0) ArrowLanded?.Invoke(c);
+        });
         if (RicochetMultiplier <= 0) return;
         var others = ctx.ActiveEnemiesExcept(target);
         if (others.Count == 0) return;
         var next = ctx.Outcomes.ChooseTarget(DamageLogId, others, ctx);
         if (next == null || next == target) return;
-        DealDamage(ctx, next, damageMultiplier: multiplier * RicochetMultiplier, extraCritChance: crit, onLanded: (c, _) => ArrowLanded?.Invoke(c));
+        DealDamage(ctx, next, damageMultiplier: multiplier * RicochetMultiplier, extraCritChance: crit);
     }
 
     public override void ResetState()

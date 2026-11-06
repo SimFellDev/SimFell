@@ -13,16 +13,9 @@ public class FreezingTorrent : RimeAbility
     public const double ChannelSeconds = 2.0;
     public const double TickPeriodSeconds = 0.4;
     public const double AnimaPerTick = 1.0;
-    /// <summary>Effect 2315: cooldownAcceleration Additive 1 on Bursting Ice.</summary>
-    public const double BurstingIceAcceleration = 1.0;
-
-    /// <summary>Effect 2315 (role ChannelBuff), up for the channel. The engine's aura is internal.</summary>
-    public static readonly AuraDef ChannelBuff = AuraDef.Internal("Freezing Torrent channel", 0);
 
     public FreezingTorrent(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
     {
-        owner.CooldownAccelerations.Add((ability, now) => ability is BurstingIce && owner.Auras.HasAura(ChannelBuff, now) ? BurstingIceAcceleration : 0.0);
-        owner.CooldownAccelerationAuraKeys.Add(ChannelBuff.Key);
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds);
         SetChannel(ChannelSeconds, TickPeriodSeconds);
@@ -58,16 +51,11 @@ public class FreezingTorrent : RimeAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        Rime.Auras.Apply(ChannelBuff, ctx.CurrentTime);
         _soulfrost = Rime.Auras.HasAura(SoulfrostTorrent.Buff, ctx.CurrentTime);
         if (_soulfrost) Rime.Auras.Remove(SoulfrostTorrent.Buff, ctx.CurrentTime);
     }
 
-    public override void OnChannelEnd(SimulationContext ctx, EnemyTarget target, bool clipped)
-    {
-        _soulfrost = false;
-        Rime.Auras.Remove(ChannelBuff, ctx.CurrentTime);
-    }
+    public override void OnChannelEnd(SimulationContext ctx, EnemyTarget target, bool clipped) => _soulfrost = false;
 
     public override void OnChannelTick(SimulationContext ctx, EnemyTarget target, double fraction)
     {

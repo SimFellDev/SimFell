@@ -38,9 +38,11 @@ public class EventHorizon : ElarionAbility
         var hero = Elarion;
         var heartseeker = hero.GetAbility<HeartseekerBarrage>();
         var starfall = hero.GetAbility<StarfallVolley>();
-        hero.GetAbility<HighwindArrow>()!.Cast += ctx =>
+        // GA_Bowguy_Passive_ReducedCostCooldownRecoveryBuff_Manager offsets 280 to 425: every Highwind Arrow damage event, with
+        // no bounce or per-cast test. UNVERIFIED: whether each ricochet raises the event is native.
+        hero.GetAbility<HighwindArrow>()!.Hit += (in hit) =>
         {
-            if (heartseeker != null && hero.Auras.HasAura(Buff, ctx.CurrentTime))
+            if (heartseeker != null && hit.SimContext is { } ctx && hero.Auras.HasAura(Buff, ctx.CurrentTime))
                 hero.ReduceCooldown(heartseeker.Name, SimTime.FromSeconds(HeartseekerReductionSeconds), ctx.CurrentTime);
         };
         if (heartseeker == null || starfall == null) return;

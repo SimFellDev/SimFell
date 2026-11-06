@@ -17,6 +17,10 @@ public abstract class Hero : Actor
             if (dmg.Target is { } enemy) EarnSpiritPoints(enemy, enemy.HealthFraction, dmg.SimContext);
         };
         OnEnemyDefeated += (ctx, enemy) => EarnSpiritPoints(enemy, 0.0, ctx);
+        OnEnemyDefeated += (ctx, enemy) =>
+        {
+            if (enemy.Name == BreakerOfChains.CreatureName) Auras.Apply(BreakerOfChains.Buff, ctx.CurrentTime);
+        };
         // Spirit of Heroism is applied by every hero's Spirit ability; register it up front so a replay compares it from the start.
         // Cooldown recovery depends on haste and cooldown acceleration: progress every recharge at the old rate when they change.
         Auras.OnGained += (aura, _, now) => AuraChanged(aura, now);

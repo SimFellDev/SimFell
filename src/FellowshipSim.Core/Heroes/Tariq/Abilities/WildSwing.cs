@@ -11,7 +11,10 @@ public class WildSwing : TariqAbility
     public const string AbilityName = "Wild Swing";
     /// <summary>Placeholder WildSwingDmg: 129.14% of Strength.</summary>
     public const double Coefficient = 1.2914;
-    /// <summary>Game data cooldown 1.5; haste shortens it, as it does Skull Crusher's.</summary>
+    /// <summary>
+    /// GA_Ink_CleaveAttack has no cooldown effect: the 1.5 is its global cooldown (GE_GlobalCooldown Coefficient 1.5),
+    /// 1 / Haste snapshotted at commit, outside Cooldown Recovery.
+    /// </summary>
     public const double CooldownSeconds = 1.5;
     /// <summary>Ink.CleaveAttack.ResourceGain: 3% of maximum Fury.</summary>
     public const double FuryGain = 3.0;

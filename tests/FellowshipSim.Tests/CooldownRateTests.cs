@@ -4,7 +4,6 @@ using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Elarion.Abilities;
 using FellowshipSim.Core.Heroes.Elarion.Talents;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
-using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
 using FellowshipSim.Core.Heroes.Tariq.Talents;
 using FellowshipSim.Core.Import;
@@ -61,17 +60,6 @@ public class CooldownRateTests
     }
 
     [Fact]
-    public void Freezing_Torrent_Adds_A_Time_Rate_To_Bursting_Ice_Alone()
-    {
-        var hero = Fight("Rime");
-        double before = hero.CooldownRate(hero.GetAbility<BurstingIce>()!, SimTime.Zero);
-        hero.Auras.Apply(FreezingTorrent.ChannelBuff, SimTime.Zero);
-
-        Assert.Equal(before + 1.0, hero.CooldownRate(hero.GetAbility<BurstingIce>()!, SimTime.Zero), 9);
-        Assert.Equal(1.0, hero.CooldownRate(hero.GetAbility<FreezingTorrent>()!, SimTime.Zero));
-    }
-
-    [Fact]
     public void Skylit_Grace_Counts_Once_And_Ends_With_The_First_Volley()
     {
         var hero = Fight("Elarion");
@@ -92,6 +80,23 @@ public class CooldownRateTests
         ctx.RunUntil(SimTime.FromSeconds(9));
         Assert.Equal(1, starfall.ActiveCount);
         Assert.Equal(1.0, hero.CooldownRate(grace, ctx.CurrentTime));
+    }
+
+    [Fact]
+    public void A_Slavebind_Totem_Death_Gives_Breaker_Of_Chains_For_12_Seconds()
+    {
+        var hero = Fight("Mara");
+        var ctx = hero.SimContext!;
+        var other = ctx.AddEnemy(100, 1, "Dummy", 1e12);
+        var totem = ctx.AddEnemy(101, 1, BreakerOfChains.CreatureName, 1e12);
+        var ward = hero.GetAbility<ShadowWard>()!;
+
+        ctx.RemoveEnemy(other, defeated: true);
+        Assert.Equal(1.0, hero.CooldownRate(ward, ctx.CurrentTime));
+
+        ctx.RemoveEnemy(totem, defeated: true);
+        Assert.Equal(1.3, hero.CooldownRate(ward, ctx.CurrentTime), 9);
+        Assert.Equal(1.0, hero.CooldownRate(ward, ctx.CurrentTime + SimTime.FromSeconds(13)));
     }
 
     [Fact]
