@@ -103,11 +103,23 @@ public sealed class StepDriver
     public CastAttempt TryCast(Ability ability, EnemyTarget? target = null)
     {
         // TODO: raise a warning when the hero is not free here (a cast in step-by-step mode starts with a free hero).
-        target ??= Enemy;
-        Hero.CurrentTarget = target;
-        var attempt = Context.BeginCast(Hero, ability, target);
+        var attempt = StartCast(ability, target);
         if (attempt.Succeeded) WaitUntilFree();
         return attempt;
+    }
+
+    public CastAttempt StartCast<T>(EnemyTarget? target = null) where T : Ability => StartCast(Ability<T>(), target);
+
+    /// <summary>Starts <paramref name="ability"/> and returns at once, with the cast under way and time not moved: to try another cast
+    /// in the middle of it (<c>f.StartCast&lt;FocusedShot&gt;(); f.Wait(0.5); f.TryCast&lt;EventHorizon&gt;()</c>). <see cref="Wait"/>
+    /// lets the cast go on. Returns the engine's answer, as <see cref="TryCast(Ability, EnemyTarget?)"/>.
+    /// Use it extremely rarely: only in a test whose very point is that one action blocks another. Every other test casts with
+    /// <see cref="Cast(Ability, EnemyTarget?)"/>, which starts each cast with the hero free.</summary>
+    public CastAttempt StartCast(Ability ability, EnemyTarget? target = null)
+    {
+        target ??= Enemy;
+        Hero.CurrentTarget = target;
+        return Context.BeginCast(Hero, ability, target);
     }
 
     /// <summary>Runs the fight for <paramref name="seconds"/> with the hero idle: every event due in that time happens (ticks, landing

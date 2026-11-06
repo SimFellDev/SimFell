@@ -30,6 +30,11 @@ public static class StepQueries
     /// <summary>The damage events of the hits named after <typeparamref name="T"/>.</summary>
     public static List<StepEvent> Damage<T>(this StepDriver f) where T : Ability => f.Damage(f.Ability<T>().Name);
 
+    /// <summary>The value of the first hit named <paramref name="hit"/> on each enemy, one per enemy hit, in the order they were first hit: to
+    /// compare a hit on a crowd with the same hit on one enemy (area damage reduction).</summary>
+    public static List<double> FirstHitOnEachEnemy(this StepDriver f, string hit) =>
+        f.Damage(hit).GroupBy(h => h.Target).Select(g => g.First().Value).ToList();
+
     /// <summary>Gains of the resource named <paramref name="resource"/> ("Anima", "Winter Orbs", "Spirit"...), one event per gain.</summary>
     public static List<StepEvent> Gains(this StepDriver f, string resource) =>
         f.EventsOf(StepEventKind.ResourceGained, f.Resource(resource).Name);

@@ -92,6 +92,67 @@ public class StepDriverTests
         check.Seconds(2.0, casts[1].Time.TotalSeconds);
     }
 
+    /// <summary>ResetCooldown makes an ability on cooldown ready at once, every charge included.</summary>
+    [Fact]
+    public void ResetCooldown_Makes_The_Ability_Ready_At_Once()
+    {
+        var f = StepFights.Rime();
+
+        f.Cast<BurstingIce>();
+        f.Cast<ColdSnap>();
+        f.Cast<ColdSnap>();
+
+        f.ResetCooldown<BurstingIce>();
+        f.ResetCooldown<ColdSnap>();
+
+        using var check = new Checks(f);
+        check.True(f.IsReady<BurstingIce>());
+        check.Equal(2, f.Charges<ColdSnap>());
+    }
+
+    /// <summary>StartCast returns as the cast starts, without moving the clock, so another cast can be tried during it; Wait lets the
+    /// cast go on to its end.</summary>
+    [Fact]
+    public void StartCast_Returns_As_The_Cast_Starts_And_Wait_Lets_It_Complete()
+    {
+        var f = StepFights.Rime();
+
+        var attempt = f.StartCast<BurstingIce>(); // a 2 second cast
+
+        using var check = new Checks(f);
+        check.True(attempt.Succeeded);
+        check.Equal(0.0, f.Seconds());
+        check.False(f.IsFree);
+        check.Equal(0, f.CastsCompleted("Bursting Ice").Count);
+        f.Wait(1.0);
+        check.False(f.TryCast<FrostBolt>().Succeeded, "a cast tried during it is refused");
+        f.Wait(1.1);
+        check.Equal(1, f.CastsCompleted("Bursting Ice").Count);
+    }
+
+    /// <summary>Remove takes an aura off at once.</summary>
+    [Fact]
+    public void Remove_Takes_An_Aura_Off()
+    {
+        var f = StepFights.Rime();
+        f.Apply(IceBlitz.Buff);
+
+        f.Remove(IceBlitz.Buff);
+
+        Assert.False(f.Has(IceBlitz.Buff));
+    }
+
+    /// <summary>RecoveryRate is 1 for a cooldown nothing speeds up: it recovers in real time.</summary>
+    [Fact]
+    public void RecoveryRate_Is_1_With_Nothing_Speeding_The_Cooldown_Up()
+    {
+        var f = StepFights.Rime();
+
+        f.Cast<BurstingIce>();
+
+        Assert.Equal(1.0, f.RecoveryRate<BurstingIce>());
+    }
+
     // ---- Checks
 
     /// <summary>Checks reports every failed check when it is disposed, each with its line, its expression and the fight's time.</summary>

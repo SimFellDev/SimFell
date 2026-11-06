@@ -29,14 +29,16 @@ public static class StepFights
     /// <param name="weaponAbilityId">The weapon ability's ID, e.g. <c>Chronoshift.AbilityId</c>; 0 for no weapon.</param>
     /// <param name="legendaries">Item IDs of the legendary items worn, e.g. <c>Shimmer.HelmItemId</c>.</param>
     /// <param name="gemPower">Gem power per colour, which unlocks the gems' nodes, e.g. <c>new() { [GemColor.Emerald] = 1500 }</c>.</param>
+    /// <param name="glyphs">Glyphs and their rank, e.g. <c>[new(TheMonarch.GlyphId, Rank: 4)]</c>.</param>
     public static StepDriver Of(string hero, double haste = 0, int enemies = 1, int[]? talents = null, int seed = 1, double crit = 0,
         double spirit = 0, double mainStat = 0, double expertise = 0, int weaponAbilityId = 0, int[]? legendaries = null,
-        Dictionary<GemColor, double>? gemPower = null)
+        Dictionary<GemColor, double>? gemPower = null, BuildEntry[]? glyphs = null)
     {
         var build = new CharacterBuild { Name = "Test " + hero, Hero = hero, PrimaryStat = mainStat, WeaponAbilityId = weaponAbilityId };
         if (talents != null) build.Talents.AddRange(talents);
         if (legendaries != null) build.LegendaryItemIds.AddRange(legendaries);
         if (gemPower != null) build.GemPower = gemPower;
+        if (glyphs != null) build.Glyphs.AddRange(glyphs);
         return new StepDriver(StatPins.Import(build, haste, crit, spirit, expertise), seed, enemies);
     }
 

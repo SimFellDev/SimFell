@@ -358,10 +358,6 @@ public class RimeAbilities
 
     // ---- Area damage reduction: past a number of enemies, each enemy takes the hit times sqrt(threshold / enemies)
 
-    /// <summary>The value of the first hit named <paramref name="hit"/> on each enemy, one per enemy hit.</summary>
-    private static List<double> FirstHitOnEachEnemy(StepDriver f, string hit) =>
-        f.Damage(hit).GroupBy(h => h.Target).Select(g => g.First().Value).ToList();
-
     /// <summary>
     /// Bursting Ice's pulses lose damage once they hit more than 5 enemies: each enemy takes the damage times
     /// sqrt(5 / enemies), so the total damage does not grow as fast as the crowd.
@@ -382,8 +378,8 @@ public class RimeAbilities
             return f;
         }
 
-        double alone = FirstHitOnEachEnemy(Fight(1), "Bursting Ice").Single();
-        var crowd = FirstHitOnEachEnemy(Fight(enemies), "Bursting Ice");
+        double alone = Fight(1).FirstHitOnEachEnemy("Bursting Ice").Single();
+        var crowd = Fight(enemies).FirstHitOnEachEnemy("Bursting Ice");
 
         double expected = enemies <= 5 ? 1.0 : Math.Sqrt(5.0 / enemies);
 
@@ -411,8 +407,8 @@ public class RimeAbilities
             return f;
         }
 
-        double alone = FirstHitOnEachEnemy(Fight(1), "Ice Comet").Single();
-        var crowd = FirstHitOnEachEnemy(Fight(enemies), "Ice Comet");
+        double alone = Fight(1).FirstHitOnEachEnemy("Ice Comet").Single();
+        var crowd = Fight(enemies).FirstHitOnEachEnemy("Ice Comet");
 
         double expected = enemies <= 12 ? 1.0 : Math.Sqrt(12.0 / enemies);
 
@@ -443,8 +439,8 @@ public class RimeAbilities
             return f;
         }
 
-        double alone = FirstHitOnEachEnemy(Fight(1), "Rising Talons").Single();
-        var crowd = FirstHitOnEachEnemy(Fight(enemies), "Rising Talons");
+        double alone = Fight(1).FirstHitOnEachEnemy("Rising Talons").Single();
+        var crowd = Fight(enemies).FirstHitOnEachEnemy("Rising Talons");
 
         double expected = enemies <= 12 ? 1.0 : Math.Sqrt(12.0 / enemies);
 
@@ -479,8 +475,8 @@ public class RimeAbilities
             return f;
         }
 
-        double alone = FirstHitOnEachEnemy(Fight(1), "Glacial Assault").Single();
-        var crowd = FirstHitOnEachEnemy(Fight(enemiesHit), "Glacial Assault");
+        double alone = Fight(1).FirstHitOnEachEnemy("Glacial Assault").Single();
+        var crowd = Fight(enemiesHit).FirstHitOnEachEnemy("Glacial Assault");
 
         double expected = enemiesHit <= 12 ? 1.0 : Math.Sqrt(12.0 / enemiesHit);
 
@@ -513,7 +509,7 @@ public class RimeAbilities
             return f;
         }
 
-        double alone = FirstHitOnEachEnemy(Fight(1), "Coalescing Frost").Single();
+        double alone = Fight(1).FirstHitOnEachEnemy("Coalescing Frost").Single();
         var crowd = Fight(enemies);
         string? stacked = crowd.Damage<FreezingTorrent>()[0].Target;
         var eruption = crowd.Damage("Coalescing Frost").GroupBy(h => h.Target).Select(g => g.First()).ToList();

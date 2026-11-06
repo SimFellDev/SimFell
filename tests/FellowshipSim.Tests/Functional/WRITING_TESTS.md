@@ -44,6 +44,9 @@ The whole suite runs in well under a second, since every fight is a few seconds 
 
 - `Cast<T>()` casts and returns once the hero is free again (cast, channel and global cooldown over). `TryCast` returns the refusal
   instead of throwing.
+- `StartCast<T>()` starts a cast and returns at once, with the cast under way: to try another cast in the middle of it
+  (`f.StartCast<FocusedShot>(); f.Wait(0.5); f.TryCast<EventHorizon>()`). `Wait` lets the cast go on. Use it extremely rarely: only in
+  a test whose very point is that one action blocks another.
 - `Wait`/`WaitUntil` let time pass.
 - Between calls the fight is paused, so the test reads the state at an exact time.
 
@@ -151,7 +154,7 @@ public void Frost_Bolt_Gives_3_Anima_When_The_Cast_Completes()
 - **The main stat is `mainStat`, never Intellect, Strength or Agility.** Every hero's main stat works the same way, and what the game calls
   it is cosmetic. Realistic values are around 100–200.
 - **Set-up shortcuts** for state are fine and expected: `f.Set(Hero.SpiritPoints, 100)`, `f.Apply(GlacialAssault.Buff, stacks: 4)`,
-  `f.RimeOf().WinterOrbs = 2`. Say why in a comment on the line. Use the hero's own class (`f.RimeOf()`) only for the hero's own state.
+  `f.RimeOf().WinterOrbs = 2`, `f.ResetCooldown<StarfallVolley>()`, `f.Remove(Chronoshift.Barrier)`. Say why in a comment on the line. Use the hero's own class (`f.RimeOf()`) only for the hero's own state.
 - **Real sources, not engine values.** An effect comes from what gives it in the game: a talent, a gem's power
   (`gemPower: new() { [GemColor.Emerald] = 1500 }` for Blessing of the Commander - II), a weapon. Never set an engine stat
   (`f.Hero.Stats.CooldownReductionPct = 0.1`) or add an engine hook with made-up values, or the test would pass on a rule no player can
@@ -184,7 +187,7 @@ f.Cast<FrostBolt>();
 Assert.Equal(3, f.Amount(Rime.Anima));
 ```
 
-- **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `IsReady`, `Charges`, `Enemies`), not through
+- **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `IsReady`, `Charges`, `RecoveryRate`, `Enemies`), not through
   `f.Hero....(…, f.Now)` or `f.Context...`. When a set-up line already sets the starting state (`f.RimeOf().WinterOrbs = orbs`), don't
   assert it again.
 - **Events are for timing, order and per-hit values.** `Cast` returns only once the hero is free again, so state cannot show the middle of

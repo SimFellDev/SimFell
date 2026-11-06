@@ -11,8 +11,8 @@ namespace FellowshipSim.Tests.Functional;
 /// have to. Abilities are named by type when a test is about one ability (<c>f.Cast&lt;FrostBolt&gt;()</c>), and by game name when a rule
 /// covers a list of them (<c>f.Cast("Frost Bolt")</c>). An unknown game name throws, listing the hero's abilities or resources.
 ///
-/// <see cref="Set"/>, <see cref="Apply"/> and <see cref="FillResources"/> change state directly, without the cast or proc that would cause
-/// it in the game. Use them only to set up the starting state, never for the action under test.
+/// <see cref="Set"/>, <see cref="Apply"/>, <see cref="Remove"/>, <see cref="FillResources"/> and <see cref="ResetCooldown{T}"/> change state directly, without the
+/// cast or proc that would cause it in the game. Use them only to set up the starting state, never for the action under test.
 /// </summary>
 public static class StepVerbs
 {
@@ -56,6 +56,10 @@ public static class StepVerbs
     public static void Apply(this StepDriver f, AuraDef aura, int stacks = 1, Actor? on = null) =>
         (on ?? f.Hero).Auras.Apply(aura, f.Now, setStacks: stacks);
 
+    /// <summary>Takes <paramref name="aura"/> off the hero, or off <paramref name="on"/>: a set-up shortcut for an aura that would end with
+    /// what gave it (e.g. Chronoshift's barrier as its channel ends).</summary>
+    public static void Remove(this StepDriver f, AuraDef aura, Actor? on = null) => (on ?? f.Hero).Auras.Remove(aura, f.Now);
+
     /// <summary>The stacks of <paramref name="aura"/> on the hero, or on <paramref name="on"/>; 0 when it is not up.</summary>
     public static int Stacks(this StepDriver f, AuraDef aura, Actor? on = null) => (on ?? f.Hero).Auras.GetStacks(aura, f.Now);
 
@@ -96,4 +100,12 @@ public static class StepVerbs
     public static int Charges(this StepDriver f, string ability) => f.Hero.CooldownOf(f.Ability(ability)).ChargesAt(f.Now);
 
     public static int Charges<T>(this StepDriver f) where T : Ability => f.Hero.CooldownOf(f.Ability<T>()).ChargesAt(f.Now);
+
+    /// <summary>How fast <typeparamref name="T"/>'s cooldown recovers now: 1 is real time, 2 twice as fast (cooldown recovery,
+    /// acceleration and hasted charges together).</summary>
+    public static double RecoveryRate<T>(this StepDriver f) where T : Ability => f.Hero.CooldownRate(f.Ability<T>(), f.Now);
+
+    /// <summary>Makes every charge of <typeparamref name="T"/> ready now: a set-up shortcut (e.g. a second Starfall Volley while the first
+    /// falls, as cooldown reductions would allow in the game).</summary>
+    public static void ResetCooldown<T>(this StepDriver f) where T : Ability => f.Hero.CooldownOf(f.Ability<T>()).ResetAll();
 }
