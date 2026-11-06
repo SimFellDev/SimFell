@@ -305,8 +305,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
 
     /// <summary>
     /// FellowSimc's Hemotoxin lines (apl/mara/mara.simc) have no bleed test: a stack is the line's condition, and each cast
-    /// uses one up. The single-target line reaches the burst. The four-enemy list's line needs 6 Combo Points, and that list
-    /// spends at 4.
+    /// uses one up. The single-target line reaches the burst.
     /// </summary>
     [Fact]
     public void Hemotoxin_Bursts_On_The_Default_List()
@@ -319,6 +318,23 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
             });
 
         Assert.True(bursts > 0, "No Hemotoxin burst");
+    }
+
+    /// <summary>The default list's <c>buff.deadly_scheme_active</c> reads the crit proc: only that buff lets Widow's Bite cast here.</summary>
+    [Fact]
+    public void Deadly_Scheme_Active_Is_Readable_In_An_Action_List()
+    {
+        const string apl = """
+            actions+=/widows_bite,if=buff.deadly_scheme_active.up
+            actions+=/queens_fang,if=combo_points>=6
+            actions+=/backstab
+            """;
+
+        var (with, _, _) = Run(BaseTalents, 1, apl: apl);
+        var (without, _, _) = Run(BaseTalents.Where(t => t != DeadlyScheme.TalentId), 1, apl: apl);
+
+        Assert.True(with.AbilityDpsBreakdown.GetValueOrDefault("Widow's Bite") > 0, "Widow's Bite never cast under Deadly Scheme: Active");
+        Assert.Equal(0, without.AbilityDpsBreakdown.GetValueOrDefault("Widow's Bite"));
     }
 
     /// <summary>T2qLPpmMkrAtJ9B1 fight 18 @ 1062.844 and 1063.878: two casts one global cooldown apart.</summary>

@@ -76,6 +76,43 @@ public class GemNodeActivationTests
         Assert.Equal([true, false, true], Crossings(gem, _ => ((Diamond)gem).HarmoniousSoul != null));
     }
 
+    /// <summary>Every modeled number of a colour's rank I nodes comes and goes with the power, and the second rise matches the first.</summary>
+    [Theory]
+    [InlineData(GemColor.Ruby)]
+    [InlineData(GemColor.Amethyst)]
+    [InlineData(GemColor.Topaz)]
+    [InlineData(GemColor.Emerald)]
+    [InlineData(GemColor.Sapphire)]
+    [InlineData(GemColor.Diamond)]
+    public void Every_Rank_One_Node_Follows_Each_Crossing(GemColor color)
+    {
+        const double allRankOneNodes = 450;
+        var (hero, _, gem) = HeroWithGem(color);
+        double[] Numbers(SimTime now) =>
+        [
+            hero.PrimaryAttribute(now), hero.CritChance(now), hero.CritMultiplier(now), hero.GetHaste(now), hero.Expertise(now),
+            hero.Stats.CooldownReductionPct, hero.Resources.Get(Hero.SpiritPoints).Max,
+        ];
+        double[] off = Numbers(SimTime.Zero);
+
+        gem.ChangePower(allRankOneNodes, Rise);
+        double[] on = Numbers(Rise);
+        gem.ChangePower(0, Fall);
+        double[] offAgain = Numbers(Fall);
+        gem.ChangePower(allRankOneNodes, SecondRise);
+        double[] onAgain = Numbers(SecondRise);
+
+        Assert.False(on.SequenceEqual(off));
+        Assert.Equal(off, offAgain, new RoundedEquality());
+        Assert.Equal(on, onAgain, new RoundedEquality());
+    }
+
+    private sealed class RoundedEquality : IEqualityComparer<double>
+    {
+        public bool Equals(double x, double y) => Math.Abs(x - y) < 1e-9;
+        public int GetHashCode(double value) => 0;
+    }
+
     /// <summary>A second rise of the power adds no second handler: Sealed Fate's bonus counts once.</summary>
     [Fact]
     public void A_Second_Rise_Binds_No_Second_Handler()
