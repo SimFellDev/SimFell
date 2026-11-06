@@ -23,7 +23,7 @@ public class AceOfSpades : Talent
     {
         if (hero.GetAbility<ChainLightning>() is not { } chainLightning) return;
         chainLightning.SetCharges(Charges);
-        var ppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var ppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         Ability?[] spenders = [hero.GetAbility<SkullCrusher>(), hero.GetAbility<HammerStorm>()];
         foreach (var spender in spenders.OfType<Ability>())
         {

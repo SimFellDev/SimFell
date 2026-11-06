@@ -23,7 +23,7 @@ public class VengefulSoul : Sigil
     public override void Bind(Hero hero)
     {
         var buff = Buff.WithModifiers(StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + ForRank(MainStatByRank)));
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Crit);
         hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.IsCrit && dmg.SimContext is { } ctx && rppm.Roll(hero, ctx)) hero.Auras.Apply(buff, ctx.CurrentTime);

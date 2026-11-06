@@ -31,6 +31,12 @@
         <span>Player reaction time</span>
     </label>
 </div>
+<div class="toggle-block">
+    <label class="switch" data-tooltip="@FirstProcFloorTip">
+        <input type="checkbox" @bind:get="State.FirstProcFloorOn" @bind:set="v => State.FirstProcFloor = v" />
+        <span>PPMs have bonus proc chance</span>
+    </label>
+</div>
 <label class="field" data-tooltip="@ProcReactionTip">
     Proc reaction (ms)
     <input type="number" min="0" step="1"
@@ -52,6 +58,9 @@
 
     private const string ProcReactionTip = "The action list sees a proc's gain this long after it happens. Until then, buff.<proc> reads "
         + "the proc as it was before the gain: down, its stacks before the gain, or its time left before the gain. 0 shows the gain at once.";
+
+    private const string FirstProcFloorTip = "PPM mechanics have a boost to proc chance until their first success. This is a massive "
+        + "increase to some of them in the first fight of the dungeon. This should only be used to model the first fight of the dungeon.";
 
     /// <summary>The training dummies' fight length range.</summary>
     private string LengthText()

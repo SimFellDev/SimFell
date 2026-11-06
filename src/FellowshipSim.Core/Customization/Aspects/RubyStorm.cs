@@ -22,7 +22,7 @@ public class RubyStorm : Aspect
     {
         double share = ForRank(HealthShareByRank);
         int logId = LogIds.Effect(DamageEffectId);
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         hero.OnCastCompleted += (ability, target, _) =>
         {
             if (target == null || ability.BaseCoefficient <= 0 || hero.SimContext is not { } ctx || !rppm.Roll(hero, ctx)) return;

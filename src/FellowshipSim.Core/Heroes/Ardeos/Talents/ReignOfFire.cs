@@ -28,7 +28,7 @@ public class ReignOfFire : Talent
     {
         var fireBall = hero.GetAbility<FireBall>();
         if (fireBall == null) return;
-        var rppm = new RealPpm(ProcKey, Ppm);
+        var rppm = new RealPpm(ProcKey, Ppm, PpmScaling.Haste);
         hero.OnCastCompleted += (ability, _, now) =>
         {
             if (ability is not Detonate || hero.SimContext is not { } ctx || !rppm.Roll(hero, ctx)) return;

@@ -231,7 +231,8 @@ public class DungeonTests
     [Fact]
     public void The_Heros_Spirit_From_An_Enemy_Is_At_Most_Its_Worth()
     {
-        var ctx = new SimulationContext(HeroImporter.Import(Build()));
+        // No first proc floor: a proc's damage on the first hit would add to the enemy's damage taken.
+        var ctx = new SimulationContext(HeroImporter.Import(Build())) { RealPpmFirstProcFloor = false };
         var hero = (Hero)ctx.Player;
         var enemy = ctx.AddEnemy(1001, 1, "Trash Mob", maxHealth: 1000);
         enemy.SpiritPointValue = 3;

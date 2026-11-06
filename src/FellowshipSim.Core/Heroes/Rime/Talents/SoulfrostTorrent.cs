@@ -44,7 +44,7 @@ public class SoulfrostTorrent : Talent
     public override void Bind(Hero hero)
     {
         var rime = (Rime)hero;
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         hero.OnCastCompleted += (_, _, now) =>
         {
             if (hero.SimContext is { } ctx && !rime.Auras.HasAura(Buff, now)

@@ -81,6 +81,11 @@ public class SimulationContext
     /// <summary>The time the fight ends; <see cref="SimTime.Infinite"/> when it has no set end.</summary>
     public SimTime FightEnd { get; set; } = SimTime.Infinite;
 
+    /// <summary>
+    /// <see cref="RealPpm"/> proc's chance get a boost until first success. On by default
+    /// </summary>
+    public bool RealPpmFirstProcFloor { get; set; } = true;
+
     /// <summary>True while a dungeon boss is in combat, or in a training dummy fight against a boss.</summary>
     public bool Boss { get; set; }
 

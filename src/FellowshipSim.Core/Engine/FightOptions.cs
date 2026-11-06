@@ -14,9 +14,10 @@ namespace FellowshipSim.Core.Engine;
 /// With <see cref="ReactionDelays"/> the hero takes a player's
 /// time to cast once the global cooldown, a cast or a channel lets them (<see cref="Engine.ReactionDelays.Measured"/>).
 /// <see cref="ProcReactionSeconds"/> is the time a proc's gain takes to reach the action lists (<see cref="Domain.Aura.Seen"/>).
+/// <see cref="RealPpmFirstProcFloor"/> is <see cref="SimulationContext.RealPpmFirstProcFloor"/>.
 /// </summary>
 public sealed record FightOptions(double LengthVariance = 0, bool HealthFollowsTime = false, double StartingSpirit = 0, bool Boss = true,
-    DungeonProfile? Dungeon = null, bool ReactionDelays = false, double ProcReactionSeconds = 0)
+    DungeonProfile? Dungeon = null, bool ReactionDelays = false, double ProcReactionSeconds = 0, bool RealPpmFirstProcFloor = true)
 {
     public static readonly FightOptions Default = new();
 

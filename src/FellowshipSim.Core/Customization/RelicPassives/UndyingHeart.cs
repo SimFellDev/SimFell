@@ -28,7 +28,7 @@ public class UndyingHeart : RelicPassive
 
     public override void Bind(Hero hero)
     {
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.None);
         hero.OnCastCompleted += (_, _, now) =>
         {
             if (hero.SimContext is { } ctx && rppm.Roll(hero, ctx)) hero.Auras.Apply(Buff, now);

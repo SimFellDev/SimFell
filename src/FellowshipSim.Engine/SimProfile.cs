@@ -27,6 +27,7 @@ namespace FellowshipSim.Engine;
 /// starting_spirit=0
 /// reaction_delays=true
 /// proc_reaction=0.3
+/// rppm_first_proc_floor=false
 ///
 /// actions+=/frost_bolt
 /// </code>
@@ -49,6 +50,8 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     public const string StartingSpirit = "starting_spirit";
     public const string ReactionDelays = "reaction_delays";
     public const string ProcReaction = "proc_reaction";
+    /// <summary>Whether real-PPM procs have a floor until their first proc; with no line, on in a dungeon, off on training dummies.</summary>
+    public const string FirstProcFloor = "rppm_first_proc_floor";
 
     /// <summary>The key in <see cref="SettingKeys"/> of the dungeon's lines.</summary>
     public const string Dungeon = "dungeon";
@@ -61,10 +64,11 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
 
     /// <summary>Every setting's key.</summary>
     public static IReadOnlyList<string> SettingNames { get; } =
-        [Iterations, Threads, Seed, Duration, Targets, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
+        [Iterations, Threads, Seed, Duration, Targets, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction,
+            FirstProcFloor];
 
     /// <summary>The settings that are <c>true</c> or <c>false</c>.</summary>
-    public static IReadOnlyList<string> BoolSettingNames { get; } = [HealthFollowsTime, Boss, ReactionDelays];
+    public static IReadOnlyList<string> BoolSettingNames { get; } = [HealthFollowsTime, Boss, ReactionDelays, FirstProcFloor];
 
     /// <summary>A profile with every setting of <paramref name="settings"/>.</summary>
     public SimProfile(SimcProfile profile, SimSettings settings) : this(profile, settings, AllKeys(settings))
@@ -160,7 +164,8 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
             Read(Boss, true, Bool),
             fight,
             Read(ReactionDelays, true, Bool),
-            Read(ProcReaction, SimSettings.DefaultProcReactionSeconds, NonNegative));
+            Read(ProcReaction, SimSettings.DefaultProcReactionSeconds, NonNegative),
+            Read<bool?>(FirstProcFloor, null, v => Bool(v)));
         return new SimProfile(profile, settings, keys);
     }
 
@@ -186,6 +191,7 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
         s.AppendLine($"{StartingSpirit}={Text(Settings.StartingSpirit)}");
         s.AppendLine($"{ReactionDelays}={Text(Settings.ReactionDelays)}");
         s.AppendLine($"{ProcReaction}={Text(Settings.ProcReactionSeconds)}");
+        if (Settings.RealPpmFirstProcFloor is { } floor) s.AppendLine($"{FirstProcFloor}={Text(floor)}");
         if (Settings.Dungeon is { } fight)
         {
             s.AppendLine();
@@ -254,8 +260,9 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
 
     private static HashSet<string> AllKeys(SimSettings settings)
     {
-        HashSet<string> keys = [Iterations, Seed, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
+        HashSet<string> keys = [Iterations, Seed, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction, FirstProcFloor];
         if (settings.DegreeOfParallelism != null) keys.Add(Threads);
+        if (settings.RealPpmFirstProcFloor != null) keys.Add(FirstProcFloor);
         if (settings.Dungeon != null) keys.Add(Dungeon);
         else keys.UnionWith([Duration, Targets]);
         return keys;

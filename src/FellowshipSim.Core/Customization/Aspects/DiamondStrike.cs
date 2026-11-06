@@ -31,7 +31,7 @@ public class DiamondStrike : Aspect
     public override void Bind(Hero hero)
     {
         var beam = new Beam(hero, ForRank(CoefficientByRank));
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.Target is not { } target || dmg.SimContext is not { } ctx || dmg.AbilityId == beam.DamageLogId) return;

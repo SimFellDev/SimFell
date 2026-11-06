@@ -304,6 +304,7 @@ public class MonteCarloSimulator
         {
             Reactions = options.ReactionDelays ? ReactionDelays.Measured : null,
             ProcReactionTime = SimTime.FromSeconds(options.ProcReactionSeconds),
+            RealPpmFirstProcFloor = options.RealPpmFirstProcFloor,
         };
         ctx.Rng.Seed(seed);
         hero.ResetForIteration();

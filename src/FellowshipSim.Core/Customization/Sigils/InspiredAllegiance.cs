@@ -27,7 +27,7 @@ public class InspiredAllegiance : Sigil
     {
         var buff = Buff.WithModifiers(StatModifier.Add(StatType.HasteRating, ForRank(HasteRatingByRank)));
         double cooldownSeconds = ForRank(WeaponCooldownSecondsByRank);
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         hero.OnCastCompleted += (_, _, now) =>
         {
             if (hero.SimContext is not { } ctx || !rppm.Roll(hero, ctx)) return;

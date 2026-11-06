@@ -119,7 +119,7 @@ action list. Keep profiles in `data/profiles/<Hero>/`.
 
 A sim's profile also has the sim settings: `iterations`, `threads`, `seed`, `duration` and `targets` (training
 dummies), `length_variance` (a fraction), `health_follows_time`, `boss`, `starting_spirit`,
-`reaction_delays` and `proc_reaction` (seconds). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
+`reaction_delays`, `proc_reaction` (seconds) and `rppm_first_proc_floor` (on by default in a dungeon, off on training dummies). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
 order. The last line of a setting is the setting, and a `dungeon=` line starts a dungeon that replaces the one before.
 Every option of the **Sim** page is a line of this text, and a sim's job is the text alone.
 

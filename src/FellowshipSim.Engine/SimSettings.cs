@@ -11,14 +11,21 @@ namespace FellowshipSim.Engine;
 /// <see cref="ReactionDelays"/> and <see cref="ProcReactionSeconds"/> are each fight's
 /// <see cref="FightOptions"/>; targets lose their health over each fight, the hero takes a player's reaction time, and a
 /// proc reaches the action lists 0.5 s after its gain unless told otherwise, as the Sim page has them.
+/// <see cref="RealPpmFirstProcFloor"/> is the fights' <see cref="FightOptions.RealPpmFirstProcFloor"/>; null is on for a
+/// dungeon and off for training dummies, whose fixed-length fights the floor would favour.
 /// </summary>
 public sealed record SimSettings(int Iterations, double DurationSeconds, int TargetCount = 1, int FirstSeed = 1, int? DegreeOfParallelism = null,
     double LengthVariance = 0, bool HealthFollowsTime = true, double StartingSpirit = 0, bool Boss = true, DungeonProfile? Dungeon = null,
-    bool ReactionDelays = true, double ProcReactionSeconds = SimSettings.DefaultProcReactionSeconds)
+    bool ReactionDelays = true, double ProcReactionSeconds = SimSettings.DefaultProcReactionSeconds, bool? RealPpmFirstProcFloor = null)
 {
     /// <summary>SimulationCraft's player reaction_mean: 0.3 s.</summary>
     public const double DefaultProcReactionSeconds = 0.3;
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public FightOptions Fight => new(LengthVariance, HealthFollowsTime, StartingSpirit, Boss, Dungeon, ReactionDelays, ProcReactionSeconds);
+    public FightOptions Fight => new(LengthVariance, HealthFollowsTime, StartingSpirit, Boss, Dungeon, ReactionDelays, ProcReactionSeconds,
+        FirstProcFloor);
+
+    /// <summary><see cref="RealPpmFirstProcFloor"/>, or its default: on for a dungeon, off for training dummies.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool FirstProcFloor => RealPpmFirstProcFloor ?? Dungeon != null;
 }

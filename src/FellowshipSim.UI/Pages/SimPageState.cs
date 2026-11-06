@@ -207,6 +207,7 @@ public sealed class SimPageState
         }
         if (keys.Contains(SimProfile.ReactionDelays)) ReactionDelays = settings.ReactionDelays;
         if (keys.Contains(SimProfile.ProcReaction)) ProcReactionMilliseconds = settings.ProcReactionSeconds * 1000;
+        if (keys.Contains(SimProfile.FirstProcFloor)) FirstProcFloor = settings.RealPpmFirstProcFloor;
     }
 
     /// <summary>
@@ -274,6 +275,12 @@ public sealed class SimPageState
     /// <summary>Milliseconds a proc's gain takes to reach the action lists; 0 for at once.</summary>
     public double ProcReactionMilliseconds { get; set; } = SimSettings.DefaultProcReactionSeconds * 1000;
 
+    /// <summary>Whether real-PPM procs have a floor until their first proc, as the page set it; null for the fight's default.</summary>
+    public bool? FirstProcFloor { get; set; }
+
+    /// <summary><see cref="FirstProcFloor"/>, or its default: on in a dungeon, off on training dummies.</summary>
+    public bool FirstProcFloorOn => FirstProcFloor ?? Mode == SimMode.Dungeon;
+
     /// <summary>
     /// The settings of <paramref name="iterations"/> fights of this fight on <paramref name="threads"/> threads, the first
     /// with seed <paramref name="firstSeed"/>.
@@ -286,7 +293,8 @@ public sealed class SimPageState
         Boss: Boss,
         Dungeon: Mode == SimMode.Dungeon ? Dungeon : null,
         ReactionDelays: ReactionDelays,
-        ProcReactionSeconds: ProcReactionMilliseconds / 1000);
+        ProcReactionSeconds: ProcReactionMilliseconds / 1000,
+        RealPpmFirstProcFloor: FirstProcFloor);
 
     public SimExtra Extra { get; set; } = SimExtra.None;
 

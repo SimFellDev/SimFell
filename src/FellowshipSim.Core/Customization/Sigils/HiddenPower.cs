@@ -30,7 +30,7 @@ public class HiddenPower : Sigil
     {
         var revealed = hero.Register(AuraDef.Effect("Power Revealed", BuffEffectId, BuffSeconds,
             modifiers: StatModifier.Increased(StatType.PrimaryAttributeMultiplier, 1.0 + ForRank(MainStatByRank))) with { KeepsOnDeath = true, IsProc = true });
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         hero.OnCastCompleted += (_, _, now) =>
         {
             if (hero.SimContext is not { } ctx || hero.Auras.HasAura(revealed, now) || !rppm.Roll(hero, ctx)) return;

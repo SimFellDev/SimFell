@@ -27,7 +27,7 @@ public class DragonboneDice : RelicPassive
 
     public override void Bind(Hero hero)
     {
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Crit);
         hero.OnDamageDealt += (in dmg) =>
         {
             if (dmg.IsCrit && dmg.SimContext is { } ctx && rppm.Roll(hero, ctx)) hero.Auras.Apply(Buff, ctx.CurrentTime);

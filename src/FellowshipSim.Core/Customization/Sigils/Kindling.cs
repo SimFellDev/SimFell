@@ -48,7 +48,7 @@ public class Kindling : Sigil
     {
         var dot = new KindlingDot(hero, ForRank(CoefficientByRank));
         hero.DotDamageIds.Add(dot.DamageLogId);
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, ProcsPerMinute, PpmScaling.Haste);
         var burning = new Dictionary<EnemyTarget, Burn>();
         // The fight the burning enemies belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;

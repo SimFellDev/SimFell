@@ -62,6 +62,28 @@ public class SimProfileTests
         Assert.DoesNotContain(SimProfile.Duration, read.SettingKeys);
     }
 
+    /// <summary>
+    /// The real-PPM first proc floor is on in a dungeon and off on training dummies unless a line says otherwise, and a line set
+    /// either way reads back.
+    /// </summary>
+    [Fact]
+    public void The_First_Proc_Floor_Defaults_To_On_In_A_Dungeon_And_Off_On_Training_Dummies()
+    {
+        var dungeon = DungeonProfile.Parse(DungeonText);
+        var dummies = new SimSettings(500, 300);
+        var dungeonFights = new SimSettings(500, dungeon.TimeLimitSeconds, Dungeon: dungeon);
+        var dummiesWithFloor = dummies with { RealPpmFirstProcFloor = true };
+
+        var read = SimProfile.Parse(new SimProfile(Character(), dummiesWithFloor).Format());
+
+        Assert.False(dummies.Fight.RealPpmFirstProcFloor);
+        Assert.True(dungeonFights.Fight.RealPpmFirstProcFloor);
+        Assert.DoesNotContain(SimProfile.FirstProcFloor, new SimProfile(Character(), dummies).Format());
+        Assert.Equal(true, read.Settings.RealPpmFirstProcFloor);
+        Assert.True(read.Settings.Fight.RealPpmFirstProcFloor);
+        Assert.False((dungeonFights with { RealPpmFirstProcFloor = false }).Fight.RealPpmFirstProcFloor);
+    }
+
     [Fact]
     public void Lines_Are_In_Any_Order()
     {

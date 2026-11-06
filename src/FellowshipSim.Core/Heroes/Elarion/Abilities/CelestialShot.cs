@@ -25,7 +25,7 @@ public class CelestialShot : ElarionAbility
     /// <summary>A Celestial Shot used up Celestial Impetus (Impending Heartseeker).</summary>
     public event Action<SimulationContext, EnemyTarget>? ImpetusConsumed;
 
-    private readonly RealPpm _impetus = new(ImpetusProcKey, ImpetusProcsPerMinute);
+    private readonly RealPpm _impetus = new(ImpetusProcKey, ImpetusProcsPerMinute, PpmScaling.Haste);
 
     public CelestialShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
     {
