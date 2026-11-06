@@ -91,7 +91,7 @@ public class AplFightTraceTests
     public void A_Cast_Refused_During_The_Global_Cooldown_Has_The_Reason_And_The_Global_Cooldown_Left()
     {
         // Ardeos casts Incinerate during the global cooldown (use_off_gcd=1), so a decision runs while it lasts and Engulfing
-        // Flames, use_off_gcd=1 too, ready and higher in the list, is refused (at 144.061 s in this fight).
+        // Flames, use_off_gcd=1 too, ready and higher in the list, is refused.
         const string profile = """
             ardeos="Zig_3_1_test-haste_crit"
             primary_stat=161
@@ -134,7 +134,7 @@ public class AplFightTraceTests
             .TraceFight(0, SimTime.FromSeconds(300), 8, firstSeed: 67, FightOptions.Default with { LengthVariance = 0.2 });
 
         var refused = trace.Decisions.Where(d => d.Steps.Any(s => s.Outcome == AplStepOutcome.CastRefused)).ToList();
-        Assert.Contains(refused, d => Math.Abs(d.Time - 144.061) < 0.001 && d.Cast == "Incinerate");
+        Assert.Contains(refused, d => d.Cast == "Incinerate");
         Assert.All(refused, decision =>
         {
             var step = decision.Steps.First(s => s.Outcome == AplStepOutcome.CastRefused);

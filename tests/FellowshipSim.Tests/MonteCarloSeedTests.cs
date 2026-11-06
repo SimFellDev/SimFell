@@ -81,19 +81,20 @@ public class MonteCarloSeedTests
     /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
     /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers. The rows
     /// with a Spirit Refund past 20s of Rising Spirit again once its duration stopped at 20s. Mara's 3-target row again once
-    /// Hemorrhaging Strike had no cooldown. Mara's again once her default list read Deadly Scheme: Active.
+    /// Hemorrhaging Strike had no cooldown. Mara's again once her default list read Deadly Scheme: Active. Every row with a
+    /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor.
     /// </summary>
     [Theory]
-    [InlineData("Rime", 120, 3, new[] { 2886896.5396548128, 3140791.71285178, 2661851.3885713113, 2817501.4722939902 })]
-    [InlineData("Rime", 300, 1, new[] { 8386567.4984454075, 7314085.758635247, 6457222.233761247, 8102670.212286511 })]
-    [InlineData("Ardeos", 120, 3, new[] { 2928926.308143849, 3151261.670898872, 2994267.239870511, 3028022.9286815594 })]
-    [InlineData("Ardeos", 300, 1, new[] { 4880401.459850469, 4756376.690589438, 4909095.667185546, 4970616.393990371 })]
-    [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
-    [InlineData("Gunde", 300, 1, new[] { 7549389.792077887, 7756467.6351271225, 7099551.352428161, 7482946.363244693 })]
-    [InlineData("Mara", 120, 3, new[] { 2502235.7138253502, 2362914.2067360287, 2387172.001133163, 2966015.757740302 })]
-    [InlineData("Mara", 300, 1, new[] { 7801844.3959103459, 7367704.9751687804, 6377970.7571788887, 7873548.6381593626 })]
-    [InlineData("Tariq", 120, 3, new[] { 1745218.5575917773, 2328126.319739133, 1978643.208110513, 2032778.326228643 })]
-    [InlineData("Tariq", 300, 1, new[] { 3579469.9825650672, 3818359.0767493173, 3358372.535505664, 3295629.6778827147 })]
+    [InlineData("Rime", 120, 3, new[] { 2929444.08752369, 3077995.7808620073, 2829134.0571837318, 3705848.5280579049 })]
+    [InlineData("Rime", 300, 1, new[] { 7807802.8056133138, 8531419.3838742785, 8084639.1539794672, 7908492.7942486135 })]
+    [InlineData("Ardeos", 120, 3, new[] { 3345832.9485829431, 3320652.327085807, 2970622.7621510844, 3343792.2069075285 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4861741.2230702369, 4925568.8819087893, 4902383.9729880206, 5274164.3018721882 })]
+    [InlineData("Gunde", 120, 3, new[] { 4748197.3158851741, 4295319.6169056566, 4262391.2107238909, 4470118.3590960605 })]
+    [InlineData("Gunde", 300, 1, new[] { 7249581.1534622693, 7814233.1795717087, 7659215.0033817766, 7371523.7896765638 })]
+    [InlineData("Mara", 120, 3, new[] { 2560953.2346197013, 2353016.7117702793, 2897776.7017053822, 2866602.873777526 })]
+    [InlineData("Mara", 300, 1, new[] { 7895879.749682934, 6001428.5453476505, 7463940.1662859339, 7588414.1623460148 })]
+    [InlineData("Tariq", 120, 3, new[] { 1975057.5546042551, 1770988.9151165667, 2311391.1960613201, 2173046.1471902938 })]
+    [InlineData("Tariq", 300, 1, new[] { 3437696.0836679186, 3708298.5408707494, 3263678.3343260279, 3737354.5175946755 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

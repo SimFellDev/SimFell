@@ -29,11 +29,14 @@ public class HeroAccuracyTests(ITestOutputHelper output)
 
     public sealed record IssueCount(string Category, string? Subject, int Count, string Example);
 
+    public sealed record ProcAccuracy(string Key, int Rolls, double ExpectedProcs, int Procs);
+
     public sealed record HeroAccuracy(
         string Hero, string Label, string Patch, DateTime CreatedAt,
         int Fights, int LogHits, int MatchedHits, double LogDamage, double ExactDamage, double FreeDiceLogDamage, double FreeDiceMean,
         double MeanFreeDiceLogPercentile, IReadOnlyList<FightAccuracy> FightResults, IReadOnlyList<AbilityAccuracy> Abilities,
-        IReadOnlyList<IssueCount> Issues, IReadOnlyDictionary<string, int> UnmodeledAbilities, IReadOnlyList<string> UnmodeledCustomizations);
+        IReadOnlyList<IssueCount> Issues, IReadOnlyDictionary<string, int> UnmodeledAbilities, IReadOnlyList<string> UnmodeledCustomizations,
+        IReadOnlyList<ProcAccuracy>? Procs = null);
 
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
@@ -84,7 +87,9 @@ public class HeroAccuracyTests(ITestOutputHelper output)
             fights, Abilities(results, freeDice), Issues(results),
             results.SelectMany(r => r.UnmodeledAbilities).GroupBy(a => a.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Sum(a => a.Value), StringComparer.OrdinalIgnoreCase),
-            results.SelectMany(r => r.UnmodeledCustomizations).Distinct().Order().ToList());
+            results.SelectMany(r => r.UnmodeledCustomizations).Distinct().Order().ToList(),
+            results.SelectMany(r => r.ProcStats).GroupBy(p => p.Key).OrderBy(g => g.Key)
+                .Select(g => new ProcAccuracy(g.Key, g.Sum(p => p.Rolls), g.Sum(p => p.ExpectedProcs), g.Sum(p => p.Procs))).ToList());
 
         string folder = Path.Combine(library.DataDirectory, "accuracy", hero);
         Directory.CreateDirectory(folder);

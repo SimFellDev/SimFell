@@ -298,7 +298,7 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   later hit of a millisecond in the engine's order, and the roll before it in that millisecond leaves `t` 0. In the log, the frame's first
   damage row is on the spike's enemy for 430 of 442 spikes, and the replay's order in one millisecond is the engine's. CwmX2Tb8GA6hyc1v
   fight 8 @ 82.187 (spike on 87.2, Amethyst Splinter on 87.5 first in the engine), @ 946.407 and @ 1141.426; d1LvbCpBWXRM8Hcm fight 14 @ 244.791.
-  At `t` 0 the game's chance is 0 after the stream's first proc and `R / 8` before it, a floor `RealPpm` lacks: 2 of the 40 are a
+  At `t` 0 the game's chance is 0 after the stream's first proc and `R / 8` before it (`RealPpm`): 2 of the 40 were a
   fight's first spike (dBgbn8wD1RxL7Kma fight 9 @ 14.965, v8rhNxVc3PwDqzBA fight 4 @ 12.026). Sources checked: `GA_Trait_GemTargetedSpikeProc`,
   `RollProcPerMinute` 0x1452CBD20 (settings `procPerMinuteRoll`). Its `t` is the frame's world time (0x143A19920), so a later roll of a frame
   has `t` 0 and only the frame's first roll procs after the first proc. The engine's first roll of a millisecond is on another enemy
