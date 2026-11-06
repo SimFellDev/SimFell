@@ -4,10 +4,11 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
 /// Talent 200: "While Starfall Volley is active, your Skystrider's Grace gains +120% Cooldown Acceleration." Effect 2316
-/// (AggregateBySource, StackCountMax 1) comes at each cast (GA_Bowguy_TargetedAoeDamage offset 448) and leaves when any
-/// volley ends (BP_Bowguy_TargetedAoeDamage_AoeActor offsets 1998, 2062), with no test for another volley falling, so a
-/// later volley still falling has no bonus until the next cast. The native stacking path is undecoded. The effect is not
-/// in the combat logs (fXyzwGcQkTrLD34R fight 4 has the talent), so the engine's aura is internal.
+/// (AggregateBySource, StackCountMax 1) comes at each cast (GA_Bowguy_TargetedAoeDamage offset 448), and a second cast
+/// merges into the one active effect (0x144A6A93B). It leaves whole when any volley ends (BP_Bowguy_TargetedAoeDamage_AoeActor
+/// offsets 1998, 2062, stacks -1 at 0x144A80D68), with no test for another volley falling, so a later volley still falling
+/// has no bonus until the next cast. The effect is not in the combat logs (fXyzwGcQkTrLD34R fight 4 has the talent), so the
+/// engine's aura is internal.
 /// </summary>
 public class SkylitGrace : Talent
 {

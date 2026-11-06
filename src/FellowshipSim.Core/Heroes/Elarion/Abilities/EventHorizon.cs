@@ -39,7 +39,7 @@ public class EventHorizon : ElarionAbility
         var heartseeker = hero.GetAbility<HeartseekerBarrage>();
         var starfall = hero.GetAbility<StarfallVolley>();
         // GA_Bowguy_Passive_ReducedCostCooldownRecoveryBuff_Manager offsets 280 to 425: every Highwind Arrow damage event, with
-        // no bounce or per-cast test. UNVERIFIED: whether each ricochet raises the event is native.
+        // no bounce or per-cast test. Each ricochet raises one (0x1452B90CC), and a crit raises one (0x1452E4B40).
         hero.GetAbility<HighwindArrow>()!.Hit += (in hit) =>
         {
             if (heartseeker != null && hit.SimContext is { } ctx && hero.Auras.HasAura(Buff, ctx.CurrentTime))

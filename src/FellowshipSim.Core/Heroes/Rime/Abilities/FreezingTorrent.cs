@@ -2,7 +2,10 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
-/// <summary>Ability 1027. Channel: ticks every 0.4s (hasted) for 2s, 1 Anima per tick.</summary>
+/// <summary>
+/// Ability 1027. Channel: ticks every 0.4s (hasted) for 2s, 1 Anima per tick. Effect 2315, its 100% time rate on Bursting
+/// Ice, is unapplied: the ability holds it in the class default ChannelBuff, no bytecode reads it, and the exe has no such name.
+/// </summary>
 public class FreezingTorrent : RimeAbility
 {
     public const int AbilityId = 1027;
