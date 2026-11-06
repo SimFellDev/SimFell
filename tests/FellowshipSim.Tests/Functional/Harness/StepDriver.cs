@@ -21,9 +21,10 @@ public enum StepEventKind
 /// ability, hit, resource or aura.
 ///
 /// <see cref="Value"/> is the damage dealt, the amount of resource gained, spent or lost, or the aura's stacks; 0 for casts. Damage events
-/// also have <see cref="Target"/> (the enemy hit), <see cref="CritChance"/> (1 or 0 when the engine forces the crit) and <see cref="IsCrit"/>.
+/// also have <see cref="Target"/> (the enemy hit), <see cref="CritChance"/> (1 or 0 when the engine forces the crit), <see cref="IsCrit"/>
+/// and <see cref="AbilityId"/> (the hit's combat-log ID, which tells a damage over time effect's ticks from the direct hit with the same name).
 /// </summary>
-public readonly record struct StepEvent(SimTime Time, StepEventKind Kind, string Name, double Value = 0, string? Target = null, double CritChance = 0, bool IsCrit = false);
+public readonly record struct StepEvent(SimTime Time, StepEventKind Kind, string Name, double Value = 0, string? Target = null, double CritChance = 0, bool IsCrit = false, int AbilityId = 0);
 
 /// <summary>
 /// Runs a fight where the test, not an action list, decides what the hero casts.
@@ -139,13 +140,13 @@ public sealed class StepDriver
 
     private void Subscribe()
     {
-        void Add(StepEventKind kind, string name, double value = 0, string? target = null, double critChance = 0, bool isCrit = false) =>
-            _events.Add(new StepEvent(Now, kind, name, value, target, critChance, isCrit));
+        void Add(StepEventKind kind, string name, double value = 0, string? target = null, double critChance = 0, bool isCrit = false, int abilityId = 0) =>
+            _events.Add(new StepEvent(Now, kind, name, value, target, critChance, isCrit, abilityId));
 
         Hero.OnCastStarted += (a, _, _) => Add(StepEventKind.CastStarted, a.Name);
         Hero.OnCastCompleted += (a, _, _) => Add(StepEventKind.CastCompleted, a.Name);
         Hero.OnCastCancelled += (a, _, _) => Add(StepEventKind.CastCancelled, a.Name);
-        Hero.OnDamageDealt += (in DamageContext hit) => Add(StepEventKind.Damage, hit.AbilityName, hit.Amount, hit.Target?.Name, hit.CritChance, hit.IsCrit);
+        Hero.OnDamageDealt += (in DamageContext hit) => Add(StepEventKind.Damage, hit.AbilityName, hit.Amount, hit.Target?.Name, hit.CritChance, hit.IsCrit, hit.AbilityId);
         Hero.OnResourceGained += (r, amount, _, _) => Add(StepEventKind.ResourceGained, r.Name, amount);
         Hero.OnResourceSpent += (r, amount, _) => Add(StepEventKind.ResourceSpent, r.Name, amount);
         Hero.OnResourceOverflow += (r, amount, _) => Add(StepEventKind.ResourceOverflow, r.Name, amount);

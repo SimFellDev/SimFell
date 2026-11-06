@@ -30,6 +30,16 @@ public static class StepQueries
     /// <summary>The damage events of the hits named after <typeparamref name="T"/>.</summary>
     public static List<StepEvent> Damage<T>(this StepDriver f) where T : Ability => f.Damage(f.Ability<T>().Name);
 
+    /// <summary>The damage events logged under the game effect <paramref name="effectId"/>: a damage over time effect's ticks, told apart
+    /// from the direct hit with the same name (<c>f.Ticks(SearingBlazeDot.EffectId)</c>).</summary>
+    public static List<StepEvent> Ticks(this StepDriver f, int effectId) =>
+        f.Events.Where(e => e.Kind == StepEventKind.Damage && e.AbilityId == LogIds.Effect(effectId)).ToList();
+
+    /// <summary>The damage events of the hits named after <typeparamref name="T"/>, without the ticks of the damage over time effects
+    /// logged under the same name: Incinerate's hits without its burn's ticks.</summary>
+    public static List<StepEvent> DirectHits<T>(this StepDriver f) where T : Ability =>
+        f.Damage<T>().Where(e => e.AbilityId is < LogIds.EffectOffset or >= LogIds.TalentOffset).ToList();
+
     /// <summary>The value of the first hit named <paramref name="hit"/> on each enemy, one per enemy hit, in the order they were first hit: to
     /// compare a hit on a crowd with the same hit on one enemy (area damage reduction).</summary>
     public static List<double> FirstHitOnEachEnemy(this StepDriver f, string hit) =>

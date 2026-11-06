@@ -51,6 +51,12 @@ public static class StepVerbs
     /// <summary>Whether <paramref name="aura"/> is up on the hero, or on <paramref name="on"/> (e.g. <c>f.Enemy</c>).</summary>
     public static bool Has(this StepDriver f, AuraDef aura, Actor? on = null) => (on ?? f.Hero).Auras.HasAura(aura, f.Now);
 
+    /// <summary>Whether the enemy <paramref name="on"/> (the main target by default) has a debuff of the hero's called <paramref name="debuff"/>
+    /// in game ("Searing Blaze", "Shimmer"...): for the debuffs no <see cref="AuraDef"/> is declared for, such as Ardeos's damage over
+    /// time effects. As with hit names, a misspelled name reads as false, so a test that expects it gone also sees it there.</summary>
+    public static bool HasDebuff(this StepDriver f, string debuff, Actor? on = null) =>
+        (on ?? f.Enemy).Auras.Active(f.Now).Any(aura => aura.Name == debuff);
+
     /// <summary>Puts <paramref name="aura"/> on the hero, or on <paramref name="on"/>, with <paramref name="stacks"/> stacks: a set-up shortcut
     /// (e.g. 4 Glacial Assault stacks without casting 4 Cold Snaps).</summary>
     public static void Apply(this StepDriver f, AuraDef aura, int stacks = 1, Actor? on = null) =>

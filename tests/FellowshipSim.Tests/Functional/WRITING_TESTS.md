@@ -187,13 +187,13 @@ f.Cast<FrostBolt>();
 Assert.Equal(3, f.Amount(Rime.Anima));
 ```
 
-- **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `IsReady`, `Charges`, `RecoveryRate`, `Enemies`), not through
-  `f.Hero....(…, f.Now)` or `f.Context...`. When a set-up line already sets the starting state (`f.RimeOf().WinterOrbs = orbs`), don't
-  assert it again.
+- **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `IsReady`, `Charges`, `RecoveryRate`, `Enemies`,
+  `HasDebuff("Searing Blaze")`), not through `f.Hero....(…, f.Now)` or `f.Context...`. When a set-up line already sets the
+  starting state (`f.RimeOf().WinterOrbs = orbs`), don't assert it again.
 - **Events are for timing, order and per-hit values.** `Cast` returns only once the hero is free again, so state cannot show the middle of
   a cast: `Assert.Equal(f.CompletedAt("Frost Bolt"), f.Gains("Anima").Single().Time.TotalSeconds)`.
-- **Read events through the named queries** (`Damage`, `Gains`, `Spends`, `Overflows`, `CastsStarted`, `CastsCompleted`, `AurasRemoved`,
-  `CompletedAt`, `LastCastDuration`). Never filter `f.Events` in a test.
+- **Read events through the named queries** (`Damage`, `DirectHits`, `Ticks`, `Gains`, `Spends`, `Overflows`, `CastsStarted`,
+  `CastsCompleted`, `AurasRemoved`, `CompletedAt`, `LastCastDuration`). Never filter `f.Events` in a test.
 - **A misspelled hit name is silent.**
   - Casts and resources are looked up in the hero's own lists, and a name the hero does not have throws.
   - Auras are named by their definition (`BurstingIce.WintersEmbrace`), so a typo does not compile.
