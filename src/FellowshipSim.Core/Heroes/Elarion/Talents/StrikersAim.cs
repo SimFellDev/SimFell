@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 680: "Your Highwind Arrow grants you 1 stack of Striker's Aim for every Ricochet that does not find its target,
-/// granting you +2% Expertise per stack. Every 2 seconds 1 stack of Striker's Aim is removed. Striker's Aim is only
-/// reapplied if missing Ricochets exceed the current effect stack count." Effect 3179 (Expertise +0.02, 2s, up to 3
+/// Talent 680: Highwind Arrow grants a stack of Striker's Aim for every Ricochet that does not find its target,
+/// granting Expertise per stack. Periodically a stack of Striker's Aim is removed. Striker's Aim is only
+/// reapplied if missing Ricochets exceed the current effect stack count. Effect 3179 (Expertise, a decay period, capped
 /// stacks). UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class StrikersAim : Talent
@@ -34,7 +34,7 @@ public class StrikersAim : Talent
             Decay(ctx, hero.Auras.Get(Buff, ctx.CurrentTime)!);
         };
 
-        // One stack every 2 seconds: the aura runs out at the last stack, and each earlier stack goes as the 2 seconds pass.
+        // One stack every `DecaySeconds`: the aura runs out at the last stack, and each earlier stack goes as the period passes.
         void Decay(SimulationContext ctx, Aura aura)
         {
             var at = aura.ExpiresAt;

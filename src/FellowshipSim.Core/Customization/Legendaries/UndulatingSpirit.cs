@@ -4,9 +4,9 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 398: Winter's Blessing grants 2 stacks of Undulating Spirit (effect 2171); the next ability that
+/// Legendary power 398: Winter's Blessing grants stacks of Undulating Spirit (effect 2171); the next ability that
 /// spends Winter Orbs consumes a stack and always triggers a Spirit Refund (handled in <see cref="Rime.SpendWinterOrbs"/>).
-/// The 50 Spirit Points it gave at the start of each dungeon were removed in a patch (datamine export 26136736: power 398
+/// The Spirit Points it gave at the start of each dungeon were removed in a patch (game data: power 398
 /// generates nothing).
 /// </summary>
 public class UndulatingSpirit : Legendary
@@ -30,7 +30,7 @@ public class UndulatingSpirit : Legendary
         {
             if (ability is WintersBlessing) rime.Auras.Apply(Buff, now, setStacks: StacksGranted);
         };
-        // "Your next ability that spends Winter Orbs consumes 1 stack of Undulating Spirits and always triggers a Spirit Refund."
+        // "Your next ability that spends Winter Orbs consumes a stack of Undulating Spirits and always triggers a Spirit Refund."
         hero.GuaranteedSpiritRefunds.Add(now =>
         {
             if (!hero.Auras.HasAura(Buff, now)) return false;

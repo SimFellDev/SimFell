@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
-/// Glyph 706: "Your POWER abilities gain 0.3% / 0.5% / 0.8% / 1.2% increased power for every 3% Spirit you have, up
-/// to 50% Spirit."
+/// Glyph 706: "Your POWER abilities gain increased power by rank for every step of Spirit you have, up to a Spirit cap"
+/// (<see cref="SpiritPercentPerStep"/>, <see cref="SpiritCap"/>).
 /// </summary>
 public class TheMystic : Glyph
 {

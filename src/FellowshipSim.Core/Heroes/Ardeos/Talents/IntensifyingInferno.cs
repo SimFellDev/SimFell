@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 151: "Your Infernal Wave deals +15% increased damage for each of your unique damage over time effects that are
-/// active on the target." UNVERIFIED: no combat log has this talent.
+/// Talent 151: Infernal Wave deals increased damage for each of the hero's unique damage over time effects active on the
+/// target. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class IntensifyingInferno : Talent
 {

@@ -3,7 +3,7 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 166: "Your Arachnid Assault deals 20% more damage against enemies that have your Hemorrhaging Strike bleed
+/// Talent 166: "Your Arachnid Assault deals more damage against enemies that have your Hemorrhaging Strike bleed
 /// active." UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class ArachnidOnslaught : Talent

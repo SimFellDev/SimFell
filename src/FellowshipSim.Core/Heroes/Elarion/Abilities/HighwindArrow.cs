@@ -3,18 +3,18 @@ using FellowshipSim.Core.Heroes.Elarion.Talents;
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1313: "Fire a Highwind Arrow, dealing physical damage to target enemy. Highwind Arrow Ricochets to up to 2
+/// Ability 1313: "Fire a Highwind Arrow, dealing physical damage to target enemy. Highwind Arrow Ricochets to
 /// additional enemies near your target, dealing physical damage to them. Highwind Arrow gains Cooldown Acceleration equal
-/// to your Haste." 2s cast, 30 Focus, 3 charges of 15s (cooldownTimeRateScalesOff Haste).
-/// Combat logs (fXyzwGcQkTrLD34R fight 4): each ricochet strikes another enemy 2 to 6 server frames after the hit before
-/// it, for half the first hit (Bowguy constant BounceDamageMultiplierAfterFirstHit 0.5), with the cast's bonuses and
+/// to your Haste." Has a cast time, costs Focus and recharges its charges (cooldownTimeRateScalesOff Haste).
+/// Combat logs (fXyzwGcQkTrLD34R fight 4): each ricochet strikes another enemy a few server frames after the hit before
+/// it, for a share of the first hit (Bowguy constant BounceDamageMultiplierAfterFirstHit, <see cref="RicochetMultiplier"/>), with the cast's bonuses and
 /// crit chance (a Lethal Shots cast's ricochets are grievous crits too).
 /// </summary>
 public class HighwindArrow : ElarionAbility
 {
     public const int AbilityId = 1313;
     public const string AbilityName = "Highwind Arrow";
-    /// <summary>Placeholder Highwind: 1366.73% of Agility.</summary>
+    /// <summary>Share of Agility.</summary>
     public const double Coefficient = 13.6673;
     public const double CastTimeSeconds = 2.0;
     public const double Cost = 30.0;
@@ -23,7 +23,7 @@ public class HighwindArrow : ElarionAbility
     public const int BaseRicochets = 2;
     public const double RicochetMultiplier = 0.5;
 
-    /// <summary>Talent 126 Resurgent Winds: the buffed Highwind Arrow "deals 50% more damage".</summary>
+    /// <summary>Talent 126 Resurgent Winds: the buffed Highwind Arrow deals more damage.</summary>
     public const double ResurgentWindsMultiplier = 1.5;
 
     /// <summary>Resurgent Winds is taken: its buff makes the next Highwind Arrow instant, free and stronger.</summary>

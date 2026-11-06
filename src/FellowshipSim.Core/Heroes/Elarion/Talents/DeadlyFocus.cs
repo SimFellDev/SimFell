@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 679: "Your Focused Shot and Celestial Shot deal 100% more damage but Focused Shot generates 50% less Focus."
-/// Effects 1891 and 1864 talent Enhanced DamageScaler 2. UNVERIFIED: no combat log has this talent.
+/// Talent 679: Focused Shot and Celestial Shot deal more damage but Focused Shot generates less Focus.
+/// Effects 1891 and 1864 talent Enhanced DamageScaler. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class DeadlyFocus : Talent
 {

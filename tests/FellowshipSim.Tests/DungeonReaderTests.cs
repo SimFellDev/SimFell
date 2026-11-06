@@ -8,13 +8,13 @@ namespace FellowshipSim.Tests;
 
 /// <summary>
 /// Reads the dungeon of a fight with one player's damage events, as <c>FellowshipLogsReports.GetDungeonFightAsync</c>
-/// returns it, against the Codex placements of Cithrel's Fall: a pack met at its placements, Ancient Koros, and spawns of a
+/// returns it, against the game data placements of Cithrel's Fall: a pack met at its placements, Ancient Koros, and spawns of a
 /// creature with no placement.
 /// </summary>
 public class DungeonReaderTests
 {
     private const int CithrelsFall = 7;
-    // Game IDs of the Codex's data export: Ancient Koros, and Anomalous Orb, a creature Cithrel's Fall places nowhere.
+    // Game IDs: Ancient Koros, and Anomalous Orb, a creature Cithrel's Fall places nowhere.
     private const int Koros = 169, Orb = 286;
     // Actors: 10 is the pack's creature, 12 Koros, 13 the orbs, 14 an NPC of no creature, 20 an NPC of the party's.
     private const int PackActor = 10, KorosActor = 12, OrbActor = 13, MysteryActor = 14;

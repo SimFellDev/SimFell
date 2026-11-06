@@ -1,7 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1018. Costs 2 Winter Orbs. A comet falls on the target and strikes every enemy around it. Also the free comets
+/// Ability 1018. Costs Winter Orbs. A comet falls on the target and strikes every enemy around it. Also the free comets
 /// of Cold Shower and Avalanche, which stay plain Ice Comets even with Icy Talons (per the user); see
 /// <see cref="FreeCast"/>. Rising Talons (Icy Talons) is built on it.
 /// </summary>
@@ -12,20 +12,20 @@ public class IceComet : RimeAbility
     public const double Coefficient = 5.285;
     public const int DefaultWinterOrbCost = 2;
 
-    /// <summary>hero_data Ice Comet TargetCountThreshold 12: damage falls off as sqrt(12/N) beyond 12 targets.</summary>
+    /// <summary>Game data: damage falls off as a square root of the threshold over the targets, beyond the threshold.</summary>
     public const double TargetThreshold = 12;
 
     /// <summary>
-    /// Ability 2227 ("Ice Comet", GA_Rime_Util_OnTargetPulsatingAoe): combat logs report every comet's damage under it,
+    /// Ability 2227 ("Ice Comet"): combat logs report every comet's damage under it,
     /// cast or free (casts are logged as 1018).
     /// </summary>
     public const int DamageId = 2227;
 
     /// <summary>
-    /// The comet falls before it strikes: 0.30s plus 1.0s divided by (1 + haste) at the cast, with damage and crit chance
-    /// snapshot at the cast. Combat logs (n7zxK8harZT2wjDB fight 9, PCaMVTFbZzNLrfx3 fight 5; 193 casts): impact within a
-    /// few server frames of this; Icy Flow's "0.5 seconds reduced impact delay" comes off the hasted part (0.97s to
-    /// 0.47s). The fixed part is the earliest usual time, so an impact is never released after it should land.
+    /// The comet falls before it strikes: <see cref="ImpactDelayFixedSeconds"/> plus <see cref="ImpactDelayHastedSeconds"/>
+    /// divided by (1 + haste) at the cast, with damage and crit chance snapshot at the cast. Combat logs
+    /// (n7zxK8harZT2wjDB fight 9, PCaMVTFbZzNLrfx3 fight 5; 193 casts): impact within a few server frames of this; Icy Flow's
+    /// reduced impact delay comes off the hasted part. The fixed part is the earliest usual time, so an impact is never released after it should land.
     /// </summary>
     public const double ImpactDelayFixedSeconds = 0.30;
     public const double ImpactDelayHastedSeconds = 1.0;

@@ -34,7 +34,7 @@ public class CooldownRateTests
         hero.Auras.Apply(EventHorizon.Buff, SimTime.Zero);
         hero.Auras.Apply(FatedStrike.GloriousPurpose, SimTime.Zero);
 
-        // (1 + 7 + 2) × Haste.
+        // The base rate and the aura rates add, and Haste multiplies the sum.
         Assert.Equal(10.0 * haste, hero.CooldownRate(hero.GetAbility<SkystridersGrace>()!, SimTime.Zero), 9);
     }
 

@@ -74,13 +74,13 @@ public class MonteCarloSeedTests
 
     /// <summary>
     /// Totals of fights 1-4 of each hero's default action list, captured again when sims began rolling crits and damage
-    /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance); Rime's, Gunde's, Mara's
+    /// spread (before, each hit dealt its average and counted as a crit only above a chance threshold); Rime's, Gunde's, Mara's
     /// and Tariq's again once dungeon_event.fight.remains and target.time_to_die read the fight's end. Tariq's again once
     /// Schism had bad luck protection, and again once Bloodline was unhasted, Ride the Lightning snapshotted and Kill Em All
     /// left Heavy Strike out. Rime's, Ardeos's, Mara's and Tariq's again for the engine fixes of the functional tests branch
     /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
     /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers. The rows
-    /// with a Spirit Refund past 20s of Rising Spirit again once its duration stopped at 20s. Mara's 3-target row again once
+    /// with a Spirit Refund past the duration of Rising Spirit again once that duration had a cap. Mara's 3-target row again once
     /// Hemorrhaging Strike had no cooldown. Mara's again once her default list read Deadly Scheme: Active. Every row with a
     /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor.
     /// </summary>

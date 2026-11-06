@@ -3,7 +3,7 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1009 / effect 2446: 5 Frost Swallows circle Rime for 20s; Cold Snap and Freezing Torrent command them to
+/// Ability 1009 / effect 2446: Frost Swallows (<see cref="SwallowCount"/>) circle Rime; Cold Snap and Freezing Torrent command them to
 /// attack (<see cref="CommandSwallows"/>, <see cref="CommandSwallow"/>).
 /// </summary>
 public class FlightOfTheNavir : RimeAbility
@@ -57,7 +57,7 @@ public class FlightOfTheNavir : RimeAbility
 
     public void ResetState() => Swallows.ResetState();
 
-    /// <summary>Flight of the Navir's Frost Swallows: logged under effect 1365, and only 5 of them.</summary>
+    /// <summary>Flight of the Navir's Frost Swallows: logged under effect 1365, and only <see cref="SwallowCount"/> of them.</summary>
     public sealed class CirclingSwallows : FrostSwallows
     {
         private int _inFlight;
@@ -66,7 +66,7 @@ public class FlightOfTheNavir : RimeAbility
 
         /// <summary>
         /// The circling swallows not out attacking: one that is sent comes back when it hits (combat logs: a Cold Snap cast
-        /// while a Freezing Torrent swallow is still flying sends only 4, yMAZVJL9hTpFjqbC fight 7 @ 51.956).
+        /// while a Freezing Torrent swallow is still flying sends one fewer, yMAZVJL9hTpFjqbC fight 7 @ 51.956).
         /// </summary>
         public int Available => Math.Max(0, SwallowCount - _inFlight);
 

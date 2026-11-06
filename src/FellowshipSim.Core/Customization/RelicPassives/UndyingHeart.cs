@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Customization.RelicPassives;
 
 /// <summary>
-/// Relic passive 779 (Orb of Gathering Storms): "Your abilities have a chance (0.8 PPM) to increase your Haste by 25% for
-/// 20 seconds." (ability 2327, effect 3270 Dark Prophecy) Rolled on every ability used. The game data's 5 second cooldown
-/// does not hold between procs: 12 procs come less than 5 seconds after the one before on the same hero, the shortest
-/// 1.97 seconds (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9, Fc8v6yWxD14GQMnV fight 19, fXyzwGcQkTrLD34R fight 4,
+/// Relic passive 779 (Orb of Gathering Storms): "Your abilities have a chance to increase your Haste for a
+/// time." (ability 2327, effect 3270 Dark Prophecy) Rolled on every ability used. The game data's cooldown
+/// does not hold between procs: 12 procs come before it has passed after the one before on the same hero
+/// (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9, Fc8v6yWxD14GQMnV fight 19, fXyzwGcQkTrLD34R fight 4,
 /// pWmcV42K39GHTLQX fight 23). The roll has Haste off (game data, row ArmorSetBonus.HasteBuffOnAbilityUse.PPM).
 /// </summary>
 public class UndyingHeart : RelicPassive

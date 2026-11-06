@@ -2,14 +2,14 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
 /// Ability 1130: "Instantly enter Stealth ... When used in combat, Brooding Shadows triggers its cooldown. Can be used
-/// during Global Cooldown. Brooding Shadows gains Cooldown Acceleration equal to your Haste." 2 charges, 15s. Stealth is
+/// during Global Cooldown. Brooding Shadows gains Cooldown Acceleration equal to your Haste." Stealth is
 /// effect 1591; the next Backstab, Widow's Bite or Skittering Blades ends it and applies a poison.
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19, 125 Stealths): no auto attack in Stealth; Kick and Stalker Step keep it.
-/// The cast spends no charge: `GA_Mara_Stealth` has `CooldownCommitmentPolicy` CCP_Manual, and under it `CommitExecute`
-/// (0x1450DCB70) applies cost alone. `GA_Mara_Passive_StealthMonitor` function `Remove Stealth Effect` spends the charge
-/// when it ends Stealth (offset 231, `Commit Cooldown` offset 85); a Secondary skill's end of Stealth spends one in combat
-/// alone (`ExecuteUbergraph` offset 1777, `IsInCombat()`).
-/// A cast in Stealth ends it and does nothing else: `GA_Mara_Stealth` offsets 103 to 266, no cooldown node, no application.
+/// The cast spends no charge: game data sets a manual cooldown commitment, and under it the commit
+/// applies cost alone. The Stealth monitor spends the charge
+/// when it ends Stealth; a Secondary skill's end of Stealth spends one in combat
+/// alone.
+/// A cast in Stealth ends it and does nothing else: the ability has no cooldown node and no application there.
 /// Combat logs (the 23 Mara fights of data/fights): all 12 casts in Stealth log the removal in the cast's frame.
 /// </summary>
 public class BroodingShadows : MaraAbility
@@ -21,10 +21,10 @@ public class BroodingShadows : MaraAbility
     public const int StealthEffectId = 1591;
 
     /// <summary>
-    /// Seconds no cast of the ability is possible after one, divided by the Haste at the cast: table AC_Hero_Mara
-    /// `Mara.Stealth.PaddingCooldown`, `BlockedByPaddingCooldown` true, comment "To protect against double presses",
-    /// applied after `CommitAbility` (0x1450DA320). `GE_Hero_Shared_PaddingCooldown` takes `GEC_HasteMagnitude` (1 / Haste,
-    /// snapshot), multiplied by the padding (0x1450E2F8A-0x1450E2FA0), and has no time-rate tag, so it runs in real time.
+    /// Seconds no cast of the ability is possible after one, divided by the Haste at the cast: game data
+    /// padding cooldown, blocked by padding cooldown true, comment "To protect against double presses",
+    /// applied after the ability commits. The padding effect takes 1 / Haste (snapshot),
+    /// multiplied by the padding, and has no time-rate tag, so it runs in real time.
     /// </summary>
     public const double PaddingCooldownSeconds = 0.7;
 

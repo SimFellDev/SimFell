@@ -35,7 +35,7 @@ public class Emerald : Gem
     {
         switch (node.Slot)
         {
-            case 1: // First Strike: Expertise for 15s when dealing damage to an enemy for the first time.
+            case 1: // First Strike: Expertise for `FirstStrikeSeconds` when dealing damage to an enemy for the first time.
                 BindFirstStrike(hero, node);
                 return true;
             case 2: // Vanguard's Resolve: flat Stamina and Expertise rating.

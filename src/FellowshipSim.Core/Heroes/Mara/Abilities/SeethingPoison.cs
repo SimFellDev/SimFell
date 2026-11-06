@@ -1,11 +1,11 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Effect 1716, from Widow's Bite used in Stealth: "Applies Seething Poison to the target, dealing 122.76% of Agility
-/// poison damage every 2 seconds for 60 seconds. While Seething Poison is active on any enemy, it takes 20% more damage
-/// from your Hemorrhaging Strike Bleed and you gain Predator's Rush, granting you 20% increased Energy Regeneration.
-/// Seething Poison can only be active on 1 target at a time." Creeping Death adds 0.5% per 1% Haste.
-/// Combat logs (Fc8v6yWxD14GQMnV fight 19, 21 poisons): ticks every 2s shortened by Haste; 60s unhasted.
+/// Effect 1716, from Widow's Bite used in Stealth: applies Seething Poison to the target, dealing Agility poison damage
+/// on a period for a duration. While Seething Poison is active on any enemy, it takes more damage
+/// from your Hemorrhaging Strike Bleed and you gain Predator's Rush, granting you increased Energy Regeneration.
+/// Seething Poison can only be active on one target at a time. Creeping Death adds damage per Haste.
+/// Combat logs (Fc8v6yWxD14GQMnV fight 19, 21 poisons): ticks are shortened by Haste; the duration is unhasted.
 /// </summary>
 public class SeethingPoison : MaraDot
 {

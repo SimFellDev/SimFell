@@ -3,9 +3,10 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 761 / buff effect 3222, damage effect 3221: "Your Owed in Blood causes you to pulsate damage equal to 25% Strength
-/// in a 700 radius around you every 3 seconds for 6 seconds. The damage of Bloodcraze is increased by 150% per stack of
-/// Owed in Blood that was consumed. (Damage reduced beyond 1 target)" Two pulses, 3s and 6s after the cast.
+/// Talent 761 / buff effect 3222, damage effect 3221: "Your Owed in Blood causes you to pulsate damage equal to a share of
+/// Strength in a radius around you at a regular interval for a time. The damage of Bloodcraze is increased per stack of
+/// Owed in Blood that was consumed. (Damage reduced beyond a target threshold)" The pulses come at
+/// <see cref="PulseSeconds"/> intervals after the cast (<see cref="Pulses"/> of them).
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class Bloodcraze : Talent
@@ -45,7 +46,7 @@ public class Bloodcraze : Talent
         };
     }
 
-    /// <summary>The pulse's damage: 25% Strength, logged under effect 3221, sqrt(1/N) beyond 1 target.</summary>
+    /// <summary>The pulse's damage: a share of Strength (<see cref="Coefficient"/>), logged under effect 3221, falling off beyond <see cref="TargetThreshold"/> targets.</summary>
     private sealed class Pulse : Ability
     {
         public Pulse(Gunde owner) : base(owner, LogIds.Effect(DamageEffectId), TalentName)

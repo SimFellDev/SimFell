@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
-/// <summary>Talent 527: Freezing Torrent deals 20% more damage and channels 0.8s longer (hero_data DamageScale 1.2, AddedSeconds 0.8).</summary>
+/// <summary>Talent 527: Freezing Torrent deals more damage and channels longer.</summary>
 public class SupremeTorrent : Talent
 {
     public const int TalentId = 527;

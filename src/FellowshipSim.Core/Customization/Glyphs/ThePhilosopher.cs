@@ -1,8 +1,9 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
-/// Glyph 709: "Your [MAJOR] ability grants you +0.2% Haste, Expertise and Critical Strike for every
-/// 4.0% / 2.5% / 1.6% / 1.0% Spirit you have, up to 50% Spirit, for 8 seconds." (effect 3189)
+/// Glyph 709: "Your [MAJOR] ability grants you Haste, Expertise and Critical Strike for every step of Spirit you have
+/// (by rank), up to a Spirit cap, for a duration." (effect 3189; <see cref="IncreasePerStep"/>, <see cref="SpiritCap"/>,
+/// <see cref="DurationSeconds"/>)
 /// </summary>
 public class ThePhilosopher : Glyph
 {
@@ -15,8 +16,8 @@ public class ThePhilosopher : Glyph
     /// <summary>Spirit percent per step of the bonus.</summary>
     public static readonly double[] SpiritPercentPerStepByRank = [4, 2.5, 1.6, 1];
     /// <summary>
-    /// Not in the game data; measured from logs: a refresh keeps up to 30% (2.4s) of the time left, so a refreshed buff
-    /// lasts up to 10.4s (yMAZVJL9hTpFjqbC fight 7: every refresh with over 2.4s left is removed 10.42s later).
+    /// Not in the game data; measured from logs: a refresh keeps up to <see cref="RefreshCarryoverFraction"/> of the buff's duration from the time left, so a refreshed
+    /// buff outlasts <see cref="DurationSeconds"/> (yMAZVJL9hTpFjqbC fight 7: a refresh with enough time left is removed later than a fresh buff).
     /// </summary>
     public const double RefreshCarryoverFraction = 0.3;
 

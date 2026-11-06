@@ -5,7 +5,7 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>Amethyst Splinter is a damage over time: its 8 seconds end with a partial tick, and the next crit starts a new rhythm.</summary>
+/// <summary>Amethyst Splinter is a damage over time: its duration ends with a partial tick, and the next crit starts a new rhythm.</summary>
 public class AmethystSplintersTests
 {
     private const int CritLogId = 999_999;
@@ -39,7 +39,7 @@ public class AmethystSplintersTests
     [Fact]
     public void A_Crit_Keeps_The_Rhythm_And_The_Eight_Seconds_End_With_A_Partial_Tick()
     {
-        // The crit at 1s restarts the 8 seconds: ticks at 2, 4, 6 and 8, and half a period's progress at 9.
+        // The crit restarts the duration: ticks on its period, and a part of a period's progress at the end.
         var ticks = Ticks(0.0, 1.0);
 
         Assert.Equal([2.0, 4.0, 6.0, 8.0, 9.0 + AuraContainer.ExpiryLagSeconds], ticks.Select(t => Math.Round(t.Time, 3)), (a, b) => Math.Abs(a - b) < 0.002);
@@ -60,7 +60,7 @@ public class AmethystSplintersTests
     {
         var ticks = Ticks(0.0, 1.0, 9.5);
 
-        // The old rhythm's next tick would be at 10s; the new one's first is 2s after the crit.
+        // The new rhythm's first tick is one period after the crit.
         Assert.Equal(11.5, ticks[5].Time, 3);
     }
 }

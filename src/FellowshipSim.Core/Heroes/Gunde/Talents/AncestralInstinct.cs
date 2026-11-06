@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 756 / effect 3225 (6s): "Your Reaver's Edge and Grim Carve have a 40% chance to grant you Ancestral Instinct,
-/// granting you 6% Strength for 6 seconds." Rolled once per cast. UNVERIFIED: no combat log has this talent.
+/// Talent 756 / effect 3225: "Your Reaver's Edge and Grim Carve have a chance to grant you Ancestral Instinct,
+/// granting you Strength for a time." Rolled once per cast. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class AncestralInstinct : Talent
 {

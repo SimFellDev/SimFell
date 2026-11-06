@@ -278,9 +278,8 @@ public class SimulationContext
     public CastAttempt BeginCast(Hero hero, Ability ability, EnemyTarget? target, bool force = false)
     {
         // The server activates a player's ability from the client's request or its ability queue before the frame's timers
-        // (UWorld::Tick 0x143B785E0: client RPCs and actor ticks, then FTimerManager::Tick), unless an ability's end in
-        // the frame's timers flushes the queue (UCRGameplayAbility::EndAbility 0x1450DACD0 calling 0x1452D7370): a tick's
-        // execution, or a cast's completion or a channel's end right before.
+        // (client RPCs and actor ticks, then the timers), unless an ability's end in the frame's timers flushes the
+        // queue: a tick's execution, or a cast's completion or a channel's end right before.
         int outer = AbilityActivation;
         if (ExecutingTick == null && (CurrentTime - _lastAbilityEnd).TotalSeconds > AbilityQueueWindowSeconds) AbilityActivation = ++_activations;
         try { return Activate(hero, ability, target, force); }
@@ -404,8 +403,8 @@ public class SimulationContext
         if (cast == null) return false;
         cast.CompletionEvent?.Cancel();
         hero.CurrentCast = null;
-        // Cancelling a cast frees the global cooldown it started (combat logs, 10 Rime logs: all 46 instants cast
-        // 0.2-1.0s after a cancelled Frost Bolt, inside its global cooldown).
+        // Cancelling a cast frees the global cooldown it started (combat logs, 10 Rime logs: instants cast
+        // after a cancelled Frost Bolt, inside its global cooldown).
         if (hero.GlobalCooldownEndTime > CurrentTime) hero.GlobalCooldownEndTime = CurrentTime;
         hero.TriggerCastCancelled(cast.Ability, cast.Target, CurrentTime);
         return true;
@@ -472,8 +471,7 @@ public class SimulationContext
     // ------------------------------------------------------------------ damage
 
     /// <summary>
-    /// A grievous crit's multiplier is (crit chance - 1) x this + the crit multiplier: UCRDamageCalculationBase
-    /// 0x145105A4A-0x145105A59 (build 26162532), CT_AbilityConstants row Global.GrievousCritScalar.
+    /// A grievous crit's multiplier is (crit chance - 1) x this + the crit multiplier (game data).
     /// </summary>
     public const double GrievousCritScalar = 1.0;
 
@@ -483,8 +481,7 @@ public class SimulationContext
     /// <summary>
     /// Deals one hit. <paramref name="compute"/> gives the hit's numbers from the current state; it is evaluated on
     /// release (to decide crit and travel) and again on landing, where damage is dealt with the stats at that moment.
-    /// Crit chance above 100% is a grievous crit: base x (crit multiplier + overflow x <see cref="GrievousCritScalar"/>)
-    /// (UCRDamageCalculationBase 0x145105A4A, build 26162532).
+    /// Crit chance above 100% is a grievous crit: base x (crit multiplier + overflow x <see cref="GrievousCritScalar"/>).
     /// <paramref name="onLanded"/> is called with the damage actually dealt, once the hit lands (0 when it hit nothing).
     /// A <paramref name="snapshot"/> hit keeps the numbers it had on release.
     /// </summary>

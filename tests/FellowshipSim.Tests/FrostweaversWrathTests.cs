@@ -7,10 +7,10 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>Frostweaver's Wrath with Icy Talons: a Talon cast uses a stack, and its first hit alone gets the +100% crit.</summary>
+/// <summary>Frostweaver's Wrath with Icy Talons: a Talon cast uses a stack, and its first hit alone gets the crit bonus.</summary>
 public class FrostweaversWrathTests
 {
-    /// <summary>Each hit's damage (its expected damage, crit included) of one cast of <typeparamref name="T"/> with 5 Winter Orbs, with or without a stack.</summary>
+    /// <summary>Each hit's damage (its expected damage, crit included) of one cast of <typeparamref name="T"/> with the maximum Winter Orbs, with or without a stack.</summary>
     private static (List<double> Hits, int StacksLeft) Cast<T>(bool withStack) where T : Ability
     {
         var hero = (Rime)HeroImporter.Import(new CharacterBuild
@@ -40,7 +40,7 @@ public class FrostweaversWrathTests
         var (with, stacksLeft) = Cast<TalonStrike>(withStack: true);
         Assert.Equal(Rime.MaxWinterOrbs, with.Count);
         Assert.Equal(0, stacksLeft);
-        // The first spike gets the +100% (its chance is capped at 1 when expected outcomes are dealt); the others as without.
+        // The first spike gets the crit bonus (its chance is capped at 1 when expected outcomes are dealt); the others as without.
         Assert.True(with[0] > without[0]);
         Assert.Equal(without.Skip(1), with.Skip(1));
     }

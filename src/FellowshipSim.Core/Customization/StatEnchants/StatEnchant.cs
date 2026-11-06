@@ -3,18 +3,18 @@ using FellowshipSim.Core.Domain;
 namespace FellowshipSim.Core.Customization.StatEnchants;
 
 /// <summary>
-/// A stat enchant (new in 0.5.0.0; datamine "enchant" records, ItemTrait.TraitCategory.StatEnchant): each rank adds 1
-/// rating to each of two stats, up to <see cref="MaxRankPerItem"/> on one item. One ID per pair of stats, named after the
+/// A stat enchant (new in 0.5.0.0; game data "enchant" records, ItemTrait.TraitCategory.StatEnchant): each rank adds rating
+/// to each of two stats, up to <see cref="MaxRankPerItem"/> on one item. One ID per pair of stats, named after the
 /// main stat of the item it is on (Strength "Might", Agility "Guile", Intellect "Cunning"). Combat logs list it among an
 /// item's augmentations (ID + 3,000,000) with its rank. The log's combatantinfo ratings include them; a build's ratings
 /// are the gear's without them.
 /// </summary>
 public sealed record StatEnchant(int Id, string StrengthName, string AgilityName, string IntellectName, StatType FirstRating, StatType SecondRating)
 {
-    /// <summary>The datamine's maxRank of every stat enchant.</summary>
+    /// <summary>The game data's maxRank of every stat enchant.</summary>
     public const int MaxRankPerItem = 300;
 
-    /// <summary>Every stat enchant (datamine export 26136736, enchant records 65 to 70).</summary>
+    /// <summary>Every stat enchant (game data, enchant records 65 to 70).</summary>
     public static IReadOnlyList<StatEnchant> All { get; } =
     [
         new(65, "Jotunn's Might", "Wyvern's Guile", "Chimera's Cunning", StatType.CritRating, StatType.ExpertiseRating),

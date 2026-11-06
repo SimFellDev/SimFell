@@ -4,11 +4,10 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 516 (Elarion's Skystrider Leggings, item 5900):
-/// "Your Starfall Volley deals 100% more damage to the main target and its duration is increased by 3 seconds.
-/// While Starfall Volley is active, its duration is extended by 0.25 seconds each time you cast Multishot." Effect 1862
-/// talent IncreasedDurationAndExtension MainTargetDamageBonus DamageScaler 2.
-/// Combat logs (fXyzwGcQkTrLD34R fight 4): the volley's target takes twice what the other enemies take.
+/// Legendary power 516 (Elarion's Skystrider Leggings, item 5900): Starfall Volley deals more damage to the main target and
+/// lasts longer, and each Multishot cast while it is active extends it. Effect 1862
+/// talent IncreasedDurationAndExtension MainTargetDamageBonus DamageScaler.
+/// Combat logs (fXyzwGcQkTrLD34R fight 4): the volley's target takes more damage than the other enemies.
 /// </summary>
 public class AstronomersHail : Legendary
 {

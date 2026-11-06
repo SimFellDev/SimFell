@@ -4,23 +4,22 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Gunde's Northlander's Wraps (item 5900): Carrion Onslaught. The datamine's item names talent 765 and no legendary power
-/// (power 713 is "Placeholder - Not Implemented"), so the text is its effects': 3256, "The damage of your next Blood Arc is
-/// increased by 20% (DamageMultiplier 1.2), plus 2% increase per stack consumed (AdditionalDamagePerStack 0.02). Your next
-/// Blood Arc will also start dropping Blood Feathers, one per third stack consumed (StacksPerOrb 3)", 12s; and 3257, "Up
-/// to 3 Blood Feathers will be dropped every 2 seconds", 12s. Combat logs (cnjfpzmD7ZXakMFH fight 33, TTV TheSpryFrog):
+/// Gunde's Northlander's Wraps (item 5900): Carrion Onslaught. The game data's item names talent 765 and no legendary power
+/// (power 713 is "Placeholder - Not Implemented"), so the text is its effects': 3256 raises the damage of the next Blood Arc
+/// by a base and by an amount per stack consumed, and makes it start dropping Blood Feathers, one per set number of stacks
+/// consumed; 3257 drops Blood Feathers at a set interval. Combat logs (cnjfpzmD7ZXakMFH fight 33, TTV TheSpryFrog):
 /// <list type="bullet">
 /// <item>Owed in Blood's cast grants effect 3256 (one stack) in the moment it consumes its stacks;</item>
-/// <item>the next Blood Arc swaps it for effect 3257 with a stack per feather, a third of the Owed in Blood stacks
-/// consumed, rounded (84 -> 28, 51 -> 17, 80 -> 27); it drops 10 at once and 10 more every 2s until none are left (the
-/// text's 3 is out of date; FellowSimc's SimC module has 10).</item>
-/// <item>the Blood Arc deals 1.2 + 0.02 per Owed in Blood stack consumed times its damage: the replay's Blood Arc damage is
-/// 1.006 of the log's with it (32 hits it raises: 1.009), 0.866 without.</item>
+/// <item>the next Blood Arc swaps it for effect 3257 with a stack per feather, a share of the Owed in Blood stacks
+/// consumed, rounded; it drops a batch at once and a batch at each interval until none are left (the
+/// text's batch size is out of date; FellowSimc's SimC module has the log's);</item>
+/// <item>the Blood Arc deals its damage times a base plus an amount per Owed in Blood stack consumed: the replay's Blood Arc
+/// damage is close to the log's with it and far below the log's without it.</item>
 /// </list>
 /// </summary>
 public class CarrionOnslaught : Legendary
 {
-    /// <summary>The datamine's item has no legendary power of its own.</summary>
+    /// <summary>The game data's item has no legendary power of its own.</summary>
     public const int PowerId = 0;
     public const int WrapsItemId = 5900;
     public const string EffectName = "Carrion Onslaught";

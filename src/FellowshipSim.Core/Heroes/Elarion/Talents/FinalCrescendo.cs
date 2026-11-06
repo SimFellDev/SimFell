@@ -3,11 +3,11 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 169: "Every 3 Highwind Arrow casts deals +100% increased damage and Ricochets up to 9 times." Effect 2222 ("At
-/// 2 stacks, your next Highwind Arrow consumes all stacks and deals 100% increased damage and Ricochets to up to 9
-/// additional targets"). Combat logs (fXyzwGcQkTrLD34R fight 4): the first and second casts add a stack, the third uses
-/// both. The arrow strikes 9 enemies at most, the target and 8 ricochets (8 casts with 9 hits, none with more;
-/// Bowguy constant Talent.StacksMoreDamageAndBounces.MaxBounces 9 counts the first hit).
+/// Talent 169: Every few Highwind Arrow casts deal increased damage and Ricochet more times. Effect 2222 (at
+/// its stack threshold, the next Highwind Arrow consumes all stacks and deals increased damage and Ricochets to additional
+/// targets). Combat logs (fXyzwGcQkTrLD34R fight 4): casts add stacks up to the threshold, and the next uses
+/// them. The arrow strikes a capped number of enemies, the target and its ricochets (no cast had more hits;
+/// the game data's maximum bounces counts the first hit).
 /// </summary>
 public class FinalCrescendo : Talent
 {

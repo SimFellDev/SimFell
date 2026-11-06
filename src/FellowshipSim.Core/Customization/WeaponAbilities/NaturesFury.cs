@@ -1,12 +1,12 @@
 namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
-/// Weapon ability 161: "Conjure the forces of nature to bounce between up to 4 enemies, dealing 1397.7% Main Stat nature
-/// damage to each one ... The 1st hit from Nature's Fury has +100% increased damage or healing. Nature's Fury has an
-/// additional +30% Critical Strike chance." Cast 1.5s (hasted), cooldown 60s (datamine export 26136736). Combat logs
+/// Weapon ability 161: "Conjure the forces of nature to bounce between enemies, dealing Main Stat nature
+/// damage to each one ... The 1st hit from Nature's Fury has increased damage or healing. Nature's Fury has
+/// additional Critical Strike chance." Hasted cast (game data). Combat logs
 /// (JW7pzaBxMd9bNCZK fight 112 and jHDC613ZzbTYR8wW fight 21, two Vigour players): the first hit lands as the cast ends and
-/// each bounce 0.3s after the one before; a bounce can strike an enemy already hit. UNVERIFIED: no Rime log has it; the
-/// game's damage spread for it is 20%, the engine's usual one is used.
+/// each bounce a fixed time after the one before; a bounce can strike an enemy already hit. UNVERIFIED: no Rime log has it; the
+/// game's damage spread for it differs from the engine's usual one, which is used.
 /// </summary>
 public class NaturesFury : Ability
 {

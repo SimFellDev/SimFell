@@ -6,7 +6,7 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>Maiden of Death's 6 Combo Points come from a generator's hits, at the cast's state of the buff.</summary>
+/// <summary>Maiden of Death's Combo Points come from a generator's hits, at the cast's state of the buff.</summary>
 public class MaraComboPointTests
 {
     [Fact]

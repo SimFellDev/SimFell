@@ -24,7 +24,7 @@
     <ProjectReference Include="..\FellowshipSim.Codex.Generators\FellowshipSim.Codex.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <!-- The Codex's data export: each creature's class (CreatureGenerator) and each dungeon's creature placements (DungeonGenerator). -->
+  <!-- Game data in codex-export/: each creature's class (CreatureGenerator) and each dungeon's creature placements (DungeonGenerator). -->
   <PropertyGroup>
     <CodexExportFolder>$(MSBuildThisFileDirectory)../../codex-export/</CodexExportFolder>
     <CodexExportUrl>https://codex.fellowshipanalyzer.com/api/export</CodexExportUrl>
@@ -36,8 +36,8 @@
   </ItemGroup>
 
   <!--
-    Each build compares the Codex's export.json, which names its game build, with the copy in codex-export/, and downloads
-    the export when they differ. An offline build keeps the copy it has. A build without a copy, as on every CI run, needs
+    Each build compares the game data's export.json, which names its game build, with the copy in codex-export/, and
+    downloads the game data when they differ. An offline build keeps the copy it has. A build without a copy, as on every CI run, needs
     the download and retries it. Every file arrives in the intermediate folder and export.json is copied last, so an
     interrupted download reads as out of date on the next build.
   -->

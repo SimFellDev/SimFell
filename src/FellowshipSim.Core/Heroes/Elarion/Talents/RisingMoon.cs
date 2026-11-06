@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
-/// <summary>Talent 681: "The cooldown of Lunarlight Mark is reduced by 2 seconds each time you cast Highwind Arrow."</summary>
+/// <summary>Talent 681: Each Highwind Arrow cast reduces the cooldown of Lunarlight Mark.</summary>
 public class RisingMoon : Talent
 {
     public const int TalentId = 681;

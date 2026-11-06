@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
-/// <summary>Glyph 700: "Your [POWER] abilities grant you 2.5% / 4.0% / 6.4% / 10% increased Critical Strike chance for 4 seconds."</summary>
+/// <summary>Glyph 700: "Your [POWER] abilities grant you increased Critical Strike chance by rank for a duration."</summary>
 public class TheTrickster : Glyph
 {
     public const int GlyphId = 700;

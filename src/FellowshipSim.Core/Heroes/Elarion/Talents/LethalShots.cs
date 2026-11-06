@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 202: "Your Highwind Arrow has a 40% chance to have +100% increased critical strike chance. GRIEVOUS CRITICAL
-/// STRIKE: Any critical strike chance you have beyond 100% causes a grievous critical strike." Rolled once per cast; the
-/// cast's ricochets have it too (Bowguy constants ChanceToHaveIncreasedCritChance ProcChance 0.4, AddedCritChance 1).
+/// Talent 202: Highwind Arrow has a chance to have increased critical strike chance. GRIEVOUS CRITICAL
+/// STRIKE: critical strike chance beyond the cap causes a grievous critical strike. Rolled once per cast; the
+/// cast's ricochets have it too (Bowguy constants ChanceToHaveIncreasedCritChance ProcChance, AddedCritChance).
 /// </summary>
 public class LethalShots : Talent
 {

@@ -3,12 +3,12 @@ namespace FellowshipSim.Core.Engine;
 /// <summary>
 /// How long a player takes to cast on the global cooldown once nothing holds them, as SimulationCraft's channel_lag has
 /// it. A cast queued during the global cooldown or a cast time fires as it ends (in game: a spell queued during the
-/// global cooldown goes off as it ends), so neither has a delay. The combat logs have that cast 0.001s after a cast time
-/// and a median 0.050s after the global cooldown, the server frame it falls in, which the engine does not model; the
+/// global cooldown goes off as it ends), so neither has a delay. In the combat logs that cast follows a cast time almost
+/// at once and follows the global cooldown by the server frame it falls in, which the engine does not model; the
 /// engine has none for either. Nothing is queued out of a channel, so the player reacts: log-normal around the median,
 /// since the logs' delays have a long tail a normal distribution does not fit. Combat logs (tests/ReactionTimeTests,
-/// 29 Rime fights of patch 0.5.0.0, delays under 1s): after a channel the median is 0.171s (quartiles 0.101 and 0.336,
-/// 10th and 90th percentiles 0.038 and 0.539).
+/// 29 Rime fights of patch 0.5.0.0): the delays after a channel give the median and the sigma of
+/// <see cref="Measured"/>.
 /// </summary>
 public sealed record ReactionDelays(
     double GlobalCooldownMedian, double GlobalCooldownSigma,

@@ -3,10 +3,9 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 126: "Your Offensive Abilities have a 5% chance to grant you Resurgent Winds. Your Lunarlight Mark ability has a
-/// 100% chance to grant you Resurgent Winds. When you gain Resurgent Winds, you instantly gain 1 charge of Highwind Arrow
-/// and your next Highwind Arrow is Instant Cast, costs no Focus, and deals 50% more damage. Resurgent Winds lasts for 15
-/// seconds and stacks up to 2 times." Effect 2074 (15s, 2 stacks). UNVERIFIED: which casts count as Offensive Abilities
+/// Talent 126: Offensive Abilities have a chance to grant Resurgent Winds. Lunarlight Mark always grants Resurgent Winds.
+/// Gaining Resurgent Winds grants a charge of Highwind Arrow, and the next Highwind Arrow is Instant Cast, costs no Focus,
+/// and deals more damage. Resurgent Winds is timed and stacks. Effect 2074. UNVERIFIED: which casts count as Offensive Abilities
 /// (the engine rolls on every cast of a damaging ability but Shoot).
 /// </summary>
 public class ResurgentWinds : Talent

@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 146: "Each time the Damage Over Time effects from your Hero Abilities deal damage, you have a 2.5% chance to
-/// spawn a Fire Frog to leap toward your enemies. Critical Strikes have a 5% chance." The frog attacks as a Fire Frogs
+/// Talent 146: each time the damage over time effects of the hero's abilities deal damage, they have a chance to spawn a
+/// Fire Frog to leap toward the enemies, and critical strikes have another chance. The frog attacks as a Fire Frogs
 /// frog does (Frog Squad's extra attack included).
 /// </summary>
 public class PyrophibianFrenzy : Talent
@@ -16,7 +16,7 @@ public class PyrophibianFrenzy : Talent
     public const string ProcKey = "pyrophibian_frenzy";
     /// <summary>
     /// Combat logs (yMAZVJL9hTpFjqbC fight 7, Fc8v6yWxD14GQMnV fight 19; 92 frogs attacking alone): the frog's first attack
-    /// comes 1.2-1.3s after a tick twice as often as at any other delay.
+    /// comes at <see cref="FirstAttackSeconds"/> after a tick twice as often as at any other delay.
     /// </summary>
     public const double FirstAttackSeconds = 1.25;
 

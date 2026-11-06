@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
-/// Glyph 703: "Every 60 seconds you gain The Wayfarer, granting you +6% / +10% / +16% / +25% Haste for 14 seconds. Each
-/// time you use your [CORE] ability, the time to The Wayfarer's next application is reduced by 0.2 to 8 seconds, relative
-/// to the cooldown of the [CORE] ability used. Abilities with no cooldown provide 0.2 seconds reduction." (buff 3184; the
+/// Glyph 703: "Every interval you gain The Wayfarer, granting you Haste by rank for a duration. Each
+/// time you use your [CORE] ability, the time to The Wayfarer's next application is reduced within a range, relative
+/// to the cooldown of the [CORE] ability used. Abilities with no cooldown provide a minimum reduction." (buff 3184; the
 /// time to the next application is effect 3183, "The Wayfarer will apply again once this expires"). The first
 /// application is at the start of the fight.
 /// </summary>
@@ -18,10 +18,10 @@ public class TheWayfarer : Glyph
     public const double MinReductionSeconds = 0.2;
     public const double MaxReductionSeconds = 8.0;
     /// <summary>
-    /// A [CORE] ability takes its cooldown x 4 / 30 off the time to the next application (glyph 703 constants
-    /// CooldownReduction.MovementAbilityCooldownFractionMultiplier 4 and MovementAbilityCooldownDenominator 30). Combat
-    /// logs: each cycle is 60s less 1.333s per Bursting Ice and 2.0s per Freezing Torrent completed in it
-    /// (N18KtgP3rvpYGm24 fight 27, Rzg1nQNHpm2fhYtB fight 23: 13 cycles), and a cast that takes it past 0 applies
+    /// A [CORE] ability takes a fraction of its cooldown off the time to the next application (glyph 703 constants
+    /// CooldownReduction.MovementAbilityCooldownFractionMultiplier and MovementAbilityCooldownDenominator). Combat
+    /// logs: each cycle is <see cref="CooldownSeconds"/> less that fraction of the cooldown of each Bursting Ice and Freezing Torrent
+    /// completed in it (N18KtgP3rvpYGm24 fight 27, Rzg1nQNHpm2fhYtB fight 23), and a cast that takes it past 0 applies
     /// The Wayfarer as it completes.
     /// </summary>
     public const double ReductionPerCooldownSecond = 4.0 / 30.0;

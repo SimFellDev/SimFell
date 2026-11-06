@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Aspects;
 
 /// <summary>
-/// Aspect 48: "Your Weapon Ability's Critical Strike chance is increased by 9.5% / 17% / 24% / 32%. If your Weapon Ability
-/// deals a Critical Strike, its Cooldown is reduced by 15% / 20% / 25% / 30%." (of its default cooldown, once per cast).
+/// Aspect 48: "Your Weapon Ability's Critical Strike chance is increased by a percentage by rank. If your Weapon Ability
+/// deals a Critical Strike, its Cooldown is reduced by a percentage by rank." (of its default cooldown, once per cast).
 /// UNVERIFIED: the cooldown part is not yet checked against a log.
 /// </summary>
 public class BraveMachinations : Aspect

@@ -3,10 +3,9 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>
-/// Talent 36: each Freezing Torrent hit adds a stack of Coalescing Frost (effect 2306) to its target for 3s (refreshed);
-/// a crit has a 50% chance to add 2. When it expires, or the enemy dies (per the user), it erupts for 56% Intellect per
-/// stack on enemies around it (damage effect 2300). Values: talent text; hero_data Freezing Torrent "DelayedAoe"
-/// (DamageDividerToInt 0.56, TargetCountThreshold 5). UNVERIFIED: no combat log has this talent.
+/// Talent 36: each Freezing Torrent hit adds a stack of Coalescing Frost (effect 2306) to its target (refreshed);
+/// a crit can add extra stacks. When it expires, or the enemy dies (per the user), it erupts for an Intellect fraction per
+/// stack on enemies around it (damage effect 2300). Values: talent text and game data. UNVERIFIED: no combat log has this talent.
 /// An example of a talent that deals its own damage: the eruption is a small ability of the talent (<see cref="Eruption"/>).
 /// </summary>
 public class CoalescingFrost : Talent
@@ -19,9 +18,8 @@ public class CoalescingFrost : Talent
     public const double CoefficientPerStack = 0.56;
     public const double CritDoubleStackChance = 0.5;
     /// <summary>
-    /// Damage falls off as sqrt(T/N) beyond T enemies: game data 5 (hero_data "DelayedAoe" TargetCountThreshold; the
-    /// datamine's targetCountFalloff on effect 2300). One log fit 6 better (PCaMVTFbZzNLrfx3 fight 5: 1.10 with 5, 1.02
-    /// with 6); the game data is used (per the user).
+    /// Damage falls off as sqrt(T/N) beyond T enemies: T is the game data value (game data's targetCountFalloff on effect 2300). One log fit a higher threshold better (PCaMVTFbZzNLrfx3 fight 5);
+    /// the game data is used (per the user).
     /// </summary>
     public const double TargetThreshold = 5;
     public const string DoubleStackProc = "coalescing_frost_double";
@@ -60,7 +58,7 @@ public class CoalescingFrost : Talent
             _fight = ctx;
         }
 
-        // "Freezing Torrent critical strikes have a 50% chance to apply 2 stacks."
+        // Tooltip: Freezing Torrent critical strikes have a chance to apply extra stacks.
         int added = crit && ctx.Outcomes.RollProc(DoubleStackProc, CritDoubleStackChance, ctx, target) ? 2 : 1;
         var (stacks, version) = _stacks.GetValueOrDefault(target);
         int expected = version + 1;
@@ -73,8 +71,8 @@ public class CoalescingFrost : Talent
 
     /// <summary>
     /// The eruption strikes its enemy for the full damage and the enemies around it with the target falloff over their
-    /// number. Combat logs (10 fights of patch 0.5.0.0, 300 eruptions): the erupting enemy's hit over the others' is
-    /// sqrt((N - 1) / 5) with N enemies struck (N = 8: 1.20, 10: 1.33, 12: 1.53, 16: 1.80, 19: 1.89), and 1 up to N = 6.
+    /// number. Combat logs (10 fights of patch 0.5.0.0, 300 eruptions): the erupting enemy's hit over the others' follows
+    /// the target falloff with N enemies struck, and is even up to the threshold plus one.
     /// </summary>
     private void Erupt(SimulationContext ctx, EnemyTarget target, bool dying)
     {
@@ -95,7 +93,7 @@ public class CoalescingFrost : Talent
         }
     }
 
-    /// <summary>The eruption's damage: 56% Intellect per stack, logged under effect 2300, sqrt(5/N) beyond 5 targets.</summary>
+    /// <summary>The eruption's damage: <see cref="CoefficientPerStack"/> Intellect per stack, logged under effect 2300, with the falloff beyond <see cref="TargetThreshold"/> targets.</summary>
     private sealed class Eruption : Ability
     {
         public Eruption(Rime owner) : base(owner, LogIds.Effect(DamageEffectId), TalentName)

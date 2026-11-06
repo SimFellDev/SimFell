@@ -99,12 +99,12 @@ public interface IOutcomeSource
 }
 
 /// <summary>
-/// Rolls every outcome: crits, procs and damage spread (uniform within +/-10%). Each crit is a real one, so effects that
+/// Rolls every outcome: crits, procs and damage spread (uniform within <see cref="DamageSpread"/>). Each crit is a real one, so effects that
 /// trigger on crits (Amethyst Splinters, Pyrophibian Frenzy) trigger as often as the crit chance says.
 /// </summary>
 public class RandomOutcomeSource : IOutcomeSource
 {
-    // Game damage variance is +/- 10% (uniform random in [0.90, 1.10]).
+    // Game damage variance: uniform random around the damage.
     public const double DamageSpread = 0.10;
 
     private readonly SimulationRng _rng;

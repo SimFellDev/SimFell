@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 668: "Each time your Seething Poison deals damage to an enemy, it has a 20% chance to erupt, dealing 150%
-/// Agility poison damage to nearby enemies." Creeping Death adds 0.5% per 1% Haste. Damage falls off as sqrt(10/N)
-/// beyond 10 targets (ability 1131's targetCountFalloff, effect 3144). UNVERIFIED: no combat log has this talent; the
+/// Talent 668: "Each time your Seething Poison deals damage to an enemy, it has a chance to erupt, dealing
+/// Agility poison damage to nearby enemies." Creeping Death adds damage per Haste. Damage falls off with the target count
+/// beyond a threshold (ability 1131's targetCountFalloff, effect 3144). UNVERIFIED: no combat log has this talent; the
 /// damage is taken to be logged as effect 3144.
 /// </summary>
 public class SeethingBurst : Talent

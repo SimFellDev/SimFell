@@ -31,7 +31,7 @@ public abstract class MaraDot : MaraAbility
     /// </summary>
     protected double RefreshCarryoverFraction { get; init; }
 
-    /// <summary>Tick rate bonuses ("ticks 20% faster"), added together.</summary>
+    /// <summary>Tick rate bonuses ("ticks faster"), added together.</summary>
     public List<Func<SimTime, double>> TickRateBonuses { get; } = new();
 
     /// <summary>Raised after each tick has dealt its damage, with its enemy.</summary>

@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
 /// Talent 203: "Your Starfall Volley no longer consumes Lunarlight Mark stacks when triggering Lunarlight Salvo.
-/// Additionally, your Lunarlight Salvo has +20% increased critical strike chance."
+/// Additionally, your Lunarlight Salvo has increased critical strike chance."
 /// </summary>
 public class LunarlightAffinity : Talent
 {

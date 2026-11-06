@@ -6,9 +6,8 @@ namespace FellowshipSim.Engine.Replay;
 /// The log's events of an effect the game switches off while another effect is on. The first effect keeps its stack count,
 /// and the log shows its switch as `removebuff` and `applybuff`. A spend under Deadly Scheme: Active logs `refreshbuff` with
 /// no number when the count falls and `applybuffstack` when it rises, and the `applybuff` at the end has no number when a
-/// spend came during Active (asset `GE_Mara_Talent_ResourceAttackSpenderCritChance_Stacker`, `OngoingTagRequirements`
-/// IgnoreTags `CustomGrantedTags.Mara.Talent.ResourceAttackSpenderCritChance.Proc`, a tag of effect 2068; combat logs,
-/// T2qLPpmMkrAtJ9B1 fight 18 @ 35.812 to 38.916: stacks 40 off, a number-less refresh, 21, a number-less apply, 28).
+/// spend came during Active (effect 2068 carries the switching tag; combat logs,
+/// T2qLPpmMkrAtJ9B1 fight 18 @ 35.812 to 38.916: stacks off, a number-less refresh, a lower count, a number-less apply, a higher count).
 /// </summary>
 public static class InhibitedAuras
 {
@@ -17,7 +16,7 @@ public static class InhibitedAuras
 
     /// <summary>
     /// Seconds between the effect's switch and the other effect's event, in either order. Combat logs, the 23 Mara fights of
-    /// `data/fights`: 0 to 1ms at 6,728 of 6,729 Deadly Scheme switches (T2qLPpmMkrAtJ9B1 fight 18, CwmX2Tb8GA6hyc1v fight 8).
+    /// `data/fights`: within a millisecond at nearly every Deadly Scheme switch (T2qLPpmMkrAtJ9B1 fight 18, CwmX2Tb8GA6hyc1v fight 8).
     /// </summary>
     private const double SwitchSeconds = 0.002;
 

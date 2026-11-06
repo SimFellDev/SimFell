@@ -6,7 +6,7 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 namespace FellowshipSim.Core.Heroes.Rime;
 
 /// <summary>
-/// Rime, the Harbinger of Winter. Her abilities build Anima; every 9 Anima become a Winter Orb, which her spenders use.
+/// Rime, the Harbinger of Winter. Her abilities build Anima; Anima become Winter Orbs (<see cref="AnimaPerWinterOrb"/> each), which her spenders use.
 /// Abilities live in Abilities/, talents in Talents/ (each talent hooks the events below or the abilities' own events).
 /// </summary>
 public sealed class Rime : Hero
@@ -14,8 +14,8 @@ public sealed class Rime : Hero
     public const int MaxWinterOrbs = 5;
     public const double AnimaPerWinterOrb = 9.0;
     /// <summary>
-    /// Undocumented in the game (game data ability 1033 lists "Rime.AutoDamageProjectile.OrbReward" as its source):
-    /// every Winter Orb earned sends 3 Frost Swallows at enemies.
+    /// Undocumented in the game (game data ability 1033 lists no source for it):
+    /// every Winter Orb earned sends Frost Swallows at enemies.
     /// </summary>
     public const int SwallowsPerWinterOrb = 3;
 
@@ -26,10 +26,10 @@ public sealed class Rime : Hero
         Aliases = ["worb"],
     };
 
-    /// <summary>Class tuning: hero attribute BalancingDamageAura (fs_tc_uploads s3/hero_data.json, Rime.Attributes), +4%.</summary>
+    /// <summary>Class tuning: hero attribute BalancingDamageAura (game data).</summary>
     public const double BalancingDamageAura = 1.04;
 
-    /// <summary>Spirit Points per Spirit Refund (hero_data Rime SpiritProc ResourceRefund FlatSpiritPointGain 2).</summary>
+    /// <summary>Spirit Points per Spirit Refund (game data).</summary>
     public const double SpiritPointsPerRefund = 2.0;
 
     /// <summary>Rime's talent tree, as in game (players write picks as row + column: "1b + 2a + 2c ...").</summary>
@@ -47,7 +47,7 @@ public sealed class Rime : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 17: mainStat Intellect.</summary>
+    /// <summary>Game data hero 17: mainStat Intellect.</summary>
     public override MainStat MainStat => MainStat.Intellect;
 
     public int WinterOrbs
@@ -102,7 +102,7 @@ public sealed class Rime : Hero
         }
     }
 
-    /// <summary>Adds Anima; every 9 Anima become a Winter Orb.</summary>
+    /// <summary>Adds Anima; each <see cref="AnimaPerWinterOrb"/> Anima become a Winter Orb.</summary>
     public void AddAnima(double amount, SimulationContext? ctx = null, EnemyTarget? target = null)
     {
         var primaryTarget = target ?? CurrentTarget ?? ctx?.ActiveEnemies.FirstOrDefault();

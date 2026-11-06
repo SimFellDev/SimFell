@@ -1,13 +1,12 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Effect 2293: Fire Ball sets the enemies it hits "on fire, dealing an additional 20% of the initial damage dealt over 12
-/// seconds" (ticks every 2s). "Fire Ball's damage over time can not critically strike." A new Fire Ball adds its share to
-/// the damage not yet dealt.
-/// "Each tick of Fireball has a 50% chance to generate 2 Cinders": combat logs fit every tick generating them, scaled by
-/// the target falloff of the Fire Ball that applied it (deltas of 1.17-1.43 Cinders, 2 x sqrt(5/N), in
-/// yMAZVJL9hTpFjqbC fight 7). Replays of the five logged fights refuse the fewest Detonates for want of Cinders with every
-/// tick generating them (13-136 forced casts), more with half of them (20-165) or none (24-184).
+/// Effect 2293: Fire Ball sets the enemies it hits on fire, dealing an additional share of the initial damage over its
+/// duration. Fire Ball's damage over time can not critically strike. A new Fire Ball adds its share to the damage not yet
+/// dealt.
+/// The tooltip gives each tick a chance to generate Cinders: combat logs fit every tick generating them, scaled by the
+/// target falloff of the Fire Ball that applied it (yMAZVJL9hTpFjqbC fight 7). Replays of the five logged fights refuse
+/// the fewest Detonates for want of Cinders with every tick generating them, more with a share of them or none.
 /// </summary>
 public sealed class FireBallDot : DamageOverTime
 {

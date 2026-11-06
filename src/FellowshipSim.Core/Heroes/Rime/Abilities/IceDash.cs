@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1024: "Quickly travel forward a short distance. Can be used during Global Cooldown." Cooldown 25s, 2 charges,
-/// recovered by cooldown recovery (game data). No damage. The game data gives it a 0.5s channel; combat logs show only a
+/// Ability 1024: "Quickly travel forward a short distance. Can be used during Global Cooldown." Charges recover
+/// through cooldown recovery (game data). No damage. The game data gives it a short channel; combat logs show only a
 /// cast event for it (no channel events), and it stops no channel.
 /// </summary>
 public class IceDash : RimeAbility

@@ -1,20 +1,18 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1420 (Spirit ability) / effect 2039: "For the next 20 seconds, you deal 20% more damage and your Queen's Fang
-/// and Arachnid Assault abilities summon two shadowy clones that both imitate the attack for 50% of your power"; grants
-/// Spirit of Heroism (+30% Haste).
+/// Ability 1420 (Spirit ability) / effect 2039: increases your damage and makes your Queen's Fang
+/// and Arachnid Assault abilities summon shadowy clones that imitate the attack at a fraction of your power; grants
+/// Spirit of Heroism.
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 28.487, 32.006): the clones' hits are logged under the attack's own ID and
-/// keep its bonuses (Deadly Scheme's crit too). The first clone strikes 0.335s after the cast, the second 0.335s after
-/// the first is done; a clone's Arachnid Assault hits one enemy per server frame. Both clones of a Queen's Fang keep Mara's
-/// numbers at the cast: over the 2,580 clone hits in 23 fights, 77 after Matriarch Macabre ended are 1.36x the engine's read
-/// at the strike, and 39 after The Philosopher came 0.79x (T2qLPpmMkrAtJ9B1 fight 18 @ 1249.421, pWmcV42K39GHTLQX fight 23
+/// keep its bonuses (Deadly Scheme's crit too). The first clone strikes <see cref="CloneDelaySeconds"/> after the cast, the second the
+/// same delay after the first is done; a clone's Arachnid Assault hits one enemy per server frame. Both clones of a Queen's Fang keep Mara's
+/// numbers at the cast: over the 2,580 clone hits in 23 fights, those after Matriarch Macabre ended or after The Philosopher came
+/// match the numbers at the cast and not the engine's read at the strike (T2qLPpmMkrAtJ9B1 fight 18 @ 1249.421, pWmcV42K39GHTLQX fight 23
 /// @ 276.428).
-/// Game data (build 26320967): a clone applies a copy of the cast's spec, `GA_Mara_Passive_CopySpawner` offset 4412
-/// `CloneSpecHandle` (0x144A62970 keeps captures and SetByCaller values) and offset 2688. `SetEffectContext` at offset 4600
-/// re-snapshots in the cast's frame (0x144A6F7D0). `CRAgilityDamageCalculation` (0x1450D73F0): source attributes are
-/// snapshots, target attributes are read at the strike, and each application rolls its own crit (`Execute_Implementation`
-/// 0x1450DCF40, roll 0x14510C4D0).
+/// Game data: a clone applies a copy of the cast's spec (keeps captures and caller-set values). The effect context
+/// re-snapshots in the cast's frame. In the Agility damage calculation, source attributes are
+/// snapshots, target attributes are read at the strike, and each application rolls its own crit.
 /// </summary>
 public class MatriarchMacabre : MaraAbility
 {
@@ -67,7 +65,7 @@ public class MatriarchMacabre : MaraAbility
     /// </summary>
     public readonly record struct CloneCast(MaraAbility Attack, SimulationContext.HitNumbers Numbers, bool MaidenOfDeathActive);
 
-    /// <summary>The numbers both clones keep from a cast of <paramref name="attack"/>, at 50% of its power.</summary>
+    /// <summary>The numbers both clones keep from a cast of <paramref name="attack"/>, at <see cref="ClonePower"/> of its power.</summary>
     public CloneCast KeepCast(MaraAbility attack, SimulationContext ctx, double damageMultiplier, double critChance) =>
         new(attack, attack.NumbersNow(ctx, null, damageMultiplier * ClonePower, critChance), Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime));
 
@@ -92,8 +90,8 @@ public class MatriarchMacabre : MaraAbility
     }
 
     /// <summary>
-    /// While Matriarch Macabre is active, two clones repeat an attack of <paramref name="hits"/> hits:
-    /// <paramref name="strike"/> deals it with the power given (50%).
+    /// While Matriarch Macabre is active, clones repeat an attack of <paramref name="hits"/> hits:
+    /// <paramref name="strike"/> deals it with the power given (<see cref="ClonePower"/>).
     /// </summary>
     public void Imitate(SimulationContext ctx, int hits, Action<SimulationContext, double> strike)
     {

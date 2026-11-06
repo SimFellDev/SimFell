@@ -54,7 +54,7 @@ public class PropertyExpression : IAplExpression
     private static IReadOnlyCollection<string> DebuffProperties =>
         [.. AuraProperties.Keys, .. new[] { OldestPick, NewestPick }.SelectMany(pick => PickedProperties.Select(p => $"{pick}.{p}"))];
 
-    /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last 30% of its duration.</summary>
+    /// <summary>SimulationCraft's pandemic window: an aura is refreshable in the last part of its duration.</summary>
     public const double RefreshableFraction = 0.3;
 
     /// <summary>A countdown's value when its time never comes: no such pull follows, or the fight has no set end.</summary>

@@ -1,11 +1,11 @@
 namespace FellowshipSim.Core.Customization.RelicPassives;
 
 /// <summary>
-/// Relic passive 778 (Orb of Awakened Gaze): "Your critical strikes have a chance (0.9 PPM) to increase your Primary Stat
-/// by 18% for 14 seconds." (ability 2326, effect 3268 Draconic Might) The game data's 5 second cooldown does not hold
-/// between procs: 16 procs come less than 5 seconds after the one before on the same hero, the shortest 1.17 seconds
+/// Relic passive 778 (Orb of Awakened Gaze): "Your critical strikes have a chance to increase your Primary Stat for a
+/// time." (ability 2326, effect 3268 Draconic Might) The game data's cooldown does not hold
+/// between procs: 16 procs come before it has passed after the one before on the same hero
 /// (Fc8v6yWxD14GQMnV fight 19, fXyzwGcQkTrLD34R fight 4, YC861NTRgLbmw4Qa fight 31). The roll has Haste off and the rate
-/// row ArmorSetBonus.PowerBonusOnCrit.PPM × (1 + CritChance), from the game data; the tooltip's 0.9 is its own text.
+/// row ArmorSetBonus.PowerBonusOnCrit.PPM × (1 + CritChance), from the game data; the tooltip's rate is its own text.
 /// </summary>
 public class DragonboneDice : RelicPassive
 {

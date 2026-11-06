@@ -30,7 +30,7 @@ public class ReplayVerifierTests
         _hero.BeginFight(_ctx);
         _enemy = _ctx.AddEnemy(100, 1, "Dummy", 1e9);
         _hero.CurrentTarget = _enemy;
-        // Default tolerances: 10% spread, 1 damage of rounding, no unexplained margin.
+        // Default tolerances: the damage spread, rounding, no unexplained margin.
         _verifier = new ReplayVerifier(new ReplayScript(), new ReplayOptions(), _hero);
     }
 

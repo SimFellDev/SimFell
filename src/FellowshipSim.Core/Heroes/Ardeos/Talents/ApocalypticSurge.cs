@@ -3,9 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 678 / effect 3176 (18s, 4 stacks): "Your Apocalypse has 1.5 seconds reduced cast time and grants you 2 stacks of
-/// Apocalyptic Surge for 18 seconds, up to 4 stacks maximum. Your next Detonate consumes 1 stack of Apocalyptic Surge and
-/// is Free."
+/// Talent 678 / effect 3176: Apocalypse has a reduced cast time and grants stacks of Apocalyptic Surge. The next Detonate
+/// consumes a stack and is free.
 /// </summary>
 public class ApocalypticSurge : Talent
 {

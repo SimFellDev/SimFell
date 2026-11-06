@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 108: "When your Hemorrhaging Strike bleed is applied to an enemy you gain +5% Critical Strike chance. You gain
-/// an additional +1% Critical Strike chance for every additional enemy that has your Hemorrhaging Strike bleed applied,
-/// up to a maximum total of +10% Critical Strike chance." UNVERIFIED: no combat log has this talent.
+/// Talent 108: "When your Hemorrhaging Strike bleed is applied to an enemy you gain Critical Strike chance. You gain
+/// additional Critical Strike chance for every additional enemy that has your Hemorrhaging Strike bleed applied,
+/// up to a maximum total." UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class RedLedger : Talent
 {

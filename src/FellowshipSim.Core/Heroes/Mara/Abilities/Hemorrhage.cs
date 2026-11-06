@@ -1,13 +1,13 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Effect 1724: Hemorrhaging Strike's bleed, "dealing 98.41% of Agility every 3 seconds"; "Each tick of Hemorrhaging
-/// Strike's bleed replenishes 2 energy." Creeping Death adds 0.5% per 1% Haste.
-/// Combat logs (Fc8v6yWxD14GQMnV fight 19, 32 bleeds): ticks every 3s shortened by Haste, a partial tick as it runs out;
-/// a refresh keeps the tick timing, and up to 30% of the new duration of the time left carries over (@ 21.458: 27.1s
-/// left, a 30s refresh, gone 39.0s later). Every enemy's bleed pays 2 Energy at each tick, a partial one too, with Maiden of Death's
-/// 1.2: `GA_Mara_BleedAttackSpender.OnEffectSignalFromExecution` offset 158 reads no PartialTickFactor, and
-/// `CRSendSignalToSourceAbilityExecution` (0x145109C30) runs in the partial tick's executions.
+/// Effect 1724: Hemorrhaging Strike's bleed, dealing Agility damage on a period; each tick of the bleed replenishes
+/// Energy. Creeping Death adds damage per Haste.
+/// Combat logs (Fc8v6yWxD14GQMnV fight 19, 32 bleeds): ticks are shortened by Haste, with a partial tick as it runs out;
+/// a refresh keeps the tick timing, and up to <see cref="RefreshCarryover"/> of the new duration of the time left carries over (@ 21.458).
+/// Every enemy's bleed pays Energy at each tick, a partial one too, with Maiden of Death's
+/// multiplier: game data reads no partial tick factor for the Energy, and
+/// the signal to the source ability runs in the partial tick's executions.
 /// </summary>
 public class Hemorrhage : MaraDot
 {

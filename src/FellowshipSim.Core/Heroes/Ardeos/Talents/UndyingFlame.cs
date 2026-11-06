@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
-/// <summary>Talent 150: "The duration of your Engulfing Flames is increased by 3 seconds."</summary>
+/// <summary>Talent 150: Engulfing Flames lasts longer.</summary>
 public class UndyingFlame : Talent
 {
     public const int TalentId = 150;

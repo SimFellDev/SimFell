@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 673: "Your Heavy Strike grants you 1 stack of Square Hammer for 20 seconds, stacking up to 5 times. Your next
-/// Skull Crusher or Hammer Storm consumes all stacks, reducing the cooldown of your Thunder Call by 1 second per stack.
-/// Each time you consume Square Hammer you are granted +8% Expertise for 4 seconds." Effects 3158 (the stacks) and 3159
+/// Talent 673: "Your Heavy Strike grants you a stack of Square Hammer, stacking. Your next
+/// Skull Crusher or Hammer Storm consumes all stacks, reducing the cooldown of your Thunder Call per stack.
+/// Each time you consume Square Hammer you are granted Expertise." Effects 3158 (the stacks) and 3159
 /// (the Expertise).
 /// </summary>
 public class SquareHammer : Talent

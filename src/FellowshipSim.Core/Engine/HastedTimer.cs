@@ -8,12 +8,12 @@ namespace FellowshipSim.Core.Engine;
 /// expiry (<see cref="AuraContainer.RunOutIn"/>).
 /// <para>
 /// <see cref="Start"/> fires once. <see cref="StartPeriod"/> is the period timer of an effect tagged EffectType.Dot or
-/// EffectType.Hot, firing every period until cancelled, re-armed the way the game re-arms it (build 26162532):
-/// ACRCharacterBase binds the Haste attribute's change (0x1452EBCA0, NewValue != OldValue) to 0x1452EE870, which re-arms
-/// every running Dot or Hot effect the character applied (ASC +0x13B0, registered by 0x1452D4E60) through 0x1452D88D0 at
+/// EffectType.Hot, firing every period until cancelled, re-armed the way the game re-arms it:
+/// the game binds the Haste attribute's change (NewValue != OldValue) to a handler that re-arms
+/// every running Dot or Hot effect the character applied at
 /// Period / Haste(now), its first delay the new period x remaining / old period. A change inside the tick's own execution
-/// reads a remaining of 0 (FTimerManager::GetTimerRemaining 0x144041D00 for an Executing timer), and a first delay of 0
-/// fires on the next server frame (FTimerManager::Tick 0x144056E90): the tick comes again a frame later, and the ticks
+/// reads a remaining of 0, and a first delay of 0
+/// fires on the next server frame: the tick comes again a frame later, and the ticks
 /// after it come every new period from the first. A change in an ability activation before the frame's timers
 /// (<see cref="SimulationContext.AbilityActivation"/>) reads the time left from the frame before: the next tick comes a
 /// frame later.
@@ -217,9 +217,9 @@ public sealed class HastedTimer
             if (Math.Abs(haste - _haste) < 1e-12 && _event is { IsPending: true }) return;
             if (_period && _ctx.AbilityActivation != 0 && _ctx.AbilityActivation != _shiftedActivation)
             {
-                // Before the frame's timers, GetTimerRemaining reads the timer against the last frame's time, and the
-                // re-armed timer is pending until this frame's FTimerManager::Tick adds this frame's time
-                // (InternalSetTimer 0x144041D40, 0x144041F17; FTimerManager::Tick 0x144057664): the next tick comes a
+                // Before the frame's timers, the time left reads the timer against the last frame's time, and the
+                // re-armed timer is pending until this frame's timer update adds this frame's time:
+                // the next tick comes a
                 // server frame later. A second change in the same activation reads the pending timer's own time left.
                 _shiftedActivation = _ctx.AbilityActivation;
                 _remainingBase += PeriodicEffect.ServerFrameSeconds * (1.0 + _haste);

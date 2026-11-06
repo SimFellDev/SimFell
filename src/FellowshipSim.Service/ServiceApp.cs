@@ -39,7 +39,7 @@ public static class ServiceApp
     public static WebApplication Build(string[] args, Action<WebApplicationBuilder>? configure = null)
     {
         // The application name picks the assembly whose static assets are served, also when another program hosts this app.
-        // The one-person app finds its wwwroot beside its exe, wherever it was started from.
+        // The one-person app finds its wwwroot beside the app, wherever it was started from.
         bool localArgs = new ConfigurationBuilder().AddCommandLine(args).Build().GetValue<bool>(LocalKey);
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {

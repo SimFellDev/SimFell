@@ -6,9 +6,8 @@ using FellowshipSim.Core.Import;
 namespace FellowshipSim.Tests;
 
 /// <summary>
-/// A node is granted at every rise of the power to its requirement and removed at every fall below it, for all six colours
-/// (UCRGemPowerComponent's callback 0x145395520 and handler 0x145398640, build 26320967). Each colour's first node goes
-/// on, off and on again here. <see cref="TopazGemPowerTests"/> covers Topaz's Essence of the Virtuoso.
+/// A node is granted at every rise of the power to its requirement and removed at every fall below it, for all six colours.
+/// Each colour's first node goes on, off and on again here. <see cref="TopazGemPowerTests"/> covers Topaz's Essence of the Virtuoso.
 /// </summary>
 public class GemNodeActivationTests
 {

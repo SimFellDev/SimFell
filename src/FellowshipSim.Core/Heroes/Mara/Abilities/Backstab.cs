@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1129: "Deals 99.6% of Agility damage to target enemy. Deals 40% more damage when attacking from behind.
-/// Generates 2 Combo Points. Critical Strikes generate 3 Combo Points." Costs 20 Energy. In Stealth the Stealth Backstab
+/// Ability 1129: Agility damage to the target enemy, with more damage when attacking from behind. Generates Combo Points,
+/// more on a Critical Strike, and costs Energy. In Stealth the Stealth Backstab
 /// (<see cref="StealthBackstab"/>) replaces it.
 /// </summary>
 public class Backstab : MaraAbility
@@ -14,7 +14,7 @@ public class Backstab : MaraAbility
     public const double ComboPointsGained = 2;
     public const double ComboPointsOnCrit = 3;
 
-    /// <summary>"Deals 40% more damage when attacking from behind": a sim attacks from behind. UNVERIFIED.</summary>
+    /// <summary>The bonus damage when attacking from behind: a sim attacks from behind. UNVERIFIED.</summary>
     public const double BehindMultiplier = 1.4;
 
     /// <summary>Backstab hit an enemy (Hemotoxin, Caustic Wounds).</summary>

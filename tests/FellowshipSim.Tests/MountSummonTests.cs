@@ -6,7 +6,7 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>A mount waits for no global cooldown (`GA_Mount_MountUp_Base` has no `GlobalCooldownGameplayEffectClass`).</summary>
+/// <summary>A mount waits for no global cooldown (game data: no global cooldown effect).</summary>
 public class MountSummonTests
 {
     [Fact]
@@ -23,7 +23,7 @@ public class MountSummonTests
         Assert.Equal(cooldownEnd, hero.GlobalCooldownEndTime);
     }
 
-    /// <summary>`GA_Mount_MountUp_Base` `BlockAbilitiesWithTag` `AbilityType.Mounting`.</summary>
+    /// <summary>A mount ability blocks abilities tagged `AbilityType.Mounting`.</summary>
     [Fact]
     public void A_Running_Mount_Cast_Blocks_Another()
     {

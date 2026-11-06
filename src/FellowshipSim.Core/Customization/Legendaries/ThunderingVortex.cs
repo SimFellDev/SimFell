@@ -4,9 +4,9 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
 /// Legendary power 86 (Tariq's Stormlord Harness, item 5898; Bloodied Brass Loop, item 5221; Loop of the Thundering
-/// Vortex, item 5222): "Your Chain Lightning generates 50% more Fury and each time your Chain Lightning bounces you gain 1
-/// stack of Thundering Vortex. Once you have 20 stacks your next Chain Lightning deals 100% more damage." Effect 2754 (40
-/// stacks; its own text: "consumes 20 stacks to deal 60% more damage"). UNVERIFIED: no combat log has this legendary.
+/// Vortex, item 5222): "Your Chain Lightning generates more Fury and each time your Chain Lightning bounces you gain a
+/// stack of Thundering Vortex. Once you have enough stacks your next Chain Lightning deals more damage." Effect 2754 (its
+/// own text differs from the power's in stack count and bonus). UNVERIFIED: no combat log has this legendary.
 /// </summary>
 public class ThunderingVortex : Legendary
 {

@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 121 / effect 2195 (12s, 6 stacks): "Each time your Skittering Blades deals damage you are granted Feed the
-/// Queen, causing the next Queen's Fang you perform to deal 12% more damage per stack." Combat logs (Fc8v6yWxD14GQMnV
+/// Talent 121 / effect 2195: "Each time your Skittering Blades deals damage you are granted Feed the
+/// Queen, causing the next Queen's Fang you perform to deal more damage per stack." Combat logs (Fc8v6yWxD14GQMnV
 /// fight 19): a stack per enemy hit; the next Queen's Fang uses up every stack.
 /// </summary>
 public class FeedTheQueen : Talent
@@ -27,8 +27,8 @@ public class FeedTheQueen : Talent
         {
             blades.Hit += (in hit) => hero.Auras.Apply(Buff, hit.Timestamp);
         }
-        // Combat logs (3 fights, 441 clone hits): the shadowy clones' Queen's Fangs deal 0.71x what the cast's bonuses give
-        // them, the Feed the Queen bonus of 3 to 4 stacks; the clones have every other bonus.
+        // Combat logs (3 fights): the shadowy clones' Queen's Fangs deal a share of what the cast's bonuses give
+        // them for the Feed the Queen bonus; the clones have every other bonus.
         hero.GetAbility<QueensFang>()?.OwnHitMultipliers.Add(ctx =>
         {
             int stacks = hero.Auras.GetStacks(Buff, ctx.CurrentTime);

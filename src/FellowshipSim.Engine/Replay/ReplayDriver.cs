@@ -399,8 +399,8 @@ public sealed class ReplayDriver
     /// <summary>
     /// The period timer of the damage over time whose tick the log has in this cast's server frame, before the cast, when
     /// that tick ended an ability of the hero (<see cref="Hero.QueueFlushingTick"/>): the server's ability queue, flushed
-    /// inside the tick, activated the cast there (game-data-binary, build 26162532: the queue 0x1452D7370 flushed by
-    /// UCRGameplayAbility::EndAbility 0x1450DACD0 inside Bursting Ice's period callback; the cast is logged after the pulse).
+    /// inside the tick, activated the cast there (game data: the queue is flushed when the ability ends, inside Bursting
+    /// Ice's period callback; the cast is logged after the pulse).
     /// </summary>
     private HastedTimer? QueueFlushingTimer(ReplayCommand cmd)
     {
@@ -583,7 +583,7 @@ public sealed class ReplayDriver
     }
 
     /// <summary>
-    /// The player is back: every resource the log reports takes the log's first reading after it (the log shows 75% of
+    /// The player is back: every resource the log reports takes the log's first reading after it (the log shows a share of
     /// the Spirit Points at death, and other resources refilled or emptied).
     /// </summary>
     private void Revive(double time)
@@ -597,8 +597,8 @@ public sealed class ReplayDriver
     /// <summary>
     /// Situational auras (<see cref="Hero.SituationalAuras"/>) depend on what the engine does not simulate, so the replay
     /// gives the hero each one exactly when the log does. One whose first logged event is a loss was up as the fight began.
-    /// One on the Main Stat with no logged event was up the whole fight (Might of the Minotaur: it drops only below 80%
-    /// health, and the log's starting Main Stat includes it). A gem's
+    /// One on the Main Stat with no logged event was up the whole fight (Might of the Minotaur: it drops only below a health
+    /// threshold, and the log's starting Main Stat includes it). A gem's
     /// situational nodes are followed at both ranks.
     /// </summary>
     private void FollowSituationalAuras()
@@ -625,7 +625,7 @@ public sealed class ReplayDriver
                     if (e.Type is "removebuff" or "removedebuff") c.Player.Auras.Remove(aura, c.CurrentTime);
                     else if (e.IsGain || e.Stack != null)
                     {
-                        // A refresh logs no stacks: it keeps the ones it has (Gunde's Owed in Blood refreshes at 150).
+                        // A refresh logs no stacks: it keeps the ones it has (Gunde's Owed in Blood refreshes at its maximum).
                         int held = c.Player.Auras.GetStacks(aura, c.CurrentTime);
                         bool refresh = e.Type is "refreshbuff" or "refreshdebuff";
                         c.Player.Auras.Apply(aura, c.CurrentTime, setStacks: e.Stack ?? (refresh && held > 0 ? held : 1));
@@ -639,7 +639,7 @@ public sealed class ReplayDriver
     /// Auras that carry over from earlier pulls: a modeled aura whose first event on the player in the log is its removal
     /// was on the hero as the fight began. The replay gives it to the hero from the start until the log removes it; its
     /// time left at the start is unknown, so nothing the engine does moves that end (combat logs: The Wayfarer's
-    /// cooldown, effect 3183, runs out 34-44s into N18KtgP3rvpYGm24 fight 27 and Rzg1nQNHpm2fhYtB fights 23 and 24 with no
+    /// cooldown, effect 3183, runs out in N18KtgP3rvpYGm24 fight 27 and Rzg1nQNHpm2fhYtB fights 23 and 24 with no
     /// application before).
     /// </summary>
     private void CarryOverAuras()
@@ -715,7 +715,7 @@ public sealed class ReplayDriver
         }
         // The pre-cast check matches an aura against the log's state within the tolerance after the step, and there a cast
         // that toggles the aura gains it. An engine still holding the aura then ends it on the cast the log shows gaining it
-        // (a mount's end of Stealth: WcTBrQNX46m9axqP fight 7 @ 517.728 before Brooding Shadows @ 533.934, 35 Seething Poison
+        // (a mount's end of Stealth: WcTBrQNX46m9axqP fight 7 @ 517.728 before Brooding Shadows @ 533.934, Seething Poison
         // hits behind it; p8VJDcBdxa7ghqG3 fight 124 @ 509.279; pWmcV42K39GHTLQX fight 23 @ 1566.089).
         if (FindAbility(cmd)?.RecastEnds is { } toggled && _hero.Auras.HasAura(toggled, now)
             && _logAuras!.GainedAfterAbsence(toggled.LogId, cmd.Time, _options.AuraToleranceSeconds))

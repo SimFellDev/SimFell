@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
-/// <summary>Talent 192: each Anima generated during Ice Blitz conjures 1 Frost Swallow.</summary>
+/// <summary>Talent 192: each Anima generated during Ice Blitz conjures a Frost Swallow.</summary>
 public class CascadingBlitz : Talent
 {
     public const int TalentId = 192;
@@ -11,7 +11,7 @@ public class CascadingBlitz : Talent
     public override string Name => TalentName;
     public override int Id => TalentId;
 
-    /// <summary>"...you conjure 1 Frost Swallow to attack your target" (a replay follows the log if the player briefly had another target).</summary>
+    /// <summary>Tooltip: you conjure a Frost Swallow to attack your target (a replay follows the log if the player briefly had another target).</summary>
     public override void Bind(Hero hero)
     {
         var swallows = hero.GetAbility<FrostSwallows>();

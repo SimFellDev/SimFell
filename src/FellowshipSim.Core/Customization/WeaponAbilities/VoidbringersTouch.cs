@@ -1,13 +1,13 @@
 namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
-/// Weapon ability 155 (weapon power 349, debuff effect 68): "Apply Voidbringer's Touch to target enemy for 15 seconds, causing 10% of all
-/// damage you deal to any enemy to be replicated and stored in the effect. Once Voidbringer's Touch expires, or a total of
-/// 4250% Main Stat damage has been accumulated, the effect erupts in a shadowy explosion, instantly dealing the
-/// accumulated damage to the target. Voidbringer's Touch has +100% critical strike chance. ... always triggers if the
+/// Weapon ability 155 (weapon power 349, debuff effect 68): "Apply Voidbringer's Touch to target enemy for a time, causing a share of all
+/// damage you deal to any enemy to be replicated and stored in the effect. Once Voidbringer's Touch expires, or a total
+/// Main Stat damage cap has been accumulated, the effect erupts in a shadowy explosion, instantly dealing the
+/// accumulated damage to the target. Voidbringer's Touch has increased critical strike chance. ... always triggers if the
 /// damage it holds is greater than the remaining health of the enemy ... Can be cast during Global Cooldown."
-/// Hitting the cap erupts at once; the eruption's crit chance is yours + 100% (the overflow is a grievous crit) (per the
-/// user). Cooldown 90s. UNVERIFIED: two of six eruptions in n7zxK8harZT2wjDB fight 9 come 0.6-1.2s earlier in the log
+/// Hitting the cap erupts at once; the eruption's crit chance is yours plus the bonus (the overflow is a grievous crit) (per the
+/// user). UNVERIFIED: two of six eruptions in n7zxK8harZT2wjDB fight 9 come earlier in the log
 /// than the engine's cap allows.
 /// </summary>
 public class VoidbringersTouch : Ability
@@ -22,7 +22,7 @@ public class VoidbringersTouch : Ability
     public const double CapCoefficient = 42.5;
     public const double CritChance = 1.0;
 
-    /// <summary>The debuff on the touched enemy while it stores damage (effect 68, "Voidbringer's Touch", 15 seconds).</summary>
+    /// <summary>The debuff on the touched enemy while it stores damage (effect 68, "Voidbringer's Touch").</summary>
     public static readonly AuraDef Debuff = AuraDef.Effect(AbilityName, DebuffEffectId, DurationSeconds);
 
     private EnemyTarget? _target;
@@ -66,11 +66,11 @@ public class VoidbringersTouch : Ability
     }
 
     /// <summary>
-    /// The explosion: the cap's damage (42.5 x Main Stat, with Martial Initiative and other Main Stat buffs) scaled by your
+    /// The explosion: the cap's damage (the cap as Main Stat, with Martial Initiative and other Main Stat buffs) scaled by your
     /// damage buffs (Winter's Embrace, Ice Blitz, ...) and weapon bonuses but not Expertise, then a crit with all your crit
-    /// chance + 100%, the overflow a grievous crit; short of the cap, the share of it stored. Combat logs
-    /// (n7zxK8harZT2wjDB fight 9): the four eruptions that match in time are 0.94-1.05 of the log (mean 0.99); with
-    /// Expertise they were 1.37x too high.
+    /// chance plus the bonus, the overflow a grievous crit; short of the cap, the share of it stored. Combat logs
+    /// (n7zxK8harZT2wjDB fight 9): the four eruptions that match in time match the log's damage closely; with
+    /// Expertise they were too high.
     /// </summary>
     private void Erupt(SimulationContext ctx)
     {
@@ -81,7 +81,7 @@ public class VoidbringersTouch : Ability
         _stored = 0.0;
         _touch++;
         if (share <= 0.0) return;
-        // Crit chance: all of yours + 100%; the overflow is a grievous crit (per the user).
+        // Crit chance: all of yours plus the bonus; the overflow is a grievous crit (per the user).
         DealDamage(ctx, target, damageMultiplier: share, extraCritChance: CritChance);
     }
 }

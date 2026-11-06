@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 443: "Your Queen's Fang and Arachnid's Assault abilities grant you 1 stack of Malevolence: Arachnid Assault or 1
-/// stack of Malevolence: Queen's Fang respectively for 20 seconds. Malevolence increases the damage of the matching
-/// ability by 100%. Each Malevolence buff type stacks up to 2 times." Effects 2430 (Queen's Fang) and 2431 (Arachnid
+/// Talent 443: "Your Queen's Fang and Arachnid's Assault abilities grant you a stack of Malevolence: Arachnid Assault or a
+/// stack of Malevolence: Queen's Fang respectively. Malevolence increases the damage of the matching
+/// ability. Each Malevolence buff type stacks." Effects 2430 (Queen's Fang) and 2431 (Arachnid
 /// Assault). Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 28.487, 32.006): the finisher uses up one stack of its own buff,
 /// then grants the other.
 /// </summary>

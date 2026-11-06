@@ -7,6 +7,6 @@ namespace FellowshipSim.UI.Build;
 /// </summary>
 public sealed record BuildOption(int Id, string Name, string? Icon, bool Modeled = true, int MaxRank = 1, string? Note = null)
 {
-    /// <summary>The icon's image on the Codex CDN, or null when the datamine has no icon for it.</summary>
+    /// <summary>The icon's image on the game data CDN, or null when the game data has no icon for it.</summary>
     public string? IconUrl => Icon == null ? null : GameIcons.Url(Icon);
 }

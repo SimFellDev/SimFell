@@ -1,7 +1,7 @@
 namespace FellowshipSim.Core.Import;
 
 /// <summary>
-/// A hero the engine does not have yet (<see cref="BuildHeroes"/>): its talent tree and main stat from the datamine, and
+/// A hero the engine does not have yet (<see cref="BuildHeroes"/>): its talent tree and main stat from game data, and
 /// no abilities, so a build of it can be edited, saved and shared but not simulated. It has no constructor without
 /// parameters, so the <see cref="Catalog"/> never lists it.
 /// </summary>

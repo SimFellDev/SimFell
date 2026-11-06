@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
-/// Ability 959: "Interact with the campfire to update the spawn point of your party!" Cast time 2s, not hasted (game data;
-/// combat logs: begincast to cast 2.002-2.005s). No damage. UNVERIFIED: whether it starts the global cooldown.
+/// Ability 959: "Interact with the campfire to update the spawn point of your party!" The cast time is not hasted (game data;
+/// combat logs: begincast to cast matches the cast time). No damage. UNVERIFIED: whether it starts the global cooldown.
 /// </summary>
 public class MakingCamp : Ability
 {

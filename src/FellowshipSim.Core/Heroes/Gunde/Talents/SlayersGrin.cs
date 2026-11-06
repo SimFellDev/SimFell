@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
-/// <summary>Talent 763: "Your Rupture cooldown is reduced by 0.4 seconds each time you collect a Blood Feather."</summary>
+/// <summary>Talent 763: "Your Rupture cooldown is reduced each time you collect a Blood Feather."</summary>
 public class SlayersGrin : Talent
 {
     public const int TalentId = 763;

@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Customization.ProtectiveEnchants;
 
-/// <summary>Protective enchant 56: "You take 20% reduced Area of Effect damage."</summary>
+/// <summary>Protective enchant 56: "You take reduced Area of Effect damage."</summary>
 public class TheLake : ProtectiveEnchant
 {
     public const int ProtectiveEnchantId = 56;

@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1023 (Spirit ability) / effect 1387: +20% damage for 20s and 1 Winter Orb every 4s; grants
-/// Spirit of Heroism (effect 2253, +30% Haste).
+/// Ability 1023 (Spirit ability) / effect 1387: increases damage and gives a Winter Orb at a fixed interval; grants
+/// Spirit of Heroism (effect 2253, a Haste bonus).
 /// </summary>
 public class WrathOfWinter : RimeAbility
 {
@@ -22,7 +22,7 @@ public class WrathOfWinter : RimeAbility
     public WrathOfWinter(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
     {
         CastTime = SimTime.FromSeconds(CastTimeSeconds);
-        // Combat logs: cast 0.265s after a Cold Snap, inside its global cooldown (yMAZVJL9hTpFjqbC fight 7 @ 27.284).
+        // Combat logs: cast inside a Cold Snap's global cooldown (yMAZVJL9hTpFjqbC fight 7 @ 27.284).
         IgnoresGcd = true;
     }
 
@@ -46,8 +46,8 @@ public class WrathOfWinter : RimeAbility
         hero.Auras.Apply(Buff, ctx.CurrentTime);
 
         double duration = Buff.Duration.TotalSeconds;
-        // Not in the description, but every log shows it: the first orb comes on activation (yMAZVJL9hTpFjqbC fight 7 @ 709.809: 4 -> 5 orbs).
-        // The datamine marks the ability scalesWithHaste: the 4 seconds between orbs are hasted (logs: orbs every ~2.4s at ~69% haste),
+        // Not in the description, but every log shows it: the first orb comes on activation (yMAZVJL9hTpFjqbC fight 7 @ 709.809).
+        // Game data marks the ability scalesWithHaste: the interval between orbs is hasted (combat logs show orbs on the hasted interval),
         // by the haste when the previous orb came (yMAZVJL9hTpFjqbC fight 7: orbs at ~40.2 and ~42.5 despite The Philosopher
         // lapsing 38.44-39.17 in between).
         PeriodicEffect.BeginHasted(ctx, hero, Name, duration, OrbIntervalSeconds, tickOnStart: true, partialFinalTick: false,

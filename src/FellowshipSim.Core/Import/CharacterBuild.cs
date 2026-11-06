@@ -56,14 +56,14 @@ public class CharacterBuild
     public List<int> SocketedGemIds { get; set; } = new();
     public Dictionary<GemColor, int> GearGemBonuses { get; set; } = new();
     /// <summary>
-    /// Stat enchants: the enchant's ID (65 to 70) and the rating it adds to each of its two stats, summed over the items
+    /// Stat enchants: the enchant's ID and the rating it adds to each of its two stats, summed over the items
     /// that have it. The ratings above are without them; the engine adds them.
     /// </summary>
     public List<BuildEntry> StatEnchants { get; set; } = new();
     /// <summary>
-    /// How many slots each stat enchant fills, by ID, when it is known (a log: on each item that has it, one per 6 rating
-    /// rounded up, so a 10 or 12 is two; plus the weapon tree's points in it). A stat enchant not here counts as its
-    /// rating over 6.
+    /// How many slots each stat enchant fills, by ID, when it is known (a log: on each item that has it, one per fixed rating step
+    /// rounded up; plus the weapon tree's points in it). A stat enchant not here counts as its
+    /// rating over that step.
     /// </summary>
     public Dictionary<int, int> StatEnchantCounts { get; set; } = new();
     /// <summary>Item ID of the relic in slot 1 (e.g. 5926, Orb of Inner Seas, for Accursed Trophy); 0 for none.</summary>

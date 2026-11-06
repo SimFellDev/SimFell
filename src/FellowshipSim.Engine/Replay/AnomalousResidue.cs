@@ -4,9 +4,9 @@ namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
 /// Anomalous Residue (Anomalous Orb dungeon modifier): each stack adds <see cref="PowerPerStack"/> to one colour's gem
-/// power for 60s, up to 3 stacks (effects 2704-2710, row AnomalousOrbs.Orb.Buff.AdditionalGemPowerPerStack, base effect
-/// 2709). The hero's gem power multipliers scale it, as they multiply after the Additive sum (Covetous Greed, effect
-/// 3271, MultiplyCompound 1.25; aggregator 0x144AA79C0). A replay follows the log's stacks on the player and changes
+/// power for a limited duration and number of stacks (effects 2704-2710,
+/// base effect 2709). The hero's gem power multipliers scale it, as they multiply after the Additive sum (Covetous Greed,
+/// effect 3271, MultiplyCompound). A replay follows the log's stacks on the player and changes
 /// the gem's power with them.
 /// </summary>
 public static class AnomalousResidue

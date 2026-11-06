@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
 /// Talent 754: "Each spin of Grim Carve reduces the cooldown of your Reaver's Edge, Blood Arc, Heart Splitter and Rupture
-/// by 1 second per spin. Grim Carve deals 25% more damage."
+/// per spin. Grim Carve deals more damage."
 /// </summary>
 public class Carnage : Talent
 {

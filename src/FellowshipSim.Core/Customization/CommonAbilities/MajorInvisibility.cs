@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
-/// Ability 1486 (a relic ability): "Instantly conceal yourself all nearby allies, granting Major Invisiblilty
-/// for 15 seconds. Can only be used out of combat." Cooldown 360s; effect 2146 "Major Invisibility", 15s: "This effect is
-/// removed if you generate threat or deal any damage to enemies." (game data). No damage. UNVERIFIED: whether it starts
-/// the global cooldown.
+/// Ability 1486 (a relic ability): conceals the caster and nearby allies with Major Invisibility. It can only be used out of
+/// combat. Effect 2146 "Major Invisibility": "This effect is removed if you generate threat or deal any damage to
+/// enemies." (game data; the cooldown and the effect's duration are <see cref="CooldownSeconds"/> and <see cref="BuffSeconds"/>).
+/// No damage. UNVERIFIED: whether it starts the global cooldown.
 /// </summary>
 public class MajorInvisibility : Ability
 {

@@ -68,16 +68,15 @@ public sealed class PeriodicEffect
 
     /// <summary>
     /// The game runs on server frames; a partial final tick shorter than one frame never happens
-    /// (combat logs: Bursting Ice @ 29.587 in yMAZVJL9hTpFjqbC fight 7 ends 20ms after its last full pulse, with no partial pulse).
+    /// (combat logs: Bursting Ice @ 29.587 in yMAZVJL9hTpFjqbC fight 7 ends shortly after its last full pulse, with no partial pulse).
     /// </summary>
     public const double ServerFrameSeconds = 1.0 / 30.0;
 
     /// <summary>
-    /// DefaultGame.ini [/Script/fellowship.CRAbilitySystemGlobals] MinimumPartialTickTime (UCRAbilitySystemGlobals +0x32C),
-    /// seconds: when a damage over time's duration runs out (CheckDuration 0x144A6E990), its partial final tick
-    /// (0x1452D0C70, Dot and Hot effects alone) is skipped when elapsed = GetTimerRate - GetTimerRemaining of its period
-    /// timer, the time since the last tick was due at the hasted rate, is under this (strict: equal runs; 0x1452D0E13),
-    /// and its factor is elapsed / rate (game-data-authority answer 10, game-data-binary).
+    /// The game setting for the shortest partial tick, seconds: when a damage over
+    /// time's duration runs out, its partial final tick (Dot and Hot effects alone) is skipped when elapsed =
+    /// the time its period timer has run, the time since the last tick was due at the hasted rate, is
+    /// under this (strict: equal runs), and its factor is elapsed / rate.
     /// </summary>
     public const double MinHastedPartialTickSeconds = 0.1;
 
@@ -394,7 +393,7 @@ public sealed class PeriodicEffect
             if (!effect.IsActive) return;
             var timer = effect._nextHastedTick;
             double fraction = timer is { IsActive: true } ? timer.ElapsedBaseSeconds / basePeriodSeconds : 0.0;
-            // A damage over time's partial tick reads how long its period has run (period - remaining, 0x1452D0C70) as the
+            // A damage over time's partial tick reads how long its period has run (period - remaining) as the
             // duration runs out: a re-arm since the last tick shortens it.
             double elapsed = damageOverTime && timer is { IsActive: true }
                 ? timer.ElapsedBaseSeconds / (1.0 + hero.GetHaste(c.CurrentTime))

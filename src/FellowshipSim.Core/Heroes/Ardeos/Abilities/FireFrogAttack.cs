@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// A Fire Frog's leap, logged under effect 1827: "dealing 86.3052% of Intellect fire damage and burning them for an
-/// additional 100% of the initial damage dealt over 12 seconds" (<see cref="FireFrogsDot"/>).
+/// A Fire Frog's leap, logged under effect 1827: it deals Intellect fire damage and burns the target for an additional
+/// share of the initial damage (<see cref="FireFrogsDot"/>).
 /// </summary>
 public sealed class FireFrogAttack : Ability
 {

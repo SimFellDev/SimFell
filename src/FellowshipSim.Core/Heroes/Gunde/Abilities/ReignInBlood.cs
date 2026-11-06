@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2295 / effect 3241: "For the next 12 seconds, your abilities apply an additional 30% of the damage dealt to
-/// Rend." Cooldown 90s. Combat logs (Gunde guide corpus, 69 logs): it takes no global cooldown.
+/// Ability 2295 / effect 3241: "For a time, your abilities apply an additional share of the damage dealt to
+/// Rend." Combat logs (Gunde guide corpus, 69 logs): it takes no global cooldown.
 /// </summary>
 public class ReignInBlood : GundeAbility
 {

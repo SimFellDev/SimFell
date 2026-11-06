@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 2308: Backstab used from Stealth. "Backstab - Caustic Poison: Instantly deal 478.93% of Agility poison damage
-/// and generate 6 Combo Points. Caustic Poison has +100% Critical Strike chance" (Brooding Shadows' text). The Backstab
+/// Ability 2308: Backstab used from Stealth. "Backstab - Caustic Poison": instant poison damage, Combo Point generation
+/// and a Critical Strike chance bonus on Caustic Poison (Brooding Shadows' text). The Backstab
 /// hit itself still lands; the poison is logged as effect 1585 (<see cref="CausticPoison"/>).
 /// </summary>
 public class StealthBackstab : Backstab

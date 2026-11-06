@@ -99,10 +99,10 @@ public abstract class Hero : Actor
     public int CooldownsVersion { get; private set; }
     public SimTime GlobalCooldownEndTime { get; set; } = SimTime.Zero;
 
-    /// <summary>The global cooldown before haste (per the user: 1.5s, hasted).</summary>
+    /// <summary>The global cooldown before haste (per the user; hasted).</summary>
     public double GlobalCooldownSeconds { get; set; } = 1.5;
 
-    /// <summary>Haste shortens the global cooldown (Mara's 1s global cooldown is not hasted).</summary>
+    /// <summary>Haste shortens the global cooldown (Mara's global cooldown is not hasted).</summary>
     public bool GlobalCooldownScalesWithHaste { get; protected set; } = true;
 
     /// <summary>Parts of the hero's build the engine does not model (filled when the build is imported).</summary>
@@ -130,8 +130,7 @@ public abstract class Hero : Actor
     public double ClassDamageTuning { get; set; } = 1.0;
 
     /// <summary>
-    /// Talent points every hero has to spend on its tree (in game; combat logs: sww's Rime spends all 14, e.g. 1c + 2b +
-    /// 2c + 3a + 4a + 4b + 4c + 5a + 6a + 6c).
+    /// Talent points every hero has to spend on its tree (in game; combat logs: sww's Rime spends all of them).
     /// </summary>
     public const int TalentPoints = 14;
 
@@ -155,8 +154,8 @@ public abstract class Hero : Actor
 
     /// <summary>
     /// The last tick of a damage over time whose execution ended an ability of the hero, with the tick's damage ID. Every
-    /// ability end flushes the server's ability queue (UCRGameplayAbility::EndAbility 0x1450DACD0 calling 0x1452D7370,
-    /// build 26162532), so a cast the queue held activates inside that tick.
+    /// ability end flushes the server's ability queue, so a cast the queue held activates
+    /// inside that tick.
     /// </summary>
     public (int DamageLogId, HastedTimer Timer)? QueueFlushingTick { get; set; }
 
@@ -169,7 +168,7 @@ public abstract class Hero : Actor
     /// <summary>Damage multipliers for specific abilities that depend on the moment (e.g. scaling with current Spirit).</summary>
     public List<Func<Ability, SimTime, double>> AbilityDamageMultipliers { get; } = new();
 
-    /// <summary>Cooldown acceleration for specific abilities (0.05 = cooldown recovers 5% faster).</summary>
+    /// <summary>Cooldown acceleration for specific abilities (a fraction added to the recovery rate).</summary>
     public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
 
     /// <summary>MultiplyCompound sources of the Cooldown Recovery attribute, whose value the game calculates (Event Horizon).</summary>
@@ -184,14 +183,14 @@ public abstract class Hero : Actor
     /// <summary>Auras active exactly while Spirit of Heroism is active.</summary>
     public List<AuraDef> SpiritOfHeroismAuras { get; } = new();
 
-    /// <summary>Spirit of Heroism (effect 2253, granted by every hero's Spirit ability): +30% Haste.</summary>
+    /// <summary>Spirit of Heroism (effect 2253, granted by every hero's Spirit ability): a Haste bonus.</summary>
     public const int SpiritOfHeroismEffectId = 2253;
     public const double SpiritOfHeroismSeconds = 20.0;
     public const double SpiritOfHeroismHaste = 0.3;
 
     /// <summary>
-    /// Spirit of Heroism: every hero's Spirit ability grants +30% Haste for 20 seconds. Combat logs: it stays through the
-    /// hero's death (4 deaths, none removed it).
+    /// Spirit of Heroism: every hero's Spirit ability grants a Haste bonus for a duration. Combat logs (4 deaths): it stays through
+    /// the hero's death.
     /// </summary>
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
         modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
@@ -344,29 +343,28 @@ public abstract class Hero : Actor
 
     /// <summary>Spirit Points toward the Spirit ability (every hero).</summary>
     /// <summary>
-    /// Spirit Points: they fill the Spirit ability (hero_data Attributes MaxSpiritPoints 100). Every hero regains 1 every
-    /// 3 seconds in combat and earns them as enemies lose health (combat logs report them as resource type 4).
+    /// Spirit Points: they fill the Spirit ability (game data). Every hero regains them on a fixed period
+    /// in combat and earns them as enemies lose health (combat logs report them as resource type 4).
     /// </summary>
     public static readonly ResourceDef SpiritPoints = new("Spirit", Max: 100);
     public const double SpiritPointRegenSeconds = 3.0;
     public const double SpiritPointRegenAmount = 1.0;
-    /// <summary>The Spirit ability's cost (hero_data Ultimate SpiritPointCost 100).</summary>
+    /// <summary>The Spirit ability's cost (game data).</summary>
     public const double SpiritAbilityBaseCost = 100.0;
 
     /// <summary>
-    /// CT_AbilityConstants Hero.SpiritPointGain.SpiritPointsFromDamageScaler 0.25 (`GA_Shared_Passive_SpiritMechanic` offset 822, build
-    /// 26320967), with no party size or keystone term.
+    /// Game data scaler for Spirit Points from damage, with no party size or keystone term.
     /// </summary>
     public const double SpiritFromDamageScaler = 0.25;
 
     /// <summary>
-    /// Spirit Points for the enemy's health lost down to <paramref name="healthFraction"/>. `GA_Shared_Passive_SpiritMechanic` offsets 626
-    /// to 888: SpiritPointValue x min(MaxHealth, |TotalHealthChange|) / MaxHealth x <see cref="SpiritFromDamageScaler"/> on each damage
-    /// event. A heal runs no gain (offset 145), and a healed enemy gives Spirit Points again. Each party member's ability hears that
-    /// member's outgoing `Event.Damage` alone (`WaitForCombatEvents`, offset 1189, exe 0x1451260E0, raiser 0x1452E4900) and grants the gain to
-    /// every living party member, the owner included (`AcquireTargets_AllPartyAndRaidMembers`, offset 1079, exe 0x1450F96D0), so health lost
-    /// to any member counts. `TotalHealthChange` includes overkill (exe 0x1450DD4C8), and this method reads health, which has none: 3.70 Spirit
-    /// Points over 790 killing blows. Heroes/Mara/NOTES.md, section Resources, has the fights.
+    /// Spirit Points for the enemy's health lost down to <paramref name="healthFraction"/>. In the game data it is
+    /// SpiritPointValue x min(MaxHealth, |TotalHealthChange|) / MaxHealth x <see cref="SpiritFromDamageScaler"/> on each damage
+    /// event. A heal runs no gain, and a healed enemy gives Spirit Points again. Each party member's ability hears that
+    /// member's outgoing `Event.Damage` alone and grants the gain to
+    /// every living party member, the owner included, so health lost
+    /// to any member counts. `TotalHealthChange` includes overkill, and this method reads health, which has none: it gains
+    /// fewer Spirit Points on killing blows. Heroes/Mara/NOTES.md, section Resources, has the fights.
     /// </summary>
     public void EarnSpiritPoints(EnemyTarget enemy, double healthFraction, SimulationContext ctx)
     {
@@ -376,7 +374,7 @@ public abstract class Hero : Actor
         GainResource(SpiritPoints, lost * enemy.SpiritPointValue * SpiritFromDamageScaler, ctx);
     }
 
-    /// <summary>Spirit Points a Spirit Refund grants (hero_data SpiritProc FlatSpiritPointGain: 1, Rime 2).</summary>
+    /// <summary>Spirit Points a Spirit Refund grants (game data; Rime sets its own).</summary>
     public double SpiritPointsPerSpiritRefund { get; protected set; } = 1.0;
 
     /// <summary>Share taken off the Spirit ability's cost (Blessing of the Prophet).</summary>
@@ -490,22 +488,21 @@ public abstract class Hero : Actor
     public ResourceDef? SpiritRefundResource { get; protected set; }
 
     public const string SpiritRefundProc = "spirit_refund";
-    /// <summary>Combat logs (10 Rime logs): refunded resource shows up again 0.233s (10th percentile) after the spend.</summary>
+    /// <summary>Combat logs (10 Rime logs): refunded resource shows up again shortly after the spend.</summary>
     public const double SpiritRefundDelaySeconds = 0.2;
 
-    /// <summary>Rising Spirit (effect 3115): +5% primary stat per stack for 10s, up to 10 stacks, from Spirit Refunds.</summary>
+    /// <summary>Rising Spirit (effect 3115): a primary stat bonus per stack, from Spirit Refunds.</summary>
     public const int RisingSpiritEffectId = 3115;
     public const double RisingSpiritSeconds = 10.0;
     public const int RisingSpiritMaxStacks = 10;
     public const double RisingSpiritPrimaryStatPerStack = 0.05;
-    /// <summary>Combat logs (10 Rime logs): each further Spirit Refund adds 2s to the time left instead of restarting it.</summary>
+    /// <summary>Combat logs (10 Rime logs): each further Spirit Refund adds time to the time left instead of restarting it.</summary>
     public const double RisingSpiritReapplySeconds = 2.0;
     /// <summary>
-    /// Game data (build 26320967): <c>Hero.SpiritProcRefundResource.Buff.MaxDuration</c> 20.
-    /// <c>GA_Shared_Passive_SpiritRefund_BuffDurationManager</c> adds 2s per stack to the effect's total (offsets 1870, 2122) and
-    /// stops at 20 (offset 2342), so a stack past that leaves the expiry. Combat logs (23 Mara fights of data/fights): of 1,303
-    /// buffs none runs over 20.1s, and the 22 at 7 and 8 stacks run 19.970s to 20.041s. T2qLPpmMkrAtJ9B1 fight 18: applied 95.261,
-    /// 7 stacks by 114.065, removed 115.267.
+    /// Game data sets the limit. The game adds time per stack to the effect's total and
+    /// stops at the limit, so a stack past that leaves the expiry. Combat logs (23 Mara fights of data/fights): no buff runs
+    /// over the limit, and the buffs at the highest stack counts end at it. T2qLPpmMkrAtJ9B1 fight 18: applied 95.261,
+    /// removed 115.267.
     /// </summary>
     public const double RisingSpiritDurationLimitSeconds = 20.0;
 
@@ -522,7 +519,7 @@ public abstract class Hero : Actor
         {
             if (guaranteed(ctx.CurrentTime)) return true;
         }
-        // Spirit Refund chance is Spirit / (1 + Spirit) (per the user: "%/(100+%)").
+        // Spirit Refund chance is a diminishing-returns function of Spirit (per the user).
         double spirit = SpiritPercent(ctx.CurrentTime);
         return ctx.Outcomes.RollProc(SpiritRefundProc, spirit / (1.0 + spirit), ctx);
     }
@@ -574,8 +571,8 @@ public abstract class Hero : Actor
     }
 
     /// <summary>
-    /// The Cooldown Recovery attribute: multiplier sources each add their bonus part (Chronoshift's 8x adds 7, Strand of
-    /// Eternity's 1.1x adds 0.1), and each compound source multiplies the sum (Event Horizon).
+    /// The Cooldown Recovery attribute: multiplier sources each add their bonus part (Chronoshift, Strand of
+    /// Eternity), and each compound source multiplies the sum (Event Horizon).
     /// </summary>
     public double CooldownRecovery(SimTime now)
     {
@@ -631,9 +628,9 @@ public abstract class Hero : Actor
     /// <summary>
     /// Total haste at <paramref name="now"/>: rating haste (with rating buffs) plus haste from auras. The game's Haste
     /// attribute is 1 + haste (hero baseAttributes Haste 1), so a multiplying haste modifier scales 1 + haste. Combat logs
-    /// (4Ln6PQZCRzc7Wpta fight 77, Shadow's Defeat "Haste Multiplicitive 1.2"): Freezing Torrent ticks under it come every
-    /// 0.4 or 0.2857 seconds over 1.2 x (1 + haste) (726.190: 0.2565s at 28.6% haste; 709.624: 0.1902s at 24.4%; 379.487:
-    /// 0.1534s with Spirit of Heroism).
+    /// (4Ln6PQZCRzc7Wpta fight 77, Shadow's Defeat "Haste Multiplicitive"): Freezing Torrent ticks under it come every
+    /// base period over the multiplier x (1 + haste) (log times 726.190, 709.624 and 379.487, the last with Spirit of
+    /// Heroism).
     /// </summary>
     public double GetHaste(SimTime now) =>
         IsCurrent(ref _haste, StatType.HasteRating, StatType.Haste, now)
@@ -648,7 +645,7 @@ public abstract class Hero : Actor
             : _expertise.Value = StatBlock.WithExtraRating(Stats.ExpertisePercent, Stats.ExpertiseRating, Auras.Fold(StatType.ExpertiseRating, 0.0, now))
                                  + Auras.Fold(StatType.Expertise, 0.0, now);
 
-    /// <summary>Spirit as a fraction (0.30 = 30% Spirit).</summary>
+    /// <summary>Spirit as a fraction (a fraction, not a percentage).</summary>
     public double SpiritPercent(SimTime now) =>
         IsCurrent(ref _spirit, StatType.SpiritRating, StatType.Spirit, now)
             ? _spirit.Value

@@ -2,12 +2,12 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
 /// Ability 2292 / effect 3237: "Strike with immense power around you, consuming all Rend stacks on enemies hit and
-/// applying Slaughter to them. Slaughter is a bleed that deals 160% of the total Rend damage consumed from each enemy, to
-/// each enemy over 3 seconds." Cooldown 30s (not hasted).
-/// Combat logs (n7zxK8harZT2wjDB fight 9 @ 28.655, Y4wpb2f3gc8LqJDX fight 25): each enemy's Slaughter is 160% of the
-/// damage its own Rend had still to deal (Desecrator: 10 ticks of 165 from a Rend of 1264 with 2 of 11 ticks dealt);
-/// it ticks every 0.3s from 0.3s after the cast, 10 ticks, never crits and takes no damage multipliers. It takes no global
-/// cooldown (Gunde guide corpus).
+/// applying Slaughter to them. Slaughter is a bleed that deals a multiple of the total Rend damage consumed from each enemy, to
+/// each enemy over a set time." The cooldown is not hasted.
+/// Combat logs (n7zxK8harZT2wjDB fight 9 @ 28.655, Y4wpb2f3gc8LqJDX fight 25): each enemy's Slaughter is
+/// <see cref="RendMultiplier"/> times the damage its own Rend had still to deal (Desecrator); it ticks at
+/// <see cref="TickSeconds"/> from the first tick after the cast, never crits and takes no damage multipliers. It takes no
+/// global cooldown (Gunde guide corpus).
 /// </summary>
 public class Slaughter : GundeAbility
 {
@@ -53,7 +53,7 @@ public class Slaughter : GundeAbility
         }
     }
 
-    /// <summary>Deals <paramref name="damage"/> to <paramref name="enemy"/> over 10 ticks.</summary>
+    /// <summary>Deals <paramref name="damage"/> to <paramref name="enemy"/> over its ticks.</summary>
     private void Bleed(SimulationContext ctx, EnemyTarget enemy, double damage)
     {
         if (damage <= 0.0) return;

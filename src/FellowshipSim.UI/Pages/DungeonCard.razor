@@ -200,8 +200,7 @@
     private Task SetComment(string comment) => Change(State.Dungeon with { Comment = string.IsNullOrWhiteSpace(comment) ? null : comment });
 
     /// <summary>
-    /// A new pull of one group, 60 seconds long and 20 seconds after the pull before it; <see cref="DungeonEditor.Insert"/>
-    /// names it.
+    /// A new pull of one group with a default duration and downtime; <see cref="DungeonEditor.Insert"/> names it.
     /// </summary>
     private static DungeonPull NewPull(EnemyGroup group) => new("", [group], DurationSeconds: 60, DowntimeSeconds: 20);
 

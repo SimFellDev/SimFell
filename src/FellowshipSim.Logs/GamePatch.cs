@@ -8,8 +8,8 @@ namespace FellowshipSim.Logs;
 public sealed record GamePatch(string Name, DateOnly Released, int LogVersion)
 {
     /// <summary>
-    /// The patch the engine models: 0.5.0.0 (datamine export 26136736), live on 2026-10-22 (per the user). Its logs are
-    /// logVersion 9; every log before it is 8.
+    /// The patch the engine models: 0.5.0.0, live on 2026-10-22 (per the user). Its logs have the format version in
+    /// <see cref="LogVersion"/>, and every log before it has an earlier one.
     /// </summary>
     public static GamePatch Current { get; } = new("0.5.0.0", new DateOnly(2026, 10, 22), 9);
 

@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 677: "Start each Dungeon with 2 Burning Embers" (200 Cinders). Combat logs (yMAZVJL9hTpFjqbC fight 7): the
-/// first reading is 200 Cinders, at the first cast.
+/// Talent 677: each Dungeon starts with Burning Embers. Combat logs (yMAZVJL9hTpFjqbC fight 7): the first resource
+/// value is the Embers' Cinders, at the first cast.
 /// </summary>
 public class BurningInitiative : Talent
 {

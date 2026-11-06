@@ -13,7 +13,7 @@ namespace FellowshipSim.Tests;
 /// <summary>
 /// Runs normal (APL) sims with each Tariq talent and legendary, checking it is imported and its effect shows up: its
 /// aura is gained (on Tariq or an enemy he hits) or its damage is dealt. The character is the one from the
-/// fXyzwGcQkTrLD34R fight 4 replay. The talent sims have Executioner's Grin: a sim's enemies never fall to 30% health, and
+/// fXyzwGcQkTrLD34R fight 4 replay. The talent sims have Executioner's Grin: a sim's enemies never fall to its health threshold, and
 /// Culling Strike needs it otherwise.
 /// </summary>
 public class TariqTalentSmokeTests(ITestOutputHelper output)

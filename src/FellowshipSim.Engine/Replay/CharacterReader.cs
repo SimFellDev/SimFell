@@ -64,9 +64,8 @@ public static class CharacterReader
         var augmentations = new List<(int Id, int Rank, string? Name)>();
         var glyphs = new List<(int Id, int Rank, string? Name)>();
         var statEnchants = new List<(int Id, int Rank, string? Name)>();
-        // How many slots each stat enchant fills: on an item one per 6 rating, rounded up (6 is one, 10 and 12 are two;
-        // combat logs: with it every non-legendary item holds exactly 3 slots, and 40 of 46 players of patch 0.5.0.0 fill
-        // the 44), and one per weapon tree point.
+        // How many slots each stat enchant fills: on an item one per `StatEnchantSlotRating`, rounded up
+        // (combat logs: with it every non-legendary item holds the same number of slots), and one per weapon tree point.
         var statEnchantCounts = new Dictionary<int, int>();
         foreach (var item in combatant["gear"]?.AsArray() ?? [])
         {
@@ -118,9 +117,9 @@ public static class CharacterReader
             int id = (int)Num(t?["id"]);
             int points = (int)Num(t?["points"]);
             if (points <= 0) continue;
-            // The weapon tree has a node per stat enchant (65 to 70); each point is one more slot of that enchant, 6 rating
+            // The weapon tree has a node per stat enchant; each point is one more slot of that enchant, `StatEnchantSlotRating`
             // to each of its stats (combat logs: the combatantinfo ratings are the gear's, the enchants' and the gem nodes'
-            // with 6 per point; at 1 per point every build with a point fell 5 short).
+            // with that rating per point; at 1 per point every build with a point fell short).
             if (id >= LogIds.AugmentationOffset && StatEnchant.Find(id - LogIds.AugmentationOffset) != null)
             {
                 AddRank(statEnchants, id - LogIds.AugmentationOffset, points * (int)StatEnchantSlotRating, null);
@@ -146,7 +145,7 @@ public static class CharacterReader
     }
 
     /// <summary>Adds ranks to an entry (or a new entry at the end); tree points cap the total at the maximum rank.</summary>
-    /// <summary>The rating of one stat enchant slot on an item (combat logs: 6 at the current item level).</summary>
+    /// <summary>The rating of one stat enchant slot on an item (combat logs).</summary>
     private const double StatEnchantSlotRating = 6.0;
 
     private static void AddRank(List<(int Id, int Rank, string? Name)> list, int id, int rank, string? name, bool cap = false)

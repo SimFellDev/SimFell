@@ -451,7 +451,7 @@ public class DungeonTests
     [Fact]
     public void An_Enemy_Has_Its_Hit_Points_Times_The_Difficulty_Health_Scale()
     {
-        // Deathless Katrine: game data health 29,075.305, logged with 6,581,643 health at Eternal 27.
+        // Deathless Katrine: the logged health at Eternal 27 is the game data health times the health scale.
         var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Deathless Katrine", HitPoints: 29_075.305, Boss: true)], 60, Final: true))
             with { Difficulty = 27 };
         Assert.Equal(226.36, dungeon.HealthScale);

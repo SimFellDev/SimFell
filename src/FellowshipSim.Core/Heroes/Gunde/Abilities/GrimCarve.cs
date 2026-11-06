@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2262: "Throw your axe at the target enemy, where it spins like a sawblade, hitting all nearby enemies three
-/// times and dealing 207.6% of Strength with each spin. Applies Rend to the targets for 50% of the damage dealt." Damage
-/// falls off as sqrt(5/N) beyond 5 enemies (game data). Cooldown 15s, shortened by Haste at the cast.
-/// Combat logs (Y4wpb2f3gc8LqJDX fight 25, 40 casts): the spins land 0.17-0.24s, 0.64-0.71s and 1.14-1.21s after the
+/// Ability 2262: "Throw your axe at the target enemy, where it spins like a sawblade, hitting all nearby enemies several
+/// times and dealing damage with each spin. Applies Rend to the targets." Damage
+/// falls off beyond <see cref="TargetThreshold"/> enemies (game data). The cooldown is shortened by Haste at the cast.
+/// Combat logs (Y4wpb2f3gc8LqJDX fight 25, 40 casts): the spins land at fixed delays after the
 /// cast, not hasted; each spin hits the enemies there as it lands.
 /// </summary>
 public class GrimCarve : GundeAbility

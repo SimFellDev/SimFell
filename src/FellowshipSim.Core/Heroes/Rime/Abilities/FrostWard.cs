@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1015: "You take 40% reduced damage for 4 seconds. Can be used during Global Cooldown." Cooldown 30s; effect
-/// 1379 "Frost Ward", 4s, IncomingDamageMultiplier x0.6 (game data). No damage.
+/// Ability 1015: reduces damage you take. Can be used during Global Cooldown. Effect
+/// 1379 "Frost Ward", an IncomingDamageMultiplier (game data). No damage.
 /// </summary>
 public class FrostWard : RimeAbility
 {

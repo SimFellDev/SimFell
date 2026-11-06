@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 757: "Your Heart Splitter deals 10% more Direct Damage. Your Heart Splitter has +100% Critical Strike chance
-/// against targets with 30% health or less." Overflow beyond 100% is a grievous crit.
+/// Talent 757: "Your Heart Splitter deals more Direct Damage. Your Heart Splitter has increased Critical Strike chance
+/// against targets with low health." Crit chance beyond a guaranteed crit is a grievous crit.
 /// </summary>
 public class DarkeningHearts : Talent
 {

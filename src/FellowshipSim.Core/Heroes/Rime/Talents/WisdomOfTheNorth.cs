@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
-/// <summary>Talent 49: Ice Blitz, Flight of the Navir and Winter's Blessing cooldowns -0.3s per Winter Orb spent or overflowed.</summary>
+/// <summary>Talent 49: Ice Blitz, Flight of the Navir and Winter's Blessing cooldowns are reduced per Winter Orb spent or overflowed.</summary>
 public class WisdomOfTheNorth : Talent
 {
     public const int TalentId = 49;

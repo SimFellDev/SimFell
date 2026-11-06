@@ -112,7 +112,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.True(with > baseline, $"Venomous Delight: no more Energy on {targets} target(s) ({with:N0} against {baseline:N0})");
     }
 
-    /// <summary>A sim's enemies never fall to 30% health: Maiden's Doom is checked on an enemy at 20%.</summary>
+    /// <summary>A sim's enemies never fall to the health threshold of Maiden's Doom: it is checked on an enemy below it.</summary>
     [Fact]
     public void Maidens_Doom_Raises_Maiden_Of_Death_Against_Low_Enemies()
     {
@@ -283,7 +283,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
     }
 
-    /// <summary>Talent 108: +5% with one bleeding enemy, +1% for each further one, +10% at most.</summary>
+    /// <summary>Talent 108: crit chance rises with each bleeding enemy, up to a cap.</summary>
     [Fact]
     public void Red_Ledger_Crit_Chance_Follows_The_Bleeding_Enemies()
     {

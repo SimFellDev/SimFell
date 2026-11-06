@@ -1,9 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Effect 1826: a Fire Frog's attack burns the enemy "for an additional 100% of the initial damage dealt over 12
-/// seconds" (ticks every 3s). "Fire Frogs' damage over time can not critically strike." Combat logs (yMAZVJL9hTpFjqbC
-/// fight 7): a new attack adds its damage to the damage not yet dealt.
+/// Effect 1826: a Fire Frog's attack burns the enemy for an additional share of the initial damage dealt over the
+/// effect's duration. Fire Frogs' damage over time can not critically strike. Combat logs (yMAZVJL9hTpFjqbC fight 7): a new attack adds its damage to the damage not yet dealt.
 /// </summary>
 public sealed class FireFrogsDot : DamageOverTime
 {

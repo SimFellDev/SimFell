@@ -5,25 +5,25 @@ using FellowshipSim.Core.Heroes.Ardeos.Talents;
 namespace FellowshipSim.Core.Heroes.Ardeos;
 
 /// <summary>
-/// Ardeos, the Pyromancer. His abilities generate Cinders; every 100 Cinders are a Burning Ember. Detonate spends them.
+/// Ardeos, the Pyromancer. His abilities generate Cinders; a set amount of Cinders is a Burning Ember. Detonate spends them.
 /// His fire damage over time effects run on <see cref="Dots"/>. Abilities are in Abilities/, talents in Talents/.
 /// </summary>
 public sealed class Ardeos : Hero, ITargetEffects
 {
-    /// <summary>"For every 100 Cinder you generate, you gain 1 Burning Ember, shown in the UI ... as four orbs."</summary>
+    /// <summary>Cinders generated for each Burning Ember, shown in the UI as orbs.</summary>
     public const double CindersPerBurningEmber = 100.0;
     public const int MaxBurningEmbers = 4;
 
     /// <summary>
-    /// hero_data Ardeos MaxResources 400: Cinders, 100 to a Burning Ember. Combat logs report them as resource type 2 in
-    /// hundredths (max 40000).
+    /// Game data: Cinders, <see cref="CindersPerBurningEmber"/> to a Burning Ember. Combat logs report
+    /// them as resource type 2 in hundredths.
     /// </summary>
     public static readonly ResourceDef Cinders = new("Cinders", Max: CindersPerBurningEmber * MaxBurningEmbers);
 
-    /// <summary>Class tuning: hero attribute BalancingDamageAura (entities.jsonl v26136736, Ardeos baseAttributes), +10%.</summary>
+    /// <summary>Class tuning: hero attribute BalancingDamageAura (game data, Ardeos baseAttributes).</summary>
     public const double BalancingDamageAura = 1.1;
 
-    /// <summary>Ardeos's talent tree, as in game (talent-slot records in entities.jsonl v26136736).</summary>
+    /// <summary>Ardeos's talent tree, as in game (talent-slot records in game data).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
         //              row cost  a                            b                              c
         TalentSlot.InRow(1, 2,    SlowBurn.TalentId,           FrogSquad.TalentId,            GreatBallsOfFire.TalentId),
@@ -35,7 +35,7 @@ public sealed class Ardeos : Hero, ITargetEffects
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 7: mainStat Intellect.</summary>
+    /// <summary>Game data hero 7: mainStat Intellect.</summary>
     public override MainStat MainStat => MainStat.Intellect;
 
     /// <summary>Every fire damage over time effect of Ardeos's abilities on enemies.</summary>
@@ -124,16 +124,16 @@ public sealed class Ardeos : Hero, ITargetEffects
     }
 
     /// <summary>
-    /// With a legendary item worn, its +10% cooldown recovery (<see cref="LegendaryStats.StrandOfEternity"/>) shortens Detonate's global cooldown
-    /// from 31 to 29 server frames. The combat logs' 896 Detonates in a row, 0.96-0.97s apart, are from builds with a legendary item; 31 frames
-    /// without one is as observed in game.
+    /// With a legendary item worn, its cooldown recovery (<see cref="LegendaryStats.StrandOfEternity"/>) shortens Detonate's global cooldown
+    /// (<see cref="Detonate.GlobalCooldownWithLegendary"/> in place of <see cref="Detonate.GlobalCooldown"/>). The combat logs' 896 Detonates in a row
+    /// are from builds with a legendary item; the longer global cooldown without one is as observed in game.
     /// </summary>
     public override void FinalizeBuild()
     {
         if (PassiveAuras.Contains(LegendaryStats.StrandOfEternity)) GetAbility<Detonate>()?.ModifyGlobalCooldownFromStrandOfEternity();
     }
 
-    /// <summary>Adds Cinders (every 100 are a Burning Ember).</summary>
+    /// <summary>Adds Cinders (<see cref="CindersPerBurningEmber"/> are a Burning Ember).</summary>
     public void GainCinders(double amount, SimulationContext? ctx, EnemyTarget? from = null) => GainResource(Cinders, amount, ctx, from);
 
     public override void ResetForIteration()

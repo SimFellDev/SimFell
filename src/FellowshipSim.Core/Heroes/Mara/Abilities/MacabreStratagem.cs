@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 2233 (talent Macabre Stratagem): "You gain Matriarch Macabre for 10 seconds. If used while Matriarch Macabre
-/// is already active, its duration is extended by 10 seconds." 180s cooldown. It grants no Spirit of Heroism.
-/// Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 28.015): Matriarch Macabre (effect 2039) for 10s.
+/// Ability 2233 (talent Macabre Stratagem): gains Matriarch Macabre. If used while Matriarch Macabre
+/// is already active, its duration is extended. It grants no Spirit of Heroism.
+/// Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 28.015): Matriarch Macabre (effect 2039) applies at the cast.
 /// </summary>
 public class MacabreStratagem : MaraAbility
 {

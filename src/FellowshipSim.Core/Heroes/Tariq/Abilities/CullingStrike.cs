@@ -1,22 +1,22 @@
 namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 
 /// <summary>
-/// Ability 1228: "Instantly deal physical damage to target enemy. Culling Strike spends up to 10 Fury, increasing the
-/// damage it deals by up to 400%. The more Fury it consumes, the higher the damage it deals. Execution: Can only be used
-/// against enemies that have 30% or less health."
+/// Ability 1228: "Instantly deal physical damage to target enemy. Culling Strike spends up to a maximum of Fury, increasing the
+/// damage it deals. The more Fury it consumes, the higher the damage it deals. Execution: Can only be used
+/// against enemies that have low health."
 /// </summary>
 public class CullingStrike : TariqAbility
 {
     public const int AbilityId = 1228;
     public const string AbilityName = "Culling Strike";
-    /// <summary>Placeholder CullStrikeDmg: 318.2025% of Strength.</summary>
+    /// <summary>Share of Strength.</summary>
     public const double Coefficient = 3.182025;
-    /// <summary>Game data cooldown 6, its duration scaled by Haste.</summary>
+    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
     public const double CooldownSeconds = 6.0;
     public const double MaxFurySpent = 10.0;
     /// <summary>
-    /// "+400%" at 10 Fury: 40% more damage per Fury spent. Combat logs (fXyzwGcQkTrLD34R fight 4): casts with 10 Fury or
-    /// more deal about 5 times a no-Fury strike, and a cast with 8.5 Fury about 4.4 times.
+    /// The tooltip's bonus at <see cref="MaxFurySpent"/> Fury is a share of damage per Fury spent. Combat logs
+    /// (fXyzwGcQkTrLD34R fight 4): damage grows with the Fury spent, up to the cap.
     /// </summary>
     public const double DamagePerFury = 0.40;
     public const double ExecuteHealthFraction = 0.30;
@@ -35,8 +35,8 @@ public class CullingStrike : TariqAbility
     {
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
-        // GA_Ink_LowHealthSingleTargetResourceDamage has no GlobalCooldownGameplayEffectClass. Combat logs (3 Tariq fights):
-        // casts 5ms after other casts.
+        // Game data: no global cooldown effect. Combat logs (3 Tariq fights):
+        // casts right after other casts.
         IgnoresGcd = true;
     }
 

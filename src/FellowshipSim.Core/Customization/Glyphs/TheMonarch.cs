@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
-/// Glyph 705: "Your MAJOR abilities gain 3% / 5% / 8% / 12% Cooldown Acceleration. The bonus is increased by +0.1%
-/// for every 1% Haste you have, up to a maximum of 5%."
+/// Glyph 705: "Your MAJOR abilities gain Cooldown Acceleration by rank. The bonus is increased for every percent of Haste
+/// you have, up to a maximum" (<see cref="HasteBonusPerPercent"/>, <see cref="MaxHasteBonus"/>).
 /// </summary>
 public class TheMonarch : Glyph
 {

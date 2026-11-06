@@ -263,7 +263,7 @@ public class AuraContainer
 
     /// <summary>
     /// The game ends timed auras on the server frame after their duration runs out: across 10 Rime logs, auras last
-    /// 0.006-0.026s longer than their duration (never a full 33ms frame), so on average half a frame.
+    /// longer than their duration by less than a full frame, so on average half a frame.
     /// </summary>
     public const double ExpiryLagSeconds = 1.0 / 60.0;
 

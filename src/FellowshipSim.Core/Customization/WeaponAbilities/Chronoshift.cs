@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
-/// Weapon ability of Asha's Chronoshift Spire (ability 1558): 1s cast, then a 3s channel pulsing every 1.5s (hasted)
-/// at all nearby enemies. While channeling, Asha's Arcane Embrace (effect 2279) gives 800% increased cooldown recovery.
+/// Weapon ability of Asha's Chronoshift Spire (ability 1558): a cast, then a channel pulsing on a hasted period
+/// at all nearby enemies. While channeling, Asha's Arcane Embrace (effect 2279) gives increased cooldown recovery.
 /// </summary>
 public class Chronoshift : Ability
 {
@@ -14,11 +14,11 @@ public class Chronoshift : Ability
     public const double CastTimeSeconds = 1.0;
     public const double ChannelSeconds = 3.0;
     public const double PulsePeriodSeconds = 1.5;
-    /// <summary>Combat logs: pulses lose damage as sqrt(5/N) beyond 5 targets.</summary>
+    /// <summary>Combat logs: pulses lose damage with the number of targets beyond the target cap.</summary>
     public const double TargetThreshold = 5;
     public const int BarrierEffectId = 2279;
     public const double BarrierDamageTaken = 0.5;
-    /// <summary>"800% increased cooldown recovery" while channeling.</summary>
+    /// <summary>Increased cooldown recovery while channeling.</summary>
     public const double BarrierCooldownRecovery = 8.0;
 
     /// <summary>Asha's Arcane Embrace: the temporal barrier while channeling.</summary>
@@ -37,8 +37,8 @@ public class Chronoshift : Ability
         ChannelTicksOnStart = true;
         ChannelPartialFinalTick = true;
         AoeTargetThreshold = TargetThreshold;
-        // The barrier's CooldownRecovery 8 joins the hero's recovery pool while channeling (+7: other cooldowns tick at 8x) and leaves it when
-        // the channel ends or is stopped. Chronoshift's own cooldown is fixed at 180s (a weapon ability's cooldown runs at normal speed).
+        // The barrier's CooldownRecovery joins the hero's recovery pool while channeling and leaves it when
+        // the channel ends or is stopped. Chronoshift's own cooldown is fixed (a weapon ability's cooldown runs at normal speed).
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

@@ -37,14 +37,14 @@ public class GearTests
         Assert.Equal((5932, 5942), (gear[GearSlot.Ring1].ItemId, gear[GearSlot.Ring2].ItemId));
         Assert.Equal((5926, 5924, 3), (gear[GearSlot.Relic1].ItemId, gear[GearSlot.Relic2].ItemId, gear[GearSlot.Relic2].Tempers));
         Assert.Equal(new GearPiece(GearSlot.Weapon, 5984, 8), gear[GearSlot.Weapon]);
-        // An item the Codex has no gear of (an active relic, item level 0) is no piece.
+        // An item game data has no gear of (an active relic, item level 0) is no piece.
         Assert.Equal(7, gear.Count);
     }
 
     [Fact]
     public void A_Temper_Adds_One_To_Each_Of_An_Items_Stats()
     {
-        // Codex: Bonebleached Headwrap at item level 315 is Stamina 22, Intellect 7, Crit 11, Spirit 5 untempered, 30/15/19/13 at 8.
+        // Game data: Bonebleached Headwrap at item level 315, untempered and at full tempers.
         var headwrap = GearItem.Find("Rime", 5885)!;
         Assert.Equal(new GearStats(22, 7, 11, 0, 0, 5), headwrap.StatsAt(0));
         Assert.Equal(new GearStats(30, 15, 19, 0, 0, 13), headwrap.StatsAt(8));

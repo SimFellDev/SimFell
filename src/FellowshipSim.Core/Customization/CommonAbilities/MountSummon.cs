@@ -1,24 +1,23 @@
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
-/// Summoning a mount. Every mount has its own ability (the 55 abilities whose owner is a mount in the game data), with no
-/// cooldown in the game data. It casts in 1.5s whatever the haste. No damage.
-/// It waits for no global cooldown: `GA_Mount_MountUp_Base` and `GA_Mount_Raptor_Armored` have no
-/// `GlobalCooldownGameplayEffectClass`, and the check 0x1450DC780 passes on the null class (0x1450DC804). Combat logs:
+/// Summoning a mount. Every mount has its own ability (the abilities whose owner is a mount in the game data), with no
+/// cooldown in the game data. It casts in <see cref="CastTimeSeconds"/> whatever the haste. No damage.
+/// It waits for no global cooldown: the game data gives the mount abilities no global cooldown effect. Combat logs:
 /// 3M2vWr8taxVfTQFY fight 53 Arachnid Assault 109.202, Mount 109.634; dBgbn8wD1RxL7Kma fight 9 Arachnid Assault 144.957,
-/// Mount 145.358. UNVERIFIED: that it applies none (0x1450E2870 applies nothing on the null class, 0x1450E2887): the
-/// native default on `CRGameplayAbilityMounting` is unread, and its 1.5s cast covers a global cooldown in the logs.
-/// `GA_Mount_MountUp_Base` `CancelAbilitiesWithTag` `AbilityPrio.Low` and `BlockAbilitiesWithTag` `AbilityType.Mounting`:
+/// Mount 145.358. UNVERIFIED: that it applies no global cooldown: the
+/// native default for mounting abilities is unread, and its cast covers a global cooldown in the logs.
+/// The mount ability's `CancelAbilitiesWithTag` is `AbilityPrio.Low` and its `BlockAbilitiesWithTag` is `AbilityType.Mounting`:
 /// a running mount cast blocks another.
 /// </summary>
 public class MountSummon : Ability
 {
     public const string AbilityName = "Mount";
 
-    /// <summary>`CT_AbilityConstants` row `PlayerAction.Mount.CastingDuration`, `GA_Mount_MountUp_Base` CastingTaskData.</summary>
+    /// <summary>Game data: the mount cast duration.</summary>
     public const double CastTimeSeconds = 1.5;
 
-    /// <summary>The game's mount abilities (datamine export 26136736: abilities with a mount as owner).</summary>
+    /// <summary>The game's mount abilities (game data: abilities with a mount as owner).</summary>
     public static readonly int[] MountAbilityIds =
     [
         1683, 1690, 1693, 1694, 1699, 1700, 1702, 1703, 1704, 1705, 1706, 1707, 1708, 1709, 1711, 1712, 1713, 1717, 1720,

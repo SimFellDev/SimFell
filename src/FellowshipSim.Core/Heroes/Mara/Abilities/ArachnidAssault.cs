@@ -1,15 +1,15 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1212: "Deal 117.22% of Agility to all targets in a radius around Mara. The damage is increased per combo
-/// point spent." Costs 45 Energy; damage falls off as sqrt(8/N) beyond 8 targets (game data targetCountFalloff). During
-/// Matriarch Macabre two shadowy clones repeat it (<see cref="MatriarchMacabre"/>).
-/// Combat logs (the 23 Mara fights of `data/fights`): a clone's hit on an enemy is 0.49x to 0.51x the cast's hit on that enemy
-/// at every target count from 2 to 26 over 858 casts, so it has the cast's falloff, and 14,227 of 14,239 clone hits over
+/// Ability 1212: Agility damage to all targets in a radius around Mara. The damage is increased per combo
+/// point spent. Costs Energy; damage falls off with the target count beyond <see cref="TargetThreshold"/> (game data targetCountFalloff). During
+/// Matriarch Macabre shadowy clones repeat it (<see cref="MatriarchMacabre"/>).
+/// Combat logs (the 23 Mara fights of `data/fights`): a clone's hit on an enemy is a fixed fraction of the cast's hit on that enemy
+/// at every target count over 858 casts, so it has the cast's falloff, and nearly all clone hits over
 /// 1,104 casts are on the enemies the cast struck.
-/// Game data (build 26320967): `GA_Mara_AoeAttackSpender` offset 1415 writes SetByCaller.DamageScaleTargetCount from the
-/// cast's target count, and offset 1883 passes that spec and the cast's target data to `GA_Mara_Passive_CopySpawner`. Each
-/// clone shuffles that list (offset 79) and has no target query of its own, so a clone's hit takes sqrt(8 / cast targets).
+/// Game data: the cast writes the damage scale for its target count into its spec, and passes that spec and the
+/// cast's target data to the clone spawner. Each
+/// clone shuffles that list and has no target query of its own, so a clone's hit takes the falloff of the cast's target count.
 /// </summary>
 public class ArachnidAssault : Finisher
 {

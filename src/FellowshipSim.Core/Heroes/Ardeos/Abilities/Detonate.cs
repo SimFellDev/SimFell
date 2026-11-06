@@ -1,11 +1,13 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1275: costs 1 Burning Ember (100 Cinders). "Instantly Detonate all active fire damage over time effects from
-/// Ardeos abilities on enemies, dealing damage equal to 3.0 seconds of average ticking damage to each enemy."
-/// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes 3 hits, about 0.3s apart,
-/// each the damage its effects deal per second at the cast (the hits that land later keep it); the hits crit on their
-/// own; the effects keep ticking. On many enemies the hits queue up and land up to several seconds late.
+/// Ability 1275: costs a Burning Ember (<see cref="CinderCost"/>). Instantly detonates all active fire damage over time
+/// effects from Ardeos abilities on enemies, dealing damage equal to <see cref="DetonatedSeconds"/> of average ticking
+/// damage to each enemy.
+/// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes <see cref="HitsPerEnemy"/>
+/// hits, spaced by <see cref="HitSpacingSeconds"/>, each the damage its effects deal per second at the cast (the hits that
+/// land later keep it); the hits crit on their own; the effects keep ticking. On many enemies the hits queue up and land
+/// late.
 /// </summary>
 public class Detonate : ArdeosAbility
 {
@@ -21,12 +23,12 @@ public class Detonate : ArdeosAbility
     public List<AuraDef> FreeCastBuffs { get; } = new();
 
     /// <summary>
-    /// Detonate's global cooldown, not hasted: 31 server frames without a legendary item, 29 with one (combat logs; see
-    /// <see cref="UseLegendaryGlobalCooldown"/>). The other instants take the hero's 1.5s global cooldown, hasted.
+    /// Detonate's global cooldown, not hasted: in server frames, longer without a legendary item than with one (combat logs;
+    /// see <see cref="UseLegendaryGlobalCooldown"/>). The other instants take the hero's global cooldown, hasted.
     /// </summary>
     public const double GlobalCooldown = 31.0 / 30.0;
 
-    /// <summary>The global cooldown with a legendary item worn: 29 server frames.</summary>
+    /// <summary>The global cooldown with a legendary item worn, in server frames.</summary>
     public const double GlobalCooldownWithLegendary = 29.0 / 30.0;
 
     public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
@@ -48,7 +50,7 @@ public class Detonate : ArdeosAbility
     }
 
     /// <summary>
-    /// A legendary item's +10% cooldown recovery (Strand of Eternity) shortens Detonate's global cooldown from <see cref="GlobalCooldown"/> to
+    /// A legendary item's cooldown recovery (Strand of Eternity) shortens Detonate's global cooldown from <see cref="GlobalCooldown"/> to
     /// <see cref="GlobalCooldownWithLegendary"/>. Called once when the hero is built (<see cref="Hero.FinalizeBuild"/>).
     /// </summary>
     public void ModifyGlobalCooldownFromStrandOfEternity() => GlobalCooldownSeconds = GlobalCooldownWithLegendary;

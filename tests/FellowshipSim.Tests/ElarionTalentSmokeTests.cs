@@ -83,7 +83,7 @@ public class ElarionTalentSmokeTests(ITestOutputHelper output)
         }
     }
 
-    /// <summary>A sim's enemies never fall below 30% health: Last Lights is checked on its crit chance bonus.</summary>
+    /// <summary>A sim's enemies never fall below Last Lights' health threshold: Last Lights is checked on its crit chance bonus.</summary>
     [Fact]
     public void Last_Lights_Adds_Crit_Chance_Below_30_Percent_Health()
     {

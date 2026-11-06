@@ -1,14 +1,14 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1200: "Interrupt the target's spellcasting and prevent it from casting for 4 sec. Must interrupt a spell, or it
-/// will have no effect. Can be used during Global Cooldown." GA_Mara_MeleeInterrupt, game data build 26320967: no cost, no
+/// Ability 1200: interrupts the target's spellcasting and prevents it from casting. It must interrupt a spell, or it
+/// has no effect. It can be used during Global Cooldown. Game data: no cost, no
 /// cast time, no global cooldown, no damage, no Combo Points, and no AbilityType.Skill.Secondary tag, so it keeps Stealth.
-/// The cooldown starts before the interrupt is tried (FellowshipCommitHeroAbility at ubergraph offset 10).
-/// Combat logs (23 Mara fights, 416 Kicks): 16.062s apart at the least. Kicks with no interrupt trigger the cooldown too
-/// (WcTBrQNX46m9axqP fight 12 @ 462.034 and 478.331: the next Kick 16.297s and 16.062s later).
-/// <see cref="FinalStratagem"/> ends the cooldown: ReduceCooldownForAllAbilities skips abilities with an ignored tag, Kick has
-/// none, and the function reaches GE_Shared_Cooldown_Static (exe 0x1452417A0).
+/// The cooldown starts before the interrupt is tried in game data.
+/// Combat logs (23 Mara fights, 416 Kicks): consecutive Kicks are at least <see cref="CooldownSeconds"/> apart. Kicks with no
+/// interrupt trigger the cooldown too (WcTBrQNX46m9axqP fight 12 @ 462.034 and 478.331).
+/// <see cref="FinalStratagem"/> ends the cooldown: the cooldown reduction skips abilities with an ignored tag, Kick has
+/// none, and the reduction reaches its static cooldown effect.
 /// </summary>
 public class Kick : MaraAbility
 {
@@ -16,8 +16,8 @@ public class Kick : MaraAbility
     public const string AbilityName = "Kick";
 
     /// <summary>
-    /// Game data ability 1200, row Mara.MeleeInterrupt.Cooldown. GE_Shared_Cooldown_Static has no Haste scaling:
-    /// GEC_CooldownStatic.CalculateBaseMagnitude returns literal 1.
+    /// Game data ability 1200, cooldown row. The static cooldown effect has no Haste scaling:
+    /// its magnitude calculation returns literal 1.
     /// </summary>
     public const double CooldownSeconds = 16.0;
 

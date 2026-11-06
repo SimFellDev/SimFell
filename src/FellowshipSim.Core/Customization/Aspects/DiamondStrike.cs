@@ -3,9 +3,9 @@ using FellowshipSim.Core.Customization.Gems;
 namespace FellowshipSim.Core.Customization.Aspects;
 
 /// <summary>
-/// Aspect 33: "Your Damage has a chance (6.7 PPM) to conjure a Spectral Beam from above, dealing 72% / 127% / 182% / 237%
-/// Main Stat damage to them. ... Diamond Strike applies an amplifying effect for 20 seconds on targets it strikes,
-/// increasing its Damage ... to that target by 40%, stacking up to 5 times. Diamond Strike gains an additional +35%
+/// Aspect 33: "Your Damage has a chance to conjure a Spectral Beam from above, dealing Main Stat damage by rank
+/// to them. ... Diamond Strike applies an amplifying effect on targets it strikes,
+/// increasing its Damage ... to that target, stacking. Diamond Strike gains additional
 /// increased Damage ... for every stack of Harmonious Soul you have active (Diamond Gem Power)." (damage effect 96,
 /// debuff 95). UNVERIFIED: no log has this aspect; the beam strikes at once and amplifies the strikes after it.
 /// </summary>

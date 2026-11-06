@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 751: "Your Rend ticks 10% faster, dealing 10% more damage." Combat logs (n7zxK8harZT2wjDB fight 9,
-/// Y4wpb2f3gc8LqJDX fight 25): ticks every 82 server frames (2.733s), 11 ticks of a tenth of each application.
+/// Talent 751: "Your Rend ticks faster, dealing more damage." Combat logs (n7zxK8harZT2wjDB fight 9,
+/// Y4wpb2f3gc8LqJDX fight 25): ticks come on whole server frames, and each application deals one more tick.
 /// </summary>
 public class DeepRend : Talent
 {

@@ -141,7 +141,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         {
             // The preferred enemy's log hit landing now; else the log hit nearest the expected landing, the preferred
             // enemy's on a tie. A later hit on the preferred enemy belongs to a later hit (Chain
-            // Lightning's bounces land 0.05s apart).
+            // Lightning's bounces land a fixed interval apart).
             double now = ctx.CurrentTime.TotalSeconds;
             var unitRef = new UnitRef(preferred.Id, preferred.InstanceId);
             if (_hits.HasUnclaimed(damageLogId, unitRef, now - PeriodicEffect.ServerFrameSeconds, now + PeriodicEffect.ServerFrameSeconds)) return preferred;
@@ -175,7 +175,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
                 && died >= now - _options.SameTickSeconds && died <= now + _hits.LongestTravelSeconds(hit.AbilityId, _options) + PeriodicEffect.ServerFrameSeconds)))
         {
             // The target dies in the log before this hit could land (the log has no hit for it, and its flight can be as
-            // long as the longest seen; Frost Bolt's varies with distance, 0.03-1.9s): it hits nothing (no damage, no
+            // long as the longest seen; Frost Bolt's varies with distance): it hits nothing (no damage, no
             // procs, no counters).
             MissedHits++;
             return new HitOutcome(false, SimTime.Zero, 1.0, null, Missed: true);
@@ -241,9 +241,9 @@ public sealed class LogOutcomeSource : IOutcomeSource
         // takes its place, and the log tick it reserved.
         if (ticks.TicksFiredAtLastAsk == effect.TicksFired)
         {
-            // A log tick after a partial tick's time belongs to the next application on the enemy (Amethyst Splinter, 146 new
-            // applications under 1s after a partial tick and its removal, in 22 of the 23 Mara fights: w7khnMKAa4TxXrmC fight 23
-            // @ 85.189 +0.034s, T2qLPpmMkrAtJ9B1 fight 18 @ 53.144 +0.568s).
+            // A log tick after a partial tick's time belongs to the next application on the enemy (Amethyst Splinter; combat logs of the
+            // Mara fights: new applications follow a partial tick and its removal closely, w7khnMKAa4TxXrmC fight 23
+            // @ 85.189, T2qLPpmMkrAtJ9B1 fight 18 @ 53.144).
             if (ticks.LastAt is { } later && tick.Target != null && tick.Fraction < 1.0 && later > tick.Scheduled.TotalSeconds + _options.TickTimeToleranceSeconds)
             {
                 _hits.ReleaseTick(effect, later);
@@ -368,8 +368,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
     }
 
     /// <summary>
-    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within 30%) between two
-    /// neighbouring readings at most 1.5s apart, the first at most a frame after the roll, beyond what it regenerates
+    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within a slack) between two
+    /// neighbouring readings at most <see cref="ResourceEvidenceWindowSeconds"/> apart, the first at most a frame after the roll, beyond what it regenerates
     /// meanwhile at the rate now. A reading at a cast is before its cost, so a rise from one counts the cost back. A rise from
     /// a cast's reading has no proc before the cast: the replay checks the resource at that reading. A rise of several gains
     /// is proof of as many procs, and a rise to the maximum of one.
@@ -431,8 +431,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
     private readonly record struct ResourceRise(double From, double To, double Amount, bool FromCast, bool ToMaximum);
 
     /// <summary>
-    /// Readings at most this far apart: the 23 Mara fights of <c>data/fights</c> have 245 rises of 8 to 12 above regeneration with
-    /// Venomous Delight at 0.5s to 1.5s apart and 9 further apart, and none with no talent.
+    /// Readings at most this far apart. Combat logs (23 Mara fights of <c>data/fights</c>): the rises above regeneration with
+    /// Venomous Delight are nearly all inside it, and none occur with no talent.
     /// </summary>
     private const double ResourceEvidenceWindowSeconds = 1.5;
     private readonly List<LogResourceSnapshot> _resourceReadings = [];
@@ -444,7 +444,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
     {
         if (target == null || !_enemyStackGains.TryGetValue((logId, new UnitRef(target.Id, target.InstanceId)), out var gains)) return false;
         // The gain closest to the roll: the hit's own (engine hits can land a few server frames from the log's, and the
-        // hits that add stacks are at least 0.17s apart).
+        // hits that add stacks are a minimum interval apart).
         var gain = gains
             .Where(g => Math.Abs(g.Event.Time - now) <= StackEvidenceWindowSeconds && !_claimedStackEvidence.Contains(g.Event))
             .OrderBy(g => Math.Abs(g.Event.Time - now))
@@ -454,8 +454,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         int added = gain.Added;
         if (added < jump)
         {
-            // A new debuff given several stacks at once is logged as its application (1 stack) and its stack count in the
-            // same millisecond (combat logs: all 220 Coalescing Frost applications with 2 stacks in the 15 Rime fights of
+            // A new debuff given several stacks at once is logged as its application and its stack count in the
+            // same millisecond (combat logs: every Coalescing Frost application with extra stacks in the 15 Rime fights of
             // docs/accuracy/rime-accuracy-v1.md, each on a Freezing Torrent crit).
             foreach (var g in gains)
             {

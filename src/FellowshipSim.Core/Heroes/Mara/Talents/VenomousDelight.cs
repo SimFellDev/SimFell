@@ -1,8 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 112: "Each time you deal Poison Damage to an enemy you have a 10% chance to generate 10 Energy" (game data
-/// Mara.Talent.PoisonDamageProcEnergyGain: 10 Energy, chance 0.1).
+/// Talent 112: "Each time you deal Poison Damage to an enemy you have a chance to generate Energy" (game data).
 /// </summary>
 public class VenomousDelight : Talent
 {

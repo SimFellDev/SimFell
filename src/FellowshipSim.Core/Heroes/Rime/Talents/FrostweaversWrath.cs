@@ -3,11 +3,11 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>
-/// Talent 191 / effect 2305 (20s, 2 stacks): gaining Winter Orbs has a 20% chance to grant a stack; the next Glacial Blast
-/// or Ice Comet (Talon Strike / Rising Talons) that deals damage has +100% crit chance (overflow is a grievous crit).
-/// hero_data "ChanceOnOrbGain" (ProcChance 0.2, CritChance 1.0). Rolled once per gain that adds orbs, as
-/// the old C++ sim did. Combat logs (D1fBhVPkwYKXWbpr fight 1, ZPTw4tmBJnK7hCb1 fight 4) have 155 stacks for 848 Winter
-/// Orbs in 685 rises. UNVERIFIED: whether the 20% rolls per orb or per gain. A Talon Strike or Rising Talons uses one stack
+/// Talent 191 / effect 2305: gaining Winter Orbs has a chance to grant a stack; the next Glacial Blast
+/// or Ice Comet (Talon Strike / Rising Talons) that deals damage has added crit chance (overflow is a grievous crit).
+/// Rolled once per gain that adds orbs, as
+/// the old C++ sim did. Combat logs (D1fBhVPkwYKXWbpr fight 1, ZPTw4tmBJnK7hCb1 fight 4) have stacks for Winter
+/// Orbs gained in rises. UNVERIFIED: whether the proc chance rolls per orb or per gain. A Talon Strike or Rising Talons uses one stack
 /// on its first hit alone (its first spike, its first wave), not on every spike or wave (per the user; no log has it yet).
 /// </summary>
 public class FrostweaversWrath : Talent
@@ -15,7 +15,7 @@ public class FrostweaversWrath : Talent
     public const int TalentId = 191;
     public const string TalentName = "Frostweaver's Wrath";
     public const int EffectId = 2305;
-    /// <summary>Datamine export 26136736: effect 2305 duration 20 and the tooltip's "20 seconds" (12 before the patch).</summary>
+    /// <summary>Game data: effect 2305 duration and the tooltip's duration.</summary>
     public const double BuffSeconds = 20.0;
     public const int MaxStacks = 2;
     public const double ProcChance = 0.2;
@@ -30,7 +30,7 @@ public class FrostweaversWrath : Talent
     public override void Bind(Hero hero)
     {
         // "Each time you generate Winter Orbs" (one roll per orb gained), and when a Spirit Refund gives orbs back: combat
-        // logs (D1fBhVPkwYKXWbpr fight 1) have 16 of 107 gains with no orb gained, each 0.199-0.204s after a spend whose
+        // logs (D1fBhVPkwYKXWbpr fight 1) have gains with no orb gained, each shortly after a spend whose
         // Spirit Refund applied Rising Spirit, as the refunded orbs arrive.
         void Roll(ResourceDef resource, SimulationContext ctx)
         {
@@ -40,9 +40,8 @@ public class FrostweaversWrath : Talent
         hero.OnResourceRefunded += (resource, _, ctx) => Roll(resource, ctx);
         // "Your next Glacial Blast or Ice Comet that deals damage" critically strikes: Talon Strike and Rising Talons count
         // (they are built on them). An Ice Comet's impact uses it up as it strikes, whenever the comet was cast, free
-        // comets too: combat logs (D1fBhVPkwYKXWbpr fight 1) remove the buff within 2ms of every grievous Ice Comet impact,
-        // and a gain after the cast still makes the impact grievous (181.610: gained 33ms before the impact, cast 902ms
-        // before; 248.592: 31ms and 599ms; 441.337: 166ms and 868ms).
+        // comets too: combat logs (D1fBhVPkwYKXWbpr fight 1) remove the buff with every grievous Ice Comet impact,
+        // and a gain after the cast still makes the impact grievous (181.610, 248.592, 441.337).
         // Rising Talons is an Ice Comet: its first wave is its impact.
         double UseOnImpact(SimulationContext ctx)
         {
@@ -52,8 +51,8 @@ public class FrostweaversWrath : Talent
         }
         foreach (var comets in hero.Abilities.OfType<IceComet>()) comets.ImpactCritChanceBonuses.Add(UseOnImpact);
         // A Glacial Blast uses it up as its projectile strikes, too: combat logs (D1fBhVPkwYKXWbpr fight 1,
-        // ZPTw4tmBJnK7hCb1 fight 4) remove the buff with every Glacial Blast hit it was up for (34 and 12), each of them
-        // grievous, and 14 and 2 of them had the buff gained after the cast completed (D1fBhVPkwYKXWbpr 343.768: cast
+        // ZPTw4tmBJnK7hCb1 fight 4) remove the buff with every Glacial Blast hit it was up for, each of them
+        // grievous, and some of them had the buff gained after the cast completed (D1fBhVPkwYKXWbpr 343.768: cast
         // 343.134, gained 343.335; ZPTw4tmBJnK7hCb1 520.400: cast 519.698, gained 519.833).
         var blast = hero.Abilities.FirstOrDefault(a => a.GetType() == typeof(GlacialBlast));
         if (blast != null)

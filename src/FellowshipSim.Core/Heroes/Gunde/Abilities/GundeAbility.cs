@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
-// Each ability lists its game values as constants at the top (IDs and numbers from the game data).
+// Each ability lists its game values as constants at the top (IDs and values from the game data).
 
 /// <summary>
-/// Base for Gunde's abilities. An ability that "applies Rend to the targets for X% of the damage dealt" sets
+/// Base for Gunde's abilities. An ability that "applies Rend to the targets for a share of the damage dealt" sets
 /// <see cref="RendShare"/>, starts each cast with <see cref="BeginRend"/> and deals its hits through
 /// <see cref="RendingPulse"/>: each hit's damage dealt, times the cast's share, is added to its target's Rend.
 /// </summary>
@@ -29,7 +29,7 @@ public abstract class GundeAbility : Ability
     /// <summary>
     /// The cast's Rend: its share plus Reign in Blood's, and Serrated Edge's, which the cast uses up. Combat logs
     /// (n7zxK8harZT2wjDB fight 9, Chains#3 @ 108.0): Grim Carve uses Serrated Edge as it is cast and every spin gets it
-    /// (each spin adds 0.8 of its damage).
+    /// (each spin adds the full Serrated Edge share of its damage).
     /// </summary>
     protected RendCast BeginRend(SimulationContext ctx)
     {

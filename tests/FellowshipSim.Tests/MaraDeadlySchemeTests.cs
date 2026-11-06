@@ -17,7 +17,7 @@ public class MaraDeadlySchemeTests
     public void Active_Running_Out_With_No_Spend_Brings_The_Stacks_Back_At_40_Then_A_Spend_Shows_The_Count()
     {
         var (hero, ctx) = Mara();
-        Spend(hero, 240, 1); // 48 stacks: Active, and 8 past 40.
+        Spend(hero, 240, 1); // Stacks past the Active threshold.
         Assert.False(hero.Auras.HasAura(DeadlyScheme.Stacks, SimTime.FromSeconds(1)));
 
         ctx.RunUntil(SimTime.FromSeconds(14));

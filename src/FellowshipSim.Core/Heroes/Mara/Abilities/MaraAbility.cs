@@ -80,14 +80,14 @@ public abstract class MaraAbility : Ability
 
     /// <summary>
     /// A generator's Combo Points from a hit: <paramref name="points"/>, or a full refill when Maiden of Death is active at the
-    /// cast ("all combo point generating abilities generate 6 Combo Points"). Each generator's `EventReceived` callback on
-    /// `Event.Damage` calls `BFL_Mara_Utils.MaraUtils_GainComboPoints` (`GA_Mara_AoeAttackBuilder` offsets 1908 to 2302), so a
+    /// cast (all combo point generating abilities generate a full refill). Each generator gains its Combo Points on
+    /// `Event.Damage`, so a
     /// cast with no hit generates none: combat logs have 33 Skittering Blades with no hit over the 8,255 generator casts in 23
-    /// Mara fights, 7 of them inside Maiden of Death, and every one leaves Combo Points unchanged (T2qLPpmMkrAtJ9B1 fight 18 @
+    /// Mara fights, some of them inside Maiden of Death, and every one leaves Combo Points unchanged (T2qLPpmMkrAtJ9B1 fight 18 @
     /// 1139.361, xkGbdm8aNDwTcgjF fight 17 @ 289.281). The hit reads Maiden of Death in the cast's server frame:
-    /// `BP_FellowshipApplyGameplayEffect` applies at once (binary 0x1450DF9C0; `VisualDelay` stamps the effect context for the
-    /// client alone), and v8rhNxVc3PwDqzBA fight 4 player 28 @ 183.304 has the hit 1ms and the buff's end 4ms after the cast,
-    /// and 6 Combo Points.
+    /// the effect application is at once (the visual delay stamps the effect context for the
+    /// client alone), and v8rhNxVc3PwDqzBA fight 4 player 28 @ 183.304 has the hit and the buff's end within a few ms of the cast,
+    /// and a full refill of Combo Points.
     /// </summary>
     protected void GenerateComboPoints(SimulationContext ctx, double points, EnemyTarget? from) =>
         Mara.GainComboPoints(_maidenAtCast ? MaidenOfDeath.ComboPointsPerGenerator : points, ctx, from);

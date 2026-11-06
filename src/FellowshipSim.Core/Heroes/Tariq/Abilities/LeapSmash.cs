@@ -8,18 +8,18 @@ public class LeapSmash : TariqAbility
 {
     public const int AbilityId = 1225;
     public const string AbilityName = "Leap Smash";
-    /// <summary>Placeholder LeapSmashDmg: 69% of Strength.</summary>
+    /// <summary>Share of Strength.</summary>
     public const double Coefficient = 0.69;
-    /// <summary>Game data cooldown 20, its duration scaled by Haste.</summary>
+    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
     public const double CooldownSeconds = 20.0;
-    /// <summary>Game data targetCountFalloff: effect 1757, threshold 8.</summary>
+    /// <summary>Game data targetCountFalloff: effect 1757 has <see cref="TargetThreshold"/>.</summary>
     public const double TargetThreshold = 8;
     /// <summary>
-    /// Placeholder constant Talent.IncreasedCriticalChance.AddedCrit 0.4. Combat logs (3 Tariq fights, 896 hits): Leap
-    /// Smash crits 72-86% of the time against 35-44% for Face Breaker, and grievous crits come with it.
+    /// Tooltip value. Combat logs (3 Tariq fights, 896 hits): Leap
+    /// Smash crits more often than Face Breaker, and grievous crits come with it.
     /// </summary>
     public const double AddedCritChance = 0.40;
-    /// <summary>Combat logs (3 Tariq fights, 170 casts): the smash deals its damage 0.27-0.30s after the cast, and Mouth for War's stack comes with it.</summary>
+    /// <summary>Combat logs (3 Tariq fights, 170 casts): the smash deals its damage a fixed delay after the cast, and Mouth for War's stack comes with it.</summary>
     public const double LandingSeconds = 0.30;
 
     /// <summary>A cast landed, with the enemies it hit (High Road, Mouth for War, Slayer's Mosh).</summary>

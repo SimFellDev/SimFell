@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1268: instant, 45s. "Conjure five Fire Frogs to leap at your enemies ... Each Fire Frog will perform 3 attacks
-/// before dissipating." Each attack (<see cref="FireFrogAttack"/>) picks its enemy. Pyrophibian Frenzy spawns frogs of its
+/// Ability 1268: instant. Conjures Fire Frogs to leap at the enemies, and each Fire Frog performs attacks before
+/// dissipating. Each attack (<see cref="FireFrogAttack"/>) picks its enemy. Pyrophibian Frenzy spawns frogs of its
 /// own (<see cref="Spawn"/>); the Fire Toad legendary turns frogs into toads (<see cref="ToadChance"/>).
 /// </summary>
 public class FireFrogs : ArdeosAbility
@@ -13,9 +13,9 @@ public class FireFrogs : ArdeosAbility
     public const int BaseFrogs = 5;
     public const int BaseAttacksPerFrog = 3;
     /// <summary>
-    /// Combat logs (yMAZVJL9hTpFjqbC fight 7, final boss 32.1 @ 570-715s, the only enemy): a lone frog attacks every 20
-    /// server frames (5.64, 6.31, 6.98, 7.65s after the cast @ 683.0s); a cast's frogs make their first attacks 1.7-2.6s
-    /// after it and their last about 4.5-5.3s after it.
+    /// Combat logs (yMAZVJL9hTpFjqbC fight 7, final boss 32.1 @ 570-715s, the only enemy): a lone frog attacks at a fixed
+    /// interval of server frames (<see cref="AttackIntervalSeconds"/>); a cast's frogs make their first attacks and their
+    /// last at staggered delays after the cast.
     /// </summary>
     public const double FirstAttackSeconds = 1.7;
     public const double FrogStaggerSeconds = 0.15;

@@ -96,7 +96,7 @@ public class AplLanguageTests
         var debuff = Core.Heroes.Rime.Abilities.BurstingIce.Debuff;
         ctx.Player.CurrentTarget.Auras.Apply(debuff, ctx.CurrentTime);
         Assert.False(refreshable.Evaluate(ctx));
-        // 3s debuff: refreshable once under 0.9s remain.
+        // Refreshable once the remaining time falls under the refresh threshold.
         var expires = ctx.Player.CurrentTarget.Auras.FindActive("bursting_ice", ctx.CurrentTime)!.ExpiresAt;
         Assert.Equal(SimTime.FromMilliseconds(expires.Milliseconds - 899), refreshable.NextChange(ctx));
     }

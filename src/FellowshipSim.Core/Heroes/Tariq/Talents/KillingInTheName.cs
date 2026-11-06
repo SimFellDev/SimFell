@@ -3,8 +3,7 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 82: "Your Culling Strike has +50% increased Critical Strike chance." (Culling Strike placeholder constant
-/// Talent.AddedCritChance 0.5.) UNVERIFIED: no combat log has this talent.
+/// Talent 82: "Your Culling Strike has increased Critical Strike chance." UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class KillingInTheName : Talent
 {

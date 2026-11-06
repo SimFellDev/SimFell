@@ -1,11 +1,11 @@
 namespace FellowshipSim.Core.Customization.Gems;
 
 /// <summary>
-/// A gem that goes in a gear socket (datamine "gem" records): its colour and the gem power it gives. A hero has
+/// A gem that goes in a gear socket (game data "gem" records): its colour and the gem power it gives. A hero has
 /// <see cref="Sockets"/> sockets; which items they are on does not matter. Gear also rolls bonus gem power of a colour,
-/// <see cref="GearBonusPower"/> per bonus (combat logs: every <c>gemPowers</c> entry on an item is 100; per the user).
+/// <see cref="GearBonusPower"/> per bonus (combat logs: every <c>gemPowers</c> entry on an item equals it; per the user).
 /// A colour's gem power is its gems' and its gear bonuses' power, times the relics' gem power multiplier (combat logs:
-/// Cf7npHNzRmALFJQy fight 1, (500 + 700) x 1.25 = 1,500 Amethyst with Covetous Greed).
+/// Cf7npHNzRmALFJQy fight 1, Amethyst with Covetous Greed).
 /// </summary>
 public sealed record GemItem(int Id, string Name, GemColor Color, int Power)
 {
@@ -20,7 +20,7 @@ public sealed record GemItem(int Id, string Name, GemColor Color, int Power)
     public const int SplendidPower = 350;
     public const int FlawlessPower = 500;
 
-    /// <summary>Every gem, by size then colour (datamine "gem" records 22 to 51).</summary>
+    /// <summary>Every gem, by size then colour (game data "gem" records 22 to 51).</summary>
     public static IReadOnlyList<GemItem> All { get; } =
     [
         new(22, "Small Amethyst", GemColor.Amethyst, SmallPower),

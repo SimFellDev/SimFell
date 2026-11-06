@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2291: "Cleave all enemies in front of you, dealing 270.92% of Strength and granting you Serrated Edge for 10
-/// seconds, causing your next damaging ability to transfer an additional 20% of its damage to Rend. Serrated Edge does
-/// not interact with your Bloodbound Spirit ability. Blood Arc applies Rend to the targets for 50% of the damage dealt."
-/// Damage falls off as sqrt(8/N) beyond 8 enemies (game data effect 3236). Cooldown 9s, shortened by Haste at the cast.
+/// Ability 2291: cleaves all enemies in front of Gunde and grants Serrated Edge, which makes the next damaging ability
+/// transfer additional damage to Rend. Serrated Edge does not interact with the Bloodbound Spirit ability. Blood Arc
+/// applies Rend to the targets. Damage falls off beyond <see cref="TargetThreshold"/> enemies (game data effect 3236).
+/// The cooldown is shortened by Haste at the cast.
 /// </summary>
 public class BloodArc : GundeAbility
 {
@@ -16,12 +16,12 @@ public class BloodArc : GundeAbility
     public const double RendShareOfDamage = 0.5;
 
     public const int SerratedEdgeEffectId = 3232;
-    /// <summary>Combat logs: every Serrated Edge lasts 8s (the tooltip says 10s; game data effect 3232 says 8).</summary>
+    /// <summary>Combat logs: every Serrated Edge lasts the duration of game data effect 3232, not the tooltip's.</summary>
     public const double SerratedEdgeSeconds = 8.0;
     public const double SerratedEdgeShare = 0.2;
 
     /// <summary>
-    /// "Your next damaging ability converts an additional +20% of the damage dealt into Rend." Combat logs (Y4wpb2f3gc8LqJDX
+    /// "Your next damaging ability converts an additional share of the damage dealt into Rend." Combat logs (Y4wpb2f3gc8LqJDX
     /// fight 25, 157 Serrated Edges): used up by the next Heart Splitter, Rupture, Reaver's Edge or Grim Carve; Owed in
     /// Blood, Reign in Blood, Slaughter, Fated Strike, Warbound and Jawbreaker leave it.
     /// </summary>

@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 124: "Your Multishot reduces the cooldown of your Starfall Volley by 1.5 seconds. Empowered Multishot reduces the
-/// cooldown by 3.0 seconds."
+/// Talent 124: Multishot reduces the cooldown of Starfall Volley. Empowered Multishot reduces the
+/// cooldown by more.
 /// </summary>
 public class RepeatingStars : Talent
 {

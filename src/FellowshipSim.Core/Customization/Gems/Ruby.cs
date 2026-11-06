@@ -32,11 +32,11 @@ public class Ruby : Gem
     {
         switch (node.Slot)
         {
-            case 1: // Might of the Minotaur: Main Stat while above 80% health (situational: the engine does not track your health).
-                // Combat logs (Rime's combatantinfo in the 15 fights of docs/accuracy/rime-accuracy-v1.md): Intellect over (hero baseAttributes Intellect 100 + gear Intellect +
-                // Champion's Heart + Stoic's Teachings) is 1.100 without Ruby (GWChJ8P7tn6fHgV3 #20, #22: Mote of
-                // Creation, effect 3085), 1.122-1.126 with node 296 (4Ln6PQZCRzc7Wpta #77, D1fBhVPkwYKXWbpr #1,
-                // N18KtgP3rvpYGm24 #27, XNpG3AYWM8rq2zwx #19) and 1.165 with node 297 (NhBnFXmy3bJg9Cav #32, #33); the
+            case 1: // Might of the Minotaur: Main Stat while above a health threshold (situational: the engine does not track your health).
+                // Combat logs (Rime's combatantinfo in the 15 fights of docs/accuracy/rime-accuracy-v1.md): Intellect over (hero baseAttributes Intellect + gear Intellect +
+                // Champion's Heart + Stoic's Teachings) is a lower ratio without Ruby (GWChJ8P7tn6fHgV3 #20, #22: Mote of
+                // Creation, effect 3085), a higher one with node 296 (4Ln6PQZCRzc7Wpta #77, D1fBhVPkwYKXWbpr #1,
+                // N18KtgP3rvpYGm24 #27, XNpG3AYWM8rq2zwx #19) and the highest with node 297 (NhBnFXmy3bJg9Cav #32, #33); the
                 // aura's first logged event is its removal in every such fight, so it was up as the fight began.
                 hero.SituationalAuras.Add(node.Grants!);
                 return true;
@@ -81,8 +81,8 @@ public class Ruby : Gem
                 if (slot == 5) hero.BossAuras.Add(next);
             }
             if (now is not { } time || old != null || next == null) continue;
-            // TODO: Might of the Minotaur is up above 80% health. The engine does not model the hero's health, so it is taken as high; once
-            // it is, check the health here (and when it crosses 80%) instead of turning the aura on.
+            // TODO: Might of the Minotaur is up above its health threshold. The engine does not model the hero's health, so it is taken as high; once
+            // it is, check the health here (and when it crosses the threshold) instead of turning the aura on.
             // TODO: Blessing of the Conqueror (slot 5) is up while an enemy in combat is a boss. It stays off here until the engine can tell a boss
             // (the boss flag of an enemy): then turn it on at rank 0 to rank 1 when one is in combat.
             if (slot == 1) hero.Auras.Apply(hero.Register(next), time);

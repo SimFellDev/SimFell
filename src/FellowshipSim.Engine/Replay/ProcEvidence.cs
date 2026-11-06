@@ -38,7 +38,7 @@ public static class ProcEvidence
     /// <paramref name="ResourceGain"/> between two of the log's readings around the roll, beyond what
     /// <paramref name="ResourceRegen"/> gives per second now and what <paramref name="ResourceSpent"/> gives for a cast
     /// reading's ability, up to <paramref name="ResourceGainsAtOnce"/> gains in one jump. With <paramref name="HitTypes"/>, only a hit of
-    /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past 100%). With
+    /// one of those log hit types is proof (e.g. 22, a grievous crit, for a proc that takes crit chance past full). With
     /// <paramref name="StackLossLogId"/>, a hit is proof only when that debuff on the hit's enemy loses a stack in the
     /// same server frame (<paramref name="StackLoss"/> true) or does not (false). With <paramref name="ReservesHit"/>, the
     /// proc deals that hit itself on its enemy alone: the engine's next hit with the ID on the enemy matches the proof, and
@@ -59,12 +59,12 @@ public static class ProcEvidence
     [
         new(Hero.SpiritRefundProc, Hero.RisingSpirit.LogId),
         new(UndyingHeart.ProcKey, UndyingHeart.Buff.LogId),
-        // The spike lands in the graph run of its roll, with no delay (GA_Trait_GemTargetedSpikeProc, ExecuteUbergraph offsets
-        // 297 to 758). In the 23 Mara fights of data/fights, 441 of the 443 spikes are logged in the row before a hit on their
-        // enemy. An engine hit lands up to a frame from its log hit (T2qLPpmMkrAtJ9B1 fight 18: Seething Poison 604.844 in the
-        // engine, spike and log hit 604.828; 3M2vWr8taxVfTQFY fight 53: spike 1110.110, Queen's Fang 1110.117): with no frame
-        // either side, 428 of the 443 match, and with it 442. A periodic tick lands about 40ms from its log hit, over a frame: on
-        // the 78 fights of Rime, Ardeos, Tariq, Gunde and Elarion, two frames either side match 1,868 of 1,918 spikes, and one 1,852.
+        // The spike lands in the graph run of its roll, with no delay. In the 23 Mara fights of
+        // data/fights, nearly every spike is logged in the row before a hit on their enemy. An engine hit lands up to a frame
+        // from its log hit (T2qLPpmMkrAtJ9B1 fight 18: Seething Poison in the engine, spike and log hit; 3M2vWr8taxVfTQFY
+        // fight 53: spike, Queen's Fang): with no frame either side, fewer spikes match than with one. A periodic tick lands
+        // over a frame from its log hit: on the 78 fights of Rime, Ardeos, Tariq, Gunde and Elarion, two frames either side
+        // match more spikes than one.
         new(EmeraldJudgement.ProcKey, LogIds.Effect(EmeraldJudgement.DamageEffectId),
             DelaySeconds: 2 * PeriodicEffect.ServerFrameSeconds, MinDelaySeconds: -2 * PeriodicEffect.ServerFrameSeconds),
         new(DragonboneDice.ProcKey, DragonboneDice.Buff.LogId),
@@ -72,8 +72,8 @@ public static class ProcEvidence
         new(HiddenPower.ProcKey, HiddenPower.Stack.LogId),
         new(InspiredAllegiance.ProcKey, InspiredAllegiance.Buff.LogId),
         // Damage over time: the first tick comes one (hasted) period after the proc.
-        // A proc applies or refreshes the burn on its enemy, after the triggering effect's visual delay (Rime's logs: 78 of
-        // 242 applications in the millisecond of a hit on the enemy, 141 within 0.4s of one).
+        // A proc applies or refreshes the burn on its enemy, after the triggering effect's visual delay (Rime's logs: many
+        // applications come in the millisecond of a hit on the enemy, and more soon after one).
         new(Kindling.ProcKey, LogIds.Effect(Kindling.DamageEffectId), DelaySeconds: 0.45, MinDelaySeconds: -PeriodicEffect.ServerFrameSeconds,
             EnemyDebuffApplied: true),
         new(DiamondStrike.ProcKey, LogIds.Effect(DiamondStrike.DamageEffectId), DelaySeconds: 1.0),
@@ -82,7 +82,7 @@ public static class ProcEvidence
         // Gunde
         // A Blood Feather picked up is a stack of Owed in Blood (a replay follows the log's stacks).
         new(Gunde.FeatherProcKey, OwedInBlood.Buff.LogId),
-        // Bleeding Hearts' extra strike lands 0.23-0.30s after the cast.
+        // Bleeding Hearts' extra strike lands shortly after the cast.
         new(BleedingHearts.ProcKey, HeartSplitter.AbilityId, DelaySeconds: 0.4, MinDelaySeconds: 0.15),
         new(DeathsArc.ProcKey, DeathsArc.Buff.LogId),
         new(GrimHarvest.ProcKey, GrimHarvest.Buff.LogId),
@@ -90,29 +90,29 @@ public static class ProcEvidence
 
         // Rime
         new(BurstingSwallows.ProcKey, LogIds.Effect(BurstingIce.PulseEffectId)),
-        // Avalanche rolls as a comet strikes; its comets strike 5 and 10 server frames later.
+        // Avalanche rolls as a comet strikes; its comets strike some server frames later.
         new(Avalanche.ProcKey, IceComet.DamageId, DelaySeconds: 0.25, MinDelaySeconds: 0.1),
         new(Avalanche.SecondProcKey, IceComet.DamageId, DelaySeconds: 0.42, MinDelaySeconds: 0.1),
-        // Cold Shower's comet strikes 10 server frames after the tick that rolled it (logged within a frame of that).
+        // Cold Shower's comet strikes `ColdShower.ImpactDelaySeconds` after the tick that rolled it (logged within a frame of that).
         new(ColdShower.ProcKey, IceComet.DamageId, DelaySeconds: ColdShower.ImpactDelaySeconds + PeriodicEffect.ServerFrameSeconds,
             MinDelaySeconds: ColdShower.ImpactDelaySeconds - PeriodicEffect.ServerFrameSeconds),
         new(FrostweaversWrath.ProcKey, FrostweaversWrath.Buff.LogId),
         new(SoulfrostTorrent.ProcKey, SoulfrostTorrent.Buff.LogId),
-        // A Freezing Torrent crit adding 2 stacks of Coalescing Frost at once instead of 1.
+        // A Freezing Torrent crit adding extra stacks of Coalescing Frost at once.
         new(CoalescingFrost.DoubleStackProc, LogIds.Effect(CoalescingFrost.DebuffEffectId), StackJump: 2),
 
         // Ardeos
-        // Pyrophibian Frenzy's frog makes its first attack 1.2-1.3s after the tick that spawned it, then 3 more (Frog
-        // Squad, in every logged build with the talent) 20 server frames apart.
+        // Pyrophibian Frenzy's frog makes its first attack after the tick that spawned it, then more (Frog Squad, in every
+        // logged build with the talent) a fixed number of server frames apart.
         new(PyrophibianFrenzy.ProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 1.35, MinDelaySeconds: 1.15,
             FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
-        // A Fire Frogs cast's frogs make their first attacks 1.7-2.6s after it: their attacks are no proof of the talent's.
+        // A Fire Frogs cast's frogs make their first attacks later than that: their attacks are no proof of the talent's.
         new(FireFrogs.ConjuredProcKey, LogIds.Effect(FireFrogAttack.DamageEffectId), DelaySeconds: 2.8, MinDelaySeconds: 1.5,
             FollowingHits: FireFrogs.BaseAttacksPerFrog + FrogSquad.ExtraAttacks - 1, FollowingSpacingSeconds: FireFrogs.AttackIntervalSeconds),
         // An enemy Pyromania chose gains Engulfing Flames at the cast.
         new(Pyromania.TargetProcKey, LogIds.Effect(EngulfingFlamesDot.EffectId), StackJump: 1),
         new(ReignOfFire.ProcKey, ReignOfFire.Buff.LogId),
-        // Spontaneous Combustion takes the tick past 100% crit chance: the tick is a grievous crit, within 0.35s of the
+        // Spontaneous Combustion takes the tick past full crit chance: the tick is a grievous crit, close to the
         // engine's tick (the engine's ticks drift from the log's as haste changes).
         new(SpontaneousCombustion.SearingBlazeProcKey, LogIds.Effect(SearingBlazeDot.EffectId), DelaySeconds: 0.35, MinDelaySeconds: -0.35,
             HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
@@ -124,14 +124,14 @@ public static class ProcEvidence
         new(Schism.HammerStormProcKey, Schism.HammerStormBuff.LogId),
         new(KillEmAll.ProcKey, KillEmAll.Buff.LogId),
         new(ExecutionersGrin.ProcKey, ExecutionersGrin.Buff.LogId),
-        // Them Bones takes Skull Crusher past 100% crit chance: its hits are grievous crits. Nothing else gives it grievous crits.
+        // Them Bones takes Skull Crusher past full crit chance: its hits are grievous crits. Nothing else gives it grievous crits.
         new(ThemBones.ProcKey, SkullCrusher.AbilityId, DelaySeconds: 0.1, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
         // A Wild Swing the enemy avoids is a miss or a dodge, neither dealing damage.
         new(WildSwing.AvoidedProcKey, WildSwing.AbilityId, DelaySeconds: 0.05, HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
-        // A free Chain Lightning's first hit is logged 0.50s after the proc (the engine's 0.30s after a cast). Its bounces
-        // (every 0.05s, logged 1 or 2 server frames apart, so a chain's first hit has none 0.1s before it) are no proof of
-        // another. Ace of Spades' chain starts on the enemy the proccing hit struck; Blood & Thunder's mostly elsewhere (26
-        // of 34 not on Heavy Strike's target; q3y7pWgXrjN2dftw fight 12).
+        // A free Chain Lightning's first hit is logged later after the proc than after a cast in the engine. Its bounces
+        // (logged a server frame or two apart, so a chain's first hit has none shortly before it) are no proof of
+        // another. Ace of Spades' chain starts on the enemy the proccing hit struck; Blood & Thunder's mostly elsewhere
+        // (not on Heavy Strike's target; q3y7pWgXrjN2dftw fight 12).
         new(BloodAndThunder.ProcKey, LogIds.Effect(ChainLightning.DamageEffectId),
             DelaySeconds: 0.55, MinDelaySeconds: 0.45,
             FollowingHits: ChainLightning.Hits + Thunderstruck.ExtraBounces - 1, FollowingSpacingSeconds: ChainLightning.BounceSeconds,
@@ -142,21 +142,21 @@ public static class ProcEvidence
             FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
 
         // Mara
-        // 10 Energy at once. Between neighbouring readings up to 1.5s apart in the 23 Mara fights of data/fights, regeneration
-        // and a cast's cost aside, 5,940 jumps are 8 to 12 with the talent and none without it, 216 are 18 to 22 (13 with no
-        // talent), and 17 are 28 to 32 (25 with no talent), so one jump is proof of two procs at most.
+        // `VenomousDelight.EnergyGained` Energy at once. Between neighbouring readings in the 23 Mara fights of
+        // data/fights, regeneration and a cast's cost aside, jumps of one gain occur with the talent and not without it,
+        // jumps of two gains are rare and jumps of three rarer, so one jump is proof of two procs at most.
         new(VenomousDelight.ProcKey, 0, Resource: Mara.Energy, ResourceGain: VenomousDelight.EnergyGained,
             ResourceRegen: (hero, now) => ((Mara)hero).EnergyRate(now), ResourceSpent: (hero, abilityId) => ((Mara)hero).EnergySpentBy(abilityId),
             ResourceGainsAtOnce: 2),
         new(CausticWounds.ProcKey, LogIds.Effect(CausticPoison.EffectId)),
         new(Hemotoxin.ProcKey, LogIds.Effect(Hemotoxin.PoisonEffectId), StackJump: 1),
-        // The spill's first tick comes 1.5s (hasted) after the proc.
+        // The spill's first tick comes one (hasted) period after the proc.
         new(CorrosiveSpill.ProcKey, LogIds.Effect(CorrosiveSpill.DamageEffectId), DelaySeconds: 1.6, MinDelaySeconds: 0.8),
         new(SeethingBurst.ProcKey, LogIds.Effect(SeethingBurst.DamageEffectId)),
         new(FromTheShadows.ProcKey, QueensFang.AbilityId, DelaySeconds: 0.5),
 
         // Elarion
-        // The salvo is logged within 2ms of the hit that triggered it; the mark loses a stack with it, but for a salvo
+        // The salvo is logged within milliseconds of the hit that triggered it; the mark loses a stack with it, but for a salvo
         // a Starfall Volley arrow triggered with Lunarlight Affinity.
         new(LunarlightSalvo.ProcKey, LogIds.Effect(LunarlightSalvo.DamageEffectId), StackLossLogId: LunarlightMark.Debuff.LogId,
             ReservesHit: true),
@@ -168,12 +168,12 @@ public static class ProcEvidence
         new(Elarion.RefundMarkTargetProcKey, LunarlightMark.Debuff.LogId, StackJump: 1),
         new(CelestialShot.ImpetusProcKey, CelestialShot.Impetus.LogId),
         new(FocusedExpanse.ProcKey, FocusedExpanse.Buff.LogId),
-        // Lunarlight Mark's own grant (the log names 1310 as its cause) is no proof of the 5% proc.
+        // Lunarlight Mark's own grant (the log names 1310 as its cause) is no proof of the Resurgent Winds proc.
         new(ResurgentWinds.ProcKey, ResurgentWinds.Buff.LogId, NotCausedByAbilityId: LunarlightMark.AbilityId),
         new(StarstrikersAscent.ProcKey, ImpendingHeartseeker.Buff.LogId),
-        // A Starfall Volley arrow on the enemy: the first free one landing up to 1.5s after the release.
+        // A Starfall Volley arrow on the enemy: the first free one landing after the release.
         new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
-        // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
+        // Lethal Shots takes Highwind Arrow past full crit chance: its first hit, shortly after the cast, is a grievous crit.
         new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
     ];
 

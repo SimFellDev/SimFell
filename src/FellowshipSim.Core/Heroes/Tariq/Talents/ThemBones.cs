@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 75: "Your Skull Crusher has a 30% chance to have +100% increased critical strike chance. Any critical strike
-/// chance you have beyond 100% causes a grievous critical strike." Rolled once per cast; every hit of the cast has it.
+/// Talent 75: "Your Skull Crusher has a chance to have increased critical strike chance. Any critical strike
+/// chance you have beyond the maximum causes a grievous critical strike." Rolled once per cast; every hit of the cast has it.
 /// Combat logs (3 Tariq fights): grievous Skull Crusher hits come with the thunder bolt as well as the physical hit.
 /// </summary>
 public class ThemBones : Talent

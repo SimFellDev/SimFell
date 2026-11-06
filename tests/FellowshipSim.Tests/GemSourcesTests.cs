@@ -56,7 +56,7 @@ public class GemSourcesTests
         editor.SetGearBonuses(GemColor.Sapphire, editor.GearBonuses(GemColor.Sapphire));
         Assert.Equal(logged, build.GemPower);
 
-        // Without the relic, no 25%.
+        // Without the relic, no bonus.
         int relic = build.Relic1ItemId == 5921 ? 1 : 2;
         if (relic == 1) editor.Relic1 = null; else editor.Relic2 = null;
         Assert.Equal(1200, editor.Gem(GemColor.Amethyst));

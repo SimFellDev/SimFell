@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 149: "All damage over time effects applied to enemies by your abilities gain +20% critical strike chance. Fire
-/// Frogs and Fire Ball also gain a 20% chance to critically strike with their damage over time effects." Fire Ball and
+/// Talent 149: all damage over time effects the hero's abilities apply to enemies gain critical strike chance. Fire Frogs
+/// and Fire Ball also gain a chance to critically strike with their damage over time effects. Fire Ball and
 /// Fire Frogs effects then crit as the others do. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class Firestarter : Talent

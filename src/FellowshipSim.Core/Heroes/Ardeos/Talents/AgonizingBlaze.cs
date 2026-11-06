@@ -3,9 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 145: "Each stack of Searing Blaze on a target increases the damage it deals by 4% up to a maximum of 40%
-/// increased damage at 10 stacks. Every tick on that target increases the stacks by 1. All stacks are lost when Searing
-/// Blaze is removed from the target." A tick deals damage with the stacks held before it. UNVERIFIED: no combat log has
+/// Talent 145: each stack of Searing Blaze on a target increases the damage it deals, up to a maximum. Every tick on that
+/// target adds a stack. All stacks are lost when Searing Blaze is removed from the target. A tick deals damage with the stacks held before it. UNVERIFIED: no combat log has
 /// this talent.
 /// </summary>
 public class AgonizingBlaze : Talent

@@ -46,7 +46,7 @@ public abstract class Ability
 
     /// <summary>
     /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
-    /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
+    /// own global cooldown effect, e.g. Tariq's Skull Crusher). Null for the hero's.
     /// </summary>
     public double? GlobalCooldownSeconds { get; protected set; }
 
@@ -68,7 +68,7 @@ public abstract class Ability
     /// </summary>
     public List<Func<SimulationContext, double>> HitCritChanceBonuses { get; } = new();
 
-    /// <summary>Multiplier on this ability's crit power (e.g. "20% increased Critical Strike power").</summary>
+    /// <summary>Multiplier on this ability's crit power (e.g. an "increased Critical Strike power" talent).</summary>
     public double CritPowerMultiplier { get; set; } = 1.0;
 
     public bool ScalesWithExpertise { get; protected set; } = true;

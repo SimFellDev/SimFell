@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 74: "Your Heavy Strike has a 20% chance to cast a free Chain Lightning at the target." Combat logs
-/// (q3y7pWgXrjN2dftw fight 12): 34 free chains in 170 Heavy Strikes, each 0.50s after it, 26 of them starting on another
+/// Talent 74: "Your Heavy Strike has a chance to cast a free Chain Lightning at the target." Combat logs
+/// (q3y7pWgXrjN2dftw fight 12): free chains follow Heavy Strikes a fixed delay after it, most starting on another
 /// enemy than Heavy Strike's target (the engine starts them on the target). UNVERIFIED: the free Chain Lightning is taken
 /// to need no Thunder Call.
 /// </summary>

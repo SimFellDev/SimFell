@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 441: "When your Leap Smash ability does not hit an enemy, its cooldown is reduced by 10 seconds. When your Leap
-/// Smash ability hits at least 1 enemy, you gain 20 Fury." (Leap Smash Ink.MoveToLocationAoeDamage.ResourceGain: 20% of
+/// Talent 441: "When your Leap Smash ability does not hit an enemy, its cooldown is reduced. When your Leap
+/// Smash ability hits at least one enemy, you gain Fury." (Game data: a share of
 /// maximum Fury.)
 /// </summary>
 public class HighRoad : Talent

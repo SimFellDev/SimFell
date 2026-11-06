@@ -3,12 +3,12 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 153: "Each tick of Searing Blaze &amp; Engulfing Flames has a 10% chance to have +100% critical strike chance.
-/// The chance for Spontaneous Combustion to trigger is increased by +1% for every 5% critical strike chance you have."
+/// Talent 153: each tick of Searing Blaze and Engulfing Flames has a chance to gain critical strike chance, and the chance
+/// rises with the hero's critical strike chance.
 /// A tick it empowers is a grievous crit. A replay takes that grievous crit as the proof of the proc (one proc for each
 /// effect).
-/// Combat logs (Fc8v6yWxD14GQMnV fight 19, YC861NTRgLbmw4Qa fight 31): 10.9% and 10.8% of the ticks are grievous, with crit
-/// ratings of 106 and 153. The model uses a 10% chance with no crit term.
+/// Combat logs (Fc8v6yWxD14GQMnV fight 19, YC861NTRgLbmw4Qa fight 31): the share of grievous ticks matches the base chance
+/// at both fights' crit ratings. The model uses the base chance with no crit term.
 /// </summary>
 public class SpontaneousCombustion : Talent
 {

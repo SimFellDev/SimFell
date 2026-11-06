@@ -4,7 +4,7 @@ using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Tests;
 
-/// <summary>The chance of RollProcPerMinute 0x1452CBD20, build 26320967, at a hero with no Haste.</summary>
+/// <summary>The chance of the game's RollProcPerMinute at a hero with no Haste.</summary>
 public class RealPpmTests
 {
     private const double Rate = 2.0;
@@ -37,7 +37,7 @@ public class RealPpmTests
         Assert.Equal(Rate * 3.0 / 60.0, dice.Chances[^1], 9);
     }
 
-    /// <summary>At 2 PPM the drought factor passes 1 at 45s since the proc: 60s gives 0.05 × 2 × 60 − 3.5 = 2.5.</summary>
+    /// <summary>The drought factor passes 1 once enough time has passed since the proc, and it then multiplies the chance.</summary>
     [Fact]
     public void A_Drought_Multiplies_The_Chance()
     {

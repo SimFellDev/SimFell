@@ -56,7 +56,7 @@ public class ReplayPartyMember
 {
     [JsonPropertyName("name")] public string? Name { get; set; }
     [JsonPropertyName("gear_traits")] public Dictionary<string, int> GearTraits { get; set; } = new();
-    /// <summary>Weapon-tree points by log augmentation ID (3,000,000 + datamine augmentation ID).</summary>
+    /// <summary>Weapon-tree points by log augmentation ID (3,000,000 + game augmentation ID).</summary>
     [JsonPropertyName("weapon_traits")] public Dictionary<string, int> WeaponTraits { get; set; } = new();
 }
 

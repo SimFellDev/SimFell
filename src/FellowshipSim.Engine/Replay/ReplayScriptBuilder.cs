@@ -727,7 +727,7 @@ public static class ReplayScriptBuilder
                 {
                     ["name"] = _actors.TryGetValue(sid, out var who) ? Copy(who["name"]) : null,
                     ["gear_traits"] = new JsonObject(gearTraits.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
-                    // weapon-tree augmentation IDs are 3,000,000 + datamine augmentation ID
+                    // weapon-tree augmentation IDs are 3,000,000 + game augmentation ID
                     ["weapon_traits"] = weaponTraits,
                 };
             }

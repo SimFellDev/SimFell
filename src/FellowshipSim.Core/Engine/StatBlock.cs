@@ -28,9 +28,9 @@ public enum ModifierOp
 {
     /// <summary>Adds the value ("+X").</summary>
     Additive,
-    /// <summary>"X increased": all such modifiers add their (value - 1) together, then multiply once (datamine op "Multiplicitive").</summary>
+    /// <summary>"X increased": all such modifiers add their (value - 1) together, then multiply once (game data op "Multiplicitive").</summary>
     MultiplyAdditive,
-    /// <summary>"X more": each multiplies the result (datamine op "MultiplyCompound").</summary>
+    /// <summary>"X more": each multiplies the result (game data op "MultiplyCompound").</summary>
     MultiplyCompound,
 }
 
@@ -72,7 +72,7 @@ public struct ModifierFold
 
 public static class StatDiminishingReturns
 {
-    /// <summary>Percent per rating point (settings.json statCalculation.attributes.*.baseStatMultiplier = 0.16%).</summary>
+    /// <summary>Percent per rating point (settings.json statCalculation.attributes.*.baseStatMultiplier).</summary>
     public const double PercentPerRating = 0.0016;
 
     private static readonly double[] Breakpoints = [0.10, 0.15, 0.20, 0.25];
@@ -145,18 +145,18 @@ public static class StatDiminishingReturns
 public class StatBlock
 {
     public const double BaseCritChance = 0.05;
-    /// <summary>Every hero's base Main Stat and Stamina (game data hero baseAttributes: 100 each for all 12 heroes).</summary>
+    /// <summary>Every hero's base Main Stat and Stamina (game data hero baseAttributes, the same for every hero).</summary>
     public const double BasePrimaryStat = 100;
     public const double BaseStamina = 100;
     /// <summary>
-    /// Every hero's base Spirit: none. (The 10% once assumed here was Oracle's Foresight II + Death's Grasp, which nearly
-    /// every logged build has; Xue, with only the gem, matches at 6%.)
+    /// Every hero's base Spirit: none. (The base once assumed here was Oracle's Foresight II + Death's Grasp, which nearly
+    /// every logged build has; Xue, with only the gem, matches the smaller value.)
     /// </summary>
     public const double BaseSpirit = 0.0;
     public const double BaseCritMultiplier = 2.0;
     /// <summary>
     /// Maximum health per point of Stamina, for sims without a logged health value. UNVERIFIED: measured on one log
-    /// (PcaMVTFbZzNLrfx3: 32,563 health with 581 Stamina).
+    /// (PcaMVTFbZzNLrfx3).
     /// </summary>
     public const double HealthPerStamina = 56.0;
 

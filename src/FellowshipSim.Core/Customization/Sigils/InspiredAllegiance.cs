@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 2: "Your abilities have a chance to reduce the Cooldown of your Weapon Ability by 1.5 / 4 / 6 / 8 seconds and
-/// grant you and 1 / 2 / 3 / 3 allies 6 / 10 / 13 / 17 Haste rating for 8 seconds. (1.2 PPM)" (effect 2112). The same buff
+/// Sigil 2: "Your abilities have a chance to reduce the Cooldown of your Weapon Ability and
+/// grant you and allies Haste rating for a time." (effect 2112). The same buff
 /// from other players is a party buff (Replay/PartyBuffs.cs). UNVERIFIED: the hero's own procs are not yet checked
 /// against a log.
 /// </summary>

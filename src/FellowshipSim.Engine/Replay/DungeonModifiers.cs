@@ -8,11 +8,11 @@ namespace FellowshipSim.Engine.Replay;
 public static class DungeonModifiers
 {
     /// <summary>
-    /// Modifier 16, Ultimatum: "Bosses deal 5% more damage and have 10% more health. BONUS Heroes' ability cooldowns are
-    /// reduced by 10%." The cooldown reduction adds to the hero's other cooldown reduction. Logs: in 12 replays of 6
+    /// Modifier 16, Ultimatum: bosses deal more damage and have more health, and heroes' ability cooldowns are reduced. The
+    /// cooldown reduction adds to the hero's other cooldown reduction. Logs: in 12 replays of 6
     /// Ultimatum fights (4Ln6PQZCRzc7Wpta 72, c6QH41C2dYq7P3zb 13, Cf7npHNzRmALFJQy 1, GXFz3pZ94aQr2chV 3, J8NxpFaC7Vjq2mZc 7,
-    /// pWmcV42K39GHTLQX 23), the replay's cooldown issues fall from 910 to 119 with the 10% added (173 multiplied with the
-    /// hero's). A replay takes the enemies' health from the log, so the boss parts change nothing there.
+    /// pWmcV42K39GHTLQX 23), the replay's cooldown issues fall with the reduction added, and fall less when it multiplies
+    /// with the hero's. A replay takes the enemies' health from the log, so the boss parts change nothing there.
     /// </summary>
     public const int UltimatumId = 16;
     public const double UltimatumCooldownReduction = 0.10;

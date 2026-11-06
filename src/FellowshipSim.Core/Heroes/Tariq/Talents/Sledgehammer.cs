@@ -3,10 +3,10 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 78: "Your Skull Crusher direct damage deals 10% of the damage dealt to enemies near your target. (Damage
-/// reduced beyond 8 targets)." Logged as ability 2061 (whose own text says 30%). Combat logs (fXyzwGcQkTrLD34R fight 4,
-/// 1p7AXmHfwV9CYMxR fight 30; 587 hits): each nearby enemy takes exactly 10% of the physical hit dealt, crit included;
-/// it never crits itself.
+/// Talent 78: "Your Skull Crusher direct damage deals a share of the damage dealt to enemies near your target. (Damage
+/// reduced beyond a number of targets)." Logged as ability 2061 (whose own text states another share). Combat logs
+/// (fXyzwGcQkTrLD34R fight 4, 1p7AXmHfwV9CYMxR fight 30; 587 hits): each nearby enemy takes <see cref="Fraction"/> of the
+/// physical hit dealt, crit included; it never crits itself.
 /// </summary>
 public class Sledgehammer : Talent
 {

@@ -1,21 +1,22 @@
 namespace FellowshipSim.Core.Engine;
 
 /// <summary>
-/// A proc-per-minute roll: CRRandomStreamComponent::RollProcPerMinute 0x1452CBD20, build 26320967. With R the hasted rate,
-/// the chance is max(1, 0.05 × R × min(t since the last proc, 1000) − 3.5) × (t since the last roll) / 60 × R, and at least
-/// R / 8 until the stream's first proc (0x1452CBFE1 to 0x1452CC00B). The stream's times start at the dungeon's start, and
-/// nothing clears them or the first proc within a run (0x1452CBE9F, 0x1452CC08E).
+/// A proc-per-minute roll, as the game's RollProcPerMinute rolls it. With R the hasted rate, the chance is the drought
+/// factor (<see cref="DroughtSlope"/>, <see cref="DroughtOffset"/> and <see cref="LongestDroughtSeconds"/> on the time since
+/// the last proc) times the time since the last roll per minute times R, and at least R over
+/// <see cref="FirstProcFloorDivisor"/> until the stream's first proc. The stream's times start at the dungeon's start, and
+/// nothing clears them or the first proc within a run.
 /// </summary>
 public class RealPpm
 {
-    /// <summary>Slope and offset of the drought factor, on R × seconds (constants 0x147C0A0EC and 0x148D37F24).</summary>
+    /// <summary>Slope and offset of the drought factor, on R × seconds.</summary>
     public const double DroughtSlope = 0.05;
     public const double DroughtOffset = 3.5;
 
-    /// <summary>The longest drought the factor counts (constant 0x1487EAA40).</summary>
+    /// <summary>The longest drought the factor counts.</summary>
     public const double LongestDroughtSeconds = 1000.0;
 
-    /// <summary>FirstProcChanceFloorPPMDivisor, default 8 (0x1452C220F).</summary>
+    /// <summary>FirstProcChanceFloorPPMDivisor, at its default.</summary>
     public const double FirstProcFloorDivisor = 8.0;
 
     public double BasePpm { get; }
@@ -28,8 +29,8 @@ public class RealPpm
     private SimTime _lastProc = SimTime.Zero;
     private bool _procced;
 
-    /// <param name="usesHaste">The roll's bUseHaste: the game data's scalesWithHaste.</param>
-    /// <param name="rateScale">A Blueprint's own factor on the rate at each roll (the game data's formula).</param>
+    /// <param name="usesHaste">Whether the roll uses haste: the game data's scalesWithHaste.</param>
+    /// <param name="rateScale">An ability's own factor on the rate at each roll (the game data's formula).</param>
     public RealPpm(string procKey, double basePpm, bool usesHaste = true, Func<SimTime, double>? rateScale = null)
     {
         ProcKey = procKey;

@@ -3,7 +3,7 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 80: "When your Leap Smash ability deals damage, you are granted 1 stack of Focused Wrath." One stack per cast
+/// Talent 80: "When your Leap Smash ability deals damage, you are granted a stack of Focused Wrath." The stack comes per cast
 /// that hits an enemy.
 /// </summary>
 public class MouthForWar : Talent

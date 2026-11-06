@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 766 / effect 3206 (8s): "Your Reaver's Edge, Blood Arc, Heart Splitter, and Rupture have a 6% chance to reset
-/// the cooldown of Grim Carve and grant you Grim Harvest for 8 seconds, causing your next Grim Carve to have +100%
-/// Critical Strike chance." Rolled once per cast. Overflow beyond 100% is a grievous crit.
+/// Talent 766 / effect 3206: "Your Reaver's Edge, Blood Arc, Heart Splitter, and Rupture have a chance to reset
+/// the cooldown of Grim Carve and grant you Grim Harvest for a time, causing your next Grim Carve to have increased
+/// Critical Strike chance." Rolled once per cast. Crit chance beyond a guaranteed crit is a grievous crit.
 /// </summary>
 public class GrimHarvest : Talent
 {

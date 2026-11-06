@@ -11,16 +11,16 @@ namespace FellowshipSim.Core.Heroes.Tariq;
 public sealed class Tariq : Hero
 {
     /// <summary>
-    /// Fury (hero 10 Attributes MaxResources 100). Combat logs report it as resource type 2 in raw units of a maximum
+    /// Fury (hero 10 Attributes MaxResources). Combat logs report it as resource type 2 in raw units of a maximum
     /// that follows Strength (effect 1735 overrides MaxResources from Strength); every gain in the game data is a share of
-    /// that maximum, so 1 Fury is 1% of it.
+    /// that maximum.
     /// </summary>
     public static readonly ResourceDef Fury = new("Fury", Max: 100);
 
-    /// <summary>Class tuning: hero 10 attribute BalancingDamageAura 1, none.</summary>
+    /// <summary>Class tuning: hero 10 attribute BalancingDamageAura, a neutral value.</summary>
     public const double BalancingDamageAura = 1.0;
 
-    /// <summary>Spirit Points per Spirit Refund (ability 1466, Ink.SpiritProc.ResourceRefund.FlatSpiritPointGain 1).</summary>
+    /// <summary>Spirit Points per Spirit Refund (ability 1466).</summary>
     public const double SpiritPointsPerRefund = 1.0;
 
     /// <summary>Tariq's talent tree, as in game (game data talent-slot records, hero Tariq).</summary>
@@ -35,13 +35,13 @@ public sealed class Tariq : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 10: mainStat Strength.</summary>
+    /// <summary>Game data hero 10: mainStat Strength.</summary>
     public override MainStat MainStat => MainStat.Strength;
 
     /// <summary>Extra crit chance on Tariq's lightning damage (Crack the Sky).</summary>
     public double LightningCritChance { get; internal set; }
 
-    /// <summary>Fury gained every second of the fight (Bloodline).</summary>
+    /// <summary>Fury gained per period of the fight (Bloodline).</summary>
     public double FuryPerSecond { get; internal set; }
 
     /// <summary>
@@ -79,7 +79,7 @@ public sealed class Tariq : Hero
     protected override void OnFightBegins(SimulationContext ctx)
     {
         if (FuryPerSecond <= 0) return;
-        // Bloodline (talent 76, effect 2424): 1% of maximum Fury every second in combat, not hasted (see Bloodline).
+        // Bloodline (talent 76, effect 2424): a share of maximum Fury per period in combat, not hasted (see Bloodline).
         var period = SimTime.FromSeconds(Bloodline.PeriodSeconds);
         void Regen(SimulationContext c)
         {

@@ -9,14 +9,14 @@ public class Diamond : Gem
     public const int HarmoniousSoulMediumEffectId = 1960;
 
     /// <summary>
-    /// Effect 1959 "Harmounious Soul - Small" (the game's spelling), applied by node 338's ability 1930: +0.6% Critical
-    /// Strike, Haste, Expertise and Spirit per stack (modifiers CritChance, Haste, Expertise and Spirit, Additive 0.006),
-    /// 5s, 4 stacks. When its duration expires it loses one stack. Combat logs (4Ln6PQZCRzc7Wpta fight 78, Rzg1nQNHpm2fhYtB
-    /// fight 23): each loss restarts the 5s (removebuffstack every 5.01s).
+    /// Effect 1959 "Harmounious Soul - Small" (the game's spelling), applied by node 338's ability 1930: Critical
+    /// Strike, Haste, Expertise and Spirit per stack (modifiers CritChance, Haste, Expertise and Spirit, Additive
+    /// <see cref="HarmoniousSoulStatPerStack"/>), for <see cref="HarmoniousSoulSeconds"/>. When its duration expires it loses one
+    /// stack. Combat logs (4Ln6PQZCRzc7Wpta fight 78, Rzg1nQNHpm2fhYtB fight 23): each loss restarts the duration.
     /// </summary>
     public static readonly AuraDef HarmoniousSoulSmall = HarmoniousSoulAura("Harmounious Soul - Small", HarmoniousSoulSmallEffectId, 4);
 
-    /// <summary>Effect 1960 "Harmounious Soul - Medium", applied by node 339's ability 1931: as 1959 with 12 stacks.</summary>
+    /// <summary>Effect 1960 "Harmounious Soul - Medium", applied by node 339's ability 1931: as 1959 with more stacks.</summary>
     public static readonly AuraDef HarmoniousSoulMedium = HarmoniousSoulAura("Harmounious Soul - Medium", HarmoniousSoulMediumEffectId, 12);
 
     private static AuraDef HarmoniousSoulAura(string name, int effectId, int maxStacks) =>
@@ -50,9 +50,9 @@ public class Diamond : Gem
     {
         switch (node.Slot)
         {
-            case 1: // Harmonious Soul: "Each time an enemy you are in combat with is defeated, you gain +0.6% Critical Strike,
-                    // Haste, Expertise and Spirit for 5 seconds, stacking up to 4 (II: 12) times. When the duration of
-                    // Harmonious Soul expires, you lose 1 stack."
+            case 1: // Harmonious Soul: "Each time an enemy you are in combat with is defeated, you gain Critical Strike,
+                    // Haste, Expertise and Spirit for a duration, stacking up to a maximum. When the duration of
+                    // Harmonious Soul expires, you lose a stack."
                 BindHarmoniousSoul(hero, node);
                 return true;
             case 2: // Stoic's Teachings: flat Main Stat and Armor.

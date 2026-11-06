@@ -3,7 +3,7 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 667: "Your Backstab has a 30% chance to apply Caustic Poison outside of Brooding Shadows if the target has
+/// Talent 667: "Your Backstab has a chance to apply Caustic Poison outside of Brooding Shadows if the target has
 /// Hemorrhaging Strike's Bleed active on them." UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class CausticWounds : Talent

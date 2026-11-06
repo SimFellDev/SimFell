@@ -1,9 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1021: "Blast enemies in front of you with arctic winds, Knocking Back enemies and Slowing them by 50% for 12
-/// sec. Can be used during Global Cooldown." Cooldown 60s; effect 1385 "Frigid Winds", 12s, MoveSpeed x0.5 (game data).
-/// No damage. The enemies in front are the target alone.
+/// Ability 1021: blasts enemies in front of you with arctic winds, knocking them back and slowing them. Can be used during
+/// Global Cooldown. Effect 1385 "Frigid Winds", a MoveSpeed multiplier (game data). No damage. The enemies in front are the target alone.
 /// </summary>
 public class FrigidWinds : RimeAbility
 {

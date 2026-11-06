@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 226: "The cooldown of your Engulfing Flames is reduced by 0.25 seconds each time your Searing Blaze deals
-/// damage to an enemy and by 1 second each time you cast Infernal Wave."
+/// Talent 226: Engulfing Flames' cooldown is reduced each time Searing Blaze deals damage to an enemy and each time
+/// Infernal Wave is cast.
 /// </summary>
 public class RollingFlames : Talent
 {

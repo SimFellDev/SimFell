@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 42: "Your targeted offensive abilities grant you 4 / 8 / 12 / 16 Haste rating for 8 seconds, stacking up to 5
-/// times. The Haste is lost if you use a targeted offensive ability on any other enemy." (effect 2141, "Trait : Focused Haste")
+/// Sigil 42: "Your targeted offensive abilities grant you Haste rating for a time, stacking up to a maximum.
+/// The Haste is lost if you use a targeted offensive ability on any other enemy." (effect 2141, "Trait : Focused Haste")
 /// </summary>
 public class HuntersFocus : Sigil
 {

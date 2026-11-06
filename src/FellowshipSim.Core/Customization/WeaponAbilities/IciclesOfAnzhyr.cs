@@ -1,14 +1,13 @@
 namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
-/// Weapon ability 1561 (Frozen Staff of An'zhyr, weapon power 357): "Conjure 3 waves of icicles to pelt the target area,
-/// dealing 144% Main Stat frost damage to all enemies in the area with each wave. Enemies hit by the final wave are
-/// afflicted by Curse of An'zhyr permanently, taking 38.4% Main Stat frost damage every 3 seconds. Enemies afflicted by
-/// Curse of An'zhyr take +200% increased direct damage from Icicles of An'zhyr. Can be cast during Global Cooldown."
-/// Combat logs (PCaMVTFbZzNLrfx3 fight 5, 12 casts): the waves land 0.27s, 1.27s and 2.27s after the cast and keep the
-/// damage, crit chance and crit power of the cast; damage falls off as sqrt(15/N) beyond 15 enemies (every wave on 16-22
-/// enemies fits T = 15.0-15.6; all 12 casts then match within 0.97-1.06). The curse (effect 2286) ticks every 3s
-/// shortened by haste.
+/// Weapon ability 1561 (Frozen Staff of An'zhyr, weapon power 357): "Conjure waves of icicles to pelt the target area,
+/// dealing Main Stat frost damage to all enemies in the area with each wave. Enemies hit by the final wave are
+/// afflicted by Curse of An'zhyr permanently, taking Main Stat frost damage at an interval. Enemies afflicted by
+/// Curse of An'zhyr take increased direct damage from Icicles of An'zhyr. Can be cast during Global Cooldown."
+/// Combat logs (PCaMVTFbZzNLrfx3 fight 5, 12 casts): the waves land at fixed intervals after the cast and keep the
+/// damage, crit chance and crit power of the cast; damage falls off beyond a target cap (every wave on 16-22
+/// enemies fits one cap; all 12 casts then match). The curse (effect 2286) ticks on a hasted period.
 /// </summary>
 public class IciclesOfAnzhyr : Ability
 {
@@ -25,7 +24,7 @@ public class IciclesOfAnzhyr : Ability
     public const int CurseEffectId = 2286;
     public const string CurseName = "Curse of An'zhyr";
     public const double CurseCoefficient = 0.384;
-    /// <summary>Effect 2286 Period, row Weapon.CastedRepetitivelyAOEDamageDebuff.Debuff.TickInterval; hasted.</summary>
+    /// <summary>Effect 2286 Period; hasted.</summary>
     public const double CurseTickSeconds = 3.0;
 
     /// <summary>The curse on an enemy (permanent).</summary>
@@ -98,7 +97,7 @@ public class IciclesOfAnzhyr : Ability
     }
 
     /// <summary>
-    /// Curse of An'zhyr: permanent, ticking every 3s (hasted) while the enemy lives. Each tick deals the snapshot of the
+    /// Curse of An'zhyr: permanent, ticking on a hasted period while the enemy lives. Each tick deals the snapshot of the
     /// Icicles cast that last applied it (per the user: every re-application is a new snapshot).
     /// </summary>
     private void Afflict(SimulationContext ctx, EnemyTarget enemy)
@@ -116,9 +115,8 @@ public class IciclesOfAnzhyr : Ability
             c.ApplyDamage(Owner, enemy, snap.Damage * Owner.DamageMultiplierAgainst(enemy, now), _curse.DamageLogId, CurseName, canCrit: true,
                 snap.CritChance + Owner.CritChanceAgainst(enemy, now) - Owner.CritChance(now), snap.CritMultiplier, snapshot: true);
         }
-        // Effect 2286 is tagged EffectType.Dot with no tickrate exemption, period 3s, Infinite, no tick on application
-        // (game-data-authority, GE_Weapon_CastedRepetitivelyAOEDamageDebuff_Dot): its ticks run on the game's period timer,
-        // which each Haste change re-arms at Period / Haste(now) (0x1452EBCA0 -> 0x1452EE870 -> 0x1452D88D0).
+        // Effect 2286 is tagged EffectType.Dot with no tickrate exemption, a hasted period, Infinite, no tick on application
+        // Its ticks run on the game's period timer, which each Haste change re-arms at Period / Haste(now).
         timer = HastedTimer.StartPeriod(ctx, Owner, CurseTickSeconds, Tick, CurseName, _curse.DamageLogId);
     }
 

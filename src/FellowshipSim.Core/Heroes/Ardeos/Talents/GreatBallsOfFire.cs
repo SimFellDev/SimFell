@@ -3,10 +3,9 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 160: "Your Fire Ball deals 50% more damage and an additional 10% of the damage dealt is added to its damage
-/// over time effect." Combat logs (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9): replays with it deal 1.02 and 1.08
-/// of the logged Fire Ball hits, and 1.04 and 1.13 of the logged effect (without the extra 10% the effect would deal 0.69
-/// and 0.75).
+/// Talent 160: Fire Ball deals more damage, and an additional share of the damage dealt is added to its damage over time
+/// effect. Combat logs (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9): replays with it match the logged Fire Ball
+/// hits and the logged effect, and fall well short of the effect without the additional share.
 /// </summary>
 public class GreatBallsOfFire : Talent
 {

@@ -3,12 +3,11 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 671: "Your offensive abilities have a 10% chance to reset the cooldown of your Heavy Strike and grant you 2
-/// stacks of Kill Em All for 8 seconds. While Kill Em All is active, your Heavy Strike has +60% Cooldown Acceleration.
-/// Your next Heavy Strike consumes 1 stack of Kill Em All, causing it to deal 150% more damage." Effect 3160 (8s, 2
-/// stacks). It rolls once per cast of an offensive ability other than Heavy Strike (confirmed in game, 2026-11-01; combat
-/// logs, 3 fights with the talent: none of 537 Heavy Strikes procs it, where 10% would be about 54, while the other casts
-/// proc it 144 times).
+/// Talent 671: "Your offensive abilities have a chance to reset the cooldown of your Heavy Strike and grant you
+/// stacks of Kill Em All. While Kill Em All is active, your Heavy Strike has Cooldown Acceleration.
+/// Your next Heavy Strike consumes a stack of Kill Em All, causing it to deal more damage." Effect 3160 (`BuffSeconds`,
+/// `MaxStacks` stacks). It rolls once per cast of an offensive ability other than Heavy Strike (confirmed in game, 2026-11-01; combat
+/// logs, 3 fights with the talent: no Heavy Strike procs it, while the other casts proc it at the expected rate).
 /// </summary>
 public class KillEmAll : Talent
 {
@@ -18,7 +17,7 @@ public class KillEmAll : Talent
     public const double BuffSeconds = 8.0;
     public const int MaxStacks = 2;
     public const double ProcChance = 0.10;
-    /// <summary>Effect 3160: cooldownAcceleration Additive 1.6 on Heavy Strike. The "+60%" in the text is wrong.</summary>
+    /// <summary>Effect 3160: cooldownAcceleration Additive on Heavy Strike. The tooltip's percentage is wrong.</summary>
     public const double CooldownAcceleration = 1.6;
     public const double DamageMultiplier = 2.5;
     public const string ProcKey = "kill_em_all";

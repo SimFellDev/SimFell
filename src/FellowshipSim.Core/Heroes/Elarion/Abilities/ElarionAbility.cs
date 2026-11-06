@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
-// Each ability lists its game values as constants at the top (IDs and numbers from the game data).
+// Each ability lists its game values as constants at the top (IDs and values from the game data).
 
 /// <summary>Base for Elarion's abilities: the Focus cost and the hits that land after the cast resolved.</summary>
 public abstract class ElarionAbility : Ability
@@ -15,7 +15,7 @@ public abstract class ElarionAbility : Ability
 
     /// <summary>
     /// The Focus a cast costs now: the cost times Event Horizon's multiplier and the ability's own (an Empowered
-    /// Multishot), not rounded (Event Horizon halves Celestial Shot's 15 to 7.5), or nothing for a free cast (Celestial Impetus, Resurgent Winds).
+    /// Multishot), not rounded, or nothing for a free cast (Celestial Impetus, Resurgent Winds).
     /// </summary>
     public virtual double CostAt(SimTime now) => FocusCost * Elarion.FocusCostMultiplier(now);
 

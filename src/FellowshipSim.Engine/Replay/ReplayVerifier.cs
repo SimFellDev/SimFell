@@ -265,8 +265,8 @@ public sealed class ReplayVerifier
     public void CheckState(SimulationContext ctx, ReplayStep step, ReplayCommand cmd)
     {
         // The cast's own activation event: a cast-time ability's completion at the same moment carries the resources
-        // before its own gains and spends (combat logs, the 15 Rime fights of patch 0.5.0.0: 333 begincasts right after the
-        // same ability's completion, whose activation event has no resources, took that completion's reading, and 239 of
+        // before its own gains and spends (combat logs, the 15 Rime fights of patch 0.5.0.0: begincasts right after the
+        // same ability's completion, whose activation event has no resources, took that completion's reading, and many of
         // them differed in Anima). A log without activation marks keeps the nearest reading of the ability.
         _activationMarked ??= _script.Observations.Resources.Any(r => r.Activation);
         var snapshot = _script.Observations.Resources.FirstOrDefault(r =>

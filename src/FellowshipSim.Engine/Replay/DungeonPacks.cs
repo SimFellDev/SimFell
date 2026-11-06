@@ -3,13 +3,13 @@ using FellowshipSim.Core.Domain;
 namespace FellowshipSim.Engine.Replay;
 
 /// <summary>
-/// A dungeon's packs from its Codex placements: a patrol's placements are one pack, and every other placement is in one
+/// A dungeon's packs from its game data placements: a patrol's placements are one pack, and every other placement is in one
 /// pack with each placement within <see cref="Spacing"/> units of it.
 /// </summary>
 public static class DungeonPacks
 {
     /// <summary>
-    /// The most distance between two placements of one pack. Source: the Codex placements of Cithrel's Fall against the
+    /// The most distance between two placements of one pack. Source: the game data placements of Cithrel's Fall against the
     /// pulls of FellowshipLogs report T2qLPpmMkrAtJ9B1, fight 18.
     /// </summary>
     public const double Spacing = 1200;

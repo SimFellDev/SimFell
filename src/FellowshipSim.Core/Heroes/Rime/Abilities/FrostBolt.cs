@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
-/// <summary>Ability 1029. Generates 3 Anima.</summary>
+/// <summary>Ability 1029. Generates Anima.</summary>
 public class FrostBolt : RimeAbility
 {
     public const int AbilityId = 1029;

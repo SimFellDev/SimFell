@@ -1,16 +1,16 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2296 (Spirit ability) / effect 3242: "Call forth your Bloodbound Spirit, dealing 465.3% of Strength magic
-/// damage to all nearby enemies as it emerges and every 1.5 seconds for 6 seconds, applying Rend to the targets for 100%
-/// of the damage dealt. For the next 20 seconds your Heart Splitter and Grim Carve deal 25% increased damage." Grants
-/// Spirit of Heroism. Damage falls off as sqrt(1/N) beyond 1 enemy (game data). Combat logs (Y4wpb2f3gc8LqJDX fight 25,
-/// 5 casts): instant (patch 0.4.5.0, 16 September 2026; the game data still has a 1s cast); 5 pulses, 0.035s after the
-/// cast and then every 1.5s, not hasted. Every pulse keeps the damage of the first: with the Strength at each pulse,
-/// the engine comes out 2% above the log at 0 stacks of Rising Spirit and 30% above at 3 (fight 25). The first pulse
-/// has the +20% Main Stat of Drakheim's Absolution, granted on the Spirit ability (since build 0.5.0 by
+/// Ability 2296 (Spirit ability) / effect 3242: calls forth the Bloodbound Spirit, which damages all nearby enemies as it
+/// emerges and at a regular interval, and applies Rend to the targets. For a time afterwards Heart Splitter and Grim
+/// Carve deal increased damage. Grants Spirit of Heroism. Damage falls off beyond <see cref="TargetThreshold"/> enemies
+/// (game data). Combat logs (Y4wpb2f3gc8LqJDX fight 25, 5 casts): the cast is instant (patch 0.4.5.0, 16 September 2026;
+/// the game data still has a cast time); the pulses come at <see cref="FirstPulseSeconds"/> after the cast and then at
+/// <see cref="PulseIntervalSeconds"/>, not hasted. Every pulse keeps the damage of the first: with the Strength at each
+/// pulse, the engine comes out above the log without Rising Spirit and further above with stacks of it (fight 25). The first
+/// pulse has the Main Stat bonus of Drakheim's Absolution, granted on the Spirit ability (since build 0.5.0 by
 /// <see cref="Customization.RelicPassives.AccursedTrophy"/>, before it by a set bonus; gpfHLmTBrqcd3Zn4 fight 37,
-/// n7zxK8harZT2wjDB fight 9: all 5 pulses 1.15-1.19x the engine's without it).
+/// n7zxK8harZT2wjDB fight 9: all pulses come out above the engine's without it).
 /// </summary>
 public class BloodboundSpirit : GundeAbility
 {
@@ -26,7 +26,7 @@ public class BloodboundSpirit : GundeAbility
     public const double BuffSeconds = 20.0;
     public const double BuffDamage = 1.25;
 
-    /// <summary>"The damage of your Heart Splitter and Grim Carve is increased by 25%."</summary>
+    /// <summary>"The damage of your Heart Splitter and Grim Carve is increased."</summary>
     public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, BuffSeconds);
 
     public BloodboundSpirit(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)

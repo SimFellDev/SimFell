@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2284: "Throw a chained axe at target enemy, dealing 37% of Strength and pulling them to you. Can be used during
-/// Global Cooldown." Cooldown 30s. UNVERIFIED: the game data's text has a 50% placeholder, but no log shows it applying
+/// Ability 2284: "Throw a chained axe at target enemy, dealing damage and pulling them to you. Can be used during
+/// Global Cooldown." UNVERIFIED: the game data's text has a Rend share placeholder, but no log shows it applying
 /// Rend.
 /// </summary>
 public class ButchersHook : GundeAbility

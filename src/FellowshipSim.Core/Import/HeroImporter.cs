@@ -71,8 +71,8 @@ public static class HeroImporter
             hero.UnmodeledFeatures.Add($"Stat enchant {entry.Name ?? entry.Id.ToString()}");
         }
 
-        // The relic passives before gems: Covetous Greed raises every gem colour's power, rounded down (combat logs: 350
-        // Topaz is 437).
+        // The relic passives before gems: Covetous Greed raises every gem colour's power, rounded down (combat logs: the
+        // shown Topaz power is the raised one).
         hero.Relic1 = BindRelic(hero, build.Relic1ItemId);
         hero.Relic2 = BindRelic(hero, build.Relic2ItemId);
 
