@@ -24,6 +24,7 @@ public class Kick : MaraAbility
     public Kick(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
     {
         SetCooldown(CooldownSeconds);
+        IgnoresCooldownRecovery = true;
         IgnoresGcd = true;
         Interrupts = true;
     }

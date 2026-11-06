@@ -28,7 +28,8 @@ public class EventHorizon : ElarionAbility
         GlobalCooldownSeconds = CastTimeSeconds;
         GlobalCooldownScalesWithHaste = true;
         owner.FocusCostMultipliers.Add(now => owner.Auras.HasAura(Buff, now) ? CostMultiplier : 1.0);
-        owner.CooldownAccelerations.Add((_, now) => owner.Auras.HasAura(Buff, now) ? owner.GetHaste(now) : 0.0);
+        // Effect 2314: MultiplyCompound on CooldownRecovery, by the Haste attribute (1 + Haste).
+        owner.CooldownRecoveryCompounds.Add(now => owner.Auras.HasAura(Buff, now) ? 1.0 + owner.GetHaste(now) : 1.0);
         owner.CooldownAccelerationAuraKeys.Add(Buff.Key);
     }
 

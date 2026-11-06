@@ -82,8 +82,11 @@ public abstract class Ability
     /// </summary>
     public bool ChargesRechargeWithHaste { get; protected set; } = false;
 
-    /// <summary>Weapon abilities run outside cooldown recovery and haste (only cooldown reduction shortens them).</summary>
-    public bool IgnoresCooldownRecovery => Category == AbilityCategory.Weapon;
+    /// <summary>
+    /// The cooldown runs outside the Cooldown Recovery attribute: every weapon ability, and any ability whose cooldown
+    /// effect is static (game data "cooldownTimeRateScalesOff" omits CooldownRecovery).
+    /// </summary>
+    public bool IgnoresCooldownRecovery { get; protected set; }
 
 
     /// <summary>Channeled abilities tick for <see cref="ChannelDuration"/> after their cast resolves.</summary>
@@ -138,6 +141,7 @@ public abstract class Ability
         DamageLogId = id;
         Name = name;
         Category = category;
+        IgnoresCooldownRecovery = category == AbilityCategory.Weapon;
         owner.SubscribeHits(this);
     }
 

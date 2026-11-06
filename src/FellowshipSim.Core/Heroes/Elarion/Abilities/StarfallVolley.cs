@@ -36,8 +36,11 @@ public class StarfallVolley : ElarionAbility
     /// <summary>Multiplier on the hits on the volley's own target (Astronomer's Hail).</summary>
     public double MainTargetMultiplier { get; set; } = 1.0;
 
-    /// <summary>A volley began or ended falling: the number of volleys falling now (Skylit Grace).</summary>
-    public event Action<SimulationContext, int>? CountChanged;
+    /// <summary>A volley began falling (Skylit Grace).</summary>
+    public event Action<SimulationContext>? VolleyBegan;
+
+    /// <summary>A volley ended falling (Skylit Grace).</summary>
+    public event Action<SimulationContext>? VolleyEnded;
 
     private readonly List<Volley> _volleys = new();
 
@@ -69,7 +72,7 @@ public class StarfallVolley : ElarionAbility
         Pay(ctx, CostAt(ctx.CurrentTime));
         var volley = new Volley(target, ctx.CurrentTime + SimTime.FromSeconds(DurationSeconds + ExtraDurationSeconds));
         _volleys.Add(volley);
-        CountChanged?.Invoke(ctx, _volleys.Count);
+        VolleyBegan?.Invoke(ctx);
         ScheduleEnd(ctx, volley);
         Pelt(ctx, volley);
     }
@@ -79,7 +82,7 @@ public class StarfallVolley : ElarionAbility
         {
             volley.Timer?.Cancel();
             _volleys.Remove(volley);
-            CountChanged?.Invoke(c, _volleys.Count);
+            VolleyEnded?.Invoke(c);
         }, Name);
 
     private void Pelt(SimulationContext ctx, Volley volley)

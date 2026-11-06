@@ -18,17 +18,17 @@ public class FatedStrike : Ability
     public const double CleaveTargetThreshold = 3;
     public const int GloriousPurposeEffectId = 80;
     public const double GloriousPurposeSeconds = 6.0;
-    public const double GloriousPurposeAcceleration = 2.0;
+    /// <summary>Effect 80: CooldownRecovery Multiplicitive 3.</summary>
+    public const double GloriousPurposeRecovery = 3.0;
 
     /// <summary>Glorious Purpose: +200% Cooldown Acceleration (the hero's other abilities; a weapon ability has its own).</summary>
-    public static readonly AuraDef GloriousPurpose = AuraDef.Effect("Glorious Purpose", GloriousPurposeEffectId, GloriousPurposeSeconds);
+    public static readonly AuraDef GloriousPurpose = AuraDef.Effect("Glorious Purpose", GloriousPurposeEffectId, GloriousPurposeSeconds,
+        modifiers: StatModifier.Increased(StatType.CooldownRecovery, GloriousPurposeRecovery));
 
     public FatedStrike(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
     {
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds);
-        owner.CooldownAccelerations.Add((_, now) => owner.Auras.HasAura(GloriousPurpose, now) ? GloriousPurposeAcceleration : 0.0);
-        owner.CooldownAccelerationAuraKeys.Add(GloriousPurpose.Key);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

@@ -43,7 +43,7 @@ public abstract class Hero : Actor
     // as they change), the accelerations and the stat block. A recharge reads its rate again only after one of them changed;
     // the rate it would read is the rate it has. Each input is its own field and is compared on its own: nearly every read
     // finds them unchanged.
-    private int _rateRecovery, _rateHaste, _rateHasteRating, _rateAccelerations, _rateAccelerationAuras, _rateStatsVersion;
+    private int _rateRecovery, _rateHaste, _rateHasteRating, _rateAccelerations, _rateCompounds, _rateAccelerationAuras, _rateStatsVersion;
     private StatBlock? _rateStats;
     private long _rateInputsVersion;
     private int _accelerationAuraChanges;
@@ -59,12 +59,13 @@ public abstract class Hero : Actor
             hasteRating = Auras.StatVersion(StatType.HasteRating);
         var stats = Stats;
         if (recovery != _rateRecovery || haste != _rateHaste || hasteRating != _rateHasteRating
-            || CooldownAccelerations.Count != _rateAccelerations || _accelerationAuraChanges != _rateAccelerationAuras
+            || CooldownAccelerations.Count != _rateAccelerations || CooldownRecoveryCompounds.Count != _rateCompounds
+            || _accelerationAuraChanges != _rateAccelerationAuras
             || !ReferenceEquals(stats, _rateStats) || stats.Version != _rateStatsVersion)
         {
             (_rateRecovery, _rateHaste, _rateHasteRating) = (recovery, haste, hasteRating);
-            (_rateAccelerations, _rateAccelerationAuras, _rateStats, _rateStatsVersion) =
-                (CooldownAccelerations.Count, _accelerationAuraChanges, stats, stats.Version);
+            (_rateAccelerations, _rateCompounds, _rateAccelerationAuras, _rateStats, _rateStatsVersion) =
+                (CooldownAccelerations.Count, CooldownRecoveryCompounds.Count, _accelerationAuraChanges, stats, stats.Version);
             _rateInputsVersion++;
         }
         return _rateInputsVersion;
@@ -167,7 +168,10 @@ public abstract class Hero : Actor
     /// <summary>Cooldown acceleration for specific abilities (0.05 = cooldown recovers 5% faster).</summary>
     public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
 
-    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> entry reads, other than through haste (e.g. Glorious Purpose).</summary>
+    /// <summary>MultiplyCompound sources of the Cooldown Recovery attribute, whose value the game calculates (Event Horizon).</summary>
+    public List<Func<SimTime, double>> CooldownRecoveryCompounds { get; } = new();
+
+    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> or <see cref="CooldownRecoveryCompounds"/> entry reads, other than through haste (e.g. Kill Em All).</summary>
     public HashSet<string> CooldownAccelerationAuraKeys { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Seconds added to Spirit of Heroism.</summary>
@@ -555,20 +559,28 @@ public abstract class Hero : Actor
     }
 
     /// <summary>
-    /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
-    /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top.
-    /// Weapon abilities always recover a base rate.
-    /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
+    /// Cooldown seconds passing in one real second on <paramref name="ability"/>'s cooldown: the Cooldown Recovery
+    /// attribute, or 1 for a cooldown outside it, plus Haste on a charge effect with Haste, plus the time rates on this
+    /// cooldown. No source multiplies these terms.
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
-        if (ability.IgnoresCooldownRecovery) return 1.0;
-        double pool = 1.0 + CooldownAcceleration(ability, now) + Auras.SumBonuses(StatType.CooldownRecovery, now);
-        return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
+        double rate = (ability.IgnoresCooldownRecovery ? 1.0 : CooldownRecovery(now)) + CooldownAcceleration(ability, now);
+        return ability.ChargesRechargeWithHaste ? rate + GetHaste(now) : rate;
     }
 
-    /// <summary>Recovery bonuses specific to an ability (e.g. The Monarch for Major abilities), as fractions.</summary>
+    /// <summary>
+    /// The Cooldown Recovery attribute: multiplier sources each add their bonus part (Chronoshift's 8x adds 7, Strand of
+    /// Eternity's 1.1x adds 0.1), and each compound source multiplies the sum (Event Horizon).
+    /// </summary>
+    public double CooldownRecovery(SimTime now)
+    {
+        double recovery = 1.0 + Auras.SumBonuses(StatType.CooldownRecovery, now);
+        foreach (var compound in CooldownRecoveryCompounds) recovery *= compound(now);
+        return recovery;
+    }
+
+    /// <summary>Time rates on one ability's cooldown (e.g. The Monarch for Major abilities), added outside the attribute.</summary>
     public double CooldownAcceleration(Ability ability, SimTime now)
     {
         double accel = 0.0;

@@ -18,7 +18,8 @@ public class KillEmAll : Talent
     public const double BuffSeconds = 8.0;
     public const int MaxStacks = 2;
     public const double ProcChance = 0.10;
-    public const double CooldownAcceleration = 0.60;
+    /// <summary>Effect 3160: cooldownAcceleration Additive 1.6 on Heavy Strike. The "+60%" in the text is wrong.</summary>
+    public const double CooldownAcceleration = 1.6;
     public const double DamageMultiplier = 2.5;
     public const string ProcKey = "kill_em_all";
 

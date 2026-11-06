@@ -13,6 +13,7 @@ public class BrainFreeze : RimeAbility
     public BrainFreeze(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
     {
         SetCooldown(CooldownSeconds);
+        IgnoresCooldownRecovery = true;
         IgnoresGcd = true;
         Interrupts = true;
     }

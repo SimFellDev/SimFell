@@ -29,6 +29,7 @@ public class WildSwing : TariqAbility
     {
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        IgnoresCooldownRecovery = true;
         AoeTargetThreshold = TargetThreshold;
     }
 
