@@ -28,7 +28,8 @@ The whole suite runs in well under a second, since every fight is a few seconds 
 ## The core rules
 
 - **Normative.** The test states the game's rule. A failure means the engine is wrong or the rule changed. Never bend a test to match the
-  engine. When the rule is unverified, skip the test (see Skipping).
+  engine. When the game is known to differ from its tooltip (from logs or game data), the test states what the game does. When the rule is
+  unverified, the test still runs, with a TODO (see Unverified rules).
 - **One rule per test**, as one tooltip or one sentence of a tooltip states it. "Ice Blitz makes you deal 20% more damage for 20 seconds,
   and does not use the global cooldown" is one test. A cost and a buff, which would be stated separately, are two tests.
 - **Deterministic by intent.** The test forces every random outcome it reads, so nothing depends on the seed (see Dice).
@@ -288,16 +289,14 @@ are read by their game name: `f.Damage("Frost Swallows")`.
 - A helper sets up or measures. It never hides the assert. The one exception to "never hides the act" is the fight-building local
   function of Damage, where the test is the comparison.
 
-## Skipping
+## Unverified rules
 
-A skipped test states a rule the engine does not meet yet, or one not yet confirmed. Its `Skip` reason says which. Its doc comment has a
-`TODO` saying what to check or fix, and what the engine does today:
+A test whose rule is not confirmed still runs. Its doc comment says where the engine's behaviour comes from (a log, "per the user", or
+nothing) and has a `TODO` saying what to confirm: "TODO: confirm in the game data whether the threshold counts the blast's own target"
+(Glacial Assault's explosion).
 
-- **Unverified in game:** `Skip = "To check in game: ..."`, with a TODO such as "check in game whether the stacked enemy counts" (Coalescing
-  Frost's area damage reduction).
-- **Engine disagrees with a confirmed rule:** a reason naming what the engine does.
-
-Skip only the failing rows of a theory. A skipped test is still a written test, never a placeholder with `Assert.Fail`.
+Skip a test only when the engine disagrees with a confirmed rule, with a reason naming what the engine does. A skipped test is still a
+written test, never a placeholder with `Assert.Fail`.
 
 ## Open questions
 

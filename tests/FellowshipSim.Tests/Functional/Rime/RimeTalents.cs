@@ -261,6 +261,29 @@ public class RimeTalents
         check.Equal(0, f.Stacks(IcyFlow.Buff));
     }
 
+    /// <summary>
+    /// Icy Flow applies to the free comets of Cold Shower, but not to the extra comets of Avalanche.
+    ///
+    /// No source: the engine has done so since its first version.
+    /// TODO: confirm in the game data.
+    /// </summary>
+    [Fact]
+    public void Icy_Flow_Applies_To_Cold_Shower_Comets_And_Not_To_Avalanche_Extras()
+    {
+        var f = StepFights.Rime(talents: [IcyFlow.TalentId, ColdShower.TalentId, Avalanche.TalentId]);
+        f.ForceProcs(key => key == ColdShower.ProcKey || key == Avalanche.ProcKey ? true : key == Avalanche.SecondProcKey ? false : null);
+
+        f.Cast<ColdSnap>(); // one Icy Flow stack
+        f.Cast<FreezingTorrent>(); // a Cold Shower comet per tick, each followed by 1 Avalanche comet
+        f.Wait(5.0); // the comets fall
+
+        var comets = f.Damage<IceComet>();
+
+        using var check = new Checks(f);
+        check.Equal(0.2, comets[0].CritChance, what: "the first Cold Shower comet's crit chance");
+        check.True(comets.Skip(1).All(comet => comet.CritChance == 0), "no other comet has crit chance");
+    }
+
     // ---- Frostweaver's Wrath
 
     /// <summary>With Frostweaver's Wrath, gaining a Winter Orb sometimes gives a stack, for 20 seconds.</summary>
@@ -457,9 +480,9 @@ public class RimeTalents
     /// <summary>
     /// Avalanche's extra comets do not trigger Avalanche themselves, however lucky you are.
     ///
-    /// TODO: check in game.
+    /// The engine's source is "per the user" (Avalanche.cs). TODO: confirm in the game data.
     /// </summary>
-    [Fact(Skip = "To check in game: Avalanche's own comets cannot trigger Avalanche")]
+    [Fact]
     public void Avalanche_Extra_Comets_Do_Not_Trigger_Avalanche()
     {
         var f = StepFights.Rime(talents: [Avalanche.TalentId]);
@@ -470,6 +493,43 @@ public class RimeTalents
         f.Wait(4.0); // the comets fall
 
         Assert.Equal(3, f.Damage<IceComet>().Count);
+    }
+
+    /// <summary>
+    /// With Icy Talons and Avalanche, the first wave of a Rising Talons counts as a struck Ice Comet, so it can be followed by extra
+    /// comets.
+    ///
+    /// No source: the engine reasons that Rising Talons is built on Ice Comet (Avalanche.cs).
+    /// TODO: confirm in the game data.
+    /// </summary>
+    [Fact]
+    public void Avalanche_Is_Triggered_By_The_First_Wave_Of_Rising_Talons()
+    {
+        var f = StepFights.Rime(talents: [IcyTalons.TalentId, Avalanche.TalentId]);
+        f.ForceProcs(key => key == Avalanche.ProcKey ? true : key == Avalanche.SecondProcKey ? false : null); // 1 extra comet
+        f.RimeOf().WinterOrbs = 1;
+
+        f.Cast<RisingTalons>();
+        f.Wait(5.0); // the wave and the comet land
+
+        Assert.Single(f.Damage<IceComet>());
+    }
+
+    /// <summary>
+    /// With Cold Shower and Avalanche, a free comet from Cold Shower counts as a struck Ice Comet, so it can be followed by extra comets.
+    ///
+    /// The engine's source is "per the user" (ColdShower.cs). TODO: confirm in the game data.
+    /// </summary>
+    [Fact]
+    public void Avalanche_Is_Triggered_By_Cold_Shower_Comets()
+    {
+        var f = StepFights.Rime(talents: [ColdShower.TalentId, Avalanche.TalentId]);
+        f.ForceProcs(key => key == ColdShower.ProcKey || key == Avalanche.ProcKey ? true : key == Avalanche.SecondProcKey ? false : null);
+
+        f.Cast<FreezingTorrent>(); // a Cold Shower comet per tick, each followed by 1 Avalanche comet
+        f.Wait(5.0); // the comets fall
+
+        Assert.Equal(2 * f.Damage<FreezingTorrent>().Count, f.Damage<IceComet>().Count);
     }
 
     // ---- Coalescing Frost (its area damage reduction is in RimeAbilities.cs)
