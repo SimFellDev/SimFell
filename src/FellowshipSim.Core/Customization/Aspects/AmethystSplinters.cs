@@ -101,7 +101,7 @@ public class AmethystSplinters : Aspect
                 double left = s.TickValue * (s.EndsAt - now).TotalSeconds / TickPeriodSeconds;
                 s.TickValue = (left + dmg.Amount * share) / BaseTicks;
                 s.EndsAt = now + SimTime.FromSeconds(DurationSeconds);
-                running.RestartDuration(ctx, DurationSeconds);
+                running.Refresh(ctx, DurationSeconds);
                 return;
             }
             splinters[dmg.Target] = s = new Splinter { TickValue = dmg.Amount * share / BaseTicks, EndsAt = now + SimTime.FromSeconds(DurationSeconds) };

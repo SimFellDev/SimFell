@@ -46,6 +46,8 @@ public sealed class ReplayDriver
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability, now.TotalSeconds);
         // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
         _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
+        // Logged pulses fire at their log hits (FireDefensiveProcs), so the hero's own chains for them stay off.
+        _hero.PulsesFollowLog = true;
     }
 
     public SimulationContext Context => _ctx;
@@ -80,6 +82,7 @@ public sealed class ReplayDriver
         StartFromLoggedResources();
         _hero.BeginFight(_ctx);
         FollowSituationalAuras();
+        FireDefensiveProcs();
         CarryOverAuras();
 
         // An enemy's arrival is only known from its first event in the log, so it was there a little earlier.
@@ -212,7 +215,7 @@ public sealed class ReplayDriver
 
             case CommandKind.EnemyDemise:
                 var enemy = _ctx.FindEnemy(cmd.Enemy!.Id, cmd.Enemy.Instance);
-                if (enemy != null) _ctx.RemoveEnemy(enemy, defeated: cmd.Reason == "death");
+                if (enemy != null) _ctx.RemoveEnemy(enemy, defeated: cmd.Reason == "death", died: cmd.Reason == "death");
                 break;
 
             case CommandKind.ExternalAura:
@@ -296,6 +299,8 @@ public sealed class ReplayDriver
         var target = ResolveTarget(cmd.Target);
         if (target != null) _hero.CurrentTarget = target;
         else if (_hero.CurrentTarget is null or { IsSleeping: true }) _hero.CurrentTarget = _ctx.ActiveEnemies.FirstOrDefault()!;
+        // A cast the log records with no target (target -1) acts on the current target, as every cast in a sim does.
+        if (target == null && cmd.Target is null or { Id: <= 0 }) target = _hero.CurrentTarget;
 
         cancelFor.TryGetValue(cmd, out var end);
 
@@ -591,6 +596,33 @@ public sealed class ReplayDriver
         foreach (var logged in LogResources.All.Where(l => _hero.ResourceDefs.Contains(l.Resource)))
         {
             SetFromFirstReading(logged, time);
+        }
+    }
+
+    /// <summary>
+    /// Defensive procs (<see cref="Hero.DefensiveProcs"/>) fire in a replay only, at each proof of them in the log
+    /// (<see cref="ProcEvidence.Times"/>: every kind of proof a proc roll reads), less the evidence's
+    /// <see cref="ProcEvidence.Evidence.MinDelaySeconds"/>. The roll there claims the proof (<see cref="LogOutcomeSource"/>),
+    /// so a hit an engine hit already matched fires nothing.
+    /// </summary>
+    private void FireDefensiveProcs()
+    {
+        foreach (var proc in _hero.DefensiveProcs)
+        {
+            if (ProcEvidence.For(proc.ProcKey) is not { } evidence)
+            {
+                _verifier.Report(_ctx, IssueCategory.Procs, IssueEntity.Proc(proc.ProcKey), $"Defensive proc '{proc.ProcKey}' has no evidence listed in ProcEvidence; it never fires",
+                    $"proc without evidence: {proc.ProcKey}");
+                continue;
+            }
+            foreach (var (time, target) in ProcEvidence.Times(_script, evidence, _hero))
+            {
+                _ctx.Schedule(SimTime.FromSeconds(Math.Max(0.0, time - evidence.MinDelaySeconds)), c =>
+                {
+                    var enemy = target == null ? _hero.CurrentTarget : c.FindEnemy(target.Id, target.Instance) ?? _hero.CurrentTarget;
+                    if (c.Outcomes.RollProc(proc.ProcKey, 1.0, c, enemy)) proc.Fire(c, enemy);
+                }, proc.ProcKey);
+            }
         }
     }
 

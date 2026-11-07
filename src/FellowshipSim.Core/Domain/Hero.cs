@@ -47,7 +47,7 @@ public abstract class Hero : Actor
     // as they change), the accelerations and the stat block. A recharge reads its rate again only after one of them changed;
     // the rate it would read is the rate it has. Each input is its own field and is compared on its own: nearly every read
     // finds them unchanged.
-    private int _rateRecovery, _rateHaste, _rateHasteRating, _rateAccelerations, _rateCompounds, _rateAccelerationAuras, _rateStatsVersion;
+    private int _rateRecovery, _rateHaste, _rateHasteRating, _rateAccelerations, _rateBonuses, _rateCompounds, _rateAccelerationAuras, _rateStatsVersion;
     private StatBlock? _rateStats;
     private long _rateInputsVersion;
     private int _accelerationAuraChanges;
@@ -63,13 +63,14 @@ public abstract class Hero : Actor
             hasteRating = Auras.StatVersion(StatType.HasteRating);
         var stats = Stats;
         if (recovery != _rateRecovery || haste != _rateHaste || hasteRating != _rateHasteRating
-            || CooldownAccelerations.Count != _rateAccelerations || CooldownRecoveryCompounds.Count != _rateCompounds
+            || CooldownAccelerations.Count != _rateAccelerations || CooldownRecoveryBonuses.Count != _rateBonuses
+            || CooldownRecoveryCompounds.Count != _rateCompounds
             || _accelerationAuraChanges != _rateAccelerationAuras
             || !ReferenceEquals(stats, _rateStats) || stats.Version != _rateStatsVersion)
         {
             (_rateRecovery, _rateHaste, _rateHasteRating) = (recovery, haste, hasteRating);
-            (_rateAccelerations, _rateCompounds, _rateAccelerationAuras, _rateStats, _rateStatsVersion) =
-                (CooldownAccelerations.Count, CooldownRecoveryCompounds.Count, _accelerationAuraChanges, stats, stats.Version);
+            (_rateAccelerations, _rateBonuses, _rateCompounds, _rateAccelerationAuras, _rateStats, _rateStatsVersion) =
+                (CooldownAccelerations.Count, CooldownRecoveryBonuses.Count, CooldownRecoveryCompounds.Count, _accelerationAuraChanges, stats, stats.Version);
             _rateInputsVersion++;
         }
         return _rateInputsVersion;
@@ -116,6 +117,40 @@ public abstract class Hero : Actor
     /// keeps them up all fight; a replay applies and removes them when the log does.
     /// </summary>
     public List<AuraDef> SituationalAuras { get; } = new();
+
+    private readonly List<DefensiveProc> _defensiveProcs = new();
+
+    /// <summary>Procs the log proves: they fire in a replay only, at each proof in the log.</summary>
+    public IReadOnlyList<DefensiveProc> DefensiveProcs => _defensiveProcs;
+
+    /// <summary>
+    /// Declares a proc the log proves. It fires in a replay only: <paramref name="fire"/> runs at each proof of
+    /// <paramref name="procKey"/> in the log (its proc evidence entry, of any kind a proc roll reads), with the proof's
+    /// enemy, or the current target for a proof without one. <paramref name="fire"/> deals the proc's damage (Xavian's
+    /// Solaris, through <see cref="DealDefensiveProcHit"/>) or does what else the proc does (Helena's Second Wind buff).
+    /// </summary>
+    public void AddDefensiveProc(string procKey, Action<SimulationContext, EnemyTarget?> fire) =>
+        _defensiveProcs.Add(new DefensiveProc(procKey, fire));
+
+    /// <summary>
+    /// Deals one hit of a defensive proc whose amount the log gives: the log's hit
+    /// (<see cref="IOutcomeSource.LoggedHitAmount"/>), in an exact replay and in free dice.
+    /// </summary>
+    public double DealDefensiveProcHit(SimulationContext ctx, EnemyTarget enemy, int damageLogId, string abilityName) =>
+        ctx.ApplyDamage(this, enemy, ctx.Outcomes.LoggedHitAmount(damageLogId, enemy, ctx), damageLogId, abilityName, canCrit: false, 0.0, 1.0);
+
+    /// <summary>
+    /// True in a replay (exact or free dice), where every logged pulse (<see cref="AddLoggedPulse"/>) fires at its log hits;
+    /// hero code runs the pulse's own periodic chain while it is false, in a sim.
+    /// </summary>
+    public bool PulsesFollowLog { get; set; }
+
+    /// <summary>
+    /// Declares a pulse whose timing the log gives (Xavian's Aura of Solace). A replay calls <paramref name="pulse"/> at
+    /// each group of its log hits (the hit evidence of <paramref name="procKey"/>, as for <see cref="AddDefensiveProc"/>),
+    /// with <see cref="PulsesFollowLog"/> true. In a sim the hero code's own periodic chain deals the pulses.
+    /// </summary>
+    public void AddLoggedPulse(string procKey, Action<SimulationContext, EnemyTarget?> pulse) => AddDefensiveProc(procKey, pulse);
 
     /// <summary>
     /// The <see cref="SituationalAuras"/> up only in combat with a boss (Ruby's Blessing of the Conqueror): a sim without a
@@ -171,10 +206,13 @@ public abstract class Hero : Actor
     /// <summary>Cooldown acceleration for specific abilities (a fraction added to the recovery rate).</summary>
     public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
 
+    /// <summary>Multiplier sources of the Cooldown Recovery attribute, whose bonus part the game calculates (Invictus).</summary>
+    public List<Func<SimTime, double>> CooldownRecoveryBonuses { get; } = new();
+
     /// <summary>MultiplyCompound sources of the Cooldown Recovery attribute, whose value the game calculates (Event Horizon).</summary>
     public List<Func<SimTime, double>> CooldownRecoveryCompounds { get; } = new();
 
-    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> or <see cref="CooldownRecoveryCompounds"/> entry reads, other than through haste (e.g. Kill Em All).</summary>
+    /// <summary>Keys of the auras a cooldown rate source reads, other than through haste (e.g. Kill Em All).</summary>
     public HashSet<string> CooldownAccelerationAuraKeys { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Seconds added to Spirit of Heroism.</summary>
@@ -194,6 +232,12 @@ public abstract class Hero : Actor
     /// </summary>
     public static readonly AuraDef SpiritOfHeroism = AuraDef.Effect("Spirit of Heroism", SpiritOfHeroismEffectId, SpiritOfHeroismSeconds,
         modifiers: StatModifier.Add(StatType.Haste, SpiritOfHeroismHaste)) with { KeepsOnDeath = true };
+
+    /// <summary>
+    /// Spirit of Heroism aura of this hero's Spirit ability: <see cref="SpiritOfHeroism"/>, or the hero's own where its
+    /// Spirit ability grants another effect.
+    /// </summary>
+    public virtual AuraDef SpiritOfHeroismAura => SpiritOfHeroism;
 
     /// <summary>A hit of the hero landed. Handlers run in the order they subscribed, with those of <see cref="OnDamageDealtBy"/> and <see cref="Ability.Hit"/>.</summary>
     public event DamageDealtHandler? OnDamageDealt
@@ -502,7 +546,7 @@ public abstract class Hero : Actor
     /// Game data sets the limit. The game adds time per stack to the effect's total and
     /// stops at the limit, so a stack past that leaves the expiry. Combat logs (23 Mara fights of data/fights): no buff runs
     /// over the limit, and the buffs at the highest stack counts end at it. T2qLPpmMkrAtJ9B1 fight 18: applied 95.261,
-    /// removed 115.267.
+    /// removed 115.267. The removal of 191 of Rime's 193 chains of 2 or more stacks and 939 of Helena's 940 fits it.
     /// </summary>
     public const double RisingSpiritDurationLimitSeconds = 20.0;
 
@@ -539,7 +583,7 @@ public abstract class Hero : Actor
     /// <summary>Activates Spirit of Heroism and the auras that last while it does.</summary>
     public void ActivateSpiritOfHeroism(SimulationContext ctx)
     {
-        var heroism = SpiritOfHeroism.WithDuration(SpiritOfHeroismSeconds + SpiritOfHeroismDurationBonus);
+        var heroism = SpiritOfHeroismAura.WithDuration(SpiritOfHeroismAura.Duration.TotalSeconds + SpiritOfHeroismDurationBonus);
         var applied = Auras.Apply(heroism, ctx.CurrentTime);
         foreach (var aura in SpiritOfHeroismAuras) Auras.Apply(aura, ctx.CurrentTime);
         SpiritOfHeroismStarted?.Invoke(ctx);
@@ -572,11 +616,12 @@ public abstract class Hero : Actor
 
     /// <summary>
     /// The Cooldown Recovery attribute: multiplier sources each add their bonus part (Chronoshift, Strand of
-    /// Eternity), and each compound source multiplies the sum (Event Horizon).
+    /// Eternity, Invictus), and each compound source multiplies the sum (Event Horizon).
     /// </summary>
     public double CooldownRecovery(SimTime now)
     {
         double recovery = 1.0 + Auras.SumBonuses(StatType.CooldownRecovery, now);
+        foreach (var bonus in CooldownRecoveryBonuses) recovery += bonus(now);
         foreach (var compound in CooldownRecoveryCompounds) recovery *= compound(now);
         return recovery;
     }

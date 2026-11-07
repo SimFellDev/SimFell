@@ -1,0 +1,143 @@
+{
+  "name": "simfell-simc",
+  "displayName": "SimFell .simc",
+  "description": "Colours, problems and completion for every line of SimFell's .simc files, from SimFell's own parsers.",
+  "version": "0.1.0",
+  "publisher": "simfell",
+  "private": true,
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "build": "esbuild extension.js --bundle --platform=node --format=cjs --external:vscode --minify --outfile=dist/extension.js",
+    "package": "node package.mjs"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "simc",
+        "aliases": [
+          "SimFell profile",
+          "simc"
+        ],
+        "extensions": [
+          ".simc"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[simc]": {
+        "editor.semanticHighlighting.enabled": true,
+        "editor.wordBasedSuggestions": "off"
+      },
+      "editor.semanticTokenColorCustomizations": {
+        "rules": {
+          "aplNumber:simc": {
+            "foreground": "#5fd3bf"
+          },
+          "aplOperator:simc": {
+            "foreground": "#e0b04e"
+          },
+          "aplNamed:simc": {
+            "foreground": "#b99cf0"
+          },
+          "aplResource:simc": {
+            "foreground": "#6fb3f2"
+          },
+          "aplBuff:simc": {
+            "foreground": "#4cc483"
+          },
+          "aplDebuff:simc": {
+            "foreground": "#f28bb5"
+          },
+          "aplCooldown:simc": {
+            "foreground": "#6fd0e0"
+          },
+          "aplFunction:simc": {
+            "foreground": "#e0b04e"
+          },
+          "aplUnknown:simc": {
+            "foreground": "#f87191",
+            "underline": true
+          },
+          "aplComment:simc": {
+            "foreground": "#a1a1aa",
+            "italic": true
+          },
+          "aplList:simc": {
+            "foreground": "#f2a65a"
+          },
+          "aplKeyword:simc": {
+            "foreground": "#9aa5ce"
+          }
+        }
+      }
+    },
+    "semanticTokenTypes": [
+      {
+        "id": "aplNumber",
+        "description": "An action list\u0027s number token."
+      },
+      {
+        "id": "aplOperator",
+        "description": "An action list\u0027s operator token."
+      },
+      {
+        "id": "aplParenthesis",
+        "description": "An action list\u0027s parenthesis token."
+      },
+      {
+        "id": "aplNamed",
+        "description": "An action list\u0027s named token."
+      },
+      {
+        "id": "aplResource",
+        "description": "An action list\u0027s resource token."
+      },
+      {
+        "id": "aplBuff",
+        "description": "An action list\u0027s buff token."
+      },
+      {
+        "id": "aplDebuff",
+        "description": "An action list\u0027s debuff token."
+      },
+      {
+        "id": "aplCooldown",
+        "description": "An action list\u0027s cooldown token."
+      },
+      {
+        "id": "aplFunction",
+        "description": "An action list\u0027s function token."
+      },
+      {
+        "id": "aplUnknown",
+        "description": "An action list\u0027s unknown token."
+      },
+      {
+        "id": "aplComment",
+        "description": "An action list\u0027s comment token."
+      },
+      {
+        "id": "aplList",
+        "description": "An action list\u0027s list token."
+      },
+      {
+        "id": "aplKeyword",
+        "description": "An action list\u0027s keyword token."
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "11.0.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.1.0",
+    "esbuild": "0.28.2"
+  }
+}

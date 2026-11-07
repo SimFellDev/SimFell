@@ -21,6 +21,7 @@ public class ElarionReplayTests(ITestOutputHelper output)
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero == "Elarion"))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
+                if (script.Character == null) continue;
                 if (Environment.GetEnvironmentVariable("ELARION_CHARACTER_JSON") is { } characterFile)
                 {
                     File.WriteAllText(characterFile, System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));

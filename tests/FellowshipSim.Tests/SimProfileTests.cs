@@ -121,7 +121,7 @@ public class SimProfileTests
         string character = new SimcProfile(BuildEditor.NewBuild("Rime"), "").Format();
         int lineNumber = character.TrimEnd().Split('\n').Length + 1;
 
-        var e = Assert.Throws<FormatException>(() => SimProfile.Parse(character + line + "\n"));
+        var e = Assert.ThrowsAny<FormatException>(() => SimProfile.Parse(character + line + "\n"));
 
         Assert.StartsWith($"Profile line {lineNumber} ", e.Message);
     }

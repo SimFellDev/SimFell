@@ -1,5 +1,6 @@
 using FellowshipSim.Core;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Editing;
 using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.UI.Apl;
 

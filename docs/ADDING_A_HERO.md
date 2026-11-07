@@ -171,7 +171,7 @@ Hooks every hero has:
 | `hero.OnResourceGained`, `hero.OnResourceSpent`, `hero.OnResourceOverflow` | resource is gained (and from which enemy) / spent / gained past its maximum |
 | `hero.AbilityDamageMultipliers`, `hero.TargetDamageMultipliers`, `hero.TargetCritChanceBonuses` | read on every hit |
 | `hero.CooldownAccelerations` | time rates on one ability's cooldown, added outside the Cooldown Recovery attribute |
-| `hero.CooldownRecoveryCompounds` | calculated MultiplyCompound sources of the Cooldown Recovery attribute; a fixed multiplier source is a `StatType.CooldownRecovery` aura modifier |
+| `hero.CooldownRecoveryBonuses`, `hero.CooldownRecoveryCompounds` | calculated multiplier and MultiplyCompound sources of the Cooldown Recovery attribute; a fixed multiplier source is a `StatType.CooldownRecovery` aura modifier |
 | `hero.PassiveAuras` | always-on auras (stat bonuses) |
 | `hero.SituationalAuras` | auras that depend on what the engine does not simulate (your health, standing still, a boss fight): up all fight in a sim, following the log in a replay |
 | `hero.OnSpiritRefund`, `hero.SpiritOfHeroismStarted`, `hero.SpiritOfHeroismEnded` | a Spirit Refund triggers / Spirit of Heroism starts or ends |

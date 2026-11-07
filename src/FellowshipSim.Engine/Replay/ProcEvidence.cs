@@ -10,13 +10,19 @@ using FellowshipSim.Core.Heroes.Elarion.Talents;
 using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
+using FellowshipSim.Core.Heroes.Helena.Abilities;
+using FellowshipSim.Core.Heroes.Helena.Talents;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
 using FellowshipSim.Core.Heroes.Mara.Talents;
+using FellowshipSim.Core.Heroes.Meiko.Talents;
 using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Rime.Talents;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
 using FellowshipSim.Core.Heroes.Tariq.Talents;
+using FellowshipSim.Core.Heroes.Xavian;
+using FellowshipSim.Core.Heroes.Xavian.Abilities;
+using FellowshipSim.Core.Heroes.Xavian.Talents;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -47,13 +53,15 @@ public static class ProcEvidence
     /// that ability's own grant). With <paramref name="EnemyDebuffApplied"/>, the proof is instead that debuff of the
     /// player's applied or refreshed on the proc's enemy. With <paramref name="AnyEnemy"/>, a hit on any enemy is proof,
     /// not only on the proc's. With <paramref name="QuietBeforeSeconds"/>, a hit is proof only when no other hit with the ID
-    /// landed that long before it (the first hit of a chain, not a bounce of another).
+    /// landed that long before it (the first hit of a chain, not a bounce of another). With <paramref name="EachHitProves"/>,
+    /// each hit with the ID is the proof of one proc: hits in one server frame are as many procs, not one group.
     /// </summary>
     public sealed record Evidence(string ProcKey, int LogId, double DelaySeconds = 0.0, double MinDelaySeconds = 0.0, int StackJump = 0,
         int FollowingHits = 0, double FollowingSpacingSeconds = 0.0, double FollowingSlackSeconds = 0.0, ResourceDef? Resource = null, double ResourceGain = 0.0,
         Func<Hero, SimTime, double>? ResourceRegen = null, Func<Hero, int, double>? ResourceSpent = null, int ResourceGainsAtOnce = 1,
         IReadOnlyList<int>? HitTypes = null, int StackLossLogId = 0, bool StackLoss = true,
-        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false, bool AnyEnemy = false, double QuietBeforeSeconds = 0.0);
+        bool ReservesHit = false, int NotCausedByAbilityId = 0, bool EnemyDebuffApplied = false, bool AnyEnemy = false, double QuietBeforeSeconds = 0.0,
+        bool EachHitProves = false);
 
     public static readonly Evidence[] All =
     [
@@ -141,6 +149,12 @@ public static class ProcEvidence
             FollowingHits: ChainLightning.Hits + Thunderstruck.ExtraBounces - 1, FollowingSpacingSeconds: ChainLightning.BounceSeconds,
             FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
 
+        // Meiko
+        // Perfect Storm's extra kick is 0.40s after the Lashing Stormkick that procced it, on every enemy the kick struck.
+        new(PerfectStorm.ProcKey, PerfectStorm.DamageId, DelaySeconds: 0.45, MinDelaySeconds: 0.35),
+        // A Shattering Obelisk pulse is its hit, on every enemy nearby. UNVERIFIED: no combat log has the talent.
+        new(ShatteringObelisk.ProcKey, ShatteringObelisk.PulseLogId),
+
         // Mara
         // `VenomousDelight.EnergyGained` Energy at once. Between neighbouring readings in the 23 Mara fights of
         // data/fights, regeneration and a cast's cost aside, jumps of one gain occur with the talent and not without it,
@@ -175,9 +189,178 @@ public static class ProcEvidence
         new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
         // Lethal Shots takes Highwind Arrow past full crit chance: its first hit, shortly after the cast, is a grievous crit.
         new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+
+        // Xavian
+        // A Swift Reprieval stack comes with the hit that rolled it (XyGpcHjNaAzgk7mW fight 20 @ 17.238).
+        new(SunStrike.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(BlindingSlash.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(Omnistrike.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(GoldenHour.ProcKey, GoldenHour.Buff.LogId),
+        new(SunsVerdict.ProcKey, SunsVerdict.Buff.LogId),
+        // Solar Glare takes Solar Blades past 100% crit chance: its hits are grievous crits.
+        new(SolarGlare.ProcKey, SolarBlades.AbilityId, DelaySeconds: 0.1, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+        // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
+        new(Core.Heroes.Xavian.Abilities.Attack.AvoidedProcKey, Core.Heroes.Xavian.Abilities.Attack.AbilityId, DelaySeconds: 0.05,
+            HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
+        // A Parry's Counter-Attack, Hallowed Shield stack and Vanguard of Vengeance stack (defensive procs).
+        // Each Counter-Attack hit is its own Parry: two Parries in one server frame are two hits.
+        new(VanguardOfVengeance.CounterAttackProcKey, LogIds.Effect(VanguardOfVengeance.CounterAttackEffectId), EachHitProves: true),
+        new(VanguardOfVengeance.StackProcKey, VanguardOfVengeance.Buff.LogId),
+        new(HallowedShield.ProcKey, HallowedShield.Buff.LogId),
+        // Solaris: the hits of one overheal (a defensive proc).
+        new(Xavian.SolarisProcKey, Xavian.SolarisLogId),
+        // Aura of Solace: the hits of one pulse (a logged pulse).
+        new(AuraOfSolace.PulseProcKey, LogIds.Effect(AuraOfSolace.DamageEffectId)),
+
+        // Helena
+        // Each bounce of a Shield Throw is a hit on an enemy the shield has not hit yet, landing 0.03-0.2s after the hit
+        // before it (HrNZ6wQfFKGxybDR fight 1 @ 16.027). A hit lands no earlier than the engine releases it, and the first
+        // hit is released up to 0.1s after the log's, so a bounce may be logged up to 0.1s before the engine's hit lands
+        // (1p7AXmHfwV9CYMxR fight 30 @ 80.282).
+        new(ShieldThrow.BounceProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.4, MinDelaySeconds: -0.1, ReservesHit: true),
+        // A Shield Throw's first hit, released 0.3s after the cast: a log hit of the shield from 0.15s before to 0.3s after the
+        // release (0.27-0.37s after the cast in HrNZ6wQfFKGxybDR fight 1 and v8rhNxVc3PwDqzBA fight 4),
+        // with no hit of the shield in the 0.2s before it (a throw's bounces are 0.03-0.2s apart). Over the 18 fights the
+        // window of -0.1 to 0.1s leaves 1,194 log hits of the shield unproduced, this one 592.
+        new(ShieldThrow.FirstHitProcKey, ShieldThrow.AbilityId, DelaySeconds: 0.3, MinDelaySeconds: -0.15, ReservesHit: true, QuietBeforeSeconds: 0.2),
+        // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
+        new(FellowshipSim.Core.Heroes.Helena.Abilities.Attack.AvoidedProcKey, FellowshipSim.Core.Heroes.Helena.Abilities.Attack.AbilityId,
+            DelaySeconds: 0.05, HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
+        // Defensive procs (blocks and damage taken): each gain of the buff in the log, and each reflect hit.
+        new(TheBestDefense.ProcKey, TheBestDefense.Buff.LogId),
+        new(PunishingStrikes.ProcKey, PunishingStrikes.Buff.LogId),
+        new(SecondWind.ProcKey, SecondWind.Buff.LogId),
+        new(UnscarredSoul.ProcKey, LogIds.Effect(UnscarredSoul.ReflectEffectId), ReservesHit: true),
+        // Hold the Line's own Empowered Shield Slam (the log names 975 as its cause) is no proof of Sword & Board's.
+        new(SwordAndBoard.ProcKey, HoldTheLine.Empowered.LogId, NotCausedByAbilityId: HoldTheLine.AbilityId),
     ];
 
     private static readonly Dictionary<string, Evidence> ByKey = All.ToDictionary(e => e.ProcKey);
 
     public static Evidence? For(string procKey) => ByKey.GetValueOrDefault(procKey);
+
+    /// <summary>
+    /// Readings at most this far apart. Combat logs (23 Mara fights of <c>data/fights</c>): the rises above regeneration with
+    /// Venomous Delight are nearly all inside it, and none occur with no talent.
+    /// </summary>
+    public const double ResourceEvidenceWindowSeconds = 1.5;
+
+    /// <summary>
+    /// Every proof of <paramref name="evidence"/> in the log, of the kind <see cref="LogOutcomeSource.RollProc"/> reads it
+    /// as: its time and, for a proof on an enemy, that enemy. A resource rise is at its first reading. A hit proof is the
+    /// first hit of each group of hits in one server frame, with the hits that follow it; with <c>EachHitProves</c>, every hit.
+    /// </summary>
+    public static IEnumerable<(double Time, UnitRef? Target)> Times(ReplayScript script, Evidence evidence, Hero hero)
+    {
+        int player = script.Player.Id;
+        if (evidence.Resource != null)
+        {
+            foreach (var rise in ResourceRises(script.Observations.Resources.OrderBy(r => r.Time).ToList(), evidence, hero))
+            {
+                double regenPerSecond = evidence.ResourceRegen?.Invoke(hero, SimTime.FromSeconds(rise.From)) ?? 0.0;
+                if (ResourceGains(rise, evidence, regenPerSecond) > 0) yield return (rise.From, null);
+            }
+            yield break;
+        }
+        var debuffs = script.Observations.Auras.Where(a => a.AbilityId == evidence.LogId && a.Source.Id == player && a.Target.Id != player);
+        if (evidence.EnemyDebuffApplied)
+        {
+            foreach (var a in debuffs.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time)) yield return (a.Time, a.Target);
+            yield break;
+        }
+        if (evidence.StackJump > 0)
+        {
+            // Gains in one millisecond on one enemy add up (a new debuff given several stacks at once).
+            foreach (var group in debuffs.GroupBy(a => a.Target))
+            {
+                foreach (var gains in StackChanges(group).Gains.GroupBy(g => g.Event.Time))
+                {
+                    if (gains.Sum(g => g.Added) >= evidence.StackJump) yield return (gains.Key, group.Key);
+                }
+            }
+            yield break;
+        }
+        var auras = script.Observations.Auras.Where(a => a.AbilityId == evidence.LogId && a.Target.Id == player && a.Source.Id == player).ToList();
+        if (auras.Count > 0)
+        {
+            foreach (var gain in auras.Where(a => a.IsGain && (evidence.NotCausedByAbilityId == 0 || a.ExtraAbilityId != evidence.NotCausedByAbilityId))
+                         .OrderBy(a => a.Time))
+            {
+                yield return (gain.Time, null);
+            }
+            yield break;
+        }
+        double groupEnd = double.NegativeInfinity;
+        foreach (var hit in script.Observations.Damage.Where(d => d.AbilityId == evidence.LogId).OrderBy(d => d.Time))
+        {
+            if (hit.Time <= groupEnd && !evidence.EachHitProves) continue;
+            groupEnd = hit.Time + PeriodicEffect.ServerFrameSeconds
+                       + evidence.FollowingHits * (1.5 * evidence.FollowingSpacingSeconds + evidence.FollowingSlackSeconds);
+            yield return (hit.Time, hit.Target);
+        }
+    }
+
+    /// <summary>
+    /// The rises of <paramref name="evidence"/>'s resource between neighbouring readings at most
+    /// <see cref="ResourceEvidenceWindowSeconds"/> apart that can hold a gain. A reading at the resource's maximum starts none.
+    /// </summary>
+    public static List<ResourceRise> ResourceRises(IReadOnlyList<LogResourceSnapshot> readings, Evidence evidence, Hero hero)
+    {
+        var rises = new List<ResourceRise>();
+        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
+        if (log == null) return rises;
+        string type = log.LogResourceType.ToString();
+        double max = evidence.Resource!.Max;
+        LogResourceSnapshot? previous = null;
+        double previousAmount = 0;
+        foreach (var reading in readings)
+        {
+            if (!reading.Resources.TryGetValue(type, out var value)) continue;
+            double amount = log.EngineAmount(value);
+            if (previous != null && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds && previousAmount < max - 0.5)
+            {
+                bool fromCast = previous.Event == "cast" && previous.Activation;
+                double spent = fromCast && previous.AbilityId is { } abilityId ? evidence.ResourceSpent?.Invoke(hero, abilityId) ?? 0.0 : 0.0;
+                double rise = amount - previousAmount + spent;
+                if (rise >= 0.7 * evidence.ResourceGain) rises.Add(new ResourceRise(previous.Time, reading.Time, rise, fromCast, amount >= max - 0.5));
+            }
+            previous = reading;
+            previousAmount = amount;
+        }
+        return rises;
+    }
+
+    /// <summary>
+    /// The gains of <paramref name="evidence"/> in <paramref name="rise"/> beyond <paramref name="regenPerSecond"/>, within a
+    /// slack: 0 for a rise that fits no number of gains up to <c>ResourceGainsAtOnce</c>, and at most 1 for a rise to the maximum.
+    /// </summary>
+    public static int ResourceGains(ResourceRise rise, Evidence evidence, double regenPerSecond)
+    {
+        double excess = rise.Amount - regenPerSecond * (rise.To - rise.From);
+        double slack = 0.3 * evidence.ResourceGain;
+        if (rise.ToMaximum) return excess >= evidence.ResourceGain - slack ? 1 : 0;
+        int gains = (int)Math.Round(excess / evidence.ResourceGain);
+        return gains <= evidence.ResourceGainsAtOnce && Math.Abs(excess - gains * evidence.ResourceGain) <= slack ? Math.Max(gains, 0) : 0;
+    }
+
+    /// <summary>One rise of a resource between two of the log's readings, a reading at a cast counting its cost back.</summary>
+    public readonly record struct ResourceRise(double From, double To, double Amount, bool FromCast, bool ToMaximum);
+
+    /// <summary>
+    /// One debuff's events on one enemy: each gain with the stacks it added, and the times it lost stacks, in time order.
+    /// </summary>
+    public static (List<(LogAura Event, int Added)> Gains, List<double> Losses) StackChanges(IEnumerable<LogAura> events)
+    {
+        int stacks = 0;
+        var gains = new List<(LogAura Event, int Added)>();
+        var losses = new List<double>();
+        foreach (var a in events.OrderBy(a => a.Time))
+        {
+            int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
+            if (a.IsGain && now > stacks) gains.Add((a, now - stacks));
+            if (a.IsLoss && now < stacks) losses.Add(a.Time);
+            stacks = now;
+        }
+        return (gains, losses);
+    }
 }

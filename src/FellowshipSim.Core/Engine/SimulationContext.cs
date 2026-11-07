@@ -254,13 +254,16 @@ public class SimulationContext
         return true;
     }
 
-    /// <summary>An enemy dies (<paramref name="defeated"/>) or leaves combat.</summary>
-    public void RemoveEnemy(EnemyTarget enemy, bool defeated = false)
+    /// <summary>
+    /// An enemy leaves combat: <paramref name="defeated"/> for one the party defeats, <paramref name="died"/> for one that dies.
+    /// </summary>
+    public void RemoveEnemy(EnemyTarget enemy, bool defeated = false, bool died = false)
     {
         if (enemy.IsSleeping) return;
         EnemyDemising?.Invoke(this, enemy);
         if (defeated) Player.TriggerEnemyDefeated(this, enemy);
         enemy.Demise(this);
+        enemy.HasDied = died;
         if (Player.CurrentTarget == enemy)
         {
             Player.CurrentTarget = ActiveEnemies.FirstOrDefault()!;
@@ -670,6 +673,7 @@ public class SimulationContext
         {
             enemy.Auras.ClearAll();
             enemy.IsSleeping = false;
+            enemy.HasDied = false;
         }
     }
 }

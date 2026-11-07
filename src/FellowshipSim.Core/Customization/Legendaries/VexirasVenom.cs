@@ -98,7 +98,7 @@ public class VexirasVenom : Legendary
             {
                 dot.TickValue = RefreshedTick(dot.TickValue, damage, (dot.EndsAt - now).TotalSeconds, (timer.DueTime - now).TotalSeconds, (now - running.LastTickTime).TotalSeconds);
                 dot.EndsAt = now + SimTime.FromSeconds(VenomSeconds);
-                running.RestartDuration(ctx, VenomSeconds);
+                running.Refresh(ctx, VenomSeconds);
                 target.Auras.Apply(Debuff, now);
                 return;
             }

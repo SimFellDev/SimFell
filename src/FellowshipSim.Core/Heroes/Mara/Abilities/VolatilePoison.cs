@@ -76,10 +76,9 @@ public class VolatilePoison : MaraAbility
         double duration = ctx.Outcomes.RollDuration(new EffectDurationRequest(Owner, target, DamageLogId, MinDurationSeconds, MaxDurationSeconds), ctx);
         double period = duration / BaseTicks;
         target.Auras.Apply(Debuff, ctx.CurrentTime);
-        if (_active.GetValueOrDefault(target) is { IsActive: true } running)
+        if (_active.GetValueOrDefault(target) is { IsActive: true } running && running.Refresh(ctx, duration))
         {
             running.ChangePeriod(period);
-            running.RestartDuration(ctx, duration);
             return;
         }
         PeriodicEffect? poison = null;
@@ -102,8 +101,12 @@ public class VolatilePoison : MaraAbility
             },
             (c, stopped) =>
             {
-                _active.Remove(target);
-                target.Auras.Remove(Debuff, c.CurrentTime);
+                // A poison applied after this one's duration ran out holds the enemy's place and its debuff.
+                if (_active.GetValueOrDefault(target) == poison)
+                {
+                    _active.Remove(target);
+                    target.Auras.Remove(Debuff, c.CurrentTime);
+                }
                 if (stopped) return;
                 c.Schedule(SimTime.FromSeconds(c.Outcomes.RollDelay(EruptionMaxDelaySeconds, c)), cc =>
                 {

@@ -96,6 +96,12 @@ public interface IOutcomeSource
 
     /// <summary>How long the hero takes to cast after <paramref name="hold"/> ends (<see cref="SimulationContext.Reactions"/>).</summary>
     SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx);
+
+    /// <summary>
+    /// Damage of a defensive proc's hit on <paramref name="target"/> now, whose amount the log gives
+    /// (<see cref="Hero.DealDefensiveProcHit"/>): the log hit's in a replay, 0 in a sim.
+    /// </summary>
+    double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx);
 }
 
 /// <summary>
@@ -123,8 +129,14 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
-        // A hit at an enemy that has left combat (it died, or its pull duration ended) misses, and rolls nothing.
-        if (hit.Target is { IsSleeping: true }) return new HitOutcome(false, Missed: true);
+        // A hit at an enemy that has left combat misses and rolls nothing. The one exception is the tick of an effect with
+        // PeriodicEffect.TicksAfterTargetDies: its tick hits its own target after that target dies.
+        if (hit.Target is { IsSleeping: true } left
+            && !(left.HasDied && ctx.CurrentPeriodicEffect is { TicksAfterTargetDies: true } effect
+                 && effect.DamageLogId == hit.AbilityId && effect.Target == left))
+        {
+            return new HitOutcome(false, Missed: true);
+        }
         // A forced crit rolls nothing: no crit and no spread.
         if (hit.ForcedCrit is { } forced) return new HitOutcome(forced);
         bool isCrit = hit.CanCrit && _rng.Roll(hit.CritChance);
@@ -149,6 +161,9 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) =>
         reactions.Delay(hold, _rng.NextDouble(), _rng.NextDouble());
+
+    /// <summary>0: defensive procs fire in a replay only.</summary>
+    public virtual double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) => 0.0;
 }
 
 /// <summary>The simulation's random numbers: xoshiro256** (Blackman and Vigna, 2018), seeded through SplitMix64.</summary>

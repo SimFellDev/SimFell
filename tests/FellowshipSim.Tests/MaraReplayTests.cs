@@ -21,6 +21,7 @@ public class MaraReplayTests(ITestOutputHelper output)
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero == "Mara"))
             {
                 var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
+                if (script.Character == null) continue;
                 if (Environment.GetEnvironmentVariable("MARA_CHARACTER_FOLDER") is { } characterFolder)
                 {
                     File.WriteAllText(Path.Combine(characterFolder, $"character_{reportCode}_{fightId}.json"), System.Text.Json.JsonSerializer.Serialize(script.Character, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using FellowshipSim.Core.APL;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
 
@@ -58,7 +59,12 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     /// <summary>Length of each training dummy fight of a profile with no <c>duration</c> line, in seconds.</summary>
     public const double DefaultDurationSeconds = 300;
 
-    private static readonly HashSet<string> DungeonKeys = ["dungeon", "difficulty", "time_limit"];
+    /// <summary>Every setting's key.</summary>
+    public static IReadOnlyList<string> SettingNames { get; } =
+        [Iterations, Threads, Seed, Duration, Targets, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
+
+    /// <summary>The settings that are <c>true</c> or <c>false</c>.</summary>
+    public static IReadOnlyList<string> BoolSettingNames { get; } = [HealthFollowsTime, Boss, ReactionDelays];
 
     /// <summary>A profile with every setting of <paramref name="settings"/>.</summary>
     public SimProfile(SimcProfile profile, SimSettings settings) : this(profile, settings, AllKeys(settings))
@@ -102,7 +108,7 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
             int eq = line.IndexOf('=');
             string key = eq > 0 ? line[..eq].Trim().TrimEnd('+') : "";
             string[] part;
-            if (DungeonKeys.Contains(key) || key.StartsWith("pull.", StringComparison.Ordinal))
+            if (IsDungeonKey(key))
             {
                 // A dungeon= line starts a dungeon, which replaces the one before.
                 if (key == Dungeon) Array.Fill(dungeon, "");
@@ -193,8 +199,58 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
         return s.ToString();
     }
 
-    private static bool IsSettingKey(string key) => key is Iterations or Threads or Seed or Duration or Targets or LengthVariance
-        or HealthFollowsTime or Boss or StartingSpirit or ReactionDelays or ProcReaction;
+    /// <summary>
+    /// Every problem of <paramref name="text"/>, from <see cref="Parse"/>: a line at fault is blanked and the text read again,
+    /// so each bad line has its problem. A text of settings or a dungeon alone has no character, and needs no hero line.
+    /// </summary>
+    public static IReadOnlyList<SimProfileProblem> Problems(string text)
+    {
+        string[] textLines = text.Split('\n');
+        string[] lines = [.. textLines];
+        string heroLine = lines.Any(IsCharacterLine) ? "" : $"\n{AplNames.Slug(BuildHeroes.Names[0])}=\"\"";
+        var problems = new List<SimProfileProblem>();
+        while (true)
+        {
+            try
+            {
+                Parse(string.Join('\n', lines) + heroLine);
+                return problems;
+            }
+            catch (SimcLineException e)
+            {
+                problems.Add(new SimProfileProblem(e.Line, e.Problem));
+                // Without the hero, every character line has this problem.
+                if (e.Problem == SimcProfile.NoHeroProblem) return problems;
+                lines[e.Line - 1] = "";
+            }
+            catch (FormatException e)
+            {
+                // A problem of the whole dungeon: the settings are still to read. A dungeon with a bad line blanked can
+                // lack what that line had, so this problem counts only with every dungeon line read.
+                if (!problems.Any(p => p.Line is { } line && IsDungeonLine(textLines[line - 1]))) problems.Add(new SimProfileProblem(null, e.Message));
+                if (!lines.Any(IsDungeonLine)) return problems;
+                lines = lines.Select(l => IsDungeonLine(l) ? "" : l).ToArray();
+            }
+        }
+    }
+
+    /// <summary>The trimmed <paramref name="line"/>'s key, without a <c>+</c> before its <c>=</c>; empty for a line with no <c>=</c>.</summary>
+    public static string KeyOf(string line) => line.IndexOf('=') is > 0 and var eq ? line[..eq].Trim().TrimEnd('+') : "";
+
+    /// <summary>True for a line of the character: no blank line, comment, action line, setting or dungeon line.</summary>
+    public static bool IsCharacterLine(string line)
+    {
+        string trimmed = line.Trim();
+        string key = KeyOf(trimmed);
+        return trimmed.Length > 0 && !trimmed.StartsWith('#') && !SimcProfile.IsActionLine(trimmed) && !IsSettingKey(key) && !IsDungeonKey(key);
+    }
+
+    /// <summary>True for a line of the dungeon.</summary>
+    public static bool IsDungeonLine(string line) => IsDungeonKey(KeyOf(line.Trim()));
+
+    private static bool IsDungeonKey(string key) => DungeonProfile.Keys.Contains(key) || key.StartsWith(DungeonProfile.PullPrefix, StringComparison.Ordinal);
+
+    private static bool IsSettingKey(string key) => SettingNames.Contains(key);
 
     private static HashSet<string> AllKeys(SimSettings settings)
     {
@@ -205,8 +261,8 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
         return keys;
     }
 
-    private static FormatException Error(int lineNumber, string line, string problem) =>
-        new($"Profile line {lineNumber} '{line}': {problem}.");
+    private static SimcLineException Error(int lineNumber, string line, string problem) =>
+        new("Profile", lineNumber, line, problem);
 
     private static int Integer(string value, int min) =>
         int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int n) && n >= min

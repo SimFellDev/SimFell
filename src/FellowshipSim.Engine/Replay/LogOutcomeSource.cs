@@ -42,19 +42,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
                      .Where(a => a.Source.Id == script.Player.Id && a.Target.Id != script.Player.Id)
                      .GroupBy(a => (a.AbilityId, a.Target)))
         {
-            int stacks = 0;
-            var list = new List<(LogAura Event, int Added)>();
-            var losses = new List<double>();
             _enemyDebuffApplications[group.Key] = group.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time).ToList();
-            foreach (var a in group.OrderBy(a => a.Time))
-            {
-                int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
-                if (a.IsGain && now > stacks) list.Add((a, now - stacks));
-                if (a.IsLoss && now < stacks) losses.Add(a.Time);
-                stacks = now;
-            }
-            _enemyStackGains[group.Key] = list;
-            _enemyStackLosses[group.Key] = losses;
+            (_enemyStackGains[group.Key], _enemyStackLosses[group.Key]) = ProcEvidence.StackChanges(group);
         }
         foreach (var c in script.Commands.Where(c => c.Kind == CommandKind.EnemyDemise && c.Enemy != null))
         {
@@ -205,6 +194,10 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     /// <summary>A replay casts at the log's times, so the player's delays are already in them.</summary>
     public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => SimTime.Zero;
+
+    /// <summary>The amount of the log hit a defensive proc's hit on <paramref name="target"/> now takes (0 without one).</summary>
+    public double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) =>
+        _hits.Next(damageLogId, new UnitRef(target.Id, target.InstanceId), ctx.CurrentTime.TotalSeconds, _options)?.UnblockedAmount ?? 0.0;
 
     // ------------------------------------------------------------------ periodic ticks
 
@@ -369,7 +362,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     /// <summary>
     /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within a slack) between two
-    /// neighbouring readings at most <see cref="ResourceEvidenceWindowSeconds"/> apart, the first at most a frame after the roll, beyond what it regenerates
+    /// neighbouring readings at most <see cref="ProcEvidence.ResourceEvidenceWindowSeconds"/> apart, the first at most a frame after the roll, beyond what it regenerates
     /// meanwhile at the rate now. A reading at a cast is before its cost, so a rise from one counts the cost back. A rise from
     /// a cast's reading has no proc before the cast: the replay checks the resource at that reading. A rise of several gains
     /// is proof of as many procs, and a rise to the maximum of one.
@@ -378,7 +371,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
     {
         if (!_resourceRises.TryGetValue(evidence, out var rises))
         {
-            rises = ResourceRises(evidence, ctx.Player);
+            rises = ProcEvidence.ResourceRises(_resourceReadings, evidence, ctx.Player);
             _resourceRises[evidence] = rises;
         }
         double now = ctx.CurrentTime.TotalSeconds;
@@ -389,10 +382,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
             if (rise.To < now - _options.SameTickSeconds) continue;
             if (rise.From > now + PeriodicEffect.ServerFrameSeconds) break;
             if (rise.FromCast && rise.From >= now) continue;
-            double excess = rise.Amount - regenPerSecond * (rise.To - rise.From);
-            double slack = 0.3 * evidence.ResourceGain;
-            int gains = rise.ToMaximum ? (excess >= evidence.ResourceGain - slack ? 1 : 0) : (int)Math.Round(excess / evidence.ResourceGain);
-            if (gains < 1 || gains > evidence.ResourceGainsAtOnce || (!rise.ToMaximum && Math.Abs(excess - gains * evidence.ResourceGain) > slack)) continue;
+            int gains = ProcEvidence.ResourceGains(rise, evidence, regenPerSecond);
             int claimed = _claimedResourceRises.GetValueOrDefault((evidence, i));
             if (claimed >= gains) continue;
             _claimedResourceRises[(evidence, i)] = claimed + 1;
@@ -401,42 +391,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         return false;
     }
 
-    /// <summary>The rises between neighbouring readings that can hold a gain: a reading at the resource's maximum starts none.</summary>
-    private List<ResourceRise> ResourceRises(ProcEvidence.Evidence evidence, Hero hero)
-    {
-        var rises = new List<ResourceRise>();
-        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
-        if (log == null) return rises;
-        string type = log.LogResourceType.ToString();
-        double max = evidence.Resource!.Max;
-        LogResourceSnapshot? previous = null;
-        double previousAmount = 0;
-        foreach (var reading in _resourceReadings)
-        {
-            if (!reading.Resources.TryGetValue(type, out var value)) continue;
-            double amount = log.EngineAmount(value);
-            if (previous != null && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds && previousAmount < max - 0.5)
-            {
-                bool fromCast = previous.Event == "cast" && previous.Activation;
-                double spent = fromCast && previous.AbilityId is { } abilityId ? evidence.ResourceSpent?.Invoke(hero, abilityId) ?? 0.0 : 0.0;
-                double rise = amount - previousAmount + spent;
-                if (rise >= 0.7 * evidence.ResourceGain) rises.Add(new ResourceRise(previous.Time, reading.Time, rise, fromCast, amount >= max - 0.5));
-            }
-            previous = reading;
-            previousAmount = amount;
-        }
-        return rises;
-    }
-
-    private readonly record struct ResourceRise(double From, double To, double Amount, bool FromCast, bool ToMaximum);
-
-    /// <summary>
-    /// Readings at most this far apart. Combat logs (23 Mara fights of <c>data/fights</c>): the rises above regeneration with
-    /// Venomous Delight are nearly all inside it, and none occur with no talent.
-    /// </summary>
-    private const double ResourceEvidenceWindowSeconds = 1.5;
     private readonly List<LogResourceSnapshot> _resourceReadings = [];
-    private readonly Dictionary<ProcEvidence.Evidence, List<ResourceRise>> _resourceRises = new();
+    private readonly Dictionary<ProcEvidence.Evidence, List<ProcEvidence.ResourceRise>> _resourceRises = new();
     private readonly Dictionary<(ProcEvidence.Evidence, int), int> _claimedResourceRises = new();
 
     /// <summary>Proof of a proc that adds extra stacks: the debuff on <paramref name="target"/> gains <paramref name="jump"/> stacks at once.</summary>
@@ -502,6 +458,12 @@ public sealed class LogOutcomeSource : IOutcomeSource
             _claimedDamageEvidence.Add(hit);
             return true;
         }
+        if (evidence.EachHitProves)
+        {
+            // The hit proves this proc alone; the other hits of its server frame are other procs.
+            _claimedDamageEvidence.Add(hit);
+            return true;
+        }
         // The whole multi-target group is one proc.
         foreach (var h in _hits.GroupOf(hit, _options)) _claimedDamageEvidence.Add(h);
         // So are the hits the proc deals after it, on any enemy (a summoned attacker's later attacks): each the first free
@@ -547,6 +509,23 @@ public sealed class HitLedger
 
     /// <summary>Every log hit, in time order.</summary>
     public IReadOnlyList<LogDamage> All => _all;
+
+    /// <summary>
+    /// The log hit <see cref="Match"/> takes for an engine hit with no periodic effect and no reserved hit, without
+    /// matching it.
+    /// </summary>
+    public LogDamage? Next(int logId, UnitRef target, double engineTime, ReplayOptions options)
+    {
+        if (!_byKey.TryGetValue((logId, target.Id, target.Instance), out var list)) return null;
+        foreach (var h in list)
+        {
+            if (h.Time < engineTime - options.HitEarlySeconds) continue;
+            if (h.Time > engineTime + options.LateSecondsOf(logId)) break;
+            if (_matched.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, null)) continue;
+            return h;
+        }
+        return null;
+    }
 
     /// <param name="owner">The periodic effect ticking now: its reserved log hit on the target is taken first.</param>
     /// <param name="reservedOnly">Take only a log hit <paramref name="owner"/> reserved (the hit of a tick that follows the log).</param>

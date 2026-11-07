@@ -156,5 +156,6 @@ public class VolatilePoisonTests
         public double RollDelay(double maxSeconds, SimulationContext ctx) => EruptionDelay;
         public void HitFinished(SimulationContext ctx) => inner.HitFinished(ctx);
         public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => inner.ReactionDelay(hold, reactions, ctx);
+        public double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) => inner.LoggedHitAmount(damageLogId, target, ctx);
     }
 }

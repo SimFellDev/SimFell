@@ -31,4 +31,20 @@ public class RisingSpiritTests
         Assert.Equal(7, aura.Stacks);
         Assert.Equal(SimTime.FromSeconds(95.261 + 20 + AuraContainer.ExpiryLagSeconds), aura.ExpiresAt);
     }
+
+    [Fact]
+    public void Stacks_Add_Two_Seconds_Each_Until_The_Limit()
+    {
+        var auras = new AuraContainer();
+        var aura = auras.Apply(Hero.RisingSpirit, SimTime.Zero);
+        double lag = AuraContainer.ExpiryLagSeconds;
+        Assert.Equal(Hero.RisingSpiritSeconds + lag, aura.ExpiresAt.TotalSeconds, 2);
+        for (int i = 1; i <= 9; i++)
+        {
+            aura = auras.Apply(Hero.RisingSpirit, SimTime.FromSeconds(i));
+            double total = Math.Min(Hero.RisingSpiritSeconds + i * Hero.RisingSpiritReapplySeconds, Hero.RisingSpiritDurationLimitSeconds);
+            Assert.Equal(total + lag, aura.ExpiresAt.TotalSeconds, 2);
+        }
+        Assert.Equal(Hero.RisingSpiritMaxStacks, aura.Stacks);
+    }
 }

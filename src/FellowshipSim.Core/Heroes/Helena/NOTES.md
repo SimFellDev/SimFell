@@ -1,0 +1,60 @@
+# Helena: mechanics in the combat logs
+
+The fights are the 18 Helena fights of patch 0.5.0.0 in `data/fights`, from `tools/fetch-fights.cs --hero Helena`.
+7Q1wTztGbqpCm9ga fight 8 has no combatant info for its Helena, so it has no build and no replay.
+
+## Resources
+
+- Toughness is resource type 3: the amount and the maximum, in hundredths. The maximum changes during a fight
+  (HrNZ6wQfFKGxybDR fight 1: 769,174 at 2.0s, 1,053,920 at 13.0s, 1,550,152 at 24.4s), so the replay compares the share
+  of the maximum (`LogResources`).
+- Spirit Points are resource type 4, as for every hero.
+
+## Veteran of War
+
+- Each reduction is twice the seconds its tooltip names. With the tooltips' seconds the replay finds Shockwave on cooldown
+  at 718 of its logged casts, Shield Throw at 173 and Shield Slam at 112. With twice them, Shockwave is on cooldown at 3
+  and Shield Slam at 14. Shield Throw is on cooldown at one logged cast each in D1fBhVPkwYKXWbpr fight 1,
+  HgamNcX24tJ3qVQA fight 21 and mThk4v1f8WGbBd7Q fight 1, with 0.12 to 0.38 s left.
+- Rising Spirit (effect 3115) comes with each Spirit Refund and stacks to 10, as for every hero.
+
+## Abilities
+
+- Shockwave's hits are effect 1272, all in the cast's server frame, on up to 20 enemies. Its slow is effect 1270.
+- Shield Slam's hits on the main target and on the other enemies are all logged as 977, in the cast's server frame.
+- Shield Throw's first hit lands 0.27-0.37s after the cast; each bounce lands 0.03-0.2s after the hit before it, on an
+  enemy the shield has not hit yet. A cast has 3.5 hits on average (9,856 hits from 2,778 casts).
+- Sweeping Strike's hits lose damage as sqrt(1/N): v8rhNxVc3PwDqzBA fight 4 @ 12.823 strikes 15 enemies, and each hit
+  is 0.93-1.08 of the engine's sqrt(1/15) share. Its bleed ticks are effect 1276.
+- Charge is cast up to 1.1s into a global cooldown.
+- Razor Shrapnel (effect 2357) deals 40% of the Shield Throw hit that triggered it, in that hit's server frame, and never
+  crits (3,260 hits).
+
+## Talents
+
+- Aftershock: Helena's hits on an enemy with the debuff (effect 2428) deal 1.19-1.23 times what they deal without it, as
+  the game data's IncomingDamageScaler 1.2 says, against the tooltip's 30%.
+- Siegebreaker with Martial Command at the tooltip's 25%, as log damage over the engine's on hits with no Aftershock (17
+  fights):
+  Shockwave 0.92, Shield Slam 0.94, Shield Throw 0.94, Attack 0.92, Power Strike 0.92, bleed 0.92, Charge 0.91,
+  Measured Strike 0.98, Sweeping Strike 1.17 and Emerald Judgement 1.18; outside Siegebreaker each is 0.98-1.03. Effect
+  1239's DamageScale x1.15 gives 0.92 of x1.25.
+- The Best Defense (effect 1231) comes 389 times in 7 fights.
+- Second Wind (effect 1215) comes 176 times in 4 fights; its build-up is effect 1214.
+- Attack: 1,024 of 11,385 swings are a miss or a dodge (log hit types 0 and 7), a hit of 0 damage.
+- A replay gives The Best Defense, Punishing Strikes and Second Wind at each gain of their buff in the log, and deals
+  each Unscarred Soul hit the log has.
+- Gleaming Shield: each stack of the buff (effect 3096, up to 10) adds 3% to the Armor Shield Slam's extra damage reads.
+  With the stacks, Shield Slam's hits are 1.02 times the engine's (36,523 hits over 18 fights); with the build's Armor
+  alone, 1.11.
+
+## Free dice
+
+- Free dice, 100 runs a fight with seeds 1-100 (the accuracy measure's defaults), deals 100.8% of the log's damage over
+  the 18 fights, the log at its 37.9% point.
+- Free dice's hits on several enemies reach every enemy the log has Helena hitting between two casts. Shield Throw
+  bounces 5 times against the log's average of 3.5 hits per cast (free dice 101.4% of the log), and Razor Shrapnel
+  strikes up to 12 of those enemies (123.7%).
+- Each Spirit Refund adds 2s to Rising Spirit's time left, 10s in all over a chain of stacks, in the engine as in the
+  logs: the rule fits the removal times of 896 of 902 Helena stack chains.
+- Siegebreaker's Spirit of Heroism is effect 1350 (240 applications), never effect 2253.

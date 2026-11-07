@@ -1,0 +1,143 @@
+{
+  "Name": "Roots",
+  "Hero": "Helena",
+  "PrimaryStat": 127,
+  "Stamina": 342,
+  "MaxHealth": 42588,
+  "Armor": 1759,
+  "CritRating": 86,
+  "HasteRating": 96,
+  "ExpertiseRating": 103,
+  "SpiritRating": 145,
+  "StatsFromOldProfile": false,
+  "Talents": [
+    207,
+    14,
+    641,
+    646,
+    647,
+    643,
+    210,
+    645,
+    214
+  ],
+  "Augmentations": [
+    {
+      "Id": 51,
+      "Rank": 4,
+      "Name": "Martial Initiative"
+    },
+    {
+      "Id": 39,
+      "Rank": 2,
+      "Name": "Willful Momentum"
+    },
+    {
+      "Id": 2,
+      "Rank": 4,
+      "Name": "Inspired Allegiance"
+    },
+    {
+      "Id": 47,
+      "Rank": 1,
+      "Name": "Visions of Grandeur"
+    },
+    {
+      "Id": 1,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 56,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 62,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 52,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Glyphs": [
+    {
+      "Id": 709,
+      "Rank": 3,
+      "Name": "The Philosopher"
+    },
+    {
+      "Id": 704,
+      "Rank": 1,
+      "Name": "The Subduer"
+    },
+    {
+      "Id": 706,
+      "Rank": 1,
+      "Name": "The Mystic"
+    }
+  ],
+  "GemPower": {
+    "Sapphire": 800,
+    "Emerald": 1000,
+    "Diamond": 200,
+    "Amethyst": 100,
+    "Topaz": 200
+  },
+  "SocketedGemIds": [
+    44,
+    34,
+    34,
+    44
+  ],
+  "GearGemBonuses": {
+    "Sapphire": 3,
+    "Diamond": 2,
+    "Emerald": 3,
+    "Amethyst": 1,
+    "Topaz": 2
+  },
+  "StatEnchants": [
+    {
+      "Id": 69,
+      "Rank": 54,
+      "Name": "Ursa\u0027s Might / Wolf\u0027s Guille / Vampire\u0027s Cunning"
+    },
+    {
+      "Id": 65,
+      "Rank": 18,
+      "Name": "Behemoth\u0027s Might  / Jotunn\u0027s Guille / Titan\u0027s Cunning"
+    },
+    {
+      "Id": 70,
+      "Rank": 6,
+      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+    },
+    {
+      "Id": 68,
+      "Rank": 12,
+      "Name": "Gryphon\u0027s Might / Phoenix\u0027s Guille / Sphinx\u0027s Cunning"
+    },
+    {
+      "Id": 67,
+      "Rank": 6,
+      "Name": null
+    }
+  ],
+  "StatEnchantCounts": {
+    "69": 9,
+    "65": 3,
+    "70": 1,
+    "68": 2,
+    "67": 1
+  },
+  "Relic1ItemId": 5921,
+  "Relic2ItemId": 5926,
+  "LegendaryItemIds": [
+    5898
+  ],
+  "WeaponAbilityId": 160
+}

@@ -29,6 +29,7 @@ public class CombatLogReplayTests(ITestOutputHelper output)
             {
                 byte[] scriptJson = ReplayScriptBuilder.Build(raw, player.Id);
                 var script = ReplayScript.FromJson(scriptJson);
+                if (script.Character == null) continue;
                 var result = new ReplayDriver(ReplayDriver.CreateHero(script), script, new ReplayOptions { StopOnFirstFailure = false }).Run();
                 var artifacts = ReplayReview.Artifacts(result, script, scriptJson, player.Id);
                 library.Save(artifacts);

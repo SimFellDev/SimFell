@@ -98,7 +98,7 @@ public class Topaz : Gem
     protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
     {
         SetRanks();
-        if (now is { } time && _essence != null && before.All(n => n.Slot != 5) && !hero.Auras.HasAura(Hero.SpiritOfHeroism, time))
+        if (now is { } time && _essence != null && before.All(n => n.Slot != 5) && !hero.Auras.HasAura(hero.SpiritOfHeroismAura, time))
             hero.Auras.Apply(_essence, time);
     }
 
