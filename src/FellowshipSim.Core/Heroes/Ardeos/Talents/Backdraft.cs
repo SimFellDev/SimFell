@@ -25,7 +25,7 @@ public class Backdraft : Talent
             if (ability is not Detonate || hero.SimContext is not { } ctx) return;
             foreach (var dot in ardeos.Dots.Active.Where(d => d.Effect == searing).ToList())
             {
-                ardeos.Dots.Extend(ctx, dot, ExtensionSeconds, maxRemainingSeconds: searing.Duration);
+                ardeos.Dots.Extend(ctx, dot, ExtensionSeconds, maxRemainingSeconds: dot.FullDurationSeconds);
             }
         };
     }

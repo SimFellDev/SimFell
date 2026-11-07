@@ -20,6 +20,11 @@ public sealed class Tariq : Hero
     /// <summary>Class tuning: hero 10 attribute BalancingDamageAura, a neutral value.</summary>
     public const double BalancingDamageAura = 1.0;
 
+    /// <summary>Health before Stamina (game data, Tariq baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 1811;
+    /// <summary>Health per point of Stamina (game data, Tariq baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 54.459;
+
     /// <summary>Spirit Points per Spirit Refund (ability 1466).</summary>
     public const double SpiritPointsPerRefund = 1.0;
 
@@ -55,6 +60,8 @@ public sealed class Tariq : Hero
         AddResource(Fury);
         SpiritRefundResource = Fury;
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Abilities.Add(new WildSwing(this));

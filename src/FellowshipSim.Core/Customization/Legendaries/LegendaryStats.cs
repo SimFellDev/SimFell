@@ -16,6 +16,16 @@ public static class LegendaryStats
     /// </summary>
     public const double MoteOfCreationPrimaryStat = 0.1;
 
+    public const int BloodOfTheUndyingEffectId = 3366;
+    /// <summary>
+    /// Max health bonus: legendary stat 790, effect 3366, MaxHealth Multiplicitive (game data; items 5898, 5899 and 5900 list
+    /// it with Strand of Eternity and Mote of Creation). Combat logs: the raw gear players of RawGearStatsTests.
+    /// </summary>
+    public const double BloodOfTheUndyingMaxHealth = 1.1;
+
+    public static readonly AuraDef BloodOfTheUndying = AuraDef.Effect("Blood of the Undying", BloodOfTheUndyingEffectId,
+        modifiers: StatModifier.Increased(StatType.MaxHealth, BloodOfTheUndyingMaxHealth));
+
     public static readonly AuraDef StrandOfEternity = AuraDef.Effect("Strand of Eternity", StrandOfEternityEffectId,
         modifiers: StatModifier.Increased(StatType.CooldownRecovery, StrandOfEternityRecovery));
 

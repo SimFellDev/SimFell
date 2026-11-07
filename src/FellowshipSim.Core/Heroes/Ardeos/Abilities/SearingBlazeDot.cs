@@ -2,7 +2,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
 /// Effect 1820: the target enemy burns for Intellect fire damage on a period, and the burn generates Cinders over its full
-/// duration. Applying it again starts its duration again. The tooltip's Cinder total is outdated: the Cinders over the
+/// duration. Applying it again starts its duration again, keeping up to <see cref="RefreshCarryover"/> of it from the time
+/// left (an extension then brings it up to that refreshed duration at most). The tooltip's Cinder total is outdated: the Cinders over the
 /// full duration are <see cref="CindersOverDuration"/>.
 /// </summary>
 public sealed class SearingBlazeDot : DamageOverTime
@@ -12,12 +13,15 @@ public sealed class SearingBlazeDot : DamageOverTime
     public const double Coefficient = 0.64695;
     public const double PeriodSeconds = 2.0;
     public const double DurationSeconds = 30.0;
+    /// <summary>Share of the duration a recast carries over from the time left. UNVERIFIED: from the reference sims, not a log.</summary>
+    public const double RefreshCarryover = 0.3;
     /// <summary>Cinders over the full duration, the same each tick (the tooltip's total differs).</summary>
     public const double CindersOverDuration = 15.0;
 
     public SearingBlazeDot(Ardeos owner) : base(owner, EffectId, EffectName, PeriodSeconds, DurationSeconds, DotStacking.Refresh)
     {
         BaseCoefficient = Coefficient;
+        RefreshCarryoverFraction = RefreshCarryover;
         CindersPerTick = CindersOverDuration * PeriodSeconds / DurationSeconds;
     }
 

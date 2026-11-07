@@ -23,6 +23,11 @@ public sealed class Ardeos : Hero, ITargetEffects
     /// <summary>Class tuning: hero attribute BalancingDamageAura (game data, Ardeos baseAttributes).</summary>
     public const double BalancingDamageAura = 1.1;
 
+    /// <summary>Health before Stamina (game data, Ardeos baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 1704;
+    /// <summary>Health per point of Stamina (game data, Ardeos baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 52.932;
+
     /// <summary>Ardeos's talent tree, as in game (talent-slot records in game data).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
         //              row cost  a                            b                              c
@@ -110,6 +115,8 @@ public sealed class Ardeos : Hero, ITargetEffects
         AddResource(Cinders);
         SpiritRefundResource = Cinders;
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
 
         Abilities.Add(new FireBall(this));
         Abilities.Add(new FireFrogs(this));

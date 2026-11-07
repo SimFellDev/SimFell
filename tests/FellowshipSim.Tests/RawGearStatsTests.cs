@@ -33,6 +33,9 @@ public class RawGearStatsTests
         double logMain = new[] { "strength", "agility", "intellect" }.Max(k => combatant[k] is { } v ? (double)v : 0.0);
         Assert.True(Math.Abs(logMain - hero.PrimaryAttribute(now)) < 1.0, $"{fight}: Main Stat {hero.PrimaryAttribute(now):F1}, log {logMain}");
         Assert.True(Math.Abs(Log("stamina") - hero.Stats.TotalStamina) < 1.0, $"{fight}: Stamina {hero.Stats.TotalStamina:F1}, log {Log("stamina")}");
+        // Health: BaseHealth + Stamina x the hero's multiplier, times the auras' MaxHealth modifiers (Blood of the Undying, Patient
+        // Soul). The log rounds it, and its Stamina too.
+        Assert.True(Math.Abs(Log("health") - hero.MaxHealth(now)) < 2.0, $"{fight}: health {hero.MaxHealth(now):F1}, log {Log("health")}");
         Assert.Equal((fight, Log("crit")), (fight, Rating(StatType.CritRating, hero.Stats.CritRating)));
         Assert.Equal((fight, Log("haste")), (fight, Rating(StatType.HasteRating, hero.Stats.HasteRating)));
         Assert.Equal((fight, Log("expertise")), (fight, Rating(StatType.ExpertiseRating, hero.Stats.ExpertiseRating)));

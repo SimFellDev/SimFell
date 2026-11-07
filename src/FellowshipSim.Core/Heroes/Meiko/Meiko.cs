@@ -27,6 +27,11 @@ public sealed class Meiko : Hero
     /// <summary>Class tuning: hero 13 attribute BalancingDamageAura 1, none.</summary>
     public const double BalancingDamageAura = 1.0;
 
+    /// <summary>Health before Stamina (game data, Meiko baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 2216;
+    /// <summary>Health per point of Stamina (game data, Meiko baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 81.1926;
+
     /// <summary>Spirit Points per Spirit Refund (Meiko.SpiritProc.ResourceRefund.FlatSpiritPointGain 2).</summary>
     public const double SpiritPointsPerRefund = 2.0;
 
@@ -81,6 +86,8 @@ public sealed class Meiko : Hero
     {
         AddResource(ComboPoints);
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         GlobalCooldownSeconds = GlobalCooldown;
         GlobalCooldownScalesWithHaste = false;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;

@@ -4,7 +4,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
 /// Talent 151: Infernal Wave deals increased damage for each of the hero's unique damage over time effects active on the
-/// target. UNVERIFIED: no combat log has this talent.
+/// target. Per the user, each instance counts (two Engulfing Flames count twice), despite the tooltip's "unique".
+/// UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class IntensifyingInferno : Talent
 {
@@ -23,8 +24,8 @@ public class IntensifyingInferno : Talent
         hero.OnCastResolving += cast =>
         {
             if (cast.Ability != wave || cast.Target == null) return;
-            int unique = ardeos.Dots.On(cast.Target).Select(d => d.Effect).Distinct().Count();
-            cast.DamageMultiplier *= 1.0 + DamagePerEffect * unique;
+            int effects = ardeos.Dots.On(cast.Target).Count;
+            cast.DamageMultiplier *= 1.0 + DamagePerEffect * effects;
         };
     }
 }

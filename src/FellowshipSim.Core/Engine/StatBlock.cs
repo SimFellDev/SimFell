@@ -21,6 +21,7 @@ public enum StatType
     CooldownReduction,
     CooldownRecovery,
     IncomingDamageMultiplier,
+    MaxHealth,
 }
 
 /// <summary>Modifier operations, as the game data names them (effect "modifiers[].op").</summary>
@@ -154,11 +155,6 @@ public class StatBlock
     /// </summary>
     public const double BaseSpirit = 0.0;
     public const double BaseCritMultiplier = 2.0;
-    /// <summary>
-    /// Maximum health per point of Stamina, for sims without a logged health value. UNVERIFIED: measured on one log
-    /// (PcaMVTFbZzNLrfx3).
-    /// </summary>
-    public const double HealthPerStamina = 56.0;
 
     /// <summary>The primary stat (Intellect, Strength or Agility): the gear's and the base, with the flat bonuses.</summary>
     public double PrimaryStat { get; set { field = value; Version++; } }
@@ -170,9 +166,18 @@ public class StatBlock
     /// <summary>Stamina with its multipliers.</summary>
     public double TotalStamina => Stamina * StaminaMultiplier;
 
-    /// <summary>Maximum health: the logged value when known, else estimated from Stamina.</summary>
-    public double? LoggedMaxHealth { get; set; }
-    public double MaxHealth => LoggedMaxHealth ?? TotalStamina * HealthPerStamina;
+    /// <summary>The hero's health before Stamina (game data hero baseAttributes BaseHealth); each hero sets it.</summary>
+    public double BaseHealth { get; set; }
+
+    /// <summary>Health per point of Stamina (game data hero baseAttributes StaminaToMaxHealthMultiplier); each hero sets it.</summary>
+    public double StaminaToMaxHealth { get; set; }
+
+    /// <summary>
+    /// Maximum health before the auras' MaxHealth modifiers (<see cref="Hero.MaxHealth"/> has them): BaseHealth + Stamina x
+    /// StaminaToMaxHealthMultiplier. Combat logs: with the auras' modifiers on the whole value, it gives the logged health
+    /// of each player of RawGearStatsTests within rounding.
+    /// </summary>
+    public double MaxHealth => BaseHealth + TotalStamina * StaminaToMaxHealth;
 
     public double CritRating { get; set { field = value; Version++; } }
     public double HasteRating { get; set { field = value; Version++; } }

@@ -12,7 +12,7 @@ public class ConstantExpression : IAplExpression
 
     public double EvaluateNumeric(Hero hero, SimulationContext ctx) => Value;
 
-    public override string ToString() => Value.ToString();
+    public override string ToString() => Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>
