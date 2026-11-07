@@ -71,7 +71,7 @@ public class GearTests
     public void A_Profile_Line_Names_Its_Item()
     {
         string text = "rime=\"x\"\nhead=icicled_circlet,id=5885,tempers=8\n";
-        Assert.Contains("is bonebleached_headwrap", Assert.Throws<FormatException>(() => SimcProfile.Parse(text)).Message);
+        Assert.Contains("is bonebleached_headwrap", Assert.ThrowsAny<FormatException>(() => SimcProfile.Parse(text)).Message);
     }
 
     [Fact]

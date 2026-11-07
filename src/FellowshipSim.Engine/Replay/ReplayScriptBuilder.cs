@@ -329,21 +329,26 @@ public static class ReplayScriptBuilder
             w.WriteEndArray();
         }
 
-        // ---- Enemy health (from everyone's damage; health-dependent effects need it) ---------
+        // ---- Enemy health (from each event with an enemy as source or target; health-dependent effects need it) -------
         private void SampleEnemyHealth(in RawEvent e)
         {
-            if (e.Type != RawEventType.Damage || !IsEnemy(e.TargetId)) return;
-            var res = e.TargetResources;
+            SampleEnemyHealth(e.SourceId, e.SourceInstance, e.Timestamp, in e.SourceResources);
+            SampleEnemyHealth(e.TargetId, e.TargetInstance, e.Timestamp, in e.TargetResources);
+        }
+
+        private void SampleEnemyHealth(int? id, int instance, double timestamp, in RawUnitResources res)
+        {
+            if (!IsEnemy(id)) return;
             if (!res.HasHitPoints || !res.HasMaxHitPoints || res.MaxHitPoints == 0) return;
             double hp = res.HitPoints, maxNow = res.MaxHitPoints;
             // A killing blow logs the health below 0 as an unsigned 32-bit number (1p7AXmHfwV9CYMxR fight 30 @ 157.097:
             // 4294950962 of 726971).
             if (hp > maxNow) hp = 0;
-            var key = (e.TargetId!.Value, e.TargetInstance);
+            var key = (id!.Value, instance);
             double fraction = hp / maxNow;
             if (_lastFraction.TryGetValue(key, out var last) && Math.Abs(fraction - last) < HealthSampleStep) return;
             _lastFraction[key] = fraction;
-            double t = Rel(e.Timestamp);
+            double t = Rel(timestamp);
             var c = BeginCommand();
             c.WriteNumber("t"u8, t);
             c.WriteString("kind"u8, "enemy_health"u8);

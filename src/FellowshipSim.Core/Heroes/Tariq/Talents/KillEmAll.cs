@@ -38,7 +38,7 @@ public class KillEmAll : Talent
             hero.CooldownOf(heavyStrike).ResetAll();
             hero.Auras.Apply(Buff, now, setStacks: MaxStacks);
         };
-        hero.CooldownAccelerations.Add((ability, now) => ability == heavyStrike && hero.Auras.HasAura(Buff, now) ? CooldownAcceleration : 0.0);
+        hero.CooldownAccelerationTargetedSources.Add((ability, now) => ability == heavyStrike && hero.Auras.HasAura(Buff, now) ? CooldownAcceleration : 0.0);
         hero.CooldownAccelerationAuraKeys.Add(Buff.Key);
         hero.OnCastResolving += cast =>
         {

@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
-using FellowshipSim.Core.APL;
 
-namespace FellowshipSim.UI.Apl;
+namespace FellowshipSim.Core.APL.Editing;
 
 /// <summary>The completion list of a code field at its caret, and the part at the caret a pick is written in place of.</summary>
 public static partial class CodeEdits

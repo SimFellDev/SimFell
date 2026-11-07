@@ -159,6 +159,7 @@ public class AplLanguageTests
     [InlineData("Tariq")]
     [InlineData("Mara")]
     [InlineData("Elarion")]
+    [InlineData("Xavian")]
     [InlineData("Meiko")]
     public void Each_Heros_Lists_Bind_And_Cast(string heroName)
     {
@@ -178,6 +179,7 @@ public class AplLanguageTests
     [InlineData("Tariq")]
     [InlineData("Mara")]
     [InlineData("Elarion")]
+    [InlineData("Xavian")]
     [InlineData("Meiko")]
     public void Every_Aura_Gear_Gives_Is_In_The_Vocabulary(string heroName)
     {

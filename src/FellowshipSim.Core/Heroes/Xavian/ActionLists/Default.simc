@@ -1,0 +1,25 @@
+# Xavian's default action list: the order the logged Xavian players follow (data/fights, patch 0.5.0.0). Brilliant Flash
+# is Brilliant Flare while Xavian has a Swift Reprieval or an Omega Reprieval.
+actions.precombat=snapshot_stats
+actions.precombat+=/aura_of_solace
+# Swing the weapon whenever the swing timer allows.
+actions=attack
+actions+=/aura_of_solace,if=!buff.aura_of_solace.up
+actions+=/decree_of_the_sun
+actions+=/omega_reprieval
+actions+=/solar_shield
+actions+=/shining_halo
+# Weapon powers on cooldown. Every logged Xavian has Al'zerac's Shackle and casts it on cooldown, after Shining Halo
+# when both are ready; a list leaves out the powers of other weapons.
+actions+=/alzeracs_shackle
+actions+=/zeraleths_hunger
+actions+=/fated_strike
+actions+=/sahrils_aegis
+actions+=/solar_blades
+actions+=/omnistrike
+actions+=/brilliant_flash,if=buff.omega_reprieval.up
+actions+=/sky_crash
+actions+=/ruptured_dawn
+actions+=/blinding_slash
+actions+=/brilliant_flash
+actions+=/sun_strike

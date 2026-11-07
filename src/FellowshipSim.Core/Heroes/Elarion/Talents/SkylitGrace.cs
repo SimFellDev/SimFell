@@ -28,7 +28,7 @@ public class SkylitGrace : Talent
             else hero.Auras.Remove(Buff, ctx.CurrentTime);
         };
         // Each volley gives the full bonus, and they add up.
-        hero.CooldownAccelerations.Add((ability, now) => ability == grace ? Acceleration * hero.Auras.GetStacks(Buff, now) : 0.0);
+        hero.CooldownAccelerationTargetedSources.Add((ability, now) => ability == grace ? Acceleration * hero.Auras.GetStacks(Buff, now) : 0.0);
         hero.CooldownAccelerationAuraKeys.Add(Buff.Key);
     }
 }

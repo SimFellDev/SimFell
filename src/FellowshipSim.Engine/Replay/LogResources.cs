@@ -3,6 +3,7 @@ using FellowshipSim.Core.Heroes.Elarion;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Rime;
 using FellowshipSim.Core.Heroes.Tariq;
+using FellowshipSim.Core.Heroes.Xavian;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -48,5 +49,8 @@ public static class LogResources
         // Elarion: Focus as resource type 2, in hundredths; it carries over between pulls. Focus regenerates between the
         // engine's ticks, so it is compared within 3.
         new(Elarion.Focus, 2, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
+        // Xavian: Mana as resource type 1, in hundredths. Mana starts at the log's first value and regenerates between the
+        // engine's ticks, so it is compared within 3.
+        new(Xavian.Mana, 1, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
     ];
 }

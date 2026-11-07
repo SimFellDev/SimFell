@@ -169,7 +169,7 @@ Hooks every hero has:
 | `hero.OnDamageDealt` | any hit lands (with its damage and whether it crit) |
 | `hero.OnCastResolving` | a cast is about to resolve: add to it ("your next X critically strikes"), see below |
 | `hero.OnResourceGained`, `hero.OnResourceSpent`, `hero.OnResourceOverflow` | resource is gained (and from which enemy) / spent / gained past its maximum |
-| `hero.AbilityDamageMultipliers`, `hero.TargetDamageMultipliers`, `hero.TargetCritChanceBonuses`, `hero.CooldownAccelerations` | read on every hit / cooldown tick |
+| `hero.AbilityDamageMultipliers`, `hero.TargetDamageMultipliers`, `hero.TargetCritChanceBonuses`, the cooldown acceleration sources (`hero.CooldownAccelerationMultiplierSources`, `CooldownAccelerationCompoundSources`, `CooldownAccelerationFinalSources`, `CooldownAccelerationTargetedSources`; `Hero.CooldownRate` combines them) | read on every hit / cooldown tick |
 | `hero.PassiveAuras` | always-on auras (stat bonuses) |
 | `hero.SituationalAuras` | auras that depend on what the engine does not simulate (your health, standing still, a boss fight): up all fight in a sim, following the log in a replay |
 | `hero.OnSpiritRefund`, `hero.SpiritOfHeroismStarted`, `hero.SpiritOfHeroismEnded` | a Spirit Refund triggers / Spirit of Heroism starts or ends |

@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\FellowshipSim.Cli\FellowshipSim.Cli.csproj" />
     <ProjectReference Include="..\..\src\FellowshipSim.Core\FellowshipSim.Core.csproj" />
     <ProjectReference Include="..\..\src\FellowshipSim.Engine\FellowshipSim.Engine.csproj" />
+    <ProjectReference Include="..\..\src\FellowshipSim.LanguageServer\FellowshipSim.LanguageServer.csproj" />
     <!-- RemoteSimEngineTests: the Service's engine client against the engine server's endpoints. -->
     <ProjectReference Include="..\..\src\FellowshipSim.EngineServer\FellowshipSim.EngineServer.csproj" />
     <ProjectReference Include="..\..\src\FellowshipSim.Service\FellowshipSim.Service.csproj" />

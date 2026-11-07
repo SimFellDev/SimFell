@@ -27,7 +27,7 @@ public class FatedStrike : Ability
     {
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds);
-        owner.CooldownAccelerations.Add((_, now) => owner.Auras.HasAura(GloriousPurpose, now) ? GloriousPurposeAcceleration : 0.0);
+        owner.CooldownAccelerationMultiplierSources.Add((_, now) => owner.Auras.HasAura(GloriousPurpose, now) ? 1.0 + GloriousPurposeAcceleration : 1.0);
         owner.CooldownAccelerationAuraKeys.Add(GloriousPurpose.Key);
     }
 

@@ -1,6 +1,5 @@
-using FellowshipSim.Core.APL;
 
-namespace FellowshipSim.UI.Apl;
+namespace FellowshipSim.Core.APL.Editing;
 
 /// <summary>
 /// One '.'-separated part of a path: the parts after it in the order they were added, the token kind its text is coloured
