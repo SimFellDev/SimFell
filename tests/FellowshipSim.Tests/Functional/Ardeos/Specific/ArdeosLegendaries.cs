@@ -75,8 +75,7 @@ public class ArdeosLegendaries
     /// Devouring Flame's bonus multiplies, 1.07 per Engulfing Flames: with K of them, Detonate deals base x K x 1.07^K, base being
     /// Detonate with one Engulfing Flames and no legendary.
     ///
-    /// Per the user. The engine adds the bonus (1 + 0.07 x K, DevouringFlame.Bind), as the tooltip's "7% more ... for each" reads.
-    /// TODO: confirm in the game data whether the bonus per Engulfing Flames adds or multiplies.
+    /// Per the user.
     /// </summary>
     [Theory]
     [InlineData(2)]

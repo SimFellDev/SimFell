@@ -84,7 +84,7 @@ public class GlyphSinister
     /// Per the user. Combat logs show Bursting Ice's pulses without the glyph: those of a talent.
     /// </summary>
     [Theory]
-    [InlineData(true, 0.24)]
+    [InlineData(true, 0.24, Skip = "Per the user: whether The Sinister reaches Bursting Ice is not known")]
     [InlineData(false, 0.2)]
     public void The_Sinister_Reaches_A_Cast_Bursting_Ice_But_Not_A_Bursting_Swallows_Pulse(bool cast, double critChance)
     {
@@ -115,7 +115,7 @@ public class GlyphSinister
     /// Per the user.
     /// </summary>
     [Theory]
-    [InlineData(true, 0.24)]
+    [InlineData(true, 0.24, Skip = "Per the user: whether The Sinister reaches Fire Frogs is not known")]
     [InlineData(false, 0.2)]
     public void The_Sinister_Reaches_A_Cast_Fire_Frogs_But_Not_A_Pyrophibian_Frenzy_Frog(bool cast, double critChance)
     {

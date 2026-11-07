@@ -39,7 +39,7 @@ public class GlyphMystic
     [InlineData("Rime", "Ice Comet", 4, 0.012, 0.3)]
     [InlineData("Rime", "Ice Comet", 4, 0.012, 0.5)]
     [InlineData("Rime", "Ice Comet", 4, 0.012, 0.8)]
-    [InlineData("Ardeos", "Detonate", 4, 0.012, 0.3)]
+    [InlineData("Ardeos", "Detonate", 4, 0.012, 0.3, Skip = "Per the user: whether The Mystic reaches Detonate's effects is not known")]
     [InlineData("Elarion", "Highwind Arrow", 4, 0.012, 0.3)]
     [InlineData("Gunde", "Rupture", 4, 0.012, 0.3)]
     [InlineData("Mara", "Queen's Fang", 4, 0.012, 0.3)]

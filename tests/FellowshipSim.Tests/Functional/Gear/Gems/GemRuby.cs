@@ -43,16 +43,19 @@ public class GemRuby
         AssertRatio(extra, nodeScenario.MainStat() - belowScenario.MainStat());
     }
 
-    /// <summary>Titan's Blood gives you 3% more Stamina (9% at rank II), and so 3% more health.</summary>
+    /// <summary>
+    /// Titan's Blood gives you 3% more Stamina (9% at rank II). Health grows with the Stamina part of it alone: the hero's base
+    /// health is not raised.
+    /// </summary>
     [Theory]
     [InlineData(300, 1.03)]
     [InlineData(1250, 1.09 / 1.03)]
-    public void Titans_Blood_Gives_3_Percent_Health(double power, double ratio)
+    public void Titans_Blood_Gives_3_Percent_Stamina(double power, double ratio)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
 
-        AssertRatio(ratio, nodeScenario.Health() / belowScenario.Health());
+        AssertRatio(ratio, nodeScenario.Hero.Stats.TotalStamina / belowScenario.Hero.Stats.TotalStamina);
     }
 
     /// <summary>

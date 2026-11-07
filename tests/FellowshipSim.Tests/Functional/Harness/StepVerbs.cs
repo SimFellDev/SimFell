@@ -140,7 +140,7 @@ public static class StepVerbs
     public static double MainStat(this StepDriver f) => f.Hero.PrimaryAttribute(f.Now);
 
     /// <summary>The hero's health: the sim keeps the hero at full health, from Stamina when no combat log gives it.</summary>
-    public static double Health(this StepDriver f) => f.Hero.Stats.MaxHealth;
+    public static double Health(this StepDriver f) => f.Hero.MaxHealth(f.Now);
 
     /// <summary>The power of the hero's gem of <paramref name="color"/>, after the relics that raise it (Covetous Greed).</summary>
     public static double GemPower(this StepDriver f, GemColor color) => f.Hero.Gems.Single(gem => gem.Color == color).Power;

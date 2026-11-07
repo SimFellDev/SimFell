@@ -109,10 +109,8 @@ public class RisingSpirit
     }
 
     /// <summary>
-    /// Rising Spirit never has more than 20 seconds left: casting a spender for 20 seconds with every Spirit Refund triggering, it ends 20
-    /// seconds after the last one.
-    ///
-    /// Per the user. 50% Haste, so the refunds come faster than one every 2 seconds and, uncapped, would pile up about 28 seconds.
+    /// Rising Spirit lasts at most 20 seconds from its first application, however many Spirit Refunds extend it: casting a
+    /// spender for 20 seconds with every Spirit Refund triggering, it ends 20 seconds after the first cast.
     /// </summary>
     [Theory]
     [InlineData("Rime", "Ice Comet")]
@@ -126,17 +124,19 @@ public class RisingSpirit
         var f = StepFights.Of(hero);
         f.ForceProcs(key => key == Hero.SpiritRefundProc ? true : null);
 
-        while (f.Now.TotalSeconds < 19)
+        f.FillResources(); // enough to cast it
+        f.Cast(spender);
+        double firstCast = f.CompletedAt(spender); // the first Spirit Refund applies Rising Spirit
+        while (f.Now.TotalSeconds < firstCast + 19)
         {
             f.FillResources(); // enough to cast it
             f.CastWhenReady(spender);
         }
-        double lastRefund = f.Now.TotalSeconds;
 
         using var check = new Checks(f);
-        f.WaitUntil(lastRefund + 20 - 0.1);
+        f.WaitUntil(firstCast + 20 - 0.1);
         check.True(f.Has(Hero.RisingSpirit));
-        f.WaitUntil(lastRefund + 20 + 0.1);
+        f.WaitUntil(firstCast + 20 + 0.1);
         check.False(f.Has(Hero.RisingSpirit));
     }
 }

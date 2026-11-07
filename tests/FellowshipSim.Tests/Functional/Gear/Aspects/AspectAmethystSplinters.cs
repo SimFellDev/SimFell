@@ -64,8 +64,9 @@ public class AspectAmethystSplinters
     }
 
     /// <summary>
-    /// Haste makes a splinter tick faster, and so more often in its 8 seconds, each tick still a quarter of its share: 5 ticks at 30%
-    /// haste.
+    /// Haste makes a splinter tick faster, and so more often in its 8 seconds, each full tick still a quarter of its share: at 30% haste,
+    /// 5 full ticks (every 2 / 1.3 seconds), then a partial tick for the part of a period left as the 8 seconds end (0.2 of a tick).
+    /// In all, the splinter deals its share x 1.3.
     /// </summary>
     [Fact]
     public void Haste_Adds_Amethyst_Splinter_Ticks()
@@ -78,11 +79,15 @@ public class AspectAmethystSplinters
         var ticks = f.Damage(Splinter);
 
         using var check = new Checks(f);
-        check.Equal(FullTicks(8, 2 / 1.3), ticks.Count);
-        foreach (var tick in ticks)
+        int full = FullTicks(8, 2 / 1.3);
+        double partial = 8 / (2 / 1.3) - full; // the part of a period left as the 8 seconds end
+        check.Equal(full + 1, ticks.Count);
+        for (int i = 0; i < ticks.Count; i++)
         {
-            check.Ratio(0.11 / 4, tick.Value / FirstCrits(f, "Frost Bolt"), what: $"tick at {tick.Time.TotalSeconds:F3}s");
+            double share = i < full ? 0.11 / 4 : 0.11 / 4 * partial;
+            check.Ratio(share, ticks[i].Value / FirstCrits(f, "Frost Bolt"), what: $"tick at {ticks[i].Time.TotalSeconds:F3}s");
         }
+        check.Ratio(0.11 * 1.3, ticks.Sum(tick => tick.Value) / FirstCrits(f, "Frost Bolt"));
     }
 
     /// <summary>A splinter never crits, and Expertise does not raise it again: the crit it comes from already has it.</summary>
