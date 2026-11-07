@@ -10,7 +10,7 @@ public class FrostSwallows : RimeAbility
     public const int AbilityId = 1033;
     public const string AbilityName = "Frost Swallows";
     public const double Coefficient = 0.469;
-    /// <summary>"For every 1% Spirit you have, your Frost Swallows deal 1.5% more damage."</summary>
+    /// <summary>Tooltip: each percent of Spirit raises Frost Swallows' damage by this many percent.</summary>
     public const double DamagePerSpiritPercent = 1.5;
 
     public FrostSwallows(Rime owner) : this(owner, AbilityId, Coefficient) { }

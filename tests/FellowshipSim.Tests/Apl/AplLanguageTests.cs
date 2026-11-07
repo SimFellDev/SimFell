@@ -96,7 +96,7 @@ public class AplLanguageTests
         var debuff = Core.Heroes.Rime.Abilities.BurstingIce.Debuff;
         ctx.Player.CurrentTarget.Auras.Apply(debuff, ctx.CurrentTime);
         Assert.False(refreshable.Evaluate(ctx));
-        // 3s debuff: refreshable once under 0.9s remain.
+        // Refreshable once the remaining time falls under the refresh threshold.
         var expires = ctx.Player.CurrentTarget.Auras.FindActive("bursting_ice", ctx.CurrentTime)!.ExpiresAt;
         Assert.Equal(SimTime.FromMilliseconds(expires.Milliseconds - 899), refreshable.NextChange(ctx));
     }
@@ -159,6 +159,9 @@ public class AplLanguageTests
     [InlineData("Tariq")]
     [InlineData("Mara")]
     [InlineData("Elarion")]
+    [InlineData("Xavian")]
+    [InlineData("Meiko")]
+    [InlineData("Helena")]
     public void Each_Heros_Lists_Bind_And_Cast(string heroName)
     {
         var names = DefaultActionLists.Names(heroName);
@@ -177,6 +180,9 @@ public class AplLanguageTests
     [InlineData("Tariq")]
     [InlineData("Mara")]
     [InlineData("Elarion")]
+    [InlineData("Xavian")]
+    [InlineData("Meiko")]
+    [InlineData("Helena")]
     public void Every_Aura_Gear_Gives_Is_In_The_Vocabulary(string heroName)
     {
         var auras = AplVocabulary.For(heroName).Auras.Select(a => a.Slug).ToHashSet();

@@ -1,0 +1,24 @@
+# Helena's default action list: her damage abilities, Shockwave and Shield Slam first, since Veteran of War reduces their
+# cooldowns.
+actions.precombat=snapshot_stats
+# Swing the weapon whenever the swing timer allows.
+actions=attack
+actions+=/siegebreaker
+# Hold the Line resets Shield Slam's cooldown, so it waits until Shield Slam has no charge.
+actions+=/hold_the_line,if=cooldown.shield_slam.charges=0
+# Shields Up increases Toughness, which increases Greater Shockwave's damage; with High Command it reduces Hold the Line's
+# cooldown.
+actions+=/shields_up
+# Each weapon power Helena uses, on cooldown: combat logs (19 fights, 19,897s) have 804 Al'zerac's Shackle casts,
+# one every 25s against its 30s cooldown.
+actions+=/alzeracs_shackle
+actions+=/zeraleths_hunger
+actions+=/sahrils_aegis
+actions+=/fated_strike
+actions+=/shockwave
+actions+=/shield_slam
+actions+=/shield_throw
+actions+=/sweeping_strike
+actions+=/power_strike
+actions+=/charge
+actions+=/measured_strike

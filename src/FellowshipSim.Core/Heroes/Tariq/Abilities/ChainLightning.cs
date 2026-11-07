@@ -2,25 +2,25 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 
 /// <summary>
 /// Ability 1237: "Conjure an arc of lightning onto target enemy that chains between you and other enemies until it has
-/// dealt damage a total of 6 times. Chain Lightning does not deal damage to you. Thunder Call: You can only cast Chain
-/// Lightning while Thunder Call is active. Generates 1.2 Fury per hit." Its hits are effect 1774.
+/// dealt damage a total number of times. Chain Lightning does not deal damage to you. Thunder Call: You can only cast Chain
+/// Lightning while Thunder Call is active. Generates Fury per hit." Its hits are effect 1774.
 /// </summary>
 public class ChainLightning : TariqAbility
 {
     public const int AbilityId = 1237;
     public const string AbilityName = "Chain Lightning";
-    /// <summary>Placeholder ChainLightDmg: 149.98% of Strength per hit.</summary>
+    /// <summary>Share of Strength per hit.</summary>
     public const double Coefficient = 1.4998;
-    /// <summary>Game data cooldown 8, its duration scaled by Haste.</summary>
+    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
     public const double CooldownSeconds = 8.0;
     public const int Hits = 6;
-    /// <summary>Ink.BouncyProjectile.ResourceGainPerTarget: 1.2% of maximum Fury per hit.</summary>
+    /// <summary>Game data: a share of maximum Fury per hit.</summary>
     public const double FuryPerHit = 1.2;
     public const int DamageEffectId = 1774;
 
     /// <summary>
-    /// Combat logs (fXyzwGcQkTrLD34R fight 4, 58 casts): the first hit 0.30s after the cast, then a hit every 0.05s
-    /// (ability 1236 period 0.05; the log rounds each to 1 or 2 server frames).
+    /// Combat logs (fXyzwGcQkTrLD34R fight 4, 58 casts): the first hit follows the cast by <see cref="FirstHitSeconds"/>, then a hit
+    /// follows every <see cref="BounceSeconds"/> (ability 1236 period; the log rounds each to server frames).
     /// </summary>
     public const double FirstHitSeconds = 0.30;
     public const double BounceSeconds = 0.05;
@@ -44,7 +44,7 @@ public class ChainLightning : TariqAbility
         DamageLogId = LogIds.Effect(DamageEffectId);
     }
 
-    /// <summary>Ace of Spades: "Your Chain Lightning now has 2 charges" (they recharge with haste, as native charges do).</summary>
+    /// <summary>Ace of Spades: "Your Chain Lightning now has charges" (they recharge with haste, as native charges do).</summary>
     internal void SetCharges(int charges) => SetCooldown(CooldownSeconds, charges, scalesWithHaste: true);
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)

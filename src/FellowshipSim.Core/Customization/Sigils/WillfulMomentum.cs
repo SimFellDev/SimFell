@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 39: "Your Spirit Rating is increased by 7 / 11 / 17 / 23. Whenever you trigger a Spirit Refund your Main Stat is
-/// increased by 1.5% / 2.6% / 3.7% / 4.8% for 4 seconds." (effect 2078)
+/// Sigil 39: "Your Spirit Rating is increased. Whenever you trigger a Spirit Refund your Main Stat is
+/// increased for a time." (effect 2078)
 /// </summary>
 public class WillfulMomentum : Sigil
 {

@@ -215,11 +215,25 @@ lists them for each halt issue.
 
 - `ReplayResult.EngineTotalDamage` is the sum of `HitPair.EngineAmount`. `ReplayReportWriter.DamageTotals` returns it
   with the log total. `SimulationContext.TotalDamage` equals the log total.
-- The review page has a **Disagreements** section per `IssueCategory`: time, step, subject, expected range, observed,
-  deviation and relative deviation, with each row's `EngineState` expandable below it.
+- The review page has a **Findings** section from `ReplayFindings.From`: one `Finding` per `IssueEntity` (a damage ID,
+  resource, aura, ability or proc), each issue in exactly one. Groups follow the order of work of
+  `docs/REPLAY_ACCURACY.md`, then Replay pairing, and each group ranks by damage at stake. A row opens to its timeline,
+  its numbers, the conditions dividing a damage ID's ratio, and each kind of issue's first, median and worst example
+  with time, step, expected range, observed, deviation, relative deviation and expandable `EngineState`.
+- A damage ID is in Replay pairing when its out-of-range hits fit other engine hits of their release and its release
+  totals stay on the log while the single hits scatter: a swap keeps the total, and a wrong multiplier moves it. Such a
+  finding shows no conditions. The `Pairing` constants in `ReplayFindings` give the thresholds.
+- A condition shows when its two sides pass the `Split` constants in `ReplayFindings`.
+- A resource or aura finding has net and gross log minus engine, since `SyncToLog` makes each issue one step's
+  difference, and the abilities of the steps before them.
+
+- `FindingsJson` is `ReplayFindingsDocument.ForFight`: the findings with their numbers from `DamageMetrics`, `DriftMetrics`
+  and `ProcMetrics`, the same records the page's text reads. `docs/REPLAY_ACCURACY.md` has the fields.
+- `ReviewView` has a **Findings JSON** button for a review with a findings file.
 - The hit table shows engine `avg`, expected low and high, log amount and deviation.
 - `HitsCsv` columns: `time, ability_id, ability, target, engine_amount, expected_low, expected_high, engine_crit,
   crit_chance, log_amount, log_crit, log_time, deviation, tick_fraction, player_auras, target_auras`.
+
 - `ReplayOptions.StopOnFirstFailure` halts at the first step with a `ReplayIssue` from the verifier.
 
 ## Tests

@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Customization.RelicPassives;
 
 /// <summary>
-/// Relic passive 782 (Orb of Sanguine Restoration): "When dipping below 20% Health, you are instantly healed for 40% of
-/// your maximum health. This can occur once every 180 seconds." The heal is defensive. The passive also grants effect
-/// 3274, Main Stat x1.05 (game data: Strength, Agility and Intellect MultiplyCompound 1.05), which the tooltip leaves
-/// out (per the user; combat logs: kzGvHPF1n8RqLw2f fight 3, Tariq's Strength is 1.05 times the gear's and bonuses').
+/// Relic passive 782 (Orb of Sanguine Restoration): "When dipping below a health threshold, you are instantly healed for a
+/// share of your maximum health. This can occur once per cooldown." The heal is defensive. The passive also grants effect
+/// 3274, a Main Stat multiplier (game data: Strength, Agility and Intellect MultiplyCompound), which the tooltip leaves
+/// out (per the user; combat logs: kzGvHPF1n8RqLw2f fight 3, Tariq's Strength is above the gear's and bonuses').
 /// </summary>
 public class GildedBroach : RelicPassive
 {

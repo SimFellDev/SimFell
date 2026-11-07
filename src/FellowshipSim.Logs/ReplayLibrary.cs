@@ -33,11 +33,11 @@ public sealed record FreeDiceSummary(
     int Runs, double LogDamage, double EngineMean, double Engine5, double Engine95, double LogPercentile, DateTime CreatedAt);
 
 /// <summary>
-/// A replay review's files: the replay script, the review page, the review as plain text (issues grouped by kind, and the
-/// damage calibration per ability), and every engine hit with the log hit it matched, for checking damage formulas in a
-/// spreadsheet.
+/// A replay review's files: the replay script, the review page, the review as plain text (its findings, and the
+/// damage calibration per ability), every engine hit with the log hit it matched, for checking damage formulas in a
+/// spreadsheet, and its findings as JSON.
 /// </summary>
-public sealed record ReviewArtifacts(ReviewSummary Summary, byte[] ScriptJson, string Html, string SummaryText, string HitsCsv);
+public sealed record ReviewArtifacts(ReviewSummary Summary, byte[] ScriptJson, string Html, string SummaryText, string HitsCsv, string FindingsJson);
 
 /// <summary>
 /// The local library of fights and replay reviews, kept in a data folder:
@@ -128,15 +128,17 @@ public sealed partial class ReplayLibrary
 
     private readonly SemaphoreSlim _oneDownloadAtATime = new(1, 1);
 
-    /// <summary>Writes a review's replay script, page, summary, text and hits.</summary>
+    /// <summary>Writes a review's replay script, page, summary, text, hits and findings.</summary>
     public void Save(ReviewArtifacts review)
     {
         string id = review.Summary.Id;
         File.WriteAllBytes(Path.Combine(ScriptsDirectory, $"{id}.replay.json"), review.ScriptJson);
         File.WriteAllText(Path.Combine(ReviewsDirectory, review.Summary.HtmlFile), review.Html);
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.summary.json"), JsonSerializer.Serialize(review.Summary, Indented));
+
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.summary.txt"), review.SummaryText);
         File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.hits.csv"), review.HitsCsv);
+        File.WriteAllText(Path.Combine(ReviewsDirectory, $"{id}.findings.json"), review.FindingsJson);
     }
 
     /// <summary>Every review run so far, newest first.</summary>

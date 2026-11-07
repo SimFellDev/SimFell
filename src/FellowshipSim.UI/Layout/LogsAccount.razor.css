@@ -12,3 +12,17 @@
   border-radius: 50%;
   background: var(--good);
 }
+
+/* A phone: the account fits on the one-line top bar beside the name. */
+@media (max-width: 600px) {
+  .account .link-button {
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
+  button.secondary-button {
+    padding: 6px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}

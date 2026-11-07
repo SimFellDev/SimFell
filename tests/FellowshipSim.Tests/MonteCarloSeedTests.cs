@@ -74,24 +74,27 @@ public class MonteCarloSeedTests
 
     /// <summary>
     /// Totals of fights 1-4 of each hero's default action list, captured again when sims began rolling crits and damage
-    /// spread (before, each hit dealt its average and counted as a crit only above a 50% chance); Rime's, Gunde's, Mara's
+    /// spread (before, each hit dealt its average and counted as a crit only above a chance threshold); Rime's, Gunde's, Mara's
     /// and Tariq's again once dungeon_event.fight.remains and target.time_to_die read the fight's end. Tariq's again once
     /// Schism had bad luck protection, and again once Bloodline was unhasted, Ride the Lightning snapshotted and Kill Em All
     /// left Heavy Strike out. Rime's, Ardeos's, Mara's and Tariq's again for the engine fixes of the functional tests branch
     /// (cooldown rates, Detonate's global cooldown, Event Horizon, Skylit Grace, Brave Machinations, weapon cooldowns, gems).
-    /// Tariq's again for his new default list.
+    /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers. The rows
+    /// with a Spirit Refund past the duration of Rising Spirit again once that duration had a cap. Mara's 3-target row again once
+    /// Hemorrhaging Strike had no cooldown. Mara's again once her default list read Deadly Scheme: Active. Every row with a
+    /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor.
     /// </summary>
     [Theory]
-    [InlineData("Rime", 120, 3, new[] { 3103846.9857844426, 3146941.0664216764, 2661851.3885713113, 2817501.47229399 })]
-    [InlineData("Rime", 300, 1, new[] { 8470077.969138976, 7314085.758635247, 6457222.233761247, 8102670.212286511 })]
-    [InlineData("Ardeos", 120, 3, new[] { 2928926.308143849, 3153655.5730937966, 3210365.792271153, 3186044.199992814 })]
-    [InlineData("Ardeos", 300, 1, new[] { 4880401.459850469, 4756376.690589438, 4909095.667185546, 4970616.393990371 })]
-    [InlineData("Gunde", 120, 3, new[] { 5234084.4458837481, 4755985.9798798524, 4219977.3005579598, 4397998.891160924 })]
-    [InlineData("Gunde", 300, 1, new[] { 7589315.0879662065, 7860490.4554016367, 7145894.9954196177, 7482946.3632446928 })]
-    [InlineData("Mara", 120, 3, new[] { 2440956.3761566584, 2523958.1828004178, 2016531.8647401505, 2580733.011348616 })]
-    [InlineData("Mara", 300, 1, new[] { 4698165.2098863395, 6431641.410211125, 5304913.496761604, 5296672.2168469215 })]
-    [InlineData("Tariq", 120, 3, new[] { 1693530.682890242, 2424288.0936405938, 2202817.0745414351, 1898456.3845911967 })]
-    [InlineData("Tariq", 300, 1, new[] { 3583787.245763781, 3830425.3795905053, 3372158.792518341, 3295629.6778827147 })]
+    [InlineData("Rime", 120, 3, new[] { 2929444.08752369, 3077995.7808620073, 2829134.0571837318, 3705848.5280579049 })]
+    [InlineData("Rime", 300, 1, new[] { 7807802.8056133138, 8531419.3838742785, 8084639.1539794672, 7908492.7942486135 })]
+    [InlineData("Ardeos", 120, 3, new[] { 3345832.9485829431, 3320652.327085807, 2970622.7621510844, 3343792.2069075285 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4861741.2230702369, 4925568.8819087893, 4902383.9729880206, 5274164.3018721882 })]
+    [InlineData("Gunde", 120, 3, new[] { 4748197.3158851741, 4295319.6169056566, 4262391.2107238909, 4470118.3590960605 })]
+    [InlineData("Gunde", 300, 1, new[] { 7249581.1534622693, 7814233.1795717087, 7659215.0033817766, 7371523.7896765638 })]
+    [InlineData("Mara", 120, 3, new[] { 2560953.2346197013, 2353016.7117702793, 2897776.7017053822, 2866602.873777526 })]
+    [InlineData("Mara", 300, 1, new[] { 7895879.749682934, 6001428.5453476505, 7463940.1662859339, 7588414.1623460148 })]
+    [InlineData("Tariq", 120, 3, new[] { 1975056.6255696474, 1770988.9151165667, 2311390.8526230683, 2173045.8251722781 })]
+    [InlineData("Tariq", 300, 1, new[] { 3437695.8180590398, 3708298.5408707494, 3263678.3343260279, 3721164.3120034356 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

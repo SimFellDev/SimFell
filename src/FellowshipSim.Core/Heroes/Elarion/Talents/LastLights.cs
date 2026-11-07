@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 164: "Your attacks and abilities have +20% additional critical strike chance when striking targets below 30%
-/// health." Effect 2204 (CritChance +0.2).
+/// Talent 164: attacks and abilities have additional critical strike chance when striking targets below a health
+/// threshold. Effect 2204 (CritChance).
 /// </summary>
 public class LastLights : Talent
 {

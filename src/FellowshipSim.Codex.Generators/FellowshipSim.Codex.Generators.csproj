@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Generators over the Codex's data export (codex-export/, from tools/download-codex-export.sh), read as AdditionalFiles
+    Generators over the Codex's data export (codex-export/, from FellowshipSim.Core's build), read as AdditionalFiles
     through FellowshipAnalyzer.Codex.SDK. The SDK is a net10.0 library, so this generator is net10.0 too: it runs in the
     .NET SDK's compiler, which is .NET.
   -->

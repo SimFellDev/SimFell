@@ -14,3 +14,10 @@
 .warning {
   color: var(--warn);
 }
+
+/* A phone keeps no room for a status line with nothing to say. */
+@media (max-width: 600px) {
+  .message:empty {
+    display: none;
+  }
+}

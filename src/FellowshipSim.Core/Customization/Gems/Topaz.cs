@@ -30,7 +30,7 @@ public class Topaz : Gem
     {
         switch (node.Slot)
         {
-            case 1: // Adrenaline Rush: Haste for 10s each time you deal damage to an enemy at 30% health or less.
+            case 1: // Adrenaline Rush: Haste for `AdrenalineRushSeconds` each time you deal damage to an enemy at or below a health threshold.
                 BindAdrenalineRush(hero, node);
                 return true;
             case 4: // Feline Grace: Haste.
@@ -85,12 +85,22 @@ public class Topaz : Gem
     protected override void BindLater(Hero hero, GemNode node, SimTime now)
     {
         if (node.Slot == 1) BindAdrenalineRush(hero, node);
-        if (node.Slot != 5) return;
-        BindVirtuoso(hero, node);
-        if (!hero.Auras.HasAura(Hero.SpiritOfHeroism, now)) hero.Auras.Apply(node.Grants!, now);
+        if (node.Slot == 5) BindVirtuoso(hero, node);
     }
 
-    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now) => SetRanks();
+    /// <summary>
+    /// Each activation of slot 5 gives the Essence unless Spirit of Heroism is running. The node's augmentation
+    /// holds effect 1937, Infinite, with
+    /// OngoingTagRequirements IgnoreTags CharacterStatus.SpiritBuffed. The game grants a node's augmentation at every rise past its RequiredGemPower and removes it at every fall
+    /// below, with no first-activation state. Every Anomalous Residue: Topaz window of T2qLPpmMkrAtJ9B1 fight 18 (383.829,
+    /// 530.946, 1400.233) and Fc8v6yWxD14GQMnV fight 19 (809.379, 958.352, 1120.143) has effect 1937 in the Residue's frame.
+    /// </summary>
+    protected override void NodesChanged(Hero hero, IReadOnlyList<GemNode> before, SimTime? now)
+    {
+        SetRanks();
+        if (now is { } time && _essence != null && before.All(n => n.Slot != 5) && !hero.Auras.HasAura(hero.SpiritOfHeroismAura, time))
+            hero.Auras.Apply(_essence, time);
+    }
 
     protected override IEnumerable<StatModifier> StatEffects(GemNode node) => node.Slot switch
     {

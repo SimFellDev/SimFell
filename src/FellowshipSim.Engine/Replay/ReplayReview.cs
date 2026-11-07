@@ -64,8 +64,10 @@ public static class ReplayReview
             result.PlayerName, script.Player.Hero, result.PassedSteps, result.Steps.Count, result.MatchedLogHits, result.LogHits,
             engineDamage, logDamage, result.ForcedCasts.Count, DateTime.UtcNow);
 
-        return new ReviewArtifacts(summary, scriptJson, ReplayReportWriter.Render(result), ReplayReportWriter.Summary(result), HitsCsv(result));
+        return new ReviewArtifacts(summary, scriptJson, ReplayReportWriter.Render(result), ReplayReportWriter.Summary(result), HitsCsv(result),
+            ReplayFindingsDocument.ForFight(new ReviewedFight(result, script, playerId)));
     }
+
 
     private static string HitsCsv(ReplayResult result)
     {

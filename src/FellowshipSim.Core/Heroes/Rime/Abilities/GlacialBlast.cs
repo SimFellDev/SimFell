@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
-/// <summary>Ability 1028. Costs 2 Winter Orbs. Talon Strike (Icy Talons) is built on it.</summary>
+/// <summary>Ability 1028. Costs Winter Orbs. Talon Strike (Icy Talons) is built on it.</summary>
 public class GlacialBlast : RimeAbility
 {
     public const int AbilityId = 1028;
@@ -11,17 +11,17 @@ public class GlacialBlast : RimeAbility
     public const double CastTimeSeconds = 1.5;
     public const int DefaultWinterOrbCost = 2;
 
-    /// <summary>Talent 38 Glacial Assault: "deals 40% more damage" at 4 stacks.</summary>
+    /// <summary>Talent 38 Glacial Assault: the cast deals more damage at full stacks.</summary>
     public const double GlacialAssaultMultiplier = 1.40;
-    /// <summary>Talent 38: "dealing 30% of the initial damage to nearby enemies" (ability 2023's text says 20%).</summary>
+    /// <summary>Talent 38: the explosion deals a fraction of the initial damage to nearby enemies (ability 2023's text gives a different fraction).</summary>
     public const double GlacialAssaultExplosionFraction = 0.30;
     public const int GlacialAssaultExplosionId = 2023;
     /// <summary>
-    /// Combat logs: the explosion is 30% of the hit actually dealt (crit included), never crits itself, and loses damage
-    /// as sqrt(12/N) beyond 12 targets (yMAZVJL9hTpFjqbC fight 7 @ 31.8s: explosion/spike = 0.2598 on 16, 0.2520 on 17).
+    /// Combat logs: the explosion is a fraction of the hit actually dealt (crit included), never crits itself, and loses
+    /// damage as a square-root falloff beyond this many targets (yMAZVJL9hTpFjqbC fight 7 @ 31.8s).
     /// </summary>
     public const double GlacialAssaultExplosionTargetThreshold = 12;
-    /// <summary>Ability 2023 maxTargets 40.</summary>
+    /// <summary>Ability 2023 maxTargets.</summary>
     public const int GlacialAssaultExplosionMaxTargets = 40;
 
     /// <summary>Seconds added to the cast time (Greater Glacial Blast).</summary>
@@ -43,7 +43,7 @@ public class GlacialBlast : RimeAbility
 
     public override SimTime GetAdjustedCastTime(SimTime now = default)
     {
-        // Instant with 4 Glacial Assault stacks or during Wrath of Winter.
+        // Instant with full Glacial Assault stacks or during Wrath of Winter.
         if (GlacialAssaultReady || Rime.Auras.HasAura(WrathOfWinter.Buff, now)) return SimTime.Zero;
         double seconds = CastTime.TotalSeconds + ExtraCastTimeSeconds;
         double castHaste = CastHasteBonuses.Sum(bonus => bonus(now));
@@ -81,7 +81,7 @@ public class GlacialBlast : RimeAbility
         DealDamage(ctx, target, damageMultiplier: multiplier, onLanded: assault ? (c, dealt) => Explode(c, target, dealt) : null);
     }
 
-    /// <summary>Removes the 4 Glacial Assault stacks; returns the damage multiplier they give.</summary>
+    /// <summary>Removes the Glacial Assault stacks; returns the damage multiplier they give.</summary>
     protected double ConsumeGlacialAssault(SimulationContext ctx)
     {
         Rime.Auras.Remove(GlacialAssault.Buff, ctx.CurrentTime);

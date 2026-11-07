@@ -5,8 +5,8 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
 /// Legendary power 430 (Elarion's Skystrider Hauberk, item 5898):
-/// "Your Spirit Refunds have a 50% chance to reset the cooldown of your Heartseeker Barrage and grant you
-/// Impending Heartseeker for 15 seconds. Impending Heartseeker causes your next Heartseeker Barrage to deal +10% increased
+/// "Your Spirit Refunds have a chance to reset the cooldown of your Heartseeker Barrage and grant you
+/// Impending Heartseeker. Impending Heartseeker causes your next Heartseeker Barrage to deal increased
 /// damage with each arrow during its channel." Effect 2317.
 /// </summary>
 public class StarstrikersAscent : Legendary

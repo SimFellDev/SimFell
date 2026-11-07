@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1213: "Spins and throws daggers in all direction, dealing 80.6% of Agility to all nearby enemies. Generates 1
-/// Combo Point for each enemy hit. Critical Strikes generate 2 Combo Points." Costs 35 Energy; damage falls off as
-/// sqrt(8/N) beyond 8 targets (game data targetCountFalloff). In Stealth the Stealth Skittering Blades
+/// Ability 1213: spins and throws daggers in all directions, dealing Agility damage to all nearby enemies. Generates
+/// Combo Points for each enemy hit, more on a Critical Strike. Costs Energy; damage falls off with the target count beyond
+/// a threshold (game data targetCountFalloff). In Stealth the Stealth Skittering Blades
 /// (<see cref="StealthSkitteringBlades"/>) replaces it.
 /// </summary>
 public class SkitteringBlades : MaraAbility
@@ -37,7 +37,6 @@ public class SkitteringBlades : MaraAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         Pay(ctx);
-        GenerateMaidenComboPoints(ctx, target);
         DealAoeDamage(ctx, EnemiesAround(ctx, target));
     }
 

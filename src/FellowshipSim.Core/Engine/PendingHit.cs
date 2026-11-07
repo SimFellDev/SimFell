@@ -28,6 +28,7 @@ public sealed class PendingHit
     public double ExtraCritChance { get; private set; }
 
     private SimulationContext.HitNumbers _fixed;
+    private bool _kept;
     private Func<SimulationContext, SimulationContext.HitNumbers>? _compute;
 
     internal Action<SimulationContext, double>? OnLanded { get; private set; }
@@ -61,24 +62,20 @@ public sealed class PendingHit
 
     internal void FromNumbers(SimulationContext.HitNumbers numbers) => _fixed = numbers;
 
+    /// <summary>The hit is <see cref="Ability"/>'s with <paramref name="numbers"/>, read from the state of an earlier moment.</summary>
+    internal void KeepNumbers(SimulationContext.HitNumbers numbers)
+    {
+        _fixed = numbers;
+        _kept = true;
+    }
+
     internal void FromCompute(Func<SimulationContext, SimulationContext.HitNumbers> compute) => _compute = compute;
 
     /// <summary>The hit's numbers from the state at <paramref name="ctx"/>'s current time.</summary>
     public SimulationContext.HitNumbers Compute(SimulationContext ctx)
     {
-        if (Ability is { } ability)
-        {
-            // Damage, crit chance and crit power are read now; what talents added to the cast is kept.
-            var now = ctx.CurrentTime;
-            var owner = ability.Owner;
-            double hitCrit = 0.0;
-            var bonuses = ability.HitCritChanceBonuses;
-            for (int i = 0; i < bonuses.Count; i++) hitCrit += bonuses[i](ctx);
-            return new SimulationContext.HitNumbers(
-                ability.BaseDamage(ctx, Target, DamageMultiplier),
-                owner.CritChanceAgainst(Target, now) + ability.CritChanceBonus + ExtraCritChance + CastCritChance + hitCrit,
-                ability.CritMultiplierAt(now));
-        }
+        if (_kept) return _fixed;
+        if (Ability is { } ability) return ability.NumbersNow(ctx, Target, DamageMultiplier, ExtraCritChance + CastCritChance);
         return _compute != null ? _compute(ctx) : _fixed;
     }
 
@@ -92,6 +89,7 @@ public sealed class PendingHit
         Ability = null;
         _compute = null;
         _fixed = default;
+        _kept = false;
         Released = default;
         Outcome = default;
         Tick = null;

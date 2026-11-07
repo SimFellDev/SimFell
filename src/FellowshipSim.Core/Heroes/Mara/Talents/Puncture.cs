@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
-/// <summary>Talent 123: "Your Widow's Bite has +100% increased critical strike chance." UNVERIFIED: no combat log has this talent.</summary>
+/// <summary>Talent 123: "Your Widow's Bite has increased critical strike chance." UNVERIFIED: no combat log has this talent.</summary>
 public class Puncture : Talent
 {
     public const int TalentId = 123;

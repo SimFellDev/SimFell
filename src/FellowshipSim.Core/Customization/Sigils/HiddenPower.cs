@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 1: "Your abilities have a chance to grant you 1 stack of Hidden Power for 60 seconds. When you have 5 stacks,
-/// Hidden Power is consumed and Power Revealed is granted to you for 15 seconds, increasing your Main Stat by
-/// 7.2% / 12.8% / 18.4% / 24%. You can not gain Hidden Power stacks while Power Revealed is active on you. (2.6 PPM)"
+/// Sigil 1: "Your abilities have a chance to grant you a stack of Hidden Power for a time. At the maximum stacks,
+/// Hidden Power is consumed and Power Revealed is granted to you for a time, increasing your Main Stat by an amount
+/// per rank. You can not gain Hidden Power stacks while Power Revealed is active on you."
 /// (effects 2164 Hidden Power, 2165 Power Revealed)
 /// </summary>
 public class HiddenPower : Sigil

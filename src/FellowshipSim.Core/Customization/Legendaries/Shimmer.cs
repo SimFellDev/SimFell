@@ -5,9 +5,9 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
 /// Legendary power 429 (Elarion's Skystrider Helm, item 5899):
-/// "Enemies hit by your Highwind Arrow are afflicted by Shimmer for 9 seconds, causing you to deal 8% more damage to them.
-/// Shimmer stacks up to 3 times." Effect 2362 (9s, 3 stacks; IncomingDamageMultiplier 1.08 per stack). UNVERIFIED: no
-/// combat log has this legendary; the engine adds 8% per stack.
+/// "Enemies hit by your Highwind Arrow are afflicted by Shimmer, causing you to deal more damage to them.
+/// Shimmer stacks." Effect 2362 (IncomingDamageMultiplier per stack). UNVERIFIED: no
+/// combat log has this legendary; the engine adds the bonus per stack.
 /// </summary>
 public class Shimmer : Legendary
 {

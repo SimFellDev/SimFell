@@ -2,9 +2,9 @@ namespace FellowshipSim.Core.Customization.Aspects;
 
 /// <summary>
 /// Aspect 32: "Your Spirit Ability causes you to conjure a Sapphire Aurastone ... The Sapphire Aurastone lasts as long as
-/// the Spirit of Heroism effect from your Spirit Ability is active on you. While active, 3.4% / 6.3% / 9.1% / 12% of all
+/// the Spirit of Heroism effect from your Spirit Ability is active on you. While active, a percentage by rank of all
 /// damage you deal is accumulated into the Sapphire Aurastone and released in a pulse of damage, evenly split between
-/// nearby enemies every 3 seconds." (damage effect 2347; it never crits and is not scaled again)
+/// nearby enemies on a fixed period." (damage effect 2347; it never crits and is not scaled again)
 /// </summary>
 public class SapphireAurastone : Aspect
 {
@@ -14,8 +14,8 @@ public class SapphireAurastone : Aspect
     public const string DamageName = "Sapphire Aurastone Damage";
     public const double PulseSeconds = 3.0;
     /// <summary>
-    /// The first pulse comes 6s after the stone appears, then every 3s (n7zxK8harZT2wjDB fight 9: Spirit of Heroism at
-    /// 16.604s and 92.447s, first pulses at 22.615s and 98.455s, holding 6s of damage).
+    /// The first pulse comes later than <see cref="PulseSeconds"/> after the stone appears, then every <see cref="PulseSeconds"/>
+    /// (n7zxK8harZT2wjDB fight 9: Spirit of Heroism at 16.604s and 92.447s, first pulses at 22.615s and 98.455s).
     /// </summary>
     public const double FirstPulseSeconds = 6.0;
     public static readonly double[] StoredShareByRank = [0.034, 0.063, 0.091, 0.12];

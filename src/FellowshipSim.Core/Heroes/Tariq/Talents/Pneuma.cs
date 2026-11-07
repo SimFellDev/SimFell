@@ -3,7 +3,7 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 81: "Your Culling Strike generates 1 Spirit Point." (Culling Strike generates SpiritPoints amount 1.)
+/// Talent 81: "Your Culling Strike generates a Spirit Point." (Culling Strike generates SpiritPoints.)
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class Pneuma : Talent

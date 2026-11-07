@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1304: "You are granted +30% Haste for 20 seconds. Can be used during Global Cooldown and while Casting or
-/// Channeling." Cooldown 120s; effect 1869 (Haste +0.3, 20s).
+/// Ability 1304: "You are granted Haste. Can be used during Global Cooldown and while Casting or
+/// Channeling." Has a cooldown; effect 1869 (Haste).
 /// </summary>
 public class SkystridersGrace : ElarionAbility
 {

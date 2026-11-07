@@ -1,15 +1,19 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
-/// <summary>Ability 1244: "Interrupt the target's spellcasting ... Can be used during Global Cooldown." Cooldown 12s; no damage.</summary>
+/// <summary>
+/// Ability 1244: "Interrupt the target's spellcasting ... Can be used during Global Cooldown." No damage. The cooldown is
+/// game data. Combat logs (180 intervals): no interval is shorter than the cooldown.
+/// </summary>
 public class Jawbreaker : GundeAbility
 {
     public const int AbilityId = 1244;
     public const string AbilityName = "Jawbreaker";
-    public const double CooldownSeconds = 12.0;
+    public const double CooldownSeconds = 16.0;
 
     public Jawbreaker(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
     {
         SetCooldown(CooldownSeconds);
+        IgnoresCooldownRecovery = true;
         IgnoresGcd = true;
         Interrupts = true;
     }

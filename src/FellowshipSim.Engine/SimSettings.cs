@@ -10,13 +10,13 @@ namespace FellowshipSim.Engine;
 /// <see cref="HealthFollowsTime"/>, <see cref="StartingSpirit"/>, <see cref="Boss"/>, <see cref="Dungeon"/>,
 /// <see cref="ReactionDelays"/> and <see cref="ProcReactionSeconds"/> are each fight's
 /// <see cref="FightOptions"/>; targets lose their health over each fight, the hero takes a player's reaction time, and a
-/// proc reaches the action lists 0.5 s after its gain unless told otherwise, as the Sim page has them.
+/// proc reaches the action lists <see cref="ProcReactionSeconds"/> after its gain unless told otherwise, as the Sim page has them.
 /// </summary>
 public sealed record SimSettings(int Iterations, double DurationSeconds, int TargetCount = 1, int FirstSeed = 1, int? DegreeOfParallelism = null,
     double LengthVariance = 0, bool HealthFollowsTime = true, double StartingSpirit = 0, bool Boss = true, DungeonProfile? Dungeon = null,
     bool ReactionDelays = true, double ProcReactionSeconds = SimSettings.DefaultProcReactionSeconds)
 {
-    /// <summary>SimulationCraft's player reaction_mean: 0.3 s.</summary>
+    /// <summary>SimulationCraft's player reaction_mean.</summary>
     public const double DefaultProcReactionSeconds = 0.3;
 
     [System.Text.Json.Serialization.JsonIgnore]

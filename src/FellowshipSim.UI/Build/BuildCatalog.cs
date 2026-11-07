@@ -13,16 +13,16 @@ using FellowshipSim.Core.Import;
 namespace FellowshipSim.UI.Build;
 
 /// <summary>
-/// Everything a build of one hero can have, from the engine's catalog, with the datamine's icons and highest ranks. A
+/// Everything a build of one hero can have, from the engine's catalog, with the game data's icons and highest ranks. A
 /// choice the engine does not model is marked.
 /// </summary>
 public sealed class BuildCatalog
 {
-    /// <summary>The highest rank of an augmentation or glyph the datamine gives none for.</summary>
+    /// <summary>The highest rank of an augmentation or glyph the game data gives none for.</summary>
     public const int DefaultMaxRank = 4;
 
     /// <summary>
-    /// Every hero's legendary items in the order the editor shows them: head, chest and legs (the datamine's item records
+    /// Every hero's legendary items in the order the editor shows them: head, chest and legs (the game data's item records
     /// 5899 Head, 5898 Chest, 5900 Legs, the same IDs for every hero).
     /// </summary>
     public static readonly int[] LegendarySlotOrder = [5899, 5898, 5900];
@@ -41,7 +41,7 @@ public sealed class BuildCatalog
                 : new BuildOption(slot.TalentId, GameHeroData.TalentNames.GetValueOrDefault(slot.TalentId, $"Talent {slot.TalentId}"),
                     GameIcons.Talents.GetValueOrDefault(slot.TalentId), Modeled: false)))
             .ToList();
-        // The hero's own weapons (four each in the game), by the hero's item names; a name the datamine gives two of the
+        // The hero's own weapons, by the hero's item names; a name the game data gives two of the
         // hero's weapons (Rime's An'zhyr staff is a second "Void-touched Conduit") is the engine's weapon's, else its ability's.
         var weapons = GameHeroData.Weapons.GetValueOrDefault(hero) ?? new Dictionary<int, string>();
         Weapons = weapons
@@ -51,7 +51,7 @@ public sealed class BuildCatalog
             .Select(w => new BuildOption(w.Id, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.Id), Modeled: Catalog.CreateWeapon(w.Id) != null))
             .OrderBy(o => o.Name).ToList();
         // The hero's legendaries as the game has them, one per legendary item, each the engine's when it models it; an
-        // engine legendary none of whose items the datamine gives the hero comes by its first item.
+        // engine legendary none of whose items the game data gives the hero comes by its first item.
         var gameLegendaries = GameHeroData.Legendaries.GetValueOrDefault(hero) ?? new Dictionary<int, string>();
         var engineLegendaries = Catalog.Legendaries(hero).Where(l => l.ItemIds.Count > 0).ToList();
         var legendaries = gameLegendaries.Select(l => (Item: l.Key, Name: l.Value, Engine: Catalog.CreateLegendary(hero, l.Key)))
@@ -149,7 +149,7 @@ public sealed class BuildCatalog
     /// <summary>The icon's image of gem <paramref name="gem"/> (its colour and size), or null.</summary>
     public static string? GemIconUrl(GemItem gem) => GameIcons.GemItems.TryGetValue(gem.Id, out var icon) ? GameIcons.Url(icon) : null;
 
-    /// <summary>Every hero of the game (the datamine's), by name; <see cref="Catalog.Heroes"/> are the ones the engine has.</summary>
+    /// <summary>Every hero of the game (the game data's), by name; <see cref="Catalog.Heroes"/> are the ones the engine has.</summary>
     public static IReadOnlyList<string> GameHeroes { get; } = GameIcons.Heroes.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
 
     /// <summary>The hero's portrait, or null.</summary>

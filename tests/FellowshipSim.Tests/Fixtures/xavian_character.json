@@ -1,0 +1,133 @@
+{
+  "Name": "Baiqi",
+  "Hero": "Xavian",
+  "PrimaryStat": 150,
+  "Stamina": 356,
+  "MaxHealth": 41891,
+  "Armor": 1330,
+  "CritRating": 168,
+  "HasteRating": 114,
+  "ExpertiseRating": 91,
+  "SpiritRating": 113,
+  "StatsFromOldProfile": false,
+  "Talents": [
+    584,
+    580,
+    604,
+    578,
+    572,
+    570,
+    567
+  ],
+  "Augmentations": [
+    {
+      "Id": 42,
+      "Rank": 4,
+      "Name": "Hunter\u0027s Focus"
+    },
+    {
+      "Id": 47,
+      "Rank": 1,
+      "Name": "Visions of Grandeur"
+    },
+    {
+      "Id": 51,
+      "Rank": 2,
+      "Name": "Martial Initiative"
+    },
+    {
+      "Id": 34,
+      "Rank": 1,
+      "Name": "Emerald Judgement"
+    },
+    {
+      "Id": 4,
+      "Rank": 4,
+      "Name": "Seized Opportunity"
+    },
+    {
+      "Id": 48,
+      "Rank": 4,
+      "Name": "Brave Machinations"
+    },
+    {
+      "Id": 2,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 53,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 62,
+      "Rank": 1,
+      "Name": null
+    },
+    {
+      "Id": 58,
+      "Rank": 1,
+      "Name": null
+    }
+  ],
+  "Glyphs": [
+    {
+      "Id": 700,
+      "Rank": 4,
+      "Name": "The Trickster"
+    }
+  ],
+  "GemPower": {
+    "Emerald": 1200,
+    "Sapphire": 1250,
+    "Amethyst": 500,
+    "Diamond": 100
+  },
+  "SocketedGemIds": [
+    35,
+    45,
+    46,
+    35
+  ],
+  "GearGemBonuses": {
+    "Amethyst": 5,
+    "Sapphire": 4,
+    "Diamond": 1,
+    "Emerald": 2
+  },
+  "StatEnchants": [
+    {
+      "Id": 66,
+      "Rank": 30,
+      "Name": "Sun\u0027s Might / Star\u0027s Guille / Moon\u0027s Cunning "
+    },
+    {
+      "Id": 67,
+      "Rank": 12,
+      "Name": "Revenant\u0027s Might / Wraith\u0027s Guille / Banshee\u0027s Cunning"
+    },
+    {
+      "Id": 70,
+      "Rank": 12,
+      "Name": "Manticore\u0027s Might / Basilisk\u0027s Guille / Spider\u0027s Cunning"
+    },
+    {
+      "Id": 65,
+      "Rank": 12,
+      "Name": "Behemoth\u0027s Might  / Jotunn\u0027s Guille / Titan\u0027s Cunning"
+    }
+  ],
+  "StatEnchantCounts": {
+    "66": 5,
+    "67": 2,
+    "70": 2,
+    "65": 2
+  },
+  "Relic1ItemId": 5926,
+  "Relic2ItemId": 5921,
+  "LegendaryItemIds": [
+    5898
+  ],
+  "WeaponAbilityId": 152
+}

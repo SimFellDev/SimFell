@@ -67,7 +67,7 @@ public sealed class BuildEditorTests : IDisposable
     }
 
     /// <summary>
-    /// Every legendary item the datamine gives an engine hero is one of the hero's legendaries, so an imported build keeps
+    /// Every legendary item game data gives an engine hero is one of the hero's legendaries, so an imported build keeps
     /// it.
     /// </summary>
     [Fact]
@@ -138,7 +138,7 @@ public sealed class BuildEditorTests : IDisposable
         Assert.True(editor.ToggleTalent(Of(IcyTalons.TalentId)));
         Assert.Equal(Hero.TalentPoints, editor.PointsLeft);
 
-        // Every talent of rows 5 (3 points each) and 1 (2 each) is 15 points: the last one is refused.
+        // Every talent of row 5 and two of row 1 use up all but one point: the last talent of row 1 is refused.
         foreach (var t in talents.Where(t => t.Slot.Row == 5).Concat(talents.Where(t => t.Slot.Row == 1).Take(2))) Assert.True(editor.ToggleTalent(t));
         Assert.Equal(1, editor.PointsLeft);
         Assert.False(editor.ToggleTalent(talents.Where(t => t.Slot.Row == 1).Last()));
@@ -163,7 +163,7 @@ public sealed class BuildEditorTests : IDisposable
         var editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
         double crit = editor.Percent(RatedStat.Crit);
 
-        // Killer Instinct adds 2% and Berserker's Zeal 8 crit rating.
+        // Killer Instinct adds crit chance and Berserker's Zeal adds crit rating.
         editor.SetGem(GemColor.Amethyst, 300);
         Assert.Equal(crit + 0.02 + StatDiminishingReturns.FromRating(8), editor.Percent(RatedStat.Crit), 6);
         Assert.Equal(8, editor.TotalRating(RatedStat.Crit));

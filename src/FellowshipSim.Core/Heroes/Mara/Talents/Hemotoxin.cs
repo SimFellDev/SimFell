@@ -3,12 +3,12 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 205: "Your Backstab, Widow's Bite, and Auto Attacks have a 12% chance to apply 1 stack of Hemotoxin to the
-/// target. causing it to take 20% Agility poison damage every 1.5 seconds over 9 seconds. Using Hemorrhaging Strike on a
-/// target afflicted with Hemotoxin consumes 1 stack, instantly dealing 75% of Hemorrhaging Strike's bleed damage to the
-/// target and 50% of Hemorrhaging Strike's bleed damage to other nearby targets as poison damage. The damage is affected
+/// Talent 205: "Your Backstab, Widow's Bite, and Auto Attacks have a chance to apply a stack of Hemotoxin to the
+/// target. causing it to take Agility poison damage periodically. Using Hemorrhaging Strike on a
+/// target afflicted with Hemotoxin consumes a stack, instantly dealing a share of Hemorrhaging Strike's bleed damage to the
+/// target and a share of Hemorrhaging Strike's bleed damage to other nearby targets as poison damage. The damage is affected
 /// by the amount of combo points spent on the Hemorrhaging Strike that triggers Hemotoxin. Hemotoxin's area damage is
-/// reduced beyond 1 target." Effect 2337 (3 stacks) is the poison; the burst is logged as effect 2338.
+/// reduced beyond a target count." Effect 2337 is the poison; the burst is logged as effect 2338.
 /// UNVERIFIED: no combat log has this talent; "bleed damage" is taken as the bleed's damage over the duration the
 /// Combo Points give it.
 /// </summary>
@@ -61,7 +61,7 @@ public class Hemotoxin : Talent
         };
     }
 
-    /// <summary>The poison: 20% of Agility every 1.5s for 9s per stack, up to 3.</summary>
+    /// <summary>The poison: <see cref="PoisonCoefficient"/> of Agility every <see cref="PoisonTickSeconds"/> for <see cref="PoisonSeconds"/> per stack, up to <see cref="MaxStacks"/>.</summary>
     private sealed class Poison : MaraDot
     {
         public Poison(Mara owner) : base(owner, PoisonEffectId, TalentName, PoisonCoefficient, PoisonTickSeconds, PoisonSeconds) { }

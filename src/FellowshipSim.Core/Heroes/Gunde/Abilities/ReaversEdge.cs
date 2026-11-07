@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2290: "Jump into a spinning strike, dealing 203.17% of Strength to all nearby enemies. Applies Rend to the
-/// targets for 50% of the damage dealt." Damage falls off as sqrt(8/N) beyond 8 enemies (game data effect 3235).
-/// Cooldown 5s, shortened by Haste at the cast. The game data lists no Critical Strike for it; combat logs show it crit.
+/// Ability 2290: "Jump into a spinning strike, dealing damage to all nearby enemies. Applies Rend to the
+/// targets." Damage falls off beyond a target threshold (game data effect 3235).
+/// The cooldown is shortened by Haste at the cast. The game data lists no Critical Strike for it; combat logs show it crit.
 /// </summary>
 public class ReaversEdge : GundeAbility
 {

@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Customization.RelicPassives;
 
-/// <summary>Relic passive 780 (Orb of Hidden Riches): "Your Gem Power is increased by 25%." (effect 3271)</summary>
+/// <summary>Relic passive 780 (Orb of Hidden Riches): "Your Gem Power is increased." (effect 3271)</summary>
 public class CovetousGreed : RelicPassive
 {
     public const int RelicPassiveId = 780;

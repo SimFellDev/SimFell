@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 167: "Your Focused Shot has a 20% chance to grant you 1 charge of Empowered Multishot. All your Empowered
-/// Multishots deal 20% more damage." Effect 2271 (15s, up to 2 charges); effect 2010 talent AoeProjectileDamageEmpowered
-/// DamageBonus 1.2. Combat logs (fXyzwGcQkTrLD34R fight 4, 4 charges of 22 casts): the charge comes as the cast
+/// Talent 167: Focused Shot has a chance to grant a charge of Empowered Multishot. All Empowered
+/// Multishots deal more damage. Effect 2271; effect 2010 talent AoeProjectileDamageEmpowered
+/// DamageBonus. Combat logs (fXyzwGcQkTrLD34R fight 4): the charge comes as the cast
 /// completes, before the arrow lands.
 /// </summary>
 public class FocusedExpanse : Talent

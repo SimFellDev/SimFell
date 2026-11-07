@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1267 / effect 1825: 45s. "All damage over time effects from your hero abilities tick 30% faster for 9 sec. Can
-/// be used during Global Cooldown."
+/// Ability 1267 / effect 1825: all damage over time effects from the hero's abilities tick faster for a duration. Can be
+/// used during Global Cooldown.
 /// </summary>
 public class Wildfire : ArdeosAbility
 {

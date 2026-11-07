@@ -1,5 +1,5 @@
 using FellowshipSim.Core.APL;
-using FellowshipSim.UI.Apl;
+using FellowshipSim.Core.APL.Editing;
 
 namespace FellowshipSim.Tests.Apl.Editor;
 
@@ -34,7 +34,7 @@ public class ListEditsTests
     [Fact]
     public void After_A_Comma_The_List_Has_The_Actions_Keys()
     {
-        Assert.Equal([AplActionLine.ConditionKey, AplActionLine.TargetIfKey], Items("actions+=/frost_bolt,", always: true));
+        Assert.Equal([AplActionLine.ConditionKey, AplActionLine.TargetIfKey, AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey], Items("actions+=/frost_bolt,", always: true));
         Assert.Equal([AplActionLine.ListNameKey], Items("actions+=/run_action_list,na"));
         Assert.Equal([AplVariable.ValueKey], Items("actions+=/variable,name=orbs,va"));
     }

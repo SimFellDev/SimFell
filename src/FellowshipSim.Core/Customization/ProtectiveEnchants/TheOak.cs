@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Customization.ProtectiveEnchants;
 
-/// <summary>Protective enchant 62: "Your Armor is increased by 25%."</summary>
+/// <summary>Protective enchant 62: "Your Armor is increased."</summary>
 public class TheOak : ProtectiveEnchant
 {
     public const int ProtectiveEnchantId = 62;

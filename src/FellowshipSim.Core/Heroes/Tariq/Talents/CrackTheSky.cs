@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 77: "Your Lightning damage has +20% increased critical strike chance." (Placeholder constant
-/// Tariq.Talent.PassiveLightningCritChanceIncrease 0.2 on every lightning hit.) Combat logs: Thunder Call: Heavy Strike
+/// Talent 77: "Your Lightning damage has increased critical strike chance." (Tooltip value
+/// on every lightning hit.) Combat logs: Thunder Call: Heavy Strike
 /// does not gain it, a developer bug the engine models until the game fixes it (HeavyStrike).
 /// </summary>
 public class CrackTheSky : Talent

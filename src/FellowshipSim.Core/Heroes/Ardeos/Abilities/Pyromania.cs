@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1623: 90s. "Instantly adds an Engulfing Flames effect on the target, and apply it to up to 2 other nearby
-/// enemies. Enemies without an already active Engulfing Flames and with the highest amount of health will be highest
-/// priority. Can be used during Global Cooldown."
+/// Ability 1623: instantly adds an Engulfing Flames effect on the target, and applies it to other nearby enemies. Enemies
+/// without an already active Engulfing Flames and with the highest amount of health have the highest priority. Can be
+/// used during Global Cooldown.
 /// </summary>
 public class Pyromania : ArdeosAbility
 {

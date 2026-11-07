@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
-/// <summary>Ability 1032 / effect 1397: +20% damage for 20s, extended 0.1s per Frost Swallow hit. Usable while casting.</summary>
+/// <summary>Ability 1032 / effect 1397: increases damage, extended per Frost Swallow hit. Usable while casting.</summary>
 public class IceBlitz : RimeAbility
 {
     public const int AbilityId = 1032;
@@ -28,7 +28,7 @@ public class IceBlitz : RimeAbility
         TriggerCooldown(ctx);
     }
 
-    /// <summary>"The duration of Ice Blitz is extended by 0.1 seconds each time a Frost Swallow hits an enemy" (Flight of the Navir's too).</summary>
+    /// <summary>Tooltip: Ice Blitz's duration is extended each time a Frost Swallow hits an enemy (Flight of the Navir's too).</summary>
     public override void Connect()
     {
         var swallows = new FrostSwallows?[] { Rime.GetAbility<FrostSwallows>(), Rime.GetAbility<FlightOfTheNavir>()?.Swallows };

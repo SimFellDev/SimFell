@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1273: 3s cast, 45s. "Conjure a major eruption of fire in the targeted area, dealing 2407% of Intellect fire
-/// damage and applying Searing Blaze to all enemies in a large radius." Damage falls off as sqrt(1/N) beyond 1 target
-/// (game data targetCountFalloff, effect 1833).
+/// Ability 1273: a cast that conjures a major eruption of fire in the targeted area, dealing Intellect fire damage and
+/// applying Searing Blaze to all enemies in a large radius. Damage falls off with the target count (game data
+/// targetCountFalloff, effect 1833).
 /// </summary>
 public class Apocalypse : ArdeosAbility
 {

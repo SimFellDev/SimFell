@@ -10,30 +10,30 @@ namespace FellowshipSim.Core.Heroes.Gunde;
 /// </summary>
 public sealed class Gunde : Hero
 {
-    /// <summary>Class tuning: hero attribute balancingDamageAura (fellowship-data heroes.json, gunde.startingStats) 1, none.</summary>
+    /// <summary>Class tuning: hero attribute balancingDamageAura (game data heroes record, gunde.startingStats): no class tuning.</summary>
     public const double BalancingDamageAura = 1.0;
 
     /// <summary>
-    /// Spirit Refund (hero 9's Spirit text): "whenever you use an ability that applies Rend, causing 5 Blood Feathers to be
-    /// created on the ground near you", Rising Spirit, and 1 Spirit Point (game data ability 1522,
-    /// Gunde.SpiritProc.SpiritPointsGain 1). Combat logs (Y4wpb2f3gc8LqJDX fight 25 @ 24.978): Rising Spirit comes as the
+    /// Spirit Refund (hero 9's Spirit text): "whenever you use an ability that applies Rend, causing Blood Feathers to be
+    /// created on the ground near you", Rising Spirit, and a Spirit Point (game data ability 1522).
+    /// Combat logs (Y4wpb2f3gc8LqJDX fight 25 @ 24.978): Rising Spirit comes as the
     /// ability's first hit lands.
     /// </summary>
     public const int FeathersPerSpiritRefund = 5;
 
     /// <summary>
     /// "Each time Rend deals damage there is a chance a Blood Feather is spawned" (ability 2298); the game data has no
-    /// chance. UNVERIFIED estimate from Y4wpb2f3gc8LqJDX fight 25: 968 Owed in Blood gains, 116 Spirit Refunds (580
-    /// feathers) and 1960 Rend ticks leave about 0.2 feathers per tick, less the feathers of enemies that died.
+    /// chance. UNVERIFIED estimate from Y4wpb2f3gc8LqJDX fight 25: its Owed in Blood gains, less the feathers of Spirit
+    /// Refunds, divided by its Rend ticks, less the feathers of enemies that died.
     /// </summary>
     public const double FeatherChancePerRendTick = 0.15;
 
-    /// <summary>"Enemies that die with your Rend active on them have a 25% chance to create a Blood Feather" (ability 2298).</summary>
+    /// <summary>"Enemies that die with your Rend active on them have a chance to create a Blood Feather" (ability 2298).</summary>
     public const double FeatherChanceOnDeath = 0.25;
 
     /// <summary>
-    /// A sim picks up every Blood Feather this long after it appears (combat logs, fight 25 @ 24.978: the 5 feathers of a
-    /// Spirit Refund come in as Owed in Blood 0.5s later). UNVERIFIED: pickups depend on where Gunde moves.
+    /// A sim picks up every Blood Feather this long after it appears (combat logs, fight 25 @ 24.978: the feathers of a
+    /// Spirit Refund come in as Owed in Blood shortly after). UNVERIFIED: pickups depend on where Gunde moves.
     /// </summary>
     public const double FeatherPickupSeconds = 0.5;
 
@@ -51,7 +51,7 @@ public sealed class Gunde : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 9: mainStat Strength.</summary>
+    /// <summary>Game data hero 9: mainStat Strength.</summary>
     public override MainStat MainStat => MainStat.Strength;
 
     /// <summary>Every enemy's Rend.</summary>
@@ -114,8 +114,8 @@ public sealed class Gunde : Hero
     }
 
     /// <summary>
-    /// The first hit of a cast that applies Rend landed: the cast rolls its Spirit Refund, and a refund creates 5 Blood
-    /// Feathers.
+    /// The first hit of a cast that applies Rend landed: the cast rolls its Spirit Refund, and a refund creates
+    /// <see cref="FeathersPerSpiritRefund"/> Blood Feathers.
     /// </summary>
     internal void RendCastLanded(SimulationContext ctx)
     {

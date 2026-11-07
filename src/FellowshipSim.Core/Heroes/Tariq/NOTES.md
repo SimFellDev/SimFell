@@ -51,7 +51,7 @@ YC861NTRgLbmw4Qa fight 31 Cithrel's Fall) unless noted. Game values are from gam
   comes 2/3 of the usual global cooldown after it.
 - **Off the global cooldown:** Culling Strike (its ability has no global cooldown effect; casts come 5ms after others),
   and the abilities whose tooltip says so.
-- **Hasted cooldowns:** Skull Crusher, Hammer Storm and Wild Swing, as well as the ones the game data lists. Skull
+- **Hasted cooldowns:** Skull Crusher and Wild Swing, as well as the ones the game data lists. Skull
   Crushers come 0.835s apart at 20% haste.
 - **Leap Smash** deals its damage 0.27-0.30s after the cast; Mouth for War's Focused Wrath stack and High Road's Fury
   come with it. **Raging Tempest's leap** deals its damage 0.30-0.46s after the cast.

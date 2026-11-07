@@ -26,6 +26,14 @@ public readonly record struct TickRequest(
     SimTime Scheduled,
     double Fraction);
 
+/// <summary>An application of an effect on an enemy with a random duration.</summary>
+public readonly record struct EffectDurationRequest(
+    Hero Source,
+    EnemyTarget Target,
+    int EffectLogId,
+    double MinSeconds,
+    double MaxSeconds);
+
 /// <summary>
 /// What is decided when a hit is released: whether it crits, how long it travels before landing, and a damage
 /// spread roll. Damage itself is computed when the hit lands, from the stats at that moment.
@@ -74,20 +82,35 @@ public interface IOutcomeSource
     /// <summary>Firing time of a periodic tick with a damage log ID.</summary>
     SimTime TickAt(in TickRequest tick, SimulationContext ctx);
 
+    /// <summary>Seconds of an application with a random duration. Simulations roll it; a replay answers from the log.</summary>
+    double RollDuration(in EffectDurationRequest application, SimulationContext ctx);
+
+    /// <summary>
+    /// Seconds of a random delay of up to <paramref name="maxSeconds"/> before a hit is released. Simulations roll it; a replay
+    /// answers 0, and the hit lands at the log's time.
+    /// </summary>
+    double RollDelay(double maxSeconds, SimulationContext ctx);
+
     /// <summary>Called once a landed hit has been dealt and everything it triggered (procs, follow-up hits) has run.</summary>
     void HitFinished(SimulationContext ctx);
 
     /// <summary>How long the hero takes to cast after <paramref name="hold"/> ends (<see cref="SimulationContext.Reactions"/>).</summary>
     SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx);
+
+    /// <summary>
+    /// Damage of a defensive proc's hit on <paramref name="target"/> now, whose amount the log gives
+    /// (<see cref="Hero.DealDefensiveProcHit"/>): the log hit's in a replay, 0 in a sim.
+    /// </summary>
+    double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx);
 }
 
 /// <summary>
-/// Rolls every outcome: crits, procs and damage spread (uniform within +/-10%). Each crit is a real one, so effects that
+/// Rolls every outcome: crits, procs and damage spread (uniform within <see cref="DamageSpread"/>). Each crit is a real one, so effects that
 /// trigger on crits (Amethyst Splinters, Pyrophibian Frenzy) trigger as often as the crit chance says.
 /// </summary>
 public class RandomOutcomeSource : IOutcomeSource
 {
-    // Game damage variance is +/- 10% (uniform random in [0.90, 1.10]).
+    // Game damage variance: uniform random around the damage.
     public const double DamageSpread = 0.10;
 
     private readonly SimulationRng _rng;
@@ -106,8 +129,14 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public HitOutcome ResolveHit(in HitRequest hit, SimulationContext ctx)
     {
-        // A hit at an enemy that has left combat (it died, or its pull duration ended) misses, and rolls nothing.
-        if (hit.Target is { IsSleeping: true }) return new HitOutcome(false, Missed: true);
+        // A hit at an enemy that has left combat misses and rolls nothing. The one exception is the tick of an effect with
+        // PeriodicEffect.TicksAfterTargetDies: its tick hits its own target after that target dies.
+        if (hit.Target is { IsSleeping: true } left
+            && !(left.HasDied && ctx.CurrentPeriodicEffect is { TicksAfterTargetDies: true } effect
+                 && effect.DamageLogId == hit.AbilityId && effect.Target == left))
+        {
+            return new HitOutcome(false, Missed: true);
+        }
         // A forced crit rolls nothing: no crit and no spread.
         if (hit.ForcedCrit is { } forced) return new HitOutcome(forced);
         bool isCrit = hit.CanCrit && _rng.Roll(hit.CritChance);
@@ -123,10 +152,18 @@ public class RandomOutcomeSource : IOutcomeSource
 
     public SimTime TickAt(in TickRequest tick, SimulationContext ctx) => tick.Scheduled;
 
+    public double RollDuration(in EffectDurationRequest application, SimulationContext ctx) =>
+        application.MinSeconds + (_rng.NextDouble() * (application.MaxSeconds - application.MinSeconds));
+
+    public double RollDelay(double maxSeconds, SimulationContext ctx) => _rng.NextDouble() * maxSeconds;
+
     public void HitFinished(SimulationContext ctx) { }
 
     public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) =>
         reactions.Delay(hold, _rng.NextDouble(), _rng.NextDouble());
+
+    /// <summary>0: defensive procs fire in a replay only.</summary>
+    public virtual double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) => 0.0;
 }
 
 /// <summary>The simulation's random numbers: xoshiro256** (Blackman and Vigna, 2018), seeded through SplitMix64.</summary>

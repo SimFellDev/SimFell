@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
-/// <summary>Ability 1020. 2 charges, cooldown accelerated by haste, generates 1 Winter Orb.</summary>
+/// <summary>Ability 1020. Charges, cooldown accelerated by haste, generates a Winter Orb.</summary>
 public class ColdSnap : RimeAbility
 {
     public const int AbilityId = 1020;

@@ -2,14 +2,14 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
 /// Ability 2298 / effect 3245: "Each time Rend deals damage there is a chance a Blood Feather is spawned near the enemy on
-/// the ground that you can pick up to gain 1 stack of Owed in Blood for 30 seconds, up to maximum of 150 stacks. Enemies
-/// that die with your Rend active on them have a 25% chance to create a Blood Feather. When you use your Owed in Blood
+/// the ground that you can pick up to gain a stack of Owed in Blood, up to a maximum number of stacks. Enemies
+/// that die with your Rend active on them have a chance to create a Blood Feather. When you use your Owed in Blood
 /// ability, all stacks of Owed in Blood you have accumulated from Blood Feathers are applied to the targeted enemy as
-/// Rend stacks." Cooldown 3s. Combat logs: the stacks last 90s (patch 0.4.5.0; logs from before 16 September 2026 show
-/// 45s); it takes no global cooldown (Gunde guide corpus).
+/// Rend stacks." The stack duration is <see cref="BuffSeconds"/> (combat logs, patch 0.4.5.0; logs from before
+/// 16 September 2026 show a shorter one); the cast takes no global cooldown (Gunde guide corpus).
 /// Each stack becomes a Rend stack: a Strength of Rend still to deal. Combat logs (Y4wpb2f3gc8LqJDX fights 14 and 25, 41
-/// casts): casts of up to 15 stacks add exactly as many Rend stacks; larger ones add 0.6-1.1 per stack (150 -> 127, 94 -> 81,
-/// 55 -> 35). The 18 larger casts add 1319 Rend stacks for 1505: the first 15 stacks one each, then 0.85 per stack.
+/// casts): casts of up to <see cref="ExactStacks"/> stacks add exactly as many Rend stacks; larger casts add fewer per stack.
+/// The 18 larger casts fit <see cref="ExactStacks"/> stacks one each, then <see cref="LargeCastRendPerStack"/> per stack.
 /// </summary>
 public class OwedInBlood : GundeAbility
 {

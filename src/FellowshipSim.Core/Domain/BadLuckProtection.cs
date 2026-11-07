@@ -4,15 +4,15 @@ namespace FellowshipSim.Core.Domain;
 
 /// <summary>
 /// A proc with bad luck protection: its chance is a step times the rolls since it last procced (the first roll after a
-/// proc has one step), so it procs at the latest once the step reaches 100%. <see cref="Hero.RollBadLuckProc"/> rolls it.
-/// Combat logs (Tariq's Schism, 17 fights, 5265 rolls): the rate after 0, 1 and 2 misses in a row is 16-19%, 31-35% and
-/// 44-46%, one step of 15.8% each, the step whose average chance is the tooltip's 35%.
+/// proc has one step), so it procs at the latest once the chance reaches certainty. <see cref="Hero.RollBadLuckProc"/> rolls it.
+/// Combat logs (Tariq's Schism, 17 fights): the rate after each miss in a row rises by one step, the step whose average
+/// chance is the tooltip's.
 /// </summary>
 public static class BadLuckProtection
 {
     private static readonly ConcurrentDictionary<double, double> Steps = new();
 
-    /// <summary>The step whose average chance per roll is <paramref name="averageChance"/> (0.35 gives 0.158).</summary>
+    /// <summary>The step whose average chance per roll is <paramref name="averageChance"/>.</summary>
     public static double StepFor(double averageChance) => Steps.GetOrAdd(averageChance, average =>
     {
         double low = 0.0, high = 1.0;

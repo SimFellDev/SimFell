@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1310: "Instantly apply 3 stacks of Lunarlight Mark to target enemy and up to 11 additional enemies near your
-/// target. Ability damage you deal to enemies with Lunarlight Mark has a 25% chance to trigger Lunarlight Salvo ...
-/// Critical Strikes have a 50% chance to trigger Lunarlight Salvo. Can be used during Global Cooldown." Cooldown 40s.
-/// The debuff is effect 1876 (15s, up to 20 stacks); see <see cref="LunarlightSalvo"/>.
+/// Ability 1310: "Instantly apply stacks of Lunarlight Mark to target enemy and additional enemies near your
+/// target. Ability damage you deal to enemies with Lunarlight Mark has a chance to trigger Lunarlight Salvo ...
+/// Critical Strikes have a chance to trigger Lunarlight Salvo. Can be used during Global Cooldown." Has a cooldown.
+/// The debuff is effect 1876; see <see cref="LunarlightSalvo"/>.
 /// </summary>
 public class LunarlightMark : ElarionAbility
 {
@@ -25,7 +25,7 @@ public class LunarlightMark : ElarionAbility
 
     /// <summary>
     /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): every application adds its stacks to the ones
-    /// held and restarts the 15 seconds (a Spirit Refund takes 1 stack to 6, 3 to 5).
+    /// held and restarts the duration (a Spirit Refund adds stacks to a mark already held).
     /// </summary>
     public static readonly AuraDef Debuff = AuraDef.Effect("Lunarlight Mark", DebuffEffectId, DebuffSeconds, DebuffMaxStacks);
 

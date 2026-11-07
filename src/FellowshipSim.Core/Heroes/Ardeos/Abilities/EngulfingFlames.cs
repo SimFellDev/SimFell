@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1586: 1.5s cast, 2 charges of 20s (cooldown recovery, not haste), applies an instance of Engulfing Flames
-/// (<see cref="EngulfingFlamesDot"/>). "REKINDLED FLAME: Each stack of Engulfing Flames that is active on an enemy as it
-/// dies, grants you 10 seconds reduced cooldown on your Engulfing Flames."
+/// Ability 1586: a cast with charges (cooldown recovery, not haste) that applies an instance of Engulfing Flames
+/// (<see cref="EngulfingFlamesDot"/>). REKINDLED FLAME: each stack of Engulfing Flames active on an enemy as it dies
+/// reduces the cooldown of Engulfing Flames.
 /// </summary>
 public class EngulfingFlames : ArdeosAbility
 {

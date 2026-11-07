@@ -1,11 +1,11 @@
 namespace FellowshipSim.Core.Customization.WeaponAbilities;
 
 /// <summary>
-/// Weapon ability 157 (weapon power 351): "Instantly deal 2109% fire damage to all enemies within a 1000 radius. You gain
-/// 1 stack of Sundering Wrath for each enemy hit up to a maximum of 5 stacks, grating you +6% additional critical strike
-/// chance per stack for 20 seconds. Can be cast during Global Cooldown." Cooldown 120s; damage falls off as sqrt(1/N)
-/// beyond 1 enemy (game data targetCountFalloff threshold 1). Sundering Wrath is effect 75 (CritChance +0.06, 5 stacks).
-/// Combat logs (Fc8v6yWxD14GQMnV fight 19, Mara): the hits are logged as 157, and 13 enemies hit give 5 stacks.
+/// Weapon ability 157 (weapon power 351): "Instantly deal fire damage to all enemies within a radius. You gain
+/// a stack of Sundering Wrath for each enemy hit up to a maximum, granting you additional critical strike
+/// chance per stack for a time. Can be cast during Global Cooldown." Damage falls off with the number of enemies
+/// beyond the target cap (game data targetCountFalloff). Sundering Wrath is effect 75 (CritChance, stacking).
+/// Combat logs (Fc8v6yWxD14GQMnV fight 19, Mara): the hits are logged as 157, and 13 enemies hit give the maximum stacks.
 /// </summary>
 public class SahrilsWrath : Ability
 {

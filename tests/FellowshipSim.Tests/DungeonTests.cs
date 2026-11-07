@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Expressions;
+using FellowshipSim.Core.Customization.WeaponAbilities;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Engine;
@@ -229,18 +230,42 @@ public class DungeonTests
     }
 
     [Fact]
-    public void The_Heros_Spirit_From_An_Enemy_Is_At_Most_Its_Worth()
+    public void The_Heros_Spirit_From_An_Enemy_Is_Its_Share_Of_The_Enemys_Worth()
     {
         var ctx = new SimulationContext(HeroImporter.Import(Build()));
         var hero = (Hero)ctx.Player;
         var enemy = ctx.AddEnemy(1001, 1, "Trash Mob", maxHealth: 1000);
-        enemy.SpiritPointValue = 3;
+        enemy.SpiritPointValue = 8;
         enemy.FollowTime(ctx, SimTime.Zero, SimTime.FromSeconds(100));
         double before = hero.ResourceAmount(Hero.SpiritPoints);
-        // Three times the enemy's health: Spirit Points for its health alone.
+        // The party has taken half of the enemy's health by the hero's first hit, and the hero's own damage counts for nothing.
+        ctx.RunUntil(SimTime.FromSeconds(50));
         for (int i = 0; i < 6; i++) ctx.DealLoggedHit(hero, enemy, 1, "Hit", 500, false);
-        Assert.Equal(3, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
-        Assert.Equal(3000, enemy.HeroDamage);
+        Assert.Equal(1, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
+        // The rest comes with the enemy's death, with no hit of the hero's.
+        ctx.RunUntil(SimTime.FromSeconds(100));
+        ctx.RemoveEnemy(enemy, defeated: true);
+        Assert.Equal(2, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
+        Assert.True(enemy.HeroDamage >= 3000);
+    }
+
+    [Fact]
+    public void Spirit_From_An_Enemy_Counts_Each_Share_Of_Its_Health_Once()
+    {
+        var ctx = new SimulationContext(HeroImporter.Import(Build()));
+        var hero = (Hero)ctx.Player;
+        var enemy = ctx.AddEnemy(1001, 1, "Trash Mob", maxHealth: 1000);
+        enemy.SpiritPointValue = 8;
+        double before = hero.ResourceAmount(Hero.SpiritPoints);
+        hero.EarnSpiritPoints(enemy, 0.5, ctx);
+        hero.EarnSpiritPoints(enemy, 0.75, ctx);
+        hero.EarnSpiritPoints(enemy, 0.5, ctx);
+        Assert.Equal(1, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
+        // A heal gives nothing, and the health lost after it gives Spirit Points again.
+        enemy.HealedTo(0.75);
+        Assert.Equal(1, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
+        hero.EarnSpiritPoints(enemy, 0.5, ctx);
+        Assert.Equal(1.5, hero.ResourceAmount(Hero.SpiritPoints) - before, 6);
     }
 
     [Fact]
@@ -298,7 +323,7 @@ public class DungeonTests
     [InlineData("dungeon=X\ndifficulty=33\npull.1=/duration=1,count=1,name=A,hit_points=1", "The difficulty is an Eternal level from 0 (Base) to 32.")]
     public void A_Dungeon_Text_Names_What_Is_Wrong(string text, string problem)
     {
-        var e = Assert.Throws<FormatException>(() => DungeonProfile.Parse(text));
+        var e = Assert.ThrowsAny<FormatException>(() => DungeonProfile.Parse(text));
         Assert.Contains(problem, e.Message);
     }
 
@@ -427,7 +452,7 @@ public class DungeonTests
     [Fact]
     public void An_Enemy_Has_Its_Hit_Points_Times_The_Difficulty_Health_Scale()
     {
-        // Deathless Katrine: game data health 29,075.305, logged with 6,581,643 health at Eternal 27.
+        // Deathless Katrine: the logged health at Eternal 27 is the game data health times the health scale.
         var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Deathless Katrine", HitPoints: 29_075.305, Boss: true)], 60, Final: true))
             with { Difficulty = 27 };
         Assert.Equal(226.36, dungeon.HealthScale);
@@ -456,6 +481,31 @@ public class DungeonTests
         Assert.Equal(AncientKorosGameCreature.SPIRIT_POINTS, group.Spirit);
         Assert.Null(group.Problem());
         Assert.Null(new EnemyGroup(1, "No Such Creature").Health);
+    }
+
+    [Fact]
+    public void An_Enemy_Keeps_Its_Shackle_Slow_Ticks_After_Its_Pull_Duration()
+    {
+        // The pull ends 3s into the Slow, 12s before the Slow runs out.
+        double pullEnds = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 3.0;
+        var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob", HitPoints: TrashHitPoints)], pullEnds), Boss(2, 30, final: true));
+        var build = Build();
+        build.WeaponAbilityId = AlzeracsShackle.AbilityId;
+        int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId);
+        var slowTicks = new List<double>();
+        var simulator = new MonteCarloSimulator(() =>
+        {
+            var h = HeroImporter.Import(build);
+            h.OnDamageDealt += (in DamageContext hit) =>
+            {
+                if (hit.AbilityId == slowId && hit.Amount > 0 && hit.Target?.Id == 1001) slowTicks.Add(hit.Timestamp.TotalSeconds);
+            };
+            return h;
+        }, AplParser.ParseScript("actions=alzeracs_shackle\nactions+=/frost_bolt"));
+        simulator.Run(SimTime.FromSeconds(dungeon.TimeLimitSeconds), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon));
+
+        Assert.Contains(slowTicks, t => t < pullEnds);
+        Assert.Contains(slowTicks, t => t > pullEnds + 5.0);
     }
 
     [Fact]
@@ -516,6 +566,7 @@ public class DungeonTests
     [Theory]
     [InlineData("Rime", "brain_freeze", "Brain Freeze", "frost_bolt")]
     [InlineData("Gunde", "jawbreaker", "Jawbreaker", "attack")]
+    [InlineData("Mara", "kick", "Kick", "backstab")]
     public void An_Interrupt_Ends_A_Casting_Target(string heroName, string interrupt, string interruptName, string filler)
     {
         var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Caster", HitPoints: 1e12, Cast: new EnemyCast("Big Cast", 30, 2))], 1000))
@@ -612,7 +663,13 @@ public class DungeonTests
             var h = HeroImporter.Import(build);
             h.OnDamageDealt += (in DamageContext hit) =>
             {
-                if (hit.Target is { IsSleeping: true }) Interlocked.Increment(ref deadHits);
+                // Al'zerac's Shackle's Freeze and Slow tick on an enemy after its death: over every tank fight,
+                // 23,007 of 208,854 Slow ticks and 117 of 8,722 Freeze ticks hit an enemy after its logged death.
+                // Such an effect's own tick on its own dead target is the one hit a dead enemy takes.
+                if (hit.Target is not { IsSleeping: true } target) return;
+                if (target.HasDied && hit.SimContext?.CurrentPeriodicEffect is { TicksAfterTargetDies: true } effect
+                    && hit.AbilityId == effect.DamageLogId && target == effect.Target) return;
+                Interlocked.Increment(ref deadHits);
             };
             return h;
         }, AplParser.ParseScript(DefaultActionLists.Read(hero, DefaultActionLists.DefaultName)!));

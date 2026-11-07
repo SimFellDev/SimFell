@@ -3,13 +3,13 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 87: "Your Thunder Call generates 30 Fury over its duration and grants you +5% Haste while it is active."
-/// Effect 1745 (21s, every 0.1s: 0.143% of maximum Fury) and effect 2753 (+5% Haste). Combat logs show neither as a buff,
+/// Talent 87: "Your Thunder Call generates Fury over its duration and grants you Haste while it is active."
+/// Effect 1745 (every <see cref="TickSeconds"/>: a share of maximum Fury) and effect 2753 (a Haste bonus). Combat logs show neither as a buff,
 /// so both are internal here. The Fury ticks are hasted by the haste as Thunder Call is cast, for the whole buff (confirmed
-/// in game, 2026-11-01; combat logs, fXyzwGcQkTrLD34R fight 4: about 1.85 Fury a second at 29% haste). Raging Tempest's
-/// Enhanced Thunder Call has them too (YC861NTRgLbmw4Qa fight 31 @ 199.7: the log gains about 2.2 Fury a second more than
+/// in game, 2026-11-01; combat logs, fXyzwGcQkTrLD34R fight 4). Raging Tempest's
+/// Enhanced Thunder Call has them too (YC861NTRgLbmw4Qa fight 31 @ 199.7: the log gains more Fury a second than
 /// the engine without them, with Thunder Call gone). UNVERIFIED: its haste during Raging Tempest, and whether the snapshot
-/// has the talent's own +5% Haste (here it does).
+/// has the talent's own Haste (here it does).
 /// </summary>
 public class RideTheLightning : Talent
 {

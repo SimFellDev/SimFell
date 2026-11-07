@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
 /// Legendary power 616 (Ardeos's Draconic Bracers of the Devouring Flame, item 5225; item 5900): "Your Engulfing Flames
-/// also causes the afflicted target to take 7% more damage from you for each Engulfing Flames that is active on them."
+/// also causes the afflicted target to take more damage from you for each Engulfing Flames that is active on them."
 /// Item 5900 grants the same power: combat logs (Fc8v6yWxD14GQMnV fight 19, YC861NTRgLbmw4Qa fight 31) show its wearer
 /// dealing more damage to enemies with Engulfing Flames on them.
 /// </summary>

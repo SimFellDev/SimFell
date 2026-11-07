@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 46: "Standing still for 3 seconds grants you Patient Soul, increasing your Max Health by 5% and your Expertise
-/// rating by 12 / 22 / 32 / 42. Patient Soul persists for 6 seconds after you start moving." The engine does not
+/// Sigil 46: "Standing still for a time grants you Patient Soul, increasing your Max Health and your Expertise
+/// rating. Patient Soul persists for a time after you start moving." The engine does not
 /// simulate movement: a sim keeps it up, a replay follows the log (situational aura). UNVERIFIED: no log has this sigil;
 /// the game data has two Patient Soul effects (2149, 2150) and the first is assumed.
 /// </summary>

@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
 /// Ability 187 (a relic ability): "Instantly Dispel all harmful magic effects from you and your allies in a
-/// large radius around you. Can be used during Global Cooldown." Cooldown 120s (game data). No damage.
+/// large radius around you. Can be used during Global Cooldown." The cooldown is in the game data. No damage.
 /// </summary>
 public class MajorDispel : Ability
 {

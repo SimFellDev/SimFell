@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1398: "For the next 4 seconds you are enraptured in celestial energy, causing your Multishot ability to shoot
-/// Empowered Multishots. Can be used during Global Cooldown." Cooldown 45s; effect 2009 (4s, up to 4 stacks). Fervent
-/// Supremacy turns the 4 seconds into 4 charges for up to 15 seconds.
+/// Ability 1398: "For a duration you are enraptured in celestial energy, causing your Multishot ability to shoot
+/// Empowered Multishots. Can be used during Global Cooldown." Has a cooldown; effect 2009 (a duration and stacks). Fervent
+/// Supremacy turns the duration into charges that last longer.
 /// </summary>
 public class SkystridersSupremacy : ElarionAbility
 {
@@ -16,7 +16,7 @@ public class SkystridersSupremacy : ElarionAbility
 
     public static readonly AuraDef Buff = AuraDef.Effect("Skystrider's Supremacy", BuffEffectId, BuffSeconds, MaxBuffStacks);
 
-    /// <summary>The buff the cast gives (Fervent Supremacy: 4 charges for 15 seconds).</summary>
+    /// <summary>The buff the cast gives (Fervent Supremacy: charges that last longer).</summary>
     public AuraDef CastBuff { get; set; } = Buff;
 
     /// <summary>Charges the cast gives, each used by one Multishot (Fervent Supremacy); 0 for every Multishot while it lasts.</summary>

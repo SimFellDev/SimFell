@@ -3,8 +3,7 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 132: "Each time you cast Celestial Shot or Multishot the cooldown of Highwind Arrow and Heartseeker Barrage is
-/// reduced by 1 second." UNVERIFIED: no combat log has this talent.
+/// Talent 132: Each Celestial Shot or Multishot cast reduces the cooldown of Highwind Arrow and Heartseeker Barrage. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class SkywardMunitions : Talent
 {

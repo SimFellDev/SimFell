@@ -1,10 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1584 (Spirit ability): "For the next 20 seconds, you deal 20% more damage, gain Cooldown Acceleration equal to
-/// your Haste and all Focus costs are reduced by 50%. While Event Horizon is active, your Highwind Arrow reduces the
-/// cooldown of Heartseeker Barrage by 0.5 seconds, and every hit from your Heartseeker Barrage reduces the cooldown of
-/// Starfall Volley by 1.5 seconds." 0.7s cast; effect 2312 (DamageScale x1.2, 20s); grants Spirit of Heroism.
+/// Ability 1584 (Spirit ability): while active, the hero deals more damage, gains Cooldown Acceleration equal to
+/// Haste and has reduced Focus costs. Highwind Arrow reduces the cooldown of Heartseeker Barrage, and every hit from
+/// Heartseeker Barrage reduces the cooldown of Starfall Volley. Has a cast time; effect 2312 (DamageScale); grants Spirit of Heroism.
 /// </summary>
 public class EventHorizon : ElarionAbility
 {
@@ -28,7 +27,8 @@ public class EventHorizon : ElarionAbility
         GlobalCooldownSeconds = CastTimeSeconds;
         GlobalCooldownScalesWithHaste = true;
         owner.FocusCostMultipliers.Add(now => owner.Auras.HasAura(Buff, now) ? CostMultiplier : 1.0);
-        owner.CooldownAccelerations.Add((_, now) => owner.Auras.HasAura(Buff, now) ? owner.GetHaste(now) : 0.0);
+        // Effect 2314: MultiplyCompound on CooldownRecovery, by the Haste attribute.
+        owner.CooldownRecoveryCompounds.Add(now => owner.Auras.HasAura(Buff, now) ? 1.0 + owner.GetHaste(now) : 1.0);
         owner.CooldownAccelerationAuraKeys.Add(Buff.Key);
     }
 
@@ -37,9 +37,11 @@ public class EventHorizon : ElarionAbility
         var hero = Elarion;
         var heartseeker = hero.GetAbility<HeartseekerBarrage>();
         var starfall = hero.GetAbility<StarfallVolley>();
-        hero.GetAbility<HighwindArrow>()!.Cast += ctx =>
+        // Every Highwind Arrow damage event counts, with
+        // no bounce or per-cast test. Each ricochet raises one, and a crit raises one.
+        hero.GetAbility<HighwindArrow>()!.Hit += (in hit) =>
         {
-            if (heartseeker != null && hero.Auras.HasAura(Buff, ctx.CurrentTime))
+            if (heartseeker != null && hit.SimContext is { } ctx && hero.Auras.HasAura(Buff, ctx.CurrentTime))
                 hero.ReduceCooldown(heartseeker.Name, SimTime.FromSeconds(HeartseekerReductionSeconds), ctx.CurrentTime);
         };
         if (heartseeker == null || starfall == null) return;

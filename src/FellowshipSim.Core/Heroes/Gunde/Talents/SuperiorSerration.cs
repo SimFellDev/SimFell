@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
-/// <summary>Talent 749: "Your Blood Arc's Serrated Edge grants an additional +10% damage applied to Rend."</summary>
+/// <summary>Talent 749: "Your Blood Arc's Serrated Edge grants additional damage applied to Rend."</summary>
 public class SuperiorSerration : Talent
 {
     public const int TalentId = 749;

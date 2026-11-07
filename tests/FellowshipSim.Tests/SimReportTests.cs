@@ -94,7 +94,7 @@ public class SimReportTests
         Assert.Equal(40, spirit.Typical[0]);
         for (int s = 1; s < Seconds; s++) Assert.True(spirit.Typical[s] >= spirit.Typical[s - 1]);
         Assert.All(spirit.Mean, v => Assert.InRange(v, 40, 100));
-        // At least 1 every 3 seconds of regeneration.
+        // At least one point each regeneration period.
         Assert.True(spirit.Mean[^1] >= 40 + (Seconds - 3) / Hero.SpiritPointRegenSeconds);
     }
 
@@ -104,7 +104,7 @@ public class SimReportTests
         var result = Run();
         var embrace = result.Buffs.Single(b => b.Name == BurstingIce.WintersEmbrace.Name && !b.OnTarget);
         var debuff = result.Buffs.Single(b => b.Name == BurstingIce.Debuff.Name && b.OnTarget);
-        // Bursting Ice every 10 s, its debuff (and Winter's Embrace) 3 s at a time.
+        // Bursting Ice on its cooldown, with its debuff (and Winter's Embrace) up for part of each cycle.
         Assert.InRange(debuff.Uptime, 0.2, 0.45);
         Assert.InRange(debuff.Applications, 4, 7);
         Assert.InRange(debuff.AverageDuration, 2.5, 3.5);

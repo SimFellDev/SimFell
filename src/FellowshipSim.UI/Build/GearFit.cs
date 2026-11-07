@@ -2,14 +2,14 @@ namespace FellowshipSim.UI.Build;
 
 /// <summary>
 /// Whether a build's enchants can be worn on its gear, and how many more of one kind would still fit (per the user;
-/// combat logs, 89 players of patch 0.5.0.0: no item holds more than 2 of a kind, aspects, sigils and glyphs only on
+/// combat logs, 89 players of patch 0.5.0.0: no item holds more than <see cref="EnchantSlots.MostOfAKindPerPiece"/> of a kind, aspects, sigils and glyphs only on
 /// head, shoulders, chest, back, hands, waist and feet, one of which the legendary takes). Every piece holds
 /// <see cref="EnchantSlots.SlotsPerPiece"/> enchants, at most <see cref="EnchantSlots.MostOfAKindPerPiece"/> of one kind:
 /// <list type="bullet">
 /// <item>the <see cref="EnchantSlots.ArmorPieces"/> armor pieces take any kind;</item>
 /// <item>the <see cref="EnchantSlots.OtherPieces"/> other pieces take stat enchants and gem power bonuses alone, so
 /// those fill them first and only the rest goes on armor;</item>
-/// <item>a weapon's tree takes 1 aspect, 2 sigils and 2 stat enchants, never two of the same one (per the user): no
+/// <item>a weapon's tree takes aspects, sigils and stat enchants (<see cref="EnchantSlots.WeaponAspects"/>, <see cref="EnchantSlots.WeaponSigils"/> and <see cref="EnchantSlots.WeaponStatEnchants"/>), never two of the same one (per the user): no
 /// more of a kind than the build has different ones of it.</item>
 /// </list>
 /// Protective enchants are apart. A fit is a flow from each kind's count to the pieces that take it. Without the

@@ -4,13 +4,13 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 397 (Rime's Harbinger of Winter Helm, item 5899): "Each tick of your Freezing Torrent grants you 1
-/// stack of Frostwyrm's Spite for 15 seconds, up to 30 stacks, and you can now move while channeling. Your Cold Snap consumes
-/// all stacks of Frostwyrm's Spite, increasing its damage by 30% per stack. Additionally, your Cold Snap hits 1 additional
-/// enemy near your target for each stack it consumes. Frostwyrm's Spite damage is reduced beyond 3 targets."
+/// Legendary power 397 (Rime's Harbinger of Winter Helm, item 5899): each tick of Freezing Torrent grants a stack of
+/// Frostwyrm's Spite up to a maximum, and you can move while channeling. Cold Snap consumes all stacks of
+/// Frostwyrm's Spite, increasing its damage per stack, and hits one additional enemy near your target for each stack it
+/// consumes. Frostwyrm's Spite damage is reduced beyond a target count.
 /// The extra hits are copies of that Cold Snap with all its bonuses but no Winter Orb (per the user), logged as effect
 /// 2265. Combat logs (PCaMVTFbZzNLrfx3 fight 5, 21 casts): the main hit takes the full bonus; each extra hit deals
-/// sqrt(3/N) of it when N extra enemies are hit beyond 3.
+/// a share of it that falls off with N, the extra enemies hit beyond the target count.
 /// </summary>
 public class FrostwyrmsSpite : Legendary
 {

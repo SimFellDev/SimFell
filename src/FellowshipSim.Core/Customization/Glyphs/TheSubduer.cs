@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
-/// Glyph 704: "You deal 5% / 10% / 15% / 20% more damage to Low Health Enemies. Your [MAJOR] abilities reduce the
+/// Glyph 704: "You deal more damage to Low Health Enemies. Your [MAJOR] abilities reduce the
 /// cooldown of one of your [CONTROL] abilities ..." (effect 3185; the Control cooldowns do not affect damage).
-/// UNVERIFIED: no log has this glyph; low health is taken as 30% or less.
+/// UNVERIFIED: no log has this glyph; low health is taken as <see cref="LowHealthThreshold"/> or less.
 /// </summary>
 public class TheSubduer : Glyph
 {

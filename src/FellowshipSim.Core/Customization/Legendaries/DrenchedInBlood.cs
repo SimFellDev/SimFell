@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 421 (Mara's Stalker's Crimson Loop, item 5223; Hungering Blade Hauberk, item 5898): "Each time you
-/// trigger a Spirit Refund, you gain Drenched in Blood for 8 seconds, increasing your Expertise by +24%" (effect 2262,
-/// Expertise +0.24). Combat logs (Fc8v6yWxD14GQMnV fight 19, 82 buffs): it comes with Rising Spirit.
+/// Legendary power 421 (Mara's Stalker's Crimson Loop, item 5223; Hungering Blade Hauberk, item 5898): each Spirit Refund
+/// you trigger grants Drenched in Blood, which increases your Expertise (effect 2262). Combat logs
+/// (Fc8v6yWxD14GQMnV fight 19, 82 buffs): it comes with Rising Spirit.
 /// </summary>
 public class DrenchedInBlood : Legendary
 {

@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
-/// <summary>Talent 51 / effect 1372: "The power of your critical strikes is increased by 10%." (CritMultiplier x1.1)</summary>
+/// <summary>Talent 51 / effect 1372: the power of your critical strikes is increased (CritMultiplier).</summary>
 public class BitingCold : Talent
 {
     public const int TalentId = 51;

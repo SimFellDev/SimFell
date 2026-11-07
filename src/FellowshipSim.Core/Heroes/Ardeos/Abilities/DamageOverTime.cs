@@ -12,7 +12,7 @@ public abstract class DamageOverTime : Ability
         BasePeriod = periodSeconds;
         Duration = durationSeconds;
         Stacking = stacking;
-        // Combat logs (yMAZVJL9hTpFjqbC fight 7): Fire Ball's and Fire Frogs' effects tick every 2s and 3s whatever the
+        // Combat logs (yMAZVJL9hTpFjqbC fight 7): Fire Ball's and Fire Frogs' effects tick on a fixed period whatever the
         // haste (only Wildfire speeds them up); the others tick faster with haste.
         TicksScaleWithHaste = stacking != DotStacking.Accumulate;
         Debuff = AuraDef.Effect(name, effectId, maxStacks: 99);

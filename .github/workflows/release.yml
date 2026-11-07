@@ -1,7 +1,8 @@
-# Builds SimFell for Windows, macOS and Linux and publishes them as one release on the public SimFellDev/SimFell-Releases
-# (this repository stays private), flagged as the latest release. Each run raises the version from the latest release:
-# the patch (0.0.X) at first, or the minor (0.X.0) or major (X.0.0) when picked. The app compares its version with the
-# latest release and shows a banner when a newer one is out.
+# Builds SimFell and its VS Code extension for Windows, macOS and Linux and publishes them as one release on the public
+# SimFellDev/SimFell-Releases (this repository stays private), flagged as the latest release. Each run raises the version
+# from the latest release: the patch (0.0.X) at first, or the minor (0.X.0) or major (X.0.0) when picked. The app
+# compares its version with the latest release and shows a banner when a newer one is out. The extension has the
+# release's version.
 #
 # Run it by hand: Actions > Release > Run workflow. It needs the secret SIMFELL_RELEASE: a fine-grained token with
 # "Contents: Read and write" on SimFellDev/SimFell-Releases alone.
@@ -74,9 +75,6 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      - name: Download the Codex export
-        shell: bash
-        run: tools/download-codex-export.sh
       - name: Package
         run: dotnet run tools/package.cs -- --rid ${{ matrix.rid }} --version ${{ needs.version.outputs.version }}
       - uses: actions/upload-artifact@v7
@@ -85,9 +83,34 @@ jobs:
           path: bin/package/SimFell-${{ matrix.rid }}.zip
           retention-days: 7
 
+  vscode:
+    name: Package the VS Code extension
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Download the Codex export
+        run: tools/download-codex-export.sh
+      - name: Package for every platform
+        working-directory: src/FellowshipSim.VsCode
+        run: |
+          npm ci --no-audit --no-fund
+          npm run package -- all --version ${{ needs.version.outputs.version }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SimFell-vscode
+          path: src/FellowshipSim.VsCode/simfell-simc-*.vsix
+          retention-days: 7
+
   release:
     name: Publish ${{ needs.version.outputs.version }}
-    needs: [version, package]
+    needs: [version, package, vscode]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -110,8 +133,11 @@ jobs:
             echo "- Linux: simfell.sh"
             echo
             echo "SimFell opens in your browser. Close its window to stop it."
+            echo
+            echo "The VS Code extension for .simc files is simfell-simc-<platform>.vsix (win32-x64, win32-arm64, linux-x64,"
+            echo "linux-arm64, darwin-x64 or darwin-arm64). In VS Code: Extensions > ... > Install from VSIX."
           } > notes.md
-          gh release create "v$VERSION" zips/*.zip \
+          gh release create "v$VERSION" zips/*.zip zips/*.vsix \
             --repo SimFellDev/SimFell-Releases \
             --title "SimFell $VERSION" \
             --notes-file notes.md \

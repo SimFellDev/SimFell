@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 5: "Your critical strikes have a chance to increase your Main Stat by 3.0% / 5.1% / 7.2% / 9.3% for 8 seconds.
-/// If you are below 50% health when Vengeful Soul triggers, you are also healed ... (3.0 PPM)" (effect 2163; the heal
+/// Sigil 5: "Your critical strikes have a chance to increase your Main Stat for a time.
+/// If you are below a health threshold when Vengeful Soul triggers, you are also healed ..." (effect 2163; the heal
 /// does not affect damage)
 /// </summary>
 public class VengefulSoul : Sigil

@@ -3,11 +3,11 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 762: "Your Heart Splitter has +30% increased Critical Strike chance. When the direct damage portion of Heart
-/// Splitter Critically Strikes, it causes Exsanguinate to explode, dealing 50% of its damage to all enemies near your
-/// target. (Damage reduced beyond 10 targets)" Combat logs (n7zxK8harZT2wjDB fight 9 @ 16.403: 1640 on 15 others of a
-/// 4492 Exsanguinate; Y4wpb2f3gc8LqJDX fight 25: 0.2773 of it on 26 others, four casts alike): each other enemy takes
-/// 50% x sqrt(8/N) beyond 8 others, not the tooltip's 10. The explosion is logged as Exsanguinate.
+/// Talent 762: "Your Heart Splitter has increased Critical Strike chance. When the direct damage portion of Heart
+/// Splitter Critically Strikes, it causes Exsanguinate to explode, dealing a share of its damage to all enemies near your
+/// target. (Damage reduced beyond a target threshold)" Combat logs (n7zxK8harZT2wjDB fight 9 @ 16.403, one Exsanguinate
+/// on 15 others; Y4wpb2f3gc8LqJDX fight 25, four casts alike on 26 others): each other enemy takes
+/// the share with a square-root falloff beyond a threshold of others lower than the tooltip's. The explosion is logged as Exsanguinate.
 /// </summary>
 public class Oathshatter : Talent
 {

@@ -4,8 +4,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 697 (Gunde's Carver's Sinister Apron, item 5218; Northlander's Helm, item 5899): "Your Grim Carve
-/// spins 2 additional times." Each extra spin comes as long after the one before as the others. UNVERIFIED: the timing of the extra spins.
+/// Legendary power 697 (Gunde's Carver's Sinister Apron, item 5218; Northlander's Helm, item 5899): Grim Carve
+/// spins additional times. Each extra spin comes as long after the one before as the others. UNVERIFIED: the timing of the extra spins.
 /// </summary>
 public class BloodyMess : Legendary
 {

@@ -17,7 +17,7 @@
 @* The Hero tab: the build's saved copies, hero, talents, stats and gear. *@
 
 <Card>
-    <div class="toolbar">
+    <div class="toolbar @(_toolsOpen ? "tools-open" : "")">
         <div class="build-select" @onkeydown="OnBuildKeyDown">
             <button type="button" class="build-current @(_buildMenuOpen ? "open" : "")" aria-haspopup="listbox" aria-expanded="@(_buildMenuOpen ? "true" : "false")"
                     aria-label="Saved builds" @onclick="ToggleBuildMenu">
@@ -91,9 +91,14 @@
         @* The accent button, as Run sim is: sharing a build is a feature to notice. At the toolbar's end, apart from the rest.
            Its classes say nothing of sharing: ad blockers' social lists hide .share-button and the like. *@
         <button type="button" class="build-link-button" aria-expanded="@(_shareOpen ? "true" : "false")"
-                data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync">
+                aria-label="Share build" data-tooltip="Copy a link that opens this build in SimFell, for anyone you send it to" @onclick="ShareAsync">
             <Icon Shape="IconShape.Link" />
-            Share build
+            <span class="label">Share build</span>
+        </button>
+        @* On a phone New build and the icon buttons fold behind this one. *@
+        <button type="button" class="icon-button more-tools" aria-label="Build actions" aria-expanded="@(_toolsOpen ? "true" : "false")"
+                @onclick="() => _toolsOpen = !_toolsOpen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
         </button>
     </div>
     @if (State.BuildStatus.Text.Length > 0)
@@ -627,6 +632,9 @@
 
     // The saved-build menu, its search, and a focus on the search once the menu draws.
     private bool _buildMenuOpen;
+
+    // True while a phone shows New build and the build's icon buttons (the ⋯ button).
+    private bool _toolsOpen;
     private string _buildSearch = "";
     private ElementReference _buildSearchInput;
     private bool _focusSearch;

@@ -1,10 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1207: "Plunges both daggers into single target, dealing 145.2% of Agility with the right hand and 108% of
-/// Agility with the left hand. Widow's Bite gains Cooldown Acceleration equal to your Haste. Generates 2 Combo Points
-/// with each strike. Critical Strikes generate 3 Combo Points. Generates 30 Energy." 3 charges, 9s. Used in Stealth it
-/// applies Seething Poison (<see cref="SeethingPoison"/>); both strikes are logged as 1207.
+/// Ability 1207: a right hand strike and a left hand strike on a single target. Widow's Bite gains Cooldown Acceleration
+/// equal to your Haste, generates Combo Points with each strike (more on a Critical Strike) and generates Energy. Used in
+/// Stealth it applies Seething Poison (<see cref="SeethingPoison"/>); both strikes are logged as 1207.
 /// </summary>
 public class WidowsBite : MaraAbility
 {
@@ -20,6 +19,8 @@ public class WidowsBite : MaraAbility
 
     /// <summary>Widow's Bite hit an enemy (Hemotoxin).</summary>
     public event Action<SimulationContext, EnemyTarget>? Struck;
+
+    public override double NetEnergyCost => EnergyCost - EnergyGained;
 
     public WidowsBite(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
     {
@@ -38,7 +39,6 @@ public class WidowsBite : MaraAbility
         TriggerCooldown(ctx);
         Pay(ctx);
         Mara.GainEnergy(EnergyGained, ctx);
-        GenerateMaidenComboPoints(ctx, target);
         DealDamage(ctx, target);
         DealDamage(ctx, target, damageMultiplier: LeftHandCoefficient / RightHandCoefficient);
         Struck?.Invoke(ctx, target);

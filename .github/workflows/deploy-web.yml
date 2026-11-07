@@ -30,10 +30,6 @@ jobs:
       - name: Install the WebAssembly tools
         run: dotnet workload install wasm-tools
 
-      - name: Download the Codex export
-        shell: bash
-        run: tools/download-codex-export.sh
-
       - name: Publish
         run: dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish
 

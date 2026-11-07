@@ -1,16 +1,15 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1301: "Fire a magical arrow at target enemy, dealing magic damage to it." Instant, 15 Focus. "CELESTIAL
-/// IMPETUS: Your Focused Shot hits have a chance to grant you Celestial Impetus for 15 seconds, causing your next Celestial
-/// Shot to be Free and apply 3 stacks of Lunarlight Mark to the target. You can have up to 2 charges of Celestial Impetus
-/// at any one time. (2.0 PPM)" Effect 1867 (15s, 2 stacks).
+/// Ability 1301: "Fire a magical arrow at target enemy, dealing magic damage to it." Instant, costs Focus. Celestial
+/// Impetus: Focused Shot hits have a chance to grant Celestial Impetus, which makes the next Celestial Shot Free and applies
+/// Lunarlight Mark stacks to the target. Effect 1867 holds the charges.
 /// </summary>
 public class CelestialShot : ElarionAbility
 {
     public const int AbilityId = 1301;
     public const string AbilityName = "Celestial Shot";
-    /// <summary>Placeholder CelestShot: 345.48% of Agility.</summary>
+    /// <summary>Share of Agility.</summary>
     public const double Coefficient = 3.4548;
     public const double Cost = 15.0;
     public const int ImpetusEffectId = 1867;

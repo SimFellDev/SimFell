@@ -4,8 +4,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
 /// Talent 168: "When your Celestial Shot consumes Celestial Impetus the cooldown of your Heartseeker Barrage is reset and
-/// you gain Impending Heartseeker. IMPENDING HEARTSEEKER: Your Heartseeker Barrage deals +10% increased damage with each
-/// arrow during its channel." Effect 2317 (15s), which Starstriker's Ascent grants too (<see cref="Grant"/>).
+/// you gain Impending Heartseeker. IMPENDING HEARTSEEKER: Your Heartseeker Barrage deals increased damage with each
+/// arrow during its channel." Effect 2317, which Starstriker's Ascent grants too (<see cref="Grant"/>).
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class ImpendingHeartseeker : Talent

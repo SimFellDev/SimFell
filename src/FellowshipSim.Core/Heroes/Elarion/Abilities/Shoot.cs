@@ -1,10 +1,10 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1303: Elarion's bow shot between abilities, 60% of Agility (game data coefficient 0.6). Combat logs record
+/// Ability 1303: Elarion's bow shot between abilities, a share of Agility (game data <see cref="Coefficient"/>). Combat logs record
 /// every shot as a cast; an action list uses it as soon as the shot timer allows, and never while casting or channeling.
-/// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): shots at least 1.1s apart, most 1.3-1.8s.
-/// UNVERIFIED: the 1.5s timer shortened by Haste.
+/// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): shots are spaced by a timer that Haste shortens.
+/// UNVERIFIED: <see cref="ShotSeconds"/> as the timer.
 /// </summary>
 public class Shoot : ElarionAbility
 {

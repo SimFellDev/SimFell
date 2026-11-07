@@ -4,7 +4,7 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
 /// Legendary power 424 (Tariq's Stormlord Helm, item 5899; Drape of the Slayer King, item 5218): "Enemies that take
-/// damage from your Leap Smash ability take 20% more damage from you for 6 seconds." Effect 2250 on the enemy.
+/// damage from your Leap Smash ability take more damage from you." Effect 2250 on the enemy.
 /// </summary>
 public class SlayersMosh : Legendary
 {

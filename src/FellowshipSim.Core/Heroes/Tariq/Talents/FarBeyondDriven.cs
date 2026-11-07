@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 79: "Each time you use Heavy Strike you gain 1 stack of Far Beyond Driven for 20 seconds, increasing your
-/// Spirit by +1.5%. Far Beyond Driven stacks up to 5 times." Effect 1744.
+/// Talent 79: "Each time you use Heavy Strike you gain a stack of Far Beyond Driven, increasing your
+/// Spirit. Far Beyond Driven stacks." Effect 1744.
 /// </summary>
 public class FarBeyondDriven : Talent
 {

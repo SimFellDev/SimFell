@@ -30,7 +30,7 @@ SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before 
 | What | Command |
 | --- | --- |
 | The measure | `ACCURACY_HERO=<Hero> ACCURACY_LABEL=pass-<NN> ACCURACY_FREEDICE_ITERATIONS=20 dotnet test tests/FellowshipSim.Tests -c Release --filter HeroAccuracyTests` |
-| Review pages for every fight | `dotnet test tests/FellowshipSim.Tests -c Release --filter CombatLogReplayTests`, then `data/reviews/<review>.html`, `.summary.txt`, `.hits.csv` |
+| Review pages for every fight | `dotnet test tests/FellowshipSim.Tests -c Release --filter CombatLogReplayTests`, then `data/reviews/<review>.html`, `.summary.txt`, `.hits.csv`, `.findings.json` |
 | A profile from a fight | the `<HERO>_PROFILE` and `<HERO>_CHARACTER_JSON` variables of the hero's `<Hero>ReplayTests`, where the hero has one |
 | A sim of a profile | `dotnet run --project src/FellowshipSim.Cli -c Release -- --profile <file.simc> --iterations 1000 --threads 8` |
 | Every test | `dotnet test -c Release` |

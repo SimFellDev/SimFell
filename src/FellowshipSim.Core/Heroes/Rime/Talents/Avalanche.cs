@@ -3,11 +3,11 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>
-/// Talent 48: "Your Ice Comet ability has a 18% chance to cause 1 additional Ice Comet to strike the target, and a 9%
-/// chance to cause 2" (hero_data Ice Comet MultiStrike 0.18 / 0.09). Rolled as a 27% chance of at least one extra comet,
-/// then a 1-in-3 chance of a second: the same odds, one roll per extra comet. Rolls when a comet strikes (a cast comet,
-/// Cold Shower's, or Rising Talons' first wave); the extra comets cannot trigger it again (per the user).
-/// Combat logs (n7zxK8harZT2wjDB fight 9: 29 extra impacts over 90 casts): each extra comet strikes 5 server frames after
+/// Talent 48: Ice Comet has a chance to cause one additional Ice Comet to strike the target, and a smaller chance to
+/// cause more (game data). Rolled as a chance of at least one extra comet (<see cref="AnyExtraChance"/>),
+/// then a chance of a second (<see cref="SecondExtraChance"/>): the same odds, one roll per extra comet. Rolls when a comet
+/// strikes (a cast comet, Cold Shower's, or Rising Talons' first wave); the extra comets cannot trigger it again (per the user).
+/// Combat logs (n7zxK8harZT2wjDB fight 9): each extra comet strikes a fixed number of server frames after
 /// the impact before it.
 /// </summary>
 public class Avalanche : Talent

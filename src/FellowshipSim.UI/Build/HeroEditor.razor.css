@@ -1128,6 +1128,8 @@
   .loadout-columns {
     display: flex;
     flex-direction: column;
+    /* Each card the column's full width, not its content's. */
+    align-items: stretch;
   }
 
   .loadout-column {
@@ -1153,4 +1155,122 @@
   background: var(--bad);
   border-color: var(--bad);
   color: #fff;
+}
+
+/* The ⋯ button shows on a phone alone. */
+.more-tools {
+  display: none;
+}
+
+/* A phone: the build menu, Share and ⋯ on one line; ⋯ opens New build and the icon buttons on the line under it. The
+   sections run edge to edge (Card.razor.css), the gold frame stays for picked things, a box inside a section is a row,
+   and a talent tier's name sits over its three talents. */
+@media (max-width: 600px) {
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .build-select {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .toolbar .build-link-button,
+  .more-tools {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .toolbar .build-link-button .label {
+    display: none;
+  }
+
+  .more-tools {
+    order: 1;
+    color: var(--muted);
+  }
+
+  .more-tools svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  .more-tools[aria-expanded="true"] {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .new-build,
+  .icons {
+    display: none;
+    order: 2;
+  }
+
+  .tools-open .new-build,
+  .tools-open .icons {
+    display: flex;
+  }
+
+  .tools-open .icons {
+    flex-basis: 100%;
+  }
+
+  .icons .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .sidebar {
+    overflow: visible;
+  }
+
+  .sidebar ::deep .card {
+    margin: 0 -16px;
+    border-color: var(--border);
+  }
+
+  .editor {
+    gap: 8px;
+    margin: 8px 0;
+  }
+
+  .editor-main,
+  .pair,
+  .loadout-columns,
+  .loadout-column {
+    gap: 8px;
+  }
+
+  .editor-main ::deep .card {
+    margin: 0 -16px;
+  }
+
+  .slots-total {
+    padding: 10px 0 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .tree-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .tier {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+  }
 }

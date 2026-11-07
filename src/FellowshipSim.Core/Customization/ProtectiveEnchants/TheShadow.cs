@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Customization.ProtectiveEnchants;
 
-/// <summary>Protective enchant 54: "Your Magic Damage Reduction is increased by 10%."</summary>
+/// <summary>Protective enchant 54: "Your Magic Damage Reduction is increased."</summary>
 public class TheShadow : ProtectiveEnchant
 {
     public const int ProtectiveEnchantId = 54;

@@ -1,10 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1260: instant, 2 charges of 30s. "Throw a ball of fiery devestation at the targeted area, dealing 584.82% of
-/// Intellect fire damage to all enemies in the radius and setting them on fire" (<see cref="FireBallDot"/>). "Your Haste
-/// is also applied as Cooldown Acceleration on Fire Ball." Damage falls off as sqrt(5/N) beyond 5 targets (game data
-/// targetCountFalloff).
+/// Ability 1260: instant, with charges. Throws a ball of fire at the targeted area, dealing Intellect fire damage to all
+/// enemies in the radius and setting them on fire (<see cref="FireBallDot"/>). The hero's Haste is also applied as
+/// Cooldown Acceleration on Fire Ball. Damage falls off with the target count (game data targetCountFalloff).
 /// </summary>
 public class FireBall : ArdeosAbility
 {
@@ -14,9 +13,9 @@ public class FireBall : ArdeosAbility
     public const double CooldownSeconds = 30.0;
     public const int Charges = 2;
     public const double TargetThreshold = 5;
-    /// <summary>"an additional 20% of the initial damage dealt over 12 seconds".</summary>
+    /// <summary>The additional share of the initial damage dealt over the effect's duration.</summary>
     public const double DotFractionOfHit = 0.20;
-    /// <summary>Combat logs (yMAZVJL9hTpFjqbC fight 7, 40 casts): the ball strikes 0.95-1.0s after the cast.</summary>
+    /// <summary>Combat logs (yMAZVJL9hTpFjqbC fight 7, 40 casts): the ball strikes a fixed delay after the cast.</summary>
     public const double ImpactDelaySeconds = 0.97;
 
     public FireBallDot Dot { get; }

@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.Aspects;
 
 /// <summary>
-/// Aspect 51: "Your Weapon Ability grants you 10% increased Main Stat and 15% Damage Reduction for a duration equal to
-/// 10% / 18% / 25% / 32% of your Weapon Ability's default cooldown."
+/// Aspect 51: "Your Weapon Ability grants you increased Main Stat and Damage Reduction for a duration equal to
+/// a percentage by rank of your Weapon Ability's default cooldown."
 /// </summary>
 public class MartialInitiative : Aspect
 {

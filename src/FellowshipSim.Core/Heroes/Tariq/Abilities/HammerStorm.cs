@@ -1,31 +1,30 @@
 namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 
 /// <summary>
-/// Ability 1242: "Spin with your Hammer up to 3 times, dealing physical damage to all nearby enemies every 0.5 seconds.
-/// Hammer Storm deals 35% more damage with each spin. Thunder Call: Hammer Storm causes lightning to strike you as you
-/// spin, shocking enemies for an additional lightning damage each time they are hit." Costs 50 Fury.
+/// Ability 1242: "Spin with your Hammer several times, dealing physical damage to all nearby enemies on a fixed period.
+/// Hammer Storm deals more damage with each spin. Thunder Call: Hammer Storm causes lightning to strike you as you
+/// spin, shocking enemies for an additional lightning damage each time they are hit." Costs Fury.
+/// No cooldown: game data starts none for it.
 /// </summary>
 public class HammerStorm : TariqAbility
 {
     public const int AbilityId = 1242;
     public const string AbilityName = "Hammer Storm";
-    /// <summary>Placeholder HamrStormTickDmg: 223% of Strength per spin.</summary>
+    /// <summary>Share of Strength per spin.</summary>
     public const double Coefficient = 2.23;
-    /// <summary>Placeholder HamrStormLightningDmg: 78% of Strength per spin.</summary>
+    /// <summary>Share of Strength per spin.</summary>
     public const double LightningCoefficient = 0.78;
     public const double FuryCost = 50.0;
-    /// <summary>Game data cooldown 1.5; haste shortens it, as it does Skull Crusher's.</summary>
-    public const double CooldownSeconds = 1.5;
-    /// <summary>Game data channelTime 1 and channelTick 0.5 (HamrStormPeriod, a tick rate).</summary>
+    /// <summary>Game data channelTime and channelTick (HamrStormPeriod, a tick rate).</summary>
     public const double ChannelSeconds = 1.0;
     public const double SpinPeriodSeconds = 0.5;
     public const int MaxSpins = 3;
     /// <summary>
-    /// "35% more damage with each spin". Combat logs (fXyzwGcQkTrLD34R fight 4 @ 23.36, 10 enemies): spins of about
-    /// 1.00, 1.37 and 1.88 times the first, so each multiplies the last by 1.35.
+    /// "More damage with each spin". Combat logs (fXyzwGcQkTrLD34R fight 4 @ 23.36, 10 enemies): each spin multiplies the
+    /// last by this ramp.
     /// </summary>
     public const double SpinRamp = 1.35;
-    /// <summary>Game data targetCountFalloff: effect 1782 threshold 12; its lightning (effect 1781) threshold 15.</summary>
+    /// <summary>Game data targetCountFalloff: effect 1782 has <see cref="TargetThreshold"/>; its lightning (effect 1781) has <see cref="LightningTargetThreshold"/>.</summary>
     public const double TargetThreshold = 12;
     public const double LightningTargetThreshold = 15;
     public const string LightningName = "Thunder Call: Hammer Storm";
@@ -41,13 +40,12 @@ public class HammerStorm : TariqAbility
     public HammerStorm(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
         SetChannel(ChannelSeconds, SpinPeriodSeconds);
-        // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, 3 spins in all (see
+        // Combat logs (3 Tariq fights, 229 channels): the first spin one server frame after the cast, MaxSpins spins in all (see
         // OnChannelTick).
         ChannelTicksOnStart = true;
-        // Combat logs (tests/ReactionTimeTests, 16 Tariq fights, 378 channels): the next cast comes a median 0.035s after
-        // the channel ends, 207 of them within a server frame, as after a cast time; Rime's Freezing Torrent 0.171s.
+        // Combat logs (tests/ReactionTimeTests, 16 Tariq fights, 378 channels): the next cast comes shortly after
+        // the channel ends, mostly within a server frame, as after a cast time; Rime's Freezing Torrent comes later.
         ChannelQueuesNextCast = true;
         AoeTargetThreshold = TargetThreshold;
     }
@@ -57,7 +55,6 @@ public class HammerStorm : TariqAbility
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
-        TriggerCooldown(ctx);
         // The spins come after the cast has resolved: they keep what the cast got (Focused Wrath, Schism).
         _castMultiplier = FocusedWrath.Spend(Tariq, FuryCost, ctx) * CastDamageMultiplier;
         _castCritChance = CurrentCast?.CritChance ?? 0.0;
@@ -69,9 +66,9 @@ public class HammerStorm : TariqAbility
     }
 
     /// <summary>
-    /// The channel's first tick is the first spin; the others come every hasted half second from the cast, not from that
-    /// tick (combat logs, fXyzwGcQkTrLD34R fight 4 @ 23.36: spins 0.033, 0.402 and 0.801s after the cast at 29% haste,
-    /// each on the server frame after the cast + 0.388s per spin).
+    /// The channel's first tick is the first spin; the others come every hasted spin period from the cast, not from that
+    /// tick (combat logs, fXyzwGcQkTrLD34R fight 4 @ 23.36: each spin on the server frame after the cast plus one hasted
+    /// period per spin).
     /// </summary>
     public override void OnChannelTick(SimulationContext ctx, EnemyTarget target, double fraction)
     {

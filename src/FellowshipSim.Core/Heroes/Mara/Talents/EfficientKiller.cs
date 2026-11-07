@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 113: "Each Combo Point you spend causes you to generate 1 Energy" (game data
-/// Mara.Talent.ComboPointsRefundEnergy.EnergyGainPerComboPoint 1). UNVERIFIED: no combat log has this talent.
+/// Talent 113: "Each Combo Point you spend causes you to generate Energy" (game data),
+/// so Maiden of Death multiplies it. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class EfficientKiller : Talent
 {
@@ -18,7 +18,7 @@ public class EfficientKiller : Talent
         var mara = (Mara)hero;
         hero.OnResourceSpent += (resource, amount, _) =>
         {
-            if (resource == Mara.ComboPoints && amount > 0 && mara.SimContext is { } ctx) mara.GainEnergy(EnergyPerComboPoint * amount, ctx);
+            if (resource == Mara.ComboPoints && amount > 0 && mara.SimContext is { } ctx) mara.GainEnergyWithMaiden(EnergyPerComboPoint * amount, ctx);
         };
     }
 }

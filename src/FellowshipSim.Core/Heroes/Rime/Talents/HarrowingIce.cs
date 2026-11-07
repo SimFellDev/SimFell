@@ -3,11 +3,11 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>
-/// Talent 627 / effect 2839 (12s, 31 stacks): each Bursting Ice pulse grants a stack; Bursting Ice deals 3% more damage per
-/// stack; the stack after 30 consumes them all and takes 5s off Flight of the Navir's cooldown.
-/// Values: talent text; hero_data Bursting Ice "StackingDamageBonus" (DamageScalerPerStack 0.03, MaxStacks 31, 5s).
+/// Talent 627 / effect 2839: each Bursting Ice pulse grants a stack; Bursting Ice deals more damage per
+/// stack; the stack after the next-to-last consumes them all and reduces Flight of the Navir's cooldown.
+/// Values: talent text and game data.
 /// Combat logs (g6zBdpvJCmh2HfrD fight 31, 1056 pulses): a pulse deals damage with the stacks held before it, then adds
-/// its stack; stacks reach 31 and are removed at once.
+/// its stack; stacks reach the maximum and are removed at once.
 /// </summary>
 public class HarrowingIce : Talent
 {
@@ -25,7 +25,7 @@ public class HarrowingIce : Talent
     public override int Id => TalentId;
 
     /// <summary>
-    /// A pulse deals damage with the stacks held before it, then adds its own stack; the stack after 30 consumes them all
+    /// A pulse deals damage with the stacks held before it, then adds its own stack; the stack after the next-to-last consumes them all
     /// and shortens Flight of the Navir.
     /// </summary>
     public override void Bind(Hero hero)

@@ -10,26 +10,37 @@ namespace FellowshipSim.Core.Heroes.Mara;
 /// </summary>
 public sealed class Mara : Hero
 {
-    /// <summary>Hero attributes MaxResources 200 and Resources 200 (game data hero 11): Mara starts every fight with full Energy.</summary>
+    /// <summary>Hero attributes MaxResources and Resources (game data hero 11): Mara starts every fight with full Energy.</summary>
     public const double MaxEnergy = 200;
 
-    /// <summary>Hero attribute MaxResourcesSecond 6.</summary>
+    /// <summary>Hero attribute MaxResourcesSecond.</summary>
     public const double MaxComboPoints = 6;
 
     /// <summary>
-    /// Energy regenerated per second before haste and buffs. The game data has no value. Combat logs (Fc8v6yWxD14GQMnV
-    /// fight 19, 13% Haste): a median of 17.3 per second with no buff, 15.3 before Haste. The median holds a few Venomous
-    /// Delight gains, so the engine takes 15. UNVERIFIED to better than 0.5 per second.
+    /// Energy regenerated per second before haste and buffs: the game data gain amount every gain interval,
+    /// the interval divided by Haste and by Predator's Rush, and Maiden of Death
+    /// multiplies the amount with Maiden of Death.
+    /// Combat logs (23 Mara fights of data/fights): the logged rate matches this rate in the four buff states.
     /// </summary>
     public const double EnergyPerSecond = 15.0;
 
     /// <summary>
-    /// Seconds between two Energy regeneration ticks of the engine. A cast reads the Energy regenerated up to its moment
-    /// (<see cref="RegenerateEnergy"/>); the ticks let an action list waiting for Energy act again, and keep the Energy a
-    /// replay reads within 3 of the moment. Speed: 20,000 sims of the fight 19 profile take 5.7s with 0.1s ticks and
-    /// 4.5s with 1s ticks, for the same DPS (12,060 and 12,062).
+    /// Seconds between two Energy regeneration ticks of the engine. A cast and a replay's check read the Energy regenerated up
+    /// to their moment (<see cref="RegenerateEnergy"/>); the ticks let an action list waiting for Energy act again. A shorter period
+    /// costs sim speed and changes no DPS.
     /// </summary>
     public const double EnergyTickSeconds = 0.1;
+
+    /// <summary>
+    /// Regeneration a restart of the tick timer loses. In game data a change of Haste or
+    /// of Predator's Rush ends the tick timer and starts a new one after the delay until the next tick,
+    /// with no tick at start, so one frame and the old timer's remainder are lost, and a second change in that frame finds no
+    /// watcher. Maiden of Death scales the amount with no restart. The size of the remainder and
+    /// the order of the timer and latent ticks in a frame are not in game data, so the size is a log pattern: over the 8 players with
+    /// no Venomous Delight in the 23 Mara fights of data/fights (T2qLPpmMkrAtJ9B1 fight 18, 3M2vWr8taxVfTQFY fight 53 and NOTES.md),
+    /// the log's Energy falls behind the engine's at each Haste drop, Haste rise and Predator's Rush change, by a short regeneration time.
+    /// </summary>
+    public const double EnergyLostToTimerRestartSeconds = PeriodicEffect.ServerFrameSeconds;
 
     public static readonly ResourceDef Energy = new("Energy", Max: MaxEnergy, Initial: MaxEnergy);
 
@@ -39,17 +50,17 @@ public sealed class Mara : Hero
     };
 
     /// <summary>
-    /// Combat logs (Fc8v6yWxD14GQMnV fight 19, 999 casts in a row): casts on the global cooldown come 1.032s apart at the
-    /// least, with Spirit of Heroism (+30% Haste) too. Mara's global cooldown is 1s, not hasted.
+    /// Combat logs (Fc8v6yWxD14GQMnV fight 19, 999 casts in a row): casts on the global cooldown come the same time apart at the
+    /// least, with Spirit of Heroism too. Mara's global cooldown is not hasted.
     /// </summary>
     public const double GlobalCooldown = 1.0;
 
-    /// <summary>Class tuning: hero attribute BalancingDamageAura 1.04 (game data hero 11), +4%.</summary>
+    /// <summary>Class tuning: hero attribute BalancingDamageAura (game data hero 11).</summary>
     public const double BalancingDamageAura = 1.04;
 
     /// <summary>
-    /// "CREEPING DEATH: Caustic Poison, Seething Poisons, and Volatile Poison deal 0.5% increased Poison damage for every
-    /// 1% Haste you have"; Hemorrhaging Strike's bleed, Corrosive Spill and Seething Burst too (their tooltips).
+    /// Creeping Death: Caustic Poison, Seething Poisons, and Volatile Poison deal increased Poison damage per Haste;
+    /// Hemorrhaging Strike's bleed, Corrosive Spill and Seething Burst too (their tooltips).
     /// </summary>
     public const double CreepingDeathPerHaste = 0.5;
 
@@ -65,7 +76,7 @@ public sealed class Mara : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 11: mainStat Agility.</summary>
+    /// <summary>Game data hero 11: mainStat Agility.</summary>
     public override MainStat MainStat => MainStat.Agility;
 
     /// <summary>Macabre Stratagem: Final Stratagem is replaced by Macabre Stratagem.</summary>
@@ -112,13 +123,17 @@ public sealed class Mara : Hero
         Abilities.Add(new ArachnidAssault(this));
         Abilities.Add(new HemorrhagingStrike(this));
         Abilities.Add(new BroodingShadows(this));
+        Abilities.Add(new Kick(this));
+        Abilities.Add(new ShadowWard(this));
+        Abilities.Add(new WebCrack(this));
+        Abilities.Add(new StalkerStep(this));
         Abilities.Add(new MaidenOfDeath(this));
         Abilities.Add(_matriarch = new MatriarchMacabre(this));
         Abilities.Add(new FinalStratagem(this));
         Abilities.Add(new MacabreStratagem(this));
 
-        // Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 25.691): a Spirit Refund on a Queen's Fang gives back its 6 Combo
-        // Points and its 40 Energy.
+        // Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 25.691): a Spirit Refund on a Queen's Fang gives back its Combo
+        // Points and its Energy.
         OnSpiritRefund += (resource, _, ctx) =>
         {
             if (resource != ComboPoints || _lastFinisherEnergy <= 0) return;
@@ -129,6 +144,7 @@ public sealed class Mara : Hero
         // read again whenever an aura comes or goes.
         Auras.OnGained += (_, _, now) => RegenerateEnergy(now);
         Auras.OnRemoved += (_, now) => RegenerateEnergy(now);
+        Auras.OnStacksLost += (_, _, now) => RegenerateEnergy(now);
     }
 
     private MatriarchMacabre? _matriarch;
@@ -150,35 +166,56 @@ public sealed class Mara : Hero
 
     private SimTime _energyRegeneratedAt;
     private double _energyRate;
+    /// <summary>Ticks of the regeneration timer per unhasted tick at the last read: Haste and Predator's Rush.</summary>
+    private double _energyTickRate;
 
     /// <summary>Energy per second now: <see cref="EnergyPerSecond"/> raised by haste, times the regeneration buffs.</summary>
-    public double EnergyRate(SimTime now)
+    public double EnergyRate(SimTime now) => EnergyRate(now, 1.0 + GetHaste(now));
+
+    private double EnergyRate(SimTime now, double hasteFactor)
     {
-        double rate = EnergyPerSecond * (1.0 + GetHaste(now));
+        double rate = EnergyPerSecond * hasteFactor;
         foreach (var multiplier in EnergyRegenMultipliers) rate *= multiplier(now);
         return rate;
     }
 
-    /// <summary>Adds the Energy regenerated since the last regeneration at the rate then, and reads the rate again.</summary>
+    private double EnergyTickRate(SimTime now, double hasteFactor) =>
+        Auras.HasAura(SeethingPoison.PredatorsRush, now) ? hasteFactor * SeethingPoison.PredatorsRushEnergyRegen : hasteFactor;
+
+    /// <summary>
+    /// Adds the Energy regenerated since the last regeneration at the rate then, and reads the rate again. A changed tick rate
+    /// restarts the regeneration timer, and a change during the restart adds no time to it.
+    /// </summary>
     public void RegenerateEnergy(SimTime now)
     {
-        if (now <= _energyRegeneratedAt)
+        if (now > _energyRegeneratedAt)
         {
-            if (now == _energyRegeneratedAt) _energyRate = EnergyRate(now);
-            return;
+            double seconds = (now - _energyRegeneratedAt).TotalSeconds;
+            _energyRegeneratedAt = now;
+            var state = Resources.Get(Energy);
+            state.Current = Math.Min(state.Max, state.Current + _energyRate * seconds);
         }
-        double seconds = (now - _energyRegeneratedAt).TotalSeconds;
-        _energyRegeneratedAt = now;
-        var state = Resources.Get(Energy);
-        state.Current = Math.Min(state.Max, state.Current + _energyRate * seconds);
-        _energyRate = EnergyRate(now);
+        double hasteFactor = 1.0 + GetHaste(now);
+        _energyRate = EnergyRate(now, hasteFactor);
+        double tickRate = EnergyTickRate(now, hasteFactor);
+        if (now == _energyRegeneratedAt && Math.Abs(tickRate - _energyTickRate) > 1e-9)
+        {
+            _energyRegeneratedAt = now + SimTime.FromSeconds(EnergyLostToTimerRestartSeconds);
+        }
+        _energyTickRate = tickRate;
     }
+
+    public override void RegenerateResources(SimTime now) => RegenerateEnergy(now);
 
     public double EnergyAt(SimTime now)
     {
         RegenerateEnergy(now);
         return ResourceAmount(Energy);
     }
+
+    /// <summary>The Energy a cast of ability <paramref name="abilityId"/> spends, net of what the cast itself gives; 0 for no ability of Mara's.</summary>
+    public double EnergySpentBy(int abilityId) =>
+        Abilities.OfType<MaraAbility>().FirstOrDefault(a => a.Id == abilityId)?.NetEnergyCost ?? 0;
 
     public void SpendEnergy(double amount, SimulationContext ctx)
     {
@@ -192,10 +229,18 @@ public sealed class Mara : Hero
         GainResource(Energy, amount, ctx);
     }
 
+    /// <summary>
+    /// A gain of Energy from an ability: Maiden of Death multiplies it. Hemorrhage's ticks and Efficient
+    /// Killer go through it; Widow's Bite, Venomous Delight and a Spirit Refund's Energy do not.
+    /// </summary>
+    public void GainEnergyWithMaiden(double amount, SimulationContext ctx) =>
+        GainEnergy(Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime) ? amount * MaidenOfDeath.EnergyRegen : amount, ctx);
+
     protected override void OnFightBegins(SimulationContext ctx)
     {
         _energyRegeneratedAt = ctx.CurrentTime;
         _energyRate = EnergyRate(ctx.CurrentTime);
+        _energyTickRate = EnergyTickRate(ctx.CurrentTime, 1.0 + GetHaste(ctx.CurrentTime));
         void Tick(SimulationContext c)
         {
             RegenerateEnergy(c.CurrentTime);
@@ -227,7 +272,7 @@ public sealed class Mara : Hero
     public void GainComboPoints(double amount, SimulationContext ctx, EnemyTarget? from = null) =>
         GainResource(ComboPoints, amount, ctx, from);
 
-    /// <summary>Creeping Death: 0.5% more poison or bleed damage per 1% Haste.</summary>
+    /// <summary>Creeping Death: more poison or bleed damage per Haste.</summary>
     public double CreepingDeath(SimTime now) => 1.0 + CreepingDeathPerHaste * GetHaste(now);
 
     public override void ResetForIteration()
@@ -236,5 +281,6 @@ public sealed class Mara : Hero
         _energyRegeneratedAt = SimTime.Zero;
         _energyRate = 0;
         _lastFinisherEnergy = 0;
+        GetAbility<BroodingShadows>()!.ResetState();
     }
 }

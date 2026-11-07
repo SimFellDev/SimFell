@@ -42,19 +42,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
                      .Where(a => a.Source.Id == script.Player.Id && a.Target.Id != script.Player.Id)
                      .GroupBy(a => (a.AbilityId, a.Target)))
         {
-            int stacks = 0;
-            var list = new List<(LogAura Event, int Added)>();
-            var losses = new List<double>();
             _enemyDebuffApplications[group.Key] = group.Where(a => a.Type is "applydebuff" or "refreshdebuff").OrderBy(a => a.Time).ToList();
-            foreach (var a in group.OrderBy(a => a.Time))
-            {
-                int now = a.Type is "removedebuff" or "removebuff" ? 0 : a.Stack ?? (a.IsGain ? Math.Max(stacks, 1) : stacks);
-                if (a.IsGain && now > stacks) list.Add((a, now - stacks));
-                if (a.IsLoss && now < stacks) losses.Add(a.Time);
-                stacks = now;
-            }
-            _enemyStackGains[group.Key] = list;
-            _enemyStackLosses[group.Key] = losses;
+            (_enemyStackGains[group.Key], _enemyStackLosses[group.Key]) = ProcEvidence.StackChanges(group);
         }
         foreach (var c in script.Commands.Where(c => c.Kind == CommandKind.EnemyDemise && c.Enemy != null))
         {
@@ -114,7 +103,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         else group = _hits.ClaimGroup(damageLogId, ctx.CurrentTime.TotalSeconds, _options, ctx.CurrentTickFraction);
         if (group == null)
         {
-            _verifier.Report(ctx, IssueCategory.Hits, $"Engine multi-target hit {damageLogId} at {ctx.CurrentTime} has no log hits", $"extra engine multi-target hit: {damageLogId}");
+            _verifier.Report(ctx, IssueCategory.Hits, IssueEntity.Damage(damageLogId, damageLogId.ToString()), $"Engine multi-target hit {damageLogId} at {ctx.CurrentTime} has no log hits", $"extra engine multi-target hit: {damageLogId}");
             return Array.Empty<EnemyTarget>();
         }
         var targets = new List<EnemyTarget>();
@@ -141,7 +130,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
         {
             // The preferred enemy's log hit landing now; else the log hit nearest the expected landing, the preferred
             // enemy's on a tie. A later hit on the preferred enemy belongs to a later hit (Chain
-            // Lightning's bounces land 0.05s apart).
+            // Lightning's bounces land a fixed interval apart).
             double now = ctx.CurrentTime.TotalSeconds;
             var unitRef = new UnitRef(preferred.Id, preferred.InstanceId);
             if (_hits.HasUnclaimed(damageLogId, unitRef, now - PeriodicEffect.ServerFrameSeconds, now + PeriodicEffect.ServerFrameSeconds)) return preferred;
@@ -175,7 +164,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
                 && died >= now - _options.SameTickSeconds && died <= now + _hits.LongestTravelSeconds(hit.AbilityId, _options) + PeriodicEffect.ServerFrameSeconds)))
         {
             // The target dies in the log before this hit could land (the log has no hit for it, and its flight can be as
-            // long as the longest seen; Frost Bolt's varies with distance, 0.03-1.9s): it hits nothing (no damage, no
+            // long as the longest seen; Frost Bolt's varies with distance): it hits nothing (no damage, no
             // procs, no counters).
             MissedHits++;
             return new HitOutcome(false, SimTime.Zero, 1.0, null, Missed: true);
@@ -205,6 +194,10 @@ public sealed class LogOutcomeSource : IOutcomeSource
 
     /// <summary>A replay casts at the log's times, so the player's delays are already in them.</summary>
     public SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => SimTime.Zero;
+
+    /// <summary>The amount of the log hit a defensive proc's hit on <paramref name="target"/> now takes (0 without one).</summary>
+    public double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) =>
+        _hits.Next(damageLogId, new UnitRef(target.Id, target.InstanceId), ctx.CurrentTime.TotalSeconds, _options)?.UnblockedAmount ?? 0.0;
 
     // ------------------------------------------------------------------ periodic ticks
 
@@ -241,6 +234,15 @@ public sealed class LogOutcomeSource : IOutcomeSource
         // takes its place, and the log tick it reserved.
         if (ticks.TicksFiredAtLastAsk == effect.TicksFired)
         {
+            // A log tick after a partial tick's time belongs to the next application on the enemy (Amethyst Splinter; combat logs of the
+            // Mara fights: new applications follow a partial tick and its removal closely, w7khnMKAa4TxXrmC fight 23
+            // @ 85.189, T2qLPpmMkrAtJ9B1 fight 18 @ 53.144).
+            if (ticks.LastAt is { } later && tick.Target != null && tick.Fraction < 1.0 && later > tick.Scheduled.TotalSeconds + _options.TickTimeToleranceSeconds)
+            {
+                _hits.ReleaseTick(effect, later);
+                ticks.ReservedCount--;
+                ticks.LastAt = null;
+            }
             if (ticks.LastAt is { } reservedAt)
             {
                 ticks.Group = ticks.LastGroup;
@@ -269,6 +271,32 @@ public sealed class LogOutcomeSource : IOutcomeSource
         PairTicks(ctx, effect, ticks);
         return at is { } time ? SimTime.FromSeconds(time) : tick.Scheduled;
     }
+
+    /// <summary>
+    /// The duration of the log's application or refresh of the effect on the enemy in the server frames of now; the middle of
+    /// the range when the log has none.
+    /// </summary>
+    public double RollDuration(in EffectDurationRequest application, SimulationContext ctx)
+    {
+        double now = ctx.CurrentTime.TotalSeconds;
+        if (_enemyDebuffApplications.TryGetValue((application.EffectLogId, new UnitRef(application.Target.Id, application.Target.InstanceId)), out var applied))
+        {
+            foreach (var a in applied)
+            {
+                if (a.Time < now - _options.SameTickSeconds || _claimedDurations.Contains(a)) continue;
+                if (a.Time > now + _options.SameTickSeconds) break;
+                if (a.DurationMs is not { } ms) continue;
+                _claimedDurations.Add(a);
+                return ms / 1000.0;
+            }
+        }
+        return (application.MinSeconds + application.MaxSeconds) / 2.0;
+    }
+
+    private readonly HashSet<LogAura> _claimedDurations = new();
+
+    /// <summary>The hit is released now, and <see cref="ResolveHit"/> lands it at the log hit's time.</summary>
+    public double RollDelay(double maxSeconds, SimulationContext ctx) => 0.0;
 
     private void OnTickPredicted(SimulationContext ctx, PeriodicEffect effect, SimTime predicted)
     {
@@ -313,13 +341,13 @@ public sealed class LogOutcomeSource : IOutcomeSource
         var evidence = ProcEvidence.For(procKey);
         if (evidence == null)
         {
-            _verifier.Report(ctx, IssueCategory.Procs, $"Proc '{procKey}' has no evidence listed in ProcEvidence; treated as not procced", $"proc without evidence: {procKey}");
+            _verifier.Report(ctx, IssueCategory.Procs, IssueEntity.Proc(procKey), $"Proc '{procKey}' has no evidence listed in ProcEvidence; treated as not procced", $"proc without evidence: {procKey}");
             return false;
         }
 
         double now = ctx.CurrentTime.TotalSeconds;
         bool procced = evidence.Resource != null
-            ? ClaimResourceEvidence(evidence, now)
+            ? ClaimResourceEvidence(evidence, ctx)
             : evidence.EnemyDebuffApplied
             ? ClaimEnemyDebuffEvidence(evidence, now, target)
             : evidence.StackJump > 0
@@ -333,65 +361,46 @@ public sealed class LogOutcomeSource : IOutcomeSource
     }
 
     /// <summary>
-    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within 30%) between two
-    /// readings, the first at most a frame after the roll and the second within 0.5s of it, beyond what it regenerates
-    /// meanwhile. A reading at a cast is before its cost, so a cast's reading never starts a jump.
+    /// Proof of a proc that gives a resource at once: the resource rises by the proc's gain (within a slack) between two
+    /// neighbouring readings at most <see cref="ProcEvidence.ResourceEvidenceWindowSeconds"/> apart, the first at most a frame after the roll, beyond what it regenerates
+    /// meanwhile at the rate now. A reading at a cast is before its cost, so a rise from one counts the cost back. A rise from
+    /// a cast's reading has no proc before the cast: the replay checks the resource at that reading. A rise of several gains
+    /// is proof of as many procs, and a rise to the maximum of one.
     /// </summary>
-    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, double now)
+    private bool ClaimResourceEvidence(ProcEvidence.Evidence evidence, SimulationContext ctx)
     {
-        if (!_resourceJumps.TryGetValue(evidence, out var jumps))
+        if (!_resourceRises.TryGetValue(evidence, out var rises))
         {
-            jumps = ResourceJumps(evidence);
-            _resourceJumps[evidence] = jumps;
+            rises = ProcEvidence.ResourceRises(_resourceReadings, evidence, ctx.Player);
+            _resourceRises[evidence] = rises;
         }
-        for (int i = 0; i < jumps.Count; i++)
+        double now = ctx.CurrentTime.TotalSeconds;
+        double regenPerSecond = evidence.ResourceRegen?.Invoke(ctx.Player, ctx.CurrentTime) ?? 0.0;
+        for (int i = 0; i < rises.Count; i++)
         {
-            var jump = jumps[i];
-            if (jump.To < now - _options.SameTickSeconds) continue;
-            if (jump.From > now + PeriodicEffect.ServerFrameSeconds) break;
-            if (jump.To > now + ResourceEvidenceWindowSeconds || _claimedResourceJumps.Contains((evidence, i))) continue;
-            _claimedResourceJumps.Add((evidence, i));
+            var rise = rises[i];
+            if (rise.To < now - _options.SameTickSeconds) continue;
+            if (rise.From > now + PeriodicEffect.ServerFrameSeconds) break;
+            if (rise.FromCast && rise.From >= now) continue;
+            int gains = ProcEvidence.ResourceGains(rise, evidence, regenPerSecond);
+            int claimed = _claimedResourceRises.GetValueOrDefault((evidence, i));
+            if (claimed >= gains) continue;
+            _claimedResourceRises[(evidence, i)] = claimed + 1;
             return true;
         }
         return false;
     }
 
-    private List<(double From, double To)> ResourceJumps(ProcEvidence.Evidence evidence)
-    {
-        var jumps = new List<(double From, double To)>();
-        var log = LogResources.All.FirstOrDefault(r => r.Resource == evidence.Resource);
-        if (log == null) return jumps;
-        string type = log.LogResourceType.ToString();
-        double max = evidence.Resource!.Max;
-        LogResourceSnapshot? previous = null;
-        double previousAmount = 0;
-        foreach (var reading in _resourceReadings)
-        {
-            if (!reading.Resources.TryGetValue(type, out var value)) continue;
-            double amount = log.EngineAmount(value);
-            if (previous != null && previous.Event != "cast" && reading.Time - previous.Time <= ResourceEvidenceWindowSeconds
-                && amount < max - 0.5 && previousAmount < max - 0.5)
-            {
-                double excess = amount - previousAmount - evidence.ResourceRegenPerSecond * (reading.Time - previous.Time);
-                if (Math.Abs(excess - evidence.ResourceGain) <= 0.3 * evidence.ResourceGain) jumps.Add((previous.Time, reading.Time));
-            }
-            previous = reading;
-            previousAmount = amount;
-        }
-        return jumps;
-    }
-
-    private const double ResourceEvidenceWindowSeconds = 0.5;
     private readonly List<LogResourceSnapshot> _resourceReadings = [];
-    private readonly Dictionary<ProcEvidence.Evidence, List<(double From, double To)>> _resourceJumps = new();
-    private readonly HashSet<(ProcEvidence.Evidence, int)> _claimedResourceJumps = new();
+    private readonly Dictionary<ProcEvidence.Evidence, List<ProcEvidence.ResourceRise>> _resourceRises = new();
+    private readonly Dictionary<(ProcEvidence.Evidence, int), int> _claimedResourceRises = new();
 
     /// <summary>Proof of a proc that adds extra stacks: the debuff on <paramref name="target"/> gains <paramref name="jump"/> stacks at once.</summary>
     private bool ClaimStackEvidence(int logId, int jump, double now, EnemyTarget? target)
     {
         if (target == null || !_enemyStackGains.TryGetValue((logId, new UnitRef(target.Id, target.InstanceId)), out var gains)) return false;
         // The gain closest to the roll: the hit's own (engine hits can land a few server frames from the log's, and the
-        // hits that add stacks are at least 0.17s apart).
+        // hits that add stacks are a minimum interval apart).
         var gain = gains
             .Where(g => Math.Abs(g.Event.Time - now) <= StackEvidenceWindowSeconds && !_claimedStackEvidence.Contains(g.Event))
             .OrderBy(g => Math.Abs(g.Event.Time - now))
@@ -401,8 +410,8 @@ public sealed class LogOutcomeSource : IOutcomeSource
         int added = gain.Added;
         if (added < jump)
         {
-            // A new debuff given several stacks at once is logged as its application (1 stack) and its stack count in the
-            // same millisecond (combat logs: all 220 Coalescing Frost applications with 2 stacks in the 15 Rime fights of
+            // A new debuff given several stacks at once is logged as its application and its stack count in the
+            // same millisecond (combat logs: every Coalescing Frost application with extra stacks in the 15 Rime fights of
             // docs/accuracy/rime-accuracy-v1.md, each on a Freezing Torrent crit).
             foreach (var g in gains)
             {
@@ -446,6 +455,12 @@ public sealed class LogOutcomeSource : IOutcomeSource
             // The proc's own hit on its enemy takes the proof, not an earlier log hit still free; the hits on other
             // enemies in the same server frame are other procs.
             _hits.ReserveForMatch(hit);
+            _claimedDamageEvidence.Add(hit);
+            return true;
+        }
+        if (evidence.EachHitProves)
+        {
+            // The hit proves this proc alone; the other hits of its server frame are other procs.
             _claimedDamageEvidence.Add(hit);
             return true;
         }
@@ -494,6 +509,23 @@ public sealed class HitLedger
 
     /// <summary>Every log hit, in time order.</summary>
     public IReadOnlyList<LogDamage> All => _all;
+
+    /// <summary>
+    /// The log hit <see cref="Match"/> takes for an engine hit with no periodic effect and no reserved hit, without
+    /// matching it.
+    /// </summary>
+    public LogDamage? Next(int logId, UnitRef target, double engineTime, ReplayOptions options)
+    {
+        if (!_byKey.TryGetValue((logId, target.Id, target.Instance), out var list)) return null;
+        foreach (var h in list)
+        {
+            if (h.Time < engineTime - options.HitEarlySeconds) continue;
+            if (h.Time > engineTime + options.LateSecondsOf(logId)) break;
+            if (_matched.Contains(h) || _dealt.Contains(h) || OwnedByOther(h, null)) continue;
+            return h;
+        }
+        return null;
+    }
 
     /// <param name="owner">The periodic effect ticking now: its reserved log hit on the target is taken first.</param>
     /// <param name="reservedOnly">Take only a log hit <paramref name="owner"/> reserved (the hit of a tick that follows the log).</param>
@@ -609,6 +641,16 @@ public sealed class HitLedger
         _claimedGroups.Add(best[0]);
         foreach (var h in best) Own(h, owner);
         return best;
+    }
+
+    /// <summary>The log hit <paramref name="owner"/> reserved at <paramref name="time"/> is free again.</summary>
+    public void ReleaseTick(PeriodicEffect owner, double time)
+    {
+        if (!_owned.TryGetValue(owner, out var list)) return;
+        int at = list.FindLastIndex(h => h.Time == time && !_matched.Contains(h));
+        if (at < 0) return;
+        _ownerOf.Remove(list[at]);
+        list.RemoveAt(at);
     }
 
     /// <summary>The log hits <paramref name="owner"/> reserved and no engine hit took are free again.</summary>

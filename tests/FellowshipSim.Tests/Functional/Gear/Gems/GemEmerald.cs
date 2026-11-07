@@ -12,7 +12,7 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class GemEmerald
 {
-    private static readonly AuraDef FirstStrike = Emerald.FirstStrikeI;
+    private static readonly AuraDef FirstStrike = Emerald.AllNodes[0].Grants!;
 
     /// <summary>A bare hero, Rime by default, with Emerald at <paramref name="power"/>.</summary>
     private static StepDriver Fight(double power, string hero = "Rime", int enemies = 1) =>

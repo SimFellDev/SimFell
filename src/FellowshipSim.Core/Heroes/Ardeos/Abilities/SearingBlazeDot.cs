@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Effect 1820: "Target enemy burns for 64.695% of Intellect fire damage every 2 seconds for 30 seconds. Generates 12
-/// Cinders over its full duration." Applying it again starts its 30 seconds again. The tooltip's 12 is outdated: a tick
-/// generates 1 Cinder (15 over the full duration, so 7 full burns make an Ember and 6 do not).
+/// Effect 1820: the target enemy burns for Intellect fire damage on a period, and the burn generates Cinders over its full
+/// duration. Applying it again starts its duration again. The tooltip's Cinder total is outdated: the Cinders over the
+/// full duration are <see cref="CindersOverDuration"/>.
 /// </summary>
 public sealed class SearingBlazeDot : DamageOverTime
 {
@@ -12,7 +12,7 @@ public sealed class SearingBlazeDot : DamageOverTime
     public const double Coefficient = 0.64695;
     public const double PeriodSeconds = 2.0;
     public const double DurationSeconds = 30.0;
-    /// <summary>1 Cinder a tick: 15 ticks of 1 over the full duration (the tooltip says 12).</summary>
+    /// <summary>Cinders over the full duration, the same each tick (the tooltip's total differs).</summary>
     public const double CindersOverDuration = 15.0;
 
     public SearingBlazeDot(Ardeos owner) : base(owner, EffectId, EffectName, PeriodSeconds, DurationSeconds, DotStacking.Refresh)

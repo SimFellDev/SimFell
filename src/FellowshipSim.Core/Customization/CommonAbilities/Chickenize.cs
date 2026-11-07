@@ -3,7 +3,7 @@ namespace FellowshipSim.Core.Customization.CommonAbilities;
 /// <summary>
 /// Ability 1478 (a relic ability): "Instantly turn your target into a chicken. Chickenize! can only be used a
 /// limited amount of times per dungeon. The charges are shared by everyone in the party. ... Can be used during Global
-/// Cooldown." Cooldown 180s (game data; 4 uses per dungeon, the party's). No damage.
+/// Cooldown." The cooldown and the uses per dungeon (the party's) are in the game data. No damage.
 /// </summary>
 public class Chickenize : Ability
 {

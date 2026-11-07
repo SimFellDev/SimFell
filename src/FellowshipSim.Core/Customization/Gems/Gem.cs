@@ -29,14 +29,12 @@ public sealed record GemNode(int Id, int Node, string Name, double RequiredPower
 public abstract class Gem
 {
     /// <summary>
-    /// A colour's active nodes are the highest five whose required power is at or below the gem power (UCRGemSubsystem
-    /// 0x145388B10, build 26162532), so a rank II node replaces the rank I node of its slot.
+    /// A colour's active nodes are the highest five whose required power is at or below the gem power, so a rank II node replaces the rank I node of its slot.
     /// </summary>
     public const int ActiveGemNodes = 5;
 
     /// <summary>
-    /// Gem power over this counts toward the overcap bonus (GemBonus.GlobalGemPowerCapValue, read by
-    /// GEC_Shared_GemOvercapBonus_OvercapCalculation, effect 2469): Main Stat and Stamina Multiplicitive 1 +
+    /// Gem power over this counts toward the overcap bonus (effect 2469): Main Stat and Stamina Multiplicitive 1 +
     /// <see cref="OvercapBonusPerPower"/> per point over it, summed over the colours.
     /// </summary>
     public const double OvercapPower = 1500;
@@ -103,7 +101,7 @@ public abstract class Gem
 
     /// <summary>
     /// The gem power changes while the hero fights (Anomalous Residue): the nodes re-evaluate at once, the lower node of a
-    /// slot coming back when the power falls (UCRGemPowerComponent's power callback 0x145390CE0, build 26162532). A node's
+    /// slot coming back when the power falls. A node's
     /// stats change by their difference from the bound nodes'; an aura a node grants passes to the slot's new node.
     /// </summary>
     public void ChangePower(double power, SimTime now)

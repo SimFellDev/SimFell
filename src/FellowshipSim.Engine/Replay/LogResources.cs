@@ -1,8 +1,10 @@
 using FellowshipSim.Core.Heroes.Ardeos;
 using FellowshipSim.Core.Heroes.Elarion;
+using FellowshipSim.Core.Heroes.Helena;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Rime;
 using FellowshipSim.Core.Heroes.Tariq;
+using FellowshipSim.Core.Heroes.Xavian;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -32,21 +34,28 @@ public static class LogResources
     [
         // Every hero: Spirit Points as resource type 4, in hundredths; they carry over between pulls.
         new(Hero.SpiritPoints, 4, Scale: 0.01, Tolerance: 2.0, StartsFromLog: true),
-        // Rime: Anima as resource type 2 and Winter Orbs as type 5, both in hundredths. Anima is compared within 0.99
-        // (the log rounds it).
+        // Rime: Anima as resource type 2 and Winter Orbs as type 5, both in hundredths. Anima is compared within a
+        // tolerance because the log rounds it.
         new(Rime.Anima, 2, Scale: 0.01, Tolerance: 0.99),
         new(Rime.WinterOrbsResource, 5, Scale: 0.01),
-        // Ardeos: Cinders as resource type 2, in hundredths (max 40000).
+        // Ardeos: Cinders as resource type 2, in hundredths.
         new(Ardeos.Cinders, 2, Scale: 0.01, Tolerance: 1.0),
         // Mara: Energy as resource type 2 and Combo Points as type 3, both in hundredths; both carry over between pulls.
-        // Energy regenerates between the engine's ticks, so it is compared within 3.
+        // Energy is compared within a tolerance. Combat logs (23 Mara fights of data/fights): most checks below the maximum
+        // are inside it.
         new(Mara.Energy, 2, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
         new(Mara.ComboPoints, 3, Scale: 0.01, StartsFromLog: true),
-        // Tariq: Fury as resource type 2, a share of a maximum that follows Strength. Compared within 2 (Bloodline and Ride
+        // Tariq: Fury as resource type 2, a share of a maximum that follows Strength. Compared within a tolerance (Bloodline and Ride
         // the Lightning tick between readings).
         new(Tariq.Fury, 2, Tolerance: 2.0, StartsFromLog: true, ShareOfMaximum: true),
         // Elarion: Focus as resource type 2, in hundredths; it carries over between pulls. Focus regenerates between the
-        // engine's ticks, so it is compared within 3.
+        // engine's ticks, so it is compared within a tolerance.
         new(Elarion.Focus, 2, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
+        // Xavian: Mana as resource type 1, in hundredths. Mana starts at the log's first value and regenerates between the
+        // engine's ticks, so it is compared within 3.
+        new(Xavian.Mana, 1, Scale: 0.01, Tolerance: 3.0, StartsFromLog: true),
+        // Helena: Toughness as resource type 3, a share of a maximum that follows Strength and the secondary stats (amount
+        // and maximum in hundredths); it carries over between pulls. The replay takes the log's share before each cast.
+        new(Helena.Toughness, 3, Tolerance: 1.0, StartsFromLog: true, ShareOfMaximum: true),
     ];
 }

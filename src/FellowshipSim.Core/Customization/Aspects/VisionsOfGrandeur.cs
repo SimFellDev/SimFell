@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Customization.Aspects;
 
 /// <summary>
-/// Aspect 47: "Your Weapon Ability's Cooldown is reduced by 25% / 50% / 75% / 100% when you activate your Spirit Ability."
-/// (a fraction of its default cooldown), and "Your Weapon Ability generates 2.5 Spirit Points multiplied by a value equal to
-/// your Weapon Ability's default cooldown, divided by 30" (logs: 15 per Chronoshift, 180s).
+/// Aspect 47: "Your Weapon Ability's Cooldown is reduced by a percentage by rank when you activate your Spirit Ability."
+/// (a fraction of its default cooldown), and "Your Weapon Ability generates Spirit Points multiplied by a value equal to
+/// your Weapon Ability's default cooldown, divided by a constant" (<see cref="SpiritPointsPer30sOfCooldown"/>).
 /// </summary>
 public class VisionsOfGrandeur : Aspect
 {

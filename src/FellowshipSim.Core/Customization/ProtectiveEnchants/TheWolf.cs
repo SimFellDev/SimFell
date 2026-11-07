@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Customization.ProtectiveEnchants;
 
-/// <summary>Protective enchant 63: "Your defensive ability heals you and grants damage reduction for 12 seconds."</summary>
+/// <summary>Protective enchant 63: "Your defensive ability heals you and grants damage reduction for a time."</summary>
 public class TheWolf : ProtectiveEnchant
 {
     public const int ProtectiveEnchantId = 63;

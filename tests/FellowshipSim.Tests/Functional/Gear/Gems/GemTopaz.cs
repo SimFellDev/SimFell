@@ -12,7 +12,7 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class GemTopaz
 {
-    private static readonly AuraDef AdrenalineRush = Topaz.AdrenalineRushI;
+    private static readonly AuraDef AdrenalineRush = Topaz.AllNodes[0].Grants!;
 
     /// <summary>A bare hero, Rime by default, with Topaz at <paramref name="power"/>.</summary>
     private static StepDriver Fight(double power, string hero = "Rime") =>

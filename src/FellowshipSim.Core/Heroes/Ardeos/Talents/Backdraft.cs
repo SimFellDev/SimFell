@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 617: "Each time you cast Detonate the duration of any of your active Searing Blaze effects is extended by 1.5
-/// seconds up to maximum duration." UNVERIFIED: no combat log has this talent.
+/// Talent 617: each Detonate cast extends the duration of the hero's active Searing Blaze effects, up to the maximum
+/// duration. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class Backdraft : Talent
 {

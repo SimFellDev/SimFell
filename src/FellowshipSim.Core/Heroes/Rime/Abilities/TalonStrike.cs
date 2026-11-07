@@ -11,7 +11,7 @@ public class TalonStrike : GlacialBlast
 {
     public new const int AbilityId = 2223;
     public new const string AbilityName = "Talon Strike";
-    /// <summary>Per ice spike (40% of Glacial Blast).</summary>
+    /// <summary>Per ice spike (a fraction of Glacial Blast's).</summary>
     public new const double Coefficient = 4.096;
 
     public TalonStrike(Rime owner) : base(owner, AbilityId, AbilityName)
@@ -50,7 +50,7 @@ public class TalonStrike : GlacialBlast
         {
             multiplier = ConsumeGlacialAssault(ctx);
             // INFERRED from logs (not the tooltip): cast "as if" with full Winter Orbs, it counts them as spent for Wisdom of
-            // the North. Across 10 logs this removes 46 of 62 Ice Blitz cooldown misses while some casts still land right
+            // the North. Across 10 logs this removes most Ice Blitz cooldown misses while some casts still land right
             // as Ice Blitz comes back (so it is not too fast).
             hero.NotifyResourceSpent(Rime.WinterOrbsResource, spikes, ctx.CurrentTime);
         }

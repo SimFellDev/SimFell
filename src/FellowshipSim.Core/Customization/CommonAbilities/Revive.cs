@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
-/// Ability 22 (a relic ability): "Revive target dead ally. Can be used in combat." Cast time 2s (hasted),
-/// cooldown 300s (game data). No damage. UNVERIFIED: whether it starts the global cooldown.
+/// Ability 22 (a relic ability): "Revive target dead ally. Can be used in combat." The cast time is hasted;
+/// the cast time and cooldown are in the game data. No damage. UNVERIFIED: whether it starts the global cooldown.
 /// </summary>
 public class Revive : Ability
 {

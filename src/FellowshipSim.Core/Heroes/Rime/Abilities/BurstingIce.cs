@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1031. Applies debuff effect 1395 (3s, pulsing every 0.5s hasted) whose pulses deal damage effect 1396
-/// to the target and nearby enemies and generate 1 Anima. While it is active Rime has Winter's Embrace (effect 2303).
+/// Ability 1031. Applies debuff effect 1395 (pulsing on a hasted period) whose pulses deal damage effect 1396
+/// to the target and nearby enemies and generate Anima. While it is active Rime has Winter's Embrace (effect 2303).
 /// </summary>
 public class BurstingIce : RimeAbility
 {
@@ -20,13 +20,13 @@ public class BurstingIce : RimeAbility
     public const double AnimaPerPulse = 1.0;
     public const int WintersEmbraceEffectId = 2303;
     public const double WintersEmbraceDamage = 1.2;
-    /// <summary>Combat logs: pulses lose damage as sqrt(5/N) beyond 5 targets.</summary>
+    /// <summary>Combat logs: pulses lose damage as a square-root falloff beyond <see cref="TargetThreshold"/> targets.</summary>
     public const double TargetThreshold = 5;
 
     /// <summary>The debuff on the enemy. Action lists read it; the pulses run on their own timer.</summary>
     public static readonly AuraDef Debuff = AuraDef.Effect("Bursting Ice", DebuffEffectId, DurationSeconds);
 
-    /// <summary>"While Bursting Ice is active on an enemy you gain Winter's Embrace, causing you to deal 20% more damage."</summary>
+    /// <summary>"While Bursting Ice is active on an enemy you gain Winter's Embrace, causing you to deal more damage."</summary>
     public static readonly AuraDef WintersEmbrace = AuraDef.Effect("Winter's Embrace", WintersEmbraceEffectId,
         modifiers: StatModifier.More(StatType.DamageScale, WintersEmbraceDamage));
 
@@ -73,7 +73,7 @@ public class BurstingIce : RimeAbility
         foreach (var pulseMultiplier in PulseDamageMultipliers) multiplier *= pulseMultiplier(ctx);
         double dealt = DealAoeDamage(ctx, enemies, damageMultiplier: multiplier);
         // The Anima comes after the damage, for an enemy whose 1396 application succeeded: a pulse that strikes no enemy
-        // gives none (game-data-authority answer 08: GA_Rime_CastedDebuffAoeDamage DoAoeExplosion 2148-2726).
+        // gives none.
         if (dealt > 0) hero.AddAnima(AnimaPerPulse, ctx, target);
         Pulsed?.Invoke(ctx);
     }
@@ -107,7 +107,7 @@ public class BurstingIce : RimeAbility
         }
 
         // The debuff goes with its enemy (effect 1395, EffectLogic.RemoveOnDeath), pulsing no more: combat logs (Rime's 15
-        // fights of patch 0.5.0.0) end 47 debuffs early, 46 of them with no pulse at the removal, and Winter's Embrace goes
+        // fights of patch 0.5.0.0) end debuffs early, nearly all with no pulse at the removal, and Winter's Embrace goes
         // with them (GWChJ8P7tn6fHgV3 fight 20 @ 352.564).
         PeriodicEffect? debuff = null;
         Action<SimulationContext, EnemyTarget>? demise = null;
@@ -122,12 +122,11 @@ public class BurstingIce : RimeAbility
         // Effect 1395 is tagged EffectType.Dot: a haste change inside a pulse repeats it a server frame later.
         debuff = PeriodicEffect.BeginHasted(ctx, hero, Name, Duration, PulsePeriodSeconds, tickOnStart: false, partialFinalTick: true,
             // Combat logs (10 Rime logs, 526 debuffs): the final pulse deals the fraction of a pulse period left when the
-            // debuff runs out (leftover 0.4 -> 0.43x, 0.5 -> 0.52x, 0.8 -> 0.78x, 0.9 -> 0.88x of a full pulse).
+            // debuff runs out.
             onTick: (c, fraction) =>
             {
                 DealPulse(c, target, fraction);
-                // The pulse's Anima comes through ability 1033 (BPFL_Rime.Rime_GainResourceAndTriggerAutoSpike), which
-                // ends inside the pulse (GA_Rime_Helper_AutoDamageProjectile K2_EndAbility, offsets 2850 / 2865).
+                // The pulse's Anima comes through ability 1033, which ends inside the pulse.
                 if (debuff?.PeriodTimer is { IsActive: true } timer) hero.QueueFlushingTick = (DamageLogId, timer);
             },
             onEnd: (c, _) =>

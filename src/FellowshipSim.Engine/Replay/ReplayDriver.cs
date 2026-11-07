@@ -36,8 +36,9 @@ public sealed class ReplayDriver
         // Free dice matches no log hits.
         _ledger = new HitLedger(_options.FreeDiceSeed.HasValue ? [] : script.Observations.Damage);
         // The log's aura states, for the state checks (free dice makes none).
-        var logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero));
-        _verifier = new ReplayVerifier(script, _options, hero, logAuras);
+        _logAuras = FreeDice ? null : new LogAuraTimeline(script.Observations.Auras.Where(a => a.Target.Id == script.Player.Id), ModeledAuras.LogIds(hero),
+            logId => hero.Auras.Active(_ctx.CurrentTime).FirstOrDefault(a => a.LogId == logId)?.Stacks ?? 0);
+        _verifier = new ReplayVerifier(script, _options, hero, _logAuras);
         _oracle = new LogOutcomeSource(script, _options, _ledger, _verifier);
         _ctx.Outcomes = _options.FreeDiceSeed is { } seed
             ? new FreeDiceOutcomeSource(script, new SimulationRng(seed))
@@ -45,6 +46,8 @@ public sealed class ReplayDriver
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability, now.TotalSeconds);
         // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
         _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
+        // Logged pulses fire at their log hits (FireDefensiveProcs), so the hero's own chains for them stay off.
+        _hero.PulsesFollowLog = true;
     }
 
     public SimulationContext Context => _ctx;
@@ -79,6 +82,7 @@ public sealed class ReplayDriver
         StartFromLoggedResources();
         _hero.BeginFight(_ctx);
         FollowSituationalAuras();
+        FireDefensiveProcs();
         CarryOverAuras();
 
         // An enemy's arrival is only known from its first event in the log, so it was there a little earlier.
@@ -100,6 +104,7 @@ public sealed class ReplayDriver
             Hero = _script.Player.Hero,
             TotalSteps = order.PlayerActions,
             DurationSeconds = _script.DurationSeconds,
+            Options = _options,
         };
         // Free dice reads the log's damage from the script.
         if (!FreeDice) result.LogDamage.AddRange(_script.Observations.Damage);
@@ -127,8 +132,9 @@ public sealed class ReplayDriver
                 _verifier.CurrentStep = step;
                 if (!FreeDice)
                 {
+                    _hero.RegenerateResources(_ctx.CurrentTime);
                     _verifier.CheckState(_ctx, step, cmd);
-                    SyncToLog(step);
+                    SyncToLog(step, cmd);
                 }
             }
 
@@ -200,12 +206,16 @@ public sealed class ReplayDriver
                 {
                     hurt.MaxHealth = cmd.MaxHp;
                     hurt.CurrentHealth = cmd.Hp;
+                    // Two of the log's readings show a heal. An engine hit in between lowers the health with no heal after it.
+                    if (_loggedEnemyHealth.TryGetValue(hurt, out double loggedBefore) && hurt.HealthFraction > loggedBefore) hurt.HealedTo(hurt.HealthFraction);
+                    _loggedEnemyHealth[hurt] = hurt.HealthFraction;
+                    _hero.EarnSpiritPoints(hurt, hurt.HealthFraction, _ctx);
                 }
                 break;
 
             case CommandKind.EnemyDemise:
                 var enemy = _ctx.FindEnemy(cmd.Enemy!.Id, cmd.Enemy.Instance);
-                if (enemy != null) _ctx.RemoveEnemy(enemy, defeated: cmd.Reason == "death");
+                if (enemy != null) _ctx.RemoveEnemy(enemy, defeated: cmd.Reason == "death", died: cmd.Reason == "death");
                 break;
 
             case CommandKind.ExternalAura:
@@ -242,7 +252,7 @@ public sealed class ReplayDriver
                 }
                 else
                 {
-                    if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
+                    if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, IssueEntity.Ability(cmd.AbilityName), $"Log stopped channeling {cmd.AbilityName}, but the engine was not channeling it (engine channel already ended or never started)", $"stop channel while not channeling: {cmd.AbilityName}");
                 }
                 break;
         }
@@ -289,6 +299,8 @@ public sealed class ReplayDriver
         var target = ResolveTarget(cmd.Target);
         if (target != null) _hero.CurrentTarget = target;
         else if (_hero.CurrentTarget is null or { IsSleeping: true }) _hero.CurrentTarget = _ctx.ActiveEnemies.FirstOrDefault()!;
+        // A cast the log records with no target (target -1) acts on the current target, as every cast in a sim does.
+        if (target == null && cmd.Target is null or { Id: <= 0 }) target = _hero.CurrentTarget;
 
         cancelFor.TryGetValue(cmd, out var end);
 
@@ -306,7 +318,7 @@ public sealed class ReplayDriver
             is not { } attempt) return;
         if (!attempt.Succeeded)
         {
-            if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
+            if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, IssueEntity.Ability(cmd.AbilityName), $"Engine refused {cmd.AbilityName}: {attempt.Reason}", $"refused: {cmd.AbilityName}");
             return;
         }
 
@@ -392,8 +404,8 @@ public sealed class ReplayDriver
     /// <summary>
     /// The period timer of the damage over time whose tick the log has in this cast's server frame, before the cast, when
     /// that tick ended an ability of the hero (<see cref="Hero.QueueFlushingTick"/>): the server's ability queue, flushed
-    /// inside the tick, activated the cast there (game-data-binary, build 26162532: the queue 0x1452D7370 flushed by
-    /// UCRGameplayAbility::EndAbility 0x1450DACD0 inside Bursting Ice's period callback; the cast is logged after the pulse).
+    /// inside the tick, activated the cast there (game data: the queue is flushed when the ability ends, inside Bursting
+    /// Ice's period callback; the cast is logged after the pulse).
     /// </summary>
     private HastedTimer? QueueFlushingTimer(ReplayCommand cmd)
     {
@@ -445,7 +457,7 @@ public sealed class ReplayDriver
             return; // completed by the engine at the log's completion time
         }
 
-        if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
+        if (KeepsIssues) _verifier.Report(_ctx, IssueCategory.Casts, IssueEntity.Ability(cmd.AbilityName), $"Log completed {cmd.AbilityName}, but the engine was not casting it", $"completed but not casting: {cmd.AbilityName}");
     }
 
     /// <summary>
@@ -551,6 +563,7 @@ public sealed class ReplayDriver
         var resource = logged.Resource;
         _ctx.ScheduleAt(SimTime.FromSeconds(Math.Max(from, first.Time - 0.001)), c =>
         {
+            _hero.RegenerateResources(c.CurrentTime);
             var state = _hero.Resources.Get(resource);
             state.Current = Math.Min(state.Max, value);
         }, $"{resource.Name} from the log");
@@ -558,12 +571,14 @@ public sealed class ReplayDriver
 
     /// <summary>
     /// The player dies: the cast or channel ends and the hero loses every aura but its passive and situational ones and
-    /// those that keep on death (<see cref="AuraDef.KeepsOnDeath"/>). Damage over time on enemies goes on.
+    /// those that keep on death (<see cref="AuraDef.KeepsOnDeath"/>). Damage over time on enemies goes on, but for an effect
+    /// that ends on its source's death (<see cref="Hero.OnDied"/>).
     /// </summary>
     private void Die()
     {
         if (_hero.CurrentCast != null) _ctx.CancelCast(_hero);
         if (_hero.CurrentChannel != null) _ctx.StopChannel(_hero);
+        _hero.TriggerDied(_ctx);
         var now = _ctx.CurrentTime;
         foreach (var aura in _hero.Auras.Active(now).ToList())
         {
@@ -573,7 +588,7 @@ public sealed class ReplayDriver
     }
 
     /// <summary>
-    /// The player is back: every resource the log reports takes the log's first reading after it (the log shows 75% of
+    /// The player is back: every resource the log reports takes the log's first reading after it (the log shows a share of
     /// the Spirit Points at death, and other resources refilled or emptied).
     /// </summary>
     private void Revive(double time)
@@ -585,10 +600,37 @@ public sealed class ReplayDriver
     }
 
     /// <summary>
+    /// Defensive procs (<see cref="Hero.DefensiveProcs"/>) fire in a replay only, at each proof of them in the log
+    /// (<see cref="ProcEvidence.Times"/>: every kind of proof a proc roll reads), less the evidence's
+    /// <see cref="ProcEvidence.Evidence.MinDelaySeconds"/>. The roll there claims the proof (<see cref="LogOutcomeSource"/>),
+    /// so a hit an engine hit already matched fires nothing.
+    /// </summary>
+    private void FireDefensiveProcs()
+    {
+        foreach (var proc in _hero.DefensiveProcs)
+        {
+            if (ProcEvidence.For(proc.ProcKey) is not { } evidence)
+            {
+                _verifier.Report(_ctx, IssueCategory.Procs, IssueEntity.Proc(proc.ProcKey), $"Defensive proc '{proc.ProcKey}' has no evidence listed in ProcEvidence; it never fires",
+                    $"proc without evidence: {proc.ProcKey}");
+                continue;
+            }
+            foreach (var (time, target) in ProcEvidence.Times(_script, evidence, _hero))
+            {
+                _ctx.Schedule(SimTime.FromSeconds(Math.Max(0.0, time - evidence.MinDelaySeconds)), c =>
+                {
+                    var enemy = target == null ? _hero.CurrentTarget : c.FindEnemy(target.Id, target.Instance) ?? _hero.CurrentTarget;
+                    if (c.Outcomes.RollProc(proc.ProcKey, 1.0, c, enemy)) proc.Fire(c, enemy);
+                }, proc.ProcKey);
+            }
+        }
+    }
+
+    /// <summary>
     /// Situational auras (<see cref="Hero.SituationalAuras"/>) depend on what the engine does not simulate, so the replay
     /// gives the hero each one exactly when the log does. One whose first logged event is a loss was up as the fight began.
-    /// One on the Main Stat with no logged event was up the whole fight (Might of the Minotaur: it drops only below 80%
-    /// health, and the log's starting Main Stat includes it). A gem's
+    /// One on the Main Stat with no logged event was up the whole fight (Might of the Minotaur: it drops only below a health
+    /// threshold, and the log's starting Main Stat includes it). A gem's
     /// situational nodes are followed at both ranks.
     /// </summary>
     private void FollowSituationalAuras()
@@ -615,7 +657,7 @@ public sealed class ReplayDriver
                     if (e.Type is "removebuff" or "removedebuff") c.Player.Auras.Remove(aura, c.CurrentTime);
                     else if (e.IsGain || e.Stack != null)
                     {
-                        // A refresh logs no stacks: it keeps the ones it has (Gunde's Owed in Blood refreshes at 150).
+                        // A refresh logs no stacks: it keeps the ones it has (Gunde's Owed in Blood refreshes at its maximum).
                         int held = c.Player.Auras.GetStacks(aura, c.CurrentTime);
                         bool refresh = e.Type is "refreshbuff" or "refreshdebuff";
                         c.Player.Auras.Apply(aura, c.CurrentTime, setStacks: e.Stack ?? (refresh && held > 0 ? held : 1));
@@ -629,7 +671,7 @@ public sealed class ReplayDriver
     /// Auras that carry over from earlier pulls: a modeled aura whose first event on the player in the log is its removal
     /// was on the hero as the fight began. The replay gives it to the hero from the start until the log removes it; its
     /// time left at the start is unknown, so nothing the engine does moves that end (combat logs: The Wayfarer's
-    /// cooldown, effect 3183, runs out 34-44s into N18KtgP3rvpYGm24 fight 27 and Rzg1nQNHpm2fhYtB fights 23 and 24 with no
+    /// cooldown, effect 3183, runs out in N18KtgP3rvpYGm24 fight 27 and Rzg1nQNHpm2fhYtB fights 23 and 24 with no
     /// application before).
     /// </summary>
     private void CarryOverAuras()
@@ -664,6 +706,10 @@ public sealed class ReplayDriver
         ExternalAurasOnPlayer = FreeDice ? [] : _externalAurasOnPlayer.Values.Distinct().OrderBy(n => n).ToList(),
     };
 
+    /// <summary>Each enemy's health fraction at the log's last reading.</summary>
+    private readonly Dictionary<EnemyTarget, double> _loggedEnemyHealth = new();
+
+    private readonly LogAuraTimeline? _logAuras;
     private Dictionary<int, AuraDef>? _modeledAuras;
     private HashSet<int>? _sharedAuraIds;
 
@@ -671,7 +717,7 @@ public sealed class ReplayDriver
     /// The engine takes the log's state wherever the pre-cast check found it different: each resource takes the log's
     /// reading, and each tracked aura the log's stacks (gained, changed or removed). The step's note lists each change.
     /// </summary>
-    private void SyncToLog(ReplayStep step)
+    private void SyncToLog(ReplayStep step, ReplayCommand cmd)
     {
         var now = _ctx.CurrentTime;
         var changes = new List<string>();
@@ -698,6 +744,16 @@ public sealed class ReplayDriver
             if (check.LogStacks == 0) _hero.Auras.Remove(def, now);
             else _hero.Auras.Apply(def, now, setStacks: check.LogStacks);
             changes.Add($"{check.Aura} {check.EngineStacks} -> {check.LogStacks} stacks");
+        }
+        // The pre-cast check matches an aura against the log's state within the tolerance after the step, and there a cast
+        // that toggles the aura gains it. An engine still holding the aura then ends it on the cast the log shows gaining it
+        // (a mount's end of Stealth: WcTBrQNX46m9axqP fight 7 @ 517.728 before Brooding Shadows @ 533.934, Seething Poison
+        // hits behind it; p8VJDcBdxa7ghqG3 fight 124 @ 509.279; pWmcV42K39GHTLQX fight 23 @ 1566.089).
+        if (FindAbility(cmd)?.RecastEnds is { } toggled && _hero.Auras.HasAura(toggled, now)
+            && _logAuras!.GainedAfterAbsence(toggled.LogId, cmd.Time, _options.AuraToleranceSeconds))
+        {
+            _hero.Auras.Remove(toggled, now);
+            changes.Add($"{toggled.Name} 1 -> 0 stacks");
         }
         if (changes.Count > 0) step.Note = (step.Note == null ? "" : step.Note + "; ") + "Synced to the log: " + string.Join(", ", changes);
     }
@@ -755,9 +811,14 @@ public sealed class LogAuraTimeline
     private readonly HashSet<int> _tracked;
     private readonly Dictionary<int, string> _names = new();
 
-    public LogAuraTimeline(IEnumerable<LogAura> playerAuraEvents, IEnumerable<int> modeledLogIds)
+    /// <param name="engineStacks">
+    /// The engine's stacks of an aura by log ID. The log has no number for the stacks of an inhibited effect's return
+    /// (<see cref="InhibitedAuras.StackNotLogged"/>), so until its next number the state reads as the engine's.
+    /// </param>
+    public LogAuraTimeline(IEnumerable<LogAura> playerAuraEvents, IEnumerable<int> modeledLogIds, Func<int, int> engineStacks)
     {
-        _events = playerAuraEvents.OrderBy(e => e.Time).ToList();
+        _engineStacks = engineStacks;
+        _events = InhibitedAuras.Read(playerAuraEvents.OrderBy(e => e.Time).ToList());
         _tracked = modeledLogIds.ToHashSet();
         foreach (var e in _events)
         {
@@ -767,6 +828,7 @@ public sealed class LogAuraTimeline
     }
 
     private readonly Dictionary<int, int> _initial = new();
+    private readonly Func<int, int> _engineStacks;
 
     public bool IsTracked(int logId) => logId > 0 && _tracked.Contains(logId);
 
@@ -780,6 +842,26 @@ public sealed class LogAuraTimeline
     public IEnumerable<double> ChangeTimesBetween(double from, double to) =>
         _events.Where(e => e.Time >= from && e.Time <= to).Select(e => e.Time).Distinct();
 
+    /// <summary>
+    /// The log has the aura absent for the <paramref name="seconds"/> before <paramref name="time"/>, and gains it within
+    /// <paramref name="seconds"/> of <paramref name="time"/>.
+    /// </summary>
+    public bool GainedAfterAbsence(int logId, double time, double seconds)
+    {
+        bool gained = false;
+        foreach (var e in _events)
+        {
+            if (e.AbilityId != logId || e.Time < time - seconds) continue;
+            if (e.Time > time + seconds) break;
+            if (e.Time < time - ShownBeforeCastSeconds) return false;
+            gained |= e.Type is "applybuff" or "applydebuff";
+        }
+        return gained && StacksAt(time - seconds).GetValueOrDefault(logId) == 0;
+    }
+
+    /// <summary>The offset of the log's state a pre-cast check shows from the cast's time (<see cref="ReplayVerifier"/>).</summary>
+    private const double ShownBeforeCastSeconds = 0.001;
+
     public List<string> UntrackedActiveAt(double time) =>
         StacksAt(time).Where(kv => kv.Value > 0 && !IsTracked(kv.Key)).Select(kv => _names[kv.Key]).OrderBy(n => n).ToList();
 
@@ -792,7 +874,7 @@ public sealed class LogAuraTimeline
             switch (e.Type)
             {
                 case "applybuff" or "applydebuff" or "applybuffstack" or "applydebuffstack" or "removebuffstack" or "removedebuffstack":
-                    stacks[e.AbilityId] = e.Stack ?? 1;
+                    stacks[e.AbilityId] = e.Stack == InhibitedAuras.StackNotLogged ? _engineStacks(e.AbilityId) : e.Stack ?? 1;
                     break;
                 case "refreshbuff" or "refreshdebuff":
                     if (stacks.GetValueOrDefault(e.AbilityId) == 0) stacks[e.AbilityId] = e.Stack ?? 1;

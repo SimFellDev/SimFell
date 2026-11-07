@@ -4,10 +4,10 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 585 (Mara's Assassin's Shadow-Lined Cape, item 5218; Hungering Blade Helm, item 5899): "Your
-/// Hemorrhaging Strike's bleed effect has 15% faster tick rate. Each time you deal damage to an enemy with Hemorrhaging
-/// Strike's bleed effect, you have a 15% chance to summon a Shadowy Clone to assault that enemy with a 6 combo point
-/// Queen's Fang at 100% Power." UNVERIFIED: no combat log has it; the clone's Queen's Fang is taken to be logged as
+/// Legendary power 585 (Mara's Assassin's Shadow-Lined Cape, item 5218; Hungering Blade Helm, item 5899): Hemorrhaging
+/// Strike's bleed ticks faster, and each time you deal damage to an enemy with Hemorrhaging Strike's bleed effect, you
+/// have a chance to summon a Shadowy Clone to assault that enemy with a Queen's Fang at maximum combo points and full
+/// Power. UNVERIFIED: no combat log has it; the clone's Queen's Fang is taken to be logged as
 /// Queen's Fang (ability 1201), at once.
 /// </summary>
 public class FromTheShadows : Legendary

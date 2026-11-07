@@ -42,7 +42,7 @@ public sealed class BuildEditor(CharacterBuild build)
 
     public static string Key(RatedStat stat) => stat.ToString().ToLowerInvariant();
 
-    /// <summary>The percentage (a fraction) a stat has with no rating: 5% crit.</summary>
+    /// <summary>The percentage (a fraction) a stat has with no rating, as <see cref="StatBlock.BaseCritChance"/> for crit.</summary>
     public static double BasePercent(RatedStat stat) => stat switch
     {
         RatedStat.Crit => StatBlock.BaseCritChance,
@@ -158,7 +158,7 @@ public sealed class BuildEditor(CharacterBuild build)
     public void SetStatEnchantRating(StatEnchant enchant, double rating)
     {
         int value = (int)Math.Max(0, Math.Round(rating));
-        // A rating set by hand leaves the log's count of the enchant: it counts as its rating over 6.
+        // A rating set by hand leaves the log's count of the enchant: it counts as its rating over `RatingPerStatEnchant`.
         Build.StatEnchantCounts.Remove(enchant.Id);
         int at = Build.StatEnchants.FindIndex(e => e.Id == enchant.Id);
         if (value == 0)
@@ -175,7 +175,7 @@ public sealed class BuildEditor(CharacterBuild build)
     /// <summary>The most tempers an item takes, and the tempers a slot starts with.</summary>
     public const int DefaultTempers = 8;
 
-    // The tempers picked for each slot in the picker, for the items shown there; a slot not here has its piece's, else 8.
+    // The tempers picked for each slot in the picker, for the items shown there; a slot not here has its piece's, else `DefaultTempers`.
     private readonly Dictionary<GearSlot, int> _slotTempers = new();
 
     /// <summary>The items the hero can wear in <paramref name="slot"/>.</summary>
@@ -369,7 +369,7 @@ public sealed class BuildEditor(CharacterBuild build)
     public static int StatEnchantsFor(double rating) => (int)Math.Ceiling(rating / EnchantSlots.RatingPerStatEnchant - 1e-9);
 
     /// <summary>
-    /// How many of stat enchant <paramref name="id"/> the build wears: as a log counted them, otherwise its rating over 6.
+    /// How many of stat enchant <paramref name="id"/> the build wears: as a log counted them, otherwise its rating over <see cref="EnchantSlots.RatingPerStatEnchant"/>.
     /// </summary>
     public int StatEnchantCount(int id) =>
         Build.StatEnchantCounts.TryGetValue(id, out int count) && StatEnchantRating(id) > 0 ? count : StatEnchantsFor(StatEnchantRating(id));

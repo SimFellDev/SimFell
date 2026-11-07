@@ -37,4 +37,10 @@ public abstract class OutcomeSourceDecorator(IOutcomeSource inner) : IOutcomeSou
     public virtual void HitFinished(SimulationContext ctx) => Inner.HitFinished(ctx);
 
     public virtual SimTime ReactionDelay(ReactionHold hold, ReactionDelays reactions, SimulationContext ctx) => Inner.ReactionDelay(hold, reactions, ctx);
+
+    public virtual double LoggedHitAmount(int damageLogId, EnemyTarget target, SimulationContext ctx) => Inner.LoggedHitAmount(damageLogId, target, ctx);
+
+    public virtual double RollDuration(in EffectDurationRequest application, SimulationContext ctx) => Inner.RollDuration(application, ctx);
+
+    public virtual double RollDelay(double maxSeconds, SimulationContext ctx) => Inner.RollDelay(maxSeconds, ctx);
 }

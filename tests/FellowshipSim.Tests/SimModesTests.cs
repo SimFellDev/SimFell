@@ -147,7 +147,7 @@ public class SimModesTests
         Assert.Equal(Gem.Create(GemColor.Amethyst).Tree.Where(n => n.RequiredPower > 100).Select(n => n.RequiredPower).Order(), every);
         Assert.True(every.Count > 1);
 
-        // Covetous Greed's 25% counts toward the node.
+        // Covetous Greed's bonus counts toward the node.
         build.Relic1ItemId = CovetousGreed.OrbItemId;
         var greedy = BuildFinders.Variants(build, FinderKind.Gems, FinderRanks.NextRank)
             .Single(v => v.Label.StartsWith("Amethyst", StringComparison.Ordinal));

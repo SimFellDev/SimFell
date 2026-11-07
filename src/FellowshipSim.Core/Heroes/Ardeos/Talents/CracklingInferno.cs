@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 183 / effect 2302 (24s, ticks every 3s): "Your Infernal Wave has +20% increased critical strike chance and its
-/// critical strikes burn the target for 60% of the damage it dealt over 24 seconds." Ability 1568 has 50% in its text;
-/// the talent's 60% is used. UNVERIFIED: no combat log has this talent.
+/// Talent 183 / effect 2302: Infernal Wave gains critical strike chance, and its critical strikes burn the target for a
+/// share of the damage they dealt. Ability 1568 has a different share in its text; the talent's share is used
+/// (<see cref="FractionOfCrit"/>). UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class CracklingInferno : Talent
 {
@@ -36,7 +36,7 @@ public class CracklingInferno : Talent
         };
     }
 
-    /// <summary>The burn of a critical Infernal Wave: the damage it adds, dealt over 24 seconds.</summary>
+    /// <summary>The burn of a critical Infernal Wave: the damage it adds, dealt over <see cref="DurationSeconds"/>.</summary>
     private sealed class Burn(Ardeos owner)
         : DamageOverTime(owner, EffectId, TalentName, PeriodSeconds, DurationSeconds, DotStacking.Accumulate);
 }

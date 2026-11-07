@@ -3,8 +3,7 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 128: "Your Heartseeker Barrage channel time is increased by 0.5 seconds and its critical strike chance is
-/// increased by +20%."
+/// Talent 128: Heartseeker Barrage's channel time and critical strike chance are increased.
 /// </summary>
 public class Fusillade : Talent
 {

@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1206: "For the next 10 seconds, you deal 20% more damage and all combo point generating abilities generate 6
-/// Combo Points. Additionally, your Energy Generation is increased by 20% while Maiden of Death is active. Can be used
-/// during Global Cooldown." 60s cooldown. Combat logs apply effect 2194 at every cast (1,174 casts, 45 logs in the
+/// Ability 1206: increases your damage, makes all combo point generating abilities generate a full refill of
+/// Combo Points, and increases your Energy Generation while Maiden of Death is active. Can be used
+/// during Global Cooldown. Combat logs apply effect 2194 at every cast (1,174 casts, 45 logs in the
 /// FellowshipAnalyzer Mara corpus); effect 1714 never appears.
 /// </summary>
 public class MaidenOfDeath : MaraAbility
@@ -20,7 +20,7 @@ public class MaidenOfDeath : MaraAbility
     /// <summary>The buff's damage is read per hit (Maiden's Doom raises it against low enemies).</summary>
     public static readonly AuraDef Buff = AuraDef.Effect("Maiden of Death", BuffEffectId, BuffSeconds);
 
-    /// <summary>The damage bonus against an enemy (1.2; Maiden's Doom: 1.4 at 30% health or less).</summary>
+    /// <summary>The damage bonus against an enemy (<see cref="BuffDamage"/>; Maiden's Doom raises it against low health enemies).</summary>
     public Func<EnemyTarget, double> DamageAgainst { get; set; } = _ => BuffDamage;
 
     public MaidenOfDeath(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)

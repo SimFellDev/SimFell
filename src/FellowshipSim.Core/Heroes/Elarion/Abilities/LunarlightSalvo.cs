@@ -1,23 +1,23 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Lunarlight Salvo (ability 1309, damage effect 1877): "Ability damage you deal to enemies with Lunarlight Mark has a 25%
+/// Lunarlight Salvo (ability 1309, damage effect 1877): "Ability damage you deal to enemies with Lunarlight Mark has a
 /// chance to trigger Lunarlight Salvo, causing a beam of celestial energy to strike them from above, dealing magic damage.
-/// Critical Strikes have a 50% chance to trigger Lunarlight Salvo." Each salvo takes a stack of Lunarlight Mark off the
-/// enemy. Heartseeker Barrage's tooltip: "Damage dealt by Heartseeker Barrage that triggers a Lunarlight Salvo has a 25%
-/// chance to cause it to Erupt" (effect 2832), striking the enemies near the target.
+/// Critical Strikes have a chance to trigger Lunarlight Salvo." Each salvo takes a stack of Lunarlight Mark off the
+/// enemy. Heartseeker Barrage's tooltip: damage dealt by Heartseeker Barrage that triggers a Lunarlight Salvo has a
+/// chance to cause it to Erupt (effect 2832), striking the enemies near the target.
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 4,984 salvos): a salvo comes with the hit that
-/// triggered it, on the same enemy and in the same server frame, from 23-34% of the hits that do not crit and 46-57% of
+/// triggered it, on the same enemy and in the same server frame, from some of the hits that do not crit and a larger share of
 /// the crits on a marked enemy; from Starfall Volley, Multishot, Highwind Arrow, Heartseeker Barrage, Celestial Shot,
 /// Focused Shot, Chronoshift and the augmentations' hits (Amethyst Splinters, Emerald Judgement, Ruby Storm), but not
-/// from Shoot (5 of 603 hits on a marked enemy, the same frame as another hit).
+/// from Shoot (603 hits on a marked enemy, a few in the same frame as another hit).
 /// </summary>
 public sealed class LunarlightSalvo : Ability
 {
     public const int SalvoAbilityId = 1309;
     public const string AbilityName = "Lunarlight Salvo";
     public const int DamageEffectId = 1877;
-    /// <summary>Lunarlight Mark placeholder LunarSalvoDmg: 219% of Agility.</summary>
+    /// <summary>Lunarlight Mark share of Agility.</summary>
     public const double Coefficient = 2.19;
     public const double Chance = 0.25;
     public const double CritChance = 0.50;
@@ -27,10 +27,10 @@ public sealed class LunarlightSalvo : Ability
 
     public const int EruptEffectId = 2832;
     public const string EruptName = "Lunarlight Salvo: Erupt";
-    /// <summary>Heartseeker Barrage placeholder AoeLunarLightDmg: 219% of Agility.</summary>
+    /// <summary>Heartseeker Barrage share of Agility.</summary>
     public const double EruptCoefficient = 2.19;
     public const double EruptChance = 0.25;
-    /// <summary>Ability 1309 targetCountFalloff: Lunarlight Salvo: Erupt, threshold 12.</summary>
+    /// <summary>Ability 1309 targetCountFalloff: Lunarlight Salvo: Erupt.</summary>
     public const double EruptTargetThreshold = 12;
     public const string EruptProcKey = "lunarlight_salvo_erupt";
 

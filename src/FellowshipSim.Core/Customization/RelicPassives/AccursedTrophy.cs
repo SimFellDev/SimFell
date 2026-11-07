@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Customization.RelicPassives;
 
 /// <summary>
 /// Relic passive 777 (Orb of Inner Seas): "Your Spirit Ability grants you Drakheim's Absolution, increasing your Primary
-/// Stat by 20% for 20 seconds." (ability 2314, effect 3269)
+/// Stat for a time." (ability 2314, effect 3269)
 /// </summary>
 public class AccursedTrophy : RelicPassive
 {

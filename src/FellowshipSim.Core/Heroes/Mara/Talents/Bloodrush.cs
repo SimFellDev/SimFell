@@ -1,6 +1,6 @@
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
-/// <summary>Talent 163: "Your Hemorrhaging Strike bleed ticks 20% faster." UNVERIFIED: no combat log has this talent.</summary>
+/// <summary>Talent 163: "Your Hemorrhaging Strike bleed ticks faster." UNVERIFIED: no combat log has this talent.</summary>
 public class Bloodrush : Talent
 {
     public const int TalentId = 163;

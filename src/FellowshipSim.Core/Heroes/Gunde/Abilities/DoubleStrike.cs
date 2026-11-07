@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2301: "Strike the target enemy with both axes in swift succession, dealing 82.5% of Strength per hit. Double
-/// Strike can be used both in melee and at range. Applies Rend to the target for 50% of the damage dealt." Combat logs
-/// (Y4wpb2f3gc8LqJDX fight 25): in melee both hits land with the cast; at range 0.24-0.30s and 0.44-0.50s after it.
+/// Ability 2301: "Strike the target enemy with both axes in swift succession, dealing damage per hit. Double
+/// Strike can be used both in melee and at range. Applies Rend to the target." Combat logs
+/// (Y4wpb2f3gc8LqJDX fight 25): in melee both hits land with the cast; at range they land after it, each at its own delay.
 /// </summary>
 public class DoubleStrike : GundeAbility
 {

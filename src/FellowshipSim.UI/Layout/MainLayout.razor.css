@@ -82,12 +82,77 @@
   padding: 0 32px 48px;
 }
 
+/* A section's icon shows in the phone's bottom bar alone. */
+.nav-icon {
+  display: none;
+}
+
+/* A phone: the top bar is one line, the name and the FellowshipLogs account, and it slides away as the page scrolls down
+   (headerHeight.js moves its top). The sections and Sim results are a bar pinned to the window's bottom: Sim results'
+   button is in .actions, and ResultsSidebar.razor.css puts it in the bar's last place. */
 @media (max-width: 600px) {
   .top {
-    padding: 12px 16px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 8px;
+    height: 52px;
+    padding: 0 8px 0 16px;
+    transition: top 0.2s;
+  }
+
+  .name {
+    font-size: 18px;
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--header);
+    border-top: 1px solid var(--border);
+  }
+
+  .nav ::deep a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 11px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .nav ::deep a.active {
+    background: transparent;
+    color: var(--heading);
+  }
+
+  .nav-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .main {
-    padding: 0 16px 40px;
+    padding: 0 16px calc(88px + env(safe-area-inset-bottom, 0px));
   }
 }

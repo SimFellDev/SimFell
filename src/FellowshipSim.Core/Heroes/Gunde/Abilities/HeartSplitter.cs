@@ -1,13 +1,13 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2294: "Jump and strike at your enemy from above, dealing 470% of Strength to the target. 100% of the direct
+/// Ability 2294: "Jump and strike at your enemy from above, dealing damage to the target. The direct
 /// damage dealt by Heart Splitter is added to Rend. Exsanguinate: Heart Splitter exsanguinates the target's wounds,
-/// dealing an additional 30% of the Total Rend Damage active on the target." Cooldown 12s, shortened by Haste.
+/// dealing additional damage from the Total Rend Damage active on the target." The cooldown is shortened by Haste.
 /// Combat logs (n7zxK8harZT2wjDB fight 9 @ 16.404, Bloodfang#2): Exsanguinate (effect 3239) comes with the hit, after the
-/// hit's own Rend is added: 4492 = 0.3 x 1.1 (Deep Rend) x (621.5 + 1.85 x 7022). "The Total Rend Damage active" is the
-/// Rend still to deal: with the Rend already dealt in it, Exsanguinate comes out 26% above the logs (Y4wpb2f3gc8LqJDX
-/// fight 25, 1375 hits), without it 5% above. It neither crits nor takes damage multipliers.
+/// hit's own Rend is added to the target's Rend. "The Total Rend Damage active" is the
+/// Rend still to deal: with the Rend already dealt in it, Exsanguinate comes out above the logs (Y4wpb2f3gc8LqJDX
+/// fight 25, 1375 hits), without it much nearer. It neither crits nor takes damage multipliers.
 /// </summary>
 public class HeartSplitter : GundeAbility
 {
@@ -39,7 +39,7 @@ public class HeartSplitter : GundeAbility
         Hit += (in hit) => _lastHitCrit = hit.IsCrit;
     }
 
-    /// <summary>Bleeding Hearts: "Your Heart Splitter ability has 2 Charges".</summary>
+    /// <summary>Bleeding Hearts: "Your Heart Splitter ability has additional Charges".</summary>
     public void SetCharges(int charges) => SetCooldown(CooldownSeconds, charges, scalesWithHaste: true);
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
@@ -53,7 +53,7 @@ public class HeartSplitter : GundeAbility
     /// <summary>
     /// One strike at <paramref name="target"/>: the hit, its Rend, then Exsanguinate. An <paramref name="extra"/> strike
     /// (Bleeding Hearts) has no share of the cast's damage multiplier (Crimson Strikes): combat logs (Y4wpb2f3gc8LqJDX
-    /// fight 25, 6 casts with both strikes crit) put it at 0.78-0.91 of the cast's strike, 0.84 on average.
+    /// fight 25, 6 casts with both strikes crit) put it below the cast's strike.
     /// </summary>
     public void Strike(SimulationContext ctx, EnemyTarget target, RendCast rend, bool extra = false) =>
         RendingPulse(ctx, rend, Single(target), damageMultiplier: extra ? 1.0 / rend.DamageMultiplier : 1.0, extraCritChance: CritChanceAgainst,

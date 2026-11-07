@@ -1,17 +1,23 @@
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
-/// Summoning a mount. Every mount has its own ability (the 55 abilities whose owner is a mount in the game data), with no
-/// cast time or cooldown in the game data. Combat logs: each casts in 1.5s whatever the haste (begincast to cast
-/// 1.504-1.517s, 8 mounts in the 15 Rime fights of patch 0.5.0.0). No damage. UNVERIFIED: whether it starts the global
-/// cooldown.
+/// Summoning a mount. Every mount has its own ability (the abilities whose owner is a mount in the game data), with no
+/// cooldown in the game data. It casts in <see cref="CastTimeSeconds"/> whatever the haste. No damage.
+/// It waits for no global cooldown: the game data gives the mount abilities no global cooldown effect. Combat logs:
+/// 3M2vWr8taxVfTQFY fight 53 Arachnid Assault 109.202, Mount 109.634; dBgbn8wD1RxL7Kma fight 9 Arachnid Assault 144.957,
+/// Mount 145.358. UNVERIFIED: that it applies no global cooldown: the
+/// native default for mounting abilities is unread, and its cast covers a global cooldown in the logs.
+/// The mount ability's `CancelAbilitiesWithTag` is `AbilityPrio.Low` and its `BlockAbilitiesWithTag` is `AbilityType.Mounting`:
+/// a running mount cast blocks another.
 /// </summary>
 public class MountSummon : Ability
 {
     public const string AbilityName = "Mount";
+
+    /// <summary>Game data: the mount cast duration.</summary>
     public const double CastTimeSeconds = 1.5;
 
-    /// <summary>The game's mount abilities (datamine export 26136736: abilities with a mount as owner).</summary>
+    /// <summary>The game's mount abilities (game data: abilities with a mount as owner).</summary>
     public static readonly int[] MountAbilityIds =
     [
         1683, 1690, 1693, 1694, 1699, 1700, 1702, 1703, 1704, 1705, 1706, 1707, 1708, 1709, 1711, 1712, 1713, 1717, 1720,
@@ -23,6 +29,7 @@ public class MountSummon : Ability
     {
         CastTime = SimTime.FromSeconds(CastTimeSeconds);
         CastTimeScalesWithHaste = false;
+        IgnoresGcd = true;
     }
 
     public override bool IsAbility(int abilityId) => Array.IndexOf(MountAbilityIds, abilityId) >= 0;

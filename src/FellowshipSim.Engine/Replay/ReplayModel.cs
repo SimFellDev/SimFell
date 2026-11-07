@@ -15,8 +15,8 @@ public class ReplayOptions
     /// <summary>Uniform damage spread of the game (+/- fraction of the average roll).</summary>
     public double DamageSpread { get; set; } = 0.10;
     /// <summary>
-    /// Extra room on the high side of the damage band for an unexplained offset (0 = none). The former ~3.4% offset is
-    /// explained by Rime's class tuning aura.
+    /// Extra room on the high side of the damage band for an unexplained offset (0 = none). Rime's class tuning aura
+    /// explains the former offset.
     /// </summary>
     public double UnexplainedHighMargin { get; set; } = 0.0;
 
@@ -25,7 +25,7 @@ public class ReplayOptions
 
     /// <summary>
     /// Damage IDs whose hits the log never shows landing hit nothing (no damage, procs or counters), on any target.
-    /// Combat logs: 12 of 1,248 Frost Bolt casts (1029) in 15 Rime fights complete with no Frost Bolt hit on their living
+    /// Combat logs (15 Rime fights): some Frost Bolt casts (1029) complete with no Frost Bolt hit on their living
     /// target, and
     /// The Vehement's counter (effect 3194) does not count them (4Ln6PQZCRzc7Wpta fight 77 @ 116.780, fight 78 @
     /// 1311.371, GWChJ8P7tn6fHgV3 fight 22 @ 597.179, Rzg1nQNHpm2fhYtB fight 23 @ 981.460).
@@ -35,11 +35,9 @@ public class ReplayOptions
     /// Abilities whose cast the game ends at its completion with nothing done, by the log ID of the debuff a completed
     /// cast applies: a cast the log completes with no application of it by the player within a server frame is cancelled
     /// as it would complete. Bursting Ice (1031): at the cast's end its target must pass the alignment filters, else the
-    /// ability is cancelled before the commit of its cooldown and its one application, 1395 (game-data-authority,
-    /// GA_Rime_CastedDebuffAoeDamage ExecuteUbergraph: OnFinished 1693, OnAbilityLateTargetValidationFailed and
-    /// K2_CancelAbility 1344 / 1124, FellowshipCommitHeroAbility 1821, the application 2320). Combat logs: 7 of 797
-    /// completed Bursting Ice casts in 15 Rime fights apply no 1395 to their living target, and in 5 of them the next
-    /// Bursting Ice begins 1.1-7.2s later, inside its 10s cooldown (4Ln6PQZCRzc7Wpta fight 78 @ 252.915,
+    /// ability is cancelled before the commit of its cooldown and its one application, 1395. Combat
+    /// logs (15 Rime fights): some completed Bursting Ice casts apply no 1395 to their living target, and in some of them
+    /// the next Bursting Ice begins inside its cooldown (4Ln6PQZCRzc7Wpta fight 78 @ 252.915,
     /// D1fBhVPkwYKXWbpr fight 1 @ 123.825, GWChJ8P7tn6fHgV3 fight 22 @ 320.357).
     /// </summary>
     public Dictionary<int, int> CastProofDebuffIds { get; set; } = new()
@@ -47,8 +45,8 @@ public class ReplayOptions
         [Core.Heroes.Rime.Abilities.BurstingIce.AbilityId] = Core.Domain.LogIds.Effect(Core.Heroes.Rime.Abilities.BurstingIce.DebuffEffectId),
     };
     /// <summary>
-    /// A partial final tick's fraction depends on where the game's 33ms server frames fall, about +/-0.1 of a full tick;
-    /// its damage may differ from the engine's by that much of a full tick on top of the spread.
+    /// A partial final tick's fraction depends on where the game's server frames fall;
+    /// its damage may differ from the engine's by this fraction of a full tick on top of the spread.
     /// </summary>
     public double PartialTickFractionTolerance { get; set; } = 0.1;
     /// <summary>
@@ -74,10 +72,10 @@ public class ReplayOptions
     /// <summary>Enemies join this long before their first event in the log (their arrival is only known from it).</summary>
     public double EnemyAriseLeadSeconds { get; set; } = 0.1;
     /// <summary>
-    /// A channel stops this long before its endchannel event: the stop is logged a few milliseconds into its server frame
-    /// and the frame's tick does not happen. Combat logs (15 Rime fights of patch 0.5.0.0, 93 Freezing Torrent ticks the
-    /// engine had within a frame before a logged stop): 62 of 64 ticks 0-8ms before it have no log tick, 28 of 29 ticks
-    /// 12-32ms before it do.
+    /// A channel stops this long before its endchannel event: the stop is logged shortly into its server frame
+    /// and the frame's tick does not happen. Combat logs (15 Rime fights of patch 0.5.0.0, Freezing Torrent ticks the
+    /// engine had within a frame before a logged stop): ticks just before the stop have no log tick, and ticks earlier
+    /// in the frame do.
     /// </summary>
     public double ChannelStopLeadSeconds { get; set; } = 0.010;
     public double AvoidedTargetPenaltySeconds { get; set; } = 0.2;
@@ -91,24 +89,35 @@ public class ReplayOptions
     /// <summary>
     /// Damage IDs that do not travel, with how late their log hits may land instead of <see cref="HitLateSeconds"/>: a
     /// longer window lets an engine hit with no log hit of its own take a later cast's. Combat logs (q3y7pWgXrjN2dftw fight
-    /// 12): Chain Lightning lands at the engine's time, a free one's chain 0.2s later (0.50s after the proc, not 0.30s).
+    /// 12): Chain Lightning lands at the engine's time, a free one's chain a fixed delay later.
+    /// Mara's Arachnid Assault does not travel: over the paired hits in 23 Mara fights, few land noticeably after the
+    /// engine's. A shadowy clone's next sweep starts shortly after the last hit, and a clone's sweep skips a
+    /// frame at times, so with <see cref="HitLateSeconds"/> a clone's last hit took the next sweep's or the next cast's
+    /// (3M2vWr8taxVfTQFY fight 53 @ 172.949, T2qLPpmMkrAtJ9B1 fight 18 @ 182.831).
+    /// Mara's Skittering Blades does not travel: over its log hits in 23 Mara fights, the latest lands shortly after
+    /// its cast. A cast with no hit took the next cast's hits with <see cref="HitLateSeconds"/>
+    /// (T2qLPpmMkrAtJ9B1 fight 18 @ 1139.361). Any window from the latest landing to the next cast's hits keeps such a
+    /// cast off them; Arachnid Assault's window is the same.
     /// </summary>
     public Dictionary<int, double> HitLateSecondsById { get; set; } = new()
     {
         [Core.Domain.LogIds.Effect(Core.Heroes.Tariq.Abilities.ChainLightning.DamageEffectId)] = 0.25,
+        [Core.Heroes.Mara.Abilities.ArachnidAssault.AbilityId] = 0.25,
+        [Core.Heroes.Mara.Abilities.SkitteringBlades.AbilityId] = 0.25,
+        [Core.Heroes.Mara.Abilities.StealthSkitteringBlades.AbilityId] = 0.25,
     };
     /// <summary>How late a log hit with damage ID <paramref name="logId"/> may land after the engine hit.</summary>
     public double LateSecondsOf(int logId) => HitLateSecondsById.TryGetValue(logId, out double seconds) ? seconds : HitLateSeconds;
     /// <summary>Log hits with the same damage ID landing within this window belong to one multi-target hit.</summary>
     /// <remarks>
-    /// Combat logs (Y4wpb2f3gc8LqJDX fight 25, Gunde): a pulse on 20-27 enemies is logged over up to 9ms; separate pulses
-    /// land at least a server frame (33ms) apart.
+    /// Combat logs (Y4wpb2f3gc8LqJDX fight 25, Gunde): a pulse on many enemies is logged over a few milliseconds; separate pulses
+    /// land at least a server frame apart.
     /// </remarks>
     public double HitGroupSeconds { get; set; } = 0.010;
 
     /// <summary>
     /// Damage IDs whose multi-target hits land over a longer window than <see cref="HitGroupSeconds"/>, with that window.
-    /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over up to 0.1s, and
+    /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23): a Multishot's arrows land over a longer window, and
     /// casts come a global cooldown apart.
     /// </summary>
     public Dictionary<int, double> HitGroupSecondsById { get; set; } = new() { [Core.Heroes.Elarion.Abilities.Multishot.AbilityId] = 0.2 };
@@ -169,7 +178,7 @@ public sealed record ExpectedRange(double Low, double High, string Unit)
 }
 
 /// <param name="Subject">What the issue is about (ability or aura name), for grouping.</param>
-public sealed record ReplayIssue(double Time, int Step, IssueCategory Category, string Message, string? Subject = null)
+public sealed record ReplayIssue(double Time, int Step, IssueCategory Category, IssueEntity Entity, string Message, string? Subject = null)
 {
     /// <summary>The range the engine computes; null for a check with no numeric range.</summary>
     public ExpectedRange? Expected { get; init; }
@@ -257,6 +266,9 @@ public sealed class ReplayResult
     public int LoggedHitsDealt { get; set; }
     /// <summary>Engine hits on a target that dies in the log before they could land (no damage, no issue).</summary>
     public int MissedHits { get; set; }
+
+    /// <summary>The options the replay ran with.</summary>
+    public ReplayOptions Options { get; init; } = new();
 
     public string ReportCode { get; init; } = string.Empty;
     public int FightId { get; init; }

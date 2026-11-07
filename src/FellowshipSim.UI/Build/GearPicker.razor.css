@@ -217,3 +217,83 @@
   font-size: 13px;
   line-height: 1.3;
 }
+
+/* A phone: the slot and Close on the head's first line, Temper on the second. Each item is two lines, its name then its
+   six stats under the head's six stat names, and the dungeons it drops in under them. */
+@media (max-width: 600px) {
+  .picker-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title close"
+      "tempers tempers";
+    row-gap: 4px;
+    padding-bottom: 10px;
+  }
+
+  .picker-title {
+    grid-area: title;
+  }
+
+  .tempers {
+    grid-area: tempers;
+  }
+
+  .close {
+    grid-area: close;
+  }
+
+  .stepper .icon-button {
+    min-width: 40px;
+    min-height: 40px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .stepper input {
+    font-size: 16px;
+  }
+
+  .picker-table {
+    max-height: calc(100dvh - 150px);
+    padding: 0 8px 12px;
+  }
+
+  .picker-row {
+    grid-template-columns: 36px repeat(6, minmax(0, 1fr));
+    gap: 2px 6px;
+    min-width: 0;
+  }
+
+  .picker-row > :first-child {
+    grid-row: span 2;
+    align-self: start;
+  }
+
+  .item-name,
+  .source,
+  .picker-head .first {
+    grid-column: 2 / -1;
+  }
+
+  .picker-head {
+    padding: 8px 10px 6px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .picker-head > span:last-child {
+    display: none;
+  }
+
+  .item {
+    padding: 8px 10px;
+  }
+
+  .stat {
+    font-size: 13px;
+  }
+
+  .source {
+    font-size: 12px;
+  }
+}

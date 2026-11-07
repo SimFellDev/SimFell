@@ -16,9 +16,10 @@ installed.
 | File | Contents |
 | --- | --- |
 | `data/accuracy/<Hero>/<label>.txt` | the measure: totals, each fight, calibration per damage ID, the most common issues |
-| `data/reviews/<review>.summary.txt` | one fight's issues by kind, and its calibration |
+| `data/reviews/<review>.findings.json` | one fight's findings with examples, sample hits and engine states |
+| `data/reviews/<review>.summary.txt` | one fight's findings by group, the conditions dividing each damage ID's ratio, and its calibration |
 | `data/reviews/<review>.hits.csv` | every engine hit with the log hit it matched: times, amounts, crits, crit chance, tick fraction, the player's auras |
-| `data/reviews/<review>.html` | every step where the engine and the log disagree |
+| `data/reviews/<review>.html` | one fight's findings, with examples, each example's engine state and step, and every step's result |
 | `data/scripts/<review>.replay.json` | the replay script: the character, casts, enemies and auras the replay follows |
 | `data/fights/<code>_fight<id>_p<player>.raw.json` | one player's fight: `events` has the player's events (as source or as target), every buff and debuff on an enemy, every enemy's death and its casts except melee swings, the dungeon start and every player's `combatantinfo`; `master_data` names actors and abilities |
 

@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 748 / effect 3208 (12s): "Each time you use Blood Arc, it has a 30% chance to instantly reset its cooldown and
-/// cause your next Blood Arc to have +100% Critical Strike chance." Overflow beyond 100% is a grievous crit.
+/// Talent 748 / effect 3208: "Each time you use Blood Arc, it has a chance to instantly reset its cooldown and
+/// cause your next Blood Arc to have increased Critical Strike chance." Crit chance beyond a guaranteed crit is a grievous crit.
 /// </summary>
 public class DeathsArc : Talent
 {

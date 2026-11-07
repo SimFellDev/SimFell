@@ -1,4 +1,4 @@
-.toggle {
+﻿.toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -199,4 +199,63 @@ h3 {
   margin: 4px 0;
   font: inherit;
   font-weight: 600;
+}
+
+/* A phone: the button is the last place of the bar pinned to the window's bottom (MainLayout.razor.css), and the sidebar
+   leaves a strip of the page showing, which closes it. */
+@media (max-width: 600px) {
+  .results .toggle {
+    position: fixed;
+    right: 0;
+    bottom: env(safe-area-inset-bottom, 0px);
+    width: 25vw;
+    height: 64px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .results .toggle[aria-expanded="true"] {
+    color: var(--heading);
+  }
+
+  .icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .count {
+    position: absolute;
+    top: 8px;
+    left: calc(50% + 6px);
+    min-width: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
+  }
+
+  .sidebar {
+    width: min(360px, calc(100vw - 40px));
+  }
+
+  /* The value and the date each on one line; the date goes under the value when both do not fit. */
+  .item-meta {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0 12px;
+  }
+
+  .item-meta > span {
+    white-space: nowrap;
+  }
+
+  .backdrop {
+    background: rgb(0 0 0 / 0.72);
+  }
 }

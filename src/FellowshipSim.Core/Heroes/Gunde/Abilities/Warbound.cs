@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2299: "Quickly leap in the direction you are moving, dealing 20% of Strength to all enemies in your path."
-/// 2 charges, 8s each (not hasted). The enemies in the path are the target alone in a sim; a replay follows the log.
+/// Ability 2299: "Quickly leap in the direction you are moving, dealing damage to all enemies in your path."
+/// It has charges whose recharge is not hasted. The enemies in the path are the target alone in a sim; a replay follows the log.
 /// UNVERIFIED: whether it takes the global cooldown.
 /// </summary>
 public class Warbound : GundeAbility

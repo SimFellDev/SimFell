@@ -101,7 +101,7 @@ public class SimcProfileTests
     [Fact]
     public void An_Unknown_Name_Names_Its_Line()
     {
-        var error = Assert.Throws<FormatException>(() => SimcProfile.Parse("rime=\"x\"\ntalents=avalanche/not_a_talent"));
+        var error = Assert.ThrowsAny<FormatException>(() => SimcProfile.Parse("rime=\"x\"\ntalents=avalanche/not_a_talent"));
         Assert.Contains("line 2", error.Message);
         Assert.Contains("not_a_talent", error.Message);
     }

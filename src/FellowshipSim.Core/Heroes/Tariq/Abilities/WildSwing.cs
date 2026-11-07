@@ -3,24 +3,27 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// <summary>
 /// Ability 1234: "Swing your hammer in a wide arc toward target enemy dealing physical damage to it and any nearby
 /// enemies." Recklessness: it cannot critically strike, and its damage is increased by your critical strike chance.
-/// Generates 3 Fury.
+/// Generates Fury.
 /// </summary>
 public class WildSwing : TariqAbility
 {
     public const int AbilityId = 1234;
     public const string AbilityName = "Wild Swing";
-    /// <summary>Placeholder WildSwingDmg: 129.14% of Strength.</summary>
+    /// <summary>Share of Strength.</summary>
     public const double Coefficient = 1.2914;
-    /// <summary>Game data cooldown 1.5; haste shortens it, as it does Skull Crusher's.</summary>
+    /// <summary>
+    /// Game data: no cooldown effect, so the cooldown is its global cooldown,
+    /// 1 / Haste snapshotted at commit, outside Cooldown Recovery.
+    /// </summary>
     public const double CooldownSeconds = 1.5;
-    /// <summary>Ink.CleaveAttack.ResourceGain: 3% of maximum Fury.</summary>
+    /// <summary>Game data: a share of maximum Fury.</summary>
     public const double FuryGain = 3.0;
-    /// <summary>Game data targetCountFalloff: effect 1770, threshold 5.</summary>
+    /// <summary>Game data targetCountFalloff: effect 1770 has <see cref="TargetThreshold"/>.</summary>
     public const double TargetThreshold = 5;
     /// <summary>
-    /// "Enemies have an increased chance to Dodge Wild Swing" (placeholder constant Tariq.DodgeChanceIncreaseForMeleeAttacks
-    /// 0.03 names no total). Combat logs (3 Tariq fights): 27 of 388 Wild Swing hits avoided (3-10% a fight; 22 misses, 5
-    /// dodges), and no other Tariq hit. UNVERIFIED estimate: the share of all three, misses and dodges as one.
+    /// "Enemies have an increased chance to Dodge Wild Swing" (the tooltip
+    /// names no total). Combat logs (3 Tariq fights): avoided Wild Swing hits are misses and dodges, and no other Tariq
+    /// hit is avoided. UNVERIFIED estimate: the share of all three, misses and dodges as one.
     /// </summary>
     public const double AvoidChance = 0.07;
     public const string AvoidedProcKey = "wild_swing_avoided";
@@ -29,6 +32,7 @@ public class WildSwing : TariqAbility
     {
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        IgnoresCooldownRecovery = true;
         AoeTargetThreshold = TargetThreshold;
     }
 

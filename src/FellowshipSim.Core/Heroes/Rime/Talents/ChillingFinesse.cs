@@ -2,7 +2,7 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
-/// <summary>Talent 43: Freezing Torrent ticks reduce Bursting Ice's cooldown by 0.2s; Cold Snap reduces Freezing Torrent's by 1.5s.</summary>
+/// <summary>Talent 43: Freezing Torrent ticks reduce Bursting Ice's cooldown; Cold Snap reduces Freezing Torrent's.</summary>
 public class ChillingFinesse : Talent
 {
     public const int TalentId = 43;

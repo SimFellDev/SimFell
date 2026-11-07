@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 442: "When you deal damage to enemies with 30% or less health, the damage bonus of Maiden of Death is increased
-/// to 40%" (effect 2194's third DamageScale modifier, 1.4). UNVERIFIED: no combat log has this talent.
+/// Talent 442: "When you deal damage to enemies with low health, the damage bonus of Maiden of Death is increased"
+/// (effect 2194's third DamageScale modifier). UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class MaidensDoom : Talent
 {

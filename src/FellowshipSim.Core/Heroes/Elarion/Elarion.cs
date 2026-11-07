@@ -10,13 +10,13 @@ namespace FellowshipSim.Core.Heroes.Elarion;
 /// </summary>
 public sealed class Elarion : Hero
 {
-    /// <summary>Hero 2 attributes MaxResources 100 and Resources 100: Elarion starts every fight with full Focus.</summary>
+    /// <summary>Hero 2 attributes MaxResources and Resources: Elarion starts every fight with full Focus.</summary>
     public const double MaxFocus = 100;
 
     /// <summary>
     /// Focus regenerated per second before haste. The game data has the runtime formula Bowguy.ResourceGainPerInterval and
-    /// no value. Combat logs (pWmcV42K39GHTLQX fight 23): with 5 per second raised by Haste the engine is within 1 Focus
-    /// of the log over the first 40 seconds, at 29-71% Haste.
+    /// no value. Combat logs (pWmcV42K39GHTLQX fight 23): with <see cref="FocusPerSecond"/> raised by Haste the engine is within a
+    /// Focus point of the log over the start of the fight, across a range of Haste.
     /// </summary>
     public const double FocusPerSecond = 5.0;
 
@@ -28,15 +28,15 @@ public sealed class Elarion : Hero
 
     public static readonly ResourceDef Focus = new("Focus", Max: MaxFocus, Initial: MaxFocus);
 
-    /// <summary>Class tuning: hero 2 attribute BalancingDamageAura 1.08, +8%.</summary>
+    /// <summary>Class tuning: hero 2 attribute BalancingDamageAura.</summary>
     public const double BalancingDamageAura = 1.08;
 
-    /// <summary>Spirit Points per Spirit Refund (ability 1448, Bowguy.SpiritProc.ResourceRefund.FlatSpiritPointGain 1).</summary>
+    /// <summary>Spirit Points per Spirit Refund (ability 1448).</summary>
     public const double SpiritPointsPerRefund = 1.0;
 
     /// <summary>
-    /// Hero 2's Spirit text: "Each time you trigger the Spirit Refund you ... apply 5 stacks of Lunarlight Mark to the
-    /// target, plus 2 stacks to up to two additional nearby enemies."
+    /// Hero 2's Spirit text: "Each time you trigger the Spirit Refund you ... apply stacks of Lunarlight Mark to the
+    /// target, plus stacks to additional nearby enemies."
     /// </summary>
     public const int RefundMarkStacks = 5;
     public const int RefundNearbyMarkStacks = 2;
@@ -60,7 +60,7 @@ public sealed class Elarion : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 2: mainStat Agility.</summary>
+    /// <summary>Game data hero 2: mainStat Agility.</summary>
     public override MainStat MainStat => MainStat.Agility;
 
     /// <summary>Multipliers on every Focus cost (Event Horizon), read as a cast pays.</summary>
@@ -97,7 +97,7 @@ public sealed class Elarion : Hero
         Auras.OnRemoved += (_, now) => RegenerateFocus(now);
     }
 
-    /// <summary>A Spirit Refund marks the target with 5 stacks and up to two nearby enemies with 2.</summary>
+    /// <summary>A Spirit Refund marks the target and nearby enemies.</summary>
     private void MarkOnRefund(SimulationContext ctx)
     {
         var target = CurrentTarget is { IsSleeping: false } current ? current : ctx.ActiveEnemies.FirstOrDefault();

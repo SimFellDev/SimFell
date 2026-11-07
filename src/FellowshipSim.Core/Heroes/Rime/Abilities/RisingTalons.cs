@@ -11,16 +11,16 @@ public class RisingTalons : IceComet
 {
     public new const int AbilityId = 2224;
     public new const string AbilityName = "Rising Talons";
-    /// <summary>Per ice spike (40% of Ice Comet).</summary>
+    /// <summary>Per ice spike (a fraction of Ice Comet's).</summary>
     public new const double Coefficient = 2.114;
 
-    /// <summary>Combat logs: each spike loses damage as sqrt(12/N) beyond 12 targets.</summary>
+    /// <summary>Combat logs: each spike loses damage as a square-root falloff beyond <see cref="TargetThreshold"/> targets.</summary>
     public new const double TargetThreshold = 12;
 
     /// <summary>
-    /// Combat logs (10 Rime logs, 626 casts): one wave of spikes per Winter Orb; the first erupts 0.30-0.40s after the cast
-    /// (server frames; 25th percentile 0.301s, median 0.334s), then 4-5 server frames apart regardless of haste (median
-    /// 0.1447s). Each wave hits the enemies present when it erupts. The earliest usual times are used (0.30s, 4 frames),
+    /// Combat logs (10 Rime logs, 626 casts): one wave of spikes per Winter Orb; the first erupts a fixed delay after the
+    /// cast (server frames), then a few server frames apart regardless of haste. Each wave hits the enemies present when
+    /// it erupts. The earliest usual times are used (<see cref="FirstWaveDelaySeconds"/>, <see cref="WaveIntervalSeconds"/>),
     /// so a wave is never released after the moment it should land.
     /// </summary>
     public const double FirstWaveDelaySeconds = 0.30;

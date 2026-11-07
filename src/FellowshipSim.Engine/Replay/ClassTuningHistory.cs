@@ -13,7 +13,7 @@ public static class ClassTuningHistory
 
     public static readonly Change[] All =
     [
-        // Rime: +4% (BalancingDamageAura 1.04) since 2026-08-27 (per the user; logs before then run ~4% below it).
+        // Rime: BalancingDamageAura raised its damage on 2026-08-27 (per the user; logs before then run below it).
         new(typeof(Rime), new DateTime(2026, 8, 27, 0, 0, 0, DateTimeKind.Utc), Before: 1.0),
     ];
 

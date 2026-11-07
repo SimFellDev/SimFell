@@ -93,8 +93,8 @@ public sealed class DotTracker
     /// Applies <paramref name="effect"/> to <paramref name="target"/> for its full duration, with <paramref name="pool"/>
     /// damage to deal over it (an accumulating effect) or <paramref name="stacks"/> more stacks (a stacking one).
     /// Accumulating: the damage of the ticks left joins the new damage, dealt in the full duration's base ticks. Combat
-    /// logs (yMAZVJL9hTpFjqbC fight 7, Fire Ball on 19.4 @ 73.66s): 75 a tick with 0.674 of a tick left, plus
-    /// 20% of a 2365 hit, gives (50.5 + 473) / 6 = 87 a tick, as logged; the ticks keep their timing.
+    /// logs (yMAZVJL9hTpFjqbC fight 7, Fire Ball on 19.4 @ 73.66s): the damage of the ticks left plus the new hit's share,
+    /// divided over the full duration's base ticks, gives the logged tick damage; the ticks keep their timing.
     /// </summary>
     public DotInstance Apply(SimulationContext ctx, DamageOverTime effect, EnemyTarget target, double pool = 0.0, int stacks = 1,
         double cinderScale = 1.0)
@@ -108,7 +108,7 @@ public sealed class DotTracker
             if (effect.Stacking == DotStacking.Accumulate)
             {
                 // The ticks left count at the base tick rate: counted at Wildfire's rate, the frogs refreshing an effect many
-                // times a second would multiply its damage (logged Fire Frogs ticks in Wildfire fit the base rate within 12%).
+                // times a second would multiply its damage (logged Fire Frogs ticks in Wildfire fit the base rate).
                 double ticksLeft = dot.RemainingSeconds(now) / effect.BasePeriod;
                 dot.TickAmount = (dot.TickAmount * ticksLeft + pool) / effect.BaseTicks;
             }

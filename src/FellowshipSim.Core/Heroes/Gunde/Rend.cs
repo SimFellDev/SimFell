@@ -5,13 +5,13 @@ namespace FellowshipSim.Core.Heroes.Gunde;
 /// over time." Each enemy's Rend is the damage its applications added. Combat logs (n7zxK8harZT2wjDB fight 9,
 /// Y4wpb2f3gc8LqJDX fight 25):
 /// <list type="bullet">
-/// <item>each application deals its damage over 10 ticks, a tenth each, on the enemy's tick timer, which starts at the
-/// first application and keeps its rhythm through later ones (Chains#3: ticks 317, 363, 419 for applications of
-/// 3169, then +461, then +563, each a tenth of all applications so far);</item>
-/// <item>an application ends after its own ticks (Bloodfang#4 @ 139.560: the tick drops by exactly the three
+/// <item>each application deals its damage over <see cref="TicksPerApplication"/> ticks, an equal share each, on the
+/// enemy's tick timer, which starts at the first application and keeps its rhythm through later ones (Chains#3: each
+/// tick is an equal share of all applications so far);</item>
+/// <item>an application ends after its own ticks (Bloodfang#4 @ 139.560: the tick drops by exactly the
 /// applications that ticked first);</item>
-/// <item>ticks come every 3s, not hasted; Deep Rend's ticks come 10% faster (82 server frames, 2.733s) and each
-/// application deals 11 ticks of a tenth;</item>
+/// <item>ticks come every <see cref="TickSeconds"/>, not hasted; Deep Rend's ticks come faster, on whole server frames,
+/// and each application deals one more tick of an equal share;</item>
 /// <item>ticks never crit and take no damage multipliers: the damage an application adds is already dealt damage.</item>
 /// </list>
 /// </summary>
@@ -23,7 +23,7 @@ public sealed class Rend
     public const double TickSeconds = 3.0;
     public const int TicksPerApplication = 10;
 
-    /// <summary>"Each stack of Rend corresponds to 100% Strength damage over its full duration."</summary>
+    /// <summary>"Each stack of Rend corresponds to a share of Strength damage over its full duration."</summary>
     public static readonly AuraDef Debuff = AuraDef.Effect(DamageName, DebuffEffectId, maxStacks: 9999) with { Duration = SimTime.Infinite };
 
     private readonly Gunde _gunde;
@@ -32,7 +32,7 @@ public sealed class Rend
 
     public Rend(Gunde gunde) => _gunde = gunde;
 
-    /// <summary>How much faster Rend ticks (Deep Rend: 1.1). Each application ticks this many times more, at a tenth each.</summary>
+    /// <summary>How much faster Rend ticks (Deep Rend raises it). Each application ticks this many times more, in equal shares.</summary>
     public double TickRate { get; set; } = 1.0;
 
     private int Ticks => (int)Math.Round(TicksPerApplication * TickRate);

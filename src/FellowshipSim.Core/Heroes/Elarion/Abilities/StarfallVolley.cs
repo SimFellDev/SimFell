@@ -1,26 +1,26 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 126: "Fire a volley of celestial arrows into the sky that pelt the area around target enemy for 8 seconds,
-/// dealing magic damage every 1 seconds to the target and any nearby enemies. Starfall Volley follows the target for its
-/// duration." 30 Focus, cooldown 40s; damage falls off as sqrt(12/N) beyond 12 enemies (targetCountFalloff 12).
+/// Ability 126: "Fire a volley of celestial arrows into the sky that pelt the area around target enemy, dealing magic
+/// damage at a fixed period to the target and any nearby enemies. Starfall Volley follows the target for its
+/// duration." Costs Focus and has a cooldown; damage falls off beyond a target count (targetCountFalloff, <see cref="TargetThreshold"/>).
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 44 volleys): the arrows land on each enemy at its
-/// own moments, 0.5-0.8s apart at the median for one enemy, the first 0.2-0.4s after the cast, and each hit deals the
-/// same damage on every enemy. UNVERIFIED: an arrow on every enemy as the volley is cast and every hasted second after
-/// (an enemy takes up to 2-3 arrows in some hasted seconds).
+/// own moments, the first shortly after the cast, and each hit deals the
+/// same damage on every enemy. UNVERIFIED: an arrow on every enemy as the volley is cast and every hasted period after
+/// (an enemy takes more than one arrow in some hasted periods).
 /// </summary>
 public class StarfallVolley : ElarionAbility
 {
     public const int AbilityId = 126;
     public const string AbilityName = "Starfall Volley";
-    /// <summary>Placeholder StarfallDmg: 100% of Agility per hit.</summary>
+    /// <summary>Share of Agility per hit.</summary>
     public const double Coefficient = 1.0;
     public const double Cost = 30.0;
     public const double CooldownSeconds = 40.0;
     public const double DurationSeconds = 8.0;
     public const double PeriodSeconds = 1.0;
     public const double TargetThreshold = 12;
-    /// <summary>Combat logs: an arrow lands 0.2-0.4s after it is released; the engine releases none in the last 0.3s.</summary>
+    /// <summary>Combat logs: an arrow lands shortly after it is released; the engine releases none in the last <c>FallSeconds</c> of the volley.</summary>
     public const double FallSeconds = 0.3;
 
     /// <summary>
@@ -36,8 +36,11 @@ public class StarfallVolley : ElarionAbility
     /// <summary>Multiplier on the hits on the volley's own target (Astronomer's Hail).</summary>
     public double MainTargetMultiplier { get; set; } = 1.0;
 
-    /// <summary>A volley began or ended falling: the number of volleys falling now (Skylit Grace).</summary>
-    public event Action<SimulationContext, int>? CountChanged;
+    /// <summary>A volley began falling (Skylit Grace).</summary>
+    public event Action<SimulationContext>? VolleyBegan;
+
+    /// <summary>A volley ended falling (Skylit Grace).</summary>
+    public event Action<SimulationContext>? VolleyEnded;
 
     private readonly List<Volley> _volleys = new();
 
@@ -69,7 +72,7 @@ public class StarfallVolley : ElarionAbility
         Pay(ctx, CostAt(ctx.CurrentTime));
         var volley = new Volley(target, ctx.CurrentTime + SimTime.FromSeconds(DurationSeconds + ExtraDurationSeconds));
         _volleys.Add(volley);
-        CountChanged?.Invoke(ctx, _volleys.Count);
+        VolleyBegan?.Invoke(ctx);
         ScheduleEnd(ctx, volley);
         Pelt(ctx, volley);
     }
@@ -79,7 +82,7 @@ public class StarfallVolley : ElarionAbility
         {
             volley.Timer?.Cancel();
             _volleys.Remove(volley);
-            CountChanged?.Invoke(c, _volleys.Count);
+            VolleyEnded?.Invoke(c);
         }, Name);
 
     private void Pelt(SimulationContext ctx, Volley volley)

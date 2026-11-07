@@ -1,7 +1,7 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 4: "Every 20 Critical Strikes you gain 21 / 39 / 57 / 75 Critical Strike rating for 12 seconds. You can not
+/// Sigil 4: "Every set number of Critical Strikes you gain Critical Strike rating for a time. You can not
 /// gain stacks while Seized Opportunity is active on you." (counter: effect 2111, buff: effect 2110)
 /// </summary>
 public class SeizedOpportunity : Sigil

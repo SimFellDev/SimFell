@@ -3,23 +3,23 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// <summary>
 /// Ability 1929: "Instantly smash the target for physical damage and deal physical damage to all enemies near the
 /// target. Thunder Call: Heavy Strike also charges the ground in front of you with lightning, dealing lightning damage to
-/// the target and nearby enemies. Generates 12 Fury."
+/// the target and nearby enemies. Generates Fury."
 /// </summary>
 public class HeavyStrike : TariqAbility
 {
     public const int AbilityId = 1929;
     public const string AbilityName = "Heavy Strike";
-    /// <summary>Placeholder HeavyStrikeDmg: 566% of Strength.</summary>
+    /// <summary>Share of Strength.</summary>
     public const double Coefficient = 5.66;
-    /// <summary>Placeholder HeavyStrikeClvDmg: 169.8% of Strength.</summary>
+    /// <summary>Share of Strength.</summary>
     public const double CleaveCoefficient = 1.698;
-    /// <summary>Placeholder HeavyStrikeLightnDmg: 198% of Strength.</summary>
+    /// <summary>Share of Strength.</summary>
     public const double LightningCoefficient = 1.98;
-    /// <summary>Game data cooldown 8, its duration scaled by Haste.</summary>
+    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
     public const double CooldownSeconds = 8.0;
-    /// <summary>Ink.AutoAttackBuff.ResourceGain: 12% of maximum Fury.</summary>
+    /// <summary>Game data: a share of maximum Fury.</summary>
     public const double FuryGain = 12.0;
-    /// <summary>Game data targetCountFalloff: effects 2755 and 1779, threshold 8.</summary>
+    /// <summary>Game data targetCountFalloff: effects 2755 and 1779 have <see cref="TargetThreshold"/>.</summary>
     public const double TargetThreshold = 8;
 
     /// <summary>Combat logs: the hit on the target is effect 1776, the cleave on the other enemies 2755, the lightning 1779.</summary>
@@ -50,8 +50,8 @@ public class HeavyStrike : TariqAbility
         DealAoeDamage(ctx, ctx.ActiveEnemiesExcept(target), damageMultiplier: CleaveCoefficient / Coefficient,
             overrideId: LogIds.Effect(CleaveEffectId));
         // Crack the Sky's lightning crit chance is left out. Combat logs (4 Tariq fights with the talent, 2,252 hits): the
-        // lightning crits 44.5% against 43.3% for the same casts' physical hits, while Chain Lightning and Raging Currents
-        // gain the +20%. This models the game's current behaviour, a developer bug, until the game fixes it.
+        // lightning crits as often as the same casts' physical hits, while Chain Lightning and Raging Currents
+        // gain the bonus. This models the game's current behaviour, a developer bug, until the game fixes it.
         if (hero.IsCharged(ctx.CurrentTime))
         {
             DealAoeDamage(ctx, WildSwing.AreaAround(ctx, target), damageMultiplier: LightningCoefficient / Coefficient,

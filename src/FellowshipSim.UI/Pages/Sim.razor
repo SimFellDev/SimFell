@@ -27,7 +27,8 @@
         {
             bool selected = tab == State.Tab;
             <button @key="tab" type="button" role="tab" class="tab @(selected ? "selected" : "")" aria-selected="@selected" @onclick="() => State.Tab = tab">
-                @StepTitle(tab)
+                <span class="long">@StepTitle(tab)</span>
+                <span class="short">@ShortStepTitle(tab)</span>
             </button>
         }
     </nav>
@@ -37,6 +38,8 @@
                 data-tooltip="@(BuildHeroes.IsBuildOnly(State.Build.Hero) ? $"{State.Build.Hero} is not in the engine yet" : null)" @onclick="StartAsync">Run sim</button>
     </div>
 </div>
+@* On a phone the summary is the page's first line, under the pinned bar, and scrolls away. *@
+<p class="summary-line">@Summary()</p>
 <Message Kind="State.Status.Kind">@State.Status.Text</Message>
 
 <div role="tabpanel" aria-label="@State.Tab">
@@ -233,6 +236,14 @@
         SimTab.Hero => "1. Hero & loadout",
         SimTab.Modes => "2. Modes",
         _ => "3. Advanced",
+    };
+
+    // The step's name on a phone, where the three share one line with Run sim.
+    private static string ShortStepTitle(SimTab tab) => tab switch
+    {
+        SimTab.Hero => "Hero",
+        SimTab.Modes => "Modes",
+        _ => "Advanced",
     };
 
     private void CloseImport() => State.ImportOpen = false;

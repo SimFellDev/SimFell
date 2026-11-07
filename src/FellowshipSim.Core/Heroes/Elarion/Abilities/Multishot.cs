@@ -1,21 +1,21 @@
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1318: "Fire multiple arrows at your enemies, each dealing physical damage to them." Instant, 20 Focus; damage
-/// falls off as sqrt(12/N) beyond 12 enemies (targetCountFalloff threshold 12). An Empowered Multishot (Skystrider's
-/// Supremacy, Focused Expanse) "always fire at least 3 arrows regardless of how many targets are in range, costs 50% less
-/// Focus, and deals magic damage".
+/// Ability 1318: "Fire multiple arrows at your enemies, each dealing physical damage to them." Instant, costs Focus; damage
+/// falls off beyond a target count (targetCountFalloff, <see cref="TargetThreshold"/>). An Empowered Multishot (Skystrider's
+/// Supremacy, Focused Expanse) always fires a minimum number of arrows regardless of how many targets are in range, costs less
+/// Focus, and deals magic damage.
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 496 casts): one arrow on each enemy around the
-/// target, logged under 1318 empowered or not. An Empowered Multishot with fewer than 3 enemies around fires its other
-/// arrows at them again (67 casts: 3 hits on 1 enemy; 12 casts: 3 hits on 2 enemies). The tooltip's "When your Highwind Arrow Ricochets to at least 3 enemies,
-/// you gain 1 charge of Multishot" holds no limit: no log shows a Multishot charge (effect 1898), and Multishot is cast
+/// target, logged under 1318 empowered or not. An Empowered Multishot with fewer enemies around than its minimum arrows fires its other
+/// arrows at them again (67 casts with 1 enemy; 12 casts with 2 enemies). The tooltip's line that a Highwind Arrow Ricochet
+/// to enough enemies grants a charge of Multishot holds no limit: no log shows a Multishot charge (effect 1898), and Multishot is cast
 /// with none.
 /// </summary>
 public class Multishot : ElarionAbility
 {
     public const int AbilityId = 1318;
     public const string AbilityName = "Multishot";
-    /// <summary>Placeholder Multishot: 371.91% of Agility.</summary>
+    /// <summary>Share of Agility.</summary>
     public const double Coefficient = 3.7191;
     public const double Cost = 20.0;
     public const double TargetThreshold = 12;

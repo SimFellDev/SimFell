@@ -3,23 +3,23 @@ using FellowshipSim.Core.Heroes.Elarion.Talents;
 namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
-/// Ability 1312: "Let loose a barrage of arrows in quick succession at your target, dealing physical damage every 0.2
-/// seconds for 2 seconds while channeling." 30 Focus, cooldown 20s. Its salvos can erupt (<see cref="LunarlightSalvo"/>).
+/// Ability 1312: "Let loose a barrage of arrows in quick succession at your target, dealing physical damage" at a fixed
+/// period while channeling. Costs Focus and has a cooldown. Its salvos can erupt (<see cref="LunarlightSalvo"/>).
 /// A barrage cast with Impending Heartseeker (Impending Heartseeker, Starstriker's Ascent) uses it up, and each arrow deals
-/// 10% more than the one before.
+/// more than the one before.
 /// </summary>
 public class HeartseekerBarrage : ElarionAbility
 {
     public const int AbilityId = 1312;
     public const string AbilityName = "Heartseeker Barrage";
-    /// <summary>Placeholder HeartSeekDmg: 130.5% of Agility per arrow.</summary>
+    /// <summary>Share of Agility per arrow.</summary>
     public const double Coefficient = 1.305;
     public const double Cost = 30.0;
     public const double CooldownSeconds = 20.0;
     public const double ChannelSeconds = 2.0;
     public const double TickPeriodSeconds = 0.2;
 
-    /// <summary>"Your Heartseeker Barrage deals +10% increased damage with each arrow during its channel." UNVERIFIED: the first arrow's +10%.</summary>
+    /// <summary>Impending Heartseeker: Heartseeker Barrage deals increased damage with each arrow during its channel. UNVERIFIED: the first arrow's increase.</summary>
     public const double ImpendingDamagePerArrow = 0.1;
 
     /// <summary>Crit chance added to the arrows (Fusillade).</summary>
@@ -28,7 +28,9 @@ public class HeartseekerBarrage : ElarionAbility
     /// <summary>Arrows ricochet to one more enemy for this share of the arrow (Piercing Seekers; 0 = none).</summary>
     public double RicochetMultiplier { get; set; }
 
-    /// <summary>One arrow or its ricochet landed (Event Horizon).</summary>
+    /// <summary>
+    /// One arrow's first hit dealt damage (Event Horizon). The ricochet carries the Bounce asset tag the manager excludes.
+    /// </summary>
     public event Action<SimulationContext>? ArrowLanded;
 
     public HeartseekerBarrage(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
@@ -37,7 +39,7 @@ public class HeartseekerBarrage : ElarionAbility
         FocusCost = Cost;
         SetCooldown(CooldownSeconds);
         SetChannel(ChannelSeconds, TickPeriodSeconds);
-        // Combat logs (pWmcV42K39GHTLQX fight 23 @ 81.335): a 2.5s channel at 73% Haste fires 22 arrows on its target, all
+        // Combat logs (pWmcV42K39GHTLQX fight 23 @ 81.335): a hasted channel fires its arrows on its target, all
         // of full damage: the part of a tick left at the end fires one more arrow.
         ChannelPartialFinalTick = true;
     }
@@ -68,13 +70,16 @@ public class HeartseekerBarrage : ElarionAbility
         _arrow++;
         double multiplier = _cast.Damage * (_impending ? 1.0 + ImpendingDamagePerArrow * _arrow : 1.0);
         double crit = _cast.Crit + ArrowCritChance;
-        DealDamage(ctx, target, damageMultiplier: multiplier, extraCritChance: crit, onLanded: (c, _) => ArrowLanded?.Invoke(c));
+        DealDamage(ctx, target, damageMultiplier: multiplier, extraCritChance: crit, onLanded: (c, dealt) =>
+        {
+            if (dealt > 0) ArrowLanded?.Invoke(c);
+        });
         if (RicochetMultiplier <= 0) return;
         var others = ctx.ActiveEnemiesExcept(target);
         if (others.Count == 0) return;
         var next = ctx.Outcomes.ChooseTarget(DamageLogId, others, ctx);
         if (next == null || next == target) return;
-        DealDamage(ctx, next, damageMultiplier: multiplier * RicochetMultiplier, extraCritChance: crit, onLanded: (c, _) => ArrowLanded?.Invoke(c));
+        DealDamage(ctx, next, damageMultiplier: multiplier * RicochetMultiplier, extraCritChance: crit);
     }
 
     public override void ResetState()

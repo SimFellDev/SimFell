@@ -13,6 +13,9 @@ context:
 
 `<branch>` is `<hero>-accuracy-v<N>`, the name of both worktrees.
 
+`/replay-fix <findings.json>` works the findings of one downloaded review on the current branch: one
+`replay-finding-fixer` run per finding, each change kept when the measure shows a gain on its own finding.
+
 ## The measure
 
 `HeroAccuracyTests` measures one hero over every fight of the current patch in `data/fights`:
@@ -34,6 +37,38 @@ dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
 It reads the hero's ranking lists in the latest zone from rank 1 down, one encounter after another. A run counts when it
 started on or after the patch's release day, its report has the patch's log format, and its fight has a player of the
 hero. Its last lines give the fights found against the count asked for, and the candidates skipped by reason.
+
+## The findings document
+
+A review's page has a **Findings JSON** button. The file has the review's findings for an agent, from
+`ReplayFindingsDocument`, and it is the input of `/replay-fix`.
+
+| Field | Contents |
+| --- | --- |
+| `schema` | the format's version (`ReplayFindingsDocument.Schema`) |
+| `hero`, `patch` | the hero and the patch of the engine that wrote the document |
+| `thresholds` | the tests' values, from `ReplayFindings` and `ReplayOptions` |
+| `totals` | the fight's damage, hits, steps, forced casts and issues, findings per group, and `impact`: the sum over findings off target |
+| `unmodeled` | `abilities`, `customizations`, `externalAuras` and `untrackedLogAuras`: step 1 of the order of work |
+| `fight` | `review`, the fight, the player, and `files`: repository paths of each file of the fight |
+| `findings[]` | one per `IssueEntity`, in the order of work, each group by `impact` |
+
+A finding has:
+
+| Field | Contents |
+| --- | --- |
+| `key` | `IssueEntity.KeyText`, the same in every review and every run: `DamageId:1001242`, `Resource:Mana`, `Aura:1001395`, `Ability:<name>`, `Proc:<key>` |
+| `rank`, `group`, `kind`, `id`, `name` | the place in the order of work and the entity. `id` is `ability_id` in `hits.csv` |
+| `impact` | the damage at stake as a fraction of the log's damage; absent for a resource, aura, ability or proc |
+| `issues`, `issueKinds` | the count, and the count of each kind of issue |
+| `damage` | a damage ID's numbers, and in `gates` the tests that placed it in its group |
+| `drift` | a resource's or aura's `net` and `gross` log minus engine, `cancelling`, and `afterAbilities` |
+| `proc` | `rolls`, `expectedProcs`, `procs` |
+| `splits` | conditions dividing the ratio: the condition, then hits and mean ratio on each side |
+| `examples` | the first, median and worst issue of each kind, with the step's ability; each kind's first has `state`, the engine's state |
+| `sampleHits` | a damage ID's median and worst normal and crit hits, first engine-only and first missing hit, each with `state` |
+
+A finding in `WithinTargets` has its numbers alone.
 
 ## Targets
 

@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 
 /// <summary>
-/// Ability 2300 / effect 3247: "You take 40% reduced damage for 4 seconds. Can be used during Global Cooldown." Cooldown
-/// 30s; no effect on damage dealt.
+/// Ability 2300 / effect 3247: "You take reduced damage for a time. Can be used during Global Cooldown." It has no
+/// effect on damage dealt.
 /// </summary>
 public class RecklessAbandon : GundeAbility
 {

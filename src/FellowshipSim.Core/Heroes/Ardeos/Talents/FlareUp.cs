@@ -3,9 +3,9 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 159 / damage effect 1810: "Your Infernal Wave hits cause all enemies near the target with Searing Blaze active
-/// on them to flare up, taking 50% of the damage Infernal Wave dealt to the initial target." Damage falls off as sqrt(3/N)
-/// beyond 3 enemies (game data targetCountFalloff). Ability 1257 has 16% in its text; the talent's 50% is used.
+/// Talent 159 / damage effect 1810: Infernal Wave hits cause all enemies near the target with Searing Blaze active to
+/// flare up, taking a share of the damage Infernal Wave dealt to the initial target. Damage falls off with the target
+/// count (game data targetCountFalloff). Ability 1257 has a different share in its text; the talent's share is used.
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class FlareUp : Talent

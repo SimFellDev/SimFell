@@ -3,18 +3,19 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>
-/// Talent 85: "Your Skull Crusher has a 35% chance to make your next Hammer Storm deal +150% increased damage. Your Hammer
-/// Storm has a 35% chance to make your next Skull Crusher deal +150% increased damage. You can have up to 2 stacks of each
-/// Schism at any one time." Effects 1746 (next Skull Crusher) and 1747 (next Hammer Storm), 2 stacks each. Rolled once per
-/// cast, with bad luck protection (<see cref="BadLuckProtection"/>): a counter for each direction. Combat logs (17 fights,
-/// 5265 rolls), log-likelihood: a counter for each -3246, one counter for both -3610, a flat 35% -3388. UNVERIFIED: the
-/// step (game data has none), taken as the one whose average is the tooltip's 35%.
+/// Talent 85: "Your Skull Crusher has a chance to make your next Hammer Storm deal increased damage. Your Hammer
+/// Storm has a chance to make your next Skull Crusher deal increased damage. You can have stacks of each
+/// Schism at any one time." Effects 1746 (next Skull Crusher) and 1747 (next Hammer Storm), up to <see cref="MaxStacks"/>
+/// stacks each. Rolled once per cast, with bad luck protection (<see cref="BadLuckProtection"/>): a counter for each
+/// direction. Combat logs (17 fights, 5265 rolls), log-likelihood: a counter for each direction fits best, ahead of a flat
+/// chance, and one counter for both fits worst. UNVERIFIED: the step (game data has none), taken as the one whose average
+/// is the tooltip's chance.
 /// </summary>
 public class Schism : Talent
 {
     public const int TalentId = 85;
     public const string TalentName = "Schism";
-    /// <summary>Tooltip text: "35% chance", the average of the bad luck protected chance.</summary>
+    /// <summary>Tooltip text: "chance", the average of the bad luck protected chance.</summary>
     public const double ProcChance = 0.35;
     public static readonly double ProcStep = BadLuckProtection.StepFor(ProcChance);
     public const double DamageMultiplier = 2.5;

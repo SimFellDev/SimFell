@@ -3,7 +3,7 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>
-/// Talent 190 / effect 1392 ("DamageIncreaseAndCastTimeIncrease"): Glacial Blast deals 40% more damage, cast +0.5s.
+/// Talent 190 / effect 1392 ("DamageIncreaseAndCastTimeIncrease"): Glacial Blast deals more damage and has a longer cast.
 /// Talon Strike benefits from talents that affect Glacial Blast (talent 658).
 /// </summary>
 public class GreaterGlacialBlast : Talent

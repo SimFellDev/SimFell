@@ -46,7 +46,7 @@ public abstract class Ability
 
     /// <summary>
     /// The global cooldown this ability starts, before haste, when it differs from the hero's (game data: the ability's
-    /// own GlobalCooldownGameplayEffectClass, e.g. Tariq's Skull Crusher at 1s). Null for the hero's.
+    /// own global cooldown effect, e.g. Tariq's Skull Crusher). Null for the hero's.
     /// </summary>
     public double? GlobalCooldownSeconds { get; protected set; }
 
@@ -68,7 +68,7 @@ public abstract class Ability
     /// </summary>
     public List<Func<SimulationContext, double>> HitCritChanceBonuses { get; } = new();
 
-    /// <summary>Multiplier on this ability's crit power (e.g. "20% increased Critical Strike power").</summary>
+    /// <summary>Multiplier on this ability's crit power (e.g. an "increased Critical Strike power" talent).</summary>
     public double CritPowerMultiplier { get; set; } = 1.0;
 
     public bool ScalesWithExpertise { get; protected set; } = true;
@@ -82,8 +82,11 @@ public abstract class Ability
     /// </summary>
     public bool ChargesRechargeWithHaste { get; protected set; } = false;
 
-    /// <summary>Weapon abilities run outside cooldown recovery and haste (only cooldown reduction shortens them).</summary>
-    public bool IgnoresCooldownRecovery => Category == AbilityCategory.Weapon;
+    /// <summary>
+    /// The cooldown runs outside the Cooldown Recovery attribute: every weapon ability, and any ability whose cooldown
+    /// effect is static (game data "cooldownTimeRateScalesOff" omits CooldownRecovery).
+    /// </summary>
+    public bool IgnoresCooldownRecovery { get; protected set; }
 
 
     /// <summary>Channeled abilities tick for <see cref="ChannelDuration"/> after their cast resolves.</summary>
@@ -138,6 +141,7 @@ public abstract class Ability
         DamageLogId = id;
         Name = name;
         Category = category;
+        IgnoresCooldownRecovery = category == AbilityCategory.Weapon;
         owner.SubscribeHits(this);
     }
 
@@ -213,11 +217,14 @@ public abstract class Ability
         return true;
     }
 
+    /// <summary>The aura a cast of the ability applies, and a cast while it is up ends instead. Null for most abilities.</summary>
+    public virtual AuraDef? RecastEnds => null;
+
     /// <summary>
     /// The earliest time after now at which <see cref="CanCast(SimulationContext)"/> can change with no event before it:
     /// the return of a charge while none is left. The resources and auras the checks read change in events.
     /// </summary>
-    public SimTime NextCastChange(SimulationContext ctx) =>
+    public virtual SimTime NextCastChange(SimulationContext ctx) =>
         Cooldown > SimTime.Zero && Owner.Cooldowns.TryGetValue(Name, out var state) && state.ChargesAt(ctx.CurrentTime) == 0
             ? state.NextChargeAt
             : SimTime.Infinite;
@@ -297,6 +304,33 @@ public abstract class Ability
 
     /// <summary>Outgoing damage multiplier from auras for this ability (abilities excluded from some auras override this).</summary>
     protected virtual double DamageScaleFor(SimulationContext ctx) => Owner.DamageScale(ctx.CurrentTime);
+
+    /// <summary>
+    /// The numbers of a hit of this ability from the state now: its damage, crit chance and crit power, with the hit's
+    /// <paramref name="damageMultiplier"/> and added <paramref name="critChance"/>.
+    /// </summary>
+    public SimulationContext.HitNumbers NumbersNow(SimulationContext ctx, EnemyTarget? target, double damageMultiplier, double critChance)
+    {
+        double hitCrit = 0.0;
+        var bonuses = HitCritChanceBonuses;
+        for (int i = 0; i < bonuses.Count; i++) hitCrit += bonuses[i](ctx);
+        var now = ctx.CurrentTime;
+        return new SimulationContext.HitNumbers(
+            BaseDamage(ctx, target, damageMultiplier),
+            Owner.CritChanceAgainst(target, now) + CritChanceBonus + critChance + hitCrit,
+            CritMultiplierAt(now));
+    }
+
+    /// <summary>
+    /// Deals one hit of this ability with <paramref name="numbers"/> from <see cref="NumbersNow"/> at an earlier moment.
+    /// </summary>
+    public double DealKeptHit(SimulationContext ctx, EnemyTarget target, SimulationContext.HitNumbers numbers, string name)
+    {
+        var hit = ctx.RentHit(Owner, target, DamageLogId, name, canCrit: true, forcedCrit: null, onLanded: null, snapshot: true);
+        hit.FromAbility(this, 1.0, 0.0, 0.0);
+        hit.KeepNumbers(numbers);
+        return ctx.ApplyDamage(hit);
+    }
 
     /// <param name="extraCritChance">Crit chance this hit alone gets (e.g. from a buff the cast consumed).</param>
     public virtual double DealDamage(SimulationContext ctx, EnemyTarget target, double damageMultiplier = 1.0, bool canCrit = true, string? overrideName = null, int? overrideId = null, bool? forcedCrit = null,

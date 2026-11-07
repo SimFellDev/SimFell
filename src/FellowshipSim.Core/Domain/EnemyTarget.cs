@@ -27,6 +27,9 @@ public class EnemyTarget : Actor
     /// <summary>The hero's damage to the enemy so far.</summary>
     public double HeroDamage { get; internal set; }
 
+    /// <summary>True once the enemy has died, until it arises.</summary>
+    public bool HasDied { get; internal set; }
+
     /// <summary>True for a boss.</summary>
     public bool IsBoss { get; set; }
 
@@ -51,8 +54,17 @@ public class EnemyTarget : Actor
     public double HealthPercent => HealthFraction * 100.0;
     public double HealthFraction => MaxHealth > 0 ? CurrentHealth / MaxHealth : 0.0;
 
-    /// <summary>The Spirit Points this enemy is worth (heroes earn them as their damage takes its health down).</summary>
+    /// <summary>The Spirit Point value of this enemy (<see cref="Hero.EarnSpiritPoints"/>).</summary>
     public double SpiritPointValue { get; set; }
+
+    /// <summary>
+    /// The health fraction <see cref="Hero.EarnSpiritPoints"/> has counted down to. One loss reaches a replay twice, from the hit and from
+    /// the log's health, so a fraction above this one gives no Spirit Points until a heal (<see cref="HealedTo"/>).
+    /// </summary>
+    public double SpiritHealthFraction { get; set; } = 1.0;
+
+    /// <summary>A heal took the enemy to <paramref name="healthFraction"/>: the health lost again earns Spirit Points again.</summary>
+    public void HealedTo(double healthFraction) => SpiritHealthFraction = Math.Max(SpiritHealthFraction, healthFraction);
 
     /// <summary>The ability the enemy is casting; null when it is not casting.</summary>
     public string? CastAbility { get; private set; }
@@ -99,6 +111,8 @@ public class EnemyTarget : Actor
     public override void Arise(SimulationContext ctx)
     {
         HeroDamage = 0;
+        SpiritHealthFraction = 1.0;
+        HasDied = false;
         base.Arise(ctx);
     }
 

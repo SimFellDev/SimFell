@@ -3,10 +3,10 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 676 / effect 3177 (12 stacks): "Each time you cast Detonate you gain 1 stack of Cascading Inferno, up to 12
-/// stacks. When you have at least 4 stacks your next Infernal Wave is Instant Cast, has +100% Critical Strike chance, and
-/// generates twice the amout of Cinders." Combat logs (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9): each Detonate
-/// adds a stack and each instant Infernal Wave takes 4 (7 to 3, 8 to 4). UNVERIFIED: the wave's crit chance and Cinders.
+/// Talent 676 / effect 3177: each Detonate cast gains a stack. With enough stacks the next Infernal Wave is instant, gains
+/// critical strike chance and generates more Cinders. Combat logs (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9):
+/// each Detonate adds a stack and each instant Infernal Wave takes the stacks it needs. UNVERIFIED: the wave's crit chance
+/// and Cinders.
 /// </summary>
 public class CascadingInferno : Talent
 {

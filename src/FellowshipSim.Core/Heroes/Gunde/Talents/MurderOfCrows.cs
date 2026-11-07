@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 758 / effect 3250 (12s, 2 stacks): "Your Rupture grants you 2 stacks of Murder of Crows for 12 seconds. Your next
-/// ability that applies Rend consumes 1 stack of Murder of Crows and always triggers a Spirit Refund." UNVERIFIED: no
+/// Talent 758 / effect 3250: "Your Rupture grants you stacks of Murder of Crows for a time. Your next
+/// ability that applies Rend consumes a stack of Murder of Crows and always triggers a Spirit Refund." UNVERIFIED: no
 /// combat log has this talent.
 /// </summary>
 public class MurderOfCrows : Talent

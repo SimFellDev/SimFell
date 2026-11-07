@@ -99,7 +99,7 @@ public class AspectEmeraldJudgement
     [Fact]
     public void An_Emerald_Spike_Starts_First_Strike_Again()
     {
-        var firstStrike = Emerald.FirstStrikeI;
+        var firstStrike = Emerald.AllNodes[0].Grants!;
         var f = StepFights.Of("Rime", augmentations: [new(EmeraldJudgement.AspectId, 1)], gemPower: new() { [GemColor.Emerald] = 80 });
         bool spike = false;
         f.ForceProcs(key => key == EmeraldJudgement.ProcKey ? spike : null);

@@ -4,10 +4,10 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 615 (ability 2064, damage effect 3175): "Your Apocalypse now additionally burns enemies for 50% of the
-/// damage it dealt over 12 seconds. Your Apocalypse has 2 Charges, and each time you cast Fire Ball the cooldown of your
-/// Apocalypse ability is reduced by 8 seconds." Item 5898 grants it to Ardeos: combat logs (1p7AXmHfwV9CYMxR fight 30,
-/// dBgbn8wD1RxL7Kma fight 9) show Apocalypse: Explosivo damage from the Ardeos wearing it. The burn ticks every 3s
+/// Legendary power 615 (ability 2064, damage effect 3175): "Your Apocalypse now additionally burns enemies for a share of the
+/// damage it dealt. Your Apocalypse has extra Charges, and each time you cast Fire Ball the cooldown of your
+/// Apocalypse ability is reduced." Item 5898 grants it to Ardeos: combat logs (1p7AXmHfwV9CYMxR fight 30,
+/// dBgbn8wD1RxL7Kma fight 9) show Apocalypse: Explosivo damage from the Ardeos wearing it. The burn ticks periodically
 /// (effect 3175) and adds to itself as Fire Ball's does.
 /// </summary>
 public class Explosivo : Legendary
@@ -45,7 +45,7 @@ public class Explosivo : Legendary
         };
     }
 
-    /// <summary>Apocalypse's burn: half the damage of its hit, dealt over 12 seconds.</summary>
+    /// <summary>Apocalypse's burn: a share of the damage of its hit, dealt over the burn's duration.</summary>
     private sealed class Burn(Ardeos owner)
         : DamageOverTime(owner, DamageEffectId, DamageName, PeriodSeconds, DurationSeconds, DotStacking.Accumulate);
 }

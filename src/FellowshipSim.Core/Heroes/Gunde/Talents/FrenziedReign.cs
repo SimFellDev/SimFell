@@ -4,8 +4,9 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
 /// Talent 750: "Your Reign in Blood now causes the direct damage of your abilities that apply Rend to transfer an
-/// additional +25% damage to Rend." Combat logs (n7zxK8harZT2wjDB fight 9 @ 16.402): Heart Splitter in Reign in Blood with
-/// Serrated Edge and Superior Serration adds 1.85 of its damage: 1.0 + 0.3 + 0.25 + 0.2 + 0.1.
+/// additional damage to Rend." Combat logs (n7zxK8harZT2wjDB fight 9 @ 16.402): the Rend share of Heart Splitter in
+/// Reign in Blood with Serrated Edge and Superior Serration is the sum of the shares of Heart Splitter, Reign in Blood,
+/// Frenzied Reign, Serrated Edge and Superior Serration.
 /// </summary>
 public class FrenziedReign : Talent
 {

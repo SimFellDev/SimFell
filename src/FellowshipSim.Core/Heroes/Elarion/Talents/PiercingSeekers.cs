@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Elarion.Abilities;
 namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 
 /// <summary>
-/// Talent 201: "Your Heartseeker Barrage arrows ricochet to 1 additional nearby enemy. Ricochets have 70% of the power of
-/// the initial hit." The ricochets are logged under Heartseeker Barrage's ID.
+/// Talent 201: Heartseeker Barrage arrows ricochet to an additional nearby enemy. Ricochets have a share of the power of
+/// the initial hit. The ricochets are logged under Heartseeker Barrage's ID.
 /// </summary>
 public class PiercingSeekers : Talent
 {

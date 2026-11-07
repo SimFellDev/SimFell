@@ -1,11 +1,10 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
-/// Ability 1270 (Spirit ability): 1.5s cast, then "A jet of fire erupts from your hands as you channel for 2.5 seconds,
-/// dealing 320.15% of Intellect fire damage every 0.5 seconds to all enemies in a cone in front of you. Each hit extends
-/// the duration of your active damage over time effects by 1.5 seconds on the targets and applies a stacking damage over
-/// time to them" (<see cref="IncinerateDot"/>). Grants Spirit of Heroism. Damage falls off as sqrt(8/N) beyond 8 targets
-/// (game data targetCountFalloff, effect 1830).
+/// Ability 1270 (Spirit ability): a cast, then a channel in which a jet of fire deals Intellect fire damage on a period to
+/// all enemies in a cone in front of the hero. Each hit extends the duration of the hero's active damage over time effects
+/// on the targets and applies a stacking damage over time to them (<see cref="IncinerateDot"/>). Grants Spirit of
+/// Heroism. Damage falls off with the target count (game data targetCountFalloff, effect 1830).
 /// </summary>
 public class Incinerate : ArdeosAbility
 {
@@ -18,7 +17,7 @@ public class Incinerate : ArdeosAbility
     public const double TargetThreshold = 8;
     public const double ExtensionSeconds = 1.5;
 
-    /// <summary>Game data globalCooldown 1, hasted (against 1.5 for Fire Ball).</summary>
+    /// <summary>Game data globalCooldown, hasted (shorter than Fire Ball's).</summary>
     public const double GlobalCooldown = 1.0;
 
     public IncinerateDot Dot { get; }
@@ -28,7 +27,7 @@ public class Incinerate : ArdeosAbility
         BaseCoefficient = Coefficient;
         CastTime = SimTime.FromSeconds(CastTimeSeconds);
         GlobalCooldownSeconds = GlobalCooldown;
-        // UNVERIFIED: castable while the global cooldown runs (in-game play); the codex record has no flag for it.
+        // UNVERIFIED: castable while the global cooldown runs (in-game play); the game data record has no flag for it.
         UsableDuringGcd = true;
         SetChannel(ChannelSeconds, TickPeriodSeconds);
         // Combat logs: the first hits come one server frame after the channel starts (yMAZVJL9hTpFjqbC fight 7).
@@ -40,8 +39,8 @@ public class Incinerate : ArdeosAbility
         {
             if (hit.Target == null || hit.SimContext is not { } ctx) return;
             var dots = owner.Dots;
-            // Combat logs (yMAZVJL9hTpFjqbC fight 7, Fire Ball on 19.4 @ 42.08-47.45s): 8 hits leave the effect 12s, its
-            // full duration, after the last one; an effect never has more than its full duration left.
+            // Combat logs (yMAZVJL9hTpFjqbC fight 7, Fire Ball on 19.4 @ 42.08-47.45s): the hits leave the effect its
+            // full duration after the last one; an effect never has more than its full duration left.
             foreach (var dot in dots.On(hit.Target).Where(d => d.Effect != Dot).ToList())
             {
                 dots.Extend(ctx, dot, ExtensionSeconds, maxRemainingSeconds: dot.Effect.Duration);

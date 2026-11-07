@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>
-/// Ability 1019: "Interrupt the target's spellcasting and prevent it from casting for 4 sec. ... Can be used during Global
-/// Cooldown." Cooldown 20s (game data). No damage.
+/// Ability 1019: interrupts the target's spellcasting and prevents it from casting for a time. Can be used during Global
+/// Cooldown. No damage.
 /// </summary>
 public class BrainFreeze : RimeAbility
 {
@@ -13,6 +13,7 @@ public class BrainFreeze : RimeAbility
     public BrainFreeze(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
     {
         SetCooldown(CooldownSeconds);
+        IgnoresCooldownRecovery = true;
         IgnoresGcd = true;
         Interrupts = true;
     }

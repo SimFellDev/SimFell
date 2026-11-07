@@ -1,8 +1,8 @@
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
-/// Ability 597 "Anchor" (a shared ability): cast time 0.667s, not hasted, cooldown 0.667s (game data; combat logs: begincast to
-/// cast 0.668-0.671s). No damage. UNVERIFIED: whether it starts the global cooldown.
+/// Ability 597 "Anchor" (a shared ability): the cast time is not hasted and the cooldown equals it (game data; combat logs:
+/// begincast to cast matches the cast time). No damage. UNVERIFIED: whether it starts the global cooldown.
 /// </summary>
 public class Anchor : Ability
 {

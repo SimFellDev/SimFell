@@ -3,8 +3,7 @@ using FellowshipSim.Core.Heroes.Ardeos.Abilities;
 namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 
 /// <summary>
-/// Talent 184: "Each time your Searing Blaze deals damage to an enemy, the cooldown of Fire Ball is reduced by 0.05
-/// seconds." UNVERIFIED: no combat log has this talent.
+/// Talent 184: each time Searing Blaze deals damage to an enemy, Fire Ball's cooldown is reduced. UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class CrashAndBurn : Talent
 {

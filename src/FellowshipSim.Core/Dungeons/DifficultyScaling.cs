@@ -4,9 +4,9 @@ namespace FellowshipSim.Core.Dungeons;
 public static class DifficultyScaling
 {
     /// <summary>
-    /// Base and Eternal 1 to 32. Source: game data settings <c>difficultyScaling</c>, build 26301323 (each difficulty has the
-    /// health and damage of the <c>CT_CharacterScalingBaseAttributes</c> key one above it). Combat logs: Deathless Katrine has
-    /// 6,581,643 health at Eternal 27, her game data health 29,075.305 times 226.36.
+    /// Base and Eternal 1 to 32. Source: game data settings <c>difficultyScaling</c> (each difficulty has the
+    /// health and damage of the character scaling key one above it). Combat logs: Deathless Katrine's
+    /// health at Eternal 27 is her game data health times the level's health scale.
     /// </summary>
     public static readonly IReadOnlyList<DifficultyLevel> Levels =
     [
@@ -53,7 +53,7 @@ public static class DifficultyScaling
 
     /// <summary>
     /// The difficulty of the game's difficulty number <paramref name="difficulty"/> (a fight's <c>difficultyLevel</c> in
-    /// FellowshipLogs: 50 for Eternal 30); null when there is none.
+    /// FellowshipLogs); null when there is none.
     /// </summary>
     public static DifficultyLevel? WithDifficulty(int difficulty) => Levels.FirstOrDefault(l => l.Difficulty == difficulty);
 }

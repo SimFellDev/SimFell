@@ -1,7 +1,7 @@
 namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 
 /// <summary>
-/// Ability 1235: "Call on thunder to charge your hammer with immense power, enhancing your abilities for 21 seconds. Can
+/// Ability 1235: "Call on thunder to charge your hammer with immense power, enhancing your abilities for a duration. Can
 /// be used during Global Cooldown." Effect 1772: "Your attacks are enhanced by lightning and you have access to your Chain
 /// Lightning ability."
 /// </summary>
@@ -9,7 +9,7 @@ public class ThunderCall : TariqAbility
 {
     public const int AbilityId = 1235;
     public const string AbilityName = "Thunder Call";
-    /// <summary>Game data cooldown 45, scaled by cooldown reduction and recovery only.</summary>
+    /// <summary>Game data cooldown, scaled by cooldown reduction and recovery only.</summary>
     public const double CooldownSeconds = 45.0;
     public const int BuffEffectId = 1772;
     public const double BuffSeconds = 21.0;

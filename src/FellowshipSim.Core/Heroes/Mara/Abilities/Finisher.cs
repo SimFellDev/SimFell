@@ -6,7 +6,7 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// </summary>
 public abstract class Finisher : MaraAbility
 {
-    /// <summary>"1 Combo Point: +20% damage ... 6 Combo Points: +120% damage."</summary>
+    /// <summary>Damage bonus for each Combo Point spent, tooltip text.</summary>
     public const double DamagePerComboPoint = 0.2;
 
     protected Finisher(Mara owner, int id, string name) : base(owner, id, name, AbilityCategory.Power)
@@ -22,7 +22,7 @@ public abstract class Finisher : MaraAbility
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
-        // UNVERIFIED: a finisher needs at least one Combo Point (every logged finisher spent 6, or the 6 a refund returned).
+        // UNVERIFIED: a finisher needs at least one Combo Point (every logged finisher spent a full set, or the full set a refund returned).
         if (Mara.ComboPointsHeld < 1)
         {
             reason = explain ? $"{Name} needs a Combo Point" : null;

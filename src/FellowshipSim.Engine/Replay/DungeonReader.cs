@@ -15,7 +15,7 @@ namespace FellowshipSim.Engine.Replay;
 /// <item>The enemies are the fight's enemy NPCs that player hit or was hit by (<c>enemy_contacts</c>), each actor instance
 /// once, and the enemy NPCs dying without contact (<c>enemy_deaths</c>). An enemy is in combat from its first contact to its
 /// death, or to its last contact when it has no death.</item>
-/// <item>A pack is a group of the dungeon's creature placements in the Codex's data export (<see cref="DungeonPacks"/>). The
+/// <item>A pack is a group of the dungeon's creature placements in game data (<see cref="DungeonPacks"/>). The
 /// log's x and y are the placement's y and x. In the order of first contact, an enemy takes the nearest free placement of
 /// its creature within <see cref="PlacementRange"/> units of its first contact, or else a free placement of its creature in
 /// a pack another enemy took in the <see cref="PackOpenSeconds"/> before. An enemy with neither is a spawn: the spawns of
@@ -28,7 +28,7 @@ namespace FellowshipSim.Engine.Replay;
 /// (<see cref="GameCreatures.ById"/>). A boss is a creature of rank Boss, and the last pull with a boss is final. An enemy
 /// whose gameID has no creature is left out and named in the dungeon's comment.</item>
 /// <item>The difficulty is the Eternal level of the fight's <c>difficultyLevel</c>, the game's difficulty number
-/// (<see cref="DifficultyScaling.WithDifficulty"/>; 50 is Eternal 30), and the name is its <c>gameZone</c>'s.</item>
+/// (<see cref="DifficultyScaling.WithDifficulty"/>), and the name is its <c>gameZone</c>'s.</item>
 /// <item>The time limit is <see cref="TimeLimitShare"/> of the run's length, and at least
 /// <see cref="DungeonProfile.DefaultTimeLimitSeconds"/>.</item>
 /// </list>
@@ -40,8 +40,8 @@ public static class DungeonReader
 
     /// <summary>
     /// The most distance from an enemy's first contact to the placement it takes. Source: FellowshipLogs report
-    /// T2qLPpmMkrAtJ9B1, fight 18: a tank's first hit on a pack is within 2 units of its placements, and the enemies dragged
-    /// before that tank's first hit are thousands of units away.
+    /// T2qLPpmMkrAtJ9B1, fight 18: a tank's first hit on a pack is next to its placements, and the enemies dragged
+    /// before that tank's first hit are far from them.
     /// </summary>
     public const double PlacementRange = 4000;
 
@@ -164,7 +164,7 @@ public static class DungeonReader
         }
 
         double seconds = (end - start) / 1000;
-        // Room for the length variance: a fight of pulls 20% longer still ends before its time limit.
+        // Room for the length variance: a fight of longer pulls still ends before its time limit.
         double timeLimit = Math.Max(DungeonProfile.DefaultTimeLimitSeconds, Math.Ceiling(seconds * TimeLimitShare / 60) * 60);
         string zone = Str(fight["gameZone"]["name"]);
         string comment = $"From FellowshipLogs report {Str(raw["report_code"])}, fight {Num(fight["id"])} ({Clock(seconds)}), " +

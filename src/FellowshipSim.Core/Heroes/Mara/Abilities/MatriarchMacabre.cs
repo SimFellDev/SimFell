@@ -1,12 +1,18 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// Ability 1420 (Spirit ability) / effect 2039: "For the next 20 seconds, you deal 20% more damage and your Queen's Fang
-/// and Arachnid Assault abilities summon two shadowy clones that both imitate the attack for 50% of your power"; grants
-/// Spirit of Heroism (+30% Haste).
+/// Ability 1420 (Spirit ability) / effect 2039: increases your damage and makes your Queen's Fang
+/// and Arachnid Assault abilities summon shadowy clones that imitate the attack at a fraction of your power; grants
+/// Spirit of Heroism.
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 28.487, 32.006): the clones' hits are logged under the attack's own ID and
-/// keep its bonuses (Deadly Scheme's crit too). The first clone strikes 0.335s after the cast, the second 0.335s after
-/// the first is done; a clone's Arachnid Assault hits one enemy per server frame.
+/// keep its bonuses (Deadly Scheme's crit too). The first clone strikes <see cref="CloneDelaySeconds"/> after the cast, the second the
+/// same delay after the first is done; a clone's Arachnid Assault hits one enemy per server frame. Both clones of a Queen's Fang keep Mara's
+/// numbers at the cast: over the 2,580 clone hits in 23 fights, those after Matriarch Macabre ended or after The Philosopher came
+/// match the numbers at the cast and not the engine's read at the strike (T2qLPpmMkrAtJ9B1 fight 18 @ 1249.421, pWmcV42K39GHTLQX fight 23
+/// @ 276.428).
+/// Game data: a clone applies a copy of the cast's spec (keeps captures and caller-set values). The effect context
+/// re-snapshots in the cast's frame. In the Agility damage calculation, source attributes are
+/// snapshots, target attributes are read at the strike, and each application rolls its own crit.
 /// </summary>
 public class MatriarchMacabre : MaraAbility
 {
@@ -54,8 +60,38 @@ public class MatriarchMacabre : MaraAbility
     }
 
     /// <summary>
-    /// While Matriarch Macabre is active, two clones repeat an attack of <paramref name="hits"/> hits:
-    /// <paramref name="strike"/> deals it with the power given (50%).
+    /// Mara's numbers at a cast with no enemy's multipliers, and whether Maiden of Death was active: a target multiplier
+    /// of the engine's, and a buff of Mara's.
+    /// </summary>
+    public readonly record struct CloneCast(MaraAbility Attack, SimulationContext.HitNumbers Numbers, bool MaidenOfDeathActive);
+
+    /// <summary>The numbers both clones keep from a cast of <paramref name="attack"/>, at <see cref="ClonePower"/> of its power.</summary>
+    public CloneCast KeepCast(MaraAbility attack, SimulationContext ctx, double damageMultiplier, double critChance) =>
+        new(attack, attack.NumbersNow(ctx, null, damageMultiplier * ClonePower, critChance), Mara.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime));
+
+    /// <summary>A clone's hit on <paramref name="enemy"/>: Mara's numbers at the cast, the enemy's multipliers at the strike.</summary>
+    public SimulationContext.HitNumbers StrikeNumbers(SimulationContext ctx, CloneCast cast, EnemyTarget enemy)
+    {
+        var now = ctx.CurrentTime;
+        double against = Mara.DamageMultiplierAgainst(enemy, now);
+        bool maidenNow = Mara.Auras.HasAura(MaidenOfDeath.Buff, now);
+        if (maidenNow != cast.MaidenOfDeathActive)
+        {
+            double maiden = Mara.GetAbility<MaidenOfDeath>()!.DamageAgainst(enemy);
+            against = maidenNow ? against / maiden : against * maiden;
+        }
+        foreach (var multiplier in cast.Attack.TargetMultipliers) against *= multiplier(enemy, ctx);
+        var numbers = cast.Numbers;
+        return numbers with
+        {
+            BaseDamage = numbers.BaseDamage * against,
+            CritChance = numbers.CritChance + Mara.CritChanceAgainst(enemy, now) - Mara.CritChance(now),
+        };
+    }
+
+    /// <summary>
+    /// While Matriarch Macabre is active, clones repeat an attack of <paramref name="hits"/> hits:
+    /// <paramref name="strike"/> deals it with the power given (<see cref="ClonePower"/>).
     /// </summary>
     public void Imitate(SimulationContext ctx, int hits, Action<SimulationContext, double> strike)
     {

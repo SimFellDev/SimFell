@@ -1,30 +1,30 @@
 namespace FellowshipSim.Core.Customization.Sigils;
 
 /// <summary>
-/// Sigil 28 (ability 172 GA_Trait_ExtraDotHotOnEffectApplicationProc, damage effect 104): "Your Damage Effects have a
-/// chance (2.1 PPM) to burn the target, dealing 483% / 882% / 1281% / 1680% of your Main Stat in fire damage to them over
-/// 9 seconds" (the heal over time does not affect damage). Each application of a harmful effect rolls, a damage over time
-/// tick does not (the applied and refresh listeners at ability 172 offsets 859 and 1669, InTriggerPeriodicExecutions
-/// false), on one hasted proc timer for every target (RollProcPerMinute, ScaleWithHaste true).
+/// Sigil 28 (ability 172, damage effect 104): "Your Damage Effects have a
+/// chance to burn the target, dealing a share of your Main Stat in fire damage to them over a
+/// duration" (the heal over time does not affect damage). Each application of a harmful effect rolls, a damage over time
+/// tick does not (the applied and refresh listeners at ability 172, InTriggerPeriodicExecutions
+/// false), on one hasted proc timer for every target (ScaleWithHaste true).
 /// </summary>
 public class Kindling : Sigil
 {
     public const int SigilId = 28;
     public const string SigilName = "Kindling";
     public const int DamageEffectId = 104;
-    /// <summary>Effect 104 DurationMagnitude, row Trait.ExtraDotHotOnEffectApplicationProc.Dot.Duration; not hasted.</summary>
+    /// <summary>Effect 104 DurationMagnitude; not hasted.</summary>
     public const double DurationSeconds = 9.0;
     /// <summary>
-    /// Effect 104 Period, row Trait.ExtraDotHotOnEffectApplicationProc.Hot.Period; hasted, no tick on application, a
+    /// Effect 104 Period; hasted, no tick on application, a
     /// partial final tick (asset tag EffectType.Dot).
     /// </summary>
     public const double TickSeconds = 1.5;
-    /// <summary>Row Trait.ExtraDotHotOnEffectApplicationProc.PPM (TraitConstants), 2.1 at every rank.</summary>
+    /// <summary>Game data, the same at every rank.</summary>
     public const double ProcsPerMinute = 2.1;
     public const string ProcKey = "kindling";
     /// <summary>
-    /// Per tick, x Main Stat: effect 104's DamageScale modifier, row Trait.ExtraDotHotOnEffectApplicationProc.Dot.FlatDamageValue
-    /// (the tooltip's 483% / 882% / 1281% / 1680% are 7 of them), preset HeroMagicalOT (crits, Expertise).
+    /// Per tick, x Main Stat: effect 104's DamageScale modifier
+    /// (the tooltip's percentages are multiples of it), preset HeroMagicalOT (crits, Expertise).
     /// </summary>
     public static readonly double[] CoefficientByRank = [0.69, 1.26, 1.83, 2.40];
 
@@ -32,9 +32,9 @@ public class Kindling : Sigil
     public override string Name => SigilName;
 
     /// <summary>
-    /// The burn on one enemy. A new proc on a burning enemy restarts the 9 seconds and keeps the tick timer (effect 104
+    /// The burn on one enemy. A new proc on a burning enemy restarts the duration and keeps the tick timer (effect 104
     /// StackPeriodResetPolicy NeverReset, StackDurationRefreshPolicy RefreshOnSuccessfulApplication; combat logs,
-    /// GWChJ8P7tn6fHgV3 fight 20 @ 28.823: the ticks keep their rhythm and the burn ends 9.019s after the refresh).
+    /// GWChJ8P7tn6fHgV3 fight 20 @ 28.823: the ticks keep their rhythm and the burn ends a duration after the refresh).
     /// </summary>
     private sealed class Burn
     {
@@ -70,7 +70,7 @@ public class Kindling : Sigil
             if (!burn.Active) return;
             burn.Active = false;
             double fraction = burn.NextTick is { IsActive: true } timer ? timer.ElapsedBaseSeconds / TickSeconds : 0.0;
-            // The partial tick reads how long the period has run (period - remaining, 0x1452D0C70) as the duration runs out.
+            // The partial tick reads how long the period has run (period - remaining) as the duration runs out.
             double elapsed = fraction * TickSeconds / (1.0 + hero.GetHaste(c.CurrentTime));
             burn.NextTick?.Cancel();
             burn.NextTick = null;

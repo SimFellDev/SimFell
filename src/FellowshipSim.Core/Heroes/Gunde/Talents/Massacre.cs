@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Gunde.Abilities;
 namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 
 /// <summary>
-/// Talent 772 / effect 3211 (8s): "Each Rend that is consumed by your Slaughter grants you +0.25% Spirit for 8 seconds, up
-/// to a maximum of 25% Spirit." A stack per enemy whose Rend Slaughter consumes. UNVERIFIED: no combat log has this
+/// Talent 772 / effect 3211: "Each Rend that is consumed by your Slaughter grants you Spirit for a time, up
+/// to a maximum." A stack per enemy whose Rend Slaughter consumes. UNVERIFIED: no combat log has this
 /// talent.
 /// </summary>
 public class Massacre : Talent

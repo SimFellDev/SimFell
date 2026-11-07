@@ -3,8 +3,8 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>
-/// Talent 422 / effect 2245: "After attacking from Stealth, you gain Assassin's Guile for 5 seconds, causing your Queen's
-/// Fang &amp; Arachnid Assault to deal 40% more damage." Combat logs (Fc8v6yWxD14GQMnV fight 19, 117 buffs): it comes
+/// Talent 422 / effect 2245: "After attacking from Stealth, you gain Assassin's Guile, causing your Queen's
+/// Fang &amp; Arachnid Assault to deal more damage." Combat logs (Fc8v6yWxD14GQMnV fight 19): it comes
 /// with the attack that ends Stealth.
 /// </summary>
 public class AssassinsGuile : Talent
@@ -15,7 +15,7 @@ public class AssassinsGuile : Talent
     public const double BuffSeconds = 5.0;
     public const double FinisherDamage = 1.4;
 
-    // Combat logs: the buff stays through the hero's death (1 death).
+    // Combat logs: the buff stays through the hero's death.
     public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds) with { KeepsOnDeath = true };
 
     public override string Name => TalentName;
