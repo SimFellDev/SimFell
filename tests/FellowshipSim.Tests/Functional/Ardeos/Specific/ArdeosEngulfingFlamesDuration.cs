@@ -79,15 +79,17 @@ public class ArdeosEngulfingFlamesDuration
     /// With Slow Burn, a Fire Ball cast after an Engulfing Flames gives it only 4 extensions, since the ball takes a second to land: 11
     /// seconds.
     ///
-    /// The user checked this duration in game.
+    /// The user checked this duration in game. The ball is cast a quarter of a second after the Engulfing Flames cast ends, so its 5th
+    /// tick lands 0.22s after the extended end; cast at once, it would land 30ms before it and extend it again.
     /// </summary>
-    [Fact(Skip = "The engine does not model Fire Ball's travel time, which moves the burn's ticks: its Engulfing Flames lasts 11.52s")]
+    [Fact]
     public void With_Slow_Burn_A_Fire_Ball_Cast_After_Engulfing_Flames_Makes_It_Last_11_Seconds()
     {
         var f = StepFights.Ardeos(talents: [SlowBurn.TalentId]);
 
         f.Cast<EngulfingFlames>();
         double end = f.CompletedAt("Engulfing Flames") + 11.0;
+        f.WaitUntil(1.75); // clear of the end's edge
         f.Cast<FireBall>(); // lands about a second later
 
         f.WaitUntil(end - 0.05);
@@ -100,14 +102,17 @@ public class ArdeosEngulfingFlamesDuration
     /// With Slow Burn, Wildfire makes the Fire Ball's burn tick faster, so more of its ticks fit: a Fire Ball, then an Engulfing Flames,
     /// then Wildfire gives 7 extensions: 12.5 seconds.
     ///
-    /// The user checked this duration in game.
+    /// The user checked this duration in game. The burn's first tick lands before the Engulfing Flames, which a quarter of a second's wait
+    /// keeps clear of the edge; the 7 extensions are the 6 full ticks after it and the last, partial one, which adds the full half second
+    /// (ArdeosTalents.cs).
     /// </summary>
-    [Fact(Skip = "The engine does not model Fire Ball's travel time, which moves the burn's ticks: its Engulfing Flames lasts 12.2s")]
+    [Fact]
     public void Slow_Burn_And_Wildfire_Make_Engulfing_Flames_Last_12_5_Seconds()
     {
         var f = StepFights.Ardeos(talents: [SlowBurn.TalentId]);
 
         f.Cast<FireBall>();
+        f.WaitUntil(1.75); // the burn's first tick clear of the Engulfing Flames' start
 
         f.Cast<EngulfingFlames>();
         double end = f.CompletedAt("Engulfing Flames") + 12.5;

@@ -428,7 +428,7 @@ public class ElarionTalents
     public void Last_Lights_Adds_20_Percent_Crit_Chance_Below_30_Percent_Health(double health, double critChance)
     {
         var f = StepFights.Elarion(crit: 0.15, talents: [LastLights.TalentId]);
-        f.Enemy.CurrentHealth = f.Enemy.MaxHealth * health; // the enemy already wounded
+        f.SetHealth(health); // the enemy already wounded
 
         f.Cast<FocusedShot>();
 

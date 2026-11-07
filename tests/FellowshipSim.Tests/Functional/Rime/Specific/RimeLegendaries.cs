@@ -9,18 +9,6 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class RimeLegendaries
 {
-    /// <summary>
-    /// How many full ticks of <paramref name="tick"/> seconds fit in <paramref name="duration"/>. Rounded before the floor, as in
-    /// RimeHasteBreakpoints.cs.
-    /// </summary>
-    private static int FullTicks(double duration, double tick) => (int)Math.Floor(duration / tick + 1e-9);
-
-    /// <summary>
-    /// 1 when at least <paramref name="threshold"/> seconds are left after the full ticks, for a last partial tick; else 0.
-    /// </summary>
-    private static int PartialTick(double duration, double tick, double threshold) =>
-        duration - FullTicks(duration, tick) * tick >= threshold - 1e-9 ? 1 : 0;
-
     // ---- Skandi's Decree
 
     /// <summary>

@@ -11,16 +11,6 @@ namespace FellowshipSim.Tests.Functional;
 public class RimeHasteBreakpoints
 {
     /// <summary>
-    /// How many full ticks of <paramref name="tick"/> seconds fit in <paramref name="duration"/>. Rounded before the floor: in floating
-    /// point 2.8 / 0.4 is 6.999999999999999, which is 7 ticks.
-    /// </summary>
-    private static int FullTicks(double duration, double tick) => (int)Math.Floor(duration / tick + 1e-9);
-
-    /// <summary>1 when at least <paramref name="threshold"/> seconds are left after the full ticks, for a last partial tick; else 0.</summary>
-    private static int PartialTick(double duration, double tick, double threshold) =>
-        duration - FullTicks(duration, tick) * tick >= threshold - 1e-9 ? 1 : 0;
-
-    /// <summary>
     /// Bursting Ice ticks every 0.5 seconds for 3 seconds, faster with haste. It hits once per full tick that fits in the 3 seconds,
     /// floor(3 / 0.5 x (1 + haste)), plus a last partial hit when at least 0.1 seconds are left after the last full tick.
     ///

@@ -27,6 +27,18 @@ public static class StepQueries
     /// </summary>
     public static List<StepEvent> Damage(this StepDriver f, string hit) => f.EventsOf(StepEventKind.Damage, hit);
 
+    /// <summary>Every damage event of the hero, whatever its name: to add up what the hero dealt (what Voidbringer's Touch stores).</summary>
+    public static List<StepEvent> AllDamage(this StepDriver f) => f.Events.Where(e => e.Kind == StepEventKind.Damage).ToList();
+
+    /// <summary>The hero's damage events strictly after <paramref name="after"/> and strictly before <paramref name="before"/> (either
+    /// left open when null), without the hits named <paramref name="except"/>: what a stored-damage effect counts (Voidbringer's Touch,
+    /// a Sapphire Aurastone pulse).</summary>
+    public static List<StepEvent> DamageBetween(this StepDriver f, SimTime? after = null, SimTime? before = null, string? except = null) =>
+        f.AllDamage().Where(hit => (after is null || hit.Time > after) && (before is null || hit.Time < before) && hit.Name != except).ToList();
+
+    /// <summary>The hero's damage events that were critical strikes, whatever their name.</summary>
+    public static List<StepEvent> Crits(this StepDriver f) => f.AllDamage().Where(hit => hit.IsCrit).ToList();
+
     /// <summary>The damage events of the hits named after <typeparamref name="T"/>.</summary>
     public static List<StepEvent> Damage<T>(this StepDriver f) where T : Ability => f.Damage(f.Ability<T>().Name);
 

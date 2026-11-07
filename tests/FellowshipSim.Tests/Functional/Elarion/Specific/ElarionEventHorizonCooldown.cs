@@ -185,7 +185,7 @@ public class ElarionEventHorizonCooldown
     [Fact]
     public void The_Monarchs_Acceleration_Adds_To_Event_Horizons()
     {
-        var f = StepFights.Of("Elarion", glyphs: [new(TheMonarch.GlyphId, Rank: 4)]);
+        var f = StepFights.Elarion(glyphs: [new(TheMonarch.GlyphId, Rank: 4)]);
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
 
         f.Cast<EventHorizon>();
@@ -361,7 +361,7 @@ public class ElarionEventHorizonCooldown
         plainScenario.Cast<HeartseekerBarrage>();
         plainScenario.Wait(0.5); // the last arrows land
         int targetHits = plainScenario.Damage<HeartseekerBarrage>().Count(hit => hit.Target == plainScenario.Enemy.Name);
-        double plainEnd = plainScenario.CompletedAt("Starfall Volley") + 40.0 - 1.5 * targetHits;
+        double end = plainScenario.CompletedAt("Starfall Volley") + 40.0 - 1.5 * targetHits;
 
         var piercingScenario = StepFights.Elarion(enemies: 2, talents: [PiercingSeekers.TalentId]);
         piercingScenario.Apply(EventHorizon.Buff);
@@ -370,12 +370,11 @@ public class ElarionEventHorizonCooldown
         piercingScenario.Cast<HeartseekerBarrage>();
         piercingScenario.Wait(0.5); // the last arrows land
         int ricochets = piercingScenario.Damage<HeartseekerBarrage>().Count(hit => hit.Target != piercingScenario.Enemy.Name);
-        double piercingEnd = piercingScenario.CompletedAt("Starfall Volley") + 40.0 - 1.5 * targetHits;
 
         using var check = new Checks();
         check.True(ricochets > 0, "the barrage ricochets with Piercing Seekers");
-        foreach (var (scenario, end, with) in new[] { (plainScenario, plainEnd, "without Piercing Seekers"),
-                     (piercingScenario, piercingEnd, "with Piercing Seekers") })
+        foreach (var (scenario, with) in new[] { (plainScenario, "without Piercing Seekers"),
+                     (piercingScenario, "with Piercing Seekers") })
         {
             scenario.WaitUntil(end - 0.1);
             check.False(scenario.IsReady<StarfallVolley>(), what: $"{with}, ready 0.1s before {end:F3}s");
@@ -385,9 +384,7 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// With a legendary item's Strand of Eternity, after Starfall Volley, Event Horizon and Heartseeker Barrage, Starfall Volley is ready
-    /// again after 3, 2, 1 or 0 extra global cooldowns (Celestial Shots), each from a haste breakpoint: at the row's haste it takes that
-    /// many, and at 1% less haste one more. Blessing of the Commander's cooldown reduction (4% at rank I, Emerald 450; 12% at rank II,
+    /// Check how soon Volley is ready (measured in GCDs) during EH, under various conditions: Blessing of the Commander's cooldown reduction (4% at rank I, Emerald 450; 12% at rank II,
     /// Emerald 1500) lowers each breakpoint, and so does Fusillade's 2.5 second barrage (2 without it).
     ///
     /// The haste is the gear's; Spirit of Heroism's 30% comes on top. Each breakpoint is where the barrage fits one more arrow, which

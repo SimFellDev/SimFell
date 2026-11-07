@@ -47,6 +47,8 @@ The whole suite runs in well under a second, since every fight is a few seconds 
 - `StartCast<T>()` starts a cast and returns at once, with the cast under way: to try another cast in the middle of it
   (`f.StartCast<FocusedShot>(); f.Wait(0.5); f.TryCast<EventHorizon>()`). `Wait` lets the cast go on. Use it extremely rarely: only in
   a test whose very point is that one action blocks another.
+- `CastWhenReady` waits out exactly the ability's cooldown first, for a test that casts one ability again and again. A loop that casts
+  until something happens has a bound (`for (int cast = 0; cast < 50 && ...; cast++)`), so a broken rule fails instead of hanging.
 - `Wait`/`WaitUntil` let time pass.
 - Between calls the fight is paused, so the test reads the state at an exact time.
 
@@ -61,6 +63,7 @@ goes through `SimulationContext.Outcomes`. The harness forces those outcomes by 
 | `StepVerbs` | reads and sets state |
 | `StepQueries` | reads events |
 | `StepAsserts` | holds the tolerances |
+| `TickMath` | `FullTicks` and `PartialTick`, for tick counts stated as a formula |
 | `Checks` | collects several checks in one test |
 
 Nothing outside the tests uses the harness. Its own tests are `Harness/StepDriverTests`.
@@ -73,6 +76,10 @@ Nothing outside the tests uses the harness. Its own tests are `Harness/StepDrive
   - `SpiritRefund`: what a Spirit Refund gives every hero, as a theory over the heroes.
   - `CriticalStrike`: how much a critical strike deals, grievous ones included. It uses Rime's Frost Bolt as the instrument, since the rule
     does not depend on the hero.
+  - `RisingSpirit`, `SpiritPoints`: the Spirit Refund's buff, and Spirit Points' generation and cap.
+- `Gear/`: one file per item, over every hero that can wear it, named `<Kind><Item>.cs` in a folder per kind: `Aspects/AspectRubyStorm`,
+  `Gems/GemEmerald`, `Glyphs/GlyphMonarch`, `Relics/RelicAccursedTrophy`, `Sigils/SigilKindling`, `Weapons/WeaponChronoshift`.
+  `Weapons/WeaponCooldowns` has every weapon ability's cooldown, and which can be cast during the global cooldown.
 - One folder per hero (`Rime/`), one file per category. Each file and its class carry the hero's name before the category
   (`Rime/RimeAbilities.cs`). All files share one namespace, so without the name the test explorer would show several `Abilities`.
 
@@ -150,11 +157,13 @@ public void Frost_Bolt_Gives_3_Anima_When_The_Cast_Completes()
 
 - `StepFights.Rime()` builds a bare hero: no gear, no talents, 0% crit, 0% Spirit. `StepFights.Of("Rime", ...)` is the same builder, for
   tests that run over several heroes. Both take `haste`, `enemies`, `talents`, `crit`, `spirit`, `mainStat`, `expertise`,
-  `weaponAbilityId`, `legendaries` and `gemPower`.
+  `weaponAbilityId`, `legendaries`, `gemPower`, `glyphs`, `augmentations` (aspects and sigils) and `relics`.
+  `StepFights.Ranked(TheMonarch.GlyphId, rank)` is a glyph, aspect or sigil at a rank, or nothing at rank 0.
 - **The main stat is `mainStat`, never Intellect, Strength or Agility.** Every hero's main stat works the same way, and what the game calls
   it is cosmetic. Realistic values are around 100–200.
 - **Set-up shortcuts** for state are fine and expected: `f.Set(Hero.SpiritPoints, 100)`, `f.Apply(GlacialAssault.Buff, stacks: 4)`,
   `f.RimeOf().WinterOrbs = 2`, `f.ResetCooldown<StarfallVolley>()`, `f.Remove(Chronoshift.Barrier)`. Say why in a comment on the line. Use the hero's own class (`f.RimeOf()`) only for the hero's own state.
+  `f.Defeat(enemy)` kills an enemy, since the engine's enemies die on a schedule, never from damage. `f.SetHealth(0.26)` wounds one.
 - **Real sources, not engine values.** An effect comes from what gives it in the game: a talent, a gem's power
   (`gemPower: new() { [GemColor.Emerald] = 1500 }` for Blessing of the Commander - II), a weapon. Never set an engine stat
   (`f.Hero.Stats.CooldownReductionPct = 0.1`) or add an engine hook with made-up values, or the test would pass on a rule no player can
@@ -187,13 +196,13 @@ f.Cast<FrostBolt>();
 Assert.Equal(3, f.Amount(Rime.Anima));
 ```
 
-- **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `IsReady`, `Charges`, `RecoveryRate`, `Enemies`,
-  `HasDebuff("Searing Blaze")`), not through `f.Hero....(…, f.Now)` or `f.Context...`. When a set-up line already sets the
-  starting state (`f.RimeOf().WinterOrbs = orbs`), don't assert it again.
+- **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `Expertise`, `MainStat`, `Health`, `GemPower`, `IsReady`,
+  `Charges`, `RecoveryRate`, `Enemies`, `HasDebuff("Searing Blaze")`), not through `f.Hero....(…, f.Now)` or `f.Context...`. When a
+  set-up line already sets the starting state (`f.RimeOf().WinterOrbs = orbs`), don't assert it again.
 - **Events are for timing, order and per-hit values.** `Cast` returns only once the hero is free again, so state cannot show the middle of
   a cast: `Assert.Equal(f.CompletedAt("Frost Bolt"), f.Gains("Anima").Single().Time.TotalSeconds)`.
-- **Read events through the named queries** (`Damage`, `DirectHits`, `Ticks`, `Gains`, `Spends`, `Overflows`, `CastsStarted`,
-  `CastsCompleted`, `AurasRemoved`, `CompletedAt`, `LastCastDuration`). Never filter `f.Events` in a test.
+- **Read events through the named queries** (`Damage`, `AllDamage`, `DamageBetween`, `Crits`, `DirectHits`, `Ticks`, `Gains`, `Spends`,
+  `Overflows`, `CastsStarted`, `CastsCompleted`, `AurasRemoved`, `CompletedAt`, `LastCastDuration`). Never filter `f.Events` in a test.
 - **A misspelled hit name is silent.**
   - Casts and resources are looked up in the hero's own lists, and a name the hero does not have throws.
   - Auras are named by their definition (`BurstingIce.WintersEmbrace`), so a typo does not compile.

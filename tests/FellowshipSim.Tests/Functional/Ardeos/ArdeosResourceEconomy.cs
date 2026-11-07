@@ -8,12 +8,19 @@ namespace FellowshipSim.Tests.Functional;
 /// Detonate spends an Ember.
 ///
 /// Cinders cannot be counted in game, Burning Embers can: the Ember tests are the ones a player can check. A tick's Cinders are divided by
-/// 1 + haste, so a hasted effect's count is only about its unhasted one, hence the 1 Cinder tolerance of the haste and Wildfire tests.
+/// 1 + haste, and the last partial tick's share is read on the server frame it lands on, so a hasted or Wildfire count is within
+/// <see cref="CinderTolerance"/> of its formula.
 /// </summary>
 public class ArdeosResourceEconomy
 {
     /// <summary>Tolerance of an exact Cinder count.</summary>
     private const double ExactCinderTolerance = 0.01;
+
+    /// <summary>
+    /// Tolerance of a hasted or Wildfire Cinder count. The ticks land on server frames, which moves a count by up to 0.21 Cinders (3
+    /// Engulfing Flames with Wildfire: 117.207 for 117). A missed or doubled partial tick moves it by 0.45 Cinders or more.
+    /// </summary>
+    private const double CinderTolerance = 0.25;
 
     // ---- Searing Blaze
 
@@ -34,7 +41,7 @@ public class ArdeosResourceEconomy
         f.Cast<SearingBlaze>();
         f.Wait(40); // it ticks out
 
-        Assert.Equal(15.0, f.Amount(Ardeos.Cinders), 1.0);
+        Assert.Equal(15.0, f.Amount(Ardeos.Cinders), CinderTolerance);
     }
 
     // ---- Engulfing Flames
@@ -66,7 +73,7 @@ public class ArdeosResourceEconomy
         f.Cast<EngulfingFlames>();
         f.Wait(20); // it ticks out
 
-        Assert.Equal(30.0, f.Amount(Ardeos.Cinders), 1.0);
+        Assert.Equal(30.0, f.Amount(Ardeos.Cinders), CinderTolerance);
     }
 
     // ---- Wildfire
@@ -93,7 +100,7 @@ public class ArdeosResourceEconomy
 
         using var check = new Checks(f);
         check.True(f.Amount(Ardeos.Cinders) > 15.0 + ExactCinderTolerance);
-        check.Equal(16.35, f.Amount(Ardeos.Cinders), 1.0);
+        check.Equal(16.35, f.Amount(Ardeos.Cinders), CinderTolerance);
     }
 
     /// <summary>
@@ -118,7 +125,7 @@ public class ArdeosResourceEconomy
 
         using var check = new Checks(f);
         check.True(f.Amount(Ardeos.Cinders) > 30.0 + ExactCinderTolerance);
-        check.Equal(39.0, f.Amount(Ardeos.Cinders), 1.0);
+        check.Equal(39.0, f.Amount(Ardeos.Cinders), CinderTolerance);
     }
 
     /// <summary>
@@ -127,6 +134,9 @@ public class ArdeosResourceEconomy
     ///
     /// Wildfire is up for 3 to 12 seconds of the effects' 30. Each Searing Blaze gets 9 x 0.3 / 2 = 1.35 more ticks of 1 Cinder:
     /// 6 x 16.35 = 98.1 with Wildfire, 90 without; so 203.1 and 195 Cinders.
+    ///
+    /// The rules above in one scenario a player can check in game, where Cinders are not shown but Burning Embers are: the second Ember
+    /// appears with Wildfire and not without.
     /// </summary>
     [Theory]
     [InlineData(false, 195.0, 1)]
@@ -142,14 +152,14 @@ public class ArdeosResourceEconomy
         }
 
         using var check = new Checks(f);
-        check.Equal(105.0, f.Amount(Ardeos.Cinders), 1.0);
+        check.Equal(105.0, f.Amount(Ardeos.Cinders), ExactCinderTolerance);
         check.Equal(1, f.ArdeosOf().BurningEmbers);
 
         f.Cast<Apocalypse>(); // a Searing Blaze on each enemy
         if (wildfire) f.Cast<Wildfire>();
         f.Wait(40); // they tick out
 
-        check.Equal(cinders, f.Amount(Ardeos.Cinders), 1.0);
+        check.Equal(cinders, f.Amount(Ardeos.Cinders), CinderTolerance);
         check.Equal(embers, f.ArdeosOf().BurningEmbers);
     }
 
@@ -159,6 +169,9 @@ public class ArdeosResourceEconomy
     ///
     /// Each ticks 6 x 1.3 = 7.8 times for 5 Cinders: 3 x 39 = 117 with Wildfire, 90 without. An Engulfing Flames cast first would add a
     /// fourth: 120 Cinders, an Ember with or without Wildfire.
+    ///
+    /// The rules above in one scenario a player can check in game, where Cinders are not shown but Burning Embers are: the Ember appears
+    /// with Wildfire and not without.
     /// </summary>
     [Theory]
     [InlineData(false, 90.0, 0)]
@@ -172,7 +185,7 @@ public class ArdeosResourceEconomy
         f.Wait(20); // they tick out
 
         using var check = new Checks(f);
-        check.Equal(cinders, f.Amount(Ardeos.Cinders), 1.0);
+        check.Equal(cinders, f.Amount(Ardeos.Cinders), CinderTolerance);
         check.Equal(embers, f.ArdeosOf().BurningEmbers);
     }
 
@@ -239,7 +252,7 @@ public class ArdeosResourceEconomy
 
         f.Set(Ardeos.Cinders, 250); // 2 Embers and 50 Cinders
         f.Cast<Detonate>();
-        check.Equal(150, f.Amount(Ardeos.Cinders), 1.0); // the Searing Blaze's own ticks add a little
+        check.Equal(100, f.Spends("Cinders").Single().Value, ExactCinderTolerance);
         check.Equal(1, f.ArdeosOf().BurningEmbers);
     }
 }

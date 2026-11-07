@@ -17,16 +17,6 @@ public class ElarionResourceEconomy
     /// <summary>Times are whole milliseconds, which moves a hasted cast's regeneration by a few thousandths of Focus.</summary>
     private const double NetTolerance = 0.01;
 
-    /// <summary>Focus now. The engine adds regenerated Focus every 0.1 seconds, so the bar alone can be up to 0.1 seconds behind.</summary>
-    private static double Focus(StepDriver f) => f.ElarionOf().FocusAt(f.Now);
-
-    /// <summary>Sets Focus now, once the Focus regenerated so far is counted, so it is not added on top later.</summary>
-    private static void SetFocus(StepDriver f, double focus)
-    {
-        f.ElarionOf().RegenerateFocus(f.Now);
-        f.Set(Elarion.Focus, focus);
-    }
-
     /// <summary>Event Horizon cast, with Focus back to full (the cast's own regeneration does not count).</summary>
     private static StepDriver UnderEventHorizon(double haste)
     {
@@ -34,7 +24,7 @@ public class ElarionResourceEconomy
         f.ForceProcs(key => key == CelestialShot.ImpetusProcKey ? false : null); // no free Celestial Shot
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
         f.Cast<EventHorizon>();
-        SetFocus(f, 100);
+        f.Set(Elarion.Focus, 100);
         return f;
     }
 
@@ -48,11 +38,11 @@ public class ElarionResourceEconomy
     public void Focus_Regenerates_5_Per_Second_Raised_By_Haste(double haste)
     {
         var f = StepFights.Elarion(haste: haste);
-        SetFocus(f, 0); // Elarion starts full
+        f.Set(Elarion.Focus, 0); // Elarion starts full
 
         f.Wait(4.0);
 
-        Assert.Equal(4.0 * 5 * (1 + haste), Focus(f), 1e-9);
+        Assert.Equal(4.0 * 5 * (1 + haste), f.Amount(Elarion.Focus), 1e-9);
     }
 
     /// <summary>Focus regeneration stops at 100.</summary>
@@ -60,11 +50,11 @@ public class ElarionResourceEconomy
     public void Focus_Regeneration_Stops_At_100()
     {
         var f = StepFights.Elarion();
-        SetFocus(f, 95);
+        f.Set(Elarion.Focus, 95);
 
         f.Wait(10.0);
 
-        Assert.Equal(100, Focus(f), 1e-9);
+        Assert.Equal(100, f.Amount(Elarion.Focus), 1e-9);
     }
 
     /// <summary>Focus never goes above 100: a Focused Shot near the cap only fills the bar, and the rest is lost.</summary>
@@ -72,12 +62,12 @@ public class ElarionResourceEconomy
     public void Focus_Gains_Stop_At_100()
     {
         var f = StepFights.Elarion();
-        SetFocus(f, 90);
+        f.Set(Elarion.Focus, 90);
 
         f.Cast<FocusedShot>(); // 1.5 seconds of regeneration, then 20 Focus
 
         using var check = new Checks(f);
-        check.Equal(100, Focus(f));
+        check.Equal(100, f.Amount(Elarion.Focus));
         check.Equal(90 + 5 * 1.5 + 20 - 100, f.Overflows("Focus").Single().Value);
     }
 
@@ -86,13 +76,13 @@ public class ElarionResourceEconomy
     public void An_Ability_Cannot_Be_Cast_Without_Enough_Focus()
     {
         var f = StepFights.Elarion();
-        SetFocus(f, 10); // Celestial Shot costs 15
+        f.Set(Elarion.Focus, 10); // Celestial Shot costs 15
 
         var attempt = f.TryCast<CelestialShot>();
 
         using var check = new Checks(f);
         check.False(attempt.Succeeded);
-        check.Equal(10, Focus(f));
+        check.Equal(10, f.Amount(Elarion.Focus));
         check.Equal(0, f.Seconds());
     }
 
@@ -103,7 +93,7 @@ public class ElarionResourceEconomy
     public void Focused_Shot_Gives_20_Focus_When_The_Cast_Completes()
     {
         var f = StepFights.Elarion();
-        SetFocus(f, 0); // room for the gain
+        f.Set(Elarion.Focus, 0); // room for the gain
 
         f.Cast<FocusedShot>();
 
@@ -128,11 +118,11 @@ public class ElarionResourceEconomy
     {
         var f = StepFights.Elarion(haste: haste);
         f.ForceProcs(key => key == CelestialShot.ImpetusProcKey ? false : null); // no free Celestial Shot
-        SetFocus(f, 0); // room for the gain
+        f.Set(Elarion.Focus, 0); // room for the gain
 
         f.Cast<FocusedShot>();
 
-        Assert.Equal(20 + 5 * 1.5, Focus(f), NetTolerance);
+        Assert.Equal(20 + 5 * 1.5, f.Amount(Elarion.Focus), NetTolerance);
     }
 
     // ---- Costs
@@ -190,7 +180,7 @@ public class ElarionResourceEconomy
 
         f.Cast(ability);
 
-        Assert.Equal(100 - cost + 5 * 1.5, Focus(f), NetTolerance);
+        Assert.Equal(100 - cost + 5 * 1.5, f.Amount(Elarion.Focus), NetTolerance);
     }
 
     /// <summary>
@@ -210,13 +200,13 @@ public class ElarionResourceEconomy
         fullScenario.Cast<HighwindArrow>();
 
         var lowScenario = StepFights.Elarion(haste: haste);
-        SetFocus(lowScenario, 80);
+        lowScenario.Set(Elarion.Focus, 80);
 
         lowScenario.Cast<HighwindArrow>();
 
         using var check = new Checks();
-        check.Equal(100 - 30, Focus(fullScenario), NetTolerance);
-        check.Equal(80 + 5 * 2.0 - 30, Focus(lowScenario), NetTolerance);
+        check.Equal(100 - 30, fullScenario.Amount(Elarion.Focus), NetTolerance);
+        check.Equal(80 + 5 * 2.0 - 30, lowScenario.Amount(Elarion.Focus), NetTolerance);
     }
 
     /// <summary>
@@ -233,7 +223,7 @@ public class ElarionResourceEconomy
 
         f.Cast<HeartseekerBarrage>();
 
-        Assert.Equal(100 - 30 + 5 * (1 + haste) * 2.0, Focus(f), NetTolerance);
+        Assert.Equal(100 - 30 + 5 * (1 + haste) * 2.0, f.Amount(Elarion.Focus), NetTolerance);
     }
 
     // ---- Free casts
@@ -364,13 +354,13 @@ public class ElarionResourceEconomy
         var f = UnderEventHorizon(haste);
 
         f.Cast<SkystridersSupremacy>(); // empowers the next Multishot
-        SetFocus(f, 50); // not full, so the cap does not hide the regeneration
+        f.Set(Elarion.Focus, 50); // not full, so the cap does not hide the regeneration
 
         f.Cast<Multishot>();
 
         using var check = new Checks(f);
         check.Equal(5, f.Spends("Focus").Single().Value);
-        check.Equal(50 - 5 + 7.5, Focus(f), NetTolerance);
+        check.Equal(50 - 5 + 7.5, f.Amount(Elarion.Focus), NetTolerance);
     }
 
     /// <summary>
@@ -390,10 +380,10 @@ public class ElarionResourceEconomy
     public void A_Spender_Under_Event_Horizon_Costs_Half_Its_Focus_Less_7_5_Net(string ability, double focus, double halvedCost, double haste)
     {
         var f = UnderEventHorizon(haste);
-        SetFocus(f, focus);
+        f.Set(Elarion.Focus, focus);
 
         f.Cast(ability);
 
-        Assert.Equal(focus - halvedCost + 5 * 1.5, Focus(f), NetTolerance);
+        Assert.Equal(focus - halvedCost + 5 * 1.5, f.Amount(Elarion.Focus), NetTolerance);
     }
 }

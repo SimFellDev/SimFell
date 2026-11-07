@@ -333,7 +333,7 @@ public class ElarionAbilities
     public void Event_Horizon_Cannot_Interrupt_Another_Cast()
     {
         var f = StepFights.Elarion();
-        f.ForceProcs(key => key == CelestialShot.ImpetusProcKey ? false : null); // no Celestial Impetus from the Focused Shot
+
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
 
         f.StartCast<FocusedShot>();

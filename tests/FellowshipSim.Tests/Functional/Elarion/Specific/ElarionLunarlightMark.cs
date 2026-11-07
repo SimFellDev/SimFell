@@ -1,3 +1,5 @@
+using FellowshipSim.Core.Customization.Aspects;
+using FellowshipSim.Core.Customization.Sigils;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Heroes.Elarion;
 using FellowshipSim.Core.Heroes.Elarion.Abilities;
@@ -59,6 +61,35 @@ public class ElarionLunarlightMark
         check.True(f.Damage(ability).Count > 0);
         check.Equal(f.Damage(ability).Count, chances.Count);
         check.True(chances.All(chance => chance == 0.25));
+    }
+
+    /// <summary>
+    /// Every tick of a Kindling burn or an Amethyst Splinter on a marked enemy can call down a salvo, at 25% (the ticks do not crit).
+    ///
+    /// The tooltip's "ability damage"; the combat logs show salvos from Amethyst Splinters' ticks (NOTES.md). Kindling per the user.
+    /// The Focused Shot that lights the burn or makes the splinter rolls its own salvo first.
+    /// </summary>
+    [Theory]
+    [InlineData(Kindling.SigilId, "Kindling")]
+    [InlineData(AmethystSplinters.AspectId, "Amethyst Splinter")]
+    public void Every_Tick_Of_Kindling_Or_Amethyst_Splinters_On_A_Marked_Enemy_Can_Call_Down_A_Salvo(int augmentation, string ticks)
+    {
+        var f = StepFights.Elarion(augmentations: [new(augmentation, 1)]);
+        var procs = f.ForceProcs(key => key == Kindling.ProcKey ? true // the shot lights the burn
+            : key == LunarlightSalvo.ProcKey ? false // only to read the chances
+            : null);
+        f.Apply(LunarlightMark.Debuff, stacks: 1, on: f.Enemy);
+
+        f.Cast<FocusedShot>(crit: true); // a crit makes the splinter
+        f.Wait(10.0); // the burn or the splinter ticks out
+
+        var chances = procs.ChancesOf(LunarlightSalvo.ProcKey);
+        int tickCount = f.Damage(ticks).Count;
+
+        using var check = new Checks(f);
+        check.True(tickCount > 0, "it ticks");
+        check.Equal(1 + tickCount, chances.Count, what: "salvo rolls: the shot's and each tick's");
+        check.True(chances.Skip(1).All(chance => chance == 0.25), "each tick at 25%");
     }
 
     /// <summary>

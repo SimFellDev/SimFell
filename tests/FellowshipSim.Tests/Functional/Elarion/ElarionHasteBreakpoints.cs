@@ -10,12 +10,6 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class ElarionHasteBreakpoints
 {
-    /// <summary>
-    /// How many full ticks of <paramref name="tick"/> seconds fit in <paramref name="duration"/>. Rounded before the floor: in floating
-    /// point 2.0 / (0.2 / 1.1) is 10.999999999999998, which is 11 ticks.
-    /// </summary>
-    private static int FullTicks(double duration, double tick) => (int)Math.Floor(duration / tick + 1e-9);
-
     // ---- Starfall Volley
 
     private const string StrikesUntilTheEnd =
