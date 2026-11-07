@@ -58,6 +58,11 @@ public sealed class Mara : Hero
     /// <summary>Class tuning: hero attribute BalancingDamageAura (game data hero 11).</summary>
     public const double BalancingDamageAura = 1.04;
 
+    /// <summary>Health before Stamina (game data, Mara baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 1724;
+    /// <summary>Health per point of Stamina (game data, Mara baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 53.499;
+
     /// <summary>
     /// Creeping Death: Caustic Poison, Seething Poisons, and Volatile Poison deal increased Poison damage per Haste;
     /// Hemorrhaging Strike's bleed, Corrosive Spill and Seething Burst too (their tooltips).
@@ -98,6 +103,8 @@ public sealed class Mara : Hero
         // spend; the Energy through OnSpiritRefund below.
         SpiritRefundResource = ComboPoints;
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         GlobalCooldownSeconds = GlobalCooldown;
         GlobalCooldownScalesWithHaste = false;
 

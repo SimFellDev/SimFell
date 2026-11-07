@@ -60,7 +60,7 @@ public class CooldownRateTests
     }
 
     [Fact]
-    public void Skylit_Grace_Counts_Once_And_Ends_With_The_First_Volley()
+    public void Skylit_Grace_Counts_Each_Volley_Falling()
     {
         var hero = Fight("Elarion");
         var ctx = hero.SimContext!;
@@ -75,10 +75,14 @@ public class CooldownRateTests
         ctx.RunUntil(SimTime.FromSeconds(4));
         starfall.Execute(ctx, enemy);
         Assert.Equal(2, starfall.ActiveCount);
-        Assert.Equal(1.0 + SkylitGrace.Acceleration, hero.CooldownRate(grace, ctx.CurrentTime), 9);
+        Assert.Equal(1.0 + 2 * SkylitGrace.Acceleration, hero.CooldownRate(grace, ctx.CurrentTime), 9);
 
         ctx.RunUntil(SimTime.FromSeconds(9));
         Assert.Equal(1, starfall.ActiveCount);
+        Assert.Equal(1.0 + SkylitGrace.Acceleration, hero.CooldownRate(grace, ctx.CurrentTime), 9);
+
+        ctx.RunUntil(SimTime.FromSeconds(13));
+        Assert.Equal(0, starfall.ActiveCount);
         Assert.Equal(1.0, hero.CooldownRate(grace, ctx.CurrentTime));
     }
 

@@ -43,7 +43,6 @@ public static class HeroImporter
         // bonus adds to them as it binds.
         hero.Stats.PrimaryStat = build.PrimaryStat + StatBlock.BasePrimaryStat;
         hero.Stats.Stamina = build.Stamina + StatBlock.BaseStamina;
-        if (build.MaxHealth > 0) hero.Stats.LoggedMaxHealth = build.MaxHealth;
         hero.Stats.Armor = build.Armor;
         hero.Stats.CritRating = build.CritRating + build.EnchantRating(StatType.CritRating);
         hero.Stats.HasteRating = build.HasteRating + build.EnchantRating(StatType.HasteRating);
@@ -137,6 +136,7 @@ public static class HeroImporter
             }
             hero.PassiveAuras.Add(LegendaryStats.StrandOfEternity);
             hero.PassiveAuras.Add(LegendaryStats.MoteOfCreation);
+            hero.PassiveAuras.Add(LegendaryStats.BloodOfTheUndying);
         }
 
         hero.FinalizeBuild();

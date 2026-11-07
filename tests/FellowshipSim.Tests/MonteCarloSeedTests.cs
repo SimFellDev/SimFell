@@ -82,19 +82,21 @@ public class MonteCarloSeedTests
     /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers. The rows
     /// with a Spirit Refund past the duration of Rising Spirit again once that duration had a cap. Mara's 3-target row again once
     /// Hemorrhaging Strike had no cooldown. Mara's again once her default list read Deadly Scheme: Active. Every row with a
-    /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor.
+    /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor. Ardeos's again once Searing
+    /// Blaze kept part of its time left on a recast, Slow Burn gave its full half second and a cap, Intensifying Inferno
+    /// counted each effect and Devouring Flame multiplied per Engulfing Flames. Tariq's again once health came from BaseHealth, Stamina and the max health auras (Ruby Storm).
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 2929444.08752369, 3077995.7808620073, 2829134.0571837318, 3705848.5280579049 })]
     [InlineData("Rime", 300, 1, new[] { 7807802.8056133138, 8531419.3838742785, 8084639.1539794672, 7908492.7942486135 })]
-    [InlineData("Ardeos", 120, 3, new[] { 3345832.9485829431, 3320652.327085807, 2970622.7621510844, 3343792.2069075285 })]
-    [InlineData("Ardeos", 300, 1, new[] { 4861741.2230702369, 4925568.8819087893, 4902383.9729880206, 5274164.3018721882 })]
+    [InlineData("Ardeos", 120, 3, new[] { 3416176.3452053526, 3513888.2134329369, 3159070.0166639746, 3238265.2998513975 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4969978.3232260561, 4912988.5024501747, 4687323.675213783, 4858429.3177604256 })]
     [InlineData("Gunde", 120, 3, new[] { 4748197.3158851741, 4295319.6169056566, 4262391.2107238909, 4470118.3590960605 })]
     [InlineData("Gunde", 300, 1, new[] { 7249581.1534622693, 7814233.1795717087, 7659215.0033817766, 7371523.7896765638 })]
     [InlineData("Mara", 120, 3, new[] { 2560953.2346197013, 2353016.7117702793, 2897776.7017053822, 2866602.873777526 })]
     [InlineData("Mara", 300, 1, new[] { 7895879.749682934, 6001428.5453476505, 7463940.1662859339, 7588414.1623460148 })]
-    [InlineData("Tariq", 120, 3, new[] { 1975056.6255696474, 1770988.9151165667, 2311390.8526230683, 2173045.8251722781 })]
-    [InlineData("Tariq", 300, 1, new[] { 3437695.8180590398, 3708298.5408707494, 3263678.3343260279, 3721164.3120034356 })]
+    [InlineData("Tariq", 120, 3, new[] { 1975056.465988361, 1770988.7557543414, 2311390.7997524641, 2173045.6661721431 })]
+    [InlineData("Tariq", 300, 1, new[] { 3437695.7313061529, 3708298.4520335575, 3263678.2554253116, 3721164.205084838 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(

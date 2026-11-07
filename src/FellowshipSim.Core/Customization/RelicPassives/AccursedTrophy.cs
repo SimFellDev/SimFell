@@ -13,8 +13,13 @@ public class AccursedTrophy : RelicPassive
     public const int EffectId = 3269;
     public const double DurationSeconds = 20.0;
     public const double PrimaryStatBonus = 1.2;
+    /// <summary>
+    /// Per the user: it stacks with no maximum (a second ultimate within its duration adds a stack). The game has no cap; 50
+    /// is beyond reach.
+    /// </summary>
+    public const int MaxStacks = 50;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Drakheim's Absolution", EffectId, DurationSeconds,
+    public static readonly AuraDef Buff = AuraDef.Effect("Drakheim's Absolution", EffectId, DurationSeconds, MaxStacks,
         modifiers: StatModifier.More(StatType.PrimaryAttribute, PrimaryStatBonus));
 
     public override int Id => RelicPassiveId;

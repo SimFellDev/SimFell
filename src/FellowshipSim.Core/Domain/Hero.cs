@@ -684,6 +684,9 @@ public abstract class Hero : Actor
                 Auras.Fold(StatType.Haste,
                     1.0 + StatBlock.WithExtraRating(Stats.HastePercent, Stats.HasteRating, Auras.Fold(StatType.HasteRating, 0.0, now)), now) - 1.0);
 
+    /// <summary>Maximum health at <paramref name="now"/>: the stat block's, with the auras' MaxHealth modifiers on the whole value.</summary>
+    public double MaxHealth(SimTime now) => Auras.Fold(StatType.MaxHealth, Stats.MaxHealth, now);
+
     public double Expertise(SimTime now) =>
         IsCurrent(ref _expertise, StatType.ExpertiseRating, StatType.Expertise, now)
             ? _expertise.Value

@@ -31,6 +31,11 @@ public sealed class Elarion : Hero
     /// <summary>Class tuning: hero 2 attribute BalancingDamageAura.</summary>
     public const double BalancingDamageAura = 1.08;
 
+    /// <summary>Health before Stamina (game data, Elarion baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 1687;
+    /// <summary>Health per point of Stamina (game data, Elarion baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 51.857;
+
     /// <summary>Spirit Points per Spirit Refund (ability 1448).</summary>
     public const double SpiritPointsPerRefund = 1.0;
 
@@ -74,6 +79,8 @@ public sealed class Elarion : Hero
         AddResource(Focus);
         SpiritRefundResource = Focus;
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Salvo = new LunarlightSalvo(this);

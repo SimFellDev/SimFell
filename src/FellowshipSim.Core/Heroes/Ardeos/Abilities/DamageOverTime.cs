@@ -31,6 +31,12 @@ public abstract class DamageOverTime : Ability
 
     public DotStacking Stacking { get; }
 
+    /// <summary>
+    /// Share of <see cref="Duration"/> a refresh carries over from the time left (as Mara's Hemorrhage and The Philosopher): a refresh sets the duration to
+    /// Duration + min(time left, RefreshCarryoverFraction x Duration). 0: a refresh starts the duration over.
+    /// </summary>
+    public double RefreshCarryoverFraction { get; protected set; }
+
     /// <summary>Ticks come faster with haste (and always with tick rate bonuses).</summary>
     public bool TicksScaleWithHaste { get; protected set; }
 

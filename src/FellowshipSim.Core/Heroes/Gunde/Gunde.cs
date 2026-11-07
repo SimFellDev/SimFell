@@ -13,6 +13,11 @@ public sealed class Gunde : Hero
     /// <summary>Class tuning: hero attribute balancingDamageAura (game data heroes record, gunde.startingStats): no class tuning.</summary>
     public const double BalancingDamageAura = 1.0;
 
+    /// <summary>Health before Stamina (game data, Gunde baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 1767;
+    /// <summary>Health per point of Stamina (game data, Gunde baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 53.812;
+
     /// <summary>
     /// Spirit Refund (hero 9's Spirit text): "whenever you use an ability that applies Rend, causing Blood Feathers to be
     /// created on the ground near you", Rising Spirit, and a Spirit Point (game data ability 1522).
@@ -79,6 +84,8 @@ public sealed class Gunde : Hero
     public override void Initialize()
     {
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         // Owed in Blood's stacks come from feathers Gunde walks over: a replay follows the log's stacks.
         SituationalAuras.Add(OwedInBlood.Buff);
 

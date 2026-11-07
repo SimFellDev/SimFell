@@ -390,10 +390,22 @@ public sealed class PeriodicEffect
 
         // The duration runs out at the nominal end (no more ticks; the partial tick is measured there) ...
         double partial = 0.0;
+        bool deferred = false;
+        ScheduledEvent? durationEvent = null, endEvent = null;
         void DurationRunsOut(SimulationContext c)
         {
             if (!effect.IsActive) return;
             var timer = effect._nextHastedTick;
+            // A tick due at the same moment as the duration runs out is a full tick, not the partial one: queued after it, the
+            // duration then runs out with no progress left (a duration that is a whole number of periods ends on a tick).
+            if (!deferred && timer is { IsActive: true } && timer.DueTime <= c.CurrentTime)
+            {
+                deferred = true;
+                durationEvent = c.Kernel.ScheduleAt(c.CurrentTime, DurationRunsOut, name);
+                effect._events.Add(durationEvent.Value);
+                return;
+            }
+            deferred = false;
             double fraction = timer is { IsActive: true } ? timer.ElapsedBaseSeconds / basePeriodSeconds : 0.0;
             // A damage over time's partial tick reads how long its period has run (period - remaining) as the
             // duration runs out: a re-arm since the last tick shortens it.
@@ -444,11 +456,11 @@ public sealed class PeriodicEffect
             }
             effect.Finish(c, clipped: false);
         }
-        ScheduledEvent? durationEvent = null, endEvent = null;
         void ScheduleEnd(SimulationContext c)
         {
             durationEvent?.Cancel();
             endEvent?.Cancel();
+            deferred = false;
             durationEvent = c.Kernel.ScheduleAt(nominalEnd, DurationRunsOut, name);
             effect._events.Add(durationEvent.Value);
             endEvent = c.Kernel.ScheduleAt(end, EndFrame, name);

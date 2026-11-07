@@ -55,6 +55,11 @@ public sealed class Xavian : Hero
     /// <summary>Class tuning: hero 25 attribute BalancingDamageAura 1, none.</summary>
     public const double BalancingDamageAura = 1.0;
 
+    /// <summary>Health before Stamina (game data, Xavian baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 2556;
+    /// <summary>Health per point of Stamina (game data, Xavian baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 73.173;
+
     /// <summary>Xavian's talent tree, as in game (game data talent-slot records, hero Xavian).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
         //              row cost  a                               b                          c
@@ -88,6 +93,8 @@ public sealed class Xavian : Hero
         AddResource(Mana);
         SpiritRefundResource = Mana;
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
 
         Abilities.Add(new Attack(this));
         Abilities.Add(new SunStrike(this));

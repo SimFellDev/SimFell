@@ -29,6 +29,11 @@ public sealed class Rime : Hero
     /// <summary>Class tuning: hero attribute BalancingDamageAura (game data).</summary>
     public const double BalancingDamageAura = 1.04;
 
+    /// <summary>Health before Stamina (game data, Rime baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 1711;
+    /// <summary>Health per point of Stamina (game data, Rime baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 53.101;
+
     /// <summary>Spirit Points per Spirit Refund (game data).</summary>
     public const double SpiritPointsPerRefund = 2.0;
 
@@ -64,6 +69,8 @@ public sealed class Rime : Hero
         AddResource(WinterOrbsResource);
         SpiritRefundResource = WinterOrbsResource;
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Abilities.Add(new ColdSnap(this));

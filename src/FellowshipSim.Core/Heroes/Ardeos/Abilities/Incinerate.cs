@@ -43,7 +43,7 @@ public class Incinerate : ArdeosAbility
             // full duration after the last one; an effect never has more than its full duration left.
             foreach (var dot in dots.On(hit.Target).Where(d => d.Effect != Dot).ToList())
             {
-                dots.Extend(ctx, dot, ExtensionSeconds, maxRemainingSeconds: dot.Effect.Duration);
+                dots.Extend(ctx, dot, ExtensionSeconds, maxRemainingSeconds: dot.FullDurationSeconds);
             }
             dots.Apply(ctx, Dot, hit.Target);
         };

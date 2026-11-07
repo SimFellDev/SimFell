@@ -102,6 +102,8 @@ public sealed class DotTracker
         Begin(ctx);
         var now = ctx.CurrentTime;
         var dot = effect.Stacking == DotStacking.Concurrent ? null : On(target).FirstOrDefault(d => d.Effect == effect);
+        double duration = effect.Duration;
+        if (dot != null) duration += Math.Min(dot.RemainingSeconds(now), effect.RefreshCarryoverFraction * effect.Duration);
         if (dot != null)
         {
             Advance(dot, now);
@@ -125,7 +127,8 @@ public sealed class DotTracker
             on.Add(dot);
         }
         dot.CinderScale = cinderScale;
-        dot.ExpiresAt = now + SimTime.FromSeconds(effect.Duration + AuraContainer.ExpiryLagSeconds);
+        dot.FullDurationSeconds = duration;
+        dot.ExpiresAt = now + SimTime.FromSeconds(duration + AuraContainer.ExpiryLagSeconds);
         Schedule(ctx, dot);
         UpdateDebuff(effect, target, now);
         Applied?.Invoke(ctx, dot);

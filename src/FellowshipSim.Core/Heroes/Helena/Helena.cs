@@ -20,6 +20,11 @@ public sealed class Helena : Hero
     /// <summary>Class tuning: hero 22 baseAttributes BalancingDamageAura 1 (entities.jsonl v26320967), none.</summary>
     public const double BalancingDamageAura = 1.0;
 
+    /// <summary>Health before Stamina (game data, Helena baseAttributes BaseHealth).</summary>
+    public const double BaseHealth = 2556;
+    /// <summary>Health per point of Stamina (game data, Helena baseAttributes StaminaToMaxHealthMultiplier).</summary>
+    public const double StaminaToMaxHealthMultiplier = 76.9365;
+
     /// <summary>
     /// Spirit Points per Spirit Refund: "Each time you trigger the Spirit Refund you gain 1.2 Spirit Points toward your
     /// Spirit Ability charge" (hero 22 spiritAbility, entities.jsonl v26320967).
@@ -91,6 +96,8 @@ public sealed class Helena : Hero
     {
         AddResource(Toughness);
         ClassDamageTuning = BalancingDamageAura;
+        Stats.BaseHealth = BaseHealth;
+        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Abilities.Add(new Attack(this));

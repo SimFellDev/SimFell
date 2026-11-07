@@ -40,5 +40,8 @@ public sealed class DotInstance
     /// <summary>The tick and the end <see cref="Event"/> runs, made once.</summary>
     internal Action<SimulationContext>? TickAction, ExpireAction;
 
+    /// <summary>Seconds of the last application, with the time a refresh carried over: the most an extension can leave.</summary>
+    public double FullDurationSeconds { get; internal set; }
+
     public double RemainingSeconds(SimTime now) => Math.Max(0.0, (ExpiresAt - now).TotalSeconds);
 }
