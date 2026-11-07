@@ -15,10 +15,14 @@ using FellowshipSim.Core.Heroes.Helena.Talents;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
 using FellowshipSim.Core.Heroes.Mara.Talents;
+using FellowshipSim.Core.Heroes.Meiko.Talents;
 using FellowshipSim.Core.Heroes.Rime.Abilities;
 using FellowshipSim.Core.Heroes.Rime.Talents;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
 using FellowshipSim.Core.Heroes.Tariq.Talents;
+using FellowshipSim.Core.Heroes.Xavian;
+using FellowshipSim.Core.Heroes.Xavian.Abilities;
+using FellowshipSim.Core.Heroes.Xavian.Talents;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -137,6 +141,12 @@ public static class ProcEvidence
             FollowingHits: ChainLightning.Hits + Thunderstruck.ExtraBounces - 1, FollowingSpacingSeconds: ChainLightning.BounceSeconds,
             FollowingSlackSeconds: PeriodicEffect.ServerFrameSeconds / 2, QuietBeforeSeconds: 0.1),
 
+        // Meiko
+        // Perfect Storm's extra kick is 0.40s after the Lashing Stormkick that procced it, on every enemy the kick struck.
+        new(PerfectStorm.ProcKey, PerfectStorm.DamageId, DelaySeconds: 0.45, MinDelaySeconds: 0.35),
+        // A Shattering Obelisk pulse is its hit, on every enemy nearby. UNVERIFIED: no combat log has the talent.
+        new(ShatteringObelisk.ProcKey, ShatteringObelisk.PulseLogId),
+
         // Mara
         // 10 Energy at once (Fc8v6yWxD14GQMnV fight 19: 172 jumps of 8-12 Energy right after a poison hit, regeneration aside).
         new(VenomousDelight.ProcKey, 0, Resource: Mara.Energy, ResourceGain: VenomousDelight.EnergyGained, ResourceRegenPerSecond: 25),
@@ -167,6 +177,28 @@ public static class ProcEvidence
         new(StarfallVolley.ArrowProcKey, StarfallVolley.AbilityId, DelaySeconds: 1.5, MinDelaySeconds: -0.15, ReservesHit: true),
         // Lethal Shots takes Highwind Arrow past 100% crit chance: its first hit, 0.13s after the cast, is a grievous crit.
         new(LethalShots.ProcKey, HighwindArrow.AbilityId, DelaySeconds: 0.5, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+
+        // Xavian
+        // A Swift Reprieval stack comes with the hit that rolled it (XyGpcHjNaAzgk7mW fight 20 @ 17.238).
+        new(SunStrike.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(BlindingSlash.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(Omnistrike.ProcKey, Xavian.SwiftReprieval.LogId),
+        new(GoldenHour.ProcKey, GoldenHour.Buff.LogId),
+        new(SunsVerdict.ProcKey, SunsVerdict.Buff.LogId),
+        // Solar Glare takes Solar Blades past 100% crit chance: its hits are grievous crits.
+        new(SolarGlare.ProcKey, SolarBlades.AbilityId, DelaySeconds: 0.1, HitTypes: [ReplayScriptBuilder.HitTypeGrievousCrit]),
+        // A swing the enemy avoids is a miss or a dodge, neither dealing damage.
+        new(Core.Heroes.Xavian.Abilities.Attack.AvoidedProcKey, Core.Heroes.Xavian.Abilities.Attack.AbilityId, DelaySeconds: 0.05,
+            HitTypes: [ReplayScriptBuilder.HitTypeMiss, ReplayScriptBuilder.HitTypeDodge]),
+        // A Parry's Counter-Attack, Hallowed Shield stack and Vanguard of Vengeance stack (defensive procs).
+        // Each Counter-Attack hit is its own Parry: two Parries in one server frame are two hits.
+        new(VanguardOfVengeance.CounterAttackProcKey, LogIds.Effect(VanguardOfVengeance.CounterAttackEffectId), EachHitProves: true),
+        new(VanguardOfVengeance.StackProcKey, VanguardOfVengeance.Buff.LogId),
+        new(HallowedShield.ProcKey, HallowedShield.Buff.LogId),
+        // Solaris: the hits of one overheal (a defensive proc).
+        new(Xavian.SolarisProcKey, Xavian.SolarisLogId),
+        // Aura of Solace: the hits of one pulse (a logged pulse).
+        new(AuraOfSolace.PulseProcKey, LogIds.Effect(AuraOfSolace.DamageEffectId)),
 
         // Helena
         // Each bounce of a Shield Throw is a hit on an enemy the shield has not hit yet, landing 0.03-0.2s after the hit

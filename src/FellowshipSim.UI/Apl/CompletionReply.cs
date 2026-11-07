@@ -1,3 +1,4 @@
+using FellowshipSim.Core.APL.Editing;
 namespace FellowshipSim.UI.Apl;
 
 /// <summary>The completion list for codeField.js: its items, and the part of the text from <see cref="From"/> to <see cref="To"/> a pick is written in place of.</summary>

@@ -26,7 +26,7 @@ public class Bloodbath : Talent
         {
             if (ability is GrimCarve) hero.Auras.Apply(Buff, now);
         };
-        hero.CooldownAccelerations.Add((ability, now) => ability is ReignInBlood && hero.Auras.HasAura(Buff, now) ? Acceleration : 0.0);
+        hero.CooldownAccelerationTargetedSources.Add((ability, now) => ability is ReignInBlood && hero.Auras.HasAura(Buff, now) ? Acceleration : 0.0);
         hero.CooldownAccelerationAuraKeys.Add(Buff.Key);
     }
 }

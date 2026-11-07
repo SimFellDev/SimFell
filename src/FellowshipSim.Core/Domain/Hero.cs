@@ -62,12 +62,12 @@ public abstract class Hero : Actor
             hasteRating = Auras.StatVersion(StatType.HasteRating);
         var stats = Stats;
         if (recovery != _rateRecovery || haste != _rateHaste || hasteRating != _rateHasteRating
-            || CooldownAccelerations.Count != _rateAccelerations || _accelerationAuraChanges != _rateAccelerationAuras
+            || CooldownAccelerationSourceCount != _rateAccelerations || _accelerationAuraChanges != _rateAccelerationAuras
             || !ReferenceEquals(stats, _rateStats) || stats.Version != _rateStatsVersion)
         {
             (_rateRecovery, _rateHaste, _rateHasteRating) = (recovery, haste, hasteRating);
             (_rateAccelerations, _rateAccelerationAuras, _rateStats, _rateStatsVersion) =
-                (CooldownAccelerations.Count, _accelerationAuraChanges, stats, stats.Version);
+                (CooldownAccelerationSourceCount, _accelerationAuraChanges, stats, stats.Version);
             _rateInputsVersion++;
         }
         return _rateInputsVersion;
@@ -201,10 +201,30 @@ public abstract class Hero : Actor
     /// <summary>Damage multipliers for specific abilities that depend on the moment (e.g. scaling with current Spirit).</summary>
     public List<Func<Ability, SimTime, double>> AbilityDamageMultipliers { get; } = new();
 
-    /// <summary>Cooldown acceleration for specific abilities (0.05 = cooldown recovers 5% faster).</summary>
-    public List<Func<Ability, SimTime, double>> CooldownAccelerations { get; } = new();
+    /// <summary>
+    /// The m of <see cref="CooldownRate"/>: each adds m - 1 to the cooldown acceleration (1 = none, 3 = +200%), before the
+    /// compound sources multiply it.
+    /// </summary>
+    public List<Func<Ability, SimTime, double>> CooldownAccelerationMultiplierSources { get; } = new();
 
-    /// <summary>Keys of the auras a <see cref="CooldownAccelerations"/> entry reads, other than through haste (e.g. Glorious Purpose).</summary>
+    /// <summary>The c of <see cref="CooldownRate"/>: each multiplies the cooldown acceleration (1 = no effect).</summary>
+    public List<Func<Ability, SimTime, double>> CooldownAccelerationCompoundSources { get; } = new();
+
+    /// <summary>The f of <see cref="CooldownRate"/>: each adds to the cooldown acceleration after the compound sources (0 = no effect, 0.6 = 60%).</summary>
+    public List<Func<Ability, SimTime, double>> CooldownAccelerationFinalSources { get; } = new();
+
+    /// <summary>
+    /// The t of <see cref="CooldownRate"/>: an ability's own acceleration, added after the compound sources (0 = no effect,
+    /// 0.6 = +60%).
+    /// </summary>
+    public List<Func<Ability, SimTime, double>> CooldownAccelerationTargetedSources { get; } = new();
+
+    /// <summary>The number of cooldown acceleration sources of every kind (a new one changes the rate).</summary>
+    private int CooldownAccelerationSourceCount =>
+        CooldownAccelerationMultiplierSources.Count + CooldownAccelerationCompoundSources.Count
+        + CooldownAccelerationFinalSources.Count + CooldownAccelerationTargetedSources.Count;
+
+    /// <summary>Keys of the auras a cooldown acceleration source reads, other than through haste (e.g. Glorious Purpose).</summary>
     public HashSet<string> CooldownAccelerationAuraKeys { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Seconds added to Spirit of Heroism.</summary>
@@ -564,25 +584,35 @@ public abstract class Hero : Actor
     }
 
     /// <summary>
-    /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time). Recovery sources share one pool: each
-    /// adds its bonus part (Chronoshift's 8x adds 7, Strand of Eternity's 1.1x adds 0.1, The Monarch its percentage).
-    /// Charge abilities that recharge with haste add the haste on top.
-    /// Weapon abilities always recover a base rate.
-    /// (Fellowship Theorycrafting, "How Cooldowns Actually Work", measured from live logs.)
+    /// How fast <paramref name="ability"/>'s cooldown ticks down (1 = real time), a "more seconds per second" mechanic,
+    /// A = (1 + sum(m - 1)) x prod(c) + sum(f) + sum(t), in that order:
+    /// <list type="bullet">
+    /// <item>m, the "multiplier" sources: their effect is actually additive;
+    /// for example, the auras' <see cref="StatType.CooldownRecovery"/> (Strand of Eternity 1.1, Chronoshift's barrier 8) 
+    /// and <see cref="CooldownAccelerationMultiplierSources"/> (Glorious Purpose 3).</item>
+    /// <item>c, the compound sources (<see cref="CooldownAccelerationCompoundSources"/>): Event Horizon alone, 1 + haste.</item>
+    /// <item>f, the final sources: the haste of an ability whose charges recharge with haste (Highwind Arrow, Cold Snap)
+    /// and <see cref="CooldownAccelerationFinalSources"/>.</item>
+    /// <item>t, the targeted sources (<see cref="CooldownAccelerationTargetedSources"/>): an ability's own acceleration, added like f
+    /// in a pool of its own (The Monarch, Skylit Grace, Kill Em All, Bloodbath).</item>
+    /// </list>
+    /// Weapon abilities always recover at 1.
+    /// (Datamine of game build 26320967)
     /// </summary>
     public double CooldownRate(Ability ability, SimTime now)
     {
-        if (ability.IgnoresCooldownRecovery) return 1.0;
-        double pool = 1.0 + CooldownAcceleration(ability, now) + Auras.SumBonuses(StatType.CooldownRecovery, now);
-        return pool + (ability.ChargesRechargeWithHaste ? GetHaste(now) : 0.0);
-    }
-
-    /// <summary>Recovery bonuses specific to an ability (e.g. The Monarch for Major abilities), as fractions.</summary>
-    public double CooldownAcceleration(Ability ability, SimTime now)
-    {
-        double accel = 0.0;
-        foreach (var a in CooldownAccelerations) accel += a(ability, now);
-        return accel;
+        double total_rate;
+        if (ability.IgnoresCooldownRecovery) total_rate = 1.0;
+        else
+        {
+            total_rate = 1.0 + Auras.SumBonuses(StatType.CooldownRecovery, now);
+            foreach (var m in CooldownAccelerationMultiplierSources) total_rate += m(ability, now) - 1.0;
+            foreach (var c in CooldownAccelerationCompoundSources) total_rate *= c(ability, now);
+            if (ability.ChargesRechargeWithHaste) total_rate += GetHaste(now);   // NB: part of the f terms in game source
+            foreach (var f in CooldownAccelerationFinalSources) total_rate += f(ability, now);
+        }
+        foreach (var t in CooldownAccelerationTargetedSources) total_rate += t(ability, now);
+        return total_rate;
     }
 
     // ------------------------------------------------------------------ stats
