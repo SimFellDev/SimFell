@@ -99,6 +99,25 @@ public class TargetErrorTests
     }
 
     [Fact]
+    public void A_Run_With_Many_Most_Fights_Ends_At_The_Same_Fight_In_Chunks_Of_100()
+    {
+        const int most = 20_000;
+        Assert.Equal(MonteCarloSimulator.ChunkCount(most) * 2, MonteCarloSimulator.ChunkCount(most, Target));
+        var chunks = new List<MonteCarloChunk>();
+        var merged = new DpsMoments();
+        while (!merged.Reached(Target))
+        {
+            var chunk = Simulator().RunChunk(chunks.Count, Duration, most, firstSeed: 3, fight: Fight, targetError: Target);
+            Assert.Equal(DpsMoments.TargetErrorMinimumFights, chunk.Count);
+            chunks.Add(chunk);
+            merged = merged.Merge(new DpsMoments(chunk.Count, chunk.Mean, chunk.M2));
+        }
+        var whole = Simulator().Run(Duration, most, firstSeed: 3, degreeOfParallelism: 4, fight: Fight, targetError: Target);
+        var combined = MonteCarloSimulator.Combine(chunks, Duration, most, targetError: Target);
+        Assert.Equal(JsonSerializer.Serialize(whole, SimChunks.Json), JsonSerializer.Serialize(combined, SimChunks.Json));
+    }
+
+    [Fact]
     public void A_Run_To_A_Target_Checks_Its_Error_At_Least_Every_100_Fights()
     {
         Assert.Equal(100, MonteCarloSimulator.ChunkCount(100_000));
