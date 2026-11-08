@@ -691,13 +691,8 @@
     private static string Dps(double value) => Math.Abs(value) >= 100 ? N(value)
         : value.ToString(Math.Abs(value) >= 10 ? "0.0" : "0.00", CultureInfo.CurrentCulture);
 
-    /// <summary>The sim's target error, and the fights at which the sim reached it, or the most fights it ran without.</summary>
-    private string TargetText(double target)
-    {
-        string targetText = "target ±" + target.ToString("0.###", CultureInfo.CurrentCulture) + "%";
-        bool reached = Result.Iterations >= DpsMoments.TargetErrorMinimumFights && Result.MarginPercent < target;
-        return reached ? $"{targetText}, reached at {N(Result.Iterations)} fights" : $"{targetText}, not reached in {N(Result.Iterations)} fights";
-    }
+    /// <summary>The sim's target error.</summary>
+    private static string TargetText(double target) => "target ±" + target.ToString("0.###", CultureInfo.CurrentCulture) + "%";
 
     /// <summary>A thin bar for each span (start and end seconds in turn) along the fight, 1000 units wide.</summary>
     private string SpanPath(IReadOnlyList<double>? spans)

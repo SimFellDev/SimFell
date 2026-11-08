@@ -228,6 +228,20 @@ public sealed class SimPageState
     /// </summary>
     public double TargetError { get; set; }
 
+    /// <summary>
+    /// Sets <see cref="TargetError"/> from the page. A sim at the default iterations that gains a target error has
+    /// <see cref="SimProfile.DefaultTargetErrorIterations"/> most fights, as SimulationCraft's, and one that loses it has
+    /// the default iterations again.
+    /// </summary>
+    public void SetTargetError(double targetError)
+    {
+        if (TargetError <= 0 && targetError > 0 && Iterations == SimProfile.DefaultIterations)
+            Iterations = SimProfile.DefaultTargetErrorIterations;
+        else if (TargetError > 0 && targetError <= 0 && Iterations == SimProfile.DefaultTargetErrorIterations)
+            Iterations = SimProfile.DefaultIterations;
+        TargetError = targetError;
+    }
+
     /// <summary>The seed of a sim's first fight; fight i has this seed + i.</summary>
     public int FirstSeed { get; set; } = 1;
 
