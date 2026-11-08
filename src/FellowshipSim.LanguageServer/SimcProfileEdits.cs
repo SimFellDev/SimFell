@@ -100,7 +100,7 @@ public static partial class SimcProfileEdits
     {
         partial = PartBefore().Match(value).Value;
         if (SimProfile.BoolSettingNames.Contains(key) || key == StatsFromOldProfile) return Words(Bools);
-        if (key == SimProfile.Dungeon) return Words([.. DefaultDungeons.Names, .. GameDungeons.All.Select(d => d.Name)]);
+        if (key == SimProfile.Dungeon) return Words([.. DefaultDungeons.Names, .. GameDungeon.All.Where(d => d.Name.Length > 0 && d.Placements.Count > 0).Select(d => d.Name)]);
 
         if (NamesOf(key, file.ProfileHero) is { } named)
         {

@@ -13,13 +13,15 @@ namespace FellowshipSim.Tests;
 /// </summary>
 public class DungeonReaderTests
 {
-    private const int CithrelsFall = 7;
+    private const int CithrelsFall = CithrelsFallGameDungeon.DungeonId;
     // Game IDs: Ancient Koros, and Anomalous Orb, a creature Cithrel's Fall places nowhere.
     private const int Koros = 169, Orb = 286;
     // Actors: 10 is the pack's creature, 12 Koros, 13 the orbs, 14 an NPC of no creature, 20 an NPC of the party's.
     private const int PackActor = 10, KorosActor = 12, OrbActor = 13, MysteryActor = 14;
 
-    private static readonly CodexDungeon Dungeon = GameDungeons.ById(CithrelsFall)!;
+    private static readonly Func<GameCreature> NewKoros = () => new AncientKorosGameCreature(), NewOrb = () => new AnomalousOrbGameCreature();
+
+    private static readonly GameDungeon Dungeon =GameDungeon.ById(CithrelsFall)!;
 
     // A pack without a patrol with two placements of one creature, and that creature.
     private static readonly (CodexPlacement[] Placements, int Creature) Pack = FindPack();
@@ -159,8 +161,9 @@ public class DungeonReaderTests
     {
         CodexPlacement[] placements =
         [
-            new(1, 0, 0, null), new(1, DungeonPacks.Spacing, 0, null), new(1, 3 * DungeonPacks.Spacing, 0, null),
-            new(2, 10_000, 0, 4), new(2, 20_000, 0, 4),
+            new(Koros, NewKoros, 0, 0, null), new(Koros, NewKoros, DungeonPacks.Spacing, 0, null),
+            new(Koros, NewKoros, 3 * DungeonPacks.Spacing, 0, null),
+            new(Orb, NewOrb, 10_000, 0, 4), new(Orb, NewOrb, 20_000, 0, 4),
         ];
         Assert.Equal([0, 0, 1, 2, 2], DungeonPacks.Of(placements));
     }

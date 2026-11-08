@@ -82,7 +82,7 @@ public static class DungeonReader
             return null;
         }
 
-        var placements = GameDungeons.ById(Int(fight["gameZone"]["id"]) ?? 0)?.Placements ?? [];
+        var placements = GameDungeon.ById(Int(fight["gameZone"]["id"]) ?? 0)?.Placements ?? [];
         var packOf = DungeonPacks.Of(placements);
         var taken = new bool[placements.Count];
         var packOpened = new Dictionary<int, double>();

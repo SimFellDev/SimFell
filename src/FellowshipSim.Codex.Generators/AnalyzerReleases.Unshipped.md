@@ -38,3 +38,7 @@ CODEX030 | Codex | Error | HeroGenerator: a partial hero class names no hero rec
 CODEX031 | Codex | Error | HeroGenerator: a partial hero class names several hero records
 CODEX032 | Codex | Warning | HeroGenerator: two tuning values of a hero share a name
 CODEX033 | Codex | Warning | HeroGenerator: a hero constant's name is a member of the class or a base class
+CODEX034 | Codex | Error | DungeonGenerator: a partial dungeon class names no dungeon record
+CODEX035 | Codex | Warning | DungeonGenerator: two tuning values of a dungeon share a name
+CODEX036 | Codex | Warning | DungeonGenerator: a dungeon constant's name is a member of the class or a base class
+CODEX037 | Codex | Warning | DungeonGenerator: a dungeon placement names no creature record

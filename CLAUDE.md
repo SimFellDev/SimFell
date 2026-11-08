@@ -141,8 +141,12 @@ or the desktop app).
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to
   the engine.
 - `FellowshipSim.Core`'s build keeps the Codex's data export in `codex-export/` (git-ignored) at the Codex's game build.
-  `FellowshipSim.Codex.Generators` writes each creature's `<Name>GameCreature` class and `GameDungeons`, each dungeon's
-  creature placements, from it. Its `LegendaryGenerator` writes the game data's half of each `partial` legendary class
+  `FellowshipSim.Codex.Generators` writes each creature's `<Name>GameCreature` class from it. Its `DungeonGenerator`
+  writes a `partial` `<Name>GameDungeon` class for each dungeon record, with or without a hand-written half for the
+  dungeon's mechanics: `DungeonId`, `DungeonName`, the record's fields as `Dungeon<Field>` (`DungeonLevelType`,
+  `DungeonQualifierTime`, `DungeonDifficulties`...), the tuning values, `DungeonPlacements` with each creature by its
+  `<Name>GameCreature` class's `ID` and a factory `() => new <Name>GameCreature()`, and the `GameDungeon` overrides. `GameDungeon.All` and `GameDungeon.ById` have every
+  dungeon. Its `LegendaryGenerator` writes the game data's half of each `partial` legendary class
   named after a legendary power: `PowerId`, the item IDs, the tuning values and the `Legendary` overrides. `Catalog` reads
   a legendary's hero and items from an instance. Its `AbilityGenerator` writes the game data's half of each `partial`
   ability class in `Heroes/<Hero>` named after an ability record of that hero: `AbilityId`, `AbilityName`, the record's

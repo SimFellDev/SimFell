@@ -24,7 +24,7 @@
     <ProjectReference Include="..\FellowshipSim.Codex.Generators\FellowshipSim.Codex.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <!-- Game data in codex-export/: each creature's class (CreatureGenerator) and each dungeon's creature placements (DungeonGenerator). -->
+  <!-- Game data in codex-export/: each creature's class (CreatureGenerator) and each dungeon's class (DungeonGenerator). -->
   <PropertyGroup>
     <CodexExportFolder>$(MSBuildThisFileDirectory)../../codex-export/</CodexExportFolder>
     <CodexExportUrl>https://codex.fellowshipanalyzer.com/api/export</CodexExportUrl>
@@ -63,9 +63,5 @@
     <DownloadFile Condition="'$(CodexExportOutOfDate)' == 'true'" SourceUrl="$(CodexExportUrl)/settings.json" DestinationFolder="$(CodexExportDownloadFolder)" SkipUnchangedFiles="false" Retries="3" />
     <Copy Condition="'$(CodexExportOutOfDate)' == 'true'" SourceFiles="$(CodexExportDownloadFolder)entities.jsonl;$(CodexExportDownloadFolder)settings.json;$(CodexExportDownloadFolder)export.json" DestinationFolder="$(CodexExportFolder)" />
   </Target>
-
-  <ItemGroup>
-    <Folder Include="Enemies\" />
-  </ItemGroup>
 
 </Project>
