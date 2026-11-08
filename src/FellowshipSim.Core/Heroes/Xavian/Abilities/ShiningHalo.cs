@@ -6,22 +6,8 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 /// Cooldown. BRILLIANCE: While Shining Halo is active, each Brilliant Flash you cast extends the duration of it by 2
 /// seconds." Cooldown 30s, 218 Mana.
 /// </summary>
-public class ShiningHalo : XavianAbility
+public partial class ShiningHalo : XavianAbility
 {
-    public const int AbilityId = 1859;
-    public const string AbilityName = "Shining Halo";
-    /// <summary>Placeholder ShiningHaloDmg: 27% of Strength.</summary>
-    public const double Coefficient = 0.27;
-    public const double CooldownSeconds = 30.0;
-    /// <summary>Game data cost 218 Mana.</summary>
-    public const double Cost = 218;
-    public const double DurationSeconds = 12.0;
-    /// <summary>
-    /// Combat logs (XyGpcHjNaAzgk7mW fight 20, 24 halos): a pulse as it is cast, then one every 1.50s whatever the Haste.
-    /// </summary>
-    public const double PulseSeconds = 1.5;
-    /// <summary>Game data targetCountFalloff threshold 12.</summary>
-    public const double TargetThreshold = 12;
     /// <summary>BRILLIANCE: seconds each Brilliant Flash adds while the halo is active.</summary>
     public const double BrillianceSeconds = 2.0;
 
@@ -42,13 +28,13 @@ public class ShiningHalo : XavianAbility
     private SimTime _endsAt = SimTime.Zero;
     private int _halo;
 
-    public ShiningHalo(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public ShiningHalo(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
-        ManaCost = Cost;
+        BaseCoefficient = DamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown);
+        ManaCost = AbilityCost;
         IgnoresGcd = true;
-        AoeTargetThreshold = TargetThreshold;
+        AoeTargetThreshold = DamageScalingTargetCountThreshold;
     }
 
     public bool IsActive(SimTime now) => now <= _endsAt && _halo > 0;
@@ -76,7 +62,7 @@ public class ShiningHalo : XavianAbility
         Placed?.Invoke(ctx);
         // A new halo replaces the one up (combat logs: no pulse of the old one after the cast).
         int halo = ++_halo;
-        _endsAt = now + SimTime.FromSeconds(DurationSeconds + BonusDurationSeconds);
+        _endsAt = now + SimTime.FromSeconds(AoeDuration + BonusDurationSeconds);
         Xavian.Auras.Apply(Buff, now);
         Pulse(ctx);
         Xavian.RaiseOffensiveAbilityUsed(ctx, this);
@@ -90,9 +76,10 @@ public class ShiningHalo : XavianAbility
                 return;
             }
             Pulse(c);
-            c.Schedule(SimTime.FromSeconds(PulseSeconds), Next, AbilityName);
+            c.Schedule(SimTime.FromSeconds(AoePeriod), Next, AbilityName);
         }
-        ctx.Schedule(SimTime.FromSeconds(PulseSeconds), Next, AbilityName);
+        // Combat logs (XyGpcHjNaAzgk7mW fight 20, 24 halos): a pulse as it is cast, then one every period whatever the Haste.
+        ctx.Schedule(SimTime.FromSeconds(AoePeriod), Next, AbilityName);
     }
 
     /// <summary>
@@ -103,7 +90,7 @@ public class ShiningHalo : XavianAbility
     {
         if (ctx.ActiveEnemies.Count == 0) return;
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, ctx.ActiveEnemies, ctx);
-        double falloff = Falloff(struck.Count, TargetThreshold);
+        double falloff = Falloff(struck.Count, DamageScalingTargetCountThreshold);
         var now = ctx.CurrentTime;
         for (int i = 0; i < struck.Count; i++)
         {

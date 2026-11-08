@@ -93,8 +93,8 @@ public class ArdeosTalentSmokeTests(ITestOutputHelper output)
     {
         foreach (int targets in new[] { 1, 8 })
         {
-            var (without, _, _) = Run(BaseTalents, targets, legendaryItemIds: [Explosivo.HelmItemId]);
-            var (with, hero, _) = Run(BaseTalents, targets, legendaryItemIds: [FireToad.HelmItemId]);
+            var (without, _, _) = Run(BaseTalents, targets, legendaryItemIds: [Explosivo.ChestItemId]);
+            var (with, hero, _) = Run(BaseTalents, targets, legendaryItemIds: [FireToad.HeadItemId]);
             Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Legendary"));
             double before = without.AbilityDpsBreakdown.GetValueOrDefault("Fire Frogs");
             double after = with.AbilityDpsBreakdown.GetValueOrDefault("Fire Frogs");

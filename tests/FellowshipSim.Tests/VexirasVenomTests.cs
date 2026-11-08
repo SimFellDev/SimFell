@@ -15,7 +15,7 @@ public class VexirasVenomTests
     public void A_Refresh_Spreads_The_Ticks_Left_And_The_Crit_Over_The_Ticks_Of_A_New_Venom(
         double tick, double crit, double left, double nextTick, double sinceTick, double logged)
     {
-        double refreshed = VexirasVenom.RefreshedTick(tick, VexirasVenom.DamageShare * crit, left, nextTick, sinceTick);
+        double refreshed = VexirasVenom.RefreshedTick(tick, VexirasVenom.DamageToDotDamageMultiplier * crit, left, nextTick, sinceTick);
 
         Assert.InRange(refreshed / logged, 0.99, 1.01);
     }

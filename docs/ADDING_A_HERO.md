@@ -14,8 +14,9 @@ src/FellowshipSim.Core/
   Customization/  gear shared by all heroes: Aspects/, Sigils/, ProtectiveEnchants/ (all Augmentations/), Glyphs/, Gems/,
                   RelicPassives/, Legendaries/, Weapons/, WeaponAbilities/
   Import/         CharacterBuild (a build by game IDs) and HeroImporter (build -> hero)
-  Catalog.cs      finds every class above by its ID: nothing to register by hand. The IDs (Id, WeaponAbilityId,
-                  ItemIds, HeroName) are constants or lists of constants, read at build time
+  Catalog.cs      finds every class above by its ID: nothing to register by hand. A talent's, augmentation's, glyph's
+                  and relic passive's Id, a legendary's ItemIds and HeroName and a weapon's WeaponAbilityId are read
+                  from an instance
 
 src/FellowshipSim.Engine/
   Replay/         replaying combat logs and the review page, with everything only a replay needs (see section 5)
@@ -48,16 +49,27 @@ IDs, so they are matched by name.
 
 ## 1. The hero class
 
-Create `Heroes/<Hero>/<Hero>.cs`, a subclass of `Hero`. The class name is the hero's name (`Elarion`); the catalog finds
-it automatically, and the web page lets you replay that hero's fights once it exists.
+Create `Heroes/<Hero>/<Hero>.cs`, a `partial` subclass of `Hero`. The class name is the hero's name in Pascal case
+(`Elarion`); the catalog finds it automatically, and the web page lets you replay that hero's fights once it exists. The
+record is the hero of that name in the game data. `HeroGenerator` writes the class's game data half:
+
+- `HeroId` and `HeroName`;
+- one constant per scalar field of the record, named `Hero` and the field's name: `HeroTitle`, `HeroMainStat`,
+  `HeroColor`, `HeroPortrait`, `HeroRole`, `HeroRoleIcon`, `HeroOverallDifficulty`, `HeroOffense`, `HeroDefense` and
+  `HeroControl`;
+- one constant per base attribute of the record, named `Hero` and the attribute's name: `HeroBalancingDamageAura`,
+  `HeroMaxResources`, `HeroResources`, `HeroMaxResourcesSecond`, `HeroMaxMana`, `HeroManaRegenRate`, `HeroBaseHealth`...;
+- one constant per tuning value of the record with no owner or the hero as its owner, under the tuning value's name.
+
+A number is an `int` when it is whole and a `double` otherwise. The generator leaves out a tuning name with two different
+values (warning CODEX032) and a name the class or a base class already has (warning CODEX033). The class's own part has
+the behaviour and the values the record does not have: Focus and Energy regeneration per second, Spirit Points per Spirit
+Refund, log timings and proc keys.
 
 ```csharp
-public sealed class Elarion : Hero
+public sealed partial class Elarion : Hero
 {
-    public static readonly ResourceDef Focus = new("Focus", Max: 100);
-
-    /// <summary>Class tuning: hero attribute BalancingDamageAura in the game data.</summary>
-    public const double BalancingDamageAura = 1.0;
+    public static readonly ResourceDef Focus = new("Focus", Max: HeroMaxResources, Initial: HeroResources);
 
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
         TalentSlot.InRow(1, 2, /* talent IDs in columns a, b, c */ 0, 0, 0)
@@ -65,11 +77,13 @@ public sealed class Elarion : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
+    public override MainStat MainStat => HeroMainStat;
+
     public override void Initialize()
     {
         AddResource(Focus);
-        SpiritRefundResource = Focus;           // Spirit Refund gives back the hero's spender resource
-        ClassDamageTuning = BalancingDamageAura;  // every hero's class tuning aura (1.0 = none)
+        SpiritRefundResource = Focus;               // Spirit Refund gives back the hero's spender resource
+        ClassDamageTuning = HeroBalancingDamageAura;  // every hero's class tuning aura (1 = none)
         Abilities.Add(new FocusedShot(this));
         // ...
     }
@@ -84,23 +98,34 @@ crit, expertise and spirit.
 
 ## 2. Abilities
 
-One file per ability in `Heroes/<Hero>/Abilities/`. Constants first, then auras, then the constructor and what the
-ability does:
+One file per ability in `Heroes/<Hero>/Abilities/`. An ability with a record in the game data is a `partial` class named
+after the record (the name in Pascal case, letters and digits only, an apostrophe inside its word) in the hero's
+namespace. Of several records of that name and hero, the one with a category is the class's. `AbilityGenerator` writes
+the class's game data half:
+
+- `AbilityId` and `AbilityName`;
+- one constant per scalar field of the record, named `Ability` and the field's name: `AbilityCategory`,
+  `AbilityCooldown`, `AbilityCharges`, `AbilityGlobalCooldown`, `AbilityGlobalCooldownScalesWithHaste`,
+  `AbilityCastTime`, `AbilityCastTimeScalesWithHaste`, `AbilityChannelTime`, `AbilityChannelTick`, `AbilityCost`,
+  `AbilityResource`, `AbilityDuration`, `AbilityPeriod`, `AbilityRange`, `AbilityMinRange`, `AbilityRadius` and
+  `AbilityMaxTargets` (range, minimum range and radius in centimetres);
+- one constant per tuning value of the record, under the tuning value's name.
+
+A number is an `int` when it is whole and a `double` otherwise. The generator leaves out a tuning name with two different
+values (warning CODEX008) and a name the class or a base class already has (warning CODEX009). The class's own part has
+the behaviour and the values the record does not have: log timings, proc keys, other records' effect IDs. Constants
+first, then auras, then the constructor and what the ability does:
 
 ```csharp
 /// <summary>Focused Shot: ... (tooltip text)</summary>
-public class FocusedShot : Ability
+public partial class FocusedShot : ElarionAbility
 {
-    public const int AbilityId = 1315;
-    public const string AbilityName = "Focused Shot";
-    public const double Coefficient = 1.23;        // game data placeholder coefficient
-    public const double CastTimeSeconds = 1.5;
     public const double FocusGain = 20;
 
-    public FocusedShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public FocusedShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        BaseCoefficient = AgilityCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
         // SetCooldown(seconds, charges, scalesWithHaste) and SetChannel(duration, tickPeriod) as the game data says.
     }
 
@@ -135,17 +160,27 @@ Action lists (APL) refer to abilities by their name in snake case (`focused_shot
 
 ## 3. Talents
 
-One file per talent in `Heroes/<Hero>/Talents/`. A talent hooks its effect into the hero in `Bind`, so abilities never
-check which talents are taken:
+One file per talent in `Heroes/<Hero>/Talents/`. A talent with a record in the game data is a `partial` class named
+after the record (the name in Pascal case, letters and digits only, an apostrophe inside its word) in the hero's
+namespace; the record is the talent of that name in one of the hero's talent slots. `TalentGenerator` writes the class's
+game data half:
+
+- `TalentId` and `TalentName`;
+- one constant per scalar field of the record, named `Talent` and the field's name: `TalentCooldown`, `TalentCost`,
+  `TalentDuration`, `TalentRange` and `TalentRadius`;
+- one constant per tuning value of the record, under the tuning value's name.
+
+As for abilities, a number is an `int` when it is whole and a `double` otherwise. The generator leaves out a tuning name
+with two different values (warning CODEX012) and a name the class or a base class already has (warning CODEX013). The
+class's own part has the `Name` and `Id` overrides, the behaviour and the values the record does not have. A talent hooks
+its effect into the hero in `Bind`, so abilities never check which talents are taken:
 
 ```csharp
 /// <summary>Talent 627: "Each pulse of Bursting Ice grants you Harrowing Ice ..." (tooltip text)</summary>
-public class HarrowingIce : Talent
+public partial class HarrowingIce : Talent
 {
-    public const int TalentId = 627;
-    public const string TalentName = "Harrowing Ice";
-    public const double DamagePerStack = 0.03;
-    public static readonly AuraDef Buff = AuraDef.Effect("Harrowing Ice", 2839, 12.0, 31);
+    public const int EffectId = 2839;
+    public static readonly AuraDef Buff = AuraDef.Effect("Harrowing Ice", EffectId, Duration, MaxStacks);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -153,7 +188,7 @@ public class HarrowingIce : Talent
     public override void Bind(Hero hero)
     {
         var burstingIce = hero.GetAbility<BurstingIce>();
-        burstingIce.PulseDamageMultipliers.Add(ctx => 1.0 + DamagePerStack * hero.Auras.GetStacks(Buff, ctx.CurrentTime));
+        burstingIce.PulseDamageMultipliers.Add(ctx => 1.0 + DamageScalerPerStack * hero.Auras.GetStacks(Buff, ctx.CurrentTime));
         burstingIce.Pulsed += ctx => hero.Auras.Apply(Buff, ctx.CurrentTime);
     }
 }
@@ -205,12 +240,12 @@ All found by the catalog through their ID constants; add the file and it is used
 
 | Content | Folder | Identified by |
 |---|---|---|
-| Aspect, sigil, protective enchant | `Customization/Aspects`, `Sigils`, `ProtectiveEnchants` | `AspectId`, `SigilId` or `ProtectiveEnchantId` (`Id`); per-rank values as `public static readonly double[] XByRank` read with `ForRank(...)` |
-| Glyph | `Customization/Glyphs` | `GlyphId` and its name (logs match glyphs by name) |
+| Aspect, sigil, protective enchant | `Customization/Aspects`, `Sigils`, `ProtectiveEnchants` | a `partial` class deriving from `Aspect`, `Sigil` or `ProtectiveEnchant`, named after the record of that type (Pascal case, letters and digits only, an apostrophe inside its word), with `Bind` and its `Id` and `Name` overrides; `AugmentationGenerator` writes its `<Type>Id` and `<Type>Name`, a constant per scalar field of the record (`<Type>MaxRank`, `<Type>RandomChance`, `<Type>Cooldown`, `<Type>Duration`, and `<Type>ProcsPerMinute` from its one proc roll), a constant per tuning value under the tuning value's name, and each rank run as `public static readonly double[] <Key>ByRank` (the run's key without `Trait.<Row>.`, its segments joined) read with `ForRank(...)`. A `delta` run's values are multipliers (1.072 for 7.2%), and a `ticks` run's values are per tick |
+| Glyph | `Customization/Glyphs` | a `partial` class deriving from `Glyph`, named after the glyph record (Pascal case, letters and digits only, an apostrophe inside its word), with `Bind` and its `Id` and `Name` overrides; `GlyphGenerator` writes its `GlyphId` and `GlyphName` (logs match glyphs by name), `GlyphMaxRank` and `GlyphAbilityRank`, and each tuning value under its name: a constant when the value is the same at every rank, otherwise `public static readonly double[] <Name>ByRank` read with `ForRank(...)` |
 | Gem colour | `Customization/Gems` | its `AllNodes` table (node ID, slot, required power, values) |
-| Relic passive | `Customization/RelicPassives` | `RelicPassiveId` (`Id`) |
-| Legendary | `Customization/Legendaries` | `HeroName` and the `ItemIds` that grant it |
-| Weapon | `Customization/Weapons` (+ its ability in `WeaponAbilities`) | `WeaponAbilityId` |
+| Relic passive | `Customization/RelicPassives` | a `partial` class deriving from `RelicPassive`, named after the relic passive record (Pascal case, letters and digits only, an apostrophe inside its word), with `Bind` and its `Id`, `Name` and `Items` overrides (`Items` returns `RelicPassiveItems`); `RelicPassiveGenerator` writes its `RelicPassiveId` and `RelicPassiveName`, `RelicPassiveCooldown` and `RelicPassiveProcsPerMinute` (from its one proc roll), a constant per tuning value under the tuning value's name, each granting item's `<Slot>ItemId` and `<Slot>ItemName` (`RelicItemId`, `RelicItemName`), and `public static readonly RelicItem[] RelicPassiveItems` |
+| Legendary | `Customization/Legendaries` | a `partial` class deriving from `Legendary`, named after the legendary power (Pascal case, letters and digits only), with `Bind`; `LegendaryGenerator` writes its `PowerId`, its items' `<Slot>ItemId`, a constant per tuning value under the tuning value's name, and its `LegendaryPowerId`, `Name`, `HeroName` and `ItemIds` |
+| Weapon | `Customization/Weapons` (+ its ability in `WeaponAbilities`) | a `partial` class deriving from `Weapon`, named after the weapon power or an item granting it (Pascal case, letters and digits only, an apostrophe inside its word), with its `Name`, `Equip` and a `WeaponAbilityId` override returning `WeaponPowerAbilityId`; `WeaponGenerator` writes its `WeaponPowerId`, `WeaponPowerName` and `WeaponPowerAbilityId`. Its ability is a `partial` class deriving from `Ability` in `WeaponAbilities`, named after the weapon power; `WeaponGenerator` writes its `WeaponPowerId`, `WeaponPowerName`, the granted ability's `AbilityId`, `AbilityName` and fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...), and a constant per tuning value of the power under the tuning value's name |
 | Gear items (the editor's slots and their stats) | `Import/GameGearData.cs`, written by `tools/generate-gear.cs`, not by hand | the item ID, per hero |
 | Buff from another player | `FellowshipSim.Engine/Replay/PartyBuffs.cs` | the buff's effect ID (optionally scaled by the giver's sigil rank) |
 

@@ -5,16 +5,11 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// Empowered Multishots. Can be used during Global Cooldown." Has a cooldown; effect 2009 (a duration and stacks). Fervent
 /// Supremacy turns the duration into charges that last longer.
 /// </summary>
-public class SkystridersSupremacy : ElarionAbility
+public partial class SkystridersSupremacy : ElarionAbility
 {
-    public const int AbilityId = 1398;
-    public const string AbilityName = "Skystrider's Supremacy";
-    public const double CooldownSeconds = 45.0;
     public const int BuffEffectId = 2009;
-    public const double BuffSeconds = 4.0;
-    public const int MaxBuffStacks = 4;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Skystrider's Supremacy", BuffEffectId, BuffSeconds, MaxBuffStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect("Skystrider's Supremacy", BuffEffectId, AbilityDuration, MaxStacks);
 
     /// <summary>The buff the cast gives (Fervent Supremacy: charges that last longer).</summary>
     public AuraDef CastBuff { get; set; } = Buff;
@@ -22,9 +17,9 @@ public class SkystridersSupremacy : ElarionAbility
     /// <summary>Charges the cast gives, each used by one Multishot (Fervent Supremacy); 0 for every Multishot while it lasts.</summary>
     public int ChargesGranted { get; set; }
 
-    public SkystridersSupremacy(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public SkystridersSupremacy(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 

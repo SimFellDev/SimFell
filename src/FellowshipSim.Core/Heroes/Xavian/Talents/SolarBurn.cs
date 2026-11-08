@@ -8,14 +8,9 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// 1.5, a damage over time). Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 11.122): a tick deals a sixth of the main target's
 /// Solar Blades hit, crit included (2302 -> 384).
 /// </summary>
-public class SolarBurn : Talent
+public partial class SolarBurn : Talent
 {
-    public const int TalentId = 570;
-    public const string TalentName = "Solar Burn";
     public const int DotEffectId = 2660;
-    public const double DamageShare = 1.0;
-    public const double DurationSeconds = 9.0;
-    public const double PeriodSeconds = 1.5;
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -23,8 +18,8 @@ public class SolarBurn : Talent
     public override void Bind(Hero hero)
     {
         var xavian = (Xavian)hero;
-        var dot = new XavianDot(xavian, DotEffectId, "Sunburn", PeriodSeconds, DurationSeconds);
+        var dot = new XavianDot(xavian, DotEffectId, "Sunburn", DotPeriod, DotDuration);
         hero.Register(dot.Debuff);
-        xavian.SolarBlades.MainTargetHit += (ctx, enemy, dealt) => dot.Apply(ctx, enemy, dealt * DamageShare);
+        xavian.SolarBlades.MainTargetHit += (ctx, enemy, dealt) => dot.Apply(ctx, enemy, dealt * DotDamageScaler);
     }
 }

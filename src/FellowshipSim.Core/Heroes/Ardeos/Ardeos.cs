@@ -8,20 +8,18 @@ namespace FellowshipSim.Core.Heroes.Ardeos;
 /// Ardeos, the Pyromancer. His abilities generate Cinders; a set amount of Cinders is a Burning Ember. Detonate spends them.
 /// His fire damage over time effects run on <see cref="Dots"/>. Abilities are in Abilities/, talents in Talents/.
 /// </summary>
-public sealed class Ardeos : Hero, ITargetEffects
+public sealed partial class Ardeos : Hero, ITargetEffects
 {
     /// <summary>Cinders generated for each Burning Ember, shown in the UI as orbs.</summary>
     public const double CindersPerBurningEmber = 100.0;
     public const int MaxBurningEmbers = 4;
 
     /// <summary>
-    /// Game data: Cinders, <see cref="CindersPerBurningEmber"/> to a Burning Ember. Combat logs report
+    /// Game data: Cinders, <see cref="CindersPerBurningEmber"/> to a Burning Ember and <see cref="HeroMaxResources"/> at most
+    /// (<see cref="MaxBurningEmbers"/> Burning Embers). Combat logs report
     /// them as resource type 2 in hundredths.
     /// </summary>
-    public static readonly ResourceDef Cinders = new("Cinders", Max: CindersPerBurningEmber * MaxBurningEmbers);
-
-    /// <summary>Class tuning: hero attribute BalancingDamageAura (game data, Ardeos baseAttributes).</summary>
-    public const double BalancingDamageAura = 1.1;
+    public static readonly ResourceDef Cinders = new("Cinders", Max: HeroMaxResources);
 
     /// <summary>Ardeos's talent tree, as in game (talent-slot records in game data).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
@@ -35,8 +33,7 @@ public sealed class Ardeos : Hero, ITargetEffects
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Game data hero 7: mainStat Intellect.</summary>
-    public override MainStat MainStat => MainStat.Intellect;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>Every fire damage over time effect of Ardeos's abilities on enemies.</summary>
     public DotTracker Dots { get; }
@@ -109,7 +106,7 @@ public sealed class Ardeos : Hero, ITargetEffects
     {
         AddResource(Cinders);
         SpiritRefundResource = Cinders;
-        ClassDamageTuning = BalancingDamageAura;
+        ClassDamageTuning = HeroBalancingDamageAura;
 
         Abilities.Add(new FireBall(this));
         Abilities.Add(new FireFrogs(this));

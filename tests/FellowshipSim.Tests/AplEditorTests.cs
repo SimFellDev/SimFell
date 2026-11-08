@@ -145,10 +145,10 @@ public class AplEditorTests
     {
         var (hero, ctx) = Fight(100);
         var charges = AplParser.ParseExpression("cooldown.cold_snap.charges");
-        Assert.Equal(ColdSnap.Charges, charges.EvaluateNumeric(hero, ctx));
+        Assert.Equal(ColdSnap.AbilityCharges, charges.EvaluateNumeric(hero, ctx));
         Assert.True(AplParser.ParseActionLine("cold_snap")!.Execute(hero, ctx));
         ctx.RunUntil(SimTime.FromSeconds(1));
-        Assert.Equal(ColdSnap.Charges - 1, charges.EvaluateNumeric(hero, ctx));
+        Assert.Equal(ColdSnap.AbilityCharges - 1, charges.EvaluateNumeric(hero, ctx));
         Assert.True(AplParser.ParseExpression("cooldown.cold_snap.ready").Evaluate(hero, ctx));
     }
 

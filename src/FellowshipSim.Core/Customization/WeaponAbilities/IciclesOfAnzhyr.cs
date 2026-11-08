@@ -9,34 +9,30 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// damage, crit chance and crit power of the cast; damage falls off beyond a target cap (every wave on 16-22
 /// enemies fits one cap; all 12 casts then match). The curse (effect 2286) ticks on a hasted period.
 /// </summary>
-public class IciclesOfAnzhyr : Ability
+public partial class IciclesOfAnzhyr : Ability
 {
-    public const int AbilityId = 1561;
-    public const string AbilityName = "Icicles of An'zhyr";
+    /// <summary>Game data: tuning <c>Aoe.Damage.PrimaryAttributeCoefficient</c> of weapon power 357.</summary>
     public const double Coefficient = 1.44;
-    public const double CooldownSeconds = 40.0;
-    public const int Waves = 3;
+    /// <summary>Combat logs: the first wave lands 0.27s after the cast (the game data's <see cref="VolleyDamageDelay"/> is 0.25).</summary>
     public const double FirstWaveSeconds = 0.27;
-    public const double WaveIntervalSeconds = 1.0;
     public const double TargetThreshold = 15;
     public const double CursedDamageMultiplier = 3.0;
 
     public const int CurseEffectId = 2286;
     public const string CurseName = "Curse of An'zhyr";
+    /// <summary>Game data: tuning <c>Debuff.PrimaryAttributeCoefficient</c> of weapon power 357.</summary>
     public const double CurseCoefficient = 0.384;
-    /// <summary>Effect 2286 Period; hasted.</summary>
-    public const double CurseTickSeconds = 3.0;
 
     /// <summary>The curse on an enemy (permanent).</summary>
     public static readonly AuraDef Curse = AuraDef.Effect(CurseName, CurseEffectId);
 
     private readonly CurseTick _curse;
 
-    public IciclesOfAnzhyr(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
+    public IciclesOfAnzhyr(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         BaseCoefficient = Coefficient;
         AoeTargetThreshold = TargetThreshold;
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         _curse = new CurseTick(owner);
         // Effect 2286 is tagged EffectType.Dot.
@@ -58,10 +54,10 @@ public class IciclesOfAnzhyr : Ability
         double critMultiplier = CritMultiplierAt(now);
         // The curse this cast applies (or re-applies) snapshots the cast too.
         var curse = new CurseSnapshot(_curse.BaseDamage(ctx, null), critChance, critMultiplier);
-        for (int i = 0; i < Waves; i++)
+        for (int i = 0; i < NumberOfVolleys; i++)
         {
-            bool final = i == Waves - 1;
-            ctx.Schedule(SimTime.FromSeconds(FirstWaveSeconds + i * WaveIntervalSeconds),
+            bool final = i == NumberOfVolleys - 1;
+            ctx.Schedule(SimTime.FromSeconds(FirstWaveSeconds + i * VolleyInterval),
                 c => Wave(c, target, final, damage, critChance, critMultiplier, curse), Name);
         }
     }
@@ -117,13 +113,13 @@ public class IciclesOfAnzhyr : Ability
         }
         // Effect 2286 is tagged EffectType.Dot with no tickrate exemption, a hasted period, Infinite, no tick on application
         // Its ticks run on the game's period timer, which each Haste change re-arms at Period / Haste(now).
-        timer = HastedTimer.StartPeriod(ctx, Owner, CurseTickSeconds, Tick, CurseName, _curse.DamageLogId);
+        timer = HastedTimer.StartPeriod(ctx, Owner, TickInterval, Tick, CurseName, _curse.DamageLogId);
     }
 
     /// <summary>The curse's damage numbers (logged as effect 2286).</summary>
     private sealed class CurseTick : Ability
     {
-        public CurseTick(Hero owner) : base(owner, LogIds.Effect(CurseEffectId), CurseName, AbilityCategory.Weapon)
+        public CurseTick(Hero owner) : base(owner, LogIds.Effect(CurseEffectId), CurseName, AbilityCategory)
         {
             BaseCoefficient = CurseCoefficient;
         }

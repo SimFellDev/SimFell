@@ -3,10 +3,8 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>Talent 628: Frost Swallow hits have a chance to trigger a Bursting Ice pulse on the target.</summary>
-public class BurstingSwallows : Talent
+public partial class BurstingSwallows : Talent
 {
-    public const int TalentId = 628;
-    public const string TalentName = "Bursting Swallows";
     public const double ProcChance = 0.12;
 
     public override string Name => TalentName;

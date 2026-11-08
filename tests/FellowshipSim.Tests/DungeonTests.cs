@@ -487,7 +487,7 @@ public class DungeonTests
     public void An_Enemy_Keeps_Its_Shackle_Slow_Ticks_After_Its_Pull_Duration()
     {
         // The pull ends 3s into the Slow, 12s before the Slow runs out.
-        double pullEnds = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 3.0;
+        double pullEnds = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.Duration + 3.0;
         var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob", HitPoints: TrashHitPoints)], pullEnds), Boss(2, 30, final: true));
         var build = Build();
         build.WeaponAbilityId = AlzeracsShackle.AbilityId;

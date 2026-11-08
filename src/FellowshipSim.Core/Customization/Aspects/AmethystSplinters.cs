@@ -20,10 +20,8 @@ namespace FellowshipSim.Core.Customization.Aspects;
 /// the full ticks, one duration after the crit. It ends on the enemy's death and on the hero's
 /// (EffectLogic.RemoveOnDeath, EffectLogic.RemoveOnSourceDeath), with no partial tick.
 /// </summary>
-public class AmethystSplinters : Aspect
+public partial class AmethystSplinters : Aspect
 {
-    public const int AspectId = 31;
-    public const string AspectName = "Amethyst Splinters";
     public const int DotEffectId = 101;
     public const string DotName = "Amethyst Splinter";
     /// <summary>Game data, every rank.</summary>
@@ -31,8 +29,6 @@ public class AmethystSplinters : Aspect
     /// <summary>Game data, every rank; hasted, no tick on application.</summary>
     public const double TickPeriodSeconds = 2.0;
     public const double BaseTicks = DurationSeconds / TickPeriodSeconds;
-    /// <summary>Share of each critical hit's damage dealt again over <see cref="DurationSeconds"/>.</summary>
-    public static readonly double[] DamageShareByRank = [0.04, 0.06, 0.08, 0.11];
 
     public override int Id => AspectId;
     public override string Name => AspectName;
@@ -67,7 +63,7 @@ public class AmethystSplinters : Aspect
 
     public override void Bind(Hero hero)
     {
-        double share = ForRank(DamageShareByRank);
+        double share = ForRank(DebuffDamagePercentageByRank);
         int logId = LogIds.Effect(DotEffectId);
         hero.DotDamageIds.Add(logId);
         var splinters = new Dictionary<EnemyTarget, Splinter>();

@@ -91,7 +91,7 @@ public class GundeTalentSmokeTests(ITestOutputHelper output)
     [Fact]
     public void Carrion_Onslaught_Raises_Blood_Arc_Damage()
     {
-        var (without, _, _) = Run(BaseTalents, 1, legendaryItemIds: [BloodyMess.HelmItemId]);
+        var (without, _, _) = Run(BaseTalents, 1, legendaryItemIds: [BloodyMess.HeadItemId]);
         var (with, hero, gained) = Run(BaseTalents, 1, legendaryItemIds: [CarrionOnslaught.WrapsItemId]);
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Legendary"));
         double before = without.AbilityDpsBreakdown.GetValueOrDefault("Blood Arc");

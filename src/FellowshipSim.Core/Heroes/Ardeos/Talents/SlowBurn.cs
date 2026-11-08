@@ -8,10 +8,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// that total. Combat logs (yMAZVJL9hTpFjqbC fight 7, 25.1 @ 25.88-41.38s): an Engulfing Flames lasts longer through Fire
 /// Ball ticks, some in Wildfire, and each tick extends it by the same share at any tick rate.
 /// </summary>
-public class SlowBurn : Talent
+public partial class SlowBurn : Talent
 {
-    public const int TalentId = 162;
-    public const string TalentName = "Slow Burn";
     public const double ExtensionOverDurationSeconds = 3.0;
 
     public override string Name => TalentName;

@@ -5,50 +5,41 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// Thunder Call: Skull Crusher beckons a thunder bolt to strike the target from above, dealing lightning damage." Costs
 /// Fury.
 /// </summary>
-public class SkullCrusher : TariqAbility
+public partial class SkullCrusher : TariqAbility
 {
-    public const int AbilityId = 1229;
-    public const string AbilityName = "Skull Crusher";
-    /// <summary>Share of Strength.</summary>
-    public const double Coefficient = 11.6;
-    /// <summary>Share of Strength.</summary>
-    public const double LightningCoefficient = 4.06;
-    public const double FuryCost = 25.0;
     /// <summary>
     /// Game data cooldown. Combat logs (fXyzwGcQkTrLD34R fight 4): Skull Crushers come closer together at higher haste,
     /// so haste shortens it.
     /// </summary>
     public const double CooldownSeconds = 1.0;
     /// <summary>
-    /// Game data: a shorter coefficient on the hasted global cooldown than the shared
-    /// one. Combat logs (3 Tariq fights): the next cast comes a shorter global cooldown after a Skull Crusher.
-    /// </summary>
-    public const double GlobalCooldown = 1.0;
     /// <summary>Combat logs: the thunder bolt is logged under the ability's own ID, as the physical hit is.</summary>
     public const string LightningName = "Thunder Call: Skull Crusher";
 
     /// <summary>The physical hit landed on <paramref name="target"/>, with the damage it dealt (Sledgehammer).</summary>
     public event Action<SimulationContext, EnemyTarget, double>? Landed;
 
-    public SkullCrusher(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public SkullCrusher(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = StrengthCoefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
-        GlobalCooldownSeconds = GlobalCooldown;
+        // Game data: a shorter coefficient on the hasted global cooldown than the shared one. Combat logs (3 Tariq fights):
+        // the next cast comes a shorter global cooldown after a Skull Crusher.
+        GlobalCooldownSeconds = AbilityGlobalCooldown;
     }
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason) =>
-        CanPay(ctx, FocusedWrath.Cost(Tariq, FuryCost, ctx.CurrentTime), explain, out reason);
+        CanPay(ctx, FocusedWrath.Cost(Tariq, AbilityCost, ctx.CurrentTime), explain, out reason);
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         var hero = Tariq;
         TriggerCooldown(ctx);
-        double multiplier = FocusedWrath.Spend(hero, FuryCost, ctx);
+        double multiplier = FocusedWrath.Spend(hero, AbilityCost, ctx);
         DealDamage(ctx, target, damageMultiplier: multiplier, onLanded: (c, dealt) => Landed?.Invoke(c, target, dealt));
         if (hero.IsCharged(ctx.CurrentTime))
         {
-            DealDamage(ctx, target, damageMultiplier: multiplier * LightningCoefficient / Coefficient, overrideName: LightningName,
+            DealDamage(ctx, target, damageMultiplier: multiplier * LightningStrengthCoefficient / StrengthCoefficient, overrideName: LightningName,
                 extraCritChance: hero.LightningCritChance);
         }
     }

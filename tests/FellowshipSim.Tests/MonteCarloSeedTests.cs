@@ -82,13 +82,14 @@ public class MonteCarloSeedTests
     /// Tariq's again for his new default list. Mara's again once an Arachnid Assault clone kept the cast's numbers. The rows
     /// with a Spirit Refund past the duration of Rising Spirit again once that duration had a cap. Mara's 3-target row again once
     /// Hemorrhaging Strike had no cooldown. Mara's again once her default list read Deadly Scheme: Active. Every row with a
-    /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor.
+    /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor. Ardeos's again once Devouring
+    /// Flame's bonus per Engulfing Flames came from the game data's damage multiplier less one.
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 2929444.08752369, 3077995.7808620073, 2829134.0571837318, 3705848.5280579049 })]
     [InlineData("Rime", 300, 1, new[] { 7807802.8056133138, 8531419.3838742785, 8084639.1539794672, 7908492.7942486135 })]
-    [InlineData("Ardeos", 120, 3, new[] { 3345832.9485829431, 3320652.327085807, 2970622.7621510844, 3343792.2069075285 })]
-    [InlineData("Ardeos", 300, 1, new[] { 4861741.2230702369, 4925568.8819087893, 4902383.9729880206, 5274164.3018721882 })]
+    [InlineData("Ardeos", 120, 3, new[] { 3345832.9485829435, 3320652.327085807, 2970622.7621510844, 3343792.2069075285 })]
+    [InlineData("Ardeos", 300, 1, new[] { 4861741.2230702396, 4925568.8819087902, 4902383.9729880225, 5274164.3018721882 })]
     [InlineData("Gunde", 120, 3, new[] { 4748197.3158851741, 4295319.6169056566, 4262391.2107238909, 4470118.3590960605 })]
     [InlineData("Gunde", 300, 1, new[] { 7249581.1534622693, 7814233.1795717087, 7659215.0033817766, 7371523.7896765638 })]
     [InlineData("Mara", 120, 3, new[] { 2560953.2346197013, 2353016.7117702793, 2897776.7017053822, 2866602.873777526 })]

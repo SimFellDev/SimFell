@@ -8,23 +8,18 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// explodes as it expires. UNVERIFIED: the explosion's damage ID is taken to be 159, as Sahril's Wrath's hits are logged
 /// as 157; the downloaded combat logs have this ability in none of their fights.
 /// </summary>
-public class SahrilsAegis : Ability
+public partial class SahrilsAegis : Ability
 {
-    public const int AbilityId = 159;
-    public const string AbilityName = "Sahril's Aegis";
-    public const double Coefficient = 22.41;
-    public const double CooldownSeconds = 90.0;
     public const double TargetThreshold = 1;
     public const int ShieldEffectId = 77;
-    public const double ShieldSeconds = 18.0;
 
     /// <summary>The shield on the hero until it explodes.</summary>
-    public static readonly AuraDef Shield = AuraDef.Effect(AbilityName, ShieldEffectId, ShieldSeconds);
+    public static readonly AuraDef Shield = AuraDef.Effect(AbilityName, ShieldEffectId, Duration);
 
-    public SahrilsAegis(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
+    public SahrilsAegis(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        BaseCoefficient = PrimaryAttributeCoefficient;
+        SetCooldown(AbilityCooldown);
         AoeTargetThreshold = TargetThreshold;
         IgnoresGcd = true;
     }

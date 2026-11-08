@@ -10,12 +10,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// hits at 0.83-0.93 of the engine's with the 10% for the 11 players with the talent and Barrage hits, and 0.99-1.01
 /// for the 4 players without it (median log/engine per player).
 /// </summary>
-public class ConclusiveStrikes : Talent
+public partial class ConclusiveStrikes : Talent
 {
-    public const int TalentId = 107;
-    public const string TalentName = "Conclusive Strikes";
-    public const double DamageMultiplier = 1.1;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -23,7 +19,7 @@ public class ConclusiveStrikes : Talent
     {
         foreach (var finisher in hero.Abilities.OfType<MeikoFinisher>())
         {
-            if (finisher is not EarthfistBarrage) finisher.AddDamageMultiplier(DamageMultiplier);
+            if (finisher is not EarthfistBarrage) finisher.AddDamageMultiplier(IncreasedDamageScaler);
         }
     }
 }

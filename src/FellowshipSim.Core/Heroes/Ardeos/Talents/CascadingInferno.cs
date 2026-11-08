@@ -8,15 +8,9 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// each Detonate adds a stack and each instant Infernal Wave takes the stacks it needs. UNVERIFIED: the wave's crit chance
 /// and Cinders.
 /// </summary>
-public class CascadingInferno : Talent
+public partial class CascadingInferno : Talent
 {
-    public const int TalentId = 676;
-    public const string TalentName = "Cascading Inferno";
     public const int EffectId = 3177;
-    public const int MaxStacks = 12;
-    public const int StacksUsed = 4;
-    public const double CritChance = 1.0;
-    public const double CinderMultiplier = 2.0;
 
     public static readonly AuraDef Buff = AuraDef.Effect("Cascading Inferno", EffectId, maxStacks: MaxStacks);
 
@@ -27,7 +21,7 @@ public class CascadingInferno : Talent
     {
         var wave = hero.GetAbility<InfernalWave>();
         if (wave == null) return;
-        bool Ready(SimTime now) => hero.Auras.GetStacks(Buff, now) >= StacksUsed;
+        bool Ready(SimTime now) => hero.Auras.GetStacks(Buff, now) >= StacksThreshold;
         wave.InstantCastSources.Add(Ready);
         hero.OnCastCompleted += (ability, _, now) =>
         {
@@ -40,9 +34,9 @@ public class CascadingInferno : Talent
             empowered = false;
             if (cast.Ability != wave || !Ready(cast.Time)) return;
             empowered = true;
-            hero.Auras.ConsumeStack(Buff, cast.Time, StacksUsed);
-            cast.CritChance += CritChance;
+            hero.Auras.ConsumeStack(Buff, cast.Time, StacksThreshold);
+            cast.CritChance += AdditionalCritChance;
         };
-        wave.CinderMultipliers.Add(cast => empowered && cast.Ability == wave ? CinderMultiplier : 1.0);
+        wave.CinderMultipliers.Add(cast => empowered && cast.Ability == wave ? ResourceMultiplier : 1.0);
     }
 }

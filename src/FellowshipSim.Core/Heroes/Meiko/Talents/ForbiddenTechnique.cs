@@ -13,19 +13,12 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// targetCountFalloff). Combat logs (4 casts): eruptions 6.02, 12.01, 18.02, 24.01 and 30.02 seconds after the Double Palm
 /// Strike. The eruption is taken to deal the amount accumulated to every enemy it strikes, with no crit: UNVERIFIED.
 /// </summary>
-public class ForbiddenTechnique : Talent
+public partial class ForbiddenTechnique : Talent
 {
-    public const int TalentId = 104;
-    public const string TalentName = "Forbidden Technique";
     public const int DebuffEffectId = 1508;
     public const int EruptionEffectId = 1509;
-    public const double DebuffSeconds = 30.0;
-    public const double EruptionPeriodSeconds = 6.0;
-    public const int MaxStacks = 50;
-    public const double DamageAccumulated = 0.18;
-    public const double TargetThreshold = 5;
 
-    public static readonly AuraDef Debuff = AuraDef.Effect(TalentName, DebuffEffectId, DebuffSeconds, MaxStacks);
+    public static readonly AuraDef Debuff = AuraDef.Effect(TalentName, DebuffEffectId, Duration, MaxStackCount);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -58,7 +51,7 @@ public class ForbiddenTechnique : Talent
         {
             if (hit.SimContext is not { } ctx) return;
             Follow(ctx);
-            if (hit.Target != null && hit.Target == _marked && hit.AbilityId != eruptionId) _accumulated += hit.Amount * DamageAccumulated;
+            if (hit.Target != null && hit.Target == _marked && hit.AbilityId != eruptionId) _accumulated += hit.Amount * DamageDealtMultiplier;
         };
         if (hero.GetAbility<EarthfistBarrage>() is { } barrage)
         {
@@ -89,7 +82,7 @@ public class ForbiddenTechnique : Talent
         _marked = target;
         _accumulated = 0.0;
         target.Auras.Apply(Debuff, ctx.CurrentTime);
-        _eruptions = PeriodicEffect.Begin(ctx, TalentName, DebuffSeconds, EruptionPeriodSeconds, tickOnStart: false, partialFinalTick: false,
+        _eruptions = PeriodicEffect.Begin(ctx, TalentName, Duration, Period, tickOnStart: false, partialFinalTick: false,
             onTick: (c, _) => Erupt(c, hero, target, eruptionId),
             onEnd: (c, _) =>
             {
@@ -107,7 +100,7 @@ public class ForbiddenTechnique : Talent
         if (amount <= 0) return;
         IReadOnlyList<EnemyTarget> nearby = ctx.ActiveEnemies.Count == 0 ? [target] : ctx.ActiveEnemies;
         var struck = ctx.Outcomes.SelectTargets(eruptionId, nearby, ctx);
-        double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
+        double falloff = struck.Count > TargetCountThreshold ? Math.Sqrt((double)TargetCountThreshold / struck.Count) : 1.0;
         for (int i = 0; i < struck.Count; i++)
         {
             ctx.ApplyDamage(hero, struck[i], amount * falloff, eruptionId, TalentName, canCrit: false, 0.0, 1.0);

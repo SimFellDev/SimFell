@@ -10,10 +10,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// amount (Hero.DealDefensiveProcHit), with no crit roll.
 /// UNVERIFIED: no combat log has the talent, so the pulse's log ID (effect 2261) is unconfirmed.
 /// </summary>
-public class ShatteringObelisk : Talent
+public partial class ShatteringObelisk : Talent
 {
-    public const int TalentId = 415;
-    public const string TalentName = "Shattering Obelisk";
     public const string ProcKey = "shattering_obelisk";
     public const int PulseEffectId = 2261;
 

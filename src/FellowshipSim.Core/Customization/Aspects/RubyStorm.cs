@@ -6,23 +6,19 @@ namespace FellowshipSim.Core.Customization.Aspects;
 /// scales with nothing else). UNVERIFIED: no log has this aspect; the hero is taken to be at full health and the storm to
 /// touch every enemy in combat.
 /// </summary>
-public class RubyStorm : Aspect
+public partial class RubyStorm : Aspect
 {
-    public const int AspectId = 35;
-    public const string AspectName = "Ruby Storm";
     public const int DamageEffectId = 90;
-    public const double ProcsPerMinute = 1.3;
     public const string ProcKey = "ruby_storm";
-    public static readonly double[] HealthShareByRank = [0.024, 0.040, 0.054, 0.070];
 
     public override int Id => AspectId;
     public override string Name => AspectName;
 
     public override void Bind(Hero hero)
     {
-        double share = ForRank(HealthShareByRank);
+        double share = ForRank(HealthPercentageAsDamageByRank);
         int logId = LogIds.Effect(DamageEffectId);
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, AspectProcsPerMinute);
         hero.OnCastCompleted += (ability, target, _) =>
         {
             if (target == null || ability.BaseCoefficient <= 0 || hero.SimContext is not { } ctx || !rppm.Roll(hero, ctx)) return;

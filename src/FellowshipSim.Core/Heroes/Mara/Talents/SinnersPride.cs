@@ -3,10 +3,8 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Heroes.Mara.Talents;
 
 /// <summary>Talent 586: "Each Combo Point you spend reduces the cooldown of your Maiden of Death ability."</summary>
-public class SinnersPride : Talent
+public partial class SinnersPride : Talent
 {
-    public const int TalentId = 586;
-    public const string TalentName = "Sinner's Pride";
     public const double SecondsPerComboPoint = 0.6;
 
     public override string Name => TalentName;

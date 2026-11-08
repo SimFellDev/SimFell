@@ -6,12 +6,9 @@ namespace FellowshipSim.Core.Customization.Sigils;
 /// simulate movement: a sim keeps it up, a replay follows the log (situational aura). UNVERIFIED: no log has this sigil;
 /// the game data has two Patient Soul effects (2149, 2150) and the first is assumed.
 /// </summary>
-public class PatientSoul : Sigil
+public partial class PatientSoul : Sigil
 {
-    public const int SigilId = 46;
-    public const string SigilName = "Patient Soul";
     public const int BuffEffectId = 2149;
-    public static readonly double[] ExpertiseRatingByRank = [12, 22, 32, 42];
 
     public static readonly AuraDef Buff = AuraDef.Effect("Patient Soul", BuffEffectId);
 
@@ -19,5 +16,5 @@ public class PatientSoul : Sigil
     public override string Name => SigilName;
 
     public override void Bind(Hero hero) =>
-        hero.SituationalAuras.Add(Buff.WithModifiers(StatModifier.Add(StatType.ExpertiseRating, ForRank(ExpertiseRatingByRank))));
+        hero.SituationalAuras.Add(Buff.WithModifiers(StatModifier.Add(StatType.ExpertiseRating, ForRank(BuffAdditionalExpertiseRatingByRank))));
 }

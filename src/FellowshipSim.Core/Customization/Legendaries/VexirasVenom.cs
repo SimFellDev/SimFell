@@ -4,9 +4,9 @@ using FellowshipSim.Core.Heroes.Mara.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 420 (Mara's Wristbands of Vexira's Prey, item 5225; Hungering Blade Leggings, item 5900): "Your
-/// Queen's Fang and Arachnid Assault critical strikes apply Vexira's Venom to enemies, adding a share of the initial damage
-/// accumulatively as poison damage dealt over a duration" (effect 2364, ticking at an interval).
+/// Legendary power 420: "Your Queen's Fang and Arachnid Assault critical strikes apply Vexira's Venom to enemies, adding a
+/// share of the initial damage accumulatively as poison damage dealt over a duration" (effect 2364, ticking at an
+/// interval).
 /// Combat logs (pWmcV42K39GHTLQX fight 23, 4,702 ticks): a tick deals a share of the venom, spaced by the interval shortened by Haste,
 /// with a partial tick as it runs out (@ 15.962); a new crit restarts the duration
 /// and keeps the tick timing. In the game data, the venom's ability
@@ -18,26 +18,12 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// venom, match it (T2qLPpmMkrAtJ9B1 fight 18 @ 31.671). The ticks
 /// never crit (effect 2364's preset `Empty`).
 /// </summary>
-public class VexirasVenom : Legendary
+public partial class VexirasVenom : Legendary
 {
-    public const int PowerId = 420;
-    public const int WristItemId = 5225;
-    public const int LegsItemId = 5900;
     public const int EffectId = 2364;
     public const string EffectName = "Vexira's Venom";
-    /// <summary>Share of the initial damage, from game data.</summary>
-    public const double DamageShare = 0.28;
-    /// <summary>Venom duration, from game data.</summary>
-    public const double VenomSeconds = 6.0;
-    /// <summary>Tick interval from game data, divided by Haste.</summary>
-    public const double TickSeconds = 2.0;
-    /// <summary>The venom's damage is dealt in this many ticks' worth (the duration over the tick interval).</summary>
-    public const double TicksPerVenom = VenomSeconds / TickSeconds;
-
-    public override int LegendaryPowerId => PowerId;
-    public override string Name => EffectName;
-    public override string HeroName => "Mara";
-    public override IReadOnlyList<int> ItemIds => [WristItemId, LegsItemId];
+    /// <summary>The venom's damage is dealt in this many ticks' worth (the duration over the tick interval, which Haste divides).</summary>
+    public const double TicksPerVenom = (double)Duration / TickInterval;
 
     public override void Bind(Hero hero)
     {
@@ -57,7 +43,7 @@ public class VexirasVenom : Legendary
             {
                 if (hit.IsCrit && hit.Amount > 0 && hit.AbilityName == own && hit.AbilityGroup != null && hit.Target is { } target && hit.SimContext is { } ctx)
                 {
-                    venom.Add(ctx, target, DamageShare * hit.Amount);
+                    venom.Add(ctx, target, DamageToDotDamageMultiplier * hit.Amount);
                 }
             };
         }
@@ -97,15 +83,15 @@ public class VexirasVenom : Legendary
             if (_active.TryGetValue(target, out var dot) && dot.EndsAt > now && dot.Effect is { IsActive: true, PeriodTimer: { IsActive: true } timer } running)
             {
                 dot.TickValue = RefreshedTick(dot.TickValue, damage, (dot.EndsAt - now).TotalSeconds, (timer.DueTime - now).TotalSeconds, (now - running.LastTickTime).TotalSeconds);
-                dot.EndsAt = now + SimTime.FromSeconds(VenomSeconds);
-                running.Refresh(ctx, VenomSeconds);
+                dot.EndsAt = now + SimTime.FromSeconds(Duration);
+                running.Refresh(ctx, Duration);
                 target.Auras.Apply(Debuff, now);
                 return;
             }
-            var applied = new Instance { TickValue = damage / TicksPerVenom, EndsAt = now + SimTime.FromSeconds(VenomSeconds) };
+            var applied = new Instance { TickValue = damage / TicksPerVenom, EndsAt = now + SimTime.FromSeconds(Duration) };
             _active[target] = applied;
             target.Auras.Apply(Debuff, now);
-            applied.Effect = PeriodicEffect.BeginHasted(ctx, owner, EffectName, VenomSeconds, TickSeconds, tickOnStart: false, partialFinalTick: true,
+            applied.Effect = PeriodicEffect.BeginHasted(ctx, owner, EffectName, Duration, TickInterval, tickOnStart: false, partialFinalTick: true,
                 (c, fraction) =>
                 {
                     if (target.IsSleeping)
@@ -136,7 +122,7 @@ public class VexirasVenom : Legendary
     /// (the game: V_new = (V_old x W_old + added) / W_new).
     /// </summary>
     public static double RefreshedTick(double tick, double damage, double left, double nextTick, double sinceTick) =>
-        (tick * TicksIn(left, nextTick, sinceTick) + damage) / TicksIn(VenomSeconds, nextTick, sinceTick);
+        (tick * TicksIn(left, nextTick, sinceTick) + damage) / TicksIn(Duration, nextTick, sinceTick);
 
     /// <summary>
     /// The ticks in <paramref name="seconds"/> of a running venom: the next tick with the unhasted ticks after it, or with no
@@ -144,5 +130,5 @@ public class VexirasVenom : Legendary
     /// Period, the period timer's real time to the next tick, and its time since the last, a next tick under a period away).
     /// </summary>
     private static double TicksIn(double seconds, double nextTick, double sinceTick) =>
-        seconds >= nextTick ? 1.0 + (seconds - nextTick) / TickSeconds : (seconds + sinceTick) / TickSeconds;
+        seconds >= nextTick ? 1.0 + (seconds - nextTick) / TickInterval : (seconds + sinceTick) / TickInterval;
 }

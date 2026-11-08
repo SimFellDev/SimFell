@@ -4,13 +4,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// Ability 1315: "Fire a well-aimed arrow at target enemy, dealing physical damage. Generates Focus." Has a cast time. Its
 /// hits grant Celestial Impetus by chance (Celestial Shot's tooltip).
 /// </summary>
-public class FocusedShot : ElarionAbility
+public partial class FocusedShot : ElarionAbility
 {
-    public const int AbilityId = 1315;
-    public const string AbilityName = "Focused Shot";
-    /// <summary>Share of Agility.</summary>
-    public const double Coefficient = 1.6164;
-    public const double CastTimeSeconds = 1.5;
     /// <summary>Focus gained per cast, from game data.</summary>
     public const double FocusGain = 20.0;
 
@@ -20,10 +15,10 @@ public class FocusedShot : ElarionAbility
     /// <summary>The arrow hit an enemy (Celestial Impetus, Focused Expanse).</summary>
     public event Action<SimulationContext, EnemyTarget>? Landed;
 
-    public FocusedShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public FocusedShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        BaseCoefficient = AgilityCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

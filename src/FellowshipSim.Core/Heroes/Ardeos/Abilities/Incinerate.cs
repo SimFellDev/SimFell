@@ -6,34 +6,22 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// on the targets and applies a stacking damage over time to them (<see cref="IncinerateDot"/>). Grants Spirit of
 /// Heroism. Damage falls off with the target count (game data targetCountFalloff, effect 1830).
 /// </summary>
-public class Incinerate : ArdeosAbility
+public partial class Incinerate : ArdeosAbility
 {
-    public const int AbilityId = 1270;
-    public const string AbilityName = "Incinerate";
-    public const double Coefficient = 3.2015;
-    public const double CastTimeSeconds = 1.5;
-    public const double ChannelSeconds = 2.5;
-    public const double TickPeriodSeconds = 0.5;
-    public const double TargetThreshold = 8;
-    public const double ExtensionSeconds = 1.5;
-
-    /// <summary>Game data globalCooldown, hasted (shorter than Fire Ball's).</summary>
-    public const double GlobalCooldown = 1.0;
-
     public IncinerateDot Dot { get; }
 
-    public Incinerate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
+    public Incinerate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
-        GlobalCooldownSeconds = GlobalCooldown;
+        BaseCoefficient = IntellectCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
+        GlobalCooldownSeconds = AbilityGlobalCooldown;
         // UNVERIFIED: castable while the global cooldown runs (in-game play); the game data record has no flag for it.
         UsableDuringGcd = true;
-        SetChannel(ChannelSeconds, TickPeriodSeconds);
+        SetChannel(AbilityChannelTime, AbilityChannelTick);
         // Combat logs: the first hits come one server frame after the channel starts (yMAZVJL9hTpFjqbC fight 7).
         ChannelTicksOnStart = true;
         ChannelPartialFinalTick = true;
-        AoeTargetThreshold = TargetThreshold;
+        AoeTargetThreshold = TargetCountDamageScalingThreshold;
         Dot = new IncinerateDot(owner);
         Hit += (in DamageContext hit) =>
         {
@@ -43,7 +31,7 @@ public class Incinerate : ArdeosAbility
             // full duration after the last one; an effect never has more than its full duration left.
             foreach (var dot in dots.On(hit.Target).Where(d => d.Effect != Dot).ToList())
             {
-                dots.Extend(ctx, dot, ExtensionSeconds, maxRemainingSeconds: dot.Effect.Duration);
+                dots.Extend(ctx, dot, DotDurationIncrease, maxRemainingSeconds: dot.Effect.Duration);
             }
             dots.Apply(ctx, Dot, hit.Target);
         };

@@ -5,28 +5,22 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// applying Slaughter to them. Slaughter is a bleed that deals a multiple of the total Rend damage consumed from each enemy, to
 /// each enemy over a set time." The cooldown is not hasted.
 /// Combat logs (n7zxK8harZT2wjDB fight 9 @ 28.655, Y4wpb2f3gc8LqJDX fight 25): each enemy's Slaughter is
-/// <see cref="RendMultiplier"/> times the damage its own Rend had still to deal (Desecrator); it ticks at
-/// <see cref="TickSeconds"/> from the first tick after the cast, never crits and takes no damage multipliers. It takes no
+/// <see cref="AccDotToNewDotScaler"/> times the damage its own Rend had still to deal (Desecrator); it ticks at
+/// <see cref="Period"/> from the first tick after the cast, never crits and takes no damage multipliers. It takes no
 /// global cooldown (Gunde guide corpus).
 /// </summary>
-public class Slaughter : GundeAbility
+public partial class Slaughter : GundeAbility
 {
-    public const int AbilityId = 2292;
-    public const string AbilityName = "Slaughter";
-    public const double CooldownSeconds = 30.0;
     public const int DotEffectId = 3237;
-    public const double RendMultiplier = 1.6;
-    public const double DotSeconds = 3.0;
-    public const double TickSeconds = 0.3;
 
-    public static readonly AuraDef Dot = AuraDef.Effect(AbilityName, DotEffectId, DotSeconds);
+    public static readonly AuraDef Dot = AuraDef.Effect(AbilityName, DotEffectId, Duration);
 
     /// <summary>Slaughter consumed an enemy's Rend (Massacre).</summary>
     public event Action<SimulationContext, EnemyTarget, double>? Consumed;
 
-    public Slaughter(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public Slaughter(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         DamageLogId = LogIds.Effect(DotEffectId);
     }
@@ -42,7 +36,7 @@ public class Slaughter : GundeAbility
         {
             if (!rend.IsOn(enemy)) continue;
             double consumed = rend.Consume(ctx, enemy);
-            double multiplier = RendMultiplier;
+            double multiplier = AccDotToNewDotScaler;
             if (enemy.Auras.HasAura(Rupture.OpenWounds, ctx.CurrentTime))
             {
                 multiplier *= Rupture.OpenWoundsSlaughterDamage;
@@ -58,9 +52,9 @@ public class Slaughter : GundeAbility
     {
         if (damage <= 0.0) return;
         enemy.Auras.Apply(Dot, ctx.CurrentTime);
-        int ticks = (int)Math.Round(DotSeconds / TickSeconds);
+        int ticks = (int)Math.Round(Duration / Period);
         double perTick = damage / ticks;
-        PeriodicEffect.Begin(ctx, Name, DotSeconds, TickSeconds, tickOnStart: false, partialFinalTick: false,
+        PeriodicEffect.Begin(ctx, Name, Duration, Period, tickOnStart: false, partialFinalTick: false,
             onTick: (c, _) =>
             {
                 if (!enemy.IsSleeping) c.ApplyDamage(Owner, enemy, perTick, DamageLogId, Name, canCrit: false, 0.0, 1.0);

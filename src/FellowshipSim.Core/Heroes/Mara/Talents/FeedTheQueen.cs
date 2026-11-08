@@ -7,16 +7,11 @@ namespace FellowshipSim.Core.Heroes.Mara.Talents;
 /// Queen, causing the next Queen's Fang you perform to deal more damage per stack." Combat logs (Fc8v6yWxD14GQMnV
 /// fight 19): a stack per enemy hit; the next Queen's Fang uses up every stack.
 /// </summary>
-public class FeedTheQueen : Talent
+public partial class FeedTheQueen : Talent
 {
-    public const int TalentId = 121;
-    public const string TalentName = "Feed the Queen";
     public const int EffectId = 2195;
-    public const double BuffSeconds = 12.0;
-    public const int MaxStacks = 6;
-    public const double DamagePerStack = 0.12;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds, MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, Duration, MaxStacks);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -34,7 +29,7 @@ public class FeedTheQueen : Talent
             int stacks = hero.Auras.GetStacks(Buff, ctx.CurrentTime);
             if (stacks == 0) return 1.0;
             hero.Auras.Remove(Buff, ctx.CurrentTime);
-            return 1.0 + DamagePerStack * stacks;
+            return 1.0 + DamageMultiplierPerStack * stacks;
         });
     }
 }

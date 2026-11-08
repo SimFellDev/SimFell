@@ -5,11 +5,8 @@ namespace FellowshipSim.Core.Heroes.Rime.Talents;
 /// <summary>
 /// Talent 657: each Freezing Torrent tick has a chance to cast a free Ice Comet on the target (a plain Ice Comet even
 /// with Icy Talons, and it can trigger Avalanche, per the user)./// </summary>
-public class ColdShower : Talent
+public partial class ColdShower : Talent
 {
-    public const int TalentId = 657;
-    public const string TalentName = "Cold Shower";
-    public const double ProcChance = 0.07;
     public const string ProcKey = "cold_shower";
 
     /// <summary>
@@ -29,7 +26,7 @@ public class ColdShower : Talent
         if (comet == null) return;
         hero.OnChannelTick += (ability, target, _, ctx) =>
         {
-            if (ability is FreezingTorrent && target != null && ctx.Outcomes.RollProc(ProcKey, ProcChance, ctx))
+            if (ability is FreezingTorrent && target != null && ctx.Outcomes.RollProc(ProcKey, OnTargetPulsatingAoeFreeCastProcChance, ctx))
             {
                 comet.FreeCast(ctx, target, source: this, countsAsCast: true, impactDelaySeconds: ImpactDelaySeconds);
             }

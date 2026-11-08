@@ -11,11 +11,8 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// casts): casts of up to <see cref="ExactStacks"/> stacks add exactly as many Rend stacks; larger casts add fewer per stack.
 /// The 18 larger casts fit <see cref="ExactStacks"/> stacks one each, then <see cref="LargeCastRendPerStack"/> per stack.
 /// </summary>
-public class OwedInBlood : GundeAbility
+public partial class OwedInBlood : GundeAbility
 {
-    public const int AbilityId = 2298;
-    public const string AbilityName = "Owed in Blood";
-    public const double CooldownSeconds = 3.0;
     public const int BuffEffectId = 3245;
     public const double BuffSeconds = 90.0;
     public const int MaxStacks = 150;
@@ -35,9 +32,9 @@ public class OwedInBlood : GundeAbility
     /// </summary>
     private (int Stacks, SimTime At) _removed;
 
-    public OwedInBlood(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
+    public OwedInBlood(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         owner.Auras.OnRemoved += (aura, now) =>
         {

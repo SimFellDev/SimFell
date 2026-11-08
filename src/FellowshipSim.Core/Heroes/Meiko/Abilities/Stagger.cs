@@ -4,15 +4,11 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// Ability 1116: "Interrupt the target's spellcasting and prevent it from casting for 4 sec. Must interrupt a spell, or it
 /// will have no effect. Can be used during Global Cooldown". 12 second cooldown.
 /// </summary>
-public class Stagger : MeikoAbility
+public partial class Stagger : MeikoAbility
 {
-    public const int AbilityId = 1116;
-    public const string AbilityName = "Stagger";
-    public const double CooldownSeconds = 12.0;
-
-    public Stagger(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
+    public Stagger(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 

@@ -8,19 +8,9 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// A barrage cast with Impending Heartseeker (Impending Heartseeker, Starstriker's Ascent) uses it up, and each arrow deals
 /// more than the one before.
 /// </summary>
-public class HeartseekerBarrage : ElarionAbility
+public partial class HeartseekerBarrage : ElarionAbility
 {
-    public const int AbilityId = 1312;
-    public const string AbilityName = "Heartseeker Barrage";
-    /// <summary>Share of Agility per arrow.</summary>
-    public const double Coefficient = 1.305;
     public const double Cost = 30.0;
-    public const double CooldownSeconds = 20.0;
-    public const double ChannelSeconds = 2.0;
-    public const double TickPeriodSeconds = 0.2;
-
-    /// <summary>Impending Heartseeker: Heartseeker Barrage deals increased damage with each arrow during its channel. UNVERIFIED: the first arrow's increase.</summary>
-    public const double ImpendingDamagePerArrow = 0.1;
 
     /// <summary>Crit chance added to the arrows (Fusillade).</summary>
     public double ArrowCritChance { get; set; }
@@ -33,12 +23,12 @@ public class HeartseekerBarrage : ElarionAbility
     /// </summary>
     public event Action<SimulationContext>? ArrowLanded;
 
-    public HeartseekerBarrage(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public HeartseekerBarrage(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = AgilityCoefficient;
         FocusCost = Cost;
-        SetCooldown(CooldownSeconds);
-        SetChannel(ChannelSeconds, TickPeriodSeconds);
+        SetCooldown(AbilityCooldown);
+        SetChannel(AbilityChannelTime, AbilityChannelTick);
         // Combat logs (pWmcV42K39GHTLQX fight 23 @ 81.335): a hasted channel fires its arrows on its target, all
         // of full damage: the part of a tick left at the end fires one more arrow.
         ChannelPartialFinalTick = true;
@@ -68,7 +58,8 @@ public class HeartseekerBarrage : ElarionAbility
     {
         if (target is not { IsSleeping: false }) return;
         _arrow++;
-        double multiplier = _cast.Damage * (_impending ? 1.0 + ImpendingDamagePerArrow * _arrow : 1.0);
+        // Impending Heartseeker: each arrow deals more than the one before. UNVERIFIED: the first arrow's increase.
+        double multiplier = _cast.Damage * (_impending ? 1.0 + AdditionalDamagePerProjectile * _arrow : 1.0);
         double crit = _cast.Crit + ArrowCritChance;
         DealDamage(ctx, target, damageMultiplier: multiplier, extraCritChance: crit, onLanded: (c, dealt) =>
         {

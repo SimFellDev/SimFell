@@ -9,12 +9,10 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// Carve cast before the Blood Arc uses it up too, without the bonus (that fight's 330 such spins are well below the
 /// engine's with the bonus, while the other spins are close to it).
 /// </summary>
-public class CrimsonStrikes : Talent
+public partial class CrimsonStrikes : Talent
 {
-    public const int TalentId = 768;
     public const string TalentName = "Crimson Strikes";
     public const int EffectId = 3224;
-    public const double DamageMultiplier = 1.15;
 
     public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId) with { Duration = SimTime.Infinite };
 

@@ -8,18 +8,14 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// Reign in Blood with Serrated Edge and Superior Serration is the sum of the shares of Heart Splitter, Reign in Blood,
 /// Frenzied Reign, Serrated Edge and Superior Serration.
 /// </summary>
-public class FrenziedReign : Talent
+public partial class FrenziedReign : Talent
 {
-    public const int TalentId = 750;
-    public const string TalentName = "Frenzied Reign";
-    public const double RendShareBonus = 0.25;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
     public override void Bind(Hero hero)
     {
         var reign = hero.GetAbility<ReignInBlood>();
-        if (reign != null) reign.ShareBonus += RendShareBonus;
+        if (reign != null) reign.ShareBonus += AddedBonusAddedTransfer;
     }
 }

@@ -62,7 +62,7 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
         {
             // The base leaves the talent out, so only the talent can show the evidence.
             int[] without = BaseTalents.Where(t => t != talentId).ToArray();
-            var (result, hero, gained) = Run([.. without, talentId], targets, legendaryItemId: ExecutionersGrin.WrapsItemId);
+            var (result, hero, gained) = Run([.. without, talentId], targets, legendaryItemId: ExecutionersGrin.LegsItemId);
             Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent"));
             Assert.Contains(hero.Talents, t => t.Id == talentId);
             Assert.True(result.MeanDps > 0);
@@ -73,7 +73,7 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
             double baseline = 0.0;
             if (more)
             {
-                var (baseResult, _, baseGained) = Run(without, targets, legendaryItemId: ExecutionersGrin.WrapsItemId);
+                var (baseResult, _, baseGained) = Run(without, targets, legendaryItemId: ExecutionersGrin.LegsItemId);
                 baseline = Amount(baseResult, baseGained, shown);
             }
             output.WriteLine($"Talent {talentId} on {targets} target(s): {result.MeanDps:N0} DPS, {shown} -> {amount:N0} (without: {baseline:N0})");
@@ -82,9 +82,9 @@ public class TariqTalentSmokeTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(SlayersMosh.HelmItemId, "debuff:Slayer's Mosh")]
-    [InlineData(ExecutionersGrin.WrapsItemId, "aura:Executioner's Grin")]
-    [InlineData(ThunderingVortex.HarnessItemId, "aura:Thundering Vortex")]
+    [InlineData(SlayersMosh.HeadItemId, "debuff:Slayer's Mosh")]
+    [InlineData(ExecutionersGrin.LegsItemId, "aura:Executioner's Grin")]
+    [InlineData(ThunderingVortex.ChestItemId, "aura:Thundering Vortex")]
     public void Legendary_Is_Modeled_And_Takes_Effect(int itemId, string evidence)
     {
         var (result, hero, gained) = Run(BaseTalents, 3, legendaryItemId: itemId);

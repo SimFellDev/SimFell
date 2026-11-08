@@ -7,11 +7,8 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// your Shield Slam, Shield Throw, Shields Up, and Shockwave abilities by 10 seconds." Cooldown 30s. Empowered Shield Slam
 /// is effect 2435 (up to 2 stacks) and its barrier effect 2229.
 /// </summary>
-public class HoldTheLine : HelenaAbility
+public partial class HoldTheLine : HelenaAbility
 {
-    public const int AbilityId = 975;
-    public const string AbilityName = "Hold the Line";
-    public const double CooldownSeconds = 30.0;
     public const double ReductionSeconds = 10.0;
     public const int EmpoweredEffectId = 2435;
     public const double EmpoweredSeconds = 12.0;
@@ -25,9 +22,9 @@ public class HoldTheLine : HelenaAbility
     /// <summary>The barrier an Empowered Shield Slam applies on Helena, for 8 seconds.</summary>
     public static readonly AuraDef Barrier = AuraDef.Effect("Empowered Shield Slam: Barrier", BarrierEffectId, BarrierSeconds);
 
-    public HoldTheLine(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public HoldTheLine(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         VeteranOfWarReductions.Add((typeof(ShieldSlam), ReductionSeconds));
         VeteranOfWarReductions.Add((typeof(ShieldThrow), ReductionSeconds));
@@ -36,7 +33,7 @@ public class HoldTheLine : HelenaAbility
     }
 
     /// <summary>Iron Sentinel: 2 charges, each recharging with Haste.</summary>
-    public void UseChargesWithHaste(int charges) => SetCooldown(CooldownSeconds, charges, scalesWithHaste: true);
+    public void UseChargesWithHaste(int charges) => SetCooldown(AbilityCooldown, charges, scalesWithHaste: true);
 
     public override void Connect()
     {

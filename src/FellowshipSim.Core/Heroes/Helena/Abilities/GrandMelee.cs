@@ -5,15 +5,11 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// Attacks and only attack you. All allies within the radius of Grand Melee take 20% reduced magic damage while it is
 /// active. Can be used during Global Cooldown." Cooldown 150s.
 /// </summary>
-public class GrandMelee : HelenaAbility
+public partial class GrandMelee : HelenaAbility
 {
-    public const int AbilityId = 1465;
-    public const string AbilityName = "Grand Melee";
-    public const double CooldownSeconds = 150.0;
-
-    public GrandMelee(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Control)
+    public GrandMelee(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 

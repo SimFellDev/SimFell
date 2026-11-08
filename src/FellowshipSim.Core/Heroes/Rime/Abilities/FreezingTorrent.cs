@@ -5,22 +5,13 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// <summary>
 /// Ability 1027. Effect 2315, its time rate on Bursting Ice, is unapplied: the ability holds it as its channel buff.
 /// </summary>
-public class FreezingTorrent : RimeAbility
+public partial class FreezingTorrent : RimeAbility
 {
-    public const int AbilityId = 1027;
-    public const string AbilityName = "Freezing Torrent";
-    /// <summary>Per tick.</summary>
-    public const double Coefficient = 1.4806;
-    public const double CooldownSeconds = 15.0;
-    public const double ChannelSeconds = 2.0;
-    public const double TickPeriodSeconds = 0.4;
-    public const double AnimaPerTick = 1.0;
-
-    public FreezingTorrent(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public FreezingTorrent(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
-        SetChannel(ChannelSeconds, TickPeriodSeconds);
+        BaseCoefficient = IntellectCoefficientPerTick;
+        SetCooldown(AbilityCooldown);
+        SetChannel(AbilityChannelTime, AbilityChannelTick);
         // Combat logs: a tick lands as the channel starts, then every hasted period, plus a partial final tick.
         ChannelTicksOnStart = true;
         ChannelPartialFinalTick = true;
@@ -48,7 +39,7 @@ public class FreezingTorrent : RimeAbility
 
     /// <summary>Soulfrost Torrent: the channel it empowers ticks faster.</summary>
     public override double ChannelTickPeriodFor(SimulationContext ctx) =>
-        _soulfrost ? ChannelTickPeriodSeconds / SoulfrostTorrent.TickRateMultiplier : ChannelTickPeriodSeconds;
+        _soulfrost ? ChannelTickPeriodSeconds / SoulfrostTorrent.ChannelTickRateIncrease : ChannelTickPeriodSeconds;
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
@@ -65,7 +56,7 @@ public class FreezingTorrent : RimeAbility
         // Flight of the Navir: every tick (the partial one too) sends a swallow at an enemy of its choosing
         // (yMAZVJL9hTpFjqbC fight 7 @ 49.522: a hit per tick; @ 34.229: one per tick until Flight of the Navir ends).
         _flightOfTheNavir?.CommandSwallow(ctx);
-        Rime.AddAnima(AnimaPerTick, ctx, target);
+        Rime.AddAnima(ResourceGainPerTick, ctx, target);
         if (!_soulfrost)
         {
             DealDamage(ctx, target, damageMultiplier: fraction);

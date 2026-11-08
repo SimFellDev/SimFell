@@ -27,31 +27,32 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 ///   after its logged death. An enemy that dies frozen gives no explosion (60 of 74 such Freezes; in the other 14 the
 ///   enemy died in the server frame of the explosion).
 /// </summary>
-public class AlzeracsShackle : Ability
+public partial class AlzeracsShackle : Ability
 {
-    public const int AbilityId = 152;
-    public const string AbilityName = "Al'zerac's Shackle";
-    /// <summary>The explosion, of the primary stat.</summary>
+    /// <summary>The explosion, of the primary stat. Game data: tuning <c>Aoe.PrimaryAttributeCoefficient</c> of weapon power 348.</summary>
     public const double Coefficient = 0.63;
-    public const double CooldownSeconds = 30.0;
     public const double TargetThreshold = 8;
     /// <summary>Combat logs: Freeze lands 4-6 server frames after the cast, mostly 5 (0.168s).</summary>
     public const double FreezeLandSeconds = 0.168;
 
     public const int FreezeEffectId = 63;
     public const string FreezeName = "Al'zerac's Shackle: Freeze";
+    /// <summary>Game data: tuning <c>Stun.Dot.PrimaryAttributeCoefficient</c> of weapon power 348.</summary>
     public const double FreezeCoefficient = 1.74;
-    public const double FreezeSeconds = 3.0;
+    /// <summary>Game data: tuning <c>Stun.Dot.TickInterval</c> of weapon power 348.</summary>
     public const double FreezeTickSeconds = 1.5;
 
     public const int SlowEffectId = 65;
     public const string SlowName = "Al'zerac's Shackle: Slow";
+    /// <summary>Game data: tuning <c>Debuff.Dot.PrimaryAttributeCoefficient</c> of weapon power 348.</summary>
     public const double SlowCoefficient = 0.252;
+    /// <summary>Game data: the duration of effect 65 (the tooltip has 12 seconds).</summary>
     public const double SlowSeconds = 15.0;
+    /// <summary>Game data: tuning <c>Debuff.Dot.TickInterval</c> of weapon power 348.</summary>
     public const double SlowTickSeconds = 2.0;
 
     /// <summary>Freeze on the target.</summary>
-    public static readonly AuraDef Freeze = AuraDef.Effect(FreezeName, FreezeEffectId, FreezeSeconds);
+    public static readonly AuraDef Freeze = AuraDef.Effect(FreezeName, FreezeEffectId, Duration);
 
     /// <summary>Slow on each enemy the explosion hit.</summary>
     public static readonly AuraDef Slow = AuraDef.Effect(SlowName, SlowEffectId, SlowSeconds);
@@ -65,11 +66,11 @@ public class AlzeracsShackle : Ability
     /// <summary>The fight the effects belong to (each sim iteration and replay has its own).</summary>
     private SimulationContext? _fight;
 
-    public AlzeracsShackle(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
+    public AlzeracsShackle(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         BaseCoefficient = Coefficient;
         AoeTargetThreshold = TargetThreshold;
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         _freezeTick = new Tick(owner, FreezeEffectId, FreezeName, FreezeCoefficient);
         _slowTick = new Tick(owner, SlowEffectId, SlowName, SlowCoefficient);
@@ -96,7 +97,7 @@ public class AlzeracsShackle : Ability
         target.Auras.Apply(Freeze, ctx.CurrentTime);
         var numbers = _freezeTick.Take(ctx, CritChanceBonus);
         PeriodicEffect? freeze = null;
-        freeze = PeriodicEffect.BeginHasted(ctx, Owner, FreezeName, FreezeSeconds, FreezeTickSeconds, tickOnStart: false, partialFinalTick: true,
+        freeze = PeriodicEffect.BeginHasted(ctx, Owner, FreezeName, Duration, FreezeTickSeconds, tickOnStart: false, partialFinalTick: true,
             onTick: (c, fraction) => _freezeTick.Deal(c, target, numbers, fraction),
             onEnd: (c, clipped) =>
             {
@@ -149,7 +150,7 @@ public class AlzeracsShackle : Ability
     private sealed class Tick : Ability
     {
         public Tick(Hero owner, int effectId, string name, double coefficient)
-            : base(owner, LogIds.Effect(effectId), name, AbilityCategory.Weapon)
+            : base(owner, LogIds.Effect(effectId), name, AbilityCategory)
         {
             BaseCoefficient = coefficient;
         }

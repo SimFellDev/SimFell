@@ -5,16 +5,11 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// is already active, its duration is extended. It grants no Spirit of Heroism.
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19 @ 28.015): Matriarch Macabre (effect 2039) applies at the cast.
 /// </summary>
-public class MacabreStratagem : MaraAbility
+public partial class MacabreStratagem : MaraAbility
 {
-    public const int AbilityId = 2233;
-    public const string AbilityName = "Macabre Stratagem";
-    public const double CooldownSeconds = 180.0;
-    public const double MatriarchSeconds = 10.0;
-
-    public MacabreStratagem(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public MacabreStratagem(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 
@@ -32,7 +27,7 @@ public class MacabreStratagem : MaraAbility
     {
         var now = ctx.CurrentTime;
         TriggerCooldown(ctx);
-        if (Mara.Auras.HasAura(MatriarchMacabre.Buff, now)) Mara.Auras.Extend(MatriarchMacabre.Buff, SimTime.FromSeconds(MatriarchSeconds));
-        else Mara.Auras.Apply(MatriarchMacabre.Buff.WithDuration(MatriarchSeconds), now);
+        if (Mara.Auras.HasAura(MatriarchMacabre.Buff, now)) Mara.Auras.Extend(MatriarchMacabre.Buff, SimTime.FromSeconds(AbilityDuration));
+        else Mara.Auras.Apply(MatriarchMacabre.Buff.WithDuration(AbilityDuration), now);
     }
 }

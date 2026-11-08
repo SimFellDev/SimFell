@@ -10,15 +10,10 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// crit roll of its own (35% of them crit where the kick did not, or the reverse). The chance's Haste scaling is taken as
 /// 25% x (1 + Haste): UNVERIFIED.
 /// </summary>
-public class PerfectStorm : Talent
+public partial class PerfectStorm : Talent
 {
-    public const int TalentId = 91;
-    public const string TalentName = "Perfect Storm";
     public const string ProcKey = "perfect_storm";
     public const int DamageId = 2310;
-    public const double Chance = 0.25;
-    public const double DamageMultiplier = 1.0;
-    public const double DelaySeconds = 0.4;
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -30,7 +25,7 @@ public class PerfectStorm : Talent
         {
             double chance = Chance * (1.0 + hero.GetHaste(ctx.CurrentTime));
             if (!ctx.Outcomes.RollProc(ProcKey, chance, ctx, target)) return;
-            ctx.Schedule(SimTime.FromSeconds(DelaySeconds),
+            ctx.Schedule(SimTime.FromSeconds(DelayBetweenStrikes),
                 c => lashing.Kick(c, target, multiplier * DamageMultiplier, DamageId, TalentName), TalentName);
         };
     }

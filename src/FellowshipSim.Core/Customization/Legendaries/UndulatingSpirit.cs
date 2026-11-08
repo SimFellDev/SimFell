@@ -9,17 +9,10 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// The Spirit Points it gave at the start of each dungeon were removed in a patch (game data: power 398
 /// generates nothing).
 /// </summary>
-public class UndulatingSpirit : Legendary
+public partial class UndulatingSpirit : Legendary
 {
-    public const int PowerId = 398;
     public const int BuffEffectId = 2171;
     public const int StacksGranted = 2;
-    /// <summary>Harbinger of Winter Furs.</summary>
-    public const int ChestItemId = 5898;
-    public override int LegendaryPowerId => PowerId;
-    public override string Name => "Undulating Spirit";
-    public override string HeroName => "Rime";
-    public override IReadOnlyList<int> ItemIds => [ChestItemId];
 
     public static readonly AuraDef Buff = AuraDef.Effect("Undulating Spirit", BuffEffectId, maxStacks: StacksGranted);
 

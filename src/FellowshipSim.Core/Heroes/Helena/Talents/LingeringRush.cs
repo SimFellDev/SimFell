@@ -6,10 +6,8 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// Talent 649: "Your Sweeping Strike's Blood Rally lasts an additional 6 seconds, but its healing is reduced to 4% of your
 /// maximum health every 1 second."
 /// </summary>
-public class LingeringRush : Talent
+public partial class LingeringRush : Talent
 {
-    public const int TalentId = 649;
-    public const string TalentName = "Lingering Rush";
     public const double BloodRallyBonusSeconds = 6.0;
 
     public override string Name => TalentName;

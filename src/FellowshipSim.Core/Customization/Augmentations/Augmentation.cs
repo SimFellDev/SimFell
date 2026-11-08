@@ -1,8 +1,9 @@
 namespace FellowshipSim.Core.Customization.Augmentations;
 
 /// <summary>
-/// An item augmentation: an aspect, a sigil or a protective enchant. Each augmentation class lists its game ID, name and
-/// per-rank values as constants at the top; <see cref="Bind"/> hooks its effect into the hero.
+/// An item augmentation: an aspect, a sigil or a protective enchant. The game data's half of each augmentation class
+/// (FellowshipSim.Codex.Generators' AugmentationGenerator) has its game ID, name and per-rank values; <see cref="Bind"/>
+/// hooks its effect into the hero.
 /// </summary>
 public abstract class Augmentation
 {

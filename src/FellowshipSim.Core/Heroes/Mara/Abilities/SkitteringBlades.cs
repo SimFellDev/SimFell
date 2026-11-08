@@ -6,31 +6,23 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// a threshold (game data targetCountFalloff). In Stealth the Stealth Skittering Blades
 /// (<see cref="StealthSkitteringBlades"/>) replaces it.
 /// </summary>
-public class SkitteringBlades : MaraAbility
+public partial class SkitteringBlades : MaraAbility
 {
-    public const int AbilityId = 1213;
-    public const string AbilityName = "Skittering Blades";
-    public const double Coefficient = 0.806;
-    public const double Cost = 35;
-    public const double ComboPointsPerHit = 1;
-    public const double ComboPointsOnCrit = 2;
-    public const double TargetThreshold = 8;
-
     public SkitteringBlades(Mara owner) : this(owner, AbilityId, AbilityName)
     {
         UnusableInStealth = true;
     }
 
     /// <summary>For the Stealth Skittering Blades: it is built on Skittering Blades.</summary>
-    protected SkitteringBlades(Mara owner, int id, string name) : base(owner, id, name, AbilityCategory.Basic)
+    protected SkitteringBlades(Mara owner, int id, string name) : base(owner, id, name, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        EnergyCost = Cost;
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = AgilityCoefficient;
+        EnergyCost = AbilityCost;
+        AoeTargetThreshold = NumTargetsDamageFalloffThreshold;
         BreaksStealth = true;
         Hit += (in hit) =>
         {
-            if (hit.SimContext is { } ctx) GenerateComboPoints(ctx, hit.IsCrit ? ComboPointsOnCrit : ComboPointsPerHit, hit.Target);
+            if (hit.SimContext is { } ctx) GenerateComboPoints(ctx, hit.IsCrit ? ComboPointGainAtCrit : ComboPointGainPerHit, hit.Target);
         };
     }
 

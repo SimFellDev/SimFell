@@ -7,23 +7,14 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// UNVERIFIED: the ticks' damage ID is taken to be 162, and the tick count six; the downloaded combat logs have this
 /// ability in none of their fights.
 /// </summary>
-public class ZeralethsHunger : Ability
+public partial class ZeralethsHunger : Ability
 {
-    public const int AbilityId = 162;
-    public const string AbilityName = "Zeraleth's Hunger";
-    /// <summary>Per tick, of the primary stat.</summary>
-    public const double Coefficient = 6.07;
-    public const double CooldownSeconds = 60.0;
-    public const double CastTimeSeconds = 0.5;
-    public const double ChannelSeconds = 3.0;
-    public const double TickPeriodSeconds = 0.5;
-
-    public ZeralethsHunger(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
+    public ZeralethsHunger(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
-        SetCooldown(CooldownSeconds);
-        SetChannel(ChannelSeconds, TickPeriodSeconds);
+        BaseCoefficient = PrimaryAttributeCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
+        SetCooldown(AbilityCooldown);
+        SetChannel(AbilityChannelTime, AbilityChannelTick);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target) => TriggerCooldown(ctx);

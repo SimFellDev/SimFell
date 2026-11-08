@@ -5,24 +5,17 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// applying Searing Blaze to all enemies in a large radius. Damage falls off with the target count (game data
 /// targetCountFalloff, effect 1833).
 /// </summary>
-public class Apocalypse : ArdeosAbility
+public partial class Apocalypse : ArdeosAbility
 {
-    public const int AbilityId = 1273;
-    public const string AbilityName = "Apocalypse";
-    public const double Coefficient = 24.07;
-    public const double CastTimeSeconds = 3.0;
-    public const double CooldownSeconds = 45.0;
-    public const double TargetThreshold = 1;
-
     /// <summary>Seconds taken off the cast time (Apocalyptic Surge).</summary>
     public double CastTimeReductionSeconds { get; set; }
 
-    public Apocalypse(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public Apocalypse(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
-        SetCooldown(CooldownSeconds);
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = IntellectCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
+        SetCooldown(AbilityCooldown);
+        AoeTargetThreshold = DamageScalingTargetCountThreshold;
         // Every enemy the eruption hits gets Searing Blaze.
         Hit += (in DamageContext hit) =>
         {
@@ -31,7 +24,7 @@ public class Apocalypse : ArdeosAbility
     }
 
     /// <summary>Gives Apocalypse more charges (Explosivo).</summary>
-    public void AddCharges(int charges) => SetCooldown(CooldownSeconds, MaxCharges + charges);
+    public void AddCharges(int charges) => SetCooldown(AbilityCooldown, MaxCharges + charges);
 
     private SearingBlazeDot? _searingBlaze;
 

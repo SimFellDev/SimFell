@@ -10,43 +10,36 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// user). UNVERIFIED: two of six eruptions in n7zxK8harZT2wjDB fight 9 come earlier in the log
 /// than the engine's cap allows.
 /// </summary>
-public class VoidbringersTouch : Ability
+public partial class VoidbringersTouch : Ability
 {
-    public const int AbilityId = 155;
     public const int DebuffEffectId = 68;
-    public const string AbilityName = "Voidbringer's Touch";
-    public const double CooldownSeconds = 90.0;
-    public const double DurationSeconds = 15.0;
-    public const double StoredShare = 0.10;
-    /// <summary>The cap on stored damage, as Main Stat.</summary>
-    public const double CapCoefficient = 42.5;
     public const double CritChance = 1.0;
 
     /// <summary>The debuff on the touched enemy while it stores damage (effect 68, "Voidbringer's Touch").</summary>
-    public static readonly AuraDef Debuff = AuraDef.Effect(AbilityName, DebuffEffectId, DurationSeconds);
+    public static readonly AuraDef Debuff = AuraDef.Effect(AbilityName, DebuffEffectId, Duration);
 
     private EnemyTarget? _target;
     private double _stored;
     private int _touch;
     private SimulationContext? _fight;
 
-    public VoidbringersTouch(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
+    public VoidbringersTouch(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = CapCoefficient;
-        SetCooldown(CooldownSeconds);
+        BaseCoefficient = MaxDamageCoefficient;
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         owner.OnDamageDealt += (in dmg) =>
         {
             // A touch from an earlier fight stores nothing in this one.
             if (_target == null || dmg.AbilityId == DamageLogId || dmg.SimContext is not { } ctx || ctx != _fight) return;
-            _stored += StoredShare * dmg.Amount;
+            _stored += AccumulativeDamageFactor * dmg.Amount;
             // It erupts on reaching the cap, or as soon as it holds more than the enemy's remaining health.
             if (_stored >= Cap(ctx) || (_target.MaxHealth > 0 && _stored >= _target.CurrentHealth)) Erupt(ctx);
         };
     }
 
     private double Cap(SimulationContext ctx) =>
-        CapCoefficient * Owner.PrimaryAttribute(ctx.CurrentTime);
+        MaxDamageCoefficient * Owner.PrimaryAttribute(ctx.CurrentTime);
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
@@ -62,7 +55,7 @@ public class VoidbringersTouch : Ability
         target.Auras.Apply(Debuff, ctx.CurrentTime);
         _stored = 0.0;
         int touch = ++_touch;
-        ctx.Schedule(SimTime.FromSeconds(DurationSeconds), c => { if (touch == _touch) Erupt(c); }, Name);
+        ctx.Schedule(SimTime.FromSeconds(Duration), c => { if (touch == _touch) Erupt(c); }, Name);
     }
 
     /// <summary>

@@ -4,16 +4,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// Ability 1225: "Instantly Leap to target area and smash the ground, dealing physical damage to all nearby enemies. Can
 /// be used during Global Cooldown."
 /// </summary>
-public class LeapSmash : TariqAbility
+public partial class LeapSmash : TariqAbility
 {
-    public const int AbilityId = 1225;
-    public const string AbilityName = "Leap Smash";
-    /// <summary>Share of Strength.</summary>
-    public const double Coefficient = 0.69;
-    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
-    public const double CooldownSeconds = 20.0;
-    /// <summary>Game data targetCountFalloff: effect 1757 has <see cref="TargetThreshold"/>.</summary>
-    public const double TargetThreshold = 8;
     /// <summary>
     /// Tooltip value. Combat logs (3 Tariq fights, 896 hits): Leap
     /// Smash crits more often than Face Breaker, and grievous crits come with it.
@@ -25,11 +17,11 @@ public class LeapSmash : TariqAbility
     /// <summary>A cast landed, with the enemies it hit (High Road, Mouth for War, Slayer's Mosh).</summary>
     public event Action<SimulationContext, IReadOnlyList<EnemyTarget>>? Smashed;
 
-    public LeapSmash(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Movement)
+    public LeapSmash(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = StrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
+        AoeTargetThreshold = TargetThresholdForDamageScale;
         CritChanceBonus = AddedCritChance;
         IgnoresGcd = true;
     }
@@ -40,7 +32,7 @@ public class LeapSmash : TariqAbility
         ctx.Schedule(SimTime.FromSeconds(LandingSeconds), c =>
         {
             var struck = c.Outcomes.SelectTargets(DamageLogId, WildSwing.AreaAround(c, target), c);
-            DealToEach(c, struck, TargetThreshold);
+            DealToEach(c, struck, TargetThresholdForDamageScale);
             Smashed?.Invoke(c, struck);
         }, Name);
     }

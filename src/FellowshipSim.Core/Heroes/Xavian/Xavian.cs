@@ -8,20 +8,8 @@ namespace FellowshipSim.Core.Heroes.Xavian;
 /// Solar Blades grant Swift Reprieval. With Swift Reprieval, Brilliant Flare turns into the instant Brilliant Flash; with
 /// Omega Reprieval, into an enhanced Flash. Abilities are in Abilities/, talents in Talents/.
 /// </summary>
-public sealed class Xavian : Hero
+public sealed partial class Xavian : Hero
 {
-    /// <summary>Hero 25 attributes MaxMana 1440 and Mana 1440: every fight starts with full Mana.</summary>
-    public const double MaxMana = 1440;
-
-    /// <summary>Hero 25 attribute ManaRegenRate 0.0005: a share of the maximum Mana every <see cref="ManaTickSeconds"/> in combat.</summary>
-    public const double ManaRegenRate = 0.0005;
-
-    /// <summary>Hero 25 attribute OutOfCombatManaRegenRate 0.0036, every <see cref="ManaTickSeconds"/> out of combat.</summary>
-    public const double OutOfCombatManaRegenRate = 0.0036;
-
-    /// <summary>Hero 25 attributes ManaRegenTickTime and OutOfCombatManaRegenTickTime 0.1.</summary>
-    public const double ManaTickSeconds = 0.1;
-
     /// <summary>
     /// Effect 2662 (Xavian's Spirit of Heroism): ManaRegenRate x3 and ManaRegenTickTime x0.5, so 6 times the Mana every
     /// second.
@@ -38,22 +26,16 @@ public sealed class Xavian : Hero
 
     public override AuraDef SpiritOfHeroismAura => SpiritOfHeroismBuff;
 
-    /// <summary>
-    /// Hero 25 attribute MaxResources 3: the Swift Reprieval stacks held at most. Combat logs (XyGpcHjNaAzgk7mW fight 20,
-    /// gd6ByNrf81jc9aWw fight 3): 117 gains to 3 stacks, none past it.
-    /// </summary>
-    public const int MaxSwiftReprievals = 3;
-
-    public static readonly ResourceDef Mana = new("Mana", Max: MaxMana, Initial: MaxMana);
+    /// <summary>Every fight starts with full Mana: <see cref="HeroMaxMana"/> and <see cref="HeroMana"/>.</summary>
+    public static readonly ResourceDef Mana = new("Mana", Max: HeroMaxMana, Initial: HeroMana);
 
     /// <summary>
     /// Effect 2663: "Your Brilliant Flare turns into Brilliant Flash, causing it to be instant cast, have no Mana cost ...
-    /// Brilliant Flash requires and consumes 1 stack of Swift Reprieval." Combat logs show it as an aura with stacks.
+    /// Brilliant Flash requires and consumes 1 stack of Swift Reprieval." Combat logs show it as an aura with stacks. Its
+    /// most stacks are <see cref="HeroMaxResources"/>. Combat logs (XyGpcHjNaAzgk7mW fight 20, gd6ByNrf81jc9aWw fight 3): 117
+    /// gains to 3 stacks, none past it.
     /// </summary>
-    public static readonly AuraDef SwiftReprieval = AuraDef.Effect("Swift Reprieval", 2663, maxStacks: MaxSwiftReprievals);
-
-    /// <summary>Class tuning: hero 25 attribute BalancingDamageAura 1, none.</summary>
-    public const double BalancingDamageAura = 1.0;
+    public static readonly AuraDef SwiftReprieval = AuraDef.Effect("Swift Reprieval", 2663, maxStacks: HeroMaxResources);
 
     /// <summary>Xavian's talent tree, as in game (game data talent-slot records, hero Xavian).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
@@ -67,8 +49,7 @@ public sealed class Xavian : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 25: mainStat Strength.</summary>
-    public override MainStat MainStat => MainStat.Strength;
+    public override MainStat MainStat => HeroMainStat;
 
     public double ManaHeld => ResourceAmount(Mana);
 
@@ -87,7 +68,7 @@ public sealed class Xavian : Hero
     {
         AddResource(Mana);
         SpiritRefundResource = Mana;
-        ClassDamageTuning = BalancingDamageAura;
+        ClassDamageTuning = HeroBalancingDamageAura;
 
         Abilities.Add(new Attack(this));
         Abilities.Add(new SunStrike(this));
@@ -156,14 +137,18 @@ public sealed class Xavian : Hero
     public bool RollBrilliantSpirit(SimulationContext ctx) => TriggerSpiritRefund(null, 0.0, ctx);
 
     /// <summary>
-    /// Mana every second: the maximum times <see cref="ManaRegenRate"/> each tick, raised by Spirit ("Xavian's passive
-    /// Mana Generation is increased by an amount equal to your Spirit") and by Spirit of Heroism.
+    /// Mana every second: the maximum times <see cref="HeroManaRegenRate"/> each <see cref="HeroManaRegenTickTime"/> in
+    /// combat, and times <see cref="HeroOutOfCombatManaRegenRate"/> each <see cref="HeroOutOfCombatManaRegenTickTime"/> out of
+    /// combat, raised by Spirit ("Xavian's passive Mana Generation is increased by an amount equal to your Spirit") and by
+    /// Spirit of Heroism.
     /// </summary>
     public double ManaPerSecond(SimulationContext ctx)
     {
         var now = ctx.CurrentTime;
-        double rate = ctx.ActiveEnemies.Count > 0 ? ManaRegenRate : OutOfCombatManaRegenRate;
-        double perSecond = MaxMana * rate / ManaTickSeconds * (1.0 + SpiritPercent(now));
+        bool inCombat = ctx.ActiveEnemies.Count > 0;
+        double rate = inCombat ? HeroManaRegenRate : HeroOutOfCombatManaRegenRate;
+        double tick = inCombat ? HeroManaRegenTickTime : HeroOutOfCombatManaRegenTickTime;
+        double perSecond = HeroMaxMana * rate / tick * (1.0 + SpiritPercent(now));
         if (Auras.HasAura(SpiritOfHeroismBuff, now)) perSecond *= SpiritOfHeroismManaRegen;
         return perSecond;
     }
@@ -172,10 +157,11 @@ public sealed class Xavian : Hero
     {
         void Tick(SimulationContext c)
         {
-            GainMana(ManaPerSecond(c) * ManaTickSeconds, c);
-            c.Schedule(SimTime.FromSeconds(ManaTickSeconds), Tick, "Mana regeneration");
+            GainMana(ManaPerSecond(c) * HeroManaRegenTickTime, c);
+            c.Schedule(SimTime.FromSeconds(HeroManaRegenTickTime), Tick, "Mana regeneration");
         }
-        ctx.Schedule(SimTime.FromSeconds(ManaTickSeconds), Tick, "Mana regeneration");
+        // One tick period in and out of combat: HeroOutOfCombatManaRegenTickTime is HeroManaRegenTickTime.
+        ctx.Schedule(SimTime.FromSeconds(HeroManaRegenTickTime), Tick, "Mana regeneration");
     }
 
     public override void ResetForIteration()

@@ -51,7 +51,7 @@ public class MaraEnergyEvidenceTests
     [Fact]
     public void A_Rise_Of_One_Gain_Proves_One_Proc()
     {
-        var (log, ctx) = Replay(Reading(1.0, 100), Reading(1.2, 100 + Regenerated(0.2) + VenomousDelight.EnergyGained));
+        var (log, ctx) = Replay(Reading(1.0, 100), Reading(1.2, 100 + Regenerated(0.2) + VenomousDelight.EnergyAdded));
         ctx.RunUntil(SimTime.FromSeconds(1.1));
 
         Assert.True(Roll(log, ctx));
@@ -61,7 +61,7 @@ public class MaraEnergyEvidenceTests
     [Fact]
     public void A_Rise_Of_Two_Gains_Proves_Two_Procs()
     {
-        var (log, ctx) = Replay(Reading(1.0, 100), Reading(1.2, 100 + Regenerated(0.2) + 2 * VenomousDelight.EnergyGained));
+        var (log, ctx) = Replay(Reading(1.0, 100), Reading(1.2, 100 + Regenerated(0.2) + 2 * VenomousDelight.EnergyAdded));
         ctx.RunUntil(SimTime.FromSeconds(1.1));
 
         Assert.True(Roll(log, ctx));
@@ -72,7 +72,7 @@ public class MaraEnergyEvidenceTests
     [Fact]
     public void A_Rise_Over_A_Long_Gap_Between_Readings_Proves_A_Proc()
     {
-        var (log, ctx) = Replay(Reading(1.0, 100), Reading(2.4, 100 + Regenerated(1.4) + VenomousDelight.EnergyGained));
+        var (log, ctx) = Replay(Reading(1.0, 100), Reading(2.4, 100 + Regenerated(1.4) + VenomousDelight.EnergyAdded));
         ctx.RunUntil(SimTime.FromSeconds(1.5));
 
         Assert.True(Roll(log, ctx));
@@ -81,7 +81,7 @@ public class MaraEnergyEvidenceTests
     [Fact]
     public void A_Rise_To_The_Maximum_Proves_One_Proc()
     {
-        var (log, ctx) = Replay(Reading(1.0, 190), Reading(1.2, Mara.MaxEnergy));
+        var (log, ctx) = Replay(Reading(1.0, 190), Reading(1.2, Mara.HeroMaxResources));
         ctx.RunUntil(SimTime.FromSeconds(1.1));
 
         Assert.True(Roll(log, ctx));
@@ -91,7 +91,7 @@ public class MaraEnergyEvidenceTests
     [Fact]
     public void A_Rise_From_A_Cast_Counts_Its_Cost_Back()
     {
-        double after = 150 - QueensFang.Cost + Regenerated(0.2) + VenomousDelight.EnergyGained;
+        double after = 150 - QueensFang.AbilityCost + Regenerated(0.2) + VenomousDelight.EnergyAdded;
         var (log, ctx) = Replay(Reading(1.0, 150, "cast", QueensFang.AbilityId), Reading(1.2, after));
         ctx.RunUntil(SimTime.FromSeconds(1.1));
 
@@ -101,7 +101,7 @@ public class MaraEnergyEvidenceTests
     [Fact]
     public void A_Rise_From_A_Casts_Reading_Proves_No_Proc_Before_The_Cast()
     {
-        double after = 150 - QueensFang.Cost + Regenerated(0.05) + VenomousDelight.EnergyGained;
+        double after = 150 - QueensFang.AbilityCost + Regenerated(0.05) + VenomousDelight.EnergyAdded;
         var (log, ctx) = Replay(Reading(1.0, 150, "cast", QueensFang.AbilityId), Reading(1.05, after));
         ctx.RunUntil(SimTime.FromSeconds(0.98));
 
@@ -113,8 +113,8 @@ public class MaraEnergyEvidenceTests
     {
         var hero = (Mara)HeroImporter.Import(new CharacterBuild { Hero = "Mara", PrimaryStat = 1000 });
 
-        Assert.Equal(-WidowsBite.EnergyGained, hero.EnergySpentBy(WidowsBite.AbilityId));
-        Assert.Equal(QueensFang.Cost, hero.EnergySpentBy(QueensFang.AbilityId));
+        Assert.Equal(-WidowsBite.EnergyGain, hero.EnergySpentBy(WidowsBite.AbilityId));
+        Assert.Equal(QueensFang.AbilityCost, hero.EnergySpentBy(QueensFang.AbilityId));
         Assert.Equal(0, hero.EnergySpentBy(-1));
     }
 
@@ -190,12 +190,12 @@ public class MaraEnergyEvidenceTests
             double before = hero.EnergyAt(ctx.CurrentTime);
             hero.GainEnergyWithMaiden(Hemorrhage.EnergyPerTick, ctx);
             scaled = hero.EnergyAt(ctx.CurrentTime) - before;
-            hero.GainEnergy(VenomousDelight.EnergyGained, ctx);
+            hero.GainEnergy(VenomousDelight.EnergyAdded, ctx);
             plain = hero.EnergyAt(ctx.CurrentTime) - before - scaled;
         });
 
-        Assert.Equal(Hemorrhage.EnergyPerTick * MaidenOfDeath.EnergyRegen, scaled, 6);
-        Assert.Equal(VenomousDelight.EnergyGained, plain, 6);
+        Assert.Equal(Hemorrhage.EnergyPerTick * MaidenOfDeath.EnergyGainMultiplier, scaled, 6);
+        Assert.Equal(VenomousDelight.EnergyAdded, plain, 6);
     }
 
     [Fact]

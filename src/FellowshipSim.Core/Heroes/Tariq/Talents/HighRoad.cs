@@ -7,12 +7,9 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// Smash ability hits at least one enemy, you gain Fury." (Game data: a share of
 /// maximum Fury.)
 /// </summary>
-public class HighRoad : Talent
+public partial class HighRoad : Talent
 {
-    public const int TalentId = 441;
-    public const string TalentName = "High Road";
     public const double FuryGain = 20.0;
-    public const double CooldownReductionSeconds = 10.0;
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -23,7 +20,7 @@ public class HighRoad : Talent
         leapSmash.Smashed += (ctx, struck) =>
         {
             if (struck.Count > 0) tariq.GainFury(FuryGain, ctx, struck[0]);
-            else hero.ReduceCooldown(leapSmash.Name, SimTime.FromSeconds(CooldownReductionSeconds), ctx.CurrentTime);
+            else hero.ReduceCooldown(leapSmash.Name, SimTime.FromSeconds(ReducedCooldownIfNoHitCooldownReductionInSeconds), ctx.CurrentTime);
         };
     }
 }

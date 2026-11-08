@@ -8,12 +8,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// 12): the free chains match the PPM expectation, each starting a fixed delay after the hit on that hit's enemy. UNVERIFIED: the
 /// free Chain Lightning is taken to need no Thunder Call.
 /// </summary>
-public class AceOfSpades : Talent
+public partial class AceOfSpades : Talent
 {
-    public const int TalentId = 675;
-    public const string TalentName = "Ace of Spades";
-    public const double ProcsPerMinute = 3.0;
-    public const int Charges = 2;
     public const string ProcKey = "ace_of_spades";
 
     public override string Name => TalentName;
@@ -22,8 +18,8 @@ public class AceOfSpades : Talent
     public override void Bind(Hero hero)
     {
         if (hero.GetAbility<ChainLightning>() is not { } chainLightning) return;
-        chainLightning.SetCharges(Charges);
-        var ppm = new RealPpm(ProcKey, ProcsPerMinute);
+        chainLightning.SetCharges(ChargedMaxCharges);
+        var ppm = new RealPpm(ProcKey, PPMChance);
         Ability?[] spenders = [hero.GetAbility<SkullCrusher>(), hero.GetAbility<HammerStorm>()];
         foreach (var spender in spenders.OfType<Ability>())
         {

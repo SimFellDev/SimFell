@@ -9,15 +9,11 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// DamageScale x1.15 (codex), not the tooltip's 25%. Combat logs (17 fights): hits under Siegebreaker deal 0.92-0.94 of
 /// what x1.25 gives.
 /// </summary>
-public class MartialCommand : Talent
+public partial class MartialCommand : Talent
 {
-    public const int TalentId = 14;
-    public const string TalentName = "Martial Command";
     public const double SiegebreakerDamage = 1.15;
-    public const double Spirit = 0.05;
-    public const double SpiritPointsPerShieldThrow = 2.0;
 
-    public static readonly AuraDef Passive = AuraDef.Internal(TalentName, 0, modifiers: StatModifier.Add(StatType.Spirit, Spirit));
+    public static readonly AuraDef Passive = AuraDef.Internal(TalentName, 0, modifiers: StatModifier.Add(StatType.Spirit, AddedSpiritPassive));
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -28,7 +24,7 @@ public class MartialCommand : Talent
         hero.AbilityDamageMultipliers.Add((_, now) => hero.Auras.HasAura(Siegebreaker.Buff, now) ? SiegebreakerDamage : 1.0);
         if (hero.GetAbility<ShieldThrow>() is { } shieldThrow)
         {
-            shieldThrow.Thrown += ctx => hero.GainResource(Hero.SpiritPoints, SpiritPointsPerShieldThrow, ctx);
+            shieldThrow.Thrown += ctx => hero.GainResource(Hero.SpiritPoints, SpiritPointGainNumPoints, ctx);
         }
     }
 }

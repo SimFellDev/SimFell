@@ -1,8 +1,9 @@
 namespace FellowshipSim.Core.Customization.RelicPassives;
 
 /// <summary>
-/// A relic's passive. Each relic passive class lists its game ID, name and values as constants at the top;
-/// <see cref="Bind"/> hooks its effect into the hero.
+/// A relic's passive. Each relic passive class is <c>partial</c>: FellowshipSim.Codex.Generators' <c>RelicPassiveGenerator</c>
+/// writes its game ID, name, cooldown, procs per minute, tuning values and relic items from its relic passive record, and
+/// the class has the values the game data lacks; <see cref="Bind"/> hooks its effect into the hero.
 /// </summary>
 public abstract class RelicPassive
 {

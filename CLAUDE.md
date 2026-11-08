@@ -142,7 +142,33 @@ or the desktop app).
   the engine.
 - `FellowshipSim.Core`'s build keeps the Codex's data export in `codex-export/` (git-ignored) at the Codex's game build.
   `FellowshipSim.Codex.Generators` writes each creature's `<Name>GameCreature` class and `GameDungeons`, each dungeon's
-  creature placements, from it.
+  creature placements, from it. Its `LegendaryGenerator` writes the game data's half of each `partial` legendary class
+  named after a legendary power: `PowerId`, the item IDs, the tuning values and the `Legendary` overrides. `Catalog` reads
+  a legendary's hero and items from an instance. Its `AbilityGenerator` writes the game data's half of each `partial`
+  ability class in `Heroes/<Hero>` named after an ability record of that hero: `AbilityId`, `AbilityName`, the record's
+  fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...) and the tuning values. Its
+  `TalentGenerator` writes the game data's half of each `partial` talent class in `Heroes/<Hero>` named after a talent
+  of that hero's talent slots: `TalentId`, `TalentName`, the record's fields as `Talent<Field>` (`TalentCooldown`,
+  `TalentDuration`, `TalentRadius`...) and the tuning values. `Catalog` reads a talent's ID from an instance. Its
+  `AugmentationGenerator` writes the game data's half of each `partial` aspect, sigil and protective enchant class named
+  after a record of its type: `<Type>Id`, `<Type>Name`, the record's fields as `<Type><Field>` (`SigilMaxRank`,
+  `AspectProcsPerMinute`, `ProtectiveEnchantDuration`...), the tuning values, and each rank run as a `double[]` named
+  after its key and `ByRank`. `Catalog` reads an augmentation's ID from an instance. Its `GlyphGenerator` writes the game
+  data's half of each `partial` glyph class named after a glyph record: `GlyphId`, `GlyphName`, `GlyphMaxRank`,
+  `GlyphAbilityRank` and the tuning values, each a constant when it is the same at every rank and otherwise a `double[]`
+  named after it and `ByRank`. `Catalog` reads a glyph's ID and name from an instance. Its `WeaponGenerator` writes the
+  game data's half of each `partial` weapon ability class in `Customization/WeaponAbilities` named after a weapon power:
+  `WeaponPowerId`, `WeaponPowerName`, `AbilityId` and `AbilityName` of the ability the power grants under its name, that
+  ability's fields as `Ability<Field>`, and the power's tuning values. It writes `WeaponPowerId`, `WeaponPowerName` and
+  `WeaponPowerAbilityId` for each `partial` weapon class named after a weapon power or an item granting one. `Catalog`
+  reads a weapon's `WeaponAbilityId` from an instance. Its `RelicPassiveGenerator` writes the game data's half of each
+  `partial` relic passive class named after a relic passive record: `RelicPassiveId`, `RelicPassiveName`, the record's
+  fields as `RelicPassive<Field>` (`RelicPassiveCooldown`, `RelicPassiveProcsPerMinute`), the tuning values, each
+  granting item's `RelicItemId` and `RelicItemName`, and `RelicPassiveItems`. `Catalog` reads a relic passive's ID and
+  items from an instance. Its `HeroGenerator` writes the game data's half of each `partial` hero class in `Heroes/<Hero>`
+  named after a hero record: `HeroId`, `HeroName`, the record's fields as `Hero<Field>` (`HeroTitle`, `HeroMainStat`,
+  `HeroRole`...), its base attributes as `Hero<Attribute>` (`HeroBalancingDamageAura`, `HeroMaxResources`,
+  `HeroMaxMana`...) and the tuning values the hero owns.
 - Each component has its styles in `X.razor.css` beside `X.razor`. `wwwroot/css/app.css` in FellowshipSim.UI has
   colours, fonts and element defaults; `wwwroot/css/design-system.css` has classes several components share.
 

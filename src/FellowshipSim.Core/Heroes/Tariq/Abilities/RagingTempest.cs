@@ -6,18 +6,13 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// Raging Currents at enemies over time." Grants Spirit of Heroism (a Haste bonus). Effect 1766 is the Enhanced
 /// Thunder Call: Expertise per stack, up to <see cref="MaxStacks"/>.
 /// </summary>
-public class RagingTempest : TariqAbility
+public partial class RagingTempest : TariqAbility
 {
-    public const int AbilityId = 1231;
-    public const string AbilityName = "Raging Tempest";
     /// <summary>Share of Strength.</summary>
     public const double Coefficient = 10.06;
-    /// <summary>Game data targetCountFalloff: effect 2173 has <see cref="TargetThreshold"/>.</summary>
-    public const double TargetThreshold = 5;
     public const int BuffEffectId = 1766;
     public const double BuffSeconds = 20.0;
     public const int MaxStacks = 20;
-    public const double ExpertisePerStack = 0.01;
     /// <summary>
     /// Combat logs (YC861NTRgLbmw4Qa fight 31, 11 casts): the leap deals its damage a delay after the cast. This is the earliest
     /// delay, so a replay finds the logged hits after it.
@@ -29,14 +24,14 @@ public class RagingTempest : TariqAbility
     /// adds one, and it lasts <see cref="BuffSeconds"/> from the cast whatever the stacks.
     /// </summary>
     public static readonly AuraDef Buff = AuraDef.Effect("Raging Tempest", BuffEffectId, BuffSeconds, MaxStacks,
-        StatModifier.Add(StatType.Expertise, ExpertisePerStack)) with { ReapplyKeepsExpiry = true };
+        StatModifier.Add(StatType.Expertise, CritChanceIncreasePerStack)) with { ReapplyKeepsExpiry = true };
 
     private readonly RagingCurrents _currents;
 
-    public RagingTempest(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
+    public RagingTempest(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         BaseCoefficient = Coefficient;
-        AoeTargetThreshold = TargetThreshold;
+        AoeTargetThreshold = TargetThresholdForDamageScale;
         IgnoresGcd = true;
         _currents = new RagingCurrents(owner);
     }

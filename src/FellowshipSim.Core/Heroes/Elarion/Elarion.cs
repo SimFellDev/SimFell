@@ -8,11 +8,8 @@ namespace FellowshipSim.Core.Heroes.Elarion;
 /// marks enemies, and damage to a marked enemy can trigger a Lunarlight Salvo. Abilities live in Abilities/, talents in
 /// Talents/.
 /// </summary>
-public sealed class Elarion : Hero
+public sealed partial class Elarion : Hero
 {
-    /// <summary>Hero 2 attributes MaxResources and Resources: Elarion starts every fight with full Focus.</summary>
-    public const double MaxFocus = 100;
-
     /// <summary>
     /// Focus regenerated per second before haste. The game data has the runtime formula Bowguy.ResourceGainPerInterval and
     /// no value. Combat logs (pWmcV42K39GHTLQX fight 23): with <see cref="FocusPerSecond"/> raised by Haste the engine is within a
@@ -26,10 +23,8 @@ public sealed class Elarion : Hero
     /// </summary>
     public const double FocusTickSeconds = 0.1;
 
-    public static readonly ResourceDef Focus = new("Focus", Max: MaxFocus, Initial: MaxFocus);
-
-    /// <summary>Class tuning: hero 2 attribute BalancingDamageAura.</summary>
-    public const double BalancingDamageAura = 1.08;
+    /// <summary>Elarion starts every fight with full Focus: <see cref="HeroMaxResources"/> and <see cref="HeroResources"/>.</summary>
+    public static readonly ResourceDef Focus = new("Focus", Max: HeroMaxResources, Initial: HeroResources);
 
     /// <summary>Spirit Points per Spirit Refund (ability 1448).</summary>
     public const double SpiritPointsPerRefund = 1.0;
@@ -60,8 +55,7 @@ public sealed class Elarion : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Game data hero 2: mainStat Agility.</summary>
-    public override MainStat MainStat => MainStat.Agility;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>Multipliers on every Focus cost (Event Horizon), read as a cast pays.</summary>
     public List<Func<SimTime, double>> FocusCostMultipliers { get; } = new();
@@ -73,7 +67,7 @@ public sealed class Elarion : Hero
     {
         AddResource(Focus);
         SpiritRefundResource = Focus;
-        ClassDamageTuning = BalancingDamageAura;
+        ClassDamageTuning = HeroBalancingDamageAura;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Salvo = new LunarlightSalvo(this);

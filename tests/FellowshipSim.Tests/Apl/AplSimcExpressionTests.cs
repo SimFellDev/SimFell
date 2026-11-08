@@ -44,9 +44,9 @@ public class AplSimcExpressionTests
     {
         var (hero, ctx) = Fight("Rime", enemies: 1);
         var coldSnap = hero.GetAbility<ColdSnap>()!;
-        AssertReads(ColdSnap.Charges, "cooldown.cold_snap.charges_fractional", hero, ctx);
+        AssertReads(ColdSnap.AbilityCharges, "cooldown.cold_snap.charges_fractional", hero, ctx);
         coldSnap.TriggerCooldown(ctx);
-        AssertReads(ColdSnap.Charges - 1, "cooldown.cold_snap.charges_fractional", hero, ctx);
+        AssertReads(ColdSnap.AbilityCharges - 1, "cooldown.cold_snap.charges_fractional", hero, ctx);
         // Half a charge back halfway to the next charge.
         var nextCharge = hero.Cooldowns[coldSnap.Name].NextChargeAt;
         var half = BoundExpression.Bind(AplParser.ParseExpression("cooldown.cold_snap.charges_fractional>=1.5"), hero);

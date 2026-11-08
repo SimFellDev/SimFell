@@ -7,18 +7,13 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// Ball critical strike chance. Combat logs (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9): the buff counts match
 /// the expected counts at the PPM rate over the Detonates cast. UNVERIFIED: the Fire Ball charge.
 /// </summary>
-public class ReignOfFire : Talent
+public partial class ReignOfFire : Talent
 {
-    public const int TalentId = 157;
-    public const string TalentName = "Reign of Fire";
     public const int EffectId = 2301;
-    public const double BuffSeconds = 12.0;
     public const int MaxStacks = 2;
-    public const double Ppm = 1.5;
-    public const double CritChance = 2.0;
     public const string ProcKey = "reign_of_fire";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Reign of Fire", EffectId, BuffSeconds, MaxStacks) with { IsProc = true };
+    public static readonly AuraDef Buff = AuraDef.Effect("Reign of Fire", EffectId, BuffDuration, MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -27,7 +22,7 @@ public class ReignOfFire : Talent
     {
         var fireBall = hero.GetAbility<FireBall>();
         if (fireBall == null) return;
-        var rppm = new RealPpm(ProcKey, Ppm);
+        var rppm = new RealPpm(ProcKey, PPM);
         hero.OnCastCompleted += (ability, _, now) =>
         {
             if (ability is not Detonate || hero.SimContext is not { } ctx || !rppm.Roll(hero, ctx)) return;
@@ -38,7 +33,7 @@ public class ReignOfFire : Talent
         {
             if (cast.Ability != fireBall || !hero.Auras.HasAura(Buff, cast.Time)) return;
             hero.Auras.ConsumeStack(Buff, cast.Time);
-            cast.CritChance += CritChance;
+            cast.CritChance += CritChanceIncrease;
         };
     }
 }

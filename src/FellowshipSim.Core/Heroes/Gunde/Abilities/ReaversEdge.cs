@@ -5,21 +5,15 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// targets." Damage falls off beyond a target threshold (game data effect 3235).
 /// The cooldown is shortened by Haste at the cast. The game data lists no Critical Strike for it; combat logs show it crit.
 /// </summary>
-public class ReaversEdge : GundeAbility
+public partial class ReaversEdge : GundeAbility
 {
-    public const int AbilityId = 2290;
-    public const string AbilityName = "Reaver's Edge";
-    public const double Coefficient = 2.0317;
-    public const double CooldownSeconds = 5.0;
-    public const double TargetThreshold = 8;
-    public const double RendShareOfDamage = 0.5;
 
-    public ReaversEdge(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public ReaversEdge(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
-        AoeTargetThreshold = TargetThreshold;
-        RendShare = RendShareOfDamage;
+        BaseCoefficient = DamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
+        AoeTargetThreshold = DamageScalingTargetCountThreshold;
+        RendShare = DamageToDotScaler;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

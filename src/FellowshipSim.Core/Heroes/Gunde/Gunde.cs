@@ -8,11 +8,8 @@ namespace FellowshipSim.Core.Heroes.Gunde;
 /// Splitter's Exsanguinate and Slaughter turn the Rend into damage of their own. Gunde has no resource of his own:
 /// combat logs report none for him. Abilities live in Abilities/, talents in Talents/.
 /// </summary>
-public sealed class Gunde : Hero
+public sealed partial class Gunde : Hero
 {
-    /// <summary>Class tuning: hero attribute balancingDamageAura (game data heroes record, gunde.startingStats): no class tuning.</summary>
-    public const double BalancingDamageAura = 1.0;
-
     /// <summary>
     /// Spirit Refund (hero 9's Spirit text): "whenever you use an ability that applies Rend, causing Blood Feathers to be
     /// created on the ground near you", Rising Spirit, and a Spirit Point (game data ability 1522).
@@ -51,8 +48,7 @@ public sealed class Gunde : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Game data hero 9: mainStat Strength.</summary>
-    public override MainStat MainStat => MainStat.Strength;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>Every enemy's Rend.</summary>
     public Rend Rend { get; }
@@ -78,7 +74,7 @@ public sealed class Gunde : Hero
 
     public override void Initialize()
     {
-        ClassDamageTuning = BalancingDamageAura;
+        ClassDamageTuning = HeroBalancingDamageAura;
         // Owed in Blood's stacks come from feathers Gunde walks over: a replay follows the log's stacks.
         SituationalAuras.Add(OwedInBlood.Buff);
 

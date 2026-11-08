@@ -120,14 +120,14 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         var maiden = hero.GetAbility<MaidenOfDeath>()!;
         var low = new EnemyTarget(1) { MaxHealth = 100, CurrentHealth = 20 };
         var healthy = new EnemyTarget(2) { MaxHealth = 100, CurrentHealth = 90 };
-        Assert.Equal(MaidensDoom.MaidenDamage, maiden.DamageAgainst(low));
+        Assert.Equal(MaidensDoom.DamageMultiplierAtLowHealth, maiden.DamageAgainst(low));
         Assert.Equal(MaidenOfDeath.BuffDamage, maiden.DamageAgainst(healthy));
     }
 
     [Theory]
     [InlineData(VexirasVenom.LegsItemId, "damage:Vexira's Venom")]
     [InlineData(DrenchedInBlood.ChestItemId, "aura:Drenched in Blood")]
-    [InlineData(FromTheShadows.HelmItemId, "damage:Queen's Fang (shadowy clone)")]
+    [InlineData(FromTheShadows.HeadItemId, "damage:Queen's Fang (shadowy clone)")]
     public void Legendary_Is_Modeled_And_Takes_Effect(int itemId, string evidence)
     {
         var (result, hero, gained) = Run(BaseTalents, 3, legendaryItemId: itemId);
@@ -161,8 +161,8 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(false, ShadowWard.BuffSeconds)]
-    [InlineData(true, ShadowWard.BuffSeconds + TheTower.ShadowWardBonusSeconds)]
+    [InlineData(false, (double)ShadowWard.AbilityDuration)]
+    [InlineData(true, ShadowWard.AbilityDuration + TheTower.ShadowWardBonusSeconds)]
     public void Shadow_Ward_Lasts_Its_Duration_And_Waits_For_Its_Cooldown(bool theTower, double seconds)
     {
         var build = System.Text.Json.JsonSerializer.Deserialize<CharacterBuild>(
@@ -179,7 +179,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
 
         Assert.True(gains.Count >= 2, $"Shadow Ward was gained {gains.Count} times");
         Assert.Equal(seconds + AuraContainer.ExpiryLagSeconds, ends[0] - gains[0], 2);
-        double cooldown = ShadowWard.CooldownSeconds * (1.0 - hero.Stats.CooldownReductionPct);
+        double cooldown = ShadowWard.AbilityCooldown * (1.0 - hero.Stats.CooldownReductionPct);
         Assert.InRange(gains[1] - gains[0], cooldown / hero.CooldownRate(hero.GetAbility<ShadowWard>()!, SimTime.Zero) - 0.01, cooldown + 1.5);
     }
 
@@ -202,7 +202,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
 
         Assert.True(casts.Count >= 2, $"Web Crack was cast {casts.Count} times");
         Assert.Equal(WebCrack.StunSeconds + AuraContainer.ExpiryLagSeconds, stunEnds[0] - casts[0], 2);
-        double cooldown = WebCrack.CooldownSeconds * (1.0 - hero.Stats.CooldownReductionPct);
+        double cooldown = WebCrack.AbilityCooldown * (1.0 - hero.Stats.CooldownReductionPct);
         Assert.InRange(casts[1] - casts[0], cooldown / hero.CooldownRate(hero.GetAbility<WebCrack>()!, SimTime.Zero) - 0.01, cooldown + 1.5);
     }
 
@@ -219,11 +219,11 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.NotEmpty(ctx.ActiveEnemies);
 
         stealth.Execute(ctx, target);
-        Assert.Equal(BroodingShadows.Charges, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.AbilityCharges, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
 
         hero.GetAbility<StealthBackstab>()!.Execute(ctx, target);
         Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
-        Assert.Equal(BroodingShadows.Charges - 1, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.AbilityCharges - 1, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         hero.GetAbility<StealthBackstab>()!.Execute(ctx, target);
 
         Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
-        Assert.Equal(BroodingShadows.Charges, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.AbilityCharges, hero.CooldownOf(stealth).ChargesAt(ctx.CurrentTime));
     }
 
     [Fact]
@@ -259,7 +259,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         stealth.Execute(ctx, new EnemyTarget(1) { MaxHealth = 100, CurrentHealth = 100 });
 
         Assert.False(stealth.CanCast(ctx));
-        Assert.Equal(BroodingShadows.PaddingCooldownSeconds / (1.0 + hero.GetHaste(ctx.CurrentTime)), stealth.NextCastChange(ctx).TotalSeconds, 3);
+        Assert.Equal(BroodingShadows.PaddingCooldown / (1.0 + hero.GetHaste(ctx.CurrentTime)), stealth.NextCastChange(ctx).TotalSeconds, 3);
     }
 
     [Fact]
@@ -276,11 +276,11 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
 
         stealth.Execute(ctx, target);
         Assert.True(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
-        Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.AbilityCharges, cooldown.ChargesAt(ctx.CurrentTime));
 
         stealth.Execute(ctx, target);
         Assert.False(hero.Auras.HasAura(BroodingShadows.Stealth, ctx.CurrentTime));
-        Assert.Equal(BroodingShadows.Charges, cooldown.ChargesAt(ctx.CurrentTime));
+        Assert.Equal(BroodingShadows.AbilityCharges, cooldown.ChargesAt(ctx.CurrentTime));
     }
 
     /// <summary>Talent 108: crit chance rises with each bleeding enemy, up to a cap.</summary>
@@ -378,7 +378,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         Assert.True(casts.Count >= 3, $"Stalker Step was cast {casts.Count} times");
         Assert.True(stealthKept, "Stalker Step ended Stealth");
         Assert.InRange(casts[1] - casts[0], 0, 0.5);
-        double recharge = StalkerStep.CooldownSeconds * (1.0 - hero.Stats.CooldownReductionPct);
+        double recharge = StalkerStep.AbilityCooldown * (1.0 - hero.Stats.CooldownReductionPct);
         Assert.InRange(casts[2] - casts[0], recharge / hero.CooldownRate(hero.GetAbility<StalkerStep>()!, SimTime.Zero) - 0.01, recharge + 1.5);
     }
 

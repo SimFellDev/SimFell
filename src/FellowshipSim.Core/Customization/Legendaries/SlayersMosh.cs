@@ -3,24 +3,14 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 424 (Tariq's Stormlord Helm, item 5899; Drape of the Slayer King, item 5218): "Enemies that take
-/// damage from your Leap Smash ability take more damage from you." Effect 2250 on the enemy.
+/// Legendary power 424: "Enemies that take damage from your Leap Smash ability take more damage from you." Effect 2250 on
+/// the enemy.
 /// </summary>
-public class SlayersMosh : Legendary
+public partial class SlayersMosh : Legendary
 {
-    public const int PowerId = 424;
-    public const int HelmItemId = 5899;
-    public const int CloakItemId = 5218;
     public const int DebuffEffectId = 2250;
-    public const double DebuffSeconds = 6.0;
-    public const double DamageTaken = 1.2;
 
-    public static readonly AuraDef Debuff = AuraDef.Effect("Slayer's Mosh", DebuffEffectId, DebuffSeconds);
-
-    public override int LegendaryPowerId => PowerId;
-    public override string Name => "Slayer's Mosh";
-    public override string HeroName => "Tariq";
-    public override IReadOnlyList<int> ItemIds => [HelmItemId, CloakItemId];
+    public static readonly AuraDef Debuff = AuraDef.Effect("Slayer's Mosh", DebuffEffectId, Duration);
 
     public override void Bind(Hero hero)
     {
@@ -29,6 +19,6 @@ public class SlayersMosh : Legendary
         {
             for (int i = 0; i < struck.Count; i++) struck[i].Auras.Apply(Debuff, ctx.CurrentTime);
         };
-        hero.TargetDamageMultipliers.Add((target, now) => target.Auras.HasAura(Debuff, now) ? DamageTaken : 1.0);
+        hero.TargetDamageMultipliers.Add((target, now) => target.Auras.HasAura(Debuff, now) ? IncomingDamageScaler : 1.0);
     }
 }

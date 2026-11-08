@@ -5,14 +5,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// damage it deals. The more Fury it consumes, the higher the damage it deals. Execution: Can only be used
 /// against enemies that have low health."
 /// </summary>
-public class CullingStrike : TariqAbility
+public partial class CullingStrike : TariqAbility
 {
-    public const int AbilityId = 1228;
-    public const string AbilityName = "Culling Strike";
-    /// <summary>Share of Strength.</summary>
-    public const double Coefficient = 3.182025;
-    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
-    public const double CooldownSeconds = 6.0;
     public const double MaxFurySpent = 10.0;
     /// <summary>
     /// The tooltip's bonus at <see cref="MaxFurySpent"/> Fury is a share of damage per Fury spent. Combat logs
@@ -31,10 +25,10 @@ public class CullingStrike : TariqAbility
     public AuraDef? FreeStrike { get; internal set; }
     public double FreeStrikeFury { get; internal set; }
 
-    public CullingStrike(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public CullingStrike(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = StrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         // Game data: no global cooldown effect. Combat logs (3 Tariq fights):
         // casts right after other casts.
         IgnoresGcd = true;

@@ -10,19 +10,13 @@ namespace FellowshipSim.Core.Heroes.Rime.Talents;
 /// Orbs gained in rises. UNVERIFIED: whether the proc chance rolls per orb or per gain. A Talon Strike or Rising Talons uses one stack
 /// on its first hit alone (its first spike, its first wave), not on every spike or wave (per the user; no log has it yet).
 /// </summary>
-public class FrostweaversWrath : Talent
+public partial class FrostweaversWrath : Talent
 {
-    public const int TalentId = 191;
-    public const string TalentName = "Frostweaver's Wrath";
     public const int EffectId = 2305;
-    /// <summary>Game data: effect 2305 duration and the tooltip's duration.</summary>
-    public const double BuffSeconds = 20.0;
     public const int MaxStacks = 2;
-    public const double ProcChance = 0.2;
-    public const double CritChance = 1.0;
     public const string ProcKey = "frostweavers_wrath";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Frostweaver's Wrath", EffectId, BuffSeconds, MaxStacks) with { IsProc = true };
+    public static readonly AuraDef Buff = AuraDef.Effect("Frostweaver's Wrath", EffectId, Duration, MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;

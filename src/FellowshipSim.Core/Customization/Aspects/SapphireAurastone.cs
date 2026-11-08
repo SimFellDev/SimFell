@@ -6,10 +6,8 @@ namespace FellowshipSim.Core.Customization.Aspects;
 /// damage you deal is accumulated into the Sapphire Aurastone and released in a pulse of damage, evenly split between
 /// nearby enemies on a fixed period." (damage effect 2347; it never crits and is not scaled again)
 /// </summary>
-public class SapphireAurastone : Aspect
+public partial class SapphireAurastone : Aspect
 {
-    public const int AspectId = 32;
-    public const string AspectName = "Sapphire Aurastone";
     public const int DamageEffectId = 2347;
     public const string DamageName = "Sapphire Aurastone Damage";
     public const double PulseSeconds = 3.0;
@@ -18,14 +16,13 @@ public class SapphireAurastone : Aspect
     /// (n7zxK8harZT2wjDB fight 9: Spirit of Heroism at 16.604s and 92.447s, first pulses at 22.615s and 98.455s).
     /// </summary>
     public const double FirstPulseSeconds = 6.0;
-    public static readonly double[] StoredShareByRank = [0.034, 0.063, 0.091, 0.12];
 
     public override int Id => AspectId;
     public override string Name => AspectName;
 
     public override void Bind(Hero hero)
     {
-        double share = ForRank(StoredShareByRank);
+        double share = ForRank(DamageAccumulationPercentageByRank);
         int logId = LogIds.Effect(DamageEffectId);
         double stored = 0.0;
         int stone = 0;

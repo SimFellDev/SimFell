@@ -8,14 +8,8 @@ namespace FellowshipSim.Core.Heroes.Mara;
 /// costs Energy, and Energy regenerates. Backstab, Widow's Bite and Skittering Blades used from Stealth (Brooding Shadows)
 /// apply a poison. Abilities live in Abilities/, talents in Talents/.
 /// </summary>
-public sealed class Mara : Hero
+public sealed partial class Mara : Hero
 {
-    /// <summary>Hero attributes MaxResources and Resources (game data hero 11): Mara starts every fight with full Energy.</summary>
-    public const double MaxEnergy = 200;
-
-    /// <summary>Hero attribute MaxResourcesSecond.</summary>
-    public const double MaxComboPoints = 6;
-
     /// <summary>
     /// Energy regenerated per second before haste and buffs: the game data gain amount every gain interval,
     /// the interval divided by Haste and by Predator's Rush, and Maiden of Death
@@ -42,9 +36,11 @@ public sealed class Mara : Hero
     /// </summary>
     public const double EnergyLostToTimerRestartSeconds = PeriodicEffect.ServerFrameSeconds;
 
-    public static readonly ResourceDef Energy = new("Energy", Max: MaxEnergy, Initial: MaxEnergy);
+    /// <summary>Mara starts every fight with full Energy: <see cref="HeroMaxResources"/> and <see cref="HeroResources"/>.</summary>
+    public static readonly ResourceDef Energy = new("Energy", Max: HeroMaxResources, Initial: HeroResources);
 
-    public static readonly ResourceDef ComboPoints = new("Combo Points", Max: MaxComboPoints)
+    /// <summary>The most Combo Points are <see cref="HeroMaxResourcesSecond"/>.</summary>
+    public static readonly ResourceDef ComboPoints = new("Combo Points", Max: HeroMaxResourcesSecond)
     {
         Aliases = ["cp"],
     };
@@ -54,9 +50,6 @@ public sealed class Mara : Hero
     /// least, with Spirit of Heroism too. Mara's global cooldown is not hasted.
     /// </summary>
     public const double GlobalCooldown = 1.0;
-
-    /// <summary>Class tuning: hero attribute BalancingDamageAura (game data hero 11).</summary>
-    public const double BalancingDamageAura = 1.04;
 
     /// <summary>
     /// Creeping Death: Caustic Poison, Seething Poisons, and Volatile Poison deal increased Poison damage per Haste;
@@ -76,8 +69,7 @@ public sealed class Mara : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Game data hero 11: mainStat Agility.</summary>
-    public override MainStat MainStat => MainStat.Agility;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>Macabre Stratagem: Final Stratagem is replaced by Macabre Stratagem.</summary>
     public bool HasMacabreStratagem { get; internal set; }
@@ -97,7 +89,7 @@ public sealed class Mara : Hero
         // to refund any Energy and Combo Points spent" (hero 11's Spirit text). The Combo Points come back through the
         // spend; the Energy through OnSpiritRefund below.
         SpiritRefundResource = ComboPoints;
-        ClassDamageTuning = BalancingDamageAura;
+        ClassDamageTuning = HeroBalancingDamageAura;
         GlobalCooldownSeconds = GlobalCooldown;
         GlobalCooldownScalesWithHaste = false;
 
@@ -234,7 +226,7 @@ public sealed class Mara : Hero
     /// Killer go through it; Widow's Bite, Venomous Delight and a Spirit Refund's Energy do not.
     /// </summary>
     public void GainEnergyWithMaiden(double amount, SimulationContext ctx) =>
-        GainEnergy(Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime) ? amount * MaidenOfDeath.EnergyRegen : amount, ctx);
+        GainEnergy(Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime) ? amount * MaidenOfDeath.EnergyGainMultiplier : amount, ctx);
 
     protected override void OnFightBegins(SimulationContext ctx)
     {

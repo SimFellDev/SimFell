@@ -4,15 +4,12 @@ namespace FellowshipSim.Core.Customization.Sigils;
 /// Sigil 4: "Every set number of Critical Strikes you gain Critical Strike rating for a time. You can not
 /// gain stacks while Seized Opportunity is active on you." (counter: effect 2111, buff: effect 2110)
 /// </summary>
-public class SeizedOpportunity : Sigil
+public partial class SeizedOpportunity : Sigil
 {
-    public const int SigilId = 4;
-    public const string SigilName = "Seized Opportunity";
     public const int CounterEffectId = 2111;
     public const int CritsNeeded = 20;
     public const int BuffEffectId = 2110;
     public const double DurationSeconds = 12.0;
-    public static readonly double[] CritRatingByRank = [21, 39, 57, 75];
 
     // Combat logs: the counter and the buff stay through the hero's death (18 deaths, none removed it).
     public static readonly AuraDef Counter = AuraDef.Effect("Seized Opportunity", CounterEffectId, maxStacks: CritsNeeded) with { KeepsOnDeath = true };
@@ -23,7 +20,7 @@ public class SeizedOpportunity : Sigil
     public override void Bind(Hero hero)
     {
         var buff = hero.Register(AuraDef.Effect("Seized Opportunity", BuffEffectId, DurationSeconds,
-            modifiers: StatModifier.Add(StatType.CritRating, ForRank(CritRatingByRank))) with { KeepsOnDeath = true });
+            modifiers: StatModifier.Add(StatType.CritRating, ForRank(BuffAdditionalCritRatingByRank))) with { KeepsOnDeath = true });
         hero.OnDamageDealt += (in dmg) =>
         {
             if (!dmg.IsCrit || hero.Auras.HasAura(buff, dmg.Timestamp)) return;

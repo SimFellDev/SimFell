@@ -12,29 +12,23 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// A cast in Stealth ends it and does nothing else: the ability has no cooldown node and no application there.
 /// Combat logs (the 23 Mara fights of data/fights): all 12 casts in Stealth log the removal in the cast's frame.
 /// </summary>
-public class BroodingShadows : MaraAbility
+public partial class BroodingShadows : MaraAbility
 {
-    public const int AbilityId = 1130;
-    public const string AbilityName = "Brooding Shadows";
-    public const double CooldownSeconds = 15.0;
-    public const int Charges = 2;
     public const int StealthEffectId = 1591;
-
-    /// <summary>
-    /// Seconds no cast of the ability is possible after one, divided by the Haste at the cast: game data
-    /// padding cooldown, blocked by padding cooldown true, comment "To protect against double presses",
-    /// applied after the ability commits. The padding effect takes 1 / Haste (snapshot),
-    /// multiplied by the padding, and has no time-rate tag, so it runs in real time.
-    /// </summary>
-    public const double PaddingCooldownSeconds = 0.7;
 
     public static readonly AuraDef Stealth = AuraDef.Effect("Brooding Shadows", StealthEffectId);
 
+    /// <summary>
+    /// End of the padding cooldown: no cast of the ability is possible for <see cref="PaddingCooldown"/> seconds after one,
+    /// divided by the Haste at the cast. Game data: blocked by padding cooldown true, comment "To protect against double
+    /// presses", applied after the ability commits. The padding effect takes 1 / Haste (snapshot), multiplied by the
+    /// padding, and has no time-rate tag, so it runs in real time.
+    /// </summary>
     private SimTime _paddingEndsAt;
 
-    public BroodingShadows(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
+    public BroodingShadows(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds, Charges, scalesWithHaste: true);
+        SetCooldown(AbilityCooldown, AbilityCharges, scalesWithHaste: true);
         IgnoresGcd = true;
     }
 
@@ -58,7 +52,7 @@ public class BroodingShadows : MaraAbility
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         var now = ctx.CurrentTime;
-        _paddingEndsAt = now + SimTime.FromSeconds(PaddingCooldownSeconds / (1.0 + Mara.GetHaste(now)));
+        _paddingEndsAt = now + SimTime.FromSeconds(PaddingCooldown / (1.0 + Mara.GetHaste(now)));
         if (Mara.IsStealthed(now)) Mara.Auras.Remove(Stealth, now);
         else Mara.Auras.Apply(Stealth, now);
     }

@@ -5,16 +5,8 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// of Cold Shower and Avalanche, which stay plain Ice Comets even with Icy Talons (per the user); see
 /// <see cref="FreeCast"/>. Rising Talons (Icy Talons) is built on it.
 /// </summary>
-public class IceComet : RimeAbility
+public partial class IceComet : RimeAbility
 {
-    public const int AbilityId = 1018;
-    public const string AbilityName = "Ice Comet";
-    public const double Coefficient = 5.285;
-    public const int DefaultWinterOrbCost = 2;
-
-    /// <summary>Game data: damage falls off as a square root of the threshold over the targets, beyond the threshold.</summary>
-    public const double TargetThreshold = 12;
-
     /// <summary>
     /// Ability 2227 ("Ice Comet"): combat logs report every comet's damage under it,
     /// cast or free (casts are logged as 1018).
@@ -37,13 +29,14 @@ public class IceComet : RimeAbility
 
     public IceComet(Rime owner) : this(owner, AbilityId, AbilityName)
     {
-        BaseCoefficient = Coefficient;
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = DamageIntellectCoefficient;
+        // Game data: damage falls off as a square root of the threshold over the targets, beyond the threshold.
+        AoeTargetThreshold = TargetCountThreshold;
         DamageLogId = DamageId;
     }
 
     /// <summary>For abilities built on Ice Comet (Rising Talons), which set their own values.</summary>
-    protected IceComet(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory.Power) { }
+    protected IceComet(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory) { }
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason) =>
         MeetsRequirements(explain, out reason) && base.CanCast(ctx, explain, out reason);
@@ -56,9 +49,9 @@ public class IceComet : RimeAbility
             reason = explain ? $"{Name} is replaced by Rising Talons (Icy Talons)" : null;
             return false;
         }
-        if (Rime.WinterOrbs < DefaultWinterOrbCost)
+        if (Rime.WinterOrbs < AbilityCost)
         {
-            reason = explain ? $"{Name} needs {DefaultWinterOrbCost} Winter Orbs (have {Rime.WinterOrbs})" : null;
+            reason = explain ? $"{Name} needs {AbilityCost} Winter Orbs (have {Rime.WinterOrbs})" : null;
             return false;
         }
         reason = null;
@@ -67,7 +60,7 @@ public class IceComet : RimeAbility
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
-        Rime.SpendWinterOrbs(DefaultWinterOrbCost, ctx);
+        Rime.SpendWinterOrbs(AbilityCost, ctx);
         Launch(ctx, target, ImpactDelay(ctx), raisesStruck: true);
     }
 

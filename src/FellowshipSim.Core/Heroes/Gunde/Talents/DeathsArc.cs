@@ -6,17 +6,12 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// Talent 748 / effect 3208: "Each time you use Blood Arc, it has a chance to instantly reset its cooldown and
 /// cause your next Blood Arc to have increased Critical Strike chance." Crit chance beyond a guaranteed crit is a grievous crit.
 /// </summary>
-public class DeathsArc : Talent
+public partial class DeathsArc : Talent
 {
-    public const int TalentId = 748;
-    public const string TalentName = "Death's Arc";
     public const int EffectId = 3208;
-    public const double BuffSeconds = 12.0;
-    public const double ProcChance = 0.3;
-    public const double CritChance = 1.0;
     public const string ProcKey = "deaths_arc";
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds) with { IsProc = true };
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, Duration) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -30,11 +25,11 @@ public class DeathsArc : Talent
         {
             if (cast.Ability != bloodArc || !hero.Auras.HasAura(Buff, cast.Time)) return;
             hero.Auras.Remove(Buff, cast.Time);
-            cast.CritChance += CritChance;
+            cast.CritChance += AddedCriticalStrikeChance;
         };
         bloodArc.Arced += (ctx, _) =>
         {
-            if (!ctx.Outcomes.RollProc(ProcKey, ProcChance, ctx)) return;
+            if (!ctx.Outcomes.RollProc(ProcKey, Chance, ctx)) return;
             hero.CooldownOf(bloodArc).ResetAll();
             hero.Auras.Apply(Buff, ctx.CurrentTime);
         };

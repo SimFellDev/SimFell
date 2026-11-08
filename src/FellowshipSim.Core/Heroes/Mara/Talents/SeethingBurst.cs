@@ -8,14 +8,9 @@ namespace FellowshipSim.Core.Heroes.Mara.Talents;
 /// beyond a threshold (ability 1131's targetCountFalloff, effect 3144). UNVERIFIED: no combat log has this talent; the
 /// damage is taken to be logged as effect 3144.
 /// </summary>
-public class SeethingBurst : Talent
+public partial class SeethingBurst : Talent
 {
-    public const int TalentId = 668;
-    public const string TalentName = "Seething Burst";
     public const int DamageEffectId = 3144;
-    public const double Chance = 0.2;
-    public const double Coefficient = 1.5;
-    public const double TargetThreshold = 10;
     public const string ProcKey = "seething_burst";
 
     public override string Name => TalentName;
@@ -28,7 +23,7 @@ public class SeethingBurst : Talent
         mara.PoisonDamageIds.Add(burst.DamageLogId);
         mara.SeethingPoison.Ticked += (ctx, target) =>
         {
-            if (ctx.Outcomes.RollProc(ProcKey, Chance, ctx, target)) burst.DealAoeDamage(ctx, ctx.ActiveEnemies);
+            if (ctx.Outcomes.RollProc(ProcKey, ProcChance, ctx, target)) burst.DealAoeDamage(ctx, ctx.ActiveEnemies);
         };
     }
 
@@ -36,8 +31,8 @@ public class SeethingBurst : Talent
     {
         public Burst(Mara owner) : base(owner, LogIds.Effect(DamageEffectId), TalentName)
         {
-            BaseCoefficient = Coefficient;
-            AoeTargetThreshold = TargetThreshold;
+            BaseCoefficient = AgilityCoefficient;
+            AoeTargetThreshold = NumTargetsDamageFalloffThreshold;
             HasCreepingDeath = true;
         }
 

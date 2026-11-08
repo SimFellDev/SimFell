@@ -1,8 +1,9 @@
 namespace FellowshipSim.Core.Customization.Glyphs;
 
 /// <summary>
-/// A glyph (gear rune). Each glyph class lists its game ID, name and per-rank values as constants at the top;
-/// <see cref="Bind"/> hooks its effect into the hero.
+/// A glyph (gear rune). Each glyph class is <c>partial</c>: FellowshipSim.Codex.Generators' <c>GlyphGenerator</c> writes
+/// its game ID, name and tuning values (per-rank values as <c>&lt;Name&gt;ByRank</c> arrays) from its glyph record, and the
+/// class has the values the game data lacks; <see cref="Bind"/> hooks its effect into the hero.
 /// </summary>
 public abstract class Glyph
 {

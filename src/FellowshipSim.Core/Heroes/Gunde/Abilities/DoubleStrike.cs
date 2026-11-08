@@ -5,18 +5,14 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// Strike can be used both in melee and at range. Applies Rend to the target." Combat logs
 /// (Y4wpb2f3gc8LqJDX fight 25): in melee both hits land with the cast; at range they land after it, each at its own delay.
 /// </summary>
-public class DoubleStrike : GundeAbility
+public partial class DoubleStrike : GundeAbility
 {
-    public const int AbilityId = 2301;
-    public const string AbilityName = "Double Strike";
-    public const double Coefficient = 0.825;
     public const int Hits = 2;
-    public const double RendShareOfDamage = 0.5;
 
-    public DoubleStrike(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public DoubleStrike(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        RendShare = RendShareOfDamage;
+        BaseCoefficient = DamageStrengthCoefficientPerHit;
+        RendShare = DamageToDotScaler;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

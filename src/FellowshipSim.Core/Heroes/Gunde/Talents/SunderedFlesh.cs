@@ -5,10 +5,8 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// instantly take that damage." The Rend's damage still to deal is taken as one hit, logged as Rend. UNVERIFIED: no combat
 /// log has this talent; Slaughter is not checked.
 /// </summary>
-public class SunderedFlesh : Talent
+public partial class SunderedFlesh : Talent
 {
-    public const int TalentId = 765;
-    public const string TalentName = "Sundered Flesh";
 
     public override string Name => TalentName;
     public override int Id => TalentId;

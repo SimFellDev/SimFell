@@ -3,10 +3,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// <summary>
 /// Talent 174: "Your Serenity applies Peacefield on you, healing you for 80% of the initial heal's value over 9 seconds."
 /// </summary>
-public class Peacefield : Talent
+public partial class Peacefield : Talent
 {
-    public const int TalentId = 174;
-    public const string TalentName = "Peacefield";
 
     public override string Name => TalentName;
     public override int Id => TalentId;

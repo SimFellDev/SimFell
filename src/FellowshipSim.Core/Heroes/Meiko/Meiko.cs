@@ -9,23 +9,14 @@ namespace FellowshipSim.Core.Heroes.Meiko;
 /// Earthfall charges that Lashing Stormkick and Earthfist Barrage consume. Abilities live in Abilities/, talents in
 /// Talents/.
 /// </summary>
-public sealed class Meiko : Hero
+public sealed partial class Meiko : Hero
 {
-    /// <summary>
-    /// Hero attribute MaxResourcesSecond 2 (game data hero 13): a combo holds 2 Combo Builders. Combat logs report no
-    /// combo; the replay compares none.
-    /// </summary>
-    public const double MaxComboPoints = 2;
-
     /// <summary>
     /// Every Meiko ability's global cooldown: the builders' and Shatter Earth's globalCooldown 1, not hasted (game data
     /// abilities 1100, 1101, 1102, 1115). Combat logs (27 fights): 8,862 of the 11,816 gaps under 3s between builders and
     /// Shatter Earth are 1.03-1.07s.
     /// </summary>
     public const double GlobalCooldown = 1.0;
-
-    /// <summary>Class tuning: hero 13 attribute BalancingDamageAura 1, none.</summary>
-    public const double BalancingDamageAura = 1.0;
 
     /// <summary>Spirit Points per Spirit Refund (Meiko.SpiritProc.ResourceRefund.FlatSpiritPointGain 2).</summary>
     public const double SpiritPointsPerRefund = 2.0;
@@ -36,8 +27,11 @@ public sealed class Meiko : Hero
     /// </summary>
     public const double ChargeRefundDelaySeconds = 0.2;
 
-
-    public static readonly ResourceDef ComboPoints = new("Combo Points", Max: MaxComboPoints)
+    /// <summary>
+    /// A combo holds <see cref="HeroMaxResourcesSecond"/> Combo Builders. Combat logs report no combo; the replay compares
+    /// none.
+    /// </summary>
+    public static readonly ResourceDef ComboPoints = new("Combo Points", Max: HeroMaxResourcesSecond)
     {
         Aliases = ["cp"],
     };
@@ -51,7 +45,6 @@ public sealed class Meiko : Hero
     /// <summary>The Palm Technique opened the combo held (Spirit Palm was its first builder).</summary>
     public static readonly AuraDef PalmTechnique = AuraDef.Internal("Palm Technique", 0);
 
-
     /// <summary>Meiko's talent tree, as in game (game data talent-slot records, hero Meiko).</summary>
     public static readonly TalentSlot[] TalentTree = TalentSlot.Tree(
         //              row cost  a                              b                              c
@@ -64,8 +57,7 @@ public sealed class Meiko : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 13: mainStat Agility.</summary>
-    public override MainStat MainStat => MainStat.Agility;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>The first and second Combo Builders of the combo held (null while the combo has none).</summary>
     public Technique? FirstBuilder { get; private set; }
@@ -80,7 +72,7 @@ public sealed class Meiko : Hero
     public override void Initialize()
     {
         AddResource(ComboPoints);
-        ClassDamageTuning = BalancingDamageAura;
+        ClassDamageTuning = HeroBalancingDamageAura;
         GlobalCooldownSeconds = GlobalCooldown;
         GlobalCooldownScalesWithHaste = false;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;

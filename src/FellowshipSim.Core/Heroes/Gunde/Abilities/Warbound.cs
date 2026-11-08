@@ -5,18 +5,13 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// It has charges whose recharge is not hasted. The enemies in the path are the target alone in a sim; a replay follows the log.
 /// UNVERIFIED: whether it takes the global cooldown.
 /// </summary>
-public class Warbound : GundeAbility
+public partial class Warbound : GundeAbility
 {
-    public const int AbilityId = 2299;
-    public const string AbilityName = "Warbound";
-    public const double Coefficient = 0.2;
-    public const double CooldownSeconds = 8.0;
-    public const int Charges = 2;
 
-    public Warbound(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Movement)
+    public Warbound(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, Charges);
+        BaseCoefficient = StrengthCoefficient;
+        SetCooldown(AbilityCooldown, AbilityCharges);
         IgnoresGcd = true;
     }
 

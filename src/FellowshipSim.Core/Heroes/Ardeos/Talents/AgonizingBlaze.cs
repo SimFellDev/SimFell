@@ -7,11 +7,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// target adds a stack. All stacks are lost when Searing Blaze is removed from the target. A tick deals damage with the stacks held before it. UNVERIFIED: no combat log has
 /// this talent.
 /// </summary>
-public class AgonizingBlaze : Talent
+public partial class AgonizingBlaze : Talent
 {
-    public const int TalentId = 145;
-    public const string TalentName = "Agonizing Blaze";
-    public const double DamagePerStack = 0.04;
     public const int MaxStacks = 10;
 
     public override string Name => TalentName;
@@ -21,7 +18,7 @@ public class AgonizingBlaze : Talent
     {
         var searing = hero.GetAbility<SearingBlaze>()?.Dot;
         if (searing == null) return;
-        searing.DamagePerTickDealt = DamagePerStack;
+        searing.DamagePerTickDealt = StackingBoostPerStackDamageIncrease;
         searing.MaxTicksCounted = MaxStacks;
     }
 }

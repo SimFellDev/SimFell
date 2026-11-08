@@ -7,21 +7,13 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// additional enemies near your target, dealing physical damage to them. Highwind Arrow gains Cooldown Acceleration equal
 /// to your Haste." Has a cast time, costs Focus and recharges its charges (cooldownTimeRateScalesOff Haste).
 /// Combat logs (fXyzwGcQkTrLD34R fight 4): each ricochet strikes another enemy a few server frames after the hit before
-/// it, for a share of the first hit (Bowguy constant BounceDamageMultiplierAfterFirstHit, <see cref="RicochetMultiplier"/>), with the cast's bonuses and
+/// it, for a share of the first hit (<see cref="BounceDamageMultiplierAfterFirstHit"/>), with the cast's bonuses and
 /// crit chance (a Lethal Shots cast's ricochets are grievous crits too).
 /// </summary>
-public class HighwindArrow : ElarionAbility
+public partial class HighwindArrow : ElarionAbility
 {
-    public const int AbilityId = 1313;
-    public const string AbilityName = "Highwind Arrow";
-    /// <summary>Share of Agility.</summary>
-    public const double Coefficient = 13.6673;
-    public const double CastTimeSeconds = 2.0;
     public const double Cost = 30.0;
-    public const double CooldownSeconds = 15.0;
-    public const int Charges = 3;
     public const int BaseRicochets = 2;
-    public const double RicochetMultiplier = 0.5;
 
     /// <summary>Talent 126 Resurgent Winds: the buffed Highwind Arrow deals more damage.</summary>
     public const double ResurgentWindsMultiplier = 1.5;
@@ -38,12 +30,12 @@ public class HighwindArrow : ElarionAbility
     /// <summary>A cast's ricochets that found no enemy, once its last arrow is done (Striker's Aim).</summary>
     public event Action<SimulationContext, int>? RicochetsMissed;
 
-    public HighwindArrow(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public HighwindArrow(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        BaseCoefficient = AgilityCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
         FocusCost = Cost;
-        SetCooldown(CooldownSeconds, Charges, scalesWithHaste: true);
+        SetCooldown(AbilityCooldown, AbilityCharges, scalesWithHaste: true);
     }
 
     private bool ResurgentWindsUp(SimTime now) => HasResurgentWinds && Owner.Auras.HasAura(ResurgentWinds.Buff, now);
@@ -83,7 +75,7 @@ public class HighwindArrow : ElarionAbility
                 return;
             }
             struck.Add(next);
-            DealDamage(c, next, damageMultiplier: castDamage * multiplier * RicochetMultiplier, extraCritChance: castCrit,
+            DealDamage(c, next, damageMultiplier: castDamage * multiplier * BounceDamageMultiplierAfterFirstHit, extraCritChance: castCrit,
                 onLanded: (cc, _) => After(cc, left - 1));
         }
 

@@ -8,14 +8,10 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// count (game data targetCountFalloff). Ability 1257 has a different share in its text; the talent's share is used.
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class FlareUp : Talent
+public partial class FlareUp : Talent
 {
-    public const int TalentId = 159;
-    public const string TalentName = "Flare up";
     public const int DamageEffectId = 1810;
     public const string DamageName = "Flare Up";
-    public const double FractionOfHit = 0.50;
-    public const double TargetThreshold = 3;
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -32,8 +28,8 @@ public class FlareUp : Talent
             var burning = ctx.ActiveEnemies.Where(e => ardeos.Dots.Has(e, searing)).ToList();
             var struck = ctx.Outcomes.SelectTargets(LogIds.Effect(DamageEffectId), burning, ctx);
             if (struck.Count == 0) return;
-            double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
-            double damage = hit.Amount * FractionOfHit * falloff;
+            double falloff = struck.Count > TargetCountThreshhold ? Math.Sqrt((double)TargetCountThreshhold / struck.Count) : 1.0;
+            double damage = hit.Amount * DamageFraction * falloff;
             foreach (var enemy in struck)
             {
                 ctx.ApplyDamage(hero, enemy, damage, LogIds.Effect(DamageEffectId), DamageName, canCrit: false, 0.0, 1.0);

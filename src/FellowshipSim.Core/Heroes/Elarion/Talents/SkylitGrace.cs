@@ -9,10 +9,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// has no bonus until the next cast. The effect is not in the combat logs (fXyzwGcQkTrLD34R fight 4 has the talent), so the
 /// engine's aura is internal.
 /// </summary>
-public class SkylitGrace : Talent
+public partial class SkylitGrace : Talent
 {
-    public const int TalentId = 200;
-    public const string TalentName = "Skylit Grace";
     public const double Acceleration = 1.2;
 
     /// <summary>Skystrider's Grace's cooldown reads it.</summary>

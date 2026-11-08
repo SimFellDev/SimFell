@@ -5,12 +5,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// Impetus: Focused Shot hits have a chance to grant Celestial Impetus, which makes the next Celestial Shot Free and applies
 /// Lunarlight Mark stacks to the target. Effect 1867 holds the charges.
 /// </summary>
-public class CelestialShot : ElarionAbility
+public partial class CelestialShot : ElarionAbility
 {
-    public const int AbilityId = 1301;
-    public const string AbilityName = "Celestial Shot";
-    /// <summary>Share of Agility.</summary>
-    public const double Coefficient = 3.4548;
     public const double Cost = 15.0;
     public const int ImpetusEffectId = 1867;
     public const double ImpetusSeconds = 15.0;
@@ -26,9 +22,9 @@ public class CelestialShot : ElarionAbility
 
     private readonly RealPpm _impetus = new(ImpetusProcKey, ImpetusProcsPerMinute);
 
-    public CelestialShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public CelestialShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = AgilityCoefficient;
         FocusCost = Cost;
     }
 

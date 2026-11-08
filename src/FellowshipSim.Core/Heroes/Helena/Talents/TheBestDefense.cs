@@ -7,17 +7,12 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// cause your next Shield Throw within 12 seconds to deal 20% increased damage. (2.0 PPM)" The buff is effect 1231. A block
 /// is a defensive proc: a replay fires it at each gain of the buff in the log.
 /// </summary>
-public class TheBestDefense : Talent
+public partial class TheBestDefense : Talent
 {
-    public const int TalentId = 207;
-    public const string TalentName = "The Best Defense";
     public const int BuffEffectId = 1231;
-    public const double BuffSeconds = 12.0;
-    public const double ShieldThrowDamage = 1.2;
-    public const double ProcsPerMinute = 2.0;
     public const string ProcKey = "the_best_defense";
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, Duration);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -33,7 +28,7 @@ public class TheBestDefense : Talent
         {
             if (cast.Ability is not ShieldThrow || !hero.Auras.HasAura(Buff, cast.Time)) return;
             hero.Auras.Remove(Buff, cast.Time);
-            cast.DamageMultiplier *= ShieldThrowDamage;
+            cast.DamageMultiplier *= DamageMultiplier;
         };
     }
 }

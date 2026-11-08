@@ -6,28 +6,22 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// Ability 1009 / effect 2446: Frost Swallows (<see cref="SwallowCount"/>) circle Rime; Cold Snap and Freezing Torrent command them to
 /// attack (<see cref="CommandSwallows"/>, <see cref="CommandSwallow"/>).
 /// </summary>
-public class FlightOfTheNavir : RimeAbility
+public partial class FlightOfTheNavir : RimeAbility
 {
-    public const int AbilityId = 1009;
-    public const string AbilityName = "Flight of the Navir";
-    /// <summary>Per Frost Swallow hit.</summary>
-    public const double Coefficient = 0.469;
-    public const double CooldownSeconds = 60.0;
     public const int BuffEffectId = 2446;
-    public const double BuffSeconds = 20.0;
     public const int SwallowCount = 5;
     /// <summary>Combat logs report the circling swallows' hits under effect 1365.</summary>
     public const int SwallowDamageEffectId = 1365;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Flight of the Navir", BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect("Flight of the Navir", BuffEffectId, Duration);
 
     /// <summary>The circling swallows: Frost Swallows logged under effect 1365 that come back when they hit.</summary>
     public CirclingSwallows Swallows { get; }
 
-    public FlightOfTheNavir(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public FlightOfTheNavir(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        BaseCoefficient = DamageIntellectCoefficient;
+        SetCooldown(AbilityCooldown);
         Swallows = new CirclingSwallows(owner);
     }
 
@@ -62,7 +56,7 @@ public class FlightOfTheNavir : RimeAbility
     {
         private int _inFlight;
 
-        public CirclingSwallows(Rime owner) : base(owner, LogIds.Effect(SwallowDamageEffectId), Coefficient) { }
+        public CirclingSwallows(Rime owner) : base(owner, LogIds.Effect(SwallowDamageEffectId), DamageIntellectCoefficient) { }
 
         /// <summary>
         /// The circling swallows not out attacking: one that is sent comes back when it hits (combat logs: a Cold Snap cast

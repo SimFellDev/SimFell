@@ -8,12 +8,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// DamageBonus. Combat logs (fXyzwGcQkTrLD34R fight 4): the charge comes as the cast
 /// completes, before the arrow lands.
 /// </summary>
-public class FocusedExpanse : Talent
+public partial class FocusedExpanse : Talent
 {
-    public const int TalentId = 167;
-    public const string TalentName = "Focused Expanse";
-    public const double ProcChance = 0.2;
-    public const double EmpoweredDamage = 1.2;
     public const int BuffEffectId = 2271;
     public const double BuffSeconds = 15.0;
     public const int MaxCharges = 2;
@@ -29,7 +25,7 @@ public class FocusedExpanse : Talent
         var multishot = hero.GetAbility<Multishot>();
         if (multishot == null) return;
         multishot.EmpoweringBuffs.Add(new Multishot.EmpoweringBuff(now => hero.Auras.HasAura(Buff, now), now => hero.Auras.ConsumeStack(Buff, now)));
-        multishot.DamageMultipliers.Add((_, empowered) => empowered ? EmpoweredDamage : 1.0);
+        multishot.DamageMultipliers.Add((_, empowered) => empowered ? DamageBonus : 1.0);
         hero.OnCastCompleted += (ability, _, now) =>
         {
             if (ability is not FocusedShot || hero.SimContext is not { } ctx) return;

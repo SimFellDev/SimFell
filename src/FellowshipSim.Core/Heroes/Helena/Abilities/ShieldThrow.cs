@@ -7,19 +7,14 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// Haste at the cast. Combat logs (HrNZ6wQfFKGxybDR fight 1 @ 16.027): the first hit lands 0.33s after the cast and the
 /// bounces 0.03-0.2s apart, each bounce dealing what the first hit deals.
 /// </summary>
-public class ShieldThrow : HelenaAbility
+public partial class ShieldThrow : HelenaAbility
 {
-    public const int AbilityId = 985;
-    public const string AbilityName = "Shield Throw";
-    public const double Coefficient = 3.416;
-    public const double CooldownSeconds = 21.0;
-    public const int Bounces = 5;
     /// <summary>Combat logs (HrNZ6wQfFKGxybDR fight 1, v8rhNxVc3PwDqzBA fight 4): the first hit lands 0.27-0.37s after the cast.</summary>
     public const double FirstHitSeconds = 0.3;
     public const double ShockwaveReductionSeconds = 3.0;
 
     /// <summary>
-    /// A bounce to one more enemy. A sim bounces to every enemy up to <see cref="Bounces"/>; a replay bounces as often as
+    /// A bounce to one more enemy. A sim bounces to every enemy up to <see cref="MaxNumBounces"/>; a replay bounces as often as
     /// the log shows.
     /// </summary>
     public const string BounceProcKey = "shield_throw_bounce";
@@ -36,10 +31,10 @@ public class ShieldThrow : HelenaAbility
     /// <summary>Raised as the cast resolves (Martial Command, The Best Defense).</summary>
     public event Action<SimulationContext>? Thrown;
 
-    public ShieldThrow(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public ShieldThrow(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = StrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         VeteranOfWarReductions.Add((typeof(Shockwave), ShockwaveReductionSeconds));
     }
 
@@ -81,12 +76,12 @@ public class ShieldThrow : HelenaAbility
     }
 
     /// <summary>
-    /// As a hit lands, the shield bounces to an enemy it has not hit yet, up to <see cref="Bounces"/> times. Each bounce keeps
+    /// As a hit lands, the shield bounces to an enemy it has not hit yet, up to <see cref="MaxNumBounces"/> times. Each bounce keeps
     /// the cast's damage bonuses and crit.
     /// </summary>
     private void Bounce(SimulationContext ctx, List<EnemyTarget> struck, double castMultiplier, double castCrit)
     {
-        if (struck.Count > Bounces) return;
+        if (struck.Count > MaxNumBounces) return;
         var others = ctx.ActiveEnemies.Where(e => !struck.Contains(e)).ToList();
         if (others.Count == 0 || ctx.Outcomes.ChooseTarget(DamageLogId, others, ctx) is not { } next) return;
         if (!ctx.Outcomes.RollProc(BounceProcKey, 1.0, ctx, next)) return;

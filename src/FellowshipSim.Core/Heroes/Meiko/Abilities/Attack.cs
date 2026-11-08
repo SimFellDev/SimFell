@@ -5,17 +5,12 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// (Meiko.MeleeAutoAttack.SwingTimer 1.9) shortened by Haste. Combat logs record every swing as a cast (7Zmfx9gq6HjvThzc
 /// fight 2: swings 1.37-1.47s apart). Each swing adds a stack to Serenity.
 /// </summary>
-public class Attack : MeikoAbility
+public partial class Attack : MeikoAbility
 {
-    public const int AbilityId = 1118;
-    public const string AbilityName = "Attack";
-    public const double Coefficient = 0.46;
-    public const double SwingSeconds = 1.9;
-
     public Attack(Meiko owner) : base(owner, AbilityId, AbilityName)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(SwingSeconds, scalesWithHaste: true);
+        BaseCoefficient = AgilityCoefficient;
+        SetCooldown(SwingTimer, scalesWithHaste: true);
         IgnoresGcd = true;
     }
 

@@ -103,7 +103,7 @@ public sealed class BuildCatalog
 
     public IReadOnlyList<BuildOption> Legendaries { get; }
 
-    // Each legendary's option (its item ID) by every item ID it comes on: a saved Vexira's Venom can be the old wristbands, 5225.
+    // Each legendary's option (its item ID) by every item ID it comes on.
     private readonly Dictionary<int, int> _legendaryOfItem;
 
     /// <summary>The ID of the <see cref="Legendaries"/> option that legendary item <paramref name="itemId"/> is, or null.</summary>

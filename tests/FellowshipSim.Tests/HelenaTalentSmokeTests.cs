@@ -111,7 +111,7 @@ public class HelenaTalentSmokeTests(ITestOutputHelper output)
                 Auras = talentId == UnscarredSoul.TalentId ? [] :
                 [
                     new LogAura { Time = 5.0, Type = "applybuff", AbilityId = proof, Source = new UnitRef(1, 1), Target = new UnitRef(1, 1),
-                        Stack = talentId == PunishingStrikes.TalentId ? PunishingStrikes.StacksPerProc : null },
+                        Stack = talentId == PunishingStrikes.TalentId ? PunishingStrikes.StacksAtProc : null },
                 ],
                 Damage = talentId == UnscarredSoul.TalentId
                     ? [new LogDamage { Time = 5.0, AbilityId = proof, AbilityName = UnscarredSoul.TalentName, Target = enemy, Amount = 1000 }]
@@ -128,7 +128,7 @@ public class HelenaTalentSmokeTests(ITestOutputHelper output)
                 Assert.Contains(gains, g => g.Name == TheBestDefense.TalentName);
                 break;
             case PunishingStrikes.TalentId:
-                Assert.Contains(gains, g => g.Name == PunishingStrikes.TalentName && g.Stacks == PunishingStrikes.StacksPerProc);
+                Assert.Contains(gains, g => g.Name == PunishingStrikes.TalentName && g.Stacks == PunishingStrikes.StacksAtProc);
                 break;
             case SecondWind.TalentId:
                 Assert.Contains(gains, g => g.Name == SecondWind.TalentName);
@@ -162,9 +162,9 @@ public class HelenaTalentSmokeTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(RazorCrash.BreastplateItemId, "damage:Razor Shrapnel")]
-    [InlineData(IronSentinel.HelmItemId, "aura:Empowered Shield Slam")]
-    [InlineData(VanguardsAdvance.GreavesItemId, "damage:Shockwave")]
+    [InlineData(RazorCrash.ChestItemId, "damage:Razor Shrapnel")]
+    [InlineData(IronSentinel.HeadItemId, "aura:Empowered Shield Slam")]
+    [InlineData(VanguardsAdvance.LegsItemId, "damage:Shockwave")]
     public void Legendary_Is_Modeled_And_Takes_Effect(int itemId, string evidence)
     {
         var (without, _, gainedWithout) = Run(BaseTalents, 3, legendaryItemIds: []);

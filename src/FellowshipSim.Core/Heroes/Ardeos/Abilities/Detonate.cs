@@ -2,22 +2,17 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>
 /// Ability 1275: costs a Burning Ember (<see cref="CinderCost"/>). Instantly detonates all active fire damage over time
-/// effects from Ardeos abilities on enemies, dealing damage equal to <see cref="DetonatedSeconds"/> of average ticking
+/// effects from Ardeos abilities on enemies, dealing damage equal to <see cref="DotDamageSampleDuration"/> of average ticking
 /// damage to each enemy.
-/// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes <see cref="HitsPerEnemy"/>
-/// hits, spaced by <see cref="HitSpacingSeconds"/>, each the damage its effects deal per second at the cast (the hits that
+/// Combat logs (yMAZVJL9hTpFjqbC fight 7): the cast is instant; each enemy with an effect takes <see cref="NumHitsPerTarget"/>
+/// hits, spaced by <see cref="BetweenHitDelay"/>, each the damage its effects deal per second at the cast (the hits that
 /// land later keep it); the hits crit on their own; the effects keep ticking. On many enemies the hits queue up and land
 /// late.
 /// </summary>
-public class Detonate : ArdeosAbility
+public partial class Detonate : ArdeosAbility
 {
-    public const int AbilityId = 1275;
-    public const string AbilityName = "Detonate";
     public const double CinderCost = Ardeos.CindersPerBurningEmber;
-    public const double DetonatedSeconds = 3.0;
-    public const int HitsPerEnemy = 3;
     public const double FirstHitSeconds = 0.1;
-    public const double HitSpacingSeconds = 0.3;
 
     /// <summary>Buffs that make the next Detonate free, a stack each (Apocalyptic Surge).</summary>
     public List<AuraDef> FreeCastBuffs { get; } = new();
@@ -31,10 +26,10 @@ public class Detonate : ArdeosAbility
     /// <summary>The global cooldown with a legendary item worn, in server frames.</summary>
     public const double GlobalCooldownWithLegendary = 29.0 / 30.0;
 
-    public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public Detonate(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         GlobalCooldownSeconds = GlobalCooldown;
-        GlobalCooldownScalesWithHaste = false;
+        GlobalCooldownScalesWithHaste = AbilityGlobalCooldownScalesWithHaste;
     }
 
     // Speed: the enemies with an effect at the cast, in a list kept between casts.
@@ -78,13 +73,13 @@ public class Detonate : ArdeosAbility
             double perSecond = 0.0;
             var on = dots.On(enemy);
             for (int i = 0; i < on.Count; i++) perSecond += on[i].Effect.DamagePerSecond(ctx, on[i]);
-            double damage = perSecond * DetonatedSeconds / HitsPerEnemy * CastDamageMultiplier;
+            double damage = perSecond * DotDamageSampleDuration / NumHitsPerTarget * CastDamageMultiplier;
             if (damage <= 0) continue;
             double critChance = Owner.CritChanceAgainst(enemy, now) + CritChanceBonus + (CurrentCast?.CritChance ?? 0.0);
             double critMultiplier = CritMultiplierAt(now);
-            for (int i = 0; i < HitsPerEnemy; i++)
+            for (int i = 0; i < NumHitsPerTarget; i++)
             {
-                ctx.Schedule(SimTime.FromSeconds(FirstHitSeconds + i * HitSpacingSeconds), c =>
+                ctx.Schedule(SimTime.FromSeconds(FirstHitSeconds + i * BetweenHitDelay), c =>
                 {
                     if (!enemy.IsSleeping) c.ApplyDamage(Owner, enemy, damage, DamageLogId, Name, canCrit: true, critChance, critMultiplier);
                 }, Name);
