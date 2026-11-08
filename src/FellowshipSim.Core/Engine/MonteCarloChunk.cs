@@ -26,6 +26,9 @@ public sealed class MonteCarloChunk
     /// <summary>Each of the chunk's fights' damage, in fight order, when the run keeps it; else empty.</summary>
     public double[] FightDamage { get; init; } = [];
 
+    /// <summary>Each of the chunk's fights' DPS, in fight order.</summary>
+    public double[] FightDps { get; init; } = [];
+
     /// <summary>The fights' report: damage over time, sources, auras and the sampled fights.</summary>
     public ReportTotals Report { get; init; } = new();
 

@@ -16,6 +16,8 @@ public class MonteCarloResult
     public Dictionary<string, double> AbilityDpsBreakdown { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Total damage of each fight, in seed order. Empty unless the run was asked to keep it.</summary>
     public IReadOnlyList<double> IterationDamage { get; init; } = [];
+    /// <summary>The fights by DPS; null for a run of no fights.</summary>
+    public DpsDistribution? Distribution { get; init; }
     public int Iterations { get; init; }
     public double DurationSeconds { get; init; }
     /// <summary>Damage over the fight: the mean of every fight and the 5-95% band of a sample.</summary>
@@ -103,6 +105,7 @@ public class MonteCarloSimulator
     {
         fight ??= FightOptions.Default;
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
+        var fightDps = new double[iterations];
         var total = new Totals();
         var options = new ParallelOptions
         {
@@ -121,7 +124,7 @@ public class MonteCarloSimulator
             () => _idle.TryTake(out var worker) ? worker : NewWorker(),
             (chunk, _, worker) =>
             {
-                var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight, fightDamage, cancellationToken);
+                var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight, fightDamage, fightDps, cancellationToken);
                 lock (finished)
                 {
                     finished[chunk] = totals;
@@ -137,7 +140,7 @@ public class MonteCarloSimulator
             worker => _idle.Add(worker));
         reporter?.Finish(iterations);
         int? typical = total.Report.TypicalFight();
-        return Result(total, fightDamage, duration, iterations,
+        return Result(total, fightDamage, fightDps, duration, iterations,
             rollTypicalFight && typical is { } t ? RollFight(t, duration, targetCount, firstSeed, fight) : null);
     }
 
@@ -162,10 +165,11 @@ public class MonteCarloSimulator
         {
             int size = ChunkSize(iterations);
             double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
+            var fightDps = new double[iterations];
             var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight ?? FightOptions.Default,
-                fightDamage, cancellationToken);
-            int start = chunk * size;
-            return totals.ToChunk(chunk, fightDamage == null ? [] : fightDamage[start..Math.Min(iterations, start + size)]);
+                fightDamage, fightDps, cancellationToken);
+            int start = chunk * size, end = Math.Min(iterations, start + size);
+            return totals.ToChunk(chunk, fightDamage == null ? [] : fightDamage[start..end], fightDps[start..end]);
         }
         finally
         {
@@ -187,12 +191,13 @@ public class MonteCarloSimulator
         var total = new Totals();
         foreach (var chunk in chunks) total.Merge(Totals.From(chunk));
         double[]? fightDamage = keepFightDamage ? chunks.SelectMany(c => c.FightDamage).ToArray() : null;
-        return Result(total, fightDamage, duration, iterations);
+        return Result(total, fightDamage, chunks.SelectMany(c => c.FightDps).ToArray(), duration, iterations);
     }
 
-    // The fights of one chunk on one worker. A kept fight's damage goes in its place in fightDamage.
+    // The fights of one chunk on one worker. A fight's DPS goes in its place in fightDps, and a kept fight's damage in
+    // fightDamage.
     private static Totals FightChunk(Worker worker, int chunk, SimTime duration, int iterations, int targetCount, int firstSeed,
-        FightOptions fight, double[]? fightDamage, CancellationToken cancellationToken)
+        FightOptions fight, double[]? fightDamage, double[] fightDps, CancellationToken cancellationToken)
     {
         int seconds = (int)Math.Ceiling(Math.Max(1.0, fight.LongestLength(duration).TotalSeconds));
         int size = ChunkSize(iterations);
@@ -205,6 +210,7 @@ public class MonteCarloSimulator
             var (damage, fightEnd) = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
             double lengthSeconds = Math.Max(1.0, fightEnd.TotalSeconds);
             totals.Add(damage / lengthSeconds, damage, lengthSeconds);
+            fightDps[i] = damage / lengthSeconds;
             if (fightDamage != null) fightDamage[i] = damage;
         }
         return totals;
@@ -248,7 +254,7 @@ public class MonteCarloSimulator
         return program.Log!.Trace(end.TotalSeconds, worker.Recorder.Fight.Casts);
     }
 
-    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations,
+    private static MonteCarloResult Result(Totals total, double[]? fightDamage, double[] fightDps, SimTime duration, int iterations,
         RolledFight? rolled = null)
     {
         // The fights' mean length: every fight's, or the duration for a run of none.
@@ -268,6 +274,7 @@ public class MonteCarloSimulator
             TotalMeanDamage = total.Count > 0 ? total.DamageSum / total.Count : 0,
             AbilityDpsBreakdown = abilityDps,
             IterationDamage = fightDamage ?? [],
+            Distribution = DpsDistribution.Of(fightDps),
             Iterations = iterations,
             DurationSeconds = totalSeconds,
             Timeline = total.Report.Timeline(),
@@ -507,7 +514,7 @@ public class MonteCarloSimulator
             Report.Merge(other.Report);
         }
 
-        public MonteCarloChunk ToChunk(int index, double[] fightDamage) => new()
+        public MonteCarloChunk ToChunk(int index, double[] fightDamage, double[] fightDps) => new()
         {
             Index = index,
             Count = Count,
@@ -519,6 +526,7 @@ public class MonteCarloSimulator
             LengthSum = LengthSum,
             AbilityDamage = new Dictionary<string, double>(AbilityDamage, StringComparer.OrdinalIgnoreCase),
             FightDamage = fightDamage,
+            FightDps = fightDps,
             Report = Report.ToTotals(),
         };
 
