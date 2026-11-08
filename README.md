@@ -116,15 +116,17 @@ fine-grained token with "Contents: Read and write" on that repository alone.
 A profile is a `.simc` file: the hero, stats, talents, traits, blessings, gear and its `actions` lines, which are the
 action list. Keep profiles in `data/profiles/<Hero>/`.
 
-A sim's profile also has the sim settings: `iterations`, `threads`, `seed`, `duration` and `targets` (training
+A sim's profile also has the sim settings: `iterations`, `target_error`, `threads`, `seed`, `duration` and `targets` (training
 dummies), `length_variance` (a fraction), `health_follows_time`, `boss`, `starting_spirit`,
-`reaction_delays` and `proc_reaction` (seconds). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
+`reaction_delays` and `proc_reaction` (seconds). `target_error` is SimulationCraft's: the sim ends once the margin of
+error of the mean DPS at 95% confidence is below that percent of the mean, checked from 100 fights on, and `iterations`
+is the most fights (1,000,000 without an `iterations` line). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
 order. The last line of a setting is the setting, and a `dungeon=` line starts a dungeon that replaces the one before.
 Every option of the **Sim** page is a line of this text, and a sim's job is the text alone.
 
 The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
-standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
+standard deviation, the margin of error, the fights by DPS, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
 end, has the sim's profile. **Load** puts its build, action list and settings in the Sim page, as a compare run's
 **Load** does.
 

@@ -21,7 +21,7 @@
         <div class="tile main">
             <span>Mean DPS</span>
             <strong>@N(Result.MeanDps)</strong>
-            <em>±@MarginText at 95% confidence</em>
+            <em>every fight's DPS, averaged</em>
         </div>
         @if (Result.PrimaryTargetDps is { } primary && primary > 0 && primary < Result.MeanDps * 0.999)
         {
@@ -74,6 +74,15 @@
             <span>Fights</span>
             <strong>@N(Result.Iterations)</strong>
             <em>@Result.DurationSeconds.ToString("0.##", CultureInfo.CurrentCulture) s each</em>
+        </div>
+        <div class="tile" data-tooltip="The mean DPS is within this much of the true mean, 95 times in 100">
+            <span>Margin of error</span>
+            <strong>±@MarginText</strong>
+            <em>±@Dps(Result.Margin) DPS at 95% confidence</em>
+            @if (Result.TargetError is { } target)
+            {
+                <em>@TargetText(target)</em>
+            }
         </div>
     </div>
 
@@ -674,9 +683,21 @@
     private static string Width(double fraction) => Math.Clamp(fraction * 100, 0, 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
 
     /// <summary>The 95% confidence margin of the mean DPS, as a share of it.</summary>
-    private string MarginText => Result.MeanDps > 0 && Result.Iterations > 0
-        ? (1.96 * Result.StandardDeviation / Math.Sqrt(Result.Iterations) / Result.MeanDps * 100).ToString("0.00", CultureInfo.CurrentCulture) + "%"
+    private string MarginText => double.IsFinite(Result.MarginPercent)
+        ? Result.MarginPercent.ToString("0.00", CultureInfo.CurrentCulture) + "%"
         : "–";
+
+    /// <summary>A DPS to three significant figures below 100, so a small margin is not shown as 0; whole above.</summary>
+    private static string Dps(double value) => Math.Abs(value) >= 100 ? N(value)
+        : value.ToString(Math.Abs(value) >= 10 ? "0.0" : "0.00", CultureInfo.CurrentCulture);
+
+    /// <summary>The sim's target error, and the fights at which the sim reached it, or the most fights it ran without.</summary>
+    private string TargetText(double target)
+    {
+        string targetText = "target ±" + target.ToString("0.###", CultureInfo.CurrentCulture) + "%";
+        bool reached = Result.Iterations >= DpsMoments.TargetErrorMinimumFights && Result.MarginPercent < target;
+        return reached ? $"{targetText}, reached at {N(Result.Iterations)} fights" : $"{targetText}, not reached in {N(Result.Iterations)} fights";
+    }
 
     /// <summary>A thin bar for each span (start and end seconds in turn) along the fight, 1000 units wide.</summary>
     private string SpanPath(IReadOnlyList<double>? spans)

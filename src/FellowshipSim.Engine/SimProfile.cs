@@ -17,6 +17,7 @@ namespace FellowshipSim.Engine;
 /// primary_stat=161
 /// ...
 /// iterations=1000
+/// target_error=0.1
 /// threads=8
 /// seed=1
 /// duration=300
@@ -34,7 +35,9 @@ namespace FellowshipSim.Engine;
 /// and <c>pull.X=</c>) in place of <c>duration</c> and <c>targets</c>: its time limit is each fight's length, and its pulls
 /// set the enemies. <see cref="SettingKeys"/> are the setting keys the text has, <c>dungeon</c> for the dungeon's lines; a
 /// setting the text does not have is <see cref="SimSettings"/>'s default, and the iterations and duration are
-/// <see cref="DefaultIterations"/> and <see cref="DefaultDurationSeconds"/>.
+/// <see cref="DefaultIterations"/> and <see cref="DefaultDurationSeconds"/>. A <c>target_error</c> (percent of the mean
+/// DPS) above 0 ends the sim at that margin of error; <c>iterations</c> is then the most fights, and
+/// <see cref="DefaultTargetErrorIterations"/> without the line.
 /// </summary>
 public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IReadOnlySet<string> SettingKeys)
 {
@@ -49,6 +52,7 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     public const string StartingSpirit = "starting_spirit";
     public const string ReactionDelays = "reaction_delays";
     public const string ProcReaction = "proc_reaction";
+    public const string TargetError = "target_error";
 
     /// <summary>The key in <see cref="SettingKeys"/> of the dungeon's lines.</summary>
     public const string Dungeon = "dungeon";
@@ -56,12 +60,15 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     /// <summary>Fights of a profile with no <c>iterations</c> line.</summary>
     public const int DefaultIterations = 1000;
 
+    /// <summary>Most fights of a profile with a <c>target_error</c> line and no <c>iterations</c> line, as SimulationCraft's.</summary>
+    public const int DefaultTargetErrorIterations = 1_000_000;
+
     /// <summary>Length of each training dummy fight of a profile with no <c>duration</c> line, in seconds.</summary>
     public const double DefaultDurationSeconds = 300;
 
     /// <summary>Every setting's key.</summary>
     public static IReadOnlyList<string> SettingNames { get; } =
-        [Iterations, Threads, Seed, Duration, Targets, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
+        [Iterations, TargetError, Threads, Seed, Duration, Targets, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
 
     /// <summary>The settings that are <c>true</c> or <c>false</c>.</summary>
     public static IReadOnlyList<string> BoolSettingNames { get; } = [HealthFollowsTime, Boss, ReactionDelays];
@@ -148,8 +155,9 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
                 throw Error(v.Line, v.Text, e.Message);
             }
         }
+        double targetError = Read(TargetError, 0.0, NonNegative);
         var settings = new SimSettings(
-            Read(Iterations, DefaultIterations, v => Integer(v, min: 1)),
+            Read(Iterations, targetError > 0 ? DefaultTargetErrorIterations : DefaultIterations, v => Integer(v, min: 1)),
             fight?.TimeLimitSeconds ?? Read(Duration, DefaultDurationSeconds, Seconds),
             fight != null ? 1 : Read(Targets, 1, v => Integer(v, min: 1)),
             Read(Seed, 1, v => Integer(v, min: int.MinValue)),
@@ -160,7 +168,8 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
             Read(Boss, true, Bool),
             fight,
             Read(ReactionDelays, true, Bool),
-            Read(ProcReaction, SimSettings.DefaultProcReactionSeconds, NonNegative));
+            Read(ProcReaction, SimSettings.DefaultProcReactionSeconds, NonNegative),
+            targetError);
         return new SimProfile(profile, settings, keys);
     }
 
@@ -173,6 +182,7 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
         var s = new StringBuilder(new SimcProfile(Profile.Build, "").Format());
         s.AppendLine();
         s.AppendLine($"{Iterations}={Text(Settings.Iterations)}");
+        if (Settings.TargetError > 0) s.AppendLine($"{TargetError}={Text(Settings.TargetError)}");
         if (Settings.DegreeOfParallelism is { } threads) s.AppendLine($"{Threads}={Text(threads)}");
         s.AppendLine($"{Seed}={Text(Settings.FirstSeed)}");
         if (Settings.Dungeon == null)
@@ -256,6 +266,7 @@ public sealed record SimProfile(SimcProfile Profile, SimSettings Settings, IRead
     {
         HashSet<string> keys = [Iterations, Seed, LengthVariance, HealthFollowsTime, Boss, StartingSpirit, ReactionDelays, ProcReaction];
         if (settings.DegreeOfParallelism != null) keys.Add(Threads);
+        if (settings.TargetError > 0) keys.Add(TargetError);
         if (settings.Dungeon != null) keys.Add(Dungeon);
         else keys.UnionWith([Duration, Targets]);
         return keys;

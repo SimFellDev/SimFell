@@ -1,4 +1,5 @@
 using System.Reflection;
+using FellowshipSim.Core.Engine;
 using FellowshipSim.Engine;
 using FellowshipSim.UI.Services;
 using Microsoft.JSInterop;
@@ -33,10 +34,11 @@ public sealed class SimWorkerPool(IJSRuntime js)
 
     /// <summary>
     /// Runs a sim's <paramref name="chunkCount"/> chunks on up to <paramref name="workers"/> workers (all when null) and
-    /// returns its result's JSON. <paramref name="chunkDone"/> hears the count of chunks done as each completes.
+    /// returns its result's JSON. <paramref name="chunkDone"/> hears each chunk's index and fights as it completes, and
+    /// returns the chunks of the result: fewer ends the sim at them.
     /// </summary>
     public async Task<string> SimulateAsync(string profileJson, string settingsJson, int chunkCount, int? workers,
-        Action<int> chunkDone, CancellationToken ct)
+        Func<int, DpsMoments, int> chunkDone, CancellationToken ct)
     {
         var pool = await PoolAsync();
         int run = Interlocked.Increment(ref _nextRun);
@@ -118,10 +120,11 @@ public sealed class SimWorkerPool(IJSRuntime js)
     }
 
     /// <summary>What simPool.js tells the page as a run goes: chunks done, or a replay's progress lines.</summary>
-    public sealed class Sink(Action<int>? chunkDone, IProgress<string>? progress)
+    public sealed class Sink(Func<int, DpsMoments, int>? chunkDone, IProgress<string>? progress)
     {
+        /// <summary>Chunk <paramref name="chunk"/> is done, with its fights' DPS moments; returns the chunks of the result.</summary>
         [JSInvokable]
-        public void OnChunk(int done) => chunkDone?.Invoke(done);
+        public int OnChunk(int chunk, long count, double mean, double m2) => chunkDone?.Invoke(chunk, new DpsMoments(count, mean, m2)) ?? -1;
 
         [JSInvokable]
         public void OnProgress(string text) => progress?.Report(text);

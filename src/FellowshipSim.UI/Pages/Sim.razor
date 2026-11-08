@@ -56,9 +56,13 @@
         case SimTab.Advanced:
             <Card Title="Advanced settings">
                 <div class="fields">
-                    <label class="field">
-                        Iterations
+                    <label class="field" data-tooltip="@(State.TargetError > 0 ? "The most fights: the sim ends sooner once it reaches its target error" : "The fights the sim runs")">
+                        @(State.TargetError > 0 ? "Most iterations" : "Iterations")
                         <input type="number" min="1" step="1" @bind="State.Iterations" />
+                    </label>
+                    <label class="field" data-tooltip="@TargetErrorTip">
+                        Target error (%)
+                        <input type="number" min="0" step="0.01" @bind="State.TargetError" />
                     </label>
                     <label class="field">
                         Threads (of @MaxThreads)
@@ -255,12 +259,12 @@
 
     private string Summary() => State.Extra switch
     {
-        SimExtra.Compare => string.Format(CultureInfo.CurrentCulture, "{0} · Compare · {1} × {2:N0} fights",
-            Capital(TargetsText()), CompareCard.Runs(State.CompareRows.Count), State.Iterations),
-        SimExtra.Finder => string.Format(CultureInfo.CurrentCulture, "{0} · {1} finder · {2} × {3:N0} fights",
-            Capital(TargetsText()), FinderCard.Title(State.Finder), CompareCard.Runs(FinderRuns()), State.Iterations),
-        _ => string.Format(CultureInfo.CurrentCulture, "{0} ({1}) · {2} · {3} s · {4:N0} fights · {5} APL",
-            State.Build.Name, State.Build.Hero, TargetsText(), State.FightSeconds, State.Iterations, ActionListName()),
+        SimExtra.Compare => string.Format(CultureInfo.CurrentCulture, "{0} · Compare · {1} × {2} fights",
+            Capital(TargetsText()), CompareCard.Runs(State.CompareRows.Count), FightsText()),
+        SimExtra.Finder => string.Format(CultureInfo.CurrentCulture, "{0} · {1} finder · {2} × {3} fights",
+            Capital(TargetsText()), FinderCard.Title(State.Finder), CompareCard.Runs(FinderRuns()), FightsText()),
+        _ => string.Format(CultureInfo.CurrentCulture, "{0} ({1}) · {2} · {3} s · {4} fights · {5} APL",
+            State.Build.Name, State.Build.Hero, TargetsText(), State.FightSeconds, FightsText(), ActionListName()),
     };
 
     private int FinderRuns()
@@ -274,6 +278,14 @@
             return 1;
         }
     }
+
+    /// <summary>The fights of each run: the iterations, or with a target error the most fights and the target.</summary>
+    private string FightsText() => State.TargetError > 0
+        ? string.Format(CultureInfo.CurrentCulture, "±{0}% error, up to {1:N0}", N(State.TargetError), State.Iterations)
+        : State.Iterations.ToString("N0", CultureInfo.CurrentCulture);
+
+    private static readonly string TargetErrorTip = "Ends the sim once the margin of error of the mean DPS at 95% confidence is below this percent of the mean, " +
+        $"checked from {FellowshipSim.Core.Engine.DpsMoments.TargetErrorMinimumFights} fights on, as SimulationCraft's target_error. 0 runs every iteration.";
 
     private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
@@ -362,9 +374,9 @@
             State.Status = MessageState.Error($"{State.Build.Hero} is not in the engine yet: their builds can be made, saved and shared, but not simmed.");
             return;
         }
-        if (State.Iterations < 1 || State.FightSeconds <= 0 || State.Targets < 1)
+        if (State.Iterations < 1 || State.FightSeconds <= 0 || State.Targets < 1 || State.TargetError < 0)
         {
-            State.Status = MessageState.Error("Iterations and training dummies are at least 1, and the duration is above 0 seconds.");
+            State.Status = MessageState.Error("Iterations and training dummies are at least 1, the duration is above 0 seconds, and the target error is at least 0.");
             return;
         }
         if (State.Mode == SimMode.Dungeon && State.Dungeon.Problem() is { } problem)
@@ -504,8 +516,8 @@
             State.Status = MessageState.Error("The action list is empty: pick one on the Modes tab.");
             return;
         }
-        string title = string.Format(CultureInfo.CurrentCulture, "{0} ({1}): {2:N0} iterations, {3} s, {4}",
-            profile.Build.Name, profile.Build.Hero, State.Iterations, N(State.FightSeconds), TargetsText());
+        string title = string.Format(CultureInfo.CurrentCulture, "{0} ({1}): {2} iterations, {3} s, {4}",
+            profile.Build.Name, profile.Build.Hero, FightsText(), N(State.FightSeconds), TargetsText());
         // The job outlives this page's circuit, so the work captures the engine, the results library and values alone. The
         // sim is the profile text alone.
         var (engine, results, visitor) = (Engine, Results, Jobs.Visitor);

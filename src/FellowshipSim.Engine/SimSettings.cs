@@ -11,10 +11,12 @@ namespace FellowshipSim.Engine;
 /// <see cref="ReactionDelays"/> and <see cref="ProcReactionSeconds"/> are each fight's
 /// <see cref="FightOptions"/>; targets lose their health over each fight, the hero takes a player's reaction time, and a
 /// proc reaches the action lists <see cref="ProcReactionSeconds"/> after its gain unless told otherwise, as the Sim page has them.
+/// A <see cref="TargetError"/> above 0 is SimulationCraft's <c>target_error</c>: the margin of error of the mean DPS at 95%
+/// confidence, in percent of the mean, at which the sim ends; <see cref="Iterations"/> is then the most fights.
 /// </summary>
 public sealed record SimSettings(int Iterations, double DurationSeconds, int TargetCount = 1, int FirstSeed = 1, int? DegreeOfParallelism = null,
     double LengthVariance = 0, bool HealthFollowsTime = true, double StartingSpirit = 0, bool Boss = true, DungeonProfile? Dungeon = null,
-    bool ReactionDelays = true, double ProcReactionSeconds = SimSettings.DefaultProcReactionSeconds)
+    bool ReactionDelays = true, double ProcReactionSeconds = SimSettings.DefaultProcReactionSeconds, double TargetError = 0)
 {
     /// <summary>SimulationCraft's player reaction_mean.</summary>
     public const double DefaultProcReactionSeconds = 0.3;
