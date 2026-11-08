@@ -279,9 +279,9 @@
         }
     }
 
-    /// <summary>The fights of each run: the iterations, or with a target error the most fights and the target.</summary>
+    /// <summary>The fights of each run: the iterations, or the target error.</summary>
     private string FightsText() => State.TargetError > 0
-        ? string.Format(CultureInfo.CurrentCulture, "±{0}% error, up to {1:N0}", N(State.TargetError), State.Iterations)
+        ? string.Format(CultureInfo.CurrentCulture, "±{0}% error", N(State.TargetError))
         : State.Iterations.ToString("N0", CultureInfo.CurrentCulture);
 
     private static readonly string TargetErrorTip = "Ends the sim once the margin of error of the mean DPS at 95% confidence is below this percent of the mean, " +
