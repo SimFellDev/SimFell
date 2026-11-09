@@ -133,6 +133,58 @@ public class ElarionCooldowns
         check.True(f.IsReady<HeartseekerBarrage>());
     }
 
+    // ---- Swift Reload: 0.5 seconds off Highwind Arrow per hit
+
+    /// <summary>
+    /// With Swift Reload, each time Highwind Arrow deals damage, its ricochets included, it takes 0.5 seconds off the arrow's recharge: on
+    /// 3 enemies the charge (15 seconds) comes back 1.5 seconds sooner.
+    /// </summary>
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    [InlineData(3, 3)]
+    public void Swift_Reload_Takes_0_5_Seconds_Off_Highwind_Arrow_Per_Hit(int enemies, int hits)
+    {
+        var f = StepFights.Elarion(enemies: enemies, talents: [SwiftReload.TalentId]);
+
+        f.Cast<HighwindArrow>();
+        f.Wait(1.0); // the arrow and its ricochets land
+        double end = f.CompletedAt("Highwind Arrow") + 15.0 - 0.5 * hits;
+
+        using var check = new Checks(f);
+        check.Equal(hits, f.Damage<HighwindArrow>().Count);
+        f.WaitUntil(end - 0.1);
+        check.Equal(2, f.Charges<HighwindArrow>());
+        f.WaitUntil(end + 0.1);
+        check.Equal(3, f.Charges<HighwindArrow>());
+    }
+
+    // ---- Rising Moon: 2 seconds off Lunarlight Mark per Highwind Arrow
+
+    /// <summary>
+    /// With Rising Moon, each Highwind Arrow you cast takes 2 seconds off Lunarlight Mark's 40 second cooldown, once per cast however many
+    /// enemies the arrow strikes.
+    /// </summary>
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    [InlineData(1, 3)]
+    [InlineData(3, 1)]
+    public void Rising_Moon_Takes_2_Seconds_Off_Lunarlight_Mark_Per_Highwind_Arrow_Cast(int arrows, int enemies)
+    {
+        var f = StepFights.Elarion(enemies: enemies, talents: [RisingMoon.TalentId]);
+
+        f.Cast<LunarlightMark>();
+        for (int i = 0; i < arrows; i++) f.Cast<HighwindArrow>();
+        f.Wait(1.0); // the last arrow and its ricochets land
+        double end = f.CompletedAt("Lunarlight Mark") + 40.0 - 2.0 * arrows;
+
+        f.WaitUntil(end - 0.1);
+        Assert.False(f.IsReady<LunarlightMark>());
+        f.WaitUntil(end + 0.1);
+        Assert.True(f.IsReady<LunarlightMark>());
+    }
+
     // ---- Fervent Supremacy: 10 seconds off Skystrider's Supremacy (its charges and damage are in ElarionTalents.cs)
 
     /// <summary>Skystrider's Supremacy has a 45 second cooldown, counted from its cast; with Fervent Supremacy, 10 seconds less: 35.</summary>

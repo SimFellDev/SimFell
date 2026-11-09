@@ -164,4 +164,51 @@ public class RimeWintersEmbrace
         for (int cast = 0; cast < ratios.Length; cast++)
             check.Ratio(cast < buffedCasts ? 1.2 : 1.0, ratios[cast], what: $"cast {cast + 1}");
     }
+
+    /// <summary>
+    /// After Bursting Ice, in the rotation Freezing Torrent, Cold Snap, Cold Snap, every torrent tick is buffed, and so is the first Cold
+    /// Snap: the torrent's 2 second channel is not shortened by haste, so it starts 2 seconds into the window. The second Cold Snap starts
+    /// one global cooldown later, 2 + 1.5 / (1 + haste) seconds into the window, and is buffed from 50% haste.
+    ///
+    /// Each Cold Snap is compared with a Cold Snap alone at the same haste, and each torrent tick with the same tick of a torrent alone.
+    /// </summary>
+    [Theory]
+    [InlineData(0.00, false)]
+    [InlineData(0.25, false)]
+    [InlineData(0.45, false)]
+    [InlineData(0.50, true)]
+    [InlineData(0.55, true)]
+    [InlineData(0.95, true)]
+    [InlineData(1.00, true)]
+    [InlineData(1.05, true)]
+    public void Torrent_Rotation_After_Bursting_Ice_Is_Buffed_While_It_Starts_In_The_Window(double haste, bool secondSnapBuffed)
+    {
+        var plainTorrentScenario = StepFights.Rime(haste: haste).WithoutDamageSpread();
+
+        plainTorrentScenario.Cast<FreezingTorrent>();
+        var plainTicks = plainTorrentScenario.Damage<FreezingTorrent>();
+
+        var plainSnapScenario = StepFights.Rime(haste: haste).WithoutDamageSpread();
+
+        plainSnapScenario.Cast<ColdSnap>();
+        double plainSnapDamage = plainSnapScenario.Damage<ColdSnap>().Single().Value;
+
+        var embraceScenario = StepFights.Rime(haste: haste).WithoutDamageSpread();
+
+        embraceScenario.Cast<BurstingIce>();
+
+        embraceScenario.Cast<FreezingTorrent>();
+        embraceScenario.Cast<ColdSnap>();
+        embraceScenario.Cast<ColdSnap>();
+        embraceScenario.Wait(4.0); // every hit lands
+        var ticks = embraceScenario.Damage<FreezingTorrent>();
+        var snaps = embraceScenario.Damage<ColdSnap>();
+
+        using var check = new Checks(embraceScenario);
+        check.Ratio(1.2, snaps[0].Value / plainSnapDamage, what: "first Cold Snap");
+        check.Ratio(secondSnapBuffed ? 1.2 : 1.0, snaps[1].Value / plainSnapDamage, what: "second Cold Snap");
+        check.Equal(plainTicks.Count, ticks.Count, what: "torrent ticks");
+        for (int i = 0; i < Math.Min(ticks.Count, plainTicks.Count); i++)
+            check.Ratio(1.2, ticks[i].Value / plainTicks[i].Value, what: $"torrent tick {i + 1}");
+    }
 }

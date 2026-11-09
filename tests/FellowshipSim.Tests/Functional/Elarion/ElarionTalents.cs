@@ -163,6 +163,54 @@ public class ElarionTalents
         check.Equal(0.35, f.Damage<HeartseekerBarrage>().First().CritChance);
     }
 
+    // ---- Piercing Seekers (its ricochets during Event Horizon are in Specific/ElarionEventHorizonCooldown.cs)
+
+    /// <summary>
+    /// With Piercing Seekers, each Heartseeker Barrage arrow ricochets to 1 more enemy: none on a lone enemy, one per arrow on 2 enemies,
+    /// and still one per arrow, not two, on 3. Without the talent, the barrage strikes only its target.
+    ///
+    /// Without haste the barrage fires 10 arrows at its target.
+    /// </summary>
+    [Theory]
+    [InlineData(false, 2, 0)]
+    [InlineData(true, 1, 0)]
+    [InlineData(true, 2, 1)]
+    [InlineData(true, 3, 1)]
+    public void Piercing_Seekers_Makes_Each_Barrage_Arrow_Ricochet_To_1_More_Enemy(bool piercing, int enemies, int ricochetsPerArrow)
+    {
+        var f = StepFights.Elarion(enemies: enemies, talents: piercing ? [PiercingSeekers.TalentId] : []);
+
+        f.Cast<HeartseekerBarrage>();
+        f.Wait(0.5); // the last arrows and ricochets land
+        var hits = f.Damage<HeartseekerBarrage>();
+        int arrows = hits.Count(hit => hit.Target == f.Enemy.Name);
+
+        using var check = new Checks(f);
+        check.Equal(10, arrows);
+        check.Equal(arrows * ricochetsPerArrow, hits.Count - arrows, what: "ricochets");
+    }
+
+    /// <summary>
+    /// With Piercing Seekers, each ricochet deals 70% of the barrage arrow it comes from: on 2 enemies, as many ricochets as arrows, each
+    /// 0.7 times an arrow.
+    ///
+    /// From the tooltip ("70% of the power of the initial hit") and the combat logs (NOTES.md).
+    /// </summary>
+    [Fact]
+    public void Piercing_Seekers_Ricochets_Deal_70_Percent_Of_The_Arrow()
+    {
+        var f = StepFights.Elarion(enemies: 2, talents: [PiercingSeekers.TalentId]).WithoutDamageSpread();
+
+        f.Cast<HeartseekerBarrage>();
+        f.Wait(0.5); // the last arrows and ricochets land
+        var arrows = f.Damage<HeartseekerBarrage>().Where(hit => hit.Target == f.Enemy.Name).ToList();
+        var ricochets = f.Damage<HeartseekerBarrage>().Where(hit => hit.Target != f.Enemy.Name).ToList();
+
+        using var check = new Checks(f);
+        check.Equal(arrows.Count, ricochets.Count);
+        for (int k = 0; k < ricochets.Count; k++) check.Ratio(0.7, ricochets[k].Value / arrows[k].Value, what: $"ricochet {k + 1}");
+    }
+
     // ---- Lunar Fury
 
     /// <summary>
@@ -302,6 +350,138 @@ public class ElarionTalents
         AssertRatio(3.0, bothArrowDamage / plainArrowDamage);
     }
 
+    // ---- Swift Reload
+
+    // Swift Reload's cooldown test is in ElarionCooldowns.cs.
+
+    // ---- Rising Moon
+
+    // Rising Moon's cooldown test is in ElarionCooldowns.cs.
+
+    // ---- Striker's Aim
+
+    /// <summary>
+    /// With Striker's Aim, Highwind Arrow gives you a stack of Striker's Aim, +2% Expertise, for each of its 2 ricochets that finds no
+    /// enemy: 2 stacks on a lone enemy, 1 on 2 enemies, none on 3.
+    ///
+    /// From the tooltip and the game data (effect 3179); no combat log has the talent (UNVERIFIED in StrikersAim.cs). TODO: confirm in a
+    /// log.
+    /// </summary>
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(2, 1)]
+    [InlineData(3, 0)]
+    public void Strikers_Aim_Gives_2_Percent_Expertise_Per_Ricochet_That_Finds_No_Enemy(int enemies, int stacks)
+    {
+        var f = StepFights.Elarion(enemies: enemies, talents: [StrikersAim.TalentId]);
+        double expertiseBefore = f.Expertise();
+
+        f.Cast<HighwindArrow>();
+        f.Wait(0.5); // the arrow and its ricochets land, well before a stack goes
+
+        using var check = new Checks(f);
+        check.Equal(stacks, f.Stacks(StrikersAim.Buff));
+        check.Equal(0.02 * stacks, f.Expertise() - expertiseBefore);
+    }
+
+    /// <summary>
+    /// Striker's Aim holds 3 stacks at most: Final Crescendo's arrow on a lone enemy, whose 8 ricochets all find no enemy, gives 3 stacks,
+    /// +6% Expertise.
+    ///
+    /// UNVERIFIED in StrikersAim.cs, as above. TODO: confirm in a log.
+    /// </summary>
+    [Fact]
+    public void Strikers_Aim_Holds_3_Stacks_At_Most()
+    {
+        var f = StepFights.Elarion(talents: [StrikersAim.TalentId, FinalCrescendo.TalentId]);
+        f.Apply(FinalCrescendo.Buff, stacks: 2); // as two Highwind Arrows would give it: the next ricochets 8 times
+        double expertiseBefore = f.Expertise();
+
+        f.Cast<HighwindArrow>();
+        f.Wait(0.5); // the arrow lands, well before a stack goes
+
+        using var check = new Checks(f);
+        check.Equal(3, f.Stacks(StrikersAim.Buff));
+        check.Equal(0.06, f.Expertise() - expertiseBefore);
+    }
+
+    /// <summary>
+    /// Every 2 seconds, Striker's Aim loses 1 stack: the 2 stacks of an arrow on a lone enemy drop to 1 two seconds after the arrow lands,
+    /// and to none two seconds later.
+    ///
+    /// UNVERIFIED in StrikersAim.cs, as above. TODO: confirm in a log.
+    /// </summary>
+    [Fact]
+    public void Strikers_Aim_Loses_1_Stack_Every_2_Seconds()
+    {
+        var f = StepFights.Elarion(talents: [StrikersAim.TalentId]);
+
+        f.Cast<HighwindArrow>();
+        f.Wait(0.5); // the arrow lands
+        double gained = f.Damage<HighwindArrow>().Single().Time.TotalSeconds; // both ricochets find no enemy as the arrow lands
+
+        using var check = new Checks(f);
+        f.WaitUntil(gained + 2.0 - 0.1);
+        check.Equal(2, f.Stacks(StrikersAim.Buff));
+        f.WaitUntil(gained + 2.0 + 0.1);
+        check.Equal(1, f.Stacks(StrikersAim.Buff));
+        f.WaitUntil(gained + 4.0 - 0.1);
+        check.Equal(1, f.Stacks(StrikersAim.Buff));
+        f.WaitUntil(gained + 4.0 + 0.1);
+        check.Equal(0, f.Stacks(StrikersAim.Buff));
+    }
+
+    /// <summary>
+    /// Striker's Aim is not reapplied by an arrow that misses no more ricochets than the stacks you hold: a second arrow on a lone enemy
+    /// while you hold 2 stacks leaves them as they were, and the first still goes 2 seconds after the first arrow landed.
+    ///
+    /// The 50% haste makes the second arrow land 1.33 seconds after the first, before a stack goes. UNVERIFIED in StrikersAim.cs, as above.
+    /// TODO: confirm in a log.
+    /// </summary>
+    [Fact]
+    public void Strikers_Aim_Is_Not_Reapplied_When_The_Missed_Ricochets_Do_Not_Exceed_The_Stacks()
+    {
+        var f = StepFights.Elarion(haste: 0.5, talents: [StrikersAim.TalentId]);
+
+        f.Cast<HighwindArrow>(); // 2 stacks as it lands
+        f.Cast<HighwindArrow>(); // 2 ricochets that find no enemy again
+        f.Wait(0.5); // the second arrow lands
+        var arrows = f.Damage<HighwindArrow>();
+        double firstGained = arrows[0].Time.TotalSeconds;
+
+        using var check = new Checks(f);
+        check.True(arrows[1].Time.TotalSeconds < firstGained + 2.0, "the second arrow lands before a stack goes");
+        f.WaitUntil(firstGained + 2.0 - 0.1);
+        check.Equal(2, f.Stacks(StrikersAim.Buff));
+        f.WaitUntil(firstGained + 2.0 + 0.1);
+        check.Equal(1, f.Stacks(StrikersAim.Buff));
+    }
+
+    /// <summary>
+    /// Striker's Aim is reapplied by an arrow that misses more ricochets than the stacks you hold: with 1 stack left, an arrow on a lone
+    /// enemy brings it back to 2, and the next stack goes 2 seconds after that arrow lands.
+    ///
+    /// The 50% haste makes the second arrow land before the last stack goes. UNVERIFIED in StrikersAim.cs, as above. TODO: confirm in a log.
+    /// </summary>
+    [Fact]
+    public void Strikers_Aim_Is_Reapplied_When_The_Missed_Ricochets_Exceed_The_Stacks()
+    {
+        var f = StepFights.Elarion(haste: 0.5, talents: [StrikersAim.TalentId]);
+
+        f.Cast<HighwindArrow>(); // 2 stacks as it lands
+        f.WaitUntil(f.Damage<HighwindArrow>().Single().Time.TotalSeconds + 2.1); // a stack goes
+        f.Cast<HighwindArrow>();
+        f.Wait(0.5); // the second arrow lands
+        double secondGained = f.Damage<HighwindArrow>()[1].Time.TotalSeconds;
+
+        using var check = new Checks(f);
+        check.Equal(2, f.Stacks(StrikersAim.Buff));
+        f.WaitUntil(secondGained + 2.0 - 0.1);
+        check.Equal(2, f.Stacks(StrikersAim.Buff));
+        f.WaitUntil(secondGained + 2.0 + 0.1);
+        check.Equal(1, f.Stacks(StrikersAim.Buff));
+    }
+
     // ---- Fervent Supremacy (its shorter cooldown is in ElarionCooldowns.cs, its cheaper Multishots in ElarionResourceEconomy.cs)
 
     /// <summary>
@@ -381,6 +561,32 @@ public class ElarionTalents
         check.Equal(0, f.Stacks(FocusedExpanse.Buff));
         check.True(f.Has(SkystridersSupremacy.Buff) || f.Has(FerventSupremacy.Buff), "the Supremacy is kept");
         if (fervent) check.Equal(4, f.Stacks(FerventSupremacy.Buff));
+    }
+
+    // ---- Deadly Focus
+
+    // Deadly Focus's Focus test is in ElarionResourceEconomy.cs.
+
+    /// <summary>
+    /// With Deadly Focus, Focused Shot and Celestial Shot deal 100% more damage: twice a plain shot's.
+    ///
+    /// From the tooltip and the game data (Enhanced DamageScaler 2); no combat log has the talent (UNVERIFIED in DeadlyFocus.cs).
+    /// TODO: confirm in a log.
+    /// </summary>
+    [Theory]
+    [InlineData("Focused Shot")]
+    [InlineData("Celestial Shot")]
+    public void Deadly_Focus_Doubles_Focused_Shot_And_Celestial_Shot_Damage(string shot)
+    {
+        AssertRatio(2.0, ShotDamage(DeadlyFocus.TalentId) / ShotDamage());
+
+        double ShotDamage(params int[] talents)
+        {
+            var f = StepFights.Elarion(talents: talents).WithoutDamageSpread();
+
+            f.Cast(shot);
+            return f.Damage(shot).Single().Value;
+        }
     }
 
     // ---- Lunarlight Affinity

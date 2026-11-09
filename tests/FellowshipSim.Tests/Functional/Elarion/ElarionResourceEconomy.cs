@@ -125,6 +125,27 @@ public class ElarionResourceEconomy
         Assert.Equal(20 + 5 * 1.5, f.Amount(Elarion.Focus), NetTolerance);
     }
 
+    // ---- Deadly Focus (its doubled damage is in ElarionTalents.cs)
+
+    /// <summary>
+    /// With Deadly Focus, Focused Shot generates 50% less Focus: 10 instead of 20.
+    ///
+    /// From the tooltip and the game data (Enhanced ResourceGenerationScaler 0.5); UNVERIFIED in DeadlyFocus.cs. TODO: confirm in
+    /// a log.
+    /// </summary>
+    [Theory]
+    [InlineData(false, 20.0)]
+    [InlineData(true, 10.0)]
+    public void Deadly_Focus_Halves_Focused_Shots_Focus_To_10(bool deadlyFocus, double gain)
+    {
+        var f = StepFights.Elarion(talents: deadlyFocus ? [DeadlyFocus.TalentId] : []);
+        f.Set(Elarion.Focus, 0); // room for the gain
+
+        f.Cast<FocusedShot>();
+
+        Assert.Equal(gain, f.Gains("Focus").Single().Value);
+    }
+
     // ---- Costs
 
     /// <summary>Celestial Shot costs 15 Focus, Multishot 20, and Highwind Arrow, Heartseeker Barrage and Starfall Volley 30.</summary>

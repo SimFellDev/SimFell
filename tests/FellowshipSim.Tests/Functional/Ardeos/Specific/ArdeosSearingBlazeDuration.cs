@@ -19,6 +19,7 @@ public class ArdeosSearingBlazeDuration
     /// <summary>
     /// Casting Searing Blaze on an enemy that has it sets it to 30 seconds plus the time it had left, up to 39 seconds (130% of 30):
     /// min(39, 30 + time left).
+    /// Also known as pandemic duration extension.
     /// </summary>
     [Theory]
     [InlineData(20.0)]

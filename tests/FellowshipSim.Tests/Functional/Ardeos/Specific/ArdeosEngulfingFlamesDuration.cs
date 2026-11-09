@@ -8,14 +8,13 @@ namespace FellowshipSim.Tests.Functional;
 /// adds half a second, so the order and timing of Fire Ball, Engulfing Flames and Wildfire matter.
 ///
 /// Every duration is measured from the end of the Engulfing Flames cast, which applies it, and checked by the effect being on the enemy
-/// just before its end and gone just after: 0.1s either side, 0.05s with Slow Burn. The expected durations come from the C++ sim's tests;
-/// the user checked the Slow Burn ones in game.
+/// just before its end and gone just after: 0.1s either side, 0.05s with Slow Burn.
 /// </summary>
 public class ArdeosEngulfingFlamesDuration
 {
     // ---- Base duration
 
-    /// <summary>An Engulfing Flames lasts 9 seconds, with or without a Fire Ball cast before it.</summary>
+    /// <summary>Without the Slowburn talent, an Engulfing Flames lasts 9 seconds, with or without a Fire Ball cast before it.</summary>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -51,13 +50,10 @@ public class ArdeosEngulfingFlamesDuration
         Assert.False(f.HasDebuff("Engulfing Flames"));
     }
 
-    // ---- Slow Burn (its cap on extensions, and a partial tick's extension, are in ArdeosTalents.cs)
+    // ---- Slow Burn
 
     /// <summary>
     /// With Slow Burn, a Fire Ball cast before an Engulfing Flames gives it 5 extensions of half a second: 11.5 seconds.
-    ///
-    /// Per the user: every Fire Ball tick extends the Engulfing Flames on its target by 0.5s, with no total, whatever Slow Burn's tooltip
-    /// ("up to a total of 3 seconds over its full duration") says.
     /// </summary>
     [Fact]
     public void With_Slow_Burn_A_Fire_Ball_Cast_Before_Engulfing_Flames_Makes_It_Last_11_5_Seconds()

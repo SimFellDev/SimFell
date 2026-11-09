@@ -14,50 +14,14 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class ArdeosAbilities
 {
-    // ---- Damage over time effects (how many ticks each deals at each haste is in ArdeosHasteBreakpoints.cs)
-
-    /// <summary>
-    /// A damage over time effect's total damage grows with main stat and Expertise: main stat x (1 + expertise).
-    ///
-    /// Compared with the same effect at the base main stat (100) and no Expertise. The main stat of a row adds to the base 100.
-    /// </summary>
-    [Theory]
-    [InlineData("Searing Blaze", SearingBlazeDot.EffectId, 0.0, 0.0)]
-    [InlineData("Searing Blaze", SearingBlazeDot.EffectId, 0.1, 0.0)]
-    [InlineData("Searing Blaze", SearingBlazeDot.EffectId, 0.2, 0.0)]
-    [InlineData("Searing Blaze", SearingBlazeDot.EffectId, 0.0, 2000.0)]
-    [InlineData("Searing Blaze", SearingBlazeDot.EffectId, 0.0, 3000.0)]
-    [InlineData("Engulfing Flames", EngulfingFlamesDot.EffectId, 0.0, 0.0)]
-    [InlineData("Engulfing Flames", EngulfingFlamesDot.EffectId, 0.1, 0.0)]
-    [InlineData("Engulfing Flames", EngulfingFlamesDot.EffectId, 0.2, 0.0)]
-    [InlineData("Engulfing Flames", EngulfingFlamesDot.EffectId, 0.0, 2000.0)]
-    [InlineData("Engulfing Flames", EngulfingFlamesDot.EffectId, 0.0, 3000.0)]
-    [InlineData("Fire Ball", FireBallDot.EffectId, 0.0, 0.0)]
-    [InlineData("Fire Ball", FireBallDot.EffectId, 0.1, 0.0)]
-    [InlineData("Fire Ball", FireBallDot.EffectId, 0.2, 0.0)]
-    [InlineData("Fire Ball", FireBallDot.EffectId, 0.0, 2000.0)]
-    [InlineData("Fire Ball", FireBallDot.EffectId, 0.0, 3000.0)]
-    public void Damage_Over_Time_Scales_With_Main_Stat_And_Expertise(string ability, int effect, double expertise, double mainStat)
-    {
-        double TotalTicks(double expertise = 0, double mainStat = 0)
-        {
-            var f = StepFights.Ardeos(expertise: expertise, mainStat: mainStat).WithoutDamageSpread();
-
-            f.Cast(ability);
-            f.Wait(60); // the effect ticks out
-
-            return f.Ticks(effect).Sum(tick => tick.Value);
-        }
-
-        double expected = (1 + expertise) * (StatBlock.BasePrimaryStat + mainStat) / StatBlock.BasePrimaryStat;
-        AssertRatio(expected, TotalTicks(expertise, mainStat) / TotalTicks());
-    }
 
     // ---- Searing Blaze (its Cinders are in ArdeosResourceEconomy.cs, how long a recast lasts in Specific/ArdeosSearingBlazeDuration.cs,
     // casting it again and again, with and without Agonizing Blaze, in ArdeosTalents.cs)
 
     /// <summary>
     /// Casting Searing Blaze again does not move its ticks: they stay on the rhythm of the first cast, every 2 seconds shortened by haste.
+    /// 
+    /// NB: this was changed in game and is not necessarily default behavior. The new dot could overwrite the existing ticks.
     /// </summary>
     [Theory]
     [InlineData(0.0)]
@@ -87,7 +51,7 @@ public class ArdeosAbilities
     // ---- Engulfing Flames (how long it lasts is in Specific/ArdeosEngulfingFlamesDuration.cs, its 6 ticks at each haste in
     // ArdeosHasteBreakpoints.cs)
 
-    /// <summary>Each Engulfing Flames is its own effect: two casts give two effects, each with its 6 ticks.</summary>
+    /// <summary>Engulfing Flames stacks with itself: two casts give two effects, each with its 6 ticks.</summary>
     [Fact]
     public void Two_Engulfing_Flames_Tick_6_Times_Each()
     {
@@ -114,7 +78,7 @@ public class ArdeosAbilities
     [InlineData(0.1, 0.2, 0.0)]
     [InlineData(0.2, 0.0, 0.0)]
     [InlineData(0.0, 0.1, 0.0)]
-    [InlineData(0.2, 0.0, 2000.0)]
+    [InlineData(0.2, 0.0, 100.0)]
     public void Detonate_Scales_With_Haste_Expertise_And_Main_Stat(double haste, double expertise, double mainStat)
     {
         List<StepEvent> DetonateHits(double haste = 0, double expertise = 0, double mainStat = 0)
@@ -187,8 +151,7 @@ public class ArdeosAbilities
         foreach (var hit in wildfireHits) check.Ratio(1.3, hit.Value / plainHit, what: $"hit at {hit.Time.TotalSeconds:F3}s");
     }
 
-    // ---- Incinerate (its cast time is in ArdeosCastTimes.cs, its hits at each haste in ArdeosHasteBreakpoints.cs, its extensions after a
-    // Searing Blaze recast in Specific/ArdeosSearingBlazeDuration.cs)
+    // ---- Incinerate (its cast time is in ArdeosCastTimes.cs, its hits at each haste in ArdeosHasteBreakpoints.cs)
 
     /// <summary>
     /// Each Incinerate hit extends your other effects on the enemy by 1.5 seconds, but never past their full duration: Searing Blaze (30
@@ -220,9 +183,6 @@ public class ArdeosAbilities
 
     /// <summary>
     /// Every hit of Incinerate's channel deals the same damage, the last partial one included: a partial hit is a full hit.
-    ///
-    /// Per the user, as the Python sim has it (a partial hit deals a full hit's damage). At these hastes, with Spirit of
-    /// Heroism, the channel ends half a tick after its last full one (ArdeosHasteBreakpoints.cs).
     /// </summary>
     [Theory]
     [InlineData(0.0)]

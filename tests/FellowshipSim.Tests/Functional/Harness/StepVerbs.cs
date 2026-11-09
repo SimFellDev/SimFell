@@ -51,6 +51,13 @@ public static class StepVerbs
         f.Cast(name, crit, target);
     }
 
+    /// <summary>
+    /// Deals one hit of <paramref name="ability"/> to <paramref name="target"/> now, through the damage call the game's own source of that
+    /// hit makes, with nothing cast: the hit and everything it triggers (a burn it leaves), and nothing else. Artificial, so only for a
+    /// hit the game deals to an enemy it picks at random (a Fire Frog's leap), when a test needs exactly one such hit on one enemy.
+    /// </summary>
+    public static void HitWith(this StepDriver f, Ability ability, EnemyTarget target) => ability.DealDamage(f.Context, target);
+
     // ---- Enemies
 
     /// <summary>The fight's enemies, in order: <c>f.Enemies()[0]</c> is <c>f.Enemy</c>, the default target.</summary>
@@ -164,6 +171,14 @@ public static class StepVerbs
 
     /// <inheritdoc cref="RecoveryRate{T}"/>
     public static double RecoveryRate(this StepDriver f, string ability) => f.Hero.CooldownRate(f.Ability(ability), f.Now);
+
+    /// <summary>Seconds of real time until the charge of <typeparamref name="T"/> now recharging comes back, at its current recovery rate; 0
+    /// when no charge is recharging. Read between two moments to see a cooldown reduction as a step.</summary>
+    public static double RechargeRemaining<T>(this StepDriver f) where T : Ability
+    {
+        var cooldown = f.Hero.CooldownOf(f.Ability<T>());
+        return cooldown.ChargesAt(f.Now) >= cooldown.MaxCharges ? 0.0 : (cooldown.NextChargeAt - f.Now).TotalSeconds;
+    }
 
     /// <summary>Makes every charge of <typeparamref name="T"/> ready now: a set-up shortcut (e.g. a second Starfall Volley while the first
     /// falls, as cooldown reductions would allow in the game).</summary>

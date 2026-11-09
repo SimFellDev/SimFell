@@ -51,7 +51,7 @@ public class SigilKindling
 
     /// <summary>
     /// Kindling's burn ticks every 1.5 seconds shortened by haste, the first a tick after the hit that lit it, and once more as its 9
-    /// seconds end when that falls between two ticks.
+    /// seconds end when at least 0.1 seconds (a damage over time's shortest partial tick) are left after the last full tick.
     ///
     /// Times are checked within 0.05 seconds: an effect ends on its server frame.
     /// </summary>
@@ -71,7 +71,7 @@ public class SigilKindling
         var ticks = f.Damage(Burn);
 
         using var check = new Checks(f);
-        check.Equal(FullTicks(9, period) + PartialTick(9, period), ticks.Count);
+        check.Equal(FullTicks(9, period) + PartialTick(9, period, 0.1), ticks.Count);
         for (int i = 0; i < FullTicks(9, period); i++)
         {
             check.Equal(lit + (i + 1) * period, ticks[i].Time.TotalSeconds, 0.05, what: $"tick {i + 1}");

@@ -35,6 +35,8 @@ The whole suite runs in well under a second, since every fight is a few seconds 
 - **Deterministic by intent.** The test forces every random outcome it reads, so nothing depends on the seed (see Dice).
 - **State first.** Assert state before and after the action. Read events only for timing, order and per-hit values (see Asserting).
 - **Durations are checked on both sides of their end**, not through the engine's prediction (see Time boundaries).
+- **Hit timing is not tested.** When a hit lands within a cast (spin spacing, an extra strike's delay, a proc's first attack) almost
+  never matters, so no test checks it unless the user asks for one (see Time boundaries).
 - **Damage is a ratio** between two fights that differ only by the thing tested (see Damage).
 - **Readable as pseudo-code.** Someone who knows the game but not the engine can read the body and agree with it line by line.
 
@@ -244,6 +246,13 @@ Assert.True(f.IsReady(ability));
 - A channel's cast completes when the channel starts, so `LastCastDuration` is 0 for it. Its length is the time the cast returns
   (`f.Seconds()` after `f.Cast<FreezingTorrent>()` at 0s).
 
+### Hit timing
+
+Precise timing is irrelevant almost all the time. Test how long a buff, debuff, cooldown or window lasts, as above: that decides what
+lands in it. Do not test when a hit lands within a cast (the spacing of spins within a cast, an extra strike's delay, a proc's or
+a summon's first attack, a travel time), unless the user asks for that test. A small time offset is out of the sim's current scope: it
+does not model flight time for most abilities. Waiting long enough for the hits to land (`f.Wait(4.0); // the comet falls`) is fine.
+
 ## Damage
 
 ```csharp
@@ -278,6 +287,12 @@ AssertRatio(1.2, blitzBoltDamage / plainBoltDamage);
 - Assert counts, stacks and resources exactly, with `Assert.Equal`.
 - **A rule stated as a formula is checked against the formula**, written out in the test from the row's inputs
   (`int hits = FullTicks(3.0, tick) + PartialTick(3.0, tick, 0.1)`), not against numbers worked out by hand.
+- **Tick counts**: floor(duration / period x (1 + haste)), plus 1 when a last partial tick comes. Its threshold is the time left after
+  the last full tick:
+  - a damage over time (a Dot or Hot effect) gives a partial tick when at least 0.1 seconds (3 server frames) are left:
+    `PartialTick(duration, tick, 0.1)`;
+  - another periodic effect, such as a channel whose hits are counted, gives one when at least a server frame (1/30 second) is left:
+    `PartialTick(duration, tick, PeriodicEffect.ServerFrameSeconds)`. This one is not fully confirmed in game; say so in the doc comment.
 - A wider tolerance needs a reason in the doc comment.
 
 ## Naming abilities

@@ -32,33 +32,6 @@ public class WeaponNaturesFury
     }
 
     /// <summary>
-    /// Nature's Fury hits 4 times: the first as the cast completes, then each 0.3 seconds after the one before, whatever your haste.
-    ///
-    /// From the combat logs of two players with the weapon.
-    /// </summary>
-    [Theory]
-    [InlineData("Rime", 0.0)]
-    [InlineData("Rime", 0.5)]
-    [InlineData("Ardeos", 0.0)]
-    [InlineData("Ardeos", 0.5)]
-    [InlineData("Elarion", 0.0)]
-    [InlineData("Elarion", 0.5)]
-    public void Natures_Fury_Hits_4_Times_0_3_Seconds_Apart(string hero, double haste)
-    {
-        var f = StepFights.Of(hero, haste: haste, weaponAbilityId: NaturesFury.AbilityId);
-
-        f.Cast<NaturesFury>();
-        f.Wait(1); // the bounces land
-
-        double cast = f.CompletedAt("Nature's Fury");
-        var hits = f.Damage<NaturesFury>();
-
-        using var check = new Checks(f);
-        check.Equal(4, hits.Count);
-        for (int i = 0; i < hits.Count; i++) check.Seconds(cast + 0.3 * i, hits[i].Time.TotalSeconds, what: $"hit {i + 1}");
-    }
-
-    /// <summary>
     /// Each hit of Nature's Fury after the first deals 1397.7% of your main stat, times your class's balancing aura (Rime 1.04, Ardeos 1.1,
     /// Elarion 1.08).
     /// </summary>

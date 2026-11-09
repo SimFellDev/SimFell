@@ -18,7 +18,7 @@ public class ArdeosDotTickSpeed
     /// <summary>How far a gap may be from the expected rhythm: 5ms.</summary>
     private const double GapTolerance = 0.005;
 
-    /// <summary>A bare Ardeos with what the damage over time effect of <paramref name="ability"/> needs.</summary>
+    /// <summary>Prepare a bare Ardeos ready to apply <paramref name="ability"/>.</summary>
     private static StepDriver ArdeosFor(string ability, double haste)
     {
         var f = ability switch

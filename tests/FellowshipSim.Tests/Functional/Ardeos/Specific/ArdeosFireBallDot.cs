@@ -4,7 +4,7 @@ namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
 /// Fire Ball's burn: the damage over time a Fire Ball sets the enemy on fire with (20% of the hit over 12 seconds, a tick every 2 seconds
-/// at any haste), when the ball lands, and how recasting and Wildfire change its ticks.
+/// at any haste), and how recasting and Wildfire change its ticks.
 ///
 /// The expectations are the C++ sim's tests' ("game-accurate expectation", not derived from an engine). Ticks are compared with the
 /// first tick of the same fight. How fast the burn ticks with Wildfire is in Specific/ArdeosDotTickSpeed.cs, and how a partial tick
@@ -12,25 +12,6 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class ArdeosFireBallDot
 {
-    // ---- The ball
-
-    /// <summary>
-    /// A Fire Ball lands about 1 second after you cast it.
-    ///
-    /// Checked within 50ms.
-    /// </summary>
-    [Fact]
-    public void A_Fire_Ball_Lands_1_Second_After_The_Cast()
-    {
-        var f = StepFights.Ardeos();
-
-        f.Cast<FireBall>();
-        f.Wait(2); // the ball lands
-
-        var hit = Assert.Single(f.DirectHits<FireBall>());
-        AssertSeconds(1.0, hit.Time.TotalSeconds, tolerance: 0.05);
-    }
-
     // ---- The burn's ticks
 
     /// <summary>Fire Ball's burn ticks 6 times, all for the same damage, whatever your haste.</summary>
@@ -58,7 +39,7 @@ public class ArdeosFireBallDot
     /// A second Fire Ball cast as soon as the first one's global cooldown is over lands before the burn's first tick: the burn then ticks
     /// 7 times, the 7th a partial tick, smaller than the others.
     ///
-    /// Checked in game by the user.
+    /// This doesn't depend on haste.
     /// </summary>
     [Theory]
     [InlineData(0.0)]

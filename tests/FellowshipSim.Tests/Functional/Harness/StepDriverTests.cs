@@ -36,6 +36,19 @@ public class StepDriverTests
         check.True(f.IsFree);
     }
 
+    /// <summary>A cast as long as the global cooldown returns when both end: Frost Bolt is a 1.5 second cast inside a 1.5 second global cooldown.</summary>
+    [Fact]
+    public void A_Cast_As_Long_As_The_Global_Cooldown_Returns_When_Both_End()
+    {
+        var f = StepFights.Rime();
+
+        f.Cast<FrostBolt>();
+
+        using var check = new Checks(f);
+        check.Seconds(1.5, f.Seconds());
+        check.True(f.IsFree);
+    }
+
     /// <summary>A cast longer than the global cooldown returns when the cast ends: Bursting Ice is 2 seconds, the global cooldown 1.5.</summary>
     [Fact]
     public void A_Cast_Longer_Than_The_Global_Cooldown_Returns_When_The_Cast_Ends()

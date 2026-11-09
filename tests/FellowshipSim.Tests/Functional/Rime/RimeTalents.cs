@@ -454,6 +454,27 @@ public class RimeTalents
     // ---- Avalanche
 
     /// <summary>
+    /// With Avalanche, a struck Ice Comet that triggers it is followed by 1 or 2 more free comets: 2 or 3 comets in all, and only the
+    /// first one's 2 Winter Orbs are spent.
+    /// </summary>
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 3)]
+    public void Avalanche_Follows_An_Ice_Comet_With_1_Or_2_Extra_Comets(bool second, int comets)
+    {
+        var f = StepFights.Rime(talents: [Avalanche.TalentId]);
+        f.ForceProcs(key => key == Avalanche.ProcKey ? true : key == Avalanche.SecondProcKey ? second : null); // extra comets, then 2 rather than 1
+        f.RimeOf().WinterOrbs = 2; // enough for one Ice Comet
+
+        f.Cast<IceComet>();
+        f.Wait(4.0); // the comets fall
+
+        using var check = new Checks(f);
+        check.Equal(comets, f.Damage<IceComet>().Count);
+        check.Equal(0, f.RimeOf().WinterOrbs);
+    }
+
+    /// <summary>
     /// With Avalanche, a struck Ice Comet has an 18% chance to be followed by 1 more free comet, and 9% by 2.
     ///
     /// The engine rolls twice: any extra comet, then two rather than one among those. The test reads both chances and checks the

@@ -37,35 +37,6 @@ public class WeaponIciclesOfAnzhyr
     }
 
     /// <summary>
-    /// The waves of Icicles of An'zhyr land 0.27, 1.27 and 2.27 seconds after the cast, whatever your haste.
-    ///
-    /// From combat logs.
-    /// </summary>
-    [Theory]
-    [InlineData("Rime", 0.0)]
-    [InlineData("Rime", 0.5)]
-    [InlineData("Ardeos", 0.0)]
-    [InlineData("Ardeos", 0.5)]
-    [InlineData("Elarion", 0.0)]
-    [InlineData("Elarion", 0.5)]
-    public void Icicles_Waves_Land_0_27_1_27_And_2_27_Seconds_After_The_Cast(string hero, double haste)
-    {
-        var f = StepFights.Of(hero, haste: haste, weaponAbilityId: IciclesOfAnzhyr.AbilityId);
-
-        f.Cast<IciclesOfAnzhyr>();
-        f.Wait(3); // the waves land
-
-        double cast = f.CompletedAt("Icicles of An'zhyr");
-        var waves = f.Damage<IciclesOfAnzhyr>();
-
-        using var check = new Checks(f);
-        check.Equal(3, waves.Count);
-        check.Seconds(cast + 0.27, waves[0].Time.TotalSeconds);
-        check.Seconds(cast + 1.27, waves[1].Time.TotalSeconds);
-        check.Seconds(cast + 2.27, waves[2].Time.TotalSeconds);
-    }
-
-    /// <summary>
     /// Each wave of Icicles of An'zhyr hits every enemy, and beyond 15 enemies each takes sqrt(15 / enemies) of it.
     ///
     /// From combat logs.

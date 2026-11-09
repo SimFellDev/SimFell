@@ -81,7 +81,7 @@ public class AspectAmethystSplinters
         using var check = new Checks(f);
         int full = FullTicks(8, 2 / 1.3);
         double partial = 8 / (2 / 1.3) - full; // the part of a period left as the 8 seconds end
-        check.Equal(full + 1, ticks.Count);
+        check.Equal(full + PartialTick(8, 2 / 1.3, 0.1), ticks.Count); // a partial tick when at least 0.1 seconds are left
         for (int i = 0; i < ticks.Count; i++)
         {
             double share = i < full ? 0.11 / 4 : 0.11 / 4 * partial;

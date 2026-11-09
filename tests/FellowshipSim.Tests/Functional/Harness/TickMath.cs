@@ -4,7 +4,8 @@ namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
 /// How many ticks fit in a duration, for the tests that state a tick count as a formula: <c>FullTicks(30, 2 / 1.1) + PartialTick(30, 2 /
-/// 1.1, 1.0 / 30)</c>. A global <c>using static</c> makes them available in every test.
+/// 1.1, 0.1)</c> for a damage over time (0.1 seconds), a server frame (1/30 second) for another periodic effect such as a channel
+/// (WRITING_TESTS.md, Tolerances). A global <c>using static</c> makes them available in every test.
 /// </summary>
 public static class TickMath
 {

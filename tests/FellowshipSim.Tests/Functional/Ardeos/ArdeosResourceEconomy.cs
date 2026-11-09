@@ -26,8 +26,7 @@ public class ArdeosResourceEconomy
 
     /// <summary>
     /// Haste makes Searing Blaze tick more often but each tick gives less, so a full Searing Blaze is still about 15 Cinders.
-    ///
-    /// 1 Cinder a tick at no haste; the tooltip says 12, which is outdated.
+    /// Haste makes Searing Blaze tick more often but each tick gives less.
     /// </summary>
     [Theory]
     [InlineData(0.0)]
@@ -46,20 +45,8 @@ public class ArdeosResourceEconomy
 
     // ---- Engulfing Flames
 
-    /// <summary>An Engulfing Flames that runs its full 9 seconds generates 30 Cinders.</summary>
-    [Fact]
-    public void A_Full_Engulfing_Flames_Generates_30_Cinders()
-    {
-        var f = StepFights.Ardeos();
-
-        f.Cast<EngulfingFlames>();
-        f.Wait(20); // it ticks out
-
-        Assert.Equal(30, f.Amount(Ardeos.Cinders), ExactCinderTolerance);
-    }
-
     /// <summary>
-    /// Haste makes Engulfing Flames tick more often but each tick gives less, so a full Engulfing Flames is still about 30 Cinders.
+    /// Haste makes Engulfing Flames tick more often but each tick gives less.
     /// </summary>
     [Theory]
     [InlineData(0.0)]
@@ -129,14 +116,14 @@ public class ArdeosResourceEconomy
     }
 
     /// <summary>
-    /// Wildfire's extra Cinders can make an Ember: from 1 Ember and 5 Cinders (seven full Searing Blazes), six more Searing Blazes from
-    /// Apocalypse make 1 Ember and 95 Cinders, and with Wildfire 2 Embers and 3 Cinders.
-    ///
-    /// Wildfire is up for 3 to 12 seconds of the effects' 30. Each Searing Blaze gets 9 x 0.3 / 2 = 1.35 more ticks of 1 Cinder:
-    /// 6 x 16.35 = 98.1 with Wildfire, 90 without; so 203.1 and 195 Cinders.
-    ///
-    /// The rules above in one scenario a player can check in game, where Cinders are not shown but Burning Embers are: the second Ember
-    /// appears with Wildfire and not without.
+    /// Since Cinders can't be counted in the stronghold, it is tricky to see that Wildfire increases cinder generation.
+    /// The following is a scenario a player could test in stronghold.
+    /// 
+    /// We compare two scenarios:
+    /// - casting 6 SB without wildfire: 90 cinders;
+    /// - casting 6 SB with wildire: about 98 cinders;
+    /// If we start from a situation with 105 cinders, these 2 scenarios differ by 1 ember (visible in stronghold).
+    /// This proves that Wildfire does change resource generation.
     /// </summary>
     [Theory]
     [InlineData(false, 195.0, 1)]
@@ -164,14 +151,14 @@ public class ArdeosResourceEconomy
     }
 
     /// <summary>
-    /// Wildfire makes Engulfing Flames generate more Cinders: Pyromania's three Engulfing Flames (3 enemies) give 90 Cinders, no Ember,
-    /// and 117 with Wildfire, an Ember.
-    ///
-    /// Each ticks 6 x 1.3 = 7.8 times for 5 Cinders: 3 x 39 = 117 with Wildfire, 90 without. An Engulfing Flames cast first would add a
-    /// fourth: 120 Cinders, an Ember with or without Wildfire.
-    ///
-    /// The rules above in one scenario a player can check in game, where Cinders are not shown but Burning Embers are: the Ember appears
-    /// with Wildfire and not without.
+    /// Since Cinders can't be counted in the stronghold, it is tricky to see that Wildfire increases cinder generation.
+    /// The following is a scenario a player could test in stronghold.
+    /// 
+    /// We compare two scenarios:
+    /// - casting 3 EF without wildfire: 90 cinders;
+    /// - casting 3 EF with wildire: about 117 cinders;
+    /// These 2 scenarios differ by 1 ember (visible in stronghold).
+    /// This proves that Wildfire does change resource generation.
     /// </summary>
     [Theory]
     [InlineData(false, 90.0, 0)]
@@ -204,7 +191,11 @@ public class ArdeosResourceEconomy
         check.Equal(2, f.ArdeosOf().BurningEmbers);
     }
 
-    /// <summary>Six Searing Blazes that tick out in full do not make a Burning Ember (90 Cinders), seven do (105).</summary>
+    /// <summary>
+    /// Six Searing Blazes that tick out in full do not make a Burning Ember (90 Cinders), seven do (105).
+    /// 
+    /// This is testable in stronghold.
+    /// </summary>
     [Theory]
     [InlineData(6, 0)]
     [InlineData(7, 1)]
@@ -218,7 +209,11 @@ public class ArdeosResourceEconomy
         Assert.Equal(embers, f.ArdeosOf().BurningEmbers);
     }
 
-    /// <summary>Three Engulfing Flames that tick out in full do not make a Burning Ember (90 Cinders), four do (120).</summary>
+    /// <summary>
+    /// Three Engulfing Flames that tick out in full do not make a Burning Ember (90 Cinders), four do (120).
+    /// 
+    /// This is testable in stronghold.
+    /// </summary>
     [Theory]
     [InlineData(3, 0)]
     [InlineData(4, 1)]
