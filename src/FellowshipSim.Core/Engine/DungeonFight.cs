@@ -81,7 +81,7 @@ internal sealed class DungeonFight
         foreach (var (enemy, arrival) in _arrivals)
         {
             if (!arrival.Gone) _targetSeconds += (end - arrival.At).TotalSeconds;
-            enemies.Add(new PartyEnemy(arrival.At, enemy.DiesAt, enemy.MaxHealth, enemy.HeroDamage));
+            enemies.Add(new PartyEnemy(arrival.At, enemy.DiesAt, enemy.MaxHealth, enemy.HeroDamage, arrival.BossFight));
         }
         if (_bossSince != SimTime.Infinite) _bossSeconds += (end - _bossSince).TotalSeconds;
         _ctx.EnemyDemising -= Demising;
@@ -96,6 +96,7 @@ internal sealed class DungeonFight
         run.Pulls.Add(state);
         var now = _ctx.CurrentTime;
         var dies = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale);
+        bool bossFight = pull.IsBoss || BossInCombat(run);
         int slot = 0;
         // A pull's priority targets come after its other enemies, so the hero starts on one of the others.
         foreach (var group in pull.Groups.OrderBy(g => g.Priority))
@@ -110,7 +111,7 @@ internal sealed class DungeonFight
                 _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true, died: true), "Pull duration");
                 if (group.Cast is { } cast) enemy.CastOnCooldown(_ctx, cast);
                 state.Enemies.Add(enemy);
-                _arrivals[enemy] = new Arrival(now, run, state, enemy.IsBoss && pull.Final);
+                _arrivals[enemy] = new Arrival(now, run, state, enemy.IsBoss && pull.Final, bossFight);
                 run.Alive++;
                 run.Count++;
             }
@@ -126,6 +127,19 @@ internal sealed class DungeonFight
             var at = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale * (1 - pct / 100.0));
             _ctx.ScheduleAt(at, _ => JoinNow(state), "Pull with");
         }
+    }
+
+    // True when a boss of the run is in combat.
+    private bool BossInCombat(RunState run)
+    {
+        foreach (var pull in run.Pulls)
+        {
+            foreach (var enemy in pull.Enemies)
+            {
+                if (enemy.IsBoss && !_arrivals[enemy].Gone) return true;
+            }
+        }
+        return false;
     }
 
     // The pull the host's pull_with names joins the host's run, once.
@@ -283,13 +297,17 @@ internal sealed class DungeonFight
         public bool Joined;
     }
 
-    /// <summary>An enemy's arrival: its time, run and pull, whether it is the final boss, and whether it is gone.</summary>
-    private sealed class Arrival(SimTime at, RunState run, PullState pull, bool finalBoss)
+    /// <summary>
+    /// An enemy's arrival: its time, run and pull, whether it is the final boss, whether it is of a boss fight
+    /// (<see cref="PartyEnemy.BossFight"/>), and whether it is gone.
+    /// </summary>
+    private sealed class Arrival(SimTime at, RunState run, PullState pull, bool finalBoss, bool bossFight)
     {
         public readonly SimTime At = at;
         public readonly RunState Run = run;
         public readonly PullState Pull = pull;
         public readonly bool FinalBoss = finalBoss;
+        public readonly bool BossFight = bossFight;
         public bool Gone;
     }
 }
