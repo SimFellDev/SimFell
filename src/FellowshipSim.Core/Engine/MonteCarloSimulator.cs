@@ -44,6 +44,11 @@ public class MonteCarloResult
     public double PrimaryTargetDps { get; init; }
     /// <summary>The DPS to bosses over the time of boss fighting in every fight; 0 when the fights had no enemies besides bosses, or no boss.</summary>
     public double BossDps { get; init; }
+    /// <summary>
+    /// The DPS to every enemy while a boss is in combat, over the same seconds as <see cref="BossDps"/>; 0 where
+    /// <see cref="BossDps"/> is 0.
+    /// </summary>
+    public double BossFightDps { get; init; }
     /// <summary>A dungeon's party DPS: the health its enemies lost in every fight over their lengths; null for training dummies.</summary>
     public double? PartyDps { get; init; }
     /// <summary>
@@ -51,6 +56,12 @@ public class MonteCarloResult
     /// lost; null for training dummies.
     /// </summary>
     public double? GroupDamageShare { get; init; }
+    /// <summary>
+    /// <see cref="GroupDamageShare"/> of the enemies of boss fights (a pull with a boss in it, or a pull entering combat
+    /// while a boss is in combat) and of the other enemies; null for training dummies and for fights with no such enemies.
+    /// </summary>
+    public double? GroupDamageShareBossFights { get; init; }
+    public double? GroupDamageShareTrash { get; init; }
 }
 
 /// <summary>
@@ -295,6 +306,7 @@ public class MonteCarloSimulator
         {
             abilityDps[ability] = (totalDmg / fights) / totalSeconds;
         }
+        double trashPartyDamage = total.Report.PartyDamage - total.Report.PartyBossFightDamage;
 
         return new MonteCarloResult
         {
@@ -318,11 +330,21 @@ public class MonteCarloSimulator
             Spirit = total.Report.Spirit(),
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
             // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.
-            BossDps = total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999 ? total.Report.BossDamage / total.Report.BossSeconds : 0,
+            BossDps = BossFighting(total) ? total.Report.BossDamage / total.Report.BossSeconds : 0,
+            BossFightDps = BossFighting(total) ? total.Report.BossFightDamage / total.Report.BossSeconds : 0,
             PartyDps = total.Report.PartyDamage > 0 && total.LengthSum > 0 ? total.Report.PartyDamage / total.LengthSum : null,
             GroupDamageShare = total.Report.PartyDamage > 0 ? total.Report.HeroPartyDamage / total.Report.PartyDamage : null,
+            GroupDamageShareBossFights = total.Report.PartyBossFightDamage > 0
+                ? total.Report.HeroPartyBossFightDamage / total.Report.PartyBossFightDamage : null,
+            // Above the sums' rounding: a dungeon of boss fights alone has no trash share.
+            GroupDamageShareTrash = trashPartyDamage > total.Report.PartyDamage * 1e-9
+                ? (total.Report.HeroPartyDamage - total.Report.HeroPartyBossFightDamage) / trashPartyDamage : null,
         };
     }
+
+    /// <summary>True when the fights had a boss in combat for part of their length alone.</summary>
+    private static bool BossFighting(Totals total) =>
+        total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999;
 
     private Worker NewWorker()
     {

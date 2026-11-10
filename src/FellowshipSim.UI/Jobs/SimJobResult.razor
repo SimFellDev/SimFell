@@ -21,64 +21,69 @@
         <div class="tile main">
             <span>Mean DPS</span>
             <strong>@N(Result.MeanDps)</strong>
-            <em>every fight's DPS, averaged</em>
+            <em>DPS</em>
         </div>
         @if (Result.PrimaryTargetDps is { } primary && primary > 0 && primary < Result.MeanDps * 0.999)
         {
             <div class="tile">
                 <span>Main target DPS</span>
                 <strong>@N(primary)</strong>
-                <em>@Percent(Result.MeanDps > 0 ? primary / Result.MeanDps : 0) of the damage, to the first target</em>
+                <em>@Percent(Result.MeanDps > 0 ? primary / Result.MeanDps : 0) of damage</em>
             </div>
         }
         @if (HasBossDps(Result))
         {
+            double bossOnly = Result.BossDps!.Value;
+            bool everyEnemy = Result.BossFightDps is > 0;
             <div class="tile">
                 <span>Boss DPS</span>
-                <strong>@N(Result.BossDps!.Value)</strong>
-                <em>to bosses, over the time of boss fighting</em>
+                <strong>@N(everyEnemy ? Result.BossFightDps!.Value : bossOnly)</strong>
+                <em>@(everyEnemy ? $"{Percent(bossOnly / Result.BossFightDps!.Value)} on bosses" : "to bosses alone")</em>
             </div>
         }
         @if (Result.PartyDps is { } party)
         {
-            <div class="tile">
+            string? partyTip = PartyTip(Result);
+            <div class="@(partyTip != null ? "tile tipped" : "tile")" data-tooltip="@partyTip">
+                @if (partyTip != null)
+                {
+                    <Icon Shape="IconShape.Info" Class="tip-mark" />
+                }
                 <span>Party DPS</span>
                 <strong>@N(party)</strong>
-                <em>the health the dungeon's enemies lost each second</em>
-            </div>
-        }
-        @if (Result.GroupDamageShare is { } share)
-        {
-            <div class="tile">
-                <span>Share of group damage</span>
-                <strong>@Percent(share)</strong>
-                <em>the hero's damage, up to each enemy's health</em>
+                @if (Result.GroupDamageShare is { } share)
+                {
+                    <em>@Percent(share) of group damage</em>
+                }
             </div>
         }
         <div class="tile">
             <span>Range</span>
             <strong>@N(Result.MinDps) – @N(Result.MaxDps)</strong>
-            <em>lowest and highest fight</em>
+            <em>DPS</em>
         </div>
         <div class="tile">
             <span>Std dev</span>
             <strong>@N(Result.StandardDeviation)</strong>
-            <em>@Percent(Result.MeanDps > 0 ? Result.StandardDeviation / Result.MeanDps : 0) of the mean</em>
+            <em>@Percent(Result.MeanDps > 0 ? Result.StandardDeviation / Result.MeanDps : 0) of mean</em>
         </div>
         <div class="tile">
             <span>Mean damage</span>
             <strong>@N(Result.MeanDps * Result.DurationSeconds)</strong>
-            <em>per fight</em>
+            @if (Result.Abilities is { Count: > 0 } hitSources)
+            {
+                <em>@N(hitSources.Sum(a => a.Hits)) hits</em>
+            }
         </div>
         <div class="tile">
             <span>Fights</span>
             <strong>@N(Result.Iterations)</strong>
-            <em>@Result.DurationSeconds.ToString("0.##", CultureInfo.CurrentCulture) s each</em>
+            <em>mean @Clock(Result.DurationSeconds)</em>
         </div>
-        <div class="tile" data-tooltip="The mean DPS is within this much of the true mean, 95 times in 100">
+        <div class="tile">
             <span>Margin of error</span>
             <strong>±@MarginText</strong>
-            <em>±@Dps(Result.Margin) DPS at 95% confidence</em>
+            <em>±@Dps(Result.Margin) DPS</em>
             @if (Result.TargetError is { } target)
             {
                 <em>@TargetText(target)</em>
@@ -517,6 +522,19 @@
 
     /// <summary>True when <paramref name="result"/> has a DPS to bosses apart from its mean DPS: a dungeon fight with trash.</summary>
     public static bool HasBossDps(SimResult result) => result.BossDps is > 0;
+
+    /// <summary>
+    /// The Party DPS tile's tooltip: the hero's share of the group's damage overall, in boss fights and on trash; null for a
+    /// result with no split.
+    /// </summary>
+    private static string? PartyTip(SimResult result)
+    {
+        if (result.GroupDamageShare is not { } overall) return null;
+        var parts = new List<string> { $"{Percent(overall)} overall" };
+        if (result.GroupDamageShareBossFights is { } bossFights) parts.Add($"{Percent(bossFights)} in boss fights");
+        if (result.GroupDamageShareTrash is { } trash) parts.Add($"{Percent(trash)} on trash");
+        return parts.Count > 1 ? "Share of group damage: " + string.Join(", ", parts) : null;
+    }
 
     /// <summary>The cast sequence's rows: the casts of each 30 seconds.</summary>
     private const int CastWindowSeconds = 30;

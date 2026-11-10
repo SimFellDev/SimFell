@@ -713,6 +713,33 @@ public class DungeonTests
     }
 
     [Fact]
+    public void A_Boss_Fights_DPS_Has_The_Damage_To_Every_Enemy_While_A_Boss_Is_In_Combat()
+    {
+        // Trash 1 is the hero's first target, and the boss joins it at once. Trash 3 comes after the boss.
+        var dungeon = Dungeon(Trash(1, 1, 10) with { Join = new PullJoin("2") }, Boss(2, 30), Trash(3, 1, 10));
+        double bossFight = 0, boss = 0;
+        var simulator = new MonteCarloSimulator(() =>
+        {
+            var h = HeroImporter.Import(Build());
+            h.OnDamageDealt += (in DamageContext hit) =>
+            {
+                if (hit.SimContext is not { Boss: true }) return;
+                bossFight += hit.Amount;
+                if (hit.Target is { IsBoss: true }) boss += hit.Amount;
+            };
+            return h;
+        }, AplParser.ParseScript(FrostBolts));
+        var result = simulator.Run(SimTime.FromSeconds(600), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon));
+
+        Assert.True(boss > 0);
+        Assert.True(bossFight > boss);
+        Assert.Equal(boss / bossFight, result.BossDps / result.BossFightDps, 9);
+        // The boss's pull is the boss fight's, and trash 1 and 3 are trash: the share overall is between the two.
+        double bossFights = result.GroupDamageShareBossFights!.Value, trash = result.GroupDamageShareTrash!.Value;
+        Assert.InRange(result.GroupDamageShare!.Value, Math.Min(bossFights, trash) - 1e-12, Math.Max(bossFights, trash) + 1e-12);
+    }
+
+    [Fact]
     public void Target_Conditions_Read_The_Enemy_And_Its_Pull()
     {
         var hero = HeroImporter.Import(Build());

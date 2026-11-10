@@ -34,6 +34,25 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   min-width: 0;
+  position: relative;
+}
+
+/* A tile with a tooltip: an i in its top right corner, and its title clear of it. */
+.tile.tipped > span {
+  padding-right: 18px;
+}
+
+.tile ::deep .tip-mark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+
+.tile.tipped:hover ::deep .tip-mark {
+  color: var(--accent);
 }
 
 .tile.main {

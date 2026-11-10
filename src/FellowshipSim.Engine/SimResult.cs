@@ -5,7 +5,7 @@ namespace FellowshipSim.Engine;
 /// <summary>
 /// A Monte Carlo sim's DPS: mean, lowest and highest fight, standard deviation, and each ability's mean DPS; with its
 /// damage over time, each damage source's casts, hits and crits, each buff's and debuff's uptime, one typical fight's
-/// casts and hits in order, Spirit Points over the fight, the DPS to bosses over the time of boss fighting, and a dungeon's party DPS and the hero's share of the party's damage, the fights by DPS, and the target error a sim ran to. A result saved before those were recorded has them null.
+/// casts and hits in order, Spirit Points over the fight, the DPS to bosses and the DPS to every enemy while a boss is in combat, each over the seconds a boss is in combat, and a dungeon's party DPS and the hero's share of the party's damage, the fights by DPS, and the target error a sim ran to. A result saved before those were recorded has them null.
 /// <see cref="TypicalFight"/> is the typical fight's index in the sim: its seed is the sim's first seed plus the index.
 /// </summary>
 public sealed record SimResult(
@@ -28,7 +28,10 @@ public sealed record SimResult(
     double? PartyDps = null,
     double? GroupDamageShare = null,
     DpsDistribution? Distribution = null,
-    double? TargetError = null)
+    double? TargetError = null,
+    double? BossFightDps = null,
+    double? GroupDamageShareBossFights = null,
+    double? GroupDamageShareTrash = null)
 {
     /// <summary>The margin of error of <see cref="MeanDps"/> at 95% confidence, in DPS.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
@@ -41,5 +44,6 @@ public sealed record SimResult(
     public static SimResult From(MonteCarloResult result) => new(result.MeanDps, result.MinDps, result.MaxDps,
         result.StandardDeviation, result.AbilityDpsBreakdown, result.Iterations, result.DurationSeconds,
         result.Timeline, result.Abilities, result.Buffs, result.PrimaryTargetDps, result.Casts, result.Spirit, result.BossDps,
-        result.Hits, result.TypicalFight, result.PartyDps, result.GroupDamageShare, result.Distribution, result.TargetError);
+        result.Hits, result.TypicalFight, result.PartyDps, result.GroupDamageShare, result.Distribution, result.TargetError, result.BossFightDps,
+        result.GroupDamageShareBossFights, result.GroupDamageShareTrash);
 }
