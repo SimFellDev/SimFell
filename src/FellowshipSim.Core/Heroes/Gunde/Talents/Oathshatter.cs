@@ -30,7 +30,8 @@ public partial class Oathshatter : Talent
             double falloff = others.Count > ExplosionTargetThreshold ? Math.Sqrt(ExplosionTargetThreshold / others.Count) : 1.0;
             foreach (var enemy in others)
             {
-                ctx.ApplyDamage(hero, enemy, damage * AoeDamageScaler * falloff, id, HeartSplitter.ExsanguinateName, canCrit: false, 0.0, 1.0);
+                ctx.ApplyDamage(hero, enemy, damage * AoeDamageScaler * falloff, id, HeartSplitter.ExsanguinateName, canCrit: false, 0.0, 1.0,
+                    abilityGroup: heartSplitter.Name);
             }
         };
     }

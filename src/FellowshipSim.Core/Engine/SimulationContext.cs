@@ -499,13 +499,15 @@ public class SimulationContext
 
     /// <summary>
     /// Deals one hit with fixed numbers (no dependence on the moment it lands). A <paramref name="snapshot"/> hit lands
-    /// with the time of its release.
+    /// with the time of its release. A hit with an <paramref name="abilityGroup"/> is part of that ability in the report.
     /// </summary>
     public double ApplyDamage(Hero source, EnemyTarget? target, double baseDamage, int abilityId, string abilityName,
-        bool canCrit, double critChance, double critMultiplier, bool? forcedCrit = null, bool snapshot = false)
+        bool canCrit, double critChance, double critMultiplier, bool? forcedCrit = null, bool snapshot = false,
+        string? abilityGroup = null)
     {
         var hit = RentHit(source, target, abilityId, abilityName, canCrit, forcedCrit, onLanded: null, snapshot);
         hit.FromNumbers(new HitNumbers(baseDamage, critChance, critMultiplier));
+        hit.Group = abilityGroup;
         return ApplyDamage(hit);
     }
 
@@ -589,7 +591,7 @@ public class SimulationContext
         CurrentHit = outer;
 
         double critChance = landed.ForcedCrit is { } forced ? (forced ? 1.0 : 0.0) : landed.CanCrit ? landed.CritChance : 0.0;
-        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance, hit.Ability?.Name);
+        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance, hit.Group ?? hit.Ability?.Name);
         Outcomes.HitFinished(this);
         onLanded?.Invoke(this, dealt);
         ReturnHit(hit);

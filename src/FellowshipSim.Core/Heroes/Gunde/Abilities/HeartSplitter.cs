@@ -67,6 +67,7 @@ public partial class HeartSplitter : GundeAbility
         double damage = ExsanguinateShare * Gunde.Rend.Remaining(target);
         if (damage <= 0.0) return;
         Exsanguinated?.Invoke(ctx, target, damage, crit);
-        ctx.ApplyDamage(Owner, target, damage, LogIds.Effect(ExsanguinateEffectId), ExsanguinateName, canCrit: false, 0.0, 1.0);
+        ctx.ApplyDamage(Owner, target, damage, LogIds.Effect(ExsanguinateEffectId), ExsanguinateName, canCrit: false, 0.0, 1.0,
+            abilityGroup: Name);
     }
 }
