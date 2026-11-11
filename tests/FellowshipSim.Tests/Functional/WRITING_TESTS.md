@@ -199,7 +199,7 @@ Assert.Equal(3, f.Amount(Rime.Anima));
 ```
 
 - **Read state through the verbs** (`Has`, `Stacks`, `Amount`, `Haste`, `Spirit`, `Expertise`, `MainStat`, `Health`, `GemPower`, `IsReady`,
-  `Charges`, `RecoveryRate`, `Enemies`, `HasDebuff("Searing Blaze")`), not through `f.Hero....(…, f.Now)` or `f.Context...`. When a
+  `Charges`, `AccelerationRate`, `Enemies`, `HasDebuff("Searing Blaze")`), not through `f.Hero....(…, f.Now)` or `f.Context...`. When a
   set-up line already sets the starting state (`f.RimeOf().WinterOrbs = orbs`), don't assert it again.
 - **Events are for timing, order and per-hit values.** `Cast` returns only once the hero is free again, so state cannot show the middle of
   a cast: `Assert.Equal(f.CompletedAt("Frost Bolt"), f.Gains("Anima").Single().Time.TotalSeconds)`.

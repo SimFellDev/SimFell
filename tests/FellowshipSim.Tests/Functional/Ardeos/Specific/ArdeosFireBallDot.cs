@@ -6,8 +6,7 @@ namespace FellowshipSim.Tests.Functional;
 /// Fire Ball's burn: the damage over time a Fire Ball sets the enemy on fire with (20% of the hit over 12 seconds, a tick every 2 seconds
 /// at any haste), and how recasting and Wildfire change its ticks.
 ///
-/// The expectations are the C++ sim's tests' ("game-accurate expectation", not derived from an engine). Ticks are compared with the
-/// first tick of the same fight. How fast the burn ticks with Wildfire is in Specific/ArdeosDotTickSpeed.cs, and how a partial tick
+/// Ticks are compared with the first tick of the same fight. How fast the burn ticks with Wildfire is in Specific/ArdeosDotTickSpeed.cs, and how a partial tick
 /// extends effects with Slow Burn in ArdeosTalents.cs.
 /// </summary>
 public class ArdeosFireBallDot

@@ -11,22 +11,22 @@ namespace FellowshipSim.Tests.Functional;
 /// <summary>
 /// Event Horizon and cooldowns: for its 20 seconds it gives Cooldown Acceleration equal to your haste, its Highwind Arrows take time off
 /// Heartseeker Barrage and its barrage arrows time off Starfall Volley. Also how its acceleration stacks with the other ways a cooldown
-/// recovers faster: Highwind Arrow's hasted charges, Chronoshift and the Strand of Eternity every legendary item carries, The Monarch, and
+/// accelerates faster: Highwind Arrow's hasted charges, Chronoshift and the Strand of Eternity every legendary item carries, The Monarch, and
 /// Skylit Grace. Event Horizon's halved Focus costs are in ElarionResourceEconomy.cs, its damage and duration in ElarionAbilities.cs, its
 /// cast time in ElarionCastTimes.cs, and Skylit Grace's acceleration on its own in ElarionCooldowns.cs.
 ///
 /// Event Horizon gives Spirit of Heroism (30% haste, Generic/Ultimate.cs), so during it the hero's haste is his gear haste + 30%; the
-/// tests call it h. A cooldown recovers at (1 + the recovery bonuses) x (1 + h) + the haste of hasted charges: the recovery bonuses
+/// tests call it h. A cooldown's acceleration is (1 + the acceleration bonuses) x (1 + h) + the haste of hasted charges: the acceleration bonuses
 /// (Chronoshift's 7, Strand of Eternity's 0.1) add up, Event Horizon multiplies them, and Highwind Arrow's hasted charges add after it
 /// (the game's formula, datamined from build 26320967), as do The Monarch's and Skylit Grace's accelerations. Every duration is checked by
-/// the ability being not ready 0.1s before its end and ready 0.1s after; a recovery speed is read with <c>RecoveryRate</c>.
+/// the ability being not ready 0.1s before its end and ready 0.1s after; an acceleration is read with <c>AccelerationRate</c>.
 /// </summary>
 public class ElarionEventHorizonCooldown
 {
     // ---- Event Horizon's Cooldown Acceleration
 
     /// <summary>
-    /// During Event Horizon your cooldowns recover with acceleration equal to your haste: a Heartseeker Barrage cast right after it is
+    /// During Event Horizon your cooldowns have Cooldown Acceleration equal to your haste: a Heartseeker Barrage cast right after it is
     /// back in 20 / (1 + h) seconds instead of 20.
     /// </summary>
     [Theory]
@@ -49,7 +49,7 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// The acceleration ends with Event Horizon: a Heartseeker Barrage cast 15 seconds into it recovers 5 x 1.3 seconds of its cooldown
+    /// The acceleration ends with Event Horizon: a Heartseeker Barrage cast 15 seconds into it takes 5 x 1.3 seconds off its cooldown
     /// in the last 5 seconds of Event Horizon, then the rest at the normal speed.
     /// </summary>
     [Fact]
@@ -63,8 +63,8 @@ public class ElarionEventHorizonCooldown
         f.WaitUntil(horizonEnd - 5.0);
 
         f.Cast<HeartseekerBarrage>();
-        double recovered = (horizonEnd - f.CompletedAt("Heartseeker Barrage")) * 1.3; // Spirit of Heroism's 30% haste
-        double end = horizonEnd + 20.0 - recovered;
+        double accelerated = (horizonEnd - f.CompletedAt("Heartseeker Barrage")) * 1.3; // Spirit of Heroism's 30% haste
+        double end = horizonEnd + 20.0 - accelerated;
 
         f.WaitUntil(end - 0.1);
         Assert.False(f.IsReady<HeartseekerBarrage>());
@@ -72,7 +72,7 @@ public class ElarionEventHorizonCooldown
         Assert.True(f.IsReady<HeartseekerBarrage>());
     }
 
-    // ---- Event Horizon with the other sources of faster recovery
+    // ---- Event Horizon with the other sources of faster acceleration
 
     /// <summary>
     /// Highwind Arrow's charges recharge with your haste, added after Event Horizon's acceleration: during Event Horizon a charge comes
@@ -101,7 +101,7 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// Event Horizon's acceleration multiplies the 10% cooldown recovery of a legendary item's Strand of Eternity: during Event Horizon a
+    /// Event Horizon's acceleration multiplies the 10% Cooldown Acceleration of a legendary item's Strand of Eternity: during Event Horizon a
     /// Heartseeker Barrage is back in 20 / (1.1 x (1 + h)) seconds.
     ///
     /// Starstriker's Ascent is worn only for its Strand of Eternity (its power needs a Spirit Refund, and the bare hero has no Spirit).
@@ -109,7 +109,7 @@ public class ElarionEventHorizonCooldown
     [Theory]
     [InlineData(0.0)]
     [InlineData(0.2)]
-    public void Event_Horizon_Multiplies_Strand_Of_Eternitys_Recovery(double haste)
+    public void Event_Horizon_Multiplies_Strand_Of_Eternitys_Acceleration(double haste)
     {
         var f = StepFights.Elarion(haste: haste, legendaries: [StarstrikersAscent.HauberkItemId]);
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
@@ -126,13 +126,13 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// Event Horizon's acceleration multiplies Strand of Eternity's 10% cooldown recovery, and Highwind Arrow's hasted charges add after
-    /// it: during Event Horizon, Highwind Arrow recovers at (1 + h) x 1.1 + h, and a charge is back in 15 seconds over that.
+    /// Event Horizon's acceleration multiplies Strand of Eternity's 10% Cooldown Acceleration, and Highwind Arrow's hasted charges add after
+    /// it: during Event Horizon, Highwind Arrow accelerates at (1 + h) x 1.1 + h, and a charge is back in 15 seconds over that.
     ///
     /// Starstriker's Ascent is worn only for its Strand of Eternity, as above.
     /// </summary>
     [Fact]
-    public void Legendary_Cooldown_Recovery_Multiplies_With_Event_Horizons_And_Highwind_Arrows_Acceleration()
+    public void Legendary_Cooldown_Acceleration_Multiplies_With_Event_Horizons_And_Highwind_Arrows_Acceleration()
     {
         var f = StepFights.Elarion(legendaries: [StarstrikersAscent.HauberkItemId]);
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
@@ -144,7 +144,7 @@ public class ElarionEventHorizonCooldown
         double end = f.CompletedAt("Highwind Arrow") + 15.0 / rate;
 
         using var check = new Checks(f);
-        check.Equal(rate, f.RecoveryRate<HighwindArrow>());
+        check.Equal(rate, f.AccelerationRate<HighwindArrow>());
         f.WaitUntil(end - 0.1);
         check.Equal(2, f.Charges<HighwindArrow>());
         f.WaitUntil(end + 0.1);
@@ -152,8 +152,8 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// Chronoshift's barrier makes your cooldowns recover 8 times as fast, Event Horizon multiplies that by 1 + haste, and the speed is
-    /// back to normal once both are gone: Heartseeker Barrage recovers at 8 during the channel, 8 x (1 + haste) with Event Horizon too,
+    /// Chronoshift's barrier makes your cooldowns accelerate 8 times as fast, Event Horizon multiplies that by 1 + haste, and the speed is
+    /// back to normal once both are gone: Heartseeker Barrage accelerates at 8 during the channel, 8 x (1 + haste) with Event Horizon too,
     /// 1 + haste once the channel is over, and 1 after Event Horizon.
     ///
     /// The barrier and Event Horizon's buff are applied and removed directly, without Spirit of Heroism, so haste is the gear's alone.
@@ -161,26 +161,26 @@ public class ElarionEventHorizonCooldown
     [Theory]
     [InlineData(0.0)]
     [InlineData(0.2)]
-    public void Chronoshift_And_Event_Horizon_Cooldown_Recovery_Multiply(double haste)
+    public void Chronoshift_And_Event_Horizon_Cooldown_Acceleration_Multiply(double haste)
     {
         var f = StepFights.Elarion(haste: haste, weaponAbilityId: Chronoshift.AbilityId);
 
         using var check = new Checks(f);
         f.Apply(Chronoshift.Barrier); // as Chronoshift's channel gives it
-        check.Equal(8.0, f.RecoveryRate<HeartseekerBarrage>());
+        check.Equal(8.0, f.AccelerationRate<HeartseekerBarrage>());
         f.Apply(EventHorizon.Buff);
-        check.Equal(8.0 * (1 + haste), f.RecoveryRate<HeartseekerBarrage>());
+        check.Equal(8.0 * (1 + haste), f.AccelerationRate<HeartseekerBarrage>());
         f.Remove(Chronoshift.Barrier); // the channel ends
-        check.Equal(1 + haste, f.RecoveryRate<HeartseekerBarrage>());
+        check.Equal(1 + haste, f.AccelerationRate<HeartseekerBarrage>());
         f.Remove(EventHorizon.Buff); // Event Horizon ends
-        check.Equal(1.0, f.RecoveryRate<HeartseekerBarrage>());
+        check.Equal(1.0, f.AccelerationRate<HeartseekerBarrage>());
     }
 
     /// <summary>
     /// The Monarch's Cooldown Acceleration on Major abilities adds to Event Horizon's, not multiplied by it: during Event Horizon,
-    /// Skystrider's Supremacy recovers at (1 + h) + the glyph's 12% + 0.1% per 1% haste, after it at 1 + 12%.
+    /// Skystrider's Supremacy accelerates at (1 + h) + the glyph's 12% + 0.1% per 1% haste, after it at 1 + 12%.
     ///
-    /// The Monarch is an ability's own acceleration, added after Event Horizon multiplies the rest (the game's formula).
+    /// The Monarch is an ability's own acceleration, added after Event Horizon multiplies the rest (datamined).
     /// </summary>
     [Fact]
     public void The_Monarchs_Acceleration_Adds_To_Event_Horizons()
@@ -193,8 +193,8 @@ public class ElarionEventHorizonCooldown
         f.Cast<SkystridersSupremacy>();
         double h = 0.3; // Spirit of Heroism's 30%
         double during = (1 + h) + 0.12 + 0.001 * h * 100;
-        double recovered = (horizonEnd - f.CompletedAt("Skystrider's Supremacy")) * during;
-        double end = horizonEnd + (45.0 - recovered) / (1 + 0.12);
+        double accelerated = (horizonEnd - f.CompletedAt("Skystrider's Supremacy")) * during;
+        double end = horizonEnd + (45.0 - accelerated) / (1 + 0.12);
 
         f.WaitUntil(end - 0.1);
         Assert.False(f.IsReady<SkystridersSupremacy>());
@@ -203,7 +203,7 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// With Event Horizon and Chronoshift, Highwind Arrow recovers at (1 + h) x 8 + h during the 3 second channel and at (1 + h) + h the
+    /// With Event Horizon and Chronoshift, Highwind Arrow accelerates at (1 + h) x 8 + h during the 3 second channel and at (1 + h) + h the
     /// rest of the time: three charges (45 seconds of recharge, one after another) are back 3 + (45 - 3 x during) / outside seconds after
     /// the first arrow.
     ///
@@ -233,7 +233,7 @@ public class ElarionEventHorizonCooldown
     }
 
     /// <summary>
-    /// With Skylit Grace, a Starfall Volley falling gives Skystrider's Grace 120% Cooldown Acceleration, added to the rest: Grace recovers
+    /// With Skylit Grace, a Starfall Volley falling gives Skystrider's Grace 120% Cooldown Acceleration, added to the rest: Grace accelerates
     /// at 1 + 1.2 with one volley, 8 + 1.2 during Chronoshift's channel, 8 x (1 + haste) + 1.2 with Event Horizon too, 1 + haste + 1.2
     /// once the channel is over, and 1 once the volley and Event Horizon are over.
     ///
@@ -243,22 +243,22 @@ public class ElarionEventHorizonCooldown
     [Theory]
     [InlineData(0.0)]
     [InlineData(0.2)]
-    public void Skylit_Grace_Adds_To_Event_Horizon_And_Chronoshift_Recovery(double haste)
+    public void Skylit_Grace_Adds_To_Event_Horizon_And_Chronoshift_Acceleration(double haste)
     {
         var f = StepFights.Elarion(haste: haste, talents: [SkylitGrace.TalentId], weaponAbilityId: Chronoshift.AbilityId);
 
         using var check = new Checks(f);
         f.Apply(SkylitGrace.Buff); // one volley falling
-        check.Equal(1 + 1.2, f.RecoveryRate<SkystridersGrace>());
+        check.Equal(1 + 1.2, f.AccelerationRate<SkystridersGrace>());
         f.Apply(Chronoshift.Barrier); // as Chronoshift's channel gives it
-        check.Equal(8 + 1.2, f.RecoveryRate<SkystridersGrace>());
+        check.Equal(8 + 1.2, f.AccelerationRate<SkystridersGrace>());
         f.Apply(EventHorizon.Buff);
-        check.Equal(8 * (1 + haste) + 1.2, f.RecoveryRate<SkystridersGrace>());
+        check.Equal(8 * (1 + haste) + 1.2, f.AccelerationRate<SkystridersGrace>());
         f.Remove(Chronoshift.Barrier); // the channel ends
-        check.Equal(1 + haste + 1.2, f.RecoveryRate<SkystridersGrace>());
+        check.Equal(1 + haste + 1.2, f.AccelerationRate<SkystridersGrace>());
         f.Remove(SkylitGrace.Buff); // the volley ends
         f.Remove(EventHorizon.Buff); // Event Horizon ends
-        check.Equal(1.0, f.RecoveryRate<SkystridersGrace>());
+        check.Equal(1.0, f.AccelerationRate<SkystridersGrace>());
     }
 
     // ---- Time Event Horizon takes off Heartseeker Barrage and Starfall Volley
@@ -290,8 +290,7 @@ public class ElarionEventHorizonCooldown
     /// <summary>
     /// While Event Horizon is up, each hit of Heartseeker Barrage takes 1.5 seconds off Starfall Volley's cooldown; without it, none.
     ///
-    /// Event Horizon's buff is applied without Spirit of Heroism, as above. The tooltip's 1.5 seconds (ability 1584); the older Python
-    /// sim's game version had 1.0.
+    /// Event Horizon's buff is applied without Spirit of Heroism, as above.
     /// </summary>
     [Theory]
     [InlineData(true)]
@@ -348,8 +347,6 @@ public class ElarionEventHorizonCooldown
     /// <summary>
     /// Piercing Seekers' ricochets take no time off Starfall Volley: during Event Horizon, a Heartseeker Barrage on 2 enemies with Piercing
     /// Seekers leaves Starfall Volley's cooldown where the same barrage without it does, 1.5 seconds off per hit on the target.
-    ///
-    /// Per the user. Event Horizon's buff is applied without Spirit of Heroism, as above.
     /// </summary>
     [Fact]
     public void Piercing_Seekers_Ricochets_Take_No_Time_Off_Starfall_Volley()

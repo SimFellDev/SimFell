@@ -9,8 +9,7 @@ namespace FellowshipSim.Tests.Functional;
 /// How long a Searing Blaze lasts: 30 seconds, and a recast on an enemy that has it keeps the time left on top of the new 30 seconds, up to
 /// 30% more (39 seconds). That refreshed duration is also the most time an extension (Incinerate, Backdraft) can give it until it ends.
 ///
-/// Per the user, as the reference sims have it: the Python sim's SearingBlazeDoT.fuse (pandemic fraction 0.30) and the C++ sim's
-/// DOT_REFRESH_PANDEMIC. Every duration is checked by the effect being on the enemy 0.1s before its end and gone 0.1s after.
+/// Every duration is checked by the effect being on the enemy 0.1s before its end and gone 0.1s after.
 /// </summary>
 public class ArdeosSearingBlazeDuration
 {

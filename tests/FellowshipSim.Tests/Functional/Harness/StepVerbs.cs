@@ -165,12 +165,12 @@ public static class StepVerbs
 
     public static int Charges<T>(this StepDriver f) where T : Ability => f.Hero.CooldownOf(f.Ability<T>()).ChargesAt(f.Now);
 
-    /// <summary>How fast <typeparamref name="T"/>'s cooldown recovers now: 1 is real time, 2 twice as fast (cooldown recovery,
-    /// acceleration and hasted charges together).</summary>
-    public static double RecoveryRate<T>(this StepDriver f) where T : Ability => f.Hero.CooldownRate(f.Ability<T>(), f.Now);
+    /// <summary>How fast <typeparamref name="T"/>'s cooldown accelerates now: 1 is real time, 2 twice as fast (every Cooldown
+    /// Acceleration and hasted charges together).</summary>
+    public static double AccelerationRate<T>(this StepDriver f) where T : Ability => f.Hero.CooldownRate(f.Ability<T>(), f.Now);
 
-    /// <inheritdoc cref="RecoveryRate{T}"/>
-    public static double RecoveryRate(this StepDriver f, string ability) => f.Hero.CooldownRate(f.Ability(ability), f.Now);
+    /// <inheritdoc cref="AccelerationRate{T}"/>
+    public static double AccelerationRate(this StepDriver f, string ability) => f.Hero.CooldownRate(f.Ability(ability), f.Now);
 
     /// <summary>Seconds of real time until the charge of <typeparamref name="T"/> now recharging comes back, at its current recovery rate; 0
     /// when no charge is recharging. Read between two moments to see a cooldown reduction as a step.</summary>

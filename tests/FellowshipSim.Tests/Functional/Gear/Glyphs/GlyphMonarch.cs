@@ -11,12 +11,12 @@ namespace FellowshipSim.Tests.Functional;
 /// </summary>
 public class GlyphMonarch
 {
-    /// <summary>How fast <paramref name="ability"/>'s cooldown recovers, with or without the glyph.</summary>
-    private static double RecoveryRate(string hero, string ability, int rank, double haste, int weaponId = 0)
+    /// <summary>How fast <paramref name="ability"/>'s cooldown accelerates, with or without the glyph.</summary>
+    private static double AccelerationRate(string hero, string ability, int rank, double haste, int weaponId = 0)
     {
         var f = StepFights.Of(hero, haste: haste, weaponAbilityId: weaponId, glyphs: StepFights.Ranked(TheMonarch.GlyphId, rank));
 
-        return f.RecoveryRate(ability);
+        return f.AccelerationRate(ability);
     }
 
     /// <summary>
@@ -37,8 +37,8 @@ public class GlyphMonarch
     [InlineData("Tariq", "Thunder Call", 4, 0.12, 0.0)]
     public void The_Monarch_Speeds_Up_Major_Abilities_Cooldowns(string hero, string major, int rank, double acceleration, double haste)
     {
-        double plainRate = RecoveryRate(hero, major, rank: 0, haste);
-        double monarchRate = RecoveryRate(hero, major, rank, haste);
+        double plainRate = AccelerationRate(hero, major, rank: 0, haste);
+        double monarchRate = AccelerationRate(hero, major, rank, haste);
 
         AssertRatio(1 + acceleration + Math.Min(0.05, 0.001 * haste * 100), monarchRate / plainRate);
     }
@@ -50,8 +50,8 @@ public class GlyphMonarch
     [InlineData("Chronoshift", Chronoshift.AbilityId)]
     public void The_Monarch_Leaves_Other_Cooldowns_Alone(string ability, int weaponId)
     {
-        double plainRate = RecoveryRate("Rime", ability, rank: 0, haste: 0.2, weaponId);
-        double monarchRate = RecoveryRate("Rime", ability, rank: 4, haste: 0.2, weaponId);
+        double plainRate = AccelerationRate("Rime", ability, rank: 0, haste: 0.2, weaponId);
+        double monarchRate = AccelerationRate("Rime", ability, rank: 4, haste: 0.2, weaponId);
 
         AssertRatio(1.0, monarchRate / plainRate);
     }

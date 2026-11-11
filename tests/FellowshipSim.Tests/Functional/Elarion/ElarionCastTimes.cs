@@ -72,7 +72,7 @@ public class ElarionCastTimes
     [InlineData(true, 0.0)]
     [InlineData(true, 0.2)]
     [InlineData(true, 0.5)]
-    public void Heartseeker_Barrage_Channels_For_2_Seconds_2_5_With_Fusillade_Whatever_Your_Haste(bool fusillade, double haste)
+    public void Heartseeker_Barrage_Channels_For_2_Seconds_Or_2_5_With_Fusillade_Whatever_Your_Haste(bool fusillade, double haste)
     {
         var f = StepFights.Elarion(haste: haste, talents: fusillade ? [Fusillade.TalentId] : []);
 
@@ -89,7 +89,7 @@ public class ElarionCastTimes
     [InlineData(0.0)]
     [InlineData(0.2)]
     [InlineData(0.5)]
-    public void Event_Horizon_Takes_0_7_Seconds_Over_1_Plus_Haste_With_No_Longer_Global_Cooldown(double haste)
+    public void Event_Horizon_Takes_0_7_Seconds_Over_1_Plus_Haste(double haste)
     {
         var f = StepFights.Elarion(haste: haste);
         f.Set(Hero.SpiritPoints, 100); // enough to cast it

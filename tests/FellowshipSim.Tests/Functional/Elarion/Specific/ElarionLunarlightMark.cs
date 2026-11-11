@@ -35,8 +35,6 @@ public class ElarionLunarlightMark
 
     /// <summary>
     /// Every hit of Elarion's abilities on a marked enemy can call down a salvo, at 25% when it does not crit.
-    ///
-    /// The tooltip's "ability damage"; the combat logs show salvos from each of these abilities' hits (NOTES.md).
     /// </summary>
     [Theory]
     [InlineData("Focused Shot")]
@@ -65,9 +63,6 @@ public class ElarionLunarlightMark
 
     /// <summary>
     /// Every tick of a Kindling burn or an Amethyst Splinter on a marked enemy can call down a salvo, at 25% (the ticks do not crit).
-    ///
-    /// The tooltip's "ability damage"; the combat logs show salvos from Amethyst Splinters' ticks (NOTES.md). Kindling per the user.
-    /// The Focused Shot that lights the burn or makes the splinter rolls its own salvo first.
     /// </summary>
     [Theory]
     [InlineData(Kindling.SigilId, "Kindling")]
@@ -78,9 +73,9 @@ public class ElarionLunarlightMark
         var procs = f.ForceProcs(key => key == Kindling.ProcKey ? true // the shot lights the burn
             : key == LunarlightSalvo.ProcKey ? false // only to read the chances
             : null);
-        f.Apply(LunarlightMark.Debuff, stacks: 1, on: f.Enemy);
 
-        f.Cast<FocusedShot>(crit: true); // a crit makes the splinter
+        f.Cast<FocusedShot>(crit: true); // lights the burn, and a crit makes the splinter, on an enemy not yet marked
+        f.Apply(LunarlightMark.Debuff, stacks: 1, on: f.Enemy); // the shot's own hit had no mark: only the ticks roll
         f.Wait(10.0); // the burn or the splinter ticks out
 
         var chances = procs.ChancesOf(LunarlightSalvo.ProcKey);
@@ -88,14 +83,12 @@ public class ElarionLunarlightMark
 
         using var check = new Checks(f);
         check.True(tickCount > 0, "it ticks");
-        check.Equal(1 + tickCount, chances.Count, what: "salvo rolls: the shot's and each tick's");
-        check.True(chances.Skip(1).All(chance => chance == 0.25), "each tick at 25%");
+        check.Equal(tickCount, chances.Count, what: "salvo rolls: each tick's");
+        check.True(chances.All(chance => chance == 0.25), "each tick at 25%");
     }
 
     /// <summary>
     /// Shoot's hits never call down a salvo, even on a marked enemy.
-    ///
-    /// From combat logs: 5 of 603 shots on a marked enemy came with a salvo, each in the frame of another hit (NOTES.md).
     /// </summary>
     [Fact]
     public void Shoot_Never_Calls_Down_A_Salvo()
@@ -182,8 +175,6 @@ public class ElarionLunarlightMark
     /// <summary>
     /// A Celestial Shot using Celestial Impetus marks its target before it hits, so its own hit can call down a salvo on an enemy that had
     /// no mark: 3 stacks, one taken.
-    ///
-    /// The engine marks first (CelestialShot.Execute), as the game does (per the user).
     /// </summary>
     [Fact]
     public void A_Celestial_Shot_Using_Celestial_Impetus_Can_Call_Down_A_Salvo_On_The_Marks_It_Applies()
@@ -202,9 +193,6 @@ public class ElarionLunarlightMark
     /// <summary>
     /// A Spirit Refund on a Celestial Shot marks the target before the shot hits, so the shot's own hit can call down a salvo on the 5
     /// stacks it applies: 5 stacks, one taken.
-    ///
-    /// No source: the engine marks when the Focus is spent, before the hit (Hero.SpendResource raises the refund at once; only the Focus
-    /// comes back 0.2 seconds later), as the game does (per the user).
     /// </summary>
     [Fact]
     public void A_Celestial_Shot_Can_Call_Down_A_Salvo_On_The_Marks_Its_Spirit_Refund_Applies()

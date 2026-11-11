@@ -155,15 +155,15 @@ public class StepDriverTests
         Assert.False(f.Has(IceBlitz.Buff));
     }
 
-    /// <summary>RecoveryRate is 1 for a cooldown nothing speeds up: it recovers in real time.</summary>
+    /// <summary>AccelerationRate is 1 for a cooldown nothing speeds up: it runs in real time.</summary>
     [Fact]
-    public void RecoveryRate_Is_1_With_Nothing_Speeding_The_Cooldown_Up()
+    public void AccelerationRate_Is_1_With_Nothing_Speeding_The_Cooldown_Up()
     {
         var f = StepFights.Rime();
 
         f.Cast<BurstingIce>();
 
-        Assert.Equal(1.0, f.RecoveryRate<BurstingIce>());
+        Assert.Equal(1.0, f.AccelerationRate<BurstingIce>());
     }
 
     // ---- Checks

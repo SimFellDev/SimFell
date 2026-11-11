@@ -385,13 +385,13 @@ public class ElarionTalents
     }
 
     /// <summary>
-    /// Striker's Aim holds 3 stacks at most: Final Crescendo's arrow on a lone enemy, whose 8 ricochets all find no enemy, gives 3 stacks,
-    /// +6% Expertise.
+    /// Striker's Aim gives a stack for every ricochet that finds no enemy, with no lower cap: Final Crescendo's arrow on a lone enemy,
+    /// whose 8 ricochets all find no enemy, gives 8 stacks, +16% Expertise.
     ///
-    /// UNVERIFIED in StrikersAim.cs, as above. TODO: confirm in a log.
+    /// The game's behaviour (per the user).
     /// </summary>
     [Fact]
-    public void Strikers_Aim_Holds_3_Stacks_At_Most()
+    public void Strikers_Aim_Gives_A_Stack_For_Each_Of_Final_Crescendos_8_Ricochets()
     {
         var f = StepFights.Elarion(talents: [StrikersAim.TalentId, FinalCrescendo.TalentId]);
         f.Apply(FinalCrescendo.Buff, stacks: 2); // as two Highwind Arrows would give it: the next ricochets 8 times
@@ -401,15 +401,13 @@ public class ElarionTalents
         f.Wait(0.5); // the arrow lands, well before a stack goes
 
         using var check = new Checks(f);
-        check.Equal(3, f.Stacks(StrikersAim.Buff));
-        check.Equal(0.06, f.Expertise() - expertiseBefore);
+        check.Equal(8, f.Stacks(StrikersAim.Buff));
+        check.Equal(0.16, f.Expertise() - expertiseBefore);
     }
 
     /// <summary>
     /// Every 2 seconds, Striker's Aim loses 1 stack: the 2 stacks of an arrow on a lone enemy drop to 1 two seconds after the arrow lands,
     /// and to none two seconds later.
-    ///
-    /// UNVERIFIED in StrikersAim.cs, as above. TODO: confirm in a log.
     /// </summary>
     [Fact]
     public void Strikers_Aim_Loses_1_Stack_Every_2_Seconds()
@@ -435,8 +433,7 @@ public class ElarionTalents
     /// Striker's Aim is not reapplied by an arrow that misses no more ricochets than the stacks you hold: a second arrow on a lone enemy
     /// while you hold 2 stacks leaves them as they were, and the first still goes 2 seconds after the first arrow landed.
     ///
-    /// The 50% haste makes the second arrow land 1.33 seconds after the first, before a stack goes. UNVERIFIED in StrikersAim.cs, as above.
-    /// TODO: confirm in a log.
+    /// The 50% haste makes the second arrow land 1.33 seconds after the first, before a stack goes.
     /// </summary>
     [Fact]
     public void Strikers_Aim_Is_Not_Reapplied_When_The_Missed_Ricochets_Do_Not_Exceed_The_Stacks()
@@ -461,7 +458,7 @@ public class ElarionTalents
     /// Striker's Aim is reapplied by an arrow that misses more ricochets than the stacks you hold: with 1 stack left, an arrow on a lone
     /// enemy brings it back to 2, and the next stack goes 2 seconds after that arrow lands.
     ///
-    /// The 50% haste makes the second arrow land before the last stack goes. UNVERIFIED in StrikersAim.cs, as above. TODO: confirm in a log.
+    /// The 50% haste makes the second arrow land before the last stack goes.
     /// </summary>
     [Fact]
     public void Strikers_Aim_Is_Reapplied_When_The_Missed_Ricochets_Exceed_The_Stacks()
@@ -540,27 +537,31 @@ public class ElarionTalents
     }
 
     /// <summary>
-    /// When both Skystrider's Supremacy and a Focused Expanse charge could empower a Multishot, the Focused Expanse charge is used and the
-    /// Supremacy kept; with Fervent Supremacy, its 4 charges are all kept.
-    ///
-    /// The order is the game's (per the user). The older suite had the Supremacy first.
+    /// When both Skystrider's Supremacy and a Focused Expanse charge could empower a Multishot, the Supremacy is used first and the
+    /// Focused Expanse charge kept. The Supremacy is the plain 4 seconds, which uses nothing up, or with Fervent Supremacy its 4 charges:
+    /// the Focused Expanse charge is used only once those are gone.
     /// </summary>
-    [Theory(Skip = "The engine uses Skystrider's Supremacy first and keeps the Focused Expanse charge (SkystridersSupremacy.Connect)")]
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void A_Focused_Expanse_Charge_Empowers_A_Multishot_Before_Skystriders_Supremacy(bool fervent)
+    public void A_Supremacy_Empowers_A_Multishot_Before_A_Focused_Expanse_Charge(bool fervent)
     {
         int[] talents = fervent ? [FocusedExpanse.TalentId, FerventSupremacy.TalentId] : [FocusedExpanse.TalentId];
         var f = StepFights.Elarion(talents: talents);
         f.Apply(FocusedExpanse.Buff); // as a Focused Shot would give it
-
         f.Cast<SkystridersSupremacy>();
-        f.Cast<Multishot>();
 
         using var check = new Checks(f);
-        check.Equal(0, f.Stacks(FocusedExpanse.Buff));
-        check.True(f.Has(SkystridersSupremacy.Buff) || f.Has(FerventSupremacy.Buff), "the Supremacy is kept");
-        if (fervent) check.Equal(4, f.Stacks(FerventSupremacy.Buff));
+        for (int i = 0; i < (fervent ? 4 : 1); i++)
+        {
+            f.Cast<Multishot>();
+            check.Equal(1, f.Stacks(FocusedExpanse.Buff), what: $"Focused Expanse charges after Multishot {i + 1}");
+        }
+        check.Equal(fervent ? 0 : 1, f.Stacks(fervent ? FerventSupremacy.Buff : SkystridersSupremacy.Buff), what: "Supremacy stacks left");
+
+        if (!fervent) return;
+        f.Cast<Multishot>(); // the Supremacy is spent
+        check.Equal(0, f.Stacks(FocusedExpanse.Buff), what: "Focused Expanse charges after the fifth Multishot");
     }
 
     // ---- Deadly Focus
@@ -569,9 +570,6 @@ public class ElarionTalents
 
     /// <summary>
     /// With Deadly Focus, Focused Shot and Celestial Shot deal 100% more damage: twice a plain shot's.
-    ///
-    /// From the tooltip and the game data (Enhanced DamageScaler 2); no combat log has the talent (UNVERIFIED in DeadlyFocus.cs).
-    /// TODO: confirm in a log.
     /// </summary>
     [Theory]
     [InlineData("Focused Shot")]

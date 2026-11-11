@@ -5,8 +5,7 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// <summary>
 /// Talent 680: Highwind Arrow grants a stack of Striker's Aim for every Ricochet that does not find its target,
 /// granting Expertise per stack. Periodically a stack of Striker's Aim is removed. Striker's Aim is only
-/// reapplied if missing Ricochets exceed the current effect stack count. Effect 3179 (Expertise, a decay period, capped
-/// stacks). UNVERIFIED: no combat log has this talent.
+/// reapplied if missing Ricochets exceed the current effect stack count. Effect 3179 (Expertise, a decay period, stacks). UNVERIFIED: no combat log has this talent.
 /// </summary>
 public class StrikersAim : Talent
 {
@@ -15,7 +14,8 @@ public class StrikersAim : Talent
     public const int BuffEffectId = 3179;
     public const double ExpertisePerStack = 0.02;
     public const double DecaySeconds = 2.0;
-    public const int MaxStacks = 3;
+    /// <summary>Final Crescendo's arrow ricochets 8 times, and each ricochet that finds no enemy gives a stack (per the user).</summary>
+    public const int MaxStacks = 8;
 
     public static readonly AuraDef Buff = AuraDef.Effect("Striker's Aim", BuffEffectId, DecaySeconds, MaxStacks,
         StatModifier.Add(StatType.Expertise, ExpertisePerStack));

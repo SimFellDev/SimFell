@@ -21,7 +21,6 @@ public class ElarionResourceEconomy
     private static StepDriver UnderEventHorizon(double haste)
     {
         var f = StepFights.Elarion(haste: haste);
-        f.ForceProcs(key => key == CelestialShot.ImpetusProcKey ? false : null); // no free Celestial Shot
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
         f.Cast<EventHorizon>();
         f.Set(Elarion.Focus, 100);
@@ -117,7 +116,6 @@ public class ElarionResourceEconomy
     public void Focused_Shot_Nets_27_5_Focus(double haste)
     {
         var f = StepFights.Elarion(haste: haste);
-        f.ForceProcs(key => key == CelestialShot.ImpetusProcKey ? false : null); // no free Celestial Shot
         f.Set(Elarion.Focus, 0); // room for the gain
 
         f.Cast<FocusedShot>();
@@ -129,9 +127,6 @@ public class ElarionResourceEconomy
 
     /// <summary>
     /// With Deadly Focus, Focused Shot generates 50% less Focus: 10 instead of 20.
-    ///
-    /// From the tooltip and the game data (Enhanced ResourceGenerationScaler 0.5); UNVERIFIED in DeadlyFocus.cs. TODO: confirm in
-    /// a log.
     /// </summary>
     [Theory]
     [InlineData(false, 20.0)]
@@ -251,25 +246,31 @@ public class ElarionResourceEconomy
 
     /// <summary>
     /// Celestial Impetus makes your next Celestial Shot free: a Celestial Shot with one charge costs no Focus, and the one after it
-    /// costs 15 again.
+    /// costs 15 again. Having spent nothing, the free one does not try for a Spirit Refund either, where the one that spends does.
     /// </summary>
     [Fact]
     public void Celestial_Impetus_Makes_The_Next_Celestial_Shot_Free()
     {
         var f = StepFights.Elarion();
+        var procs = f.ForceProcs(key => key == Hero.SpiritRefundProc ? false : null); // only to read the rolls
         f.Apply(CelestialShot.Impetus); // as a Focused Shot's hit would give it
 
         f.Cast<CelestialShot>();
-        f.Cast<CelestialShot>();
 
         using var check = new Checks(f);
+        check.Equal(0, f.Spends("Focus").Count, what: "Focus spends of the free Celestial Shot");
+        check.Equal(0, procs.ChancesOf(Hero.SpiritRefundProc).Count, what: "Spirit Refund rolls of the free Celestial Shot");
+
+        f.Cast<CelestialShot>();
+
         check.Equal(2, f.Damage<CelestialShot>().Count, what: "Celestial Shots");
-        check.Equal(1, f.Spends("Focus").Count, what: "Focus spends");
         check.Equal(15, f.Spends("Focus").Single().Value);
+        check.Equal(1, procs.ChancesOf(Hero.SpiritRefundProc).Count, what: "Spirit Refund rolls once a Celestial Shot spends");
     }
 
     /// <summary>
-    /// With Resurgent Winds up, your next Highwind Arrow costs no Focus; the one after it costs 30 again.
+    /// With Resurgent Winds up, your next Highwind Arrow costs no Focus; the one after it costs 30 again. Having spent nothing, the free
+    /// one does not try for a Spirit Refund either, where the one that spends does.
     ///
     /// Its instant cast is in ElarionCastTimes.cs, its damage in ElarionTalents.cs.
     /// </summary>
@@ -277,16 +278,21 @@ public class ElarionResourceEconomy
     public void Resurgent_Winds_Makes_The_Next_Highwind_Arrow_Free()
     {
         var f = StepFights.Elarion(talents: [ResurgentWinds.TalentId]);
-        f.ForceProcs(key => key == ResurgentWinds.ProcKey ? false : null); // no new Resurgent Winds for the second arrow
+        // no new Resurgent Winds for the second arrow, and no Spirit Refund, whose rolls are only to be read
+        var procs = f.ForceProcs(key => key == ResurgentWinds.ProcKey || key == Hero.SpiritRefundProc ? false : null);
         f.Apply(ResurgentWinds.Buff); // as Lunarlight Mark would give it
 
         f.Cast<HighwindArrow>();
-        f.Cast<HighwindArrow>();
 
         using var check = new Checks(f);
+        check.Equal(0, f.Spends("Focus").Count, what: "Focus spends of the free Highwind Arrow");
+        check.Equal(0, procs.ChancesOf(Hero.SpiritRefundProc).Count, what: "Spirit Refund rolls of the free Highwind Arrow");
+
+        f.Cast<HighwindArrow>();
+
         check.Equal(2, f.CastsCompleted("Highwind Arrow").Count, what: "Highwind Arrows");
-        check.Equal(1, f.Spends("Focus").Count, what: "Focus spends");
         check.Equal(30, f.Spends("Focus").Single().Value);
+        check.Equal(1, procs.ChancesOf(Hero.SpiritRefundProc).Count, what: "Spirit Refund rolls once a Highwind Arrow spends");
     }
 
     // ---- Empowered Multishot
@@ -295,8 +301,6 @@ public class ElarionResourceEconomy
     /// An Empowered Multishot costs 50% less Focus, 10 instead of 20, whatever empowers it, and the cheaper cost ends with the
     /// empowerment: Skystrider's Supremacy empowers the Multishots of the next 4 seconds (3 at 0% haste), Fervent Supremacy 4 Multishots,
     /// and Focused Expanse's 2 charges 2.
-    ///
-    /// Combat logs show an Empowered Multishot spending 10 Focus (NOTES.md, fight 23 @ 39.10).
     /// </summary>
     [Theory]
     [InlineData("Skystrider's Supremacy", 3)]
@@ -323,9 +327,6 @@ public class ElarionResourceEconomy
 
     /// <summary>
     /// While Event Horizon is up, every Focus cost is halved, without rounding: Celestial Shot costs 7.5.
-    ///
-    /// The engine does not round (ElarionAbility.CostAt), as the game does not (per the user); the log keeps Focus in hundredths
-    /// (NOTES.md).
     /// </summary>
     [Theory]
     [InlineData("Celestial Shot", 7.5)]

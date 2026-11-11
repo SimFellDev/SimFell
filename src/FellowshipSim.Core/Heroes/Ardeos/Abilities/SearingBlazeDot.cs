@@ -13,7 +13,7 @@ public sealed class SearingBlazeDot : DamageOverTime
     public const double Coefficient = 0.64695;
     public const double PeriodSeconds = 2.0;
     public const double DurationSeconds = 30.0;
-    /// <summary>Share of the duration a recast carries over from the time left. UNVERIFIED: from the reference sims, not a log.</summary>
+    /// <summary>Share of the duration a recast carries over from the time left. UNVERIFIED: per the user, not from a log.</summary>
     public const double RefreshCarryover = 0.3;
     /// <summary>Cinders over the full duration, the same each tick (the tooltip's total differs).</summary>
     public const double CindersOverDuration = 15.0;

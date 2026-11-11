@@ -72,8 +72,6 @@ public class ElarionLegendaries
 
     /// <summary>
     /// With Shimmer, an enemy your Highwind Arrow hits is afflicted by Shimmer for 9 seconds.
-    ///
-    /// The tooltip and game data (effect 2362, Shimmer.cs); confirmed by the user.
     /// </summary>
     [Fact]
     public void Highwind_Arrow_Afflicts_Its_Target_With_Shimmer_For_9_Seconds()
@@ -92,8 +90,6 @@ public class ElarionLegendaries
     /// <summary>
     /// Highwind Arrow's ricochets afflict the enemies they hit with Shimmer too: an arrow at a group of 4 leaves Shimmer on its target and
     /// its 2 ricochets' enemies, and none on the fourth.
-    ///
-    /// A ricochet counts as an enemy "hit by your Highwind Arrow" (per the user; Shimmer.cs).
     /// </summary>
     [Fact]
     public void Highwind_Arrow_Ricochets_Afflict_Their_Enemies_With_Shimmer()
@@ -114,8 +110,6 @@ public class ElarionLegendaries
     /// <summary>
     /// A new Shimmer on an enemy that has it adds a stack and restarts the 9 seconds: a Highwind Arrow 5 seconds after the first leaves 2
     /// stacks, which last 9 seconds from the second arrow.
-    ///
-    /// The tooltip and game data (effect 2362, Shimmer.cs); confirmed by the user.
     /// </summary>
     [Fact]
     public void A_New_Shimmer_Adds_A_Stack_And_Restarts_The_9_Seconds()
@@ -136,8 +130,6 @@ public class ElarionLegendaries
     /// <summary>
     /// Each Shimmer stack makes you deal 8% more damage to the enemy, up to 3 stacks: 5 Highwind Arrows in a row deal 1, 1.08, 1.16, 1.24
     /// and 1.24 times the first, which hits an enemy without Shimmer.
-    ///
-    /// The tooltip and game data (IncomingDamageMultiplier 1.08 per stack, Shimmer.cs); the stacks add, 1.16 at 2 (per the user).
     /// </summary>
     [Fact]
     public void Each_Shimmer_Stack_Raises_Damage_By_8_Percent_Up_To_3_Stacks()
@@ -187,9 +179,6 @@ public class ElarionLegendaries
     /// <summary>
     /// With Astronomer's Hail, Starfall Volley deals 100% more damage to its main target: each of its strikes deals the target twice what
     /// it deals another enemy.
-    ///
-    /// From the combat logs (fXyzwGcQkTrLD34R fight 4, AstronomersHail.cs). Every Starfall Volley strike deals the same damage on every
-    /// enemy without the legendary (NOTES.md), so the other enemy is the reference.
     /// </summary>
     [Fact]
     public void Astronomers_Hail_Doubles_Starfall_Volley_Damage_On_Its_Main_Target()

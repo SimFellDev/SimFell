@@ -30,6 +30,7 @@ public class ElarionCooldowns
         var f = StepFights.Elarion(haste: haste);
 
         f.Cast(ability);
+        AssertSeconds(0.0, f.CompletedAt(ability)); // the cooldown starts to count at time 0
         double end = f.CompletedAt(ability) + cooldown;
 
         f.WaitUntil(end - 0.1);
@@ -57,7 +58,7 @@ public class ElarionCooldowns
         double end = f.CompletedAt("Highwind Arrow") + 15.0 / (1 + haste);
 
         using var check = new Checks(f);
-        check.Equal(1 + haste, f.RecoveryRate<HighwindArrow>());
+        check.Equal(1 + haste, f.AccelerationRate<HighwindArrow>());
         f.WaitUntil(end - 0.1);
         check.Equal(2, f.Charges<HighwindArrow>());
         f.WaitUntil(end + 0.1);
@@ -104,8 +105,6 @@ public class ElarionCooldowns
     /// <summary>
     /// With Skyward Munitions, each Celestial Shot or Multishot you cast takes 1 second off the cooldowns of Highwind Arrow (15 seconds a
     /// charge, of 3) and Heartseeker Barrage (20 seconds).
-    ///
-    /// The tooltip's rule, which the game follows (per the user).
     /// </summary>
     [Theory]
     [InlineData("Celestial Shot")]

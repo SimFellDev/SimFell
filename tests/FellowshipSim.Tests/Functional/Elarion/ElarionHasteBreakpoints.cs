@@ -18,8 +18,6 @@ public class ElarionHasteBreakpoints
     /// <summary>
     /// Starfall Volley lasts 8 seconds and strikes every second, faster with haste: once when you cast it, then once per full hasted
     /// second that fits in the 8 seconds, 1 + floor(8 x (1 + haste)).
-    ///
-    /// The count is the older suite's (the Python sim's and the C++ test's). TODO: check with datamine.
     /// </summary>
     [Theory]
     [InlineData(0.0, Skip = StrikesUntilTheEnd)]
@@ -47,7 +45,7 @@ public class ElarionHasteBreakpoints
     /// it would have at that haste.
     ///
     /// 20% haste and Skystrider's Grace's 30% make 50% at the cast; the Grace runs out 4 seconds into the volley.
-    /// The rule is the older suite's, believed to be the game's. TODO: check with datamine.
+    /// The rule is believed to be the game's.
     /// </summary>
     [Fact(Skip = "The engine re-reads haste at every change, as the game binary does for Dot effects (HastedTimer.cs), so the volley " +
                  "slows down when the Grace runs out")]
@@ -70,10 +68,6 @@ public class ElarionHasteBreakpoints
     /// <summary>
     /// Heartseeker Barrage channels for 2 seconds, 2.5 with Fusillade, and fires an arrow every 0.2 seconds, faster with haste. It fires
     /// one arrow per full tick that fits in the channel, floor(channel / 0.2 x (1 + haste)), and never a partial one.
-    ///
-    /// No partial arrow, per the user (and the Python sim and the C++ test). The engine fires a partial arrow when at least one server
-    /// frame is left, from one log: a 2.5 second channel at 73% haste fired 22 arrows, where this rule gives 21 (pWmcV42K39GHTLQX fight 23
-    /// @ 81.335, HeartseekerBarrage.cs).
     /// </summary>
     [Theory]
     [InlineData(false, 0.0)]
@@ -117,8 +111,7 @@ public class ElarionHasteBreakpoints
     /// once, then one per hasted 1.5 second global cooldown that fits in the 4 seconds, 1 + floor(4 / (1.5 / (1 + haste))): 3 at no
     /// haste, 4 from 12.5%, 5 from 50%, 6 from 87.5%. Each fires 3 arrows at one enemy, and the next Multishot is not empowered.
     ///
-    /// The hastes are well either side of each breakpoint: the engine's auras last 1/60 second longer than their duration (from combat
-    /// logs, Aura.ExpiryLagSeconds), and cast times are rounded to the millisecond.
+    /// NB: in-game, there is some lag between pressing supremacy and starting to chain-cast MS.
     /// </summary>
     [Theory]
     [InlineData(0.0)]
