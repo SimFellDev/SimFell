@@ -230,8 +230,6 @@ public class RimeLegendaries
     /// <summary>
     /// With a stack of Undulating Spirit up, the spender does not roll for a Spirit Refund: it uses up the stack and gets the refund,
     /// even when the roll would have succeeded.
-    ///
-    /// Per the user. The roll is forced to succeed, so a spender that rolled would keep the stack.
     /// </summary>
     [Fact]
     public void A_Spender_Uses_A_Stack_Instead_Of_Rolling_For_A_Spirit_Refund()
@@ -256,7 +254,7 @@ public class RimeLegendaries
     /// The 2 stacks give 2 certain Spirit Refunds: of three Glacial Blasts after Winter's Blessing, the first two are refunded and the
     /// third is not.
     ///
-    /// The Spirit Refund's own roll is forced to fail, as in the test above.
+    /// The Spirit Refund's own roll is forced to fail.
     /// </summary>
     [Fact]
     public void Two_Stacks_Give_Two_Certain_Spirit_Refunds()

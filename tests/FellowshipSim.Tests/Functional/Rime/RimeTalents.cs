@@ -383,6 +383,31 @@ public class RimeTalents
         check.Equal(0, f.Stacks(FrostweaversWrath.Buff));
     }
 
+    /// <summary>
+    /// With Avalanche and Frostweaver's Wrath, only the Ice Comet that uses the stack is the certain critical strike: the extra comets
+    /// Avalanche follows it with are not.
+    /// </summary>
+    [Fact]
+    public void Frostweavers_Wrath_Crits_Only_The_First_Comet_Of_An_Avalanche()
+    {
+        var f = StepFights.Rime(talents: [Avalanche.TalentId, FrostweaversWrath.TalentId]);
+        f.ForceProcs(key => key == FrostweaversWrath.ProcKey || key == Avalanche.ProcKey ? true : key == Avalanche.SecondProcKey ? false : null);
+
+        f.Cast<ColdSnap>(); // a Frostweaver's Wrath stack
+        f.RimeOf().WinterOrbs = 2; // one Ice Comet
+
+        f.Cast<IceComet>();
+        f.Wait(4.0); // the comets fall
+
+        var comets = f.Damage<IceComet>();
+
+        using var check = new Checks(f);
+        check.Equal(2, comets.Count);
+        check.Equal(1.0, comets[0].CritChance, what: "first comet's crit chance");
+        check.Equal(0.0, comets[1].CritChance, what: "extra comet's crit chance");
+        check.Equal(0, f.Stacks(FrostweaversWrath.Buff));
+    }
+
     // ---- Navir's Keeper
 
     /// <summary>With Navir's Keeper, the next 2 Cold Snaps after Flight of the Navir cost no charge: you can cast 4 in a row, not 5.</summary>
@@ -519,9 +544,6 @@ public class RimeTalents
     /// <summary>
     /// With Icy Talons and Avalanche, the first wave of a Rising Talons counts as a struck Ice Comet, so it can be followed by extra
     /// comets.
-    ///
-    /// No source: the engine reasons that Rising Talons is built on Ice Comet (Avalanche.cs).
-    /// TODO: confirm in the game data.
     /// </summary>
     [Fact]
     public void Avalanche_Is_Triggered_By_The_First_Wave_Of_Rising_Talons()
@@ -539,7 +561,7 @@ public class RimeTalents
     /// <summary>
     /// With Cold Shower and Avalanche, a free comet from Cold Shower counts as a struck Ice Comet, so it can be followed by extra comets.
     ///
-    /// The engine's source is "per the user" (ColdShower.cs). TODO: confirm in the game data.
+    /// TODO: confirm in the game data.
     /// </summary>
     [Fact]
     public void Avalanche_Is_Triggered_By_Cold_Shower_Comets()
@@ -575,6 +597,7 @@ public class RimeTalents
     [Fact]
     public void Coalescing_Frost_Eruption_Grows_With_The_Number_Of_Hits()
     {
+        /// Measure the relative size of the eruption hit compared to the count of freezing torrent ticks
         double EruptionPerHit(double haste)
         {
             var f = StepFights.Rime(haste: haste, talents: [CoalescingFrost.TalentId]).WithoutDamageSpread();

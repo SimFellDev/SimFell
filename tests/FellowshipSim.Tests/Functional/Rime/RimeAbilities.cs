@@ -117,13 +117,13 @@ public class RimeAbilities
     }
 
     /// <summary>
-    /// Every Frost Swallow that hits adds 0.1 seconds to Ice Blitz. A Cold Snap during Ice Blitz sends 3 swallows, so Ice Blitz lasts
-    /// 20.3 seconds; with Flight of the Navir up it sends 8, so it lasts 20.8.
+    /// Every Frost Swallow that hits adds 0.1 seconds to Ice Blitz: it lasts 20 seconds plus 0.1 per swallow hit, which the test counts
+    /// from the fight. A Cold Snap during Ice Blitz sends 3 swallows, and 8 with Flight of the Navir up (checked in their own tests).
     /// </summary>
     [Theory]
-    [InlineData(false, 3)]
-    [InlineData(true, 8)]
-    public void Each_Swallow_Hit_Extends_Ice_Blitz_By_0_1_Seconds(bool withFlight, int swallowHits)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Each_Swallow_Hit_Extends_Ice_Blitz_By_0_1_Seconds(bool withFlight)
     {
         var f = StepFights.Rime();
 
@@ -133,10 +133,42 @@ public class RimeAbilities
 
         f.Cast<ColdSnap>();
         f.Wait(3.0); // the swallows land
+        int swallowHits = f.Damage("Frost Swallows").Count;
         double end = start + 20.0 + 0.1 * swallowHits;
 
         using var check = new Checks(f);
-        check.Equal(swallowHits, f.Damage("Frost Swallows").Count);
+        check.True(swallowHits > 0, "the swallows hit");
+        f.WaitUntil(end - 0.1);
+        check.True(f.Has(IceBlitz.Buff));
+        f.WaitUntil(end + 0.1);
+        check.False(f.Has(IceBlitz.Buff));
+    }
+
+    /// <summary>
+    /// Every Frost Swallow that hits extends Ice Blitz by 0.1 seconds, whatever sent it: with Flight of the Navir's circling swallows,
+    /// Cascading Blitz's swallow for each Anima, and the Bursting Ice pulses of Bursting Swallows (whose Anima sends more still), Ice
+    /// Blitz lasts 20 seconds plus 0.1 per swallow hit, which the test counts from the fight.
+    ///
+    /// Bursting Swallows' chance is forced on for the first 2 rolls only, so the chain ends.
+    /// </summary>
+    [Fact]
+    public void Swallows_From_Every_Source_Extend_Ice_Blitz_By_0_1_Seconds_Each()
+    {
+        var f = StepFights.Rime(talents: [CascadingBlitz.TalentId, BurstingSwallows.TalentId]);
+        int rolls = 0;
+        f.ForceProcs(key => key == BurstingSwallows.ProcKey ? rolls++ < 2 : null);
+
+        f.Cast<IceBlitz>();
+        double start = f.CompletedAt("Ice Blitz");
+        f.Cast<FlightOfTheNavir>();
+
+        f.Cast<ColdSnap>();
+        f.Wait(4.0); // the chain ends
+        int swallowHits = f.Damage("Frost Swallows").Count;
+        double end = start + 20.0 + 0.1 * swallowHits;
+
+        using var check = new Checks(f);
+        check.True(swallowHits > 8, "swallows beyond the Cold Snap's 8 hit"); // so the talents sent some
         f.WaitUntil(end - 0.1);
         check.True(f.Has(IceBlitz.Buff));
         f.WaitUntil(end + 0.1);
