@@ -12,6 +12,7 @@ public static class CommonAbilities
         new RelicTeleport(hero),
         new BloodriteFervor(hero),
         new ConjurePortal(hero),
+        new Rejuvenate(hero),
         new Anchor(hero),
         new MakingCamp(hero),
         new MountSummon(hero),

@@ -201,6 +201,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   the least (Skittering Blades, Hwxc8TRFqPGhfjbN fight 5 @ 446.832) and 1.438s (HgamNcX24tJ3qVQA fight 21 @ 691.259). Relic Teleport
   comes 0.636s and 0.804s after it (Zta3LQdvVbPJ9Whz fight 6 @ 187.280, GXFz3pZ94aQr2chV fight 3 @ 463.138), inside that Global
   Cooldown, and the replay forces both casts.
+- **Rejuvenate** (ability 189): usable during the Global Cooldown, starting none, on a 120s cooldown, healing 0.4 of Mara's maximum
+  health (game data, build 26320967, row `RelicPower.HealthPotion.MaxHealthFraction`). The 2 casts in the 34 Mara fights of
+  `data/fights` are in WcTBrQNX46m9axqP fight 12 @ 278.213 and 625.017, and the replay skipped both as unmodeled before.
 - **Essence of the Virtuoso from Anomalous Residue:** with no Topaz power in the gear, each Residue: Topaz window gives effect 1937
   in the Residue's frame, and Spirit of Heroism takes it off and gives it back. T2qLPpmMkrAtJ9B1 fight 18 @ 383.829, 530.946 and
   1400.233; Fc8v6yWxD14GQMnV fight 19 @ 809.379, 958.352 and 1120.143. In the game data (`DT_GemDefinitions`, Topaz row), the node
