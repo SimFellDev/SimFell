@@ -146,13 +146,22 @@ public class FellowshipLogsDownloadTests
           "nextPageTimestamp": null } } } } }
         """;
 
+    // The fight's dungeonstart event, with its affixes.
+    private const string DungeonStart = """
+        { "data": { "reportData": { "report": { "events": { "data": [
+          { "timestamp": 100, "type": "dungeonstart", "affixes": [4, 6, 24, 25, 22] } ],
+          "nextPageTimestamp": null } } } } }
+        """;
+
     [Fact]
     public async Task A_Dungeon_Fight_Has_Its_Tanks_First_And_Last_Contact_With_Each_Enemy()
     {
-        var logs = new FellowshipLogs(TankDamageDone, TankDamageTaken) { Answer = DungeonFight };
+        var logs = new FellowshipLogs(TankDamageDone, TankDamageTaken, DungeonStart) { Answer = DungeonFight };
         var fight = await new FellowshipLogsClient(new HttpClient(logs), "id", "secret").GetDungeonFightAsync("T2qLPpmMkrAtJ9B1", 6);
 
-        Assert.Equal(2, logs.EventsQueries.Count);
+        Assert.Equal(3, logs.EventsQueries.Count);
+        Assert.Equal("type = \"dungeonstart\"", logs.EventsQueries[2].GetProperty("filterExpression").GetString());
+        Assert.Equal([4, 6, 24, 25, 22], fight["affixes"]!.AsArray().Select(a => a!.GetValue<int>()));
         Assert.Equal(3, fight["contact_player"]!["id"]!.GetValue<int>());
         var contact = Assert.Single(fight["enemy_contacts"]!.AsArray())!;
         // The first contact is enemy 5 hitting the tank at 200, where it stood at (-7, -8); the last is the tank's hit at 500.

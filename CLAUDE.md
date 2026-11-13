@@ -183,7 +183,11 @@ or the desktop app).
   `partial` relic passive class named after a relic passive record: `RelicPassiveId`, `RelicPassiveName`, the record's
   fields as `RelicPassive<Field>` (`RelicPassiveCooldown`, `RelicPassiveProcsPerMinute`), the tuning values, each
   granting item's `RelicItemId` and `RelicItemName`, and `RelicPassiveItems`. `Catalog` reads a relic passive's ID and
-  items from an instance. Its `HeroGenerator` writes the game data's half of each `partial` hero class in `Heroes/<Hero>`
+  items from an instance. Its `DungeonAffixGenerator` writes the game data's half of each `partial` dungeon affix class
+  in `Dungeons/Affixes` named after a dungeon affix record: `AffixId`, `AffixName`, `AffixAbilityId`, the cast and
+  cooldowns of the affix creature's abilities (`DetonateCastTime`, `DetonateInterruptCooldown`...), each effect's
+  `<Effect>EffectId`, duration, stacks and modifiers, and the abilities' tuning values. A dungeon's `affixes=` names the
+  affixes a dungeon fight runs (`AffixRun`). Its `HeroGenerator` writes the game data's half of each `partial` hero class in `Heroes/<Hero>`
   named after a hero record: `HeroId`, `HeroName`, the record's fields as `Hero<Field>` (`HeroTitle`, `HeroMainStat`,
   `HeroRole`...), its base attributes as `Hero<Attribute>` (`HeroBalancingDamageAura`, `HeroMaxResources`,
   `HeroMaxMana`...), the tuning values the hero owns, `HeroTalentTree` and `HeroWeapons`. Every icon and texture field
