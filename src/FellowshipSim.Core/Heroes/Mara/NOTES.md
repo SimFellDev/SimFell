@@ -196,6 +196,11 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   (b649dhNptyW132Tm fight 5 @ 517.886). In the game data (build 26320967), the cooldown is `RelicPower.PartyMoveSpeedBuff.Cooldown`
   times the relic cooldown gem factor (`GMMC_GemAugmentation.CalculateBaseMagnitude`: 1 - 0.08 with Blessing of the Artisan, 1 - 0.24
   with its rank II), and effect 156 lasts 12s with MoveSpeed x1.5 alone. Before it, the replay skipped the 20 casts as unmodeled.
+- **Conjure Portal** (ability 1504): a 1.5s Global Cooldown of its own, shortened by Haste, and a 120s cooldown (game data, build
+  26320967). Over the 10 casts in the 34 Mara fights of `data/fights`, the next cast on the Global Cooldown comes 1.139s after it at
+  the least (Skittering Blades, Hwxc8TRFqPGhfjbN fight 5 @ 446.832) and 1.438s (HgamNcX24tJ3qVQA fight 21 @ 691.259). Relic Teleport
+  comes 0.636s and 0.804s after it (Zta3LQdvVbPJ9Whz fight 6 @ 187.280, GXFz3pZ94aQr2chV fight 3 @ 463.138), inside that Global
+  Cooldown, and the replay forces both casts.
 - **Essence of the Virtuoso from Anomalous Residue:** with no Topaz power in the gear, each Residue: Topaz window gives effect 1937
   in the Residue's frame, and Spirit of Heroism takes it off and gives it back. T2qLPpmMkrAtJ9B1 fight 18 @ 383.829, 530.946 and
   1400.233; Fc8v6yWxD14GQMnV fight 19 @ 809.379, 958.352 and 1120.143. In the game data (`DT_GemDefinitions`, Topaz row), the node
