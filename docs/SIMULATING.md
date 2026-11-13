@@ -99,13 +99,15 @@ for it: 1.31 at Base, 58.26 at Eternal 10 and 351.49 at Eternal 32 for health.
 checkbox for each.
 
 - `anomalous_orbs` (Anomalous Orbs): each enemy line named `Anomalous Orb` is an orb. A text with no such line has three
-  orbs every 128 to 148 seconds of combat, each in combat for 13 seconds. An orb is a priority target
+  orbs 128 to 148 seconds into the run, then every 128 to 148 seconds of combat, each in combat for 13 seconds. An orb is a priority target
   (`target.is_priority`) with 0 Spirit Points. It casts Detonate (`target.casting`) from entering combat. The party stops
   each cast after 2.15 seconds, and the orb casts again 9 seconds later, or 12 seconds after an interrupt of the hero's.
   An orb takes 4 times the damage while it is not casting. Its death gives the hero a stack of Anomalous Residue: 480
   power of the orb's gem colour for 60 seconds, 3 stacks of a colour at most.
 - `storm_shield` (Storm Shield): every 59 to 72 seconds of the run, the hero has Storm Shield for 8 seconds, then
   Storm's Fury for 20 seconds: 20% crit chance.
+
+A wave of orbs or a charge due in a boss fight comes 12.4 seconds later, and a boss's end drops it for a new wait.
 
 `pull.X=/` starts pull X and `pull.X+=/` adds a line to it. A pull name has letters, digits and `_`. A line is an enemy
 group (`count=`), a boss (`boss.N`; several make a council) or the pull's options. Group values: `count`, `name` (in

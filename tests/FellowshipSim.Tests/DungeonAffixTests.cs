@@ -274,6 +274,45 @@ public class DungeonAffixTests
     }
 
     [Fact]
+    public void A_New_Storms_Fury_Refreshes_The_One_Stack()
+    {
+        var hero = HeroImporter.Import(Build("Gunde"));
+        var ctx = new SimulationContext(hero);
+        hero.BeginFight(ctx);
+        hero.Auras.Apply(StormShield.StormsFury, SimTime.FromSeconds(0));
+        Assert.Equal(20, hero.Auras.Get(StormShield.StormsFury, SimTime.FromSeconds(0))!.ExpiresAt.TotalSeconds, 0.05);
+        hero.Auras.Apply(StormShield.StormsFury, SimTime.FromSeconds(12));
+        var fury = hero.Auras.Get(StormShield.StormsFury, SimTime.FromSeconds(12))!;
+        Assert.Equal(1, fury.Stacks);
+        Assert.Equal(32, fury.ExpiresAt.TotalSeconds, 0.05);
+    }
+
+    [Fact]
+    public void Exsanguinate_Takes_None_Of_An_Orbs_Four_Times()
+    {
+        // Exsanguinate's preset is Empty: on an orb with Anomalous Instability on, its hit is its damage, as on any enemy, not 4 times it.
+        var exsanguinated = new List<(double Damage, EnemyTarget Target)>();
+        var hits = new List<(double Amount, EnemyTarget Target, double Incoming)>();
+        var simulator = new MonteCarloSimulator(() =>
+        {
+            var h = HeroImporter.Import(Build("Gunde"));
+            h.GetAbility<FellowshipSim.Core.Heroes.Gunde.Abilities.HeartSplitter>()!.Exsanguinated += (_, target, damage, _) => exsanguinated.Add((damage, target));
+            h.OnDamageDealt += (in DamageContext hit) =>
+            {
+                if (hit.AbilityId == LogIds.Effect(FellowshipSim.Core.Heroes.Gunde.Abilities.HeartSplitter.ExsanguinateEffectId) && hit.Target is { } t)
+                    hits.Add((hit.Amount, t, t.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, hit.Timestamp)));
+            };
+            return h;
+        }, AplParser.ParseScript("actions=switch_target,target_if=target.is_priority\nactions+=/heart_splitter\nactions+=/grim_carve\nactions+=/blood_arc\nactions+=/attack"));
+        simulator.Run(SimTime.FromSeconds(600), iterations: 1, firstSeed: 1, degreeOfParallelism: 1,
+            fight: new FightOptions(Dungeon: Dungeon(OrbPull(dies: 50))));
+        var onOrb = hits.Where(h => h.Target.Name == AnomalousOrbs.OrbName && h.Incoming == 4.0).ToList();
+        Assert.NotEmpty(onOrb);
+        // The hit is its damage within the hit's spread, never 4 times it.
+        Assert.All(onOrb, h => Assert.Contains(exsanguinated, e => ReferenceEquals(e.Target, h.Target) && h.Amount / e.Damage is > 0.8 and < 1.25));
+    }
+
+    [Fact]
     public void A_Charge_Due_In_A_Boss_Fight_Waits_For_The_Bosss_Window_And_A_Bosss_End_Drops_It()
     {
         // Logs: the boss window's wait, 12.4 s (Storm Shield charge gaps in boss fights).
