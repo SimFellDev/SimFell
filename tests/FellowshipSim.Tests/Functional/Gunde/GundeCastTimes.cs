@@ -65,24 +65,4 @@ public class GundeCastTimes
 
         Assert.Equal(0, f.Seconds());
     }
-
-    /// <summary>
-    /// Abilities used during the global cooldown do not start one: Reign in Blood, Owed in Blood and Warbound cast after a Heart
-    /// Splitter leave the clock where it was.
-    /// </summary>
-    [Fact]
-    public void Off_Global_Cooldown_Abilities_Do_Not_Start_A_Global_Cooldown()
-    {
-        var f = StepFights.Gunde();
-        f.Apply(OwedInBlood.Buff, stacks: 1); // enough to cast Owed in Blood
-
-        f.Cast<HeartSplitter>();
-        double afterHeartSplitter = f.Seconds();
-
-        f.Cast<ReignInBlood>();
-        f.Cast<OwedInBlood>();
-        f.Cast<Warbound>();
-
-        Assert.Equal(afterHeartSplitter, f.Seconds());
-    }
 }

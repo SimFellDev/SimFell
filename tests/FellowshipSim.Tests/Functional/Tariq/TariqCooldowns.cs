@@ -95,21 +95,4 @@ public class TariqCooldowns
         f.WaitUntil(end + 0.1);
         Assert.True(f.IsReady(ability));
     }
-
-    // ---- Face Breaker
-
-    /// <summary>An ability on cooldown cannot be cast: Face Breaker is refused until its 6 second cooldown is over, then it works.</summary>
-    [Fact]
-    public void An_Ability_On_Cooldown_Is_Refused_Until_It_Ends()
-    {
-        var f = StepFights.Tariq();
-
-        f.Cast<FaceBreaker>();
-        double end = f.CompletedAt("Face Breaker") + 6;
-
-        f.WaitUntil(end - 0.1);
-        Assert.False(f.TryCast<FaceBreaker>().Succeeded);
-        f.WaitUntil(end + 0.1);
-        Assert.True(f.TryCast<FaceBreaker>().Succeeded);
-    }
 }

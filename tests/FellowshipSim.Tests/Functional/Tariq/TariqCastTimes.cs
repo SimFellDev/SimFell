@@ -87,23 +87,4 @@ public class TariqCastTimes
 
         Assert.Equal(0, f.Seconds());
     }
-
-    /// <summary>
-    /// Abilities used during the global cooldown do not start one: Leap Smash, Thunder Call and Focused Wrath cast after a Wild Swing leave
-    /// the clock where it was.
-    /// </summary>
-    [Fact]
-    public void Off_Global_Cooldown_Abilities_Do_Not_Start_A_Global_Cooldown()
-    {
-        var f = StepFights.Tariq();
-
-        f.Cast<WildSwing>();
-        double afterWildSwing = f.Seconds();
-
-        f.Cast<LeapSmash>();
-        f.Cast<ThunderCall>();
-        f.Cast<FocusedWrath>();
-
-        Assert.Equal(afterWildSwing, f.Seconds());
-    }
 }

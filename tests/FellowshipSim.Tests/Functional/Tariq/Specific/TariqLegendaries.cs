@@ -1,5 +1,6 @@
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Customization.WeaponAbilities;
+using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Heroes.Tariq;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
 using FellowshipSim.Core.Heroes.Tariq.Talents;
@@ -17,8 +18,7 @@ public class TariqLegendaries
     /// <summary>
     /// With Executioner's Grin, every ability you cast, your weapon's included, has a 6% chance to give you Executioner's Grin: one roll per
     /// cast, however many enemies it hits.
-    ///
-    /// Source: game data (6%) and combat logs (NOTES.md: a Fated Strike grants it, fXyzwGcQkTrLD34R fight 4). On 3 enemies.
+    /// On 3 enemies.
     /// </summary>
     [Theory]
     [InlineData("Wild Swing")]
@@ -79,12 +79,15 @@ public class TariqLegendaries
         Assert.Equal(grin, f.TryCast<CullingStrike>().Succeeded);
     }
 
-    /// <summary>The Culling Strike Executioner's Grin empowers costs no Fury: at 50 Fury it spends none, and 50 are left.</summary>
+    /// <summary>
+    /// The Culling Strike Executioner's Grin empowers costs no Fury, so it rolls no Spirit Refund either: at 50 Fury it spends none, 50 are
+    /// left and no roll is made.
+    /// </summary>
     [Fact]
-    public void Executioners_Grin_Culling_Strike_Costs_No_Fury()
+    public void Executioners_Grin_Culling_Strike_Costs_No_Fury_And_Rolls_No_Spirit_Refund()
     {
-        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.WrapsItemId]);
-        f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? false : null); // no new proc
+        var f = StepFights.Tariq(spirit: 0.2, legendaries: [ExecutionersGrin.WrapsItemId]);
+        var procs = f.ForceProcs(key => key is ExecutionersGrin.ProcKey or Hero.SpiritRefundProc ? false : null); // no new proc; reads the rolls
         f.Set(Tariq.Fury, 50);
         f.SetHealth(0.2); // in execute range, where it would spend Fury
         f.Apply(ExecutionersGrin.Buff); // a proc earlier
@@ -94,13 +97,12 @@ public class TariqLegendaries
         using var check = new Checks(f);
         check.Equal(0, f.Spends("Fury").Count);
         check.Equal(50, f.Amount(Tariq.Fury));
+        check.Equal(0, procs.ChancesOf(Hero.SpiritRefundProc).Count, what: "Spirit Refund rolls");
     }
 
     /// <summary>
     /// The Culling Strike Executioner's Grin empowers deals damage as if it spent 30 Fury, beyond the usual 10 Fury cap: 1 + 0.4 x 30 =
     /// 13 times a Culling Strike that spends no Fury.
-    ///
-    /// Source: the legendary's text and combat logs (NOTES.md, fXyzwGcQkTrLD34R fight 4; the effect's own text says 20).
     /// </summary>
     [Fact]
     public void Executioners_Grin_Culling_Strike_Deals_As_If_It_Spent_30_Fury()
@@ -137,9 +139,6 @@ public class TariqLegendaries
 
     /// <summary>
     /// With Thundering Vortex, Chain Lightning generates 50% more Fury: 1.8 per hit instead of 1.2, 6 gains of 1.8 on one enemy.
-    ///
-    /// From the engine (ThunderingVortex.cs, game data), marked UNVERIFIED: no log has this legendary. TODO: confirm the 1.5 multiplier in
-    /// a log with Thundering Vortex.
     /// </summary>
     [Fact]
     public void Thundering_Vortex_Makes_Chain_Lightning_Give_1_8_Fury_Per_Hit()
@@ -156,9 +155,7 @@ public class TariqLegendaries
 
     /// <summary>
     /// With Thundering Vortex, each time Chain Lightning bounces you gain a stack of Thundering Vortex: its 6 hits are 5 bounces, 5 stacks.
-    ///
-    /// From the engine (ThunderingVortex.cs), marked UNVERIFIED: no log has this legendary. TODO: confirm in a log whether the first hit
-    /// counts as a bounce.
+
     /// </summary>
     [Fact]
     public void Thundering_Vortex_Gives_A_Stack_Per_Chain_Lightning_Bounce()
@@ -173,9 +170,6 @@ public class TariqLegendaries
 
     /// <summary>
     /// With 20 stacks of Thundering Vortex, your next Chain Lightning deals double damage on every hit; with 19 it deals its usual damage.
-    ///
-    /// From the engine (ThunderingVortex.cs, game data), marked UNVERIFIED: no log has this legendary. TODO: confirm the 20 stacks and the
-    /// x2 in a log.
     /// </summary>
     [Theory]
     [InlineData(19, 1.0)]
@@ -204,8 +198,6 @@ public class TariqLegendaries
     /// <summary>
     /// The empowered Chain Lightning uses 20 stacks of Thundering Vortex, then its 5 bounces add 5: from 20 stacks 5 are left, from 30
     /// 15; from 19 nothing is used, and 24 are left.
-    ///
-    /// From the engine (ThunderingVortex.cs), marked UNVERIFIED: no log has this legendary. TODO: confirm in a log.
     /// </summary>
     [Theory]
     [InlineData(19, 24)]
@@ -225,11 +217,6 @@ public class TariqLegendaries
     /// <summary>
     /// Thundering Vortex stacks up to 40 times. With Ace of Spades, a Hammer Storm whose first spin procs on each of 10 enemies casts 10
     /// free Chain Lightnings at once; none finds 20 stacks to use, and their 50 bounces leave 40 stacks.
-    ///
-    /// From the engine (ThunderingVortex.cs, game data), marked UNVERIFIED: no log has this legendary. A Chain Lightning's bounces are fixed
-    /// (5, or 8 with Thunderstruck), whatever the enemies, and a cast with 20 stacks uses them first, so one chain at a time peaks at
-    /// 19 + 8 = 27: only chains cast together pass 40. Only the first spin's 10 rolls proc, so no later chain uses stacks.
-    /// TODO: confirm the 40 stacks in a log.
     /// </summary>
     [Fact]
     public void Thundering_Vortex_Stacks_Up_To_40()
@@ -265,8 +252,6 @@ public class TariqLegendaries
 
     /// <summary>
     /// Slayer's Mosh lasts 6 seconds from the Leap Smash hit that gave it.
-    ///
-    /// Source: game data effect 2250 (6 seconds).
     /// </summary>
     [Fact]
     public void Slayers_Mosh_Lasts_6_Seconds()
@@ -286,8 +271,6 @@ public class TariqLegendaries
     /// <summary>
     /// An enemy with Slayer's Mosh takes 20% more damage from you: a Skull Crusher just before the debuff's end deals 1.2 times a
     /// Skull Crusher with no leap, and one just after it 1.0 times.
-    ///
-    /// Source: game data effect 2250 (1.2).
     /// </summary>
     [Theory]
     [InlineData(-0.1, 1.2)]

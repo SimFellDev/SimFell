@@ -25,11 +25,11 @@ public class TariqResourceEconomy
     /// <summary>
     /// Fury does not drain during a fight: 50 Fury are still 50 after 30 seconds with nothing cast.
     ///
-    /// TODO: Bloodline's tooltip says "You no longer lose Fury while out of combat", so Fury drains out of combat without it. The engine
-    /// has no drain at all (the logs showed none between pulls). Check in game.
+    /// In the game Fury drains at 2 a second out of combat only. The sim has no out-of-combat state (a fight is in combat from its first
+    /// instant, between pulls included), so that drain is not modelled and cannot be tested.
     /// </summary>
     [Fact]
-    public void Fury_Does_Not_Drain_During_A_Fight()
+    public void Fury_Does_Not_Drain_While_In_Combat()
     {
         var f = StepFights.Tariq();
         f.Set(Tariq.Fury, 50);
@@ -214,21 +214,21 @@ public class TariqResourceEconomy
 
     // ---- Spirit Refund
 
-    /// <summary>A Spirit Refund is rolled each time you spend Fury, at Spirit / (1 + Spirit): at 20% Spirit, a Skull Crusher and a Hammer
-    /// Storm roll twice at 0.2 / 1.2.</summary>
+    /// <summary>Each cast of a spender rolls one Spirit Refund, at Spirit / (1 + Spirit): at 20% Spirit, a Skull Crusher rolls once at
+    /// 0.2 / 1.2, and a Hammer Storm after it adds one more.</summary>
     [Fact]
-    public void Spirit_Refund_Is_Rolled_On_Each_Spend_With_Spirit_Over_1_Plus_Spirit()
+    public void Each_Spender_Cast_Rolls_One_Spirit_Refund_At_Spirit_Over_1_Plus_Spirit()
     {
         var f = StepFights.Tariq(spirit: 0.2);
         var procs = f.ForceProcs(key => key == Hero.SpiritRefundProc ? false : null); // only to read the rolls
         f.Set(Tariq.Fury, 100);
 
-        f.Cast<SkullCrusher>();
-        f.Cast<HammerStorm>();
-
-        var rolls = procs.ChancesOf(Hero.SpiritRefundProc);
         using var check = new Checks(f);
-        check.Equal(2, rolls.Count);
+        f.Cast<SkullCrusher>();
+        check.Equal(1, procs.ChancesOf(Hero.SpiritRefundProc).Count, what: "rolls after Skull Crusher");
+        f.Cast<HammerStorm>();
+        var rolls = procs.ChancesOf(Hero.SpiritRefundProc);
+        check.Equal(2, rolls.Count, what: "rolls after Hammer Storm");
         foreach (double chance in rolls) check.Equal(0.2 / 1.2, chance, what: "a Spirit Refund roll's chance");
     }
 

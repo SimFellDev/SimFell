@@ -78,15 +78,11 @@ public class TariqHasteBreakpoints
 
     /// <summary>
     /// Bloodline gives 1 Fury every second, shortened by haste: in 10 seconds floor(10 x (1 + haste)) Fury.
-    ///
-    /// 10.05 seconds in combat doing nothing, at 0%, 25% and 100% haste: 10, 12 and 20 Fury (the tick at exactly 10s counts at 0% and 100%).
-    /// TODO: the 25% and 100% rows fail: the engine gives 10 Fury whatever the haste. Its Bloodline is unhasted, "confirmed in game,
-    /// 2026-11-01: 50 Fury over 50 seconds" (Bloodline.cs), against the combat logs this test follows. Review by hand.
     /// </summary>
     [Theory]
     [InlineData(0.0, 10)]
-    [InlineData(0.25, 12, Skip = "Failing: the engine gives 10 Fury at 25% haste, not 12 (Bloodline unhasted); to review by hand")]
-    [InlineData(1.0, 20, Skip = "Failing: the engine gives 10 Fury at 100% haste, not 20 (Bloodline unhasted); to review by hand")]
+    [InlineData(0.25, 12)]
+    [InlineData(1.0, 20)]
     public void Bloodline_Fury_Follows_Haste(double haste, int fury)
     {
         var f = StepFights.Tariq(haste: haste, talents: [Bloodline.TalentId]);
