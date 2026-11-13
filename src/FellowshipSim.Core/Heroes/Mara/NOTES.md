@@ -198,9 +198,12 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   with its rank II), and effect 156 lasts 12s with MoveSpeed x1.5 alone. Before it, the replay skipped the 20 casts as unmodeled.
 - **Conjure Portal** (ability 1504): a 1.5s Global Cooldown of its own, shortened by Haste, and a 120s cooldown (game data, build
   26320967). Over the 10 casts in the 34 Mara fights of `data/fights`, the next cast on the Global Cooldown comes 1.139s after it at
-  the least (Skittering Blades, Hwxc8TRFqPGhfjbN fight 5 @ 446.832) and 1.438s (HgamNcX24tJ3qVQA fight 21 @ 691.259). Relic Teleport
-  comes 0.636s and 0.804s after it (Zta3LQdvVbPJ9Whz fight 6 @ 187.280, GXFz3pZ94aQr2chV fight 3 @ 463.138), inside that Global
-  Cooldown, and the replay forces both casts.
+  the least (Skittering Blades, Hwxc8TRFqPGhfjbN fight 5 @ 446.832) and 1.438s (HgamNcX24tJ3qVQA fight 21 @ 691.259).
+- **Relic Teleport** (ability 1506, the use of the portal): no global cooldown blocks it, and it starts none. It comes 0.636s and
+  0.804s after Conjure Portal (Zta3LQdvVbPJ9Whz fight 6 @ 187.280, GXFz3pZ94aQr2chV fight 3 @ 463.138), inside that Global Cooldown,
+  and inside Mara's own 1s Global Cooldown (v8rhNxVc3PwDqzBA fight 4 player 27 @ 678.493, w7khnMKAa4TxXrmC fight 23 @ 704.934). In
+  the game data (build 26320967), `GA_RelicPower_Portal_Interact` has no `GlobalCooldownGameplayEffectClass`, and the global cooldown
+  check (exe 0x1450DC780) passes an ability with none. The replay forced these 4 casts before, and forces none now.
 - **Rejuvenate** (ability 189): usable during the Global Cooldown, starting none, on a 120s cooldown, healing 0.4 of Mara's maximum
   health (game data, build 26320967, row `RelicPower.HealthPotion.MaxHealthFraction`). The 2 casts in the 34 Mara fights of
   `data/fights` are in WcTBrQNX46m9axqP fight 12 @ 278.213 and 625.017, and the replay skipped both as unmodeled before.
