@@ -9,22 +9,25 @@ namespace FellowshipSim.Core.Dungeons.Affixes;
 /// <list type="bullet">
 /// <item>An orb is an enemy named after creature 286 (<see cref="AnomalousOrbGameCreature"/>): a priority target with its
 /// health and 0 Spirit Points. Each enemy line of the text with its name is an orb. With no such line, the fight spawns the
-/// orbs by the game's rule: a spawn every <see cref="Constants.SpawnTimeMin"/> to <see cref="Constants.SpawnTimeMax"/>
-/// seconds of combat, uniform (Blueprint GA_DungeonModifier_Passive_AnomalousOrbs, ability 1949: WaitForModifierTrigger at
-/// ubergraph 1373, paused at 1638, resumed on combat begin at 6924, paused on combat end at 6997), of
-/// <see cref="Constants.NumOfOrbs"/> orbs, each after its own 0 to
+/// orbs by the game's rule (<see cref="ModifierTimer"/>): a spawn every <see cref="Constants.SpawnTimeMin"/> to
+/// <see cref="Constants.SpawnTimeMax"/> seconds, uniform, the first from the run's start and each later one of combat
+/// (Blueprint GA_DungeonModifier_Passive_AnomalousOrbs, ability 1949: WaitForModifierTrigger at ubergraph 1373, resumed
+/// on combat begin at 6924, paused on combat end at 6997; the pause at 1638 comes before the first wait starts, binary
+/// 0x145121B5A), of <see cref="Constants.NumOfOrbs"/> orbs, each after its own 0 to
 /// <see cref="Constants.OrbRandomMaxDelayBetweenIndividualOrbSpawn"/> seconds (offset 3447). Out of a boss fight a spawn
 /// needs an enemy in combat that is neither a boss nor an affix enemy, and is skipped without one (offsets 1847, 2879,
-/// 3076). Each rule orb is in combat <see cref="RuleOrbSeconds"/>.</item>
+/// 3076); the next wait is a new draw. Each rule orb is in combat <see cref="RuleOrbSeconds"/>.</item>
 /// <item>An orb casts Detonate (<see cref="DetonateCastTime"/> s) from entering combat (creature 286's
 /// <see cref="DetonateInitialCooldown"/>; AIBC_Base sets AIPhase.DefaultCombat at its first threat). Logs: the first
 /// begincast follows the orb's first event by 0.10 s (median, 120 orbs, the 6 downloaded fights with the affix). A cast
-/// that completes kills the orb (K2_OnEndAbility, Auth_KillCharacter at offset 1300).</item>
+/// that completes kills the orb (K2_OnEndAbility, Auth_KillCharacter at offset 1300), with no Residue: the kill's
+/// health event has the orb as its source (binary 0x1452E5387), and GrantBuffOnDeath needs another (offsets 254-301).</item>
 /// <item>The party stops each cast: the first <see cref="PartyFirstStopSeconds"/> after it begins, each recast
 /// <see cref="PartyRecastStopSeconds"/> after it begins, and the orb recasts <see cref="DetonateCcCooldown"/> later. An
 /// interrupt of the hero's stops a cast as well, and the orb recasts <see cref="DetonateInterruptCooldown"/> later. Logs:
 /// recasts after a stop come 9.02 s later (Ab1yCxVcNBHPz6t8 fight 7, 22 recasts; AFan1VtPvjYW3y7K fight 4, 6) and 12.02 s
-/// after an interrupt (7w6mAjpTVgD14aHQ fight 11, VP9bnawhd6prjfKN fight 6), with no padding added.</item>
+/// after an interrupt (7w6mAjpTVgD14aHQ fight 11, VP9bnawhd6prjfKN fight 6). The 2 s of Global.AbilityPadding.Interrupt
+/// and Global.AbilityPadding.CC run beside the recast, not after it (binary 0x145148840, a cooldown effect of its own).</item>
 /// <item>An orb takes <see cref="AnomalousInstabilityIncomingDamageMultiplier"/> times the damage while it is not casting
 /// (effect 2711, IgnoreTags CharacterStatus.Internal.Casting). A hit of an effect whose calculation preset has
 /// ApplyTargetIncomingDamageHealingMultipliers off takes none of it (<see cref="Hero.DamageMultiplierAgainst"/>).</item>
@@ -141,7 +144,7 @@ public sealed partial class AnomalousOrbs : DungeonAffix
         };
 
         if (run.Dungeon.Pulls.Any(p => p.Groups.Any(g => g.Name == OrbName))) return;
-        new SpawnTimer(run).Arm();
+        _ = new ModifierTimer(run, Constants.SpawnTimeMin, Constants.SpawnTimeMax, paused: true, c => SpawnWave(run, c));
     }
 
     /// <summary>One orb in combat: its gem colour, its Detonate casts and the party's stops.</summary>
@@ -207,52 +210,19 @@ public sealed partial class AnomalousOrbs : DungeonAffix
     /// <summary>The name of the orbs' cast.</summary>
     public const string DetonateAbilityName = "Detonate";
 
-    /// <summary>The spawns by the game's rule: a timer that runs while the party is in combat.</summary>
-    private sealed class SpawnTimer(AffixRun run)
+    /// <summary>
+    /// A wave of the game's rule: out of a boss fight it needs an enemy in combat that is neither a boss nor an affix enemy,
+    /// and each orb comes after its own delay.
+    /// </summary>
+    private static void SpawnWave(AffixRun run, SimulationContext ctx)
     {
-        private double _left;
-        private SimTime _since;
-        private ScheduledEvent? _due;
-
-        public void Arm()
+        if (!run.BossFight && !ctx.ActiveEnemies.Any(e => !e.IsBoss && e.Name != OrbName)) return;
+        for (int i = 0; i < Constants.NumOfOrbs; i++)
         {
-            var ctx = run.Context;
-            _left = Constants.SpawnTimeMin + ctx.Outcomes.RollDelay(Constants.SpawnTimeMax - Constants.SpawnTimeMin, ctx);
-            run.CombatChanged += Changed;
-            if (run.InCombat) Resume(ctx);
-        }
-
-        private void Changed(SimulationContext ctx)
-        {
-            if (run.InCombat && _due == null) Resume(ctx);
-            else if (!run.InCombat && _due != null)
-            {
-                _due.Value.Cancel();
-                _due = null;
-                _left -= (ctx.CurrentTime - _since).TotalSeconds;
-            }
-        }
-
-        private void Resume(SimulationContext ctx)
-        {
-            _since = ctx.CurrentTime;
-            _due = ctx.Schedule(SimTime.FromSeconds(Math.Max(0, _left)), Trigger, "Anomalous Orbs");
-        }
-
-        private void Trigger(SimulationContext ctx)
-        {
-            _due = null;
-            _left = Constants.SpawnTimeMin + ctx.Outcomes.RollDelay(Constants.SpawnTimeMax - Constants.SpawnTimeMin, ctx);
-            if (run.InCombat) Resume(ctx);
-            // Out of a boss fight the orbs spawn around an enemy in combat that is neither a boss nor an affix enemy.
-            if (!run.BossFight && !ctx.ActiveEnemies.Any(e => !e.IsBoss && e.Name != OrbName)) return;
-            for (int i = 0; i < Constants.NumOfOrbs; i++)
-            {
-                double delay = ctx.Outcomes.RollDelay(Constants.OrbRandomMaxDelayBetweenIndividualOrbSpawn, ctx);
-                ctx.Schedule(SimTime.FromSeconds(delay),
-                    c => run.Spawn(OrbName, AnomalousOrbGameCreature.BASE_HEALTH, RuleOrbSeconds, priority: true, AnomalousOrbGameCreature.SPIRIT_POINTS),
-                    "Anomalous Orb");
-            }
+            double delay = ctx.Outcomes.RollDelay(Constants.OrbRandomMaxDelayBetweenIndividualOrbSpawn, ctx);
+            ctx.Schedule(SimTime.FromSeconds(delay),
+                _ => run.Spawn(OrbName, AnomalousOrbGameCreature.BASE_HEALTH, RuleOrbSeconds, priority: true, AnomalousOrbGameCreature.SPIRIT_POINTS),
+                "Anomalous Orb");
         }
     }
 }

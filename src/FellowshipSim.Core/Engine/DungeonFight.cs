@@ -34,7 +34,7 @@ internal sealed class DungeonFight
     private double _targetSeconds, _bossSeconds;
     private SimTime _downtimeEnd;
     private readonly AffixRun _affixes;
-    private bool _inCombat;
+    private bool _inCombat, _bossFight;
     // The enemies the affixes spawn: their enemy id after the pulls', and the next slot.
     private readonly int _affixEnemyId;
     private int _affixSlot = 1;
@@ -287,6 +287,11 @@ internal sealed class DungeonFight
         {
             _inCombat = trash || boss;
             _affixes.RaiseCombatChanged();
+        }
+        if (_bossFight != boss)
+        {
+            _bossFight = boss;
+            _affixes.RaiseBossChanged();
         }
         var now = _ctx.CurrentTime;
         if (boss && _bossSince == SimTime.Infinite) _bossSince = now;

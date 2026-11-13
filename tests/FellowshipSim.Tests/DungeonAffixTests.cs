@@ -272,4 +272,24 @@ public class DungeonAffixTests
         var dungeonWithout = DungeonProfile.Parse("dungeon=Test\ndifficulty=0\ntime_limit=600\npull.1=/duration=300\npull.1+=/count=1,name=Trash Mob,hit_points=1000000");
         Assert.All(Fight(dungeonWithout, "actions=attack").Auras, a => Assert.Equal(0, a.Fury));
     }
+
+    [Fact]
+    public void A_Charge_Due_In_A_Boss_Fight_Waits_For_The_Bosss_Window_And_A_Bosss_End_Drops_It()
+    {
+        // Logs: the boss window's wait, 12.4 s (Storm Shield charge gaps in boss fights).
+        const double BossWindowWait = 12.4;
+        // A boss from the start: the first charge 59 to 72 s in, then the window's wait, then the bolt.
+        var boss = Dungeon("pull.1=/duration=300,final=1\npull.1+=/boss.1,name=Boss,hit_points=1000000", "storm_shield");
+        double first = Fight(boss, "actions=attack").Auras.First(a => a.Fury > 0).Time;
+        Assert.InRange(first, 59 + BossWindowWait + 8, 72 + BossWindowWait + 8 + 2);
+
+        // A boss dying 70 s in, then trash: a charge due in the boss fight waits past the boss's end, which drops it: the next comes 59 to 72 s after the end.
+        var ends = Dungeon("pull.1=/duration=70\npull.1+=/boss.1,name=Boss,hit_points=1000000\n" +
+                           "pull.2=/duration=300,chain_with=1\npull.2+=/count=1,name=Trash Mob,hit_points=1000000", "storm_shield");
+        foreach (int seed in new[] { 1, 2, 3, 4 })
+        {
+            double next = Fight(ends, "actions=attack", seed: seed).Auras.First(a => a.Fury > 0).Time;
+            Assert.True(next is >= 70 + 8 and <= 72 + 8 + 1 or >= 70 + 59 + 8 and <= 70 + 72 + 8 + 1, $"Storm's Fury at {next} s");
+        }
+    }
 }

@@ -37,6 +37,11 @@ internal sealed class AffixRun
     /// <summary>Raised as the party enters combat or leaves it (<see cref="InCombat"/>).</summary>
     public event Action<SimulationContext>? CombatChanged;
 
+    /// <summary>Raised as a boss fight begins or ends (<see cref="BossFight"/>).</summary>
+    public event Action<SimulationContext>? BossChanged;
+
+    internal void RaiseBossChanged() => BossChanged?.Invoke(Context);
+
     /// <summary>Raised as an enemy enters combat, an enemy of the dungeon's text or one an affix spawned.</summary>
     public event Action<SimulationContext, EnemyTarget>? EnemyEntered;
 

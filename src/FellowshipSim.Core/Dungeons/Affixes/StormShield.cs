@@ -6,8 +6,9 @@ namespace FellowshipSim.Core.Dungeons.Affixes;
 /// critical strike chance."
 /// <list type="bullet">
 /// <item>The charge comes every <see cref="Constants.SpawnPeriodMin"/> to <see cref="Constants.SpawnPeriodMax"/> seconds
-/// of the run, uniform, from the run's start and again from each charge (Blueprint GA_DungeonModifier_StormShield, ability
-/// 1946: WaitForModifierTrigger at ubergraph 4410, with no pause). Logs: the first Storm's Fury comes 67.1 s to 78.7 s
+/// of the run, uniform, from the run's start and again from each charge (<see cref="ModifierTimer"/>; Blueprint
+/// GA_DungeonModifier_StormShield, ability 1946: WaitForModifierTrigger at ubergraph 4410, with no pause). A charge due in
+/// a boss fight waits for the boss's window. Logs: the first Storm's Fury comes 67.1 s to 78.7 s
 /// into the run, and Storm's Fury follows Storm's Fury at least 59.1 s later (median 67 s), out of combat and in boss
 /// fights as well (Ab1yCxVcNBHPz6t8 fight 7: 20 bolts, 7 in boss fights; CwmX2Tb8GA6hyc1v fight 8: 18 bolts, 5).</item>
 /// <item>The charge gives the hero Storm Shield (<see cref="StormShieldDuration"/> s). The bolt strikes
@@ -30,19 +31,11 @@ public sealed partial class StormShield : DungeonAffix
 
     internal override void Begin(AffixRun run)
     {
-        var ctx = run.Context;
-        ScheduledEvent? next = null;
-        void Arm(SimulationContext c) =>
-            next = c.Schedule(SimTime.FromSeconds(Constants.SpawnPeriodMin + c.Outcomes.RollDelay(Constants.SpawnPeriodMax - Constants.SpawnPeriodMin, c)),
-                Charge, AffixName);
-        void Charge(SimulationContext c)
+        void Bolt(SimulationContext c) => run.Hero.Auras.Apply(StormsFury, c.CurrentTime);
+        _ = new ModifierTimer(run, Constants.SpawnPeriodMin, Constants.SpawnPeriodMax, paused: false, c =>
         {
             run.Hero.Auras.Apply(Shield, c.CurrentTime);
             c.Schedule(SimTime.FromSeconds(Constants.CountdownTimer), Bolt, "Storm Shield: Lightning Strike");
-            Arm(c);
-        }
-        void Bolt(SimulationContext c) => run.Hero.Auras.Apply(StormsFury, c.CurrentTime);
-        Arm(ctx);
-        run.Ended += _ => next?.Cancel();
+        });
     }
 }
