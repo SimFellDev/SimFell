@@ -486,3 +486,8 @@ Red Ledger, Corrosive Spill, Efficient Killer, Maiden's Doom, Seething Burst, He
 Arachnid Onslaught, Caustic Wounds, Puncture, Final Stratagem and From the Shadows are built from their tooltips and the
 game data (marked `UNVERIFIED` in their files). A log of a build with them would settle: the damage ID of Seething Burst,
 what Hemotoxin's "bleed damage" counts, and how From the Shadows' clone is logged.
+
+Diamond node 10 (Blessing of the Artisan - II, gem power 1500, `CooldownReduction` 0.24) is in `Diamond.cs`, and Bloodrite
+Fervor's cooldown reads node 5 alone (0.08 at 450). In the game data (build 26320967), node 10 grants
+`GE_GemBonus_RelicCooldownReductionBonusMedium` and `GMMC_GemAugmentation.CalculateBaseMagnitude` reads it at offset 1130; whether
+its effect replaces node 5's is not decoded. No Mara fight of `data/fights` has two Bloodrite Fervor casts under 90.1s apart.
