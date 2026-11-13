@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Core.Dungeons.Affixes;
 
 using static FellowshipSim.Engine.Replay.RawFightValue;
 
@@ -36,6 +37,8 @@ namespace FellowshipSim.Engine.Replay;
 /// (<see cref="DifficultyScaling.WithDifficulty"/>), and the name is its <c>gameZone</c>'s.</item>
 /// <item>The time limit is <see cref="TimeLimitShare"/> of the run's length, and at least
 /// <see cref="DungeonProfile.DefaultTimeLimitSeconds"/>.</item>
+/// <item>The affixes are those of the fight's <c>affixes</c> (its <c>dungeonstart</c> event's) the engine models
+/// (<see cref="DungeonAffix.All"/>). Each Anomalous Orb line is a priority target (<c>priority=1</c>).</item>
 /// </list>
 /// </summary>
 public static class DungeonReader
@@ -181,7 +184,9 @@ public static class DungeonReader
         string comment = $"From FellowshipLogs report {Str(raw["report_code"])}, fight {Num(fight["id"])} ({Clock(seconds)}), " +
                          $"with {Str(raw["contact_player"]["name"])}'s damage events.";
         if (leftOut.Count > 0) comment += $"\nEnemies without game data: {string.Join(", ", leftOut)}.";
-        return new DungeonProfile(zone.Length > 0 ? zone : Str(fight["name"]), timeLimit, profilePulls, difficulty, comment);
+        // The run's affixes the engine models, in the order of the log.
+        var affixes = raw["affixes"].Items.Select(a => DungeonAffix.ById(Int(a) ?? 0)?.Key).OfType<string>().Distinct().ToList();
+        return new DungeonProfile(zone.Length > 0 ? zone : Str(fight["name"]), timeLimit, profilePulls, difficulty, comment, affixes);
     }
 
     /// <summary>
@@ -210,8 +215,8 @@ public static class DungeonReader
                 dies = Math.Max(dies, 0.1);
                 firstSeen = Math.Min(firstSeen, Math.Round(dies - 0.1, 1));
             }
-            yield return new EnemyGroup(line.Count, creature.Name, creature.SpiritPoints, HitPoints: Math.Round(creature.BaseHealth, 2), Boss: boss,
-                FirstSeenSeconds: firstSeen, DiesSeconds: dies == duration ? null : dies);
+            yield return new EnemyGroup(line.Count, creature.Name, creature.SpiritPoints, creature.Id == AnomalousOrbGameCreature.ID,
+                HitPoints: Math.Round(creature.BaseHealth, 2), Boss: boss, FirstSeenSeconds: firstSeen, DiesSeconds: dies == duration ? null : dies);
         }
     }
 

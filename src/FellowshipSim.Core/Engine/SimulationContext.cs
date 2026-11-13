@@ -250,6 +250,7 @@ public class SimulationContext
     {
         string? ability = enemy.CastAbility;
         if (ability == null || !enemy.StopCast()) return false;
+        enemy.RaiseInterrupted(this);
         Player.TriggerInterrupt(this, enemy, ability);
         return true;
     }

@@ -44,8 +44,6 @@ public sealed class ReplayDriver
             ? new FreeDiceOutcomeSource(script, new SimulationRng(seed))
             : _oracle;
         _hero.OnCastCompleted += (ability, _, now) => _lastCompletedCast = (ability, now.TotalSeconds);
-        // Enemy auras from the log (PartyBuffs) change the damage the enemy takes.
-        _hero.TargetDamageMultipliers.Add((target, now) => target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now));
         // Logged pulses fire at their log hits (FireDefensiveProcs), so the hero's own chains for them stay off.
         _hero.PulsesFollowLog = true;
     }
@@ -495,21 +493,13 @@ public sealed class ReplayDriver
     }
 
     /// <summary>
-    /// Anomalous Residue on the player: the colour's gem power is its bound power plus the stacks' (scaled by the hero's
-    /// gem power multipliers), and its nodes change with it. A refresh keeps the stacks.
+    /// Anomalous Residue on the player: the log's stacks set the colour's gem power
+    /// (<see cref="Core.Dungeons.Affixes.AnomalousOrbs.SetResidue"/>). A refresh keeps the stacks.
     /// </summary>
     private void ChangeResidue(Core.Customization.Gems.GemColor colour, int? stacks)
     {
         if (stacks is not { } count) return;
-        if (_hero.Gems.FirstOrDefault(g => g.Color == colour) is not { } gem)
-        {
-            // A colour without power: its gem comes with its first stack.
-            gem = Core.Customization.Gems.Gem.Create(colour);
-            _hero.Gems.Add(gem);
-            gem.Bind(_hero);
-        }
-        double scale = _hero.RelicPassives.Aggregate(1.0, (m, r) => m * r.GemPowerMultiplier);
-        gem.ChangePower(gem.BasePower + AnomalousResidue.PowerPerStack * count * scale, _ctx.CurrentTime);
+        Core.Dungeons.Affixes.AnomalousOrbs.SetResidue(_hero, colour, count, _ctx.CurrentTime);
     }
 
     private readonly Dictionary<(int LogId, int Source), AuraDef?> _externalDefs = new();

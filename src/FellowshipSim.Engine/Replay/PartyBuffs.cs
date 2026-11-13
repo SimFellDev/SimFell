@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Customization.Sigils;
+using FellowshipSim.Core.Dungeons.Affixes;
 
 namespace FellowshipSim.Engine.Replay;
 
@@ -18,7 +19,7 @@ public static class PartyBuffs
 
     public const int ImbuedBloodEffectId = 55;
     public const int ShadowsDefeatEffectId = 2221;
-    public const int AnomalousInstabilityEffectId = 2711;
+    public const int AnomalousInstabilityEffectId = AnomalousOrbs.AnomalousInstabilityEffectId;
     public const int GreedsEmbraceEffectId = 649;
     public const int BloodFrenzyEffectId = 192;
     public const int BloodScentEffectId = 3045;
@@ -28,7 +29,7 @@ public static class PartyBuffs
     public const int ReturnedBuffEffectId = 2463;
     public const int WardstoneVulnerableEffectId = 1112;
     public const int WardstoneFocusingVulnerableEffectId = 1108;
-    public const int StormsFuryEffectId = 2699;
+    public const int StormsFuryEffectId = StormShield.StormsFuryEffectId;
 
     public static readonly PartyBuff[] All =
     [
@@ -50,7 +51,7 @@ public static class PartyBuffs
         // Storm's Fury (Storm Shield affix 25, Storm Shield: Lightning Strike, ability 1946): Critical Strike chance
         // (effect modifier CritChance, Additive). Logs: the Environment gives it to every player of a Storm Shield
         // run (16 downloaded fights).
-        new(AuraDef.Effect("Storm's Fury", StormsFuryEffectId, 20, modifiers: StatModifier.Add(StatType.CritChance, 0.2))),
+        new(StormShield.StormsFury),
 
         // Orb Energy: additional damage per stack (effect modifier DamageScale, Multiplicitive).
         new(AuraDef.Effect("Orb Energy", OrbEnergyEffectId, maxStacks: 99, modifiers: StatModifier.Increased(StatType.DamageScale, 1.05))),
@@ -65,8 +66,7 @@ public static class PartyBuffs
         // Enemy auras: only their damage taken is listed.
         // Anomalous Instability (Anomalous Orb affix): increased damage taken. Logs: hits on targets with it exceed
         // the engine's (Fc8v6yWxD14GQMnV fight 19, pWmcV42K39GHTLQX fight 23).
-        new(AuraDef.Effect("Anomalous Instability", AnomalousInstabilityEffectId,
-            modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 4.0))),
+        new(AnomalousOrbs.Instability),
 
         // Vulnerable (Godfall Wardstone, stunned or interrupted through Brittle, ability 898; and Focusing, ability 896):
         // effect modifier IncomingDamageMultiplier, Multiplicitive. Logs: Rime's hits on Godfall Wardstones exceed

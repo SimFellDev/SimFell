@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Core.Dungeons.Affixes;
 
 namespace FellowshipSim.Core.Engine;
 
@@ -32,6 +33,11 @@ internal sealed class DungeonFight
     private SimTime _bossSince = SimTime.Infinite;
     private double _targetSeconds, _bossSeconds;
     private SimTime _downtimeEnd;
+    private readonly AffixRun _affixes;
+    private bool _inCombat;
+    // The enemies the affixes spawn: their enemy id after the pulls', and the next slot.
+    private readonly int _affixEnemyId;
+    private int _affixSlot = 1;
 
     /// <summary>
     /// A fight of <paramref name="dungeon"/>: <paramref name="act"/> has the hero act until a time or until a condition
@@ -51,6 +57,8 @@ internal sealed class DungeonFight
         _enemyIds = dungeon.Pulls.Select((p, i) => (p.Name, Id: 1001 + i)).ToDictionary(x => x.Name, x => x.Id);
         _noEnemy = () => _current is { Alive: 0 };
         _enemyInCombat = () => _current is { Alive: > 0 };
+        _affixEnemyId = 1001 + dungeon.Pulls.Count;
+        _affixes = new AffixRun(ctx, hero, dungeon, _enemyInCombat, () => _ctx.Boss, SpawnByAffix);
         ctx.EnemyDemising += Demising;
     }
 
@@ -60,6 +68,7 @@ internal sealed class DungeonFight
     /// </summary>
     public (SimTime End, double TargetSeconds, double BossSeconds, IReadOnlyList<PartyEnemy> Enemies) Run()
     {
+        foreach (string key in _dungeon.Affixes) DungeonAffix.ByKey(key)?.Begin(_affixes);
         for (_run = 0; _run < _plans.Count; _run++)
         {
             var plan = _plans[_run];
@@ -89,6 +98,7 @@ internal sealed class DungeonFight
         }
         if (_bossSince != SimTime.Infinite) _bossSeconds += (end - _bossSince).TotalSeconds;
         _ctx.EnemyDemising -= Demising;
+        _affixes.RaiseEnded();
         return (end, _targetSeconds, _bossSeconds, enemies);
     }
 
@@ -168,8 +178,35 @@ internal sealed class DungeonFight
             state.Enemies.Add(enemy);
             _arrivals[enemy] = new Arrival(entry.At, run, state, enemy.IsBoss && state.Pull.Final, entry.BossFight);
             run.Alive++;
+            _affixes.RaiseEnemyEntered(enemy);
         }
     }
+
+    // An affix's enemy enters combat now in the run in progress, in a pull of the affix's enemies, and dies seconds later.
+    private EnemyTarget? SpawnByAffix(string name, double hitPoints, double seconds, bool priority, double spirit)
+    {
+        var run = _current;
+        if (run == null) return null;
+        var state = run.Pulls.FirstOrDefault(p => p.Pull.Name == AffixPullName);
+        if (state == null) run.Pulls.Add(state = new PullState(new DungeonPull(AffixPullName, [], seconds)));
+        var now = _ctx.CurrentTime;
+        var dies = now + SimTime.FromSeconds(seconds);
+        var enemy = _ctx.AddEnemy(_affixEnemyId, _affixSlot++, name, maxHealth: hitPoints * _dungeon.HealthScale);
+        enemy.IsPriority = priority;
+        enemy.SpiritPointValue = spirit;
+        enemy.FollowTime(_ctx, now, dies);
+        _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true, died: true), "Enemy dies");
+        state.Enemies.Add(enemy);
+        _arrivals[enemy] = new Arrival(now, run, state, false, BossInCombat(run));
+        run.Count++;
+        run.Alive++;
+        _affixes.RaiseEnemyEntered(enemy);
+        Refresh();
+        return enemy;
+    }
+
+    // The pull of the enemies the affixes spawn in a run; no pull of the text has the name, which is no pull name.
+    private const string AffixPullName = "(affix)";
 
     // A group with a first_seen enters the run it was to enter, once that time has come.
     private void EnterLate(RunState run, Entry entry)
@@ -246,6 +283,11 @@ internal sealed class DungeonFight
         _ctx.Trash = trash;
         _ctx.Boss = boss;
         _ctx.FinalBoss = final;
+        if (_inCombat != (trash || boss))
+        {
+            _inCombat = trash || boss;
+            _affixes.RaiseCombatChanged();
+        }
         var now = _ctx.CurrentTime;
         if (boss && _bossSince == SimTime.Infinite) _bossSince = now;
         if (!boss && _bossSince != SimTime.Infinite)

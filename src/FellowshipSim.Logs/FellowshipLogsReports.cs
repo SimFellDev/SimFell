@@ -145,7 +145,8 @@ public static class FellowshipLogsReports
     /// One dungeon fight, with one player's damage events in place of its every event: <c>report_code</c>;
     /// <c>report_start_time</c> and <c>log_version</c>, the report's start and combat-log format version (null when
     /// FellowshipLogs returns none); <c>fight</c> (id, name, startTime, endTime, difficultyLevel, gameZone with its id and
-    /// name, and enemyNPCs with their id and gameID); <c>enemy_deaths</c>, each enemy death's actor <c>id</c>,
+    /// name, and enemyNPCs with their id and gameID); <c>affixes</c>, the dungeon affix IDs of the fight's
+    /// <c>dungeonstart</c> event (empty when it has none); <c>enemy_deaths</c>, each enemy death's actor <c>id</c>,
     /// <c>instance</c>, <c>gameID</c>, <c>name</c> and <c>timestamp</c>; <c>contact_player</c>, the player whose damage
     /// events are read (<see cref="ContactPlayer"/>); and <c>enemy_contacts</c>, each enemy instance that player hit or was
     /// hit by: actor <c>id</c>, <c>instance</c>, the <c>first</c> such event's timestamp with the enemy's <c>x</c> and
@@ -177,12 +178,15 @@ public static class FellowshipLogsReports
         var enemies = (fight["enemyNPCs"]?.AsArray() ?? []).Select(n => n?["id"]?.GetValue<int>() ?? -1).ToHashSet();
         var contacts = await EnemyContactsAsync(client, reportCode, fightId, player.Id, fight["startTime"]!.GetValue<double>(),
             fight["endTime"]!.GetValue<double>(), enemies, ct);
+        var affixes = await DungeonAffixesAsync(client, reportCode, fightId, fight["startTime"]!.GetValue<double>(),
+            fight["endTime"]!.GetValue<double>(), ct);
         return new JsonObject
         {
             ["report_code"] = reportCode,
             ["report_start_time"] = report["startTime"]?.DeepClone(),
             ["log_version"] = report["masterData"]?["logVersion"]?.DeepClone(),
             ["fight"] = fight.DeepClone(),
+            ["affixes"] = affixes,
             ["enemy_deaths"] = deaths,
             ["contact_player"] = new JsonObject { ["id"] = player.Id, ["name"] = player.Name, ["hero"] = player.Hero },
             ["enemy_contacts"] = contacts,
@@ -200,6 +204,25 @@ public static class FellowshipLogsReports
             .Where(p => p?["id"] is JsonValue)
             .Select(p => new ReportPlayer(p!["id"]!.GetValue<int>(), p["name"]?.GetValue<string>() ?? "?", p["type"]?.GetValue<string>() ?? ""))
             .FirstOrDefault();
+
+    // The affixes of the fight's first dungeonstart event; an empty array when it has none.
+    private static async Task<JsonArray> DungeonAffixesAsync(FellowshipLogsClient client, string reportCode, int fightId,
+        double start, double end, CancellationToken ct)
+    {
+        var events = (await client.QueryAsync(EventsQuery, new
+        {
+            code = reportCode,
+            fightIDs = new[] { fightId },
+            startTime = start,
+            endTime = end,
+            sourceID = 0,
+            dataType = "All",
+            hostilityType = "Friendlies",
+            filterExpression = "type = \"dungeonstart\"",
+        }, ct))["reportData"]?["report"]?["events"]?["data"]?.AsArray();
+        var dungeonStart = events?.FirstOrDefault(e => e?["type"]?.GetValue<string>() == "dungeonstart");
+        return dungeonStart?["affixes"] is JsonArray affixes ? (JsonArray)affixes.DeepClone() : [];
+    }
 
     // Each enemy instance's first and last damage event with player playerId, dealt or taken, and the enemy's position at
     // the first.
