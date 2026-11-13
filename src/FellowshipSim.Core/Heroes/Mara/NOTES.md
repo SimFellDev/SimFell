@@ -292,6 +292,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   1s before, as the replay took it, gave the spike's First Strike to the hit that rolled it, and those hits' log amounts have none
   (GXFz3pZ94aQr2chV fight 3 @ 175.855: Queen's Fang 14,473 in the log, 15,978 with First Strike and 14,609 without).
 
+## Auras
+
+- **Inspired Allegiance from another player:** the log's state of an aura on Mara is her own: another player's buff on her is an
+  external aura of the replay, with that player as its source. Another player's Inspired Allegiance and Mara's own are two
+  instances, each with its own removal: CwmX2Tb8GA6hyc1v fight 8 has the other player's @ 20.204 to 28.219 and Mara's own @ 22.205
+  to 30.223. The replay's check reads Mara's own instance against the log: with both counted, the 2 Mara fights of `data/fights` with
+  the sigil had 678 `Inspired Allegiance extra in engine` issues (496 in CwmX2Tb8GA6hyc1v fight 8, 182 in w7khnMKAa4TxXrmC fight 23),
+  and with Mara's own alone they have none.
+
 ## Not yet explained
 
 - **Emerald Judgement on a later hit of one instant:** 40 `proc with zero chance` issues over the 23 Mara fights: the spike's hit is a
