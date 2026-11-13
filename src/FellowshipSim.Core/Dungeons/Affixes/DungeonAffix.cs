@@ -5,7 +5,7 @@ namespace FellowshipSim.Core.Dungeons.Affixes;
 /// <summary>
 /// A dungeon affix (the game's dungeon modifier) the engine models. A dungeon's text names its run's affixes by
 /// <see cref="Key"/> (<c>affixes=anomalous_orbs,storm_shield</c>), and a dungeon fight runs each of them
-/// (<see cref="Begin"/>). <see cref="All"/> finds every class deriving from this one with a parameterless constructor.
+/// (<see cref="Begin"/>). <see cref="Catalog"/> has every class deriving from this one with a public constructor without parameters.
 /// </summary>
 public abstract class DungeonAffix
 {
@@ -20,12 +20,8 @@ public abstract class DungeonAffix
     /// <summary>The affix's effects on one dungeon fight, from its start.</summary>
     internal abstract void Begin(AffixRun run);
 
-    /// <summary>Every affix the engine models, in ID order.</summary>
-    public static IReadOnlyList<DungeonAffix> All { get; } = typeof(DungeonAffix).Assembly.GetTypes()
-        .Where(t => t.IsSubclassOf(typeof(DungeonAffix)) && !t.IsAbstract && t.GetConstructor(Type.EmptyTypes) != null)
-        .Select(t => (DungeonAffix)Activator.CreateInstance(t)!)
-        .OrderBy(a => a.Id)
-        .ToList();
+    /// <summary>Every affix the engine models, in ID order (<see cref="Catalog.DungeonAffixes"/>).</summary>
+    public static IReadOnlyList<DungeonAffix> All => Catalog.DungeonAffixes;
 
     /// <summary>The affix of key <paramref name="key"/>; null when the engine models none.</summary>
     public static DungeonAffix? ByKey(string key) => All.FirstOrDefault(a => a.Key == key);
