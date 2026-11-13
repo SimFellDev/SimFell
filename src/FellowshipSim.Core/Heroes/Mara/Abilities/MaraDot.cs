@@ -1,9 +1,10 @@
 namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 
 /// <summary>
-/// A damage-over-time effect of Mara's (Hemorrhage, Seething Poison, Hemotoxin, Vexira's Venom): one instance on each
-/// enemy, ticking every hasted period until it runs out, with a partial final tick for the hasted progress left. It is
-/// not an action an action list uses: its ability applies it.
+/// A damage-over-time effect of Mara's (Hemorrhage, Seething Poison, Hemotoxin): one instance on each enemy, ticking every
+/// hasted period until it runs out, with a partial final tick for the hasted progress left. It is not an action an action
+/// list uses: its ability applies it. Each instance is a <see cref="PeriodicEffect.BeginHasted"/> effect with the damage log
+/// ID and the enemy, so a replay takes each tick's time from the log (<see cref="IOutcomeSource.TickAt"/>).
 /// </summary>
 public abstract class MaraDot : MaraAbility
 {
@@ -31,6 +32,12 @@ public abstract class MaraDot : MaraAbility
     /// </summary>
     protected double RefreshCarryoverFraction { get; init; }
 
+    /// <summary>
+    /// True for an effect tagged EffectType.Dot: its ticks run on the game's period timer
+    /// (<see cref="PeriodicEffect.BeginHasted"/> with damageOverTime).
+    /// </summary>
+    protected bool DamageOverTime { get; init; }
+
     /// <summary>Raised after each tick has dealt its damage, with its enemy.</summary>
     public event Action<SimulationContext, EnemyTarget>? Ticked;
 
@@ -44,10 +51,9 @@ public abstract class MaraDot : MaraAbility
     protected sealed class Instance(EnemyTarget target)
     {
         public EnemyTarget Target { get; } = target;
+        /// <summary>When the duration runs out; the effect ends on the server frame after it.</summary>
         public SimTime End;
-        public SimTime LastTick;
-        public HastedTimer? Timer;
-        public ScheduledEvent? EndEvent;
+        public PeriodicEffect? Effect;
         /// <summary>The ability's own damage multiplier for this application (e.g. Vexira's Venom's stored damage).</summary>
         public double Multiplier = 1.0;
         public int Stacks = 1;
@@ -65,7 +71,7 @@ public abstract class MaraDot : MaraAbility
     {
         if (_fight == ctx) return;
         _active.Clear();
-        ctx.EnemyDemising += (c, enemy) => Remove(c, enemy, expired: false);
+        ctx.EnemyDemising += (c, enemy) => Remove(c, enemy);
         _fight = ctx;
     }
 
@@ -102,25 +108,24 @@ public abstract class MaraDot : MaraAbility
     protected double BasePeriod(Instance dot) => PeriodSeconds * dot.PeriodScaler;
 
     /// <summary>
-    /// Multiplies the tick period scaler of <paramref name="dot"/> by <paramref name="factor"/>. The tick in progress keeps its
-    /// fraction of progress: the time to it is the new period times the fraction left.
+    /// Sets the tick period scaler of <paramref name="dot"/>. The tick in progress keeps its fraction of progress: the time to it
+    /// is the new period times the fraction left.
     /// </summary>
-    protected void ScalePeriod(Instance dot, double factor) => SetPeriodScaler(dot, dot.PeriodScaler * factor);
-
     private void SetPeriodScaler(Instance dot, double scaler)
     {
         if (scaler == dot.PeriodScaler) return;
         dot.PeriodScaler = scaler;
-        dot.Timer?.ChangeBaseSeconds(BasePeriod(dot));
+        dot.Effect?.ChangePeriod(BasePeriod(dot));
     }
 
     /// <summary>
     /// Applies the effect to <paramref name="target"/> for <paramref name="durationSeconds"/> (its own duration when
-    /// null), with tick period scaler 1. On an enemy that has it, the duration restarts with up to
-    /// <see cref="RefreshCarryoverFraction"/> of it carried over, the ticks keep their timing, and the scaler is 1 again: a
-    /// refresh replaces the spec (game data, build 26320967: `ApplyGameplayEffectSpec` exe 0x144A6A660).
+    /// null), with tick period scaler <paramref name="periodScaler"/>. On an enemy that has it, the duration restarts with up to
+    /// <see cref="RefreshCarryoverFraction"/> of it carried over, the ticks keep their timing, and the scaler is set again: a
+    /// refresh replaces the spec (game data, build 26320967: `ApplyGameplayEffectSpec` exe 0x144A6A660). An application after
+    /// the duration ran out, in the server frame the effect still has, is a new one.
     /// </summary>
-    protected Instance Apply(SimulationContext ctx, EnemyTarget target, double? durationSeconds = null)
+    protected Instance Apply(SimulationContext ctx, EnemyTarget target, double? durationSeconds = null, double periodScaler = 1.0)
     {
         SameFight(ctx);
         var now = ctx.CurrentTime;
@@ -128,27 +133,33 @@ public abstract class MaraDot : MaraAbility
         if (_active.TryGetValue(target, out var dot))
         {
             double left = Math.Max(0.0, (dot.End - now).TotalSeconds);
-            dot.End = now + SimTime.FromSeconds(duration + Math.Min(left, duration * RefreshCarryoverFraction));
-            SetPeriodScaler(dot, 1.0);
-            ScheduleEnd(ctx, dot);
-            target.Auras.Apply(Debuff, now);
-            return dot;
+            double refreshed = duration + Math.Min(left, duration * RefreshCarryoverFraction);
+            if (dot.Effect is { } running && running.Refresh(ctx, refreshed))
+            {
+                dot.End = now + SimTime.FromSeconds(refreshed);
+                SetPeriodScaler(dot, periodScaler);
+                target.Auras.Apply(Debuff, now);
+                return dot;
+            }
         }
 
-        dot = new Instance(target) { End = now + SimTime.FromSeconds(duration), LastTick = now };
-        _active[target] = dot;
+        var fresh = new Instance(target) { End = now + SimTime.FromSeconds(duration), PeriodScaler = periodScaler };
+        _active[target] = fresh;
         target.Auras.Apply(Debuff, now);
-        ScheduleTick(ctx, dot);
-        ScheduleEnd(ctx, dot);
-        return dot;
+        fresh.Effect = PeriodicEffect.BeginHasted(ctx, Owner, Name, duration, BasePeriod(fresh), tickOnStart: false, partialFinalTick: true,
+            (c, fraction) => Tick(c, fresh, fraction),
+            (c, stopped) => Ended(c, fresh, stopped),
+            damageLogId: DamageLogId, target: target, damageOverTime: DamageOverTime);
+        return fresh;
     }
 
     /// <summary>Applies one more stack (up to <paramref name="maxStacks"/>), refreshing the duration.</summary>
     protected Instance ApplyStack(SimulationContext ctx, EnemyTarget target, int maxStacks)
     {
-        bool had = IsOn(target, ctx);
+        SameFight(ctx);
+        var before = Get(target);
         var dot = Apply(ctx, target);
-        if (had) dot.Stacks = Math.Min(maxStacks, dot.Stacks + 1);
+        if (dot == before) dot.Stacks = Math.Min(maxStacks, dot.Stacks + 1);
         return dot;
     }
 
@@ -157,35 +168,8 @@ public abstract class MaraDot : MaraAbility
     {
         if (!IsOn(target, ctx)) return false;
         var dot = _active[target];
-        if (--dot.Stacks <= 0) Remove(ctx, target, expired: false);
+        if (--dot.Stacks <= 0) Remove(ctx, target);
         return true;
-    }
-
-    private void ScheduleTick(SimulationContext ctx, Instance dot)
-    {
-        dot.Timer = HastedTimer.Start(ctx, Owner, BasePeriod(dot), c =>
-        {
-            if (_active.GetValueOrDefault(dot.Target) != dot || c.CurrentTime > dot.End) return;
-            dot.LastTick = c.CurrentTime;
-            Tick(c, dot, 1.0);
-            if (_active.GetValueOrDefault(dot.Target) == dot) ScheduleTick(c, dot);
-        }, Name);
-    }
-
-    private void ScheduleEnd(SimulationContext ctx, Instance dot)
-    {
-        dot.EndEvent?.Cancel();
-        dot.EndEvent = ctx.ScheduleAt(dot.End, c =>
-        {
-            if (_active.GetValueOrDefault(dot.Target) != dot) return;
-            // The hasted progress toward the next tick is a partial tick, when enough time passed since the last one.
-            double fraction = dot.Timer is { IsActive: true } timer ? timer.ElapsedBaseSeconds / BasePeriod(dot) : 0.0;
-            if (fraction > 0 && (c.CurrentTime - dot.LastTick).TotalSeconds >= PeriodicEffect.MinHastedPartialTickSeconds - 1e-9)
-            {
-                Tick(c, dot, Math.Min(fraction, 1.0));
-            }
-            Remove(c, dot.Target, expired: true);
-        }, Name);
     }
 
     private void Tick(SimulationContext ctx, Instance dot, double fraction)
@@ -195,19 +179,25 @@ public abstract class MaraDot : MaraAbility
         Ticked?.Invoke(ctx, dot.Target);
     }
 
+    /// <summary>The effect of <paramref name="dot"/> ended: it ran out, or <paramref name="stopped"/> by a removal.</summary>
+    private void Ended(SimulationContext ctx, Instance dot, bool stopped)
+    {
+        // A new application after this one's duration ran out holds the enemy's place and its debuff.
+        if (_active.GetValueOrDefault(dot.Target) != dot) return;
+        _active.Remove(dot.Target);
+        dot.Target.Auras.Remove(Debuff, ctx.CurrentTime);
+        if (!stopped) Expired?.Invoke(ctx, dot.Target);
+        Removed?.Invoke(ctx, dot.Target);
+    }
+
     /// <summary>One tick's damage on the instance's enemy; <paramref name="fraction"/> is below 1 for a partial final tick.</summary>
     protected virtual void DealTick(SimulationContext ctx, Instance dot, double fraction) =>
         DealDamage(ctx, dot.Target, damageMultiplier: fraction * dot.Multiplier * dot.Stacks);
 
-    /// <summary>Takes the effect off <paramref name="target"/>.</summary>
-    public void Remove(SimulationContext ctx, EnemyTarget target, bool expired)
+    /// <summary>Takes the effect off <paramref name="target"/>, with no partial tick.</summary>
+    public void Remove(SimulationContext ctx, EnemyTarget target)
     {
-        if (!_active.Remove(target, out var dot)) return;
-        dot.Timer?.Cancel();
-        dot.EndEvent?.Cancel();
-        target.Auras.Remove(Debuff, ctx.CurrentTime);
-        if (expired) Expired?.Invoke(ctx, target);
-        Removed?.Invoke(ctx, target);
+        if (_active.GetValueOrDefault(target)?.Effect is { } effect) effect.Stop(ctx);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target) { }

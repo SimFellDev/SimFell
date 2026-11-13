@@ -30,6 +30,8 @@ public class Hemorrhage : MaraDot
     {
         HasCreepingDeath = true;
         RefreshCarryoverFraction = RefreshCarryover;
+        // Game data (build 26320967): effect 1724's asset tags have `EffectType.Dot` and no Haste or partial tick exemption.
+        DamageOverTime = true;
     }
 
     /// <summary>
@@ -51,25 +53,29 @@ public class Hemorrhage : MaraDot
     public Func<SimulationContext, EnemyTarget, IEnumerable<EnemyTarget>?>? ReapplicationTargets { get; set; }
 
     /// <summary>
-    /// Hemorrhaging Strike's bleed on <paramref name="target"/> for <paramref name="durationSeconds"/>: the application, then a
-    /// re-application (<see cref="ReapplicationTargets"/>) or the writes of the tick period scaler.
+    /// Hemorrhaging Strike's bleed on <paramref name="target"/> for <paramref name="durationSeconds"/>: the application with the
+    /// writes of the tick period scaler, or a re-application (<see cref="ReapplicationTargets"/>).
     /// </summary>
     public void ApplyFromStrike(SimulationContext ctx, EnemyTarget target, double durationSeconds)
     {
-        var dot = Apply(ctx, target, durationSeconds);
-        if (ReapplicationTargets?.Invoke(ctx, target) is { } others)
+        if (ReapplicationTargets?.Invoke(ctx, target)?.ToList() is { } others)
         {
-            Reapply(ctx, dot, others.ToList());
+            Reapply(ctx, Apply(ctx, target, durationSeconds), others);
             return;
         }
-        WritePeriodScaler(dot);
+        Apply(ctx, target, durationSeconds, ApplicationPeriodScaler());
     }
 
-    /// <summary>The application's listeners' writes of the tick period scaler, then the applying ability's.</summary>
-    private void WritePeriodScaler(Instance dot)
+    /// <summary>
+    /// The tick period scaler after an application's writes: the application's listeners', then the applying ability's, each
+    /// multiplying the scaler of 1 the application starts with.
+    /// </summary>
+    private double ApplicationPeriodScaler()
     {
-        foreach (double m in ApplicationPeriodMultipliers) ScalePeriod(dot, m);
-        foreach (double m in AbilityPeriodMultipliers) ScalePeriod(dot, m);
+        double scaler = 1.0;
+        foreach (double m in ApplicationPeriodMultipliers) scaler *= m;
+        foreach (double m in AbilityPeriodMultipliers) scaler *= m;
+        return scaler;
     }
 
     /// <summary>
@@ -87,11 +93,12 @@ public class Hemorrhage : MaraDot
     {
         var struck = source.Target;
         double duration = Math.Max(0.0, (source.End - ctx.CurrentTime).TotalSeconds);
-        Remove(ctx, struck, expired: false);
+        double scaler = ApplicationPeriodScaler();
+        Remove(ctx, struck);
         foreach (var enemy in others.Where(e => e != struck).Append(struck))
         {
-            Remove(ctx, enemy, expired: false);
-            WritePeriodScaler(Apply(ctx, enemy, duration));
+            Remove(ctx, enemy);
+            Apply(ctx, enemy, duration, scaler);
         }
     }
 
@@ -108,10 +115,6 @@ public class Hemorrhage : MaraDot
     /// Ticks in <paramref name="durationSeconds"/> at the tick rate now of a bleed Hemorrhaging Strike applies with no
     /// re-application (Hemotoxin).
     /// </summary>
-    public double TicksIn(double durationSeconds, SimTime now)
-    {
-        double scaler = 1.0;
-        foreach (double m in ApplicationPeriodMultipliers.Concat(AbilityPeriodMultipliers)) scaler *= m;
-        return durationSeconds * (1.0 + Owner.GetHaste(now)) / (PeriodSeconds * scaler);
-    }
+    public double TicksIn(double durationSeconds, SimTime now) =>
+        durationSeconds * (1.0 + Owner.GetHaste(now)) / (PeriodSeconds * ApplicationPeriodScaler());
 }

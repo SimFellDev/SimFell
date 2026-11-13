@@ -138,6 +138,14 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   5 at 2s to 3s, 3 at 3s to 4s and 218 at 5s or more, with no Final Stratagem cast in any fight.
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
+- **Hemorrhage, Seething Poison and Hemotoxin's poison on the period timer:** each enemy's effect is a damage over time on
+  the game's period timer, re-armed on a Haste change, with its partial tick from the timer's elapsed time, and a replay takes
+  each tick's time from the log (`IOutcomeSource.TickAt`), as Volatile Poison's ticks do. In the game data (build 26320967),
+  effects 1724, 1716 (`GE_Mara_ChargedDoubleAttackBuilder_Poison`) and 2337 (`GE_Mara_Talent_BleedAttackSpender_ExplosivePoison_Poison`)
+  have `EffectType.Dot` and none of `EffectLogic.TickrateNotAffectedByHaste`, `...Exclusively` or `EffectLogic.IgnorePartialTicks`.
+  Exact replay of the 34 Mara fights of `data/fights`: Hemorrhage matched 5,666 to 5,989 of 6,117 and engine-only 757 to 412,
+  Seething Poison 9,906 to 9,931 of 9,933 and 187 to 153, Hemotoxin's poison engine-only 39 to 34 (258 of 258 matched);
+  fjrCax7VzGmMZw6h fight 26 hits matched 13,465 to 13,741 of 14,211 and damage 96.7% to 98.1% of the log.
 - **Hemorrhage's tick period scaler:** each application, a refresh too, sets the scaler to 1 and multiplies it by From the
   Shadows' 0.87, then by Bloodrush's 1 / 1.2, and the tick in progress keeps its fraction. In the game data (build 26320967), a
   refresh replaces the spec (`ApplyGameplayEffectSpec` exe 0x144A6A660) and the period timer runs on (`NeverReset`); ability 1589

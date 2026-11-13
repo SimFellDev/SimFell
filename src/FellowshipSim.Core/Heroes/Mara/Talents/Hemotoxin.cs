@@ -55,7 +55,12 @@ public partial class Hemotoxin : Talent
     /// <summary>The poison: <see cref="Constants.ExplosivePoisonPoisonAgilityCoefficient"/> of Agility every <see cref="Constants.ExplosivePoisonPoisonTickInterval"/> for <see cref="Constants.ExplosivePoisonPoisonDuration"/> per stack, up to <see cref="MaxStacks"/>.</summary>
     private sealed class Poison : MaraDot
     {
-        public Poison(Mara owner) : base(owner, PoisonEffectId, TalentName, Constants.ExplosivePoisonPoisonAgilityCoefficient, Constants.ExplosivePoisonPoisonTickInterval, Constants.ExplosivePoisonPoisonDuration) { }
+        public Poison(Mara owner) : base(owner, PoisonEffectId, TalentName, Constants.ExplosivePoisonPoisonAgilityCoefficient, Constants.ExplosivePoisonPoisonTickInterval, Constants.ExplosivePoisonPoisonDuration)
+        {
+            // Game data (build 26320967), `GE_Mara_Talent_BleedAttackSpender_ExplosivePoison_Poison` class defaults: asset tag
+            // `EffectType.Dot`, with no Haste or partial tick exemption.
+            DamageOverTime = true;
+        }
 
         public void AddStack(SimulationContext ctx, EnemyTarget target) => ApplyStack(ctx, target, MaxStacks);
     }
