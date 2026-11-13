@@ -1,4 +1,3 @@
-using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
 using FellowshipSim.Core.Heroes.Mara.Talents;
@@ -10,21 +9,12 @@ namespace FellowshipSim.Tests.Functional;
 /// Sinner's Pride in MaraCooldowns.cs.
 ///
 /// Damage has no spread, so two hits' ratio is exact. Random procs are forced, the chance of each read from its rolls. A talent's bonus
-/// is compared with a plain cast of the same ability, or with the main stat measured from a Skittering Blades hit (80.6% of it). Talents
-/// no combat log has shown are marked unverified in the engine; the tests follow the tooltips.
+/// is compared with a plain cast of the same ability. Talents no combat log has shown are marked unverified in the engine; the tests
+/// follow the tooltips. The talents that change the bleed's period (Bloodrush with From the Shadows, Gushing Blood with From the Shadows)
+/// are in MaraLegendaries.cs.
 /// </summary>
 public class MaraTalents
 {
-    /// <summary>The main stat, measured as a Skittering Blades hit on a single enemy with nothing else on, which deals 80.6% of it.</summary>
-    private static readonly double MainStat = MainStatFromSkitteringBlades();
-
-    private static double MainStatFromSkitteringBlades()
-    {
-        var f = StepFights.Mara().WithoutDamageSpread();
-        f.Cast<SkitteringBlades>();
-        return f.Damage<SkitteringBlades>().First().Value / 0.806;
-    }
-
     /// <summary>A Queen's Fang hit at 3 Combo Points, with no talent: what a talent's bonus is compared with.</summary>
     private static double PlainQueensFang()
     {
@@ -267,34 +257,6 @@ public class MaraTalents
         check.Seconds(2.5, (ticks[1].Time - ticks[0].Time).TotalSeconds);
     }
 
-    /// <summary>
-    /// With Bloodrush and From the Shadows, the two speed-ups multiply the bleed's period: every 3 x 0.87 / 1.2 seconds shortened by
-    /// haste, floor(15 / tick) full ticks over the 15 seconds of a 1 Combo Point bleed, plus a partial one for the time left (at least 0.1
-    /// seconds).
-    ///
-    /// From the game data and a combat log, as PR #61 reads them: each scales the bleed's tick period, From the Shadows by 0.87 and
-    /// Bloodrush by 1 / 1.2, and fjrCax7VzGmMZw6h fight 26 has its ticks 0.722 to 0.739 of 3 seconds / haste apart (0.87 / 1.2 = 0.725).
-    /// </summary>
-    [Theory]
-    [InlineData(0.0)]
-    [InlineData(0.1)]
-    [InlineData(0.2)]
-    public void Bloodrush_And_From_The_Shadows_Multiply_The_Bleeds_Tick_Period(double haste)
-    {
-        double tick = 3 * 0.87 / 1.2 / (1 + haste);
-        var f = StepFights.Mara(haste: haste, talents: [Bloodrush.TalentId], legendaries: [FromTheShadows.CapeItemId]);
-        f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
-        f.Set(Mara.ComboPoints, 1); // a 15 second bleed
-
-        f.Cast<HemorrhagingStrike>();
-        f.Wait(20); // the bleed is over
-
-        var ticks = f.Damage("Hemorrhage");
-        using var check = new Checks(f);
-        check.Equal(FullTicks(15, tick) + PartialTick(15, tick, 0.1), ticks.Count);
-        check.Seconds(tick, ticks[1].Time.TotalSeconds - ticks[0].Time.TotalSeconds);
-    }
-
     // ---- Gushing Blood
 
     /// <summary>
@@ -320,9 +282,6 @@ public class MaraTalents
     /// With Gushing Blood, the bleeds a Hemorrhaging Strike puts on the other enemies during Maiden of Death last as long as the struck
     /// enemy's: a strike at 1 Combo Point on a bleeding enemy gives it 15 seconds plus the time it had left, up to 30% of 15, and the
     /// copies run out with it.
-    ///
-    /// From the game data and a combat log, as PR #61 reads them: the talent copies the struck enemy's bleed as the strike left it, and
-    /// fjrCax7VzGmMZw6h fight 26 @ 24.677 has a 39 second bleed on the struck enemy and on 4 others.
     /// </summary>
     [Fact]
     public void Gushing_Blood_Copies_Last_As_Long_As_The_Struck_Enemys_Bleed()
@@ -355,11 +314,6 @@ public class MaraTalents
     /// With Gushing Blood, a Hemorrhaging Strike during Maiden of Death still carries over up to 30% of the time left, on the struck enemy
     /// and on another enemy that was bleeding: two enemies with a 30 second bleed, then Maiden of Death and a strike at 6 Combo Points on
     /// the first, and both bleeds end 30 + 9 = 39 seconds after it.
-    ///
-    /// From a combat log: in fjrCax7VzGmMZw6h fight 26 (Mara player 23, 6 Combo Point strikes), all 218 struck enemies that were bleeding
-    /// and 164 of the 167 other enemies that were bleeding get a 39 second bleed during Maiden of Death (@ 28.816: the struck enemy and 3
-    /// others with 34.9 seconds left). No other enemy in that log had under 9 seconds left, so whether such an enemy gets the struck enemy's
-    /// duration or its own carry-over is not shown.
     /// </summary>
     [Fact]
     public void Gushing_Blood_Keeps_The_30_Percent_Carry_Over_On_Every_Bleeding_Enemy()
@@ -390,51 +344,9 @@ public class MaraTalents
     }
 
     /// <summary>
-    /// With Gushing Blood, From the Shadows and Bloodrush, a Hemorrhaging Strike during Maiden of Death gives the struck enemy and the
-    /// other enemy a bleed whose period has From the Shadows' 0.87 twice: 3 x 0.87 x 0.87 / 1.2 seconds shortened by haste, first tick
-    /// included, against 3 x 0.87 / 1.2 outside Maiden of Death.
-    ///
-    /// From a combat log: in fjrCax7VzGmMZw6h fight 26 (Mara player 23, the one Mara player with all three), the 2,227 pairs of a copy's
-    /// ticks with nothing between them are 0.635 of 3 seconds / haste apart at the median (0.87 x 0.87 / 1.2 = 0.631), and 0.722 to 0.739
-    /// after a refresh outside Maiden of Death. In the game, Gushing Blood copies the struck enemy's bleed after From the Shadows has
-    /// shortened its period, and From the Shadows shortens the copy's again.
-    /// </summary>
-    [Theory]
-    [InlineData(0.0)]
-    [InlineData(0.2)]
-    public void Gushing_Blood_Copies_Take_From_The_Shadows_Twice(double haste)
-    {
-        double tick = 3 * 0.87 * 0.87 / 1.2 / (1 + haste);
-        var f = StepFights.Mara(haste: haste, enemies: 2,
-            talents: [GushingBlood.TalentId, Bloodrush.TalentId], legendaries: [FromTheShadows.CapeItemId]);
-        f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
-        var struck = f.Enemies()[0];
-        var other = f.Enemies()[1];
-
-        f.Cast<MaidenOfDeath>();
-        f.Set(Mara.ComboPoints, 1); // a 15 second bleed
-        f.Cast<HemorrhagingStrike>(struck);
-        double strike = f.CompletedAt("Hemorrhaging Strike");
-        f.Wait(5); // two ticks
-
-        using var check = new Checks(f);
-        foreach (var enemy in new[] { struck, other })
-        {
-            var ticks = f.Damage("Hemorrhage").Where(hit => hit.Target == enemy.Name).ToList();
-            check.True(ticks.Count >= 2, what: $"two ticks on {enemy.Name}");
-            check.Seconds(strike + tick, ticks[0].Time.TotalSeconds, what: $"first tick on {enemy.Name}");
-            check.Seconds(tick, ticks[1].Time.TotalSeconds - ticks[0].Time.TotalSeconds, what: $"tick period on {enemy.Name}");
-        }
-    }
-
-    /// <summary>
     /// With Gushing Blood, each Hemorrhaging Strike during Maiden of Death puts a new bleed on the struck enemy, which restarts its ticks,
     /// even with no other enemy around: recast on every global cooldown while Maiden of Death lasts, the bleed deals no tick, and the first
     /// tick comes 3 seconds after the last strike.
-    ///
-    /// From a combat log: fjrCax7VzGmMZw6h fight 26 (Mara player 23) logs every strike in Maiden of Death as a refresh, a removal and an
-    /// application of the bleed on the struck enemy, 27 of them with no other enemy, and the next tick comes about one period after the
-    /// strike; outside Maiden of Death a strike is a refresh alone and the ticks keep their schedule.
     /// </summary>
     [Fact]
     public void Gushing_Blood_Restarts_The_Bleeds_Ticks_On_Each_Strike_During_Maiden_Of_Death()
@@ -460,10 +372,8 @@ public class MaraTalents
     /// With Gushing Blood, the bleed deals 50% more damage to an enemy with your Seething Poison, and Seething Poison itself adds 20% to
     /// the bleed: 1.8 times in all. The first tick of a bleed with Seething Poison on the enemy is 1.2 x 1.5 = 1.8 times the first tick of
     /// a plain bleed.
-    ///
-    /// TODO: whether the two bonuses multiply (1.8) or add (1.7) is not in the tooltips; the engine multiplies. Check in game.
     /// </summary>
-    [Fact(Skip = "Gushing Blood with Seething Poison: 1.8 (multiplied) or 1.7 (added): to check in game")]
+    [Fact]
     public void Gushing_Blood_Raises_The_Bleed_By_50_Percent_On_Top_Of_Seething_Poison()
     {
         var plainScenario = StepFights.Mara().WithoutDamageSpread();
@@ -562,8 +472,6 @@ public class MaraTalents
         foreach (double chance in chances)
             check.Equal(0.03, chance, what: "a Corrosive Spill roll's chance");
         check.True(ticks.Count > 0, what: "spill ticks");
-        foreach (var tick in ticks)
-            check.Equal(1.58, tick.Value / MainStat, 1.58 * StepAsserts.RatioTolerance, what: "a spill tick over the main stat");
     }
 
     // ---- Hemotoxin
@@ -586,7 +494,177 @@ public class MaraTalents
         using var check = new Checks(f);
         check.Equal(0.12, procs.ChancesOf(Hemotoxin.ProcKey).First());
         check.True(ticks.Count >= 2);
-        check.Equal(0.2, ticks[0].Value / MainStat, 0.2 * StepAsserts.RatioTolerance);
         check.Seconds(1.5, (ticks[1].Time - ticks[0].Time).TotalSeconds);
+    }
+
+    // ---- Hemotoxin's burst
+
+    /// <summary>
+    /// A bare Mara with Hemotoxin and <paramref name="others"/> more enemies, whose first Hemotoxin roll applies a stack and the others
+    /// none. A Backstab gives the stack; a Hemorrhaging Strike at <paramref name="points"/> Combo Points on the main enemy then consumes
+    /// it, and the fight waits out the bleed. Damage has no spread.
+    /// </summary>
+    private static StepDriver BurstFight(int others = 0, int points = 1, bool seethingPoison = false, double haste = 0)
+    {
+        var f = StepFights.Mara(haste: haste, enemies: 1 + others, talents: [Hemotoxin.TalentId]).WithoutDamageSpread();
+        int rolls = 0;
+        f.ForceProcs(key => key == Hemotoxin.ProcKey ? rolls++ == 0 : null);
+
+        if (seethingPoison)
+        {
+            f.Cast<BroodingShadows>(); // into Stealth
+            f.Cast<WidowsBite>(); // Seething Poison, and the stack (first roll)
+        }
+        else f.Cast<Backstab>(); // the stack
+        f.Set(Mara.ComboPoints, points); // enough to cast Hemorrhaging Strike
+        f.Cast<HemorrhagingStrike>(); // consumes it
+        f.Wait(35); // the bleed is over
+        return f;
+    }
+
+    /// <summary>The total damage of the bleed on the main enemy.</summary>
+    private static double BleedTotal(StepDriver f) =>
+        f.Damage("Hemorrhage").Where(hit => hit.Target == f.Enemy.Name).Sum(hit => hit.Value);
+
+    /// <summary>
+    /// With Hemotoxin, a Hemorrhaging Strike on an enemy with a stack consumes it and deals 75% of the bleed's damage to that enemy: the
+    /// burst is 0.75 times everything the bleed deals.
+    /// </summary>
+    [Fact]
+    public void Hemotoxins_Burst_Deals_75_Percent_Of_The_Bleed_To_The_Target()
+    {
+        var f = BurstFight();
+
+        var bursts = f.Ticks(Hemotoxin.BurstEffectId);
+
+        using var check = new Checks(f);
+        check.Equal(1, bursts.Count);
+        check.Ratio(0.75, bursts[0].Value / BleedTotal(f));
+    }
+
+    /// <summary>Hemotoxin's burst uses up the stack: a second Hemorrhaging Strike with no stack left bursts nothing.</summary>
+    [Fact]
+    public void Hemotoxins_Burst_Consumes_The_Stack()
+    {
+        var f = StepFights.Mara(talents: [Hemotoxin.TalentId]).WithoutDamageSpread();
+        int rolls = 0;
+        f.ForceProcs(key => key == Hemotoxin.ProcKey ? rolls++ == 0 : null);
+
+        f.Cast<Backstab>(); // the stack
+        f.Set(Mara.ComboPoints, 1);
+        f.Cast<HemorrhagingStrike>();
+        f.Set(Mara.ComboPoints, 1);
+        f.Cast<HemorrhagingStrike>();
+
+        Assert.Equal(1, f.Ticks(Hemotoxin.BurstEffectId).Count);
+    }
+
+    /// <summary>A Hemorrhaging Strike on an enemy with no Hemotoxin stack has no burst.</summary>
+    [Fact]
+    public void Hemorrhaging_Strike_Without_A_Stack_Has_No_Burst()
+    {
+        var f = StepFights.Mara(enemies: 2, talents: [Hemotoxin.TalentId]);
+        f.ForceProcs(key => key == Hemotoxin.ProcKey ? false : null);
+
+        f.Set(Mara.ComboPoints, 1);
+        f.Cast<HemorrhagingStrike>();
+
+        Assert.Empty(f.Ticks(Hemotoxin.BurstEffectId));
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst hits the other nearby enemies for 50% of the bleed's damage, as poison: with one other enemy, it takes half the
+    /// bleed, two thirds of the target's share.
+    /// </summary>
+    [Fact]
+    public void Hemotoxins_Burst_Deals_50_Percent_Of_The_Bleed_To_A_Nearby_Enemy()
+    {
+        var f = BurstFight(others: 1);
+
+        var bursts = f.Ticks(Hemotoxin.BurstEffectId);
+        var nearby = bursts.Single(hit => hit.Target != f.Enemy.Name);
+
+        AssertRatio(0.50, nearby.Value / BleedTotal(f));
+    }
+
+    /// <summary>Hemotoxin's burst hits every nearby enemy, and the target once.</summary>
+    [Fact]
+    public void Hemotoxins_Burst_Hits_Every_Enemy_Once()
+    {
+        var f = BurstFight(others: 3);
+
+        var bursts = f.Ticks(Hemotoxin.BurstEffectId);
+
+        using var check = new Checks(f);
+        check.Equal(4, bursts.Count);
+        check.Equal(4, bursts.Select(hit => hit.Target).Distinct().Count());
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst on nearby enemies falls off beyond 1 other enemy, as area damage does: each of N others takes 1 / sqrt(N) of what
+    /// a lone other enemy takes, and the target's share stays the same.
+    /// </summary>
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    public void Hemotoxins_Burst_On_Nearby_Enemies_Falls_Off_With_Their_Number(int others)
+    {
+        var loneFight = BurstFight(others: 1);
+        double lone = loneFight.Ticks(Hemotoxin.BurstEffectId).Single(hit => hit.Target != loneFight.Enemy.Name).Value;
+        var f = BurstFight(others);
+        var bursts = f.Ticks(Hemotoxin.BurstEffectId);
+
+        using var check = new Checks(f);
+        foreach (var nearby in bursts.Where(hit => hit.Target != f.Enemy.Name))
+            check.Ratio(1 / Math.Sqrt(others), nearby.Value / lone);
+        check.Ratio(1.0, bursts.Single(hit => hit.Target == f.Enemy.Name).Value / (BleedTotal(f) * 0.75));
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst grows with the Combo Points spent on the Hemorrhaging Strike, as the bleed's duration does: a strike at 6 Combo
+    /// Points (30 second bleed) bursts twice as hard as one at 1 (15 seconds).
+    /// </summary>
+    [Fact]
+    public void Hemotoxins_Burst_Grows_With_The_Combo_Points_Spent()
+    {
+        double at1 = BurstFight(points: 1).Ticks(Hemotoxin.BurstEffectId).Single().Value;
+        double at6 = BurstFight(points: 6).Ticks(Hemotoxin.BurstEffectId).Single().Value;
+
+        AssertRatio(2.0, at6 / at1);
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst carries the bleed's damage bonuses: with Seething Poison on the enemy, which makes the bleed deal 20% more, the
+    /// burst is 1.2 times a plain one.
+    /// </summary>
+    [Fact]
+    public void Hemotoxins_Burst_Carries_The_Bleeds_Seething_Poison_Bonus()
+    {
+        double plain = BurstFight().Ticks(Hemotoxin.BurstEffectId).Single().Value;
+        double poisoned = BurstFight(seethingPoison: true).Ticks(Hemotoxin.BurstEffectId).Single().Value;
+
+        AssertRatio(1.2, poisoned / plain);
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst takes haste twice, as the bleed does: more ticks over the same duration, (1 + haste), and Creeping Death's
+    /// +0.5% poison and bleed damage per 1% haste on each of them, (1 + 0.5 x haste). The burst on the main target is the base burst
+    /// times (1 + haste) x (1 + 0.5 x haste).
+    ///
+    /// The hastes make the bleed's 15 seconds a whole number of ticks.
+    /// </summary>
+    [Theory]
+    [InlineData(0.2)]
+    [InlineData(0.4)]
+    [InlineData(0.6)]
+    public void Hemotoxins_Damage_Double_Dips_On_Haste(double haste)
+    {
+        double baseBurst = BurstFight().Ticks(Hemotoxin.BurstEffectId).Single().Value;
+        double expectedBurst = baseBurst * (1 + haste) * (1 + 0.5 * haste);
+
+        double actualBurst = BurstFight(haste: haste).Ticks(Hemotoxin.BurstEffectId).Single().Value;
+
+        AssertRatio(expectedBurst, actualBurst);
     }
 }

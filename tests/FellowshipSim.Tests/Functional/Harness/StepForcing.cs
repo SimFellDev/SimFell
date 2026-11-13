@@ -28,6 +28,17 @@ public static class StepForcing
     }
 
     /// <summary>
+    /// Pins the random duration of effects that roll one (Volatile Poison's 6 to 8 seconds): <paramref name="force"/> returns the seconds
+    /// for a roll, or null to leave it random. Returns the recorder of every duration rolled.
+    /// </summary>
+    public static ForcedDurations ForceDurations(this StepDriver driver, Func<EffectDurationRequest, double?> force)
+    {
+        var durations = new ForcedDurations(driver.Context.Outcomes, force);
+        driver.Context.Outcomes = durations;
+        return durations;
+    }
+
+    /// <summary>
     /// Every hit deals its damage with no +/-10% spread for the rest of the fight, unlike the game and the sims, so a damage test can check exact values.
     /// Crits still roll: a test of exact damage pins crit to 0 or forces it.
     /// </summary>

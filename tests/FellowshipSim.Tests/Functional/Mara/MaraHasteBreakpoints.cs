@@ -71,25 +71,56 @@ public class MaraHasteBreakpoints
     // ---- Volatile Poison
 
     /// <summary>
-    /// Volatile Poison rolls a duration of 6 to 8 seconds and ticks every sixth of it, shortened by haste: floor(6 x (1 + haste)) full ticks
-    /// plus a partial one for the time left (at least 0.1 seconds), then it erupts once.
+    /// Volatile Poison rolls its duration between 6 and 8 seconds: over 20 fights each application's roll is inside that range, and the
+    /// rolls are not all the same.
     ///
-    /// From a Skittering Blades in Stealth. The harness cannot force the duration roll, so the hastes are ones where the count is the same at
-    /// 6 and at 8 seconds, and the test checks the formula at both ends. Game data: the duration manager rolls 6 to 8, the tick period
+    /// Game data: the duration manager rolls 6 to 8 (NOTES.md, Volatile Poison); combat logs: durations spread evenly from 6.000s to 7.999s.
+    /// </summary>
+    [Fact]
+    public void Volatile_Poison_Rolls_A_Duration_Between_6_And_8_Seconds()
+    {
+        var rolls = new List<(double Min, double Max, double Seconds)>();
+        for (int seed = 1; seed <= 20; seed++)
+        {
+            var f = StepFights.Mara(seed: seed);
+            var durations = f.ForceDurations(_ => null);
+
+            f.Cast<BroodingShadows>(); // into Stealth
+            f.Cast<StealthSkitteringBlades>();
+
+            rolls.AddRange(durations.Rolls);
+        }
+
+        using var check = new Checks();
+        check.Equal(20, rolls.Count, what: "one roll per application");
+        check.True(rolls.All(roll => roll.Min == 6 && roll.Max == 8), what: "every roll's range is 6 to 8 seconds");
+        check.True(rolls.All(roll => roll.Seconds is >= 6 and <= 8), what: "every duration is from 6 to 8 seconds");
+        check.True(rolls.Max(roll => roll.Seconds) - rolls.Min(roll => roll.Seconds) > 0.5, what: "the durations differ");
+    }
+
+    /// <summary>
+    /// Volatile Poison ticks a sixth of its duration apart, shortened by haste, so the standard tick count applies with that period:
+    /// floor(duration / period) full ticks plus a partial one for the time left (at least 0.1 seconds), whatever duration it rolled, then
+    /// it erupts once.
+    ///
+    /// From a Skittering Blades in Stealth, with the duration pinned at the ends of the range and in the middle. Game data: the tick period
     /// scaler is the duration / 6 (NOTES.md, Volatile Poison).
     /// </summary>
     [Theory]
-    [InlineData(0.0)]
-    [InlineData(0.13)]
-    [InlineData(0.2)]
-    [InlineData(0.3)]
-    [InlineData(0.43)]
-    [InlineData(0.7)]
-    public void Volatile_Poison_Ticks_6_Times_1_Plus_Haste_Plus_A_Partial(double haste)
+    [InlineData(6.0, 0.0)]
+    [InlineData(6.0, 0.13)]
+    [InlineData(6.0, 0.3)]
+    [InlineData(7.0, 0.0)]
+    [InlineData(7.0, 0.13)]
+    [InlineData(7.0, 0.3)]
+    [InlineData(8.0, 0.0)]
+    [InlineData(8.0, 0.13)]
+    [InlineData(8.0, 0.3)]
+    public void Volatile_Poison_Ticks_Floor_Of_Duration_Over_Period_Plus_A_Partial(double duration, double haste)
     {
-        int TicksIn(double duration) =>
-            FullTicks(duration, duration / 6 / (1 + haste)) + PartialTick(duration, duration / 6 / (1 + haste), 0.1);
+        double period = duration / 6 / (1 + haste);
         var f = StepFights.Mara(haste: haste);
+        f.ForceDurations(_ => duration);
 
         f.Cast<BroodingShadows>(); // into Stealth
         f.Cast<StealthSkitteringBlades>();
@@ -97,8 +128,7 @@ public class MaraHasteBreakpoints
         f.Wait(10); // the poison is over and has erupted
 
         using var check = new Checks(f);
-        check.Equal(TicksIn(6), TicksIn(8)); // the roll does not change the count
-        check.Equal(TicksIn(6), f.Ticks(VolatilePoison.EffectId).Count);
+        check.Equal(FullTicks(duration, period) + PartialTick(duration, period, 0.1), f.Ticks(VolatilePoison.EffectId).Count);
         check.Equal(1, f.Ticks(VolatilePoison.EruptionEffectId).Count);
     }
 }

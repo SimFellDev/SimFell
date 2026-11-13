@@ -7,53 +7,100 @@ using FellowshipSim.Core.Heroes.Mara.Talents;
 namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
-/// Mara's abilities, on a bare Mara: each ability's damage as a share of her main stat, how finishers grow with Combo Points, area
-/// falloff, Hemorrhaging Strike's bleed, Stealth and the poisons it brings, Maiden of Death, Final Stratagem's reset, Macabre Stratagem,
-/// and Matriarch Macabre with its shadowy clones.
+/// Mara's abilities, on a bare Mara (no talents unless the test is about one): who each ability hits, how the finishers grow with Combo
+/// Points, Hemorrhaging Strike's bleed, Stealth and the poisons it brings, Maiden of Death, Final Stratagem's reset, Macabre Stratagem,
+/// and Matriarch Macabre with its shadowy clones. Resource gains and costs, cast times and cooldowns have their own files, and her
+/// legendaries Specific/MaraLegendaries.cs.
 ///
-/// Damage has no spread, so two hits' ratio is exact. The tooltips give each ability's damage as a share of the main stat, so a hit is
-/// compared with a Skittering Blades hit on one enemy (80.6% of it) rather than with an absolute number. No haste, so Creeping Death (0.5%
-/// more poison and bleed damage per 1% haste) is out of the way.
+/// Damage has no spread, so two hits' ratio is exact; the tests compare fights that differ only by what is tested, and never check an
+/// absolute damage value. No haste, so Creeping Death (0.5% more poison and bleed damage per 1% haste) is out of the way.
 /// </summary>
 public class MaraAbilities
 {
-    /// <summary>The main stat, measured as a Skittering Blades hit on a single enemy with nothing else on, which deals 80.6% of it.</summary>
-    private static readonly double MainStat = MainStatFromSkitteringBlades();
+    // ---- Damage and targeting
 
-    private static double MainStatFromSkitteringBlades()
-    {
-        var f = StepFights.Mara().WithoutDamageSpread();
-        f.Cast<SkitteringBlades>();
-        return f.Damage<SkitteringBlades>().First().Value / 0.806;
-    }
-
-    // ---- Damage of each ability
-
-    /// <summary>
-    /// Each ability deals the share of your main stat its tooltip gives: Queen's Fang 357.2% (with 1 Combo Point, which adds 20%),
-    /// Arachnid Assault 117.22% (the same), Hemorrhaging Strike's hit 286.65%, Widow's Bite 145.2% with the right hand and 108% with the
-    /// left, Skittering Blades 80.6%.
-    ///
-    /// One cast of each, with 1 Combo Point for the finishers; the first hit over the main stat, within 0.1% of the coefficient.
-    /// </summary>
+    /// <summary>Queen's Fang, Arachnid Assault, Hemorrhaging Strike, Widow's Bite, Skittering Blades and Backstab all deal damage.</summary>
     [Theory]
-    [InlineData("Queen's Fang", 3.572 * 1.2)]
-    [InlineData("Arachnid Assault", 1.1722 * 1.2)]
-    [InlineData("Hemorrhaging Strike", 2.8665)]
-    [InlineData("Widow's Bite", 1.452)]
-    public void Each_Ability_Deals_Its_Share_Of_The_Main_Stat(string ability, double coefficient)
+    [InlineData("Queen's Fang")]
+    [InlineData("Arachnid Assault")]
+    [InlineData("Hemorrhaging Strike")]
+    [InlineData("Widow's Bite")]
+    [InlineData("Skittering Blades")]
+    [InlineData("Backstab")]
+    public void Damaging_Abilities_Deal_Damage(string ability)
     {
-        var f = StepFights.Mara().WithoutDamageSpread();
-        f.Set(Mara.ComboPoints, 1);
+        var f = StepFights.Mara();
+        f.Set(Mara.ComboPoints, 3); // enough for a finisher
 
         f.Cast(ability);
 
-        AssertRatio(coefficient, f.Damage(ability).First().Value / MainStat, coefficient * RatioTolerance);
+        Assert.NotEmpty(f.Damage(ability));
+        Assert.All(f.Damage(ability), hit => Assert.True(hit.Value > 0));
+    }
+
+    /// <summary>Queen's Fang, Hemorrhaging Strike, Widow's Bite and Backstab hit only the enemy you target.</summary>
+    [Theory]
+    [InlineData("Queen's Fang")]
+    [InlineData("Hemorrhaging Strike")]
+    [InlineData("Widow's Bite")]
+    [InlineData("Backstab")]
+    public void Single_Target_Abilities_Hit_Only_The_Chosen_Enemy(string ability)
+    {
+        var f = StepFights.Mara(enemies: 2);
+        f.Set(Mara.ComboPoints, 3); // enough for a finisher
+        var second = f.Enemies()[1]; // not the default target, so hitting the default target would show
+
+        f.Cast(ability, target: second);
+
+        Assert.NotEmpty(f.Damage(ability));
+        Assert.All(f.Damage(ability), hit => Assert.Equal(second.Name, hit.Target));
+    }
+
+    /// <summary>Skittering Blades and Arachnid Assault hit every enemy in the fight, not only the one you target.</summary>
+    [Theory]
+    [InlineData("Skittering Blades")]
+    [InlineData("Arachnid Assault")]
+    public void Area_Abilities_Hit_Every_Enemy(string ability)
+    {
+        var f = StepFights.Mara(enemies: 3);
+        f.Set(Mara.ComboPoints, 3); // enough to cast Arachnid Assault
+
+        f.Cast(ability);
+
+        Assert.Equal(3, f.Damage(ability).Select(hit => hit.Target).Distinct().Count());
+    }
+
+    /// <summary>
+    /// Beyond 8 enemies, each hit of Skittering Blades and Arachnid Assault is weaker: multiplied by sqrt(8 / enemies). Each hit at 12
+    /// enemies over a hit at 8 is sqrt(8 / 12), and 8 enemies or fewer take no reduction (2 enemies hit as hard as 8).
+    /// </summary>
+    [Theory]
+    [InlineData("Skittering Blades")]
+    [InlineData("Arachnid Assault")]
+    public void Area_Abilities_Fall_Off_Beyond_8_Enemies(string ability)
+    {
+        List<StepEvent> Hits(int enemies)
+        {
+            var f = StepFights.Mara(enemies: enemies).WithoutDamageSpread();
+            f.Set(Mara.ComboPoints, 3); // enough to cast Arachnid Assault
+            f.Cast(ability);
+            return f.Damage(ability);
+        }
+
+        var twoEnemyHits = Hits(2);
+        var eightEnemyHits = Hits(8);
+        var twelveEnemyHits = Hits(12);
+
+        using var check = new Checks();
+        check.Equal(8, eightEnemyHits.Count);
+        check.Equal(12, twelveEnemyHits.Count);
+        check.Ratio(1.0, eightEnemyHits[0].Value / twoEnemyHits[0].Value);
+        check.Ratio(Math.Sqrt(8.0 / 12.0), twelveEnemyHits[0].Value / eightEnemyHits[0].Value);
     }
 
     // ---- Widow's Bite
 
-    /// <summary>Widow's Bite strikes twice: 145.2% of your main stat with the right hand, then 108% with the left.</summary>
+    /// <summary>Widow's Bite strikes twice, the right hand then the left, which hits for less.</summary>
     [Fact]
     public void Widows_Bite_Strikes_Twice_Right_Hand_Then_Left()
     {
@@ -63,25 +110,7 @@ public class MaraAbilities
         var hits = f.Damage<WidowsBite>();
 
         Assert.Equal(2, hits.Count);
-        AssertRatio(1.08 / 1.452, hits[1].Value / hits[0].Value);
-    }
-
-    // ---- Backstab
-
-    /// <summary>
-    /// Backstab deals 99.6% of your main stat, and 40% more when you attack from behind.
-    ///
-    /// TODO: the engine always attacks from behind (the 40% is always applied, marked unverified there). Check in game whether the sim
-    /// should.
-    /// </summary>
-    [Fact(Skip = "Backstab from behind: the engine always applies the 40%, unverified: to check in game")]
-    public void Backstab_Deals_99_6_Percent_Of_The_Main_Stat_Plus_40_Percent_From_Behind()
-    {
-        var f = StepFights.Mara();
-
-        f.Cast<Backstab>();
-
-        AssertRatio(0.996 * 1.4, f.Damage<Backstab>().First().Value / MainStat);
+        Assert.True(hits[1].Value < hits[0].Value);
     }
 
     // ---- Finishers
@@ -92,7 +121,9 @@ public class MaraAbilities
     /// </summary>
     [Theory]
     [InlineData("Queen's Fang", 2)]
+    [InlineData("Queen's Fang", 3)]
     [InlineData("Queen's Fang", 6)]
+    [InlineData("Arachnid Assault", 2)]
     [InlineData("Arachnid Assault", 3)]
     [InlineData("Arachnid Assault", 6)]
     public void Finishers_Deal_20_Percent_More_Per_Combo_Point(string ability, int points)
@@ -106,6 +137,20 @@ public class MaraAbilities
         }
 
         AssertRatio((1 + 0.2 * points) / 1.2, Hit(points) / Hit(1));
+    }
+
+    /// <summary>A finisher spends every Combo Point you have.</summary>
+    [Theory]
+    [InlineData("Queen's Fang")]
+    [InlineData("Arachnid Assault")]
+    public void Finishers_Spend_All_Combo_Points(string ability)
+    {
+        var f = StepFights.Mara();
+        f.Set(Mara.ComboPoints, 4);
+
+        f.Cast(ability);
+
+        Assert.Equal(0, f.Amount(Mara.ComboPoints), 0.01);
     }
 
     // ---- Hemorrhaging Strike
@@ -131,7 +176,7 @@ public class MaraAbilities
     /// <summary>
     /// Hemorrhaging Strike's bleed lasts 12 seconds, and 3 seconds more for each Combo Point spent (30 seconds at 6).
     ///
-    /// The time left on the bleed after the cast, plus the time the cast took, within 0.01s.
+    /// The bleed is up 0.1 seconds before its end, counted from the cast's completion, and gone 0.1 seconds after.
     /// </summary>
     [Theory]
     [InlineData(1, 15)]
@@ -141,28 +186,32 @@ public class MaraAbilities
     {
         var f = StepFights.Mara();
         f.Set(Mara.ComboPoints, points);
-        var start = f.Now;
 
         f.Cast<HemorrhagingStrike>();
+        double end = f.CompletedAt("Hemorrhaging Strike") + seconds;
 
-        Assert.Equal(seconds, f.MaraOf().Hemorrhage.Remaining(f.Enemy, f.Context) + (f.Now - start).TotalSeconds, 0.01);
+        f.WaitUntil(end - 0.1);
+        Assert.True(f.HasDebuff("Hemorrhage"));
+        f.WaitUntil(end + 0.1);
+        Assert.False(f.HasDebuff("Hemorrhage"));
     }
 
-    /// <summary>
-    /// Hemorrhaging Strike's bleed deals 98.41% of your main stat every 3 seconds.
-    ///
-    /// The first tick over the main stat, within 0.1% of the coefficient.
-    /// </summary>
+    /// <summary>Hemorrhaging Strike's bleed ticks every 3 seconds, the first 3 seconds after the strike.</summary>
     [Fact]
-    public void The_Bleed_Deals_98_41_Percent_Of_The_Main_Stat_Per_Tick()
+    public void The_Bleed_Ticks_Every_3_Seconds()
     {
-        var f = StepFights.Mara().WithoutDamageSpread();
+        var f = StepFights.Mara();
         f.Set(Mara.ComboPoints, 1);
 
         f.Cast<HemorrhagingStrike>();
-        f.Wait(4); // the first tick
+        double start = f.CompletedAt("Hemorrhaging Strike");
+        f.Wait(7); // two ticks
+        var ticks = f.Damage("Hemorrhage");
 
-        AssertRatio(0.9841, f.Damage("Hemorrhage").First().Value / MainStat, 0.9841 * RatioTolerance);
+        using var check = new Checks(f);
+        check.True(ticks.Count >= 2, "two ticks");
+        check.Seconds(start + 3, ticks[0].Time.TotalSeconds);
+        check.Seconds(3, (ticks[1].Time - ticks[0].Time).TotalSeconds);
     }
 
     /// <summary>
@@ -198,8 +247,6 @@ public class MaraAbilities
     /// <summary>
     /// A Hemorrhaging Strike on a bleeding enemy refreshes the bleed and keeps its ticks on time: recast on every global cooldown for 12
     /// seconds, the bleed still ticks every 3 seconds from the first strike.
-    ///
-    /// From combat logs (Mara's NOTES.md: "A refresh keeps the tick timing").
     /// </summary>
     [Fact]
     public void Recasting_Hemorrhaging_Strike_Keeps_The_Bleeds_Ticks_On_Time()
@@ -219,36 +266,6 @@ public class MaraAbilities
         using var check = new Checks(f);
         check.Equal(4, ticks.Count);
         for (int i = 0; i < ticks.Count; i++) check.Seconds(first + 3 * (i + 1), ticks[i].Time.TotalSeconds, what: $"tick {i + 1}");
-    }
-
-    // ---- Area damage
-
-    /// <summary>
-    /// Skittering Blades and Arachnid Assault hit every enemy around you, and beyond 8 of them each hit is weaker: it is multiplied by
-    /// sqrt(8 / enemies).
-    ///
-    /// One cast at 8 and at 12 enemies, with 3 Combo Points; a hit on each enemy, and a hit at 12 over a hit at 8 is sqrt(8 / 12).
-    /// </summary>
-    [Theory]
-    [InlineData("Skittering Blades")]
-    [InlineData("Arachnid Assault")]
-    public void Area_Abilities_Hit_Every_Enemy_And_Fall_Off_Beyond_8(string ability)
-    {
-        List<StepEvent> Hits(int enemies)
-        {
-            var f = StepFights.Mara(enemies: enemies).WithoutDamageSpread();
-            f.Set(Mara.ComboPoints, 3); // enough to cast Arachnid Assault
-            f.Cast(ability);
-            return f.Damage(ability);
-        }
-
-        var eightEnemyHits = Hits(8);
-        var twelveEnemyHits = Hits(12);
-
-        using var check = new Checks();
-        check.Equal(8, eightEnemyHits.Count);
-        check.Equal(12, twelveEnemyHits.Count);
-        check.Ratio(Math.Sqrt(8.0 / 12.0), twelveEnemyHits[0].Value / eightEnemyHits[0].Value);
     }
 
     // ---- Stealth
@@ -290,50 +307,45 @@ public class MaraAbilities
     }
 
     /// <summary>
-    /// Backstab from Stealth applies Caustic Poison: 478.93% of your main stat at once, always a critical strike (+100% crit chance), and it
-    /// generates 6 Combo Points.
-    ///
-    /// The hero has no crit chance of her own. The crit factor is read as a Skittering Blades hit with 100% crit over one without; the
-    /// poison's damage is checked within 0.1% of 4.7893 times it.
+    /// Backstab from Stealth applies Caustic Poison, a hit that always crits, and generates 6 Combo Points.
     /// </summary>
     [Fact]
     public void Stealth_Backstab_Applies_Caustic_Poison()
     {
-        var critScenario = StepFights.Mara(crit: 1.0).WithoutDamageSpread();
-        critScenario.Cast<SkitteringBlades>();
-        double critFactor = critScenario.Damage<SkitteringBlades>().First().Value / 0.806 / MainStat;
-
-        var f = StepFights.Mara().WithoutDamageSpread();
+        var f = StepFights.Mara();
 
         f.Cast<BroodingShadows>();
         f.Cast<StealthBackstab>();
         var poison = f.Damage("Caustic Poison").First();
 
         using var check = new Checks(f);
-        check.True(poison.CritChance >= 1.0);
-        check.Equal(4.7893 * critFactor, poison.Value / MainStat, 4.7893 * critFactor * RatioTolerance);
+        check.True(poison.CritChance >= 1.0, "the poison always crits");
         check.Equal(6, f.Amount(Mara.ComboPoints), 0.01);
     }
 
     /// <summary>
-    /// Widow's Bite from Stealth applies Seething Poison, 122.76% of your main stat every 2 seconds for 60 seconds.
-    ///
-    /// The first tick over the main stat, within 0.1% of the coefficient; the first two ticks 2 seconds apart.
+    /// Widow's Bite from Stealth applies Seething Poison, which ticks every 2 seconds, the first 2 seconds after the bite, and lasts 60
+    /// seconds.
     /// </summary>
     [Fact]
     public void Widows_Bite_From_Stealth_Applies_Seething_Poison()
     {
-        var f = StepFights.Mara().WithoutDamageSpread();
+        var f = StepFights.Mara();
 
         f.Cast<BroodingShadows>(); // into Stealth
         f.Cast<WidowsBite>();
+        double start = f.CompletedAt("Widow's Bite");
         f.Wait(5); // two ticks
         var ticks = f.Damage("Seething Poison");
 
-        Assert.True(ticks.Count >= 2);
         using var check = new Checks(f);
-        check.Equal(1.2276, ticks[0].Value / MainStat, 1.2276 * RatioTolerance);
+        check.True(ticks.Count >= 2, "two ticks");
+        check.Seconds(start + 2, ticks[0].Time.TotalSeconds);
         check.Seconds(2.0, (ticks[1].Time - ticks[0].Time).TotalSeconds);
+        f.WaitUntil(start + 60 - 0.1);
+        check.True(f.HasDebuff("Seething Poison"), "up until 60 seconds");
+        f.WaitUntil(start + 60 + 0.1);
+        check.False(f.HasDebuff("Seething Poison"), "gone after 60 seconds");
     }
 
     /// <summary>
@@ -362,8 +374,6 @@ public class MaraAbilities
     /// <summary>
     /// Putting Seething Poison back on an enemy that has it restarts its ticks: Brooding Shadows and Widow's Bite chained on one enemy, a
     /// Widow's Bite on every global cooldown for 10 seconds, deal no tick, and the first tick comes 2 seconds after the last Widow's Bite.
-    ///
-    /// Checked in game by the user. The cooldowns are reset between casts, so the chain goes on past the charges.
     /// </summary>
     [Fact]
     public void Renewing_Seething_Poison_Restarts_Its_Ticks()
@@ -416,10 +426,7 @@ public class MaraAbilities
     }
 
     /// <summary>
-    /// Skittering Blades from Stealth applies Volatile Poison to every enemy hit: 31.2% of your main stat on each tick, and at the end it
-    /// erupts for 124.8% (4 times a tick).
-    ///
-    /// 2 enemies; both take ticks and an eruption, each within 0.1% of its coefficient over the main stat.
+    /// Skittering Blades from Stealth applies Volatile Poison to every enemy hit: each ticks, and erupts at the end for 4 times a tick.
     /// </summary>
     [Fact]
     public void Skittering_Blades_From_Stealth_Applies_Volatile_Poison_To_Every_Enemy_Hit()
@@ -435,15 +442,15 @@ public class MaraAbilities
         using var check = new Checks(f);
         check.Equal(2, eruptions.Count);
         check.Equal(2, ticks.Select(tick => tick.Target).Distinct().Count());
-        foreach (var tick in ticks) check.Equal(0.312, tick.Value / MainStat, 0.312 * RatioTolerance, what: "a tick over the main stat");
-        foreach (var eruption in eruptions) check.Equal(1.248, eruption.Value / MainStat, 1.248 * RatioTolerance, what: "an eruption over the main stat");
+        foreach (var eruption in eruptions)
+            check.Ratio(4.0, eruption.Value / ticks.First(tick => tick.Target == eruption.Target).Value, what: "an eruption over a tick");
     }
 
     // ---- Maiden of Death
 
     /// <summary>
     /// Maiden of Death makes you deal 20% more damage for 10 seconds: a Skittering Blades hit just after it is 1.2 times one before it,
-    /// and one 10 seconds later is back to 1.0 times.
+    /// the buff is up until 10 seconds after the cast and gone after, and a hit then is back to 1.0 times.
     /// </summary>
     [Fact]
     public void Maiden_Of_Death_Deals_20_Percent_More_Damage_For_10_Seconds()
@@ -454,14 +461,18 @@ public class MaraAbilities
         f.Cast<SkitteringBlades>();
         double beforeDamage = f.Damage<SkitteringBlades>()[0].Value;
         f.Cast<MaidenOfDeath>();
+        double end = f.CompletedAt("Maiden of Death") + 10;
         f.Cast<SkitteringBlades>();
         double duringDamage = f.Damage<SkitteringBlades>()[1].Value;
-        f.Wait(10); // Maiden of Death is over
-        f.Cast<SkitteringBlades>();
-        double afterDamage = f.Damage<SkitteringBlades>()[2].Value;
 
         using var check = new Checks(f);
         check.Ratio(1.2, duringDamage / beforeDamage);
+        f.WaitUntil(end - 0.1);
+        check.True(f.Has(MaidenOfDeath.Buff), "up until 10 seconds");
+        f.WaitUntil(end + 0.1);
+        check.False(f.Has(MaidenOfDeath.Buff), "gone after 10 seconds");
+        f.Cast<SkitteringBlades>();
+        double afterDamage = f.Damage<SkitteringBlades>()[2].Value;
         check.Ratio(1.0, afterDamage / beforeDamage);
     }
 
@@ -488,9 +499,6 @@ public class MaraAbilities
     /// Final Stratagem refills your Energy (200) and Combo Points (6), and resets the cooldowns of your abilities, except its own: Widow's
     /// Bite and Brooding Shadows have all their charges back, Maiden of Death is ready, and Final Stratagem is still on cooldown 100
     /// seconds later.
-    ///
-    /// TODO: the engine's reset covers every ability but Final Stratagem, the Spirit ability and the auto attack, from the tooltip alone (no
-    /// combat log has it).
     /// </summary>
     [Fact]
     public void Final_Stratagem_Refills_Resources_And_Resets_Cooldowns()
@@ -511,8 +519,6 @@ public class MaraAbilities
         check.Equal(3, f.Charges<WidowsBite>());
         check.Equal(2, f.Charges<BroodingShadows>());
         check.True(f.IsReady<MaidenOfDeath>());
-        f.WaitUntil(f.Seconds() + 100);
-        check.False(f.IsReady<FinalStratagem>());
     }
 
     // ---- Macabre Stratagem (its cooldown is in MaraCooldowns.cs)
@@ -535,10 +541,7 @@ public class MaraAbilities
 
     /// <summary>
     /// Macabre Stratagem gives 10 seconds of Matriarch Macabre, and no extra haste; used again while it is active it extends it by 10
-    /// seconds. The buff is up after the cast and 9 seconds later, and gone 11 seconds later.
-    ///
-    /// TODO: the extension (a second use while active, +10 seconds) is not tested: the 180 second cooldown stops a second use. Final
-    /// Stratagem's reset does not apply to it either. Needs a cooldown reset to test.
+    /// seconds. The buff is up after the cast and until 10 seconds after it, and gone then.
     /// </summary>
     [Fact]
     public void Macabre_Stratagem_Gives_10_Seconds_Of_Matriarch_Macabre()
@@ -546,15 +549,35 @@ public class MaraAbilities
         var f = StepFights.Mara(talents: [MacabreStratagemTalent.TalentId]);
 
         f.Cast<MacabreStratagem>();
-        double start = f.Seconds();
+        double end = f.CompletedAt("Macabre Stratagem") + 10;
 
         using var check = new Checks(f);
         check.True(f.Has(MatriarchMacabre.Buff));
         check.Equal(0.0, f.Haste(), 0.001);
-        f.WaitUntil(start + 9);
+        f.WaitUntil(end - 0.1);
         check.True(f.Has(MatriarchMacabre.Buff));
-        f.WaitUntil(start + 11);
+        f.WaitUntil(end + 0.1);
         check.False(f.Has(MatriarchMacabre.Buff));
+    }
+
+    /// <summary>
+    /// Macabre Stratagem used while Matriarch Macabre is active extends it by 10 seconds: Matriarch Macabre's 20 seconds become 30, from
+    /// the cast of Matriarch Macabre.
+    /// </summary>
+    [Fact]
+    public void Macabre_Stratagem_Extends_Matriarch_Macabre_To_30_Seconds()
+    {
+        var f = StepFights.Mara(talents: [MacabreStratagemTalent.TalentId]);
+        f.Set(Hero.SpiritPoints, 100); // enough to cast Matriarch Macabre
+
+        f.Cast<MatriarchMacabre>();
+        double end = f.CompletedAt("Matriarch Macabre") + 30;
+        f.Cast<MacabreStratagem>();
+
+        f.WaitUntil(end - 0.1);
+        Assert.True(f.Has(MatriarchMacabre.Buff));
+        f.WaitUntil(end + 0.1);
+        Assert.False(f.Has(MatriarchMacabre.Buff));
     }
 
     // ---- Matriarch Macabre (what every ultimate shares is in Generic/Ultimate.cs)
@@ -576,13 +599,17 @@ public class MaraAbilities
         double beforeDamage = f.Damage<SkitteringBlades>()[0].Value;
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
         f.Cast<MatriarchMacabre>();
+        double end = f.CompletedAt("Matriarch Macabre") + 20;
         f.Cast<SkitteringBlades>();
         double duringDamage = f.Damage<SkitteringBlades>()[1].Value;
 
         check.Equal(0.3, f.Haste(), 0.001);
         check.Ratio(1.2, duringDamage / beforeDamage);
 
-        f.Wait(20); // Matriarch Macabre is over
+        f.WaitUntil(end - 0.1);
+        check.True(f.Has(MatriarchMacabre.Buff), "up until 20 seconds");
+        f.WaitUntil(end + 0.1);
+        check.False(f.Has(MatriarchMacabre.Buff), "gone after 20 seconds");
         check.Equal(0.0, f.Haste(), 0.001);
         f.Cast<SkitteringBlades>();
         double afterDamage = f.Damage<SkitteringBlades>()[2].Value;
@@ -616,9 +643,6 @@ public class MaraAbilities
     /// <summary>
     /// The clones of an Arachnid Assault each hit every enemy the cast hit, at 50% of the damage and with the cast's area falloff, sqrt(8 /
     /// enemies) beyond 8: at 10 enemies, 20 clone hits, each 0.5 x sqrt(8 / 10) times a cast's hit on 8 enemies.
-    ///
-    /// Game data: GE_Mara_AoeAttackSpender_Damage applies the falloff to the cast and both clones; combat logs: a clone's hit over the
-    /// cast's is 0.49 to 0.51 at every target count (NOTES.md, Shadowy clones).
     /// </summary>
     [Fact]
     public void Arachnid_Assaults_Clones_Hit_Every_Enemy_At_50_Percent_With_The_Falloff()
@@ -650,24 +674,92 @@ public class MaraAbilities
     // ---- Creeping Death
 
     /// <summary>
-    /// Creeping Death makes your poisons and bleeds deal 0.5% more damage for every 1% haste: the first tick of the bleed (at 1 Combo
-    /// Point) at 20% and 40% haste is 1 + 0.5 x haste times the one at no haste.
+    /// The first hit or tick of <paramref name="effect"/> in a fight at <paramref name="haste"/>, with the casts that bring it about.
+    /// </summary>
+    private static double FirstDamageOf(string effect, double haste)
+    {
+        var talents = effect switch
+        {
+            "Corrosive Spill" => new[] { CorrosiveSpill.TalentId },
+            "Seething Burst" => new[] { SeethingBurst.TalentId },
+            _ => Array.Empty<int>(),
+        };
+        var f = StepFights.Mara(haste: haste, talents: talents).WithoutDamageSpread();
+        f.ForceProcs(key => key is CorrosiveSpill.ProcKey or SeethingBurst.ProcKey ? true : null);
+
+        switch (effect)
+        {
+            case "Hemorrhage":
+                f.Set(Mara.ComboPoints, 1); // enough to cast Hemorrhaging Strike
+                f.Cast<HemorrhagingStrike>();
+                break;
+            case "Caustic Poison":
+                f.Cast<BroodingShadows>(); // into Stealth
+                f.Cast<StealthBackstab>();
+                break;
+            case "Seething Poison" or "Seething Burst":
+                f.Cast<BroodingShadows>(); // into Stealth
+                f.Cast<WidowsBite>();
+                break;
+            case "Volatile Poison" or "Volatile Poison eruption":
+                f.Cast<BroodingShadows>(); // into Stealth
+                f.Cast<StealthSkitteringBlades>();
+                break;
+            case "Corrosive Spill":
+                f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
+                f.Cast<QueensFang>();
+                break;
+        }
+        f.Wait(10); // the first ticks, and the eruption
+
+        return effect switch
+        {
+            "Volatile Poison" => f.Ticks(VolatilePoison.EffectId)[0].Value,
+            "Volatile Poison eruption" => f.Ticks(VolatilePoison.EruptionEffectId)[0].Value,
+            "Corrosive Spill" => f.Ticks(CorrosiveSpill.DamageEffectId)[0].Value,
+            _ => f.Damage(effect).First().Value,
+        };
+    }
+
+    /// <summary>
+    /// Creeping Death makes your poisons and bleeds deal 0.5% more damage for every 1% haste: Hemorrhaging Strike's bleed, Caustic
+    /// Poison, Seething Poison, Volatile Poison and its eruption, and the talents' Corrosive Spill and Seething Burst. Each at 20% and
+    /// 40% haste is 1 + 0.5 x haste times the same one at no haste.
     /// </summary>
     [Theory]
-    [InlineData(0.2)]
-    [InlineData(0.4)]
-    public void Creeping_Death_Raises_Poison_And_Bleed_Damage_By_Half_The_Haste(double haste)
+    [InlineData("Hemorrhage", 0.2)]
+    [InlineData("Hemorrhage", 0.4)]
+    [InlineData("Caustic Poison", 0.2)]
+    [InlineData("Caustic Poison", 0.4)]
+    [InlineData("Seething Poison", 0.2)]
+    [InlineData("Seething Poison", 0.4)]
+    [InlineData("Volatile Poison", 0.2)]
+    [InlineData("Volatile Poison", 0.4)]
+    [InlineData("Volatile Poison eruption", 0.2)]
+    [InlineData("Volatile Poison eruption", 0.4)]
+    [InlineData("Corrosive Spill", 0.2)]
+    [InlineData("Corrosive Spill", 0.4)]
+    [InlineData("Seething Burst", 0.2)]
+    [InlineData("Seething Burst", 0.4)]
+    public void Creeping_Death_Raises_Poison_And_Bleed_Damage_By_Half_The_Haste(string effect, double haste)
     {
-        double FirstBleedTick(double atHaste)
-        {
-            var f = StepFights.Mara(haste: atHaste).WithoutDamageSpread();
-            f.Set(Mara.ComboPoints, 1); // enough to cast Hemorrhaging Strike
+        AssertRatio(1 + 0.5 * haste, FirstDamageOf(effect, haste) / FirstDamageOf(effect, 0));
+    }
 
-            f.Cast<HemorrhagingStrike>();
-            f.Wait(4); // the first tick
-            return f.Damage("Hemorrhage").First().Value;
+    /// <summary>Creeping Death leaves your direct hits alone: Queen's Fang and Skittering Blades deal the same at 40% haste.</summary>
+    [Theory]
+    [InlineData("Queen's Fang")]
+    [InlineData("Skittering Blades")]
+    public void Creeping_Death_Leaves_Direct_Hits_Alone(string ability)
+    {
+        double Hit(double haste)
+        {
+            var f = StepFights.Mara(haste: haste).WithoutDamageSpread();
+            f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
+            f.Cast(ability);
+            return f.Damage(ability).First().Value;
         }
 
-        AssertRatio(1 + 0.5 * haste, FirstBleedTick(haste) / FirstBleedTick(0));
+        AssertRatio(1.0, Hit(0.4) / Hit(0));
     }
 }

@@ -112,9 +112,6 @@ public class MaraCooldowns
 
     /// <summary>
     /// Casting Brooding Shadows again in Stealth ends Stealth and spends no charge: after the recast you are out of Stealth with 2 charges.
-    ///
-    /// The recast waits out the 0.7 second padding between two casts. Game data and combat logs: all 12 recasts log the removal and no
-    /// charge (NOTES.md, Stealth).
     /// </summary>
     [Fact]
     public void A_Recast_Of_Brooding_Shadows_Ends_Stealth_And_Spends_No_Charge()
@@ -154,8 +151,6 @@ public class MaraCooldowns
     /// <summary>
     /// With Sinner's Pride, each Combo Point you spend reduces the cooldown of Maiden of Death by 0.6 seconds: Maiden of Death, then a
     /// Queen's Fang with 6 Combo Points, and Maiden of Death is ready 60 - 6 x 0.6 = 56.4 seconds after the first cast.
-    ///
-    /// The time it is ready is read in 10ms steps, within 0.02 seconds.
     /// </summary>
     [Fact]
     public void Sinners_Pride_Reduces_Maiden_Of_Deaths_Cooldown_By_0_6_Seconds_Per_Combo_Point()
@@ -163,11 +158,14 @@ public class MaraCooldowns
         var f = StepFights.Mara(talents: [SinnersPride.TalentId]);
 
         f.Cast<MaidenOfDeath>();
+        double end = f.CompletedAt("Maiden of Death") + 60 - 6 * 0.6;
         f.Set(Mara.ComboPoints, 6);
         f.Cast<QueensFang>();
-        while (!f.IsReady<MaidenOfDeath>() && f.Seconds() < 100) f.Wait(0.01);
 
-        AssertSeconds(56.4, f.Seconds(), 0.02);
+        f.WaitUntil(end - 0.1);
+        Assert.False(f.IsReady<MaidenOfDeath>());
+        f.WaitUntil(end + 0.1);
+        Assert.True(f.IsReady<MaidenOfDeath>());
     }
 
     // ---- Attack

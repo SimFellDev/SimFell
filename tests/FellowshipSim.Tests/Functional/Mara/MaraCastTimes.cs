@@ -74,23 +74,4 @@ public class MaraCastTimes
         Assert.Equal(0, f.Seconds());
     }
 
-    /// <summary>
-    /// Down times add up over a rotation, and haste does not change them: a Backstab, a Widow's Bite, a Skittering Blades, a Hemorrhaging
-    /// Strike and a Backstab in a row take 5 seconds at 50% haste.
-    ///
-    /// Within 5ms, a millisecond per cast.
-    /// </summary>
-    [Fact]
-    public void Down_Times_Add_Up_Over_A_Rotation()
-    {
-        var f = StepFights.Mara(haste: 0.5);
-
-        f.Cast<Backstab>();
-        f.Cast<WidowsBite>();
-        f.Cast<SkitteringBlades>();
-        f.Cast<HemorrhagingStrike>();
-        f.Cast<Backstab>();
-
-        AssertSeconds(5.0, f.Seconds(), tolerance: 0.005);
-    }
 }

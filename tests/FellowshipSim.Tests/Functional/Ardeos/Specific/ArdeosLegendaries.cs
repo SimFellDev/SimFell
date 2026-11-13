@@ -7,7 +7,7 @@ using FellowshipSim.Core.Heroes.Ardeos.Talents;
 namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
-/// Ardeos's legendary items, each worn on a bare Ardeos: Devouring Flame (his bracers) and Fire Toad (his helm). Any legendary also gives Mote of Creation's +10%
+/// Ardeos's legendary items, each worn on a bare Ardeos: Devouring Flame (his bracers), Fire Toad (his helm) and Explosivo (his helm). Any legendary also gives Mote of Creation's +10%
 /// main stat, so a hero without one gets 10 more main stat on top of the base 100, to compare like with like. Explosivo's burn's tick speed and its
 /// effect on Detonate's cast time are in Specific/ArdeosDotTickSpeed.cs and ArdeosCastTimes.cs.
 /// </summary>
@@ -251,5 +251,58 @@ public class ArdeosLegendaries
         using var check = new Checks(f);
         foreach (var enemy in f.Enemies())
             check.True(f.HasDebuff(Explosivo.DamageName, enemy), what: $"burn on {enemy.Name}");
+    }
+
+    /// <summary>Explosivo's burn deals half of the Apocalypse hit that lit it, in all.</summary>
+    [Fact]
+    public void Explosivos_Burn_Deals_50_Percent_Of_The_Apocalypse_Hit()
+    {
+        var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]).WithoutDamageSpread();
+
+        f.Cast<Apocalypse>();
+        f.Wait(15); // the burn ticks out
+
+        AssertRatio(0.5, f.Damage(Explosivo.DamageName).Sum(tick => tick.Value) / f.Damage<Apocalypse>().Single().Value);
+    }
+
+    /// <summary>
+    /// A second Apocalypse on a burning enemy adds to Explosivo's burn instead of replacing it: the burn deals half of both hits in all.
+    /// </summary>
+    [Fact]
+    public void Explosivos_Burns_Accumulate()
+    {
+        var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]).WithoutDamageSpread();
+
+        f.Cast<Apocalypse>();
+        f.Cast<Apocalypse>(); // its second charge, the first burn still going
+        f.Wait(15); // the burn ticks out
+
+        var hits = f.Damage<Apocalypse>();
+        using var check = new Checks(f);
+        check.Equal(2, hits.Count, what: "Apocalypse hits");
+        check.Ratio(0.5, f.Damage(Explosivo.DamageName).Sum(tick => tick.Value) / hits.Sum(hit => hit.Value));
+    }
+
+    /// <summary>Each Fire Ball cast takes 8 seconds off Apocalypse's cooldown: compared with the same moment of a fight without it.
+    /// The 8 seconds are of cooldown, so they pass faster by the legendary's own cooldown recovery.</summary>
+    [Fact]
+    public void Each_Fire_Ball_Takes_8_Seconds_Off_Apocalypses_Cooldown()
+    {
+        double rate = 1;
+        double RechargeRemainingAfter(bool fireBall)
+        {
+            var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]);
+            f.FillResources(); // enough to cast Fire Ball
+            f.Cast<Apocalypse>(); // a charge now recharging
+            if (fireBall) f.Cast<FireBall>();
+            f.WaitUntil(10);
+            rate = f.AccelerationRate<Apocalypse>();
+            return f.RechargeRemaining<Apocalypse>();
+        }
+
+        double without = RechargeRemainingAfter(fireBall: false);
+        double with = RechargeRemainingAfter(fireBall: true);
+
+        AssertSeconds(8 / rate, without - with);
     }
 }

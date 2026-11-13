@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Mara;
@@ -176,28 +177,16 @@ public class MaraResourceEconomy
     }
 
     /// <summary>
-    /// Energy regenerates at about 15 per second: from 0, between 72.5 and 77.5 after 5 seconds (15 per second within half a point).
-    ///
-    /// TODO: the rate is fitted to combat logs (15, within 0.5 per second; the game data has no value). Check in game.
-    /// </summary>
-    [Fact]
-    public void Energy_Regenerates_About_15_Per_Second()
-    {
-        Assert.InRange(RegeneratedIn(0, 5), 72.5, 77.5);
-    }
-
-    /// <summary>
-    /// Haste speeds up Energy regeneration: 15 x (1 + haste) per second. What 5 seconds regenerate from 0 is 1 + haste times what they
-    /// regenerate at 0% haste.
-    ///
-    /// Checked within 1%.
+    /// Energy regenerates at 15 per second, and haste speeds it up: 15 x (1 + haste) per second. From 0, 5 seconds regenerate 75 x (1 +
+    /// haste).
     /// </summary>
     [Theory]
+    [InlineData(0.0)]
     [InlineData(0.2)]
     [InlineData(0.5)]
-    public void Haste_Speeds_Up_Energy_Regeneration(double haste)
+    public void Energy_Regenerates_15_Per_Second_Times_1_Plus_Haste(double haste)
     {
-        AssertRatio(1 + haste, RegeneratedIn(haste, 5) / RegeneratedIn(0, 5), 0.01);
+        AssertRatio(75 * (1 + haste), RegeneratedIn(haste, 5));
     }
 
     /// <summary>Energy stops at 200: at 190 Energy, 10 seconds later you hold 200.</summary>
@@ -248,6 +237,27 @@ public class MaraResourceEconomy
     }
 
     /// <summary>
+    /// Maiden of Death and Predator's Rush stack on Energy regeneration: both up, 5 seconds of regeneration from 0 give 1.2 x 1.2 = 1.44
+    /// times what they give with neither (they multiply, not add to 1.4: the engine's way, to check in game).
+    ///
+    /// Energy is set to 0 after the casts, so their own gains are not counted. Checked within 2%.
+    /// </summary>
+    [Fact]
+    public void Maiden_Of_Death_And_Predators_Rush_Multiply()
+    {
+        var f = StepFights.Mara();
+
+        f.Cast<MaidenOfDeath>();
+        f.Cast<BroodingShadows>(); // Stealth
+        f.Cast<WidowsBite>(); // Seething Poison: Predator's Rush
+        f.Set(Mara.Energy, 0);
+        WaitReading(f, 5);
+        double bothEnergy = f.MaraOf().EnergyAt(f.Now);
+
+        AssertRatio(1.2 * 1.2, bothEnergy / RegeneratedIn(0, 5), 0.02);
+    }
+
+    /// <summary>
     /// Hemorrhaging Strike's bleed gives 2 Energy with each tick. After a Hemorrhaging Strike with 6 Combo Points (a 30 second bleed), 12.5
     /// seconds bring 4 ticks and 4 gains of 2 Energy.
     ///
@@ -287,27 +297,123 @@ public class MaraResourceEconomy
 
     // ---- Venomous Delight
 
+    /// <summary>The damage names of Mara's poisons: what Venomous Delight rolls for.</summary>
+    private static readonly string[] PoisonHits =
+        ["Seething Poison", "Volatile Poison", "Caustic Poison", "Corrosive Spill", "Seething Burst", "Hemotoxin", "Vexira's Venom"];
+
+    /// <summary>A fight with Venomous Delight in which <paramref name="source"/> deals its poison damage, and the Venomous Delight rolls.</summary>
+    private static (StepDriver Fight, ForcedProcs Rolls) PoisonFight(string source)
+    {
+        int[] talents = source switch
+        {
+            "Corrosive Spill" => [VenomousDelight.TalentId, CorrosiveSpill.TalentId],
+            "Seething Burst" => [VenomousDelight.TalentId, SeethingBurst.TalentId],
+            "Hemotoxin" or "Hemotoxin burst" => [VenomousDelight.TalentId, Hemotoxin.TalentId],
+            _ => [VenomousDelight.TalentId],
+        };
+        int enemies = source is "Volatile Poison" or "Seething Burst" or "Corrosive Spill" or "Hemotoxin burst" ? 3 : 1;
+        var f = StepFights.Mara(enemies: enemies, talents: talents,
+            legendaries: source == "Vexira's Venom" ? [VexirasVenom.WristItemId] : null);
+        var rolls = f.ForceProcs(key => key switch
+        {
+            VenomousDelight.ProcKey => false, // only to read its rolls
+            CorrosiveSpill.ProcKey or SeethingBurst.ProcKey or Hemotoxin.ProcKey => true,
+            _ => null,
+        });
+
+        switch (source)
+        {
+            case "Seething Poison" or "Seething Burst":
+                f.Cast<BroodingShadows>(); // into Stealth
+                f.Cast<WidowsBite>();
+                break;
+            case "Caustic Poison":
+                f.Cast<BroodingShadows>(); // into Stealth
+                f.Cast<StealthBackstab>();
+                break;
+            case "Volatile Poison":
+                f.Cast<BroodingShadows>(); // into Stealth
+                f.Cast<StealthSkitteringBlades>();
+                break;
+            case "Corrosive Spill":
+                f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
+                f.Cast<QueensFang>();
+                break;
+            case "Hemotoxin":
+                f.Cast<Backstab>(); // a stack
+                break;
+            case "Hemotoxin burst":
+                f.Cast<Backstab>(); // a stack
+                f.Set(Mara.ComboPoints, 1); // enough to cast Hemorrhaging Strike
+                f.Cast<HemorrhagingStrike>(); // consumes it
+                break;
+            case "Vexira's Venom":
+                f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
+                f.Cast<QueensFang>(crit: true);
+                break;
+        }
+        f.Wait(10); // the poison ticks and erupts
+        return (f, rolls);
+    }
+
     /// <summary>
-    /// With Venomous Delight, each time you deal poison damage to an enemy you have a 10% chance to generate 10 Energy: after a Widow's
-    /// Bite from Stealth, each Seething Poison tick rolls at 10%, and forced on, a tick gives a gain of 10 Energy.
+    /// With Venomous Delight, each time you deal poison damage to an enemy you have a 10% chance to generate 10 Energy: every hit of every
+    /// poison rolls once at 10%, ticks, eruptions and area hits too (a Volatile Poison on 3 enemies, Seething Burst and Corrosive Spill
+    /// among them), whatever brings them: Seething Poison, Caustic Poison, Volatile Poison and its eruption, Corrosive Spill, Seething
+    /// Burst, Hemotoxin's poison and its burst, and Vexira's Venom.
+    ///
+    /// The roll is forced off, so Energy plays no part: the rolls are counted against the poison hits of the fight.
     /// </summary>
+    [Theory]
+    [InlineData("Seething Poison")]
+    [InlineData("Caustic Poison")]
+    [InlineData("Volatile Poison")]
+    [InlineData("Corrosive Spill")]
+    [InlineData("Seething Burst")]
+    [InlineData("Hemotoxin")]
+    [InlineData("Hemotoxin burst")]
+    [InlineData("Vexira's Venom")]
+    public void Venomous_Delight_Rolls_At_10_Percent_On_Every_Poison_Hit(string source)
+    {
+        var (f, rolls) = PoisonFight(source);
+        int poisonHits = f.AllDamage().Count(hit => PoisonHits.Contains(hit.Name) && hit.Value > 0);
+        var chances = rolls.ChancesOf(VenomousDelight.ProcKey);
+
+        using var check = new Checks(f);
+        check.True(poisonHits > 0, $"{source} deals damage");
+        check.Equal(poisonHits, chances.Count, what: "Venomous Delight rolls");
+        foreach (double chance in chances) check.Equal(0.1, chance, what: "a Venomous Delight roll's chance");
+    }
+
+    /// <summary>Forced on, a Venomous Delight roll gives 10 Energy.</summary>
     [Fact]
-    public void Venomous_Delight_Has_A_10_Percent_Chance_Of_10_Energy_Per_Poison_Hit()
+    public void A_Venomous_Delight_Proc_Gives_10_Energy()
     {
         var f = StepFights.Mara(talents: [VenomousDelight.TalentId]);
-        var procs = f.ForceProcs(key => key == VenomousDelight.ProcKey ? true : null);
+        f.ForceProcs(key => key == VenomousDelight.ProcKey ? true : null);
 
         f.Cast<BroodingShadows>(); // Stealth
         f.Cast<WidowsBite>();
         f.Set(Mara.Energy, 100); // so the gain is not lost at the cap
+        f.Wait(2.5); // the first tick
 
-        f.Wait(2.5); // the first ticks
+        Assert.Contains(f.Gains("Energy"), gain => Math.Abs(gain.Value - 10) < Tolerance);
+    }
+
+    /// <summary>Bleeds do not roll for Venomous Delight: Hemorrhaging Strike's hit and its bleed's ticks deal damage and roll nothing.</summary>
+    [Fact]
+    public void Venomous_Delight_Ignores_Bleeds()
+    {
+        var f = StepFights.Mara(talents: [VenomousDelight.TalentId]);
+        var rolls = f.ForceProcs(key => key == VenomousDelight.ProcKey ? false : null);
+        f.Set(Mara.ComboPoints, 2); // a 18 second bleed
+
+        f.Cast<HemorrhagingStrike>();
+        f.Wait(20); // the bleed ticks out
 
         using var check = new Checks(f);
-        check.True(f.Damage("Seething Poison").Count > 0, "Seething Poison ticks");
-        foreach (double chance in procs.ChancesOf(VenomousDelight.ProcKey))
-            check.Equal(0.1, chance, what: "a Venomous Delight roll's chance");
-        check.True(f.Gains("Energy").Any(gain => Math.Abs(gain.Value - 10) < Tolerance), "an Energy gain of 10");
+        check.True(f.Damage("Hemorrhage").Count > 0, "the bleed ticks");
+        check.Equal(0, rolls.ChancesOf(VenomousDelight.ProcKey).Count, what: "Venomous Delight rolls");
     }
 
     // ---- Spirit Refund
