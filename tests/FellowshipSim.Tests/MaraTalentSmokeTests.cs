@@ -303,7 +303,7 @@ public class MaraTalentSmokeTests(ITestOutputHelper output)
         double[] expected = [0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.10];
         for (int i = 0; i < enemies.Count; i++)
         {
-            hero.Hemorrhage.ApplyTo(ctx, enemies[i], HemorrhagingStrike.BleedSeconds(6));
+            hero.Hemorrhage.ApplyFromStrike(ctx, enemies[i], HemorrhagingStrike.BleedSeconds(6));
             Assert.Equal(without + expected[i], hero.CritChanceAgainst(enemies[0], ctx.CurrentTime), 9);
         }
     }

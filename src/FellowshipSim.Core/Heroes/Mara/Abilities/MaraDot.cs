@@ -31,9 +31,6 @@ public abstract class MaraDot : MaraAbility
     /// </summary>
     protected double RefreshCarryoverFraction { get; init; }
 
-    /// <summary>Tick rate bonuses ("ticks faster"), added together.</summary>
-    public List<Func<SimTime, double>> TickRateBonuses { get; } = new();
-
     /// <summary>Raised after each tick has dealt its damage, with its enemy.</summary>
     public event Action<SimulationContext, EnemyTarget>? Ticked;
 
@@ -54,6 +51,11 @@ public abstract class MaraDot : MaraAbility
         /// <summary>The ability's own damage multiplier for this application (e.g. Vexira's Venom's stored damage).</summary>
         public double Multiplier = 1.0;
         public int Stacks = 1;
+        /// <summary>
+        /// The tick period scaler (`SetByCaller.System.TickRateOverride`): the period is <see cref="PeriodSeconds"/> times it,
+        /// shortened by Haste.
+        /// </summary>
+        public double PeriodScaler = 1.0;
     }
 
     private readonly Dictionary<EnemyTarget, Instance> _active = new();
@@ -96,18 +98,27 @@ public abstract class MaraDot : MaraAbility
         return _active.TryGetValue(target, out var dot) ? Math.Max(0.0, (dot.End - ctx.CurrentTime).TotalSeconds) : 0.0;
     }
 
-    /// <summary>Unhasted seconds between two ticks, with the tick rate bonuses.</summary>
-    protected double HastedPeriod(SimTime now)
+    /// <summary>Unhasted seconds between two ticks of <paramref name="dot"/>: the period times its tick period scaler.</summary>
+    protected double BasePeriod(Instance dot) => PeriodSeconds * dot.PeriodScaler;
+
+    /// <summary>
+    /// Multiplies the tick period scaler of <paramref name="dot"/> by <paramref name="factor"/>. The tick in progress keeps its
+    /// fraction of progress: the time to it is the new period times the fraction left.
+    /// </summary>
+    protected void ScalePeriod(Instance dot, double factor) => SetPeriodScaler(dot, dot.PeriodScaler * factor);
+
+    private void SetPeriodScaler(Instance dot, double scaler)
     {
-        double bonus = 0.0;
-        foreach (var b in TickRateBonuses) bonus += b(now);
-        return PeriodSeconds / (1.0 + bonus);
+        if (scaler == dot.PeriodScaler) return;
+        dot.PeriodScaler = scaler;
+        dot.Timer?.ChangeBaseSeconds(BasePeriod(dot));
     }
 
     /// <summary>
     /// Applies the effect to <paramref name="target"/> for <paramref name="durationSeconds"/> (its own duration when
-    /// null). On an enemy that has it, the duration restarts with up to <see cref="RefreshCarryoverFraction"/> of it
-    /// carried over, and the ticks keep their timing.
+    /// null), with tick period scaler 1. On an enemy that has it, the duration restarts with up to
+    /// <see cref="RefreshCarryoverFraction"/> of it carried over, the ticks keep their timing, and the scaler is 1 again: a
+    /// refresh replaces the spec (game data, build 26320967: `ApplyGameplayEffectSpec` exe 0x144A6A660).
     /// </summary>
     protected Instance Apply(SimulationContext ctx, EnemyTarget target, double? durationSeconds = null)
     {
@@ -118,6 +129,7 @@ public abstract class MaraDot : MaraAbility
         {
             double left = Math.Max(0.0, (dot.End - now).TotalSeconds);
             dot.End = now + SimTime.FromSeconds(duration + Math.Min(left, duration * RefreshCarryoverFraction));
+            SetPeriodScaler(dot, 1.0);
             ScheduleEnd(ctx, dot);
             target.Auras.Apply(Debuff, now);
             return dot;
@@ -151,7 +163,7 @@ public abstract class MaraDot : MaraAbility
 
     private void ScheduleTick(SimulationContext ctx, Instance dot)
     {
-        dot.Timer = HastedTimer.Start(ctx, Owner, HastedPeriod(ctx.CurrentTime), c =>
+        dot.Timer = HastedTimer.Start(ctx, Owner, BasePeriod(dot), c =>
         {
             if (_active.GetValueOrDefault(dot.Target) != dot || c.CurrentTime > dot.End) return;
             dot.LastTick = c.CurrentTime;
@@ -167,7 +179,7 @@ public abstract class MaraDot : MaraAbility
         {
             if (_active.GetValueOrDefault(dot.Target) != dot) return;
             // The hasted progress toward the next tick is a partial tick, when enough time passed since the last one.
-            double fraction = dot.Timer is { IsActive: true } timer ? timer.ElapsedBaseSeconds / HastedPeriod(c.CurrentTime) : 0.0;
+            double fraction = dot.Timer is { IsActive: true } timer ? timer.ElapsedBaseSeconds / BasePeriod(dot) : 0.0;
             if (fraction > 0 && (c.CurrentTime - dot.LastTick).TotalSeconds >= PeriodicEffect.MinHastedPartialTickSeconds - 1e-9)
             {
                 Tick(c, dot, Math.Min(fraction, 1.0));
