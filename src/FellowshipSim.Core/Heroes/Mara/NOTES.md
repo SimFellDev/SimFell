@@ -190,6 +190,12 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   1.87s to 1.90s apart at 24.8 to 28.6, 1.70s to 1.74s at 30.4 to 39.0, 1.84s to 1.90s at 39.0 to 50.2. Prvc4XmbdHBaVRKy fight 12,
   enemy 78.9, applied at 809.717 with no removal by 855: 1.67s to 1.70s at 811.5 to 818.2, 1.84s to 1.87s at 818.2 to 827.5, 1.67s
   to 1.70s at 827.5 to 834.3.
+- **Bloodrite Fervor** (ability 185): usable during the Global Cooldown, starting none, on a 90s cooldown of its own. Over the 20
+  casts in the 34 Mara fights of `data/fights`, Mara casts it 0.77s after Skittering Blades (3M2vWr8taxVfTQFY fight 53 @ 89.555),
+  Stalker Step comes 0.30s after it (fjrCax7VzGmMZw6h fight 26 @ 67.411), and the shortest gap between two casts is 90.1s
+  (b649dhNptyW132Tm fight 5 @ 517.886). In the game data (build 26320967), the cooldown is `RelicPower.PartyMoveSpeedBuff.Cooldown`
+  times the relic cooldown gem factor (`GMMC_GemAugmentation.CalculateBaseMagnitude`: 1 - 0.08 with Blessing of the Artisan, 1 - 0.24
+  with its rank II), and effect 156 lasts 12s with MoveSpeed x1.5 alone. Before it, the replay skipped the 20 casts as unmodeled.
 - **Essence of the Virtuoso from Anomalous Residue:** with no Topaz power in the gear, each Residue: Topaz window gives effect 1937
   in the Residue's frame, and Spirit of Heroism takes it off and gives it back. T2qLPpmMkrAtJ9B1 fight 18 @ 383.829, 530.946 and
   1400.233; Fc8v6yWxD14GQMnV fight 19 @ 809.379, 958.352 and 1120.143. In the game data (`DT_GemDefinitions`, Topaz row), the node

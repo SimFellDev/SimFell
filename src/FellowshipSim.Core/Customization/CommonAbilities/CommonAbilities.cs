@@ -10,6 +10,7 @@ public static class CommonAbilities
         new Chickenize(hero),
         new MajorInvisibility(hero),
         new RelicTeleport(hero),
+        new BloodriteFervor(hero),
         new Anchor(hero),
         new MakingCamp(hero),
         new MountSummon(hero),
