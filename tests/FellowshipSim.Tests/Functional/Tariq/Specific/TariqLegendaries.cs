@@ -117,7 +117,7 @@ public class TariqLegendaries
             return f.Damage<CullingStrike>().Single().Value;
         }
 
-        AssertRatio(1 + 0.4 * 30, CullingStrikeHit(true) / CullingStrikeHit(false));
+        AssertRatio(13.0, CullingStrikeHit(true) / CullingStrikeHit(false)); // 1 + 40% x 30 Fury
     }
 
     /// <summary>Each empowered Culling Strike uses up one stack of Executioner's Grin: of 2 stacks, 1 is left after it.</summary>

@@ -1,5 +1,6 @@
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
+using FellowshipSim.Core.Heroes.Gunde.Talents;
 
 namespace FellowshipSim.Tests.Functional;
 
@@ -24,6 +25,43 @@ public class GundeLegendaries
         f.Wait(3.0); // every spin
 
         Assert.Equal(spins, f.Damage<GrimCarve>().Count);
+    }
+
+    /// <summary>
+    /// Bloody Mess's extra spins count for Carnage: each of the 5 spins takes 1 second off the cooldowns of Rupture and Heart Splitter
+    /// (5 seconds in all, 3 without the legendary), and deals 25% more damage than the same spin without Carnage.
+    ///
+    /// The reduction is in cooldown seconds and the legendary gives a cooldown recovery of 1.1, so each cooldown is over (length - 5) / rate
+    /// real seconds after its cast.
+    /// </summary>
+    [Fact]
+    public void Bloody_Mess_Spins_All_Count_For_Carnage()
+    {
+        var spinsAlone = StepFights.Gunde(legendaries: [BloodyMess.HelmItemId]).WithoutDamageSpread();
+        spinsAlone.Cast<GrimCarve>();
+        spinsAlone.Wait(3.0); // every spin
+
+        var f = StepFights.Gunde(talents: [Carnage.TalentId], legendaries: [BloodyMess.HelmItemId]).WithoutDamageSpread();
+        f.Cast<Rupture>();
+        double ruptureEnd = f.CompletedAt("Rupture") + (60 - 5) / f.AccelerationRate<Rupture>();
+        f.Cast<HeartSplitter>();
+        double heartSplitterEnd = f.CompletedAt("Heart Splitter") + (12 - 5) / f.AccelerationRate<HeartSplitter>();
+        f.Cast<GrimCarve>();
+        f.Wait(3.0); // every spin
+        var spins = f.Damage<GrimCarve>();
+
+        using var check = new Checks(f);
+        check.Equal(5, spins.Count);
+        for (int i = 0; i < Math.Min(5, spins.Count); i++)
+            check.Ratio(1.25, spins[i].Value / spinsAlone.Damage<GrimCarve>()[i].Value, what: $"spin {i + 1} over the same spin without Carnage");
+        f.WaitUntil(heartSplitterEnd - 0.1);
+        check.False(f.IsReady<HeartSplitter>());
+        f.WaitUntil(heartSplitterEnd + 0.1);
+        check.True(f.IsReady<HeartSplitter>());
+        f.WaitUntil(ruptureEnd - 0.1);
+        check.False(f.IsReady<Rupture>());
+        f.WaitUntil(ruptureEnd + 0.1);
+        check.True(f.IsReady<Rupture>());
     }
 
     // ---- Bleeding Hearts
@@ -59,8 +97,6 @@ public class GundeLegendaries
     /// <summary>
     /// When Bleeding Hearts procs, Heart Splitter strikes the target twice, each strike with its own Exsanguinate, for one cast and one
     /// charge; when it does not, once.
-    ///
-    /// Source: the tooltip and combat logs (NOTES.md: the extra strike has its own Exsanguinate and adds no cast event).
     /// </summary>
     [Theory]
     [InlineData(false, 1)]
@@ -118,8 +154,6 @@ public class GundeLegendaries
 
     /// <summary>
     /// Carrion Onslaught makes your next Blood Arc deal 1.2 + 0.02 x the Owed in Blood stacks consumed times its damage.
-    ///
-    /// Source: game data effect 3256 and combat logs (NOTES.md, cnjfpzmD7ZXakMFH fight 33).
     /// </summary>
     [Theory]
     [InlineData(1)]
@@ -165,8 +199,6 @@ public class GundeLegendaries
     /// <summary>
     /// The Blood Arc that uses Carrion Onslaught drops one Blood Feather per third Owed in Blood stack consumed, rounded: once all have
     /// dropped and been picked up, you hold that many Owed in Blood stacks again.
-    ///
-    /// Source: game data effect 3256 and combat logs (NOTES.md: 84 -> 28, 51 -> 17, 80 -> 27). Rend's own feather rolls are forced off.
     /// </summary>
     [Theory]
     [InlineData(84, 28)]
@@ -190,8 +222,6 @@ public class GundeLegendaries
     /// <summary>
     /// The feathers drop 10 at once as Blood Arc lands, then 10 more every 2 seconds until none are left: of 28, 18 are left until 2
     /// seconds after the Blood Arc, 8 until 4 seconds after, then none.
-    ///
-    /// Source: combat logs (NOTES.md, cnjfpzmD7ZXakMFH fight 33); the game data's text says 3 per period, out of date per the logs.
     /// </summary>
     [Fact]
     public void Carrion_Onslaught_Drops_10_Feathers_At_Once_Then_10_Every_2_Seconds()

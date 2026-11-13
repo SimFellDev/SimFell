@@ -63,6 +63,8 @@ public class MaraCooldowns
     /// Widow's Bite has 3 charges of 9 seconds, and haste speeds the recharge: a spent charge is back 9 / (1 + haste) seconds after the
     /// cast.
     ///
+    /// Haste is an acceleration: the charge keeps its 9 seconds and recharges 1 + haste times as fast (recovery rate 1 + haste).
+    ///
     /// TODO: fails with haste: the charge comes back about 0.17s late, as Rime's Cold Snap and Ardeos's Fire Ball (the faster rate starts
     /// after the first global cooldown).
     /// </summary>
@@ -77,6 +79,7 @@ public class MaraCooldowns
         f.Cast<WidowsBite>();
         double end = f.CompletedAt("Widow's Bite") + 9 / (1 + haste);
 
+        Assert.Equal(1 + haste, f.AccelerationRate<WidowsBite>());
         f.WaitUntil(end - 0.1);
         Assert.Equal(2, f.Charges<WidowsBite>());
         f.WaitUntil(end + 0.1);
@@ -88,6 +91,7 @@ public class MaraCooldowns
     /// <summary>
     /// Brooding Shadows has 2 charges of 15 seconds, and haste speeds the recharge. The cast spends no charge; the attack that ends Stealth
     /// does, in combat: 2 charges after the cast, 1 after a Backstab from Stealth, and the charge back 15 / (1 + haste) seconds after it.
+    /// Haste is an acceleration: the charge keeps its 15 seconds and recharges 1 + haste times as fast (recovery rate 1 + haste).
     ///
     /// Game data: a manual cooldown commitment, the Stealth monitor commits the cooldown as Stealth ends (NOTES.md, Stealth).
     /// </summary>
@@ -104,6 +108,7 @@ public class MaraCooldowns
         f.Cast<StealthBackstab>(); // ends Stealth
         double end = f.CompletedAt("Stealth Backstab") + 15 / (1 + haste);
 
+        Assert.Equal(1 + haste, f.AccelerationRate<BroodingShadows>());
         f.WaitUntil(end - 0.1);
         Assert.Equal(1, f.Charges<BroodingShadows>());
         f.WaitUntil(end + 0.1);

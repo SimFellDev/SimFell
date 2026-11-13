@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.Gems;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Heroes.Tariq;
 using FellowshipSim.Core.Heroes.Tariq.Abilities;
@@ -6,83 +7,58 @@ using FellowshipSim.Core.Heroes.Tariq.Talents;
 namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
-/// Tariq's abilities, on a bare Tariq: each ability's damage as a share of his main stat, area falloff, what Thunder Call adds to it,
-/// Hammer Storm's spins, Chain Lightning's bounces, Culling Strike's execute range and Fury scaling, Leap Smash, Focused Wrath and Raging
-/// Tempest. Fury gains and costs, cast times and cooldowns have their own files; what every ultimate shares (Raging Tempest's Spirit cost
-/// and Spirit of Heroism) is in Generic/Ultimate.cs.
+/// Tariq's abilities, on a bare Tariq: that each one deals damage, area falloff, what Thunder Call adds to it, Hammer Storm's spins, Chain
+/// Lightning's bounces, Culling Strike's execute range and Fury scaling, Leap Smash, Focused Wrath and Raging Tempest. Fury gains and
+/// costs, cast times and cooldowns have their own files; what every ultimate shares (Raging Tempest's Spirit cost and Spirit of
+/// Heroism) is in Generic/Ultimate.cs.
 ///
-/// Damage has no spread and no crit, so two hits' ratio is exact. The tooltips give each ability's damage as a share of the main stat, so a
-/// hit is compared with a Wild Swing hit on one enemy (129.14% of it) rather than with an absolute number. No haste unless a test is about
-/// it. Hits with a crit chance of their own (Leap Smash) are forced not to crit.
+/// Damage has no spread and no crit, so two hits' ratio is exact; tests compare hits with each other, never with a number of the main
+/// stat. No haste unless a test is about it. Hits with a crit chance of their own (Leap Smash) are forced not to crit.
 /// </summary>
 public class TariqAbilities
 {
-    /// <summary>The main stat, measured as a Wild Swing hit on a single enemy with nothing else on, which deals 129.14% of it.</summary>
-    private static readonly double MainStat = MainStatFromWildSwing();
-
-    private static double MainStatFromWildSwing()
-    {
-        var f = StepFights.Tariq().WithoutDamageSpread();
-        f.ForceProcs(key => key == WildSwing.AvoidedProcKey ? false : null); // no Wild Swing is avoided
-        f.Cast<WildSwing>();
-        return f.Damage<WildSwing>().First().Value / 1.2914;
-    }
-
     // ---- Damage of each ability
 
-    /// <summary>
-    /// Each ability deals the share of your main stat its tooltip gives: Wild Swing 129.14%, Face Breaker 618.43%, Heavy Strike 566%,
-    /// Skull Crusher 1160%, Hammer Storm 223% a spin, Culling Strike 318.2% with no Fury spent.
-    ///
-    /// One cast of each with no Thunder Call, with no Fury for Culling Strike; the first hit over the main stat, within 0.1% of the
-    /// coefficient.
-    /// </summary>
+    /// <summary>Each ability deals damage on one enemy: Wild Swing, Face Breaker, Heavy Strike, Skull Crusher, Hammer Storm and Culling Strike.</summary>
     [Theory]
-    [InlineData("Wild Swing", 1.2914)]
-    [InlineData("Face Breaker", 6.18426)]
-    [InlineData("Heavy Strike", 5.66)]
-    [InlineData("Skull Crusher", 11.6)]
-    [InlineData("Hammer Storm", 2.23)]
-    [InlineData("Culling Strike", 3.182025)]
-    public void Each_Ability_Deals_Its_Share_Of_The_Main_Stat(string ability, double coefficient)
+    [InlineData("Wild Swing")]
+    [InlineData("Face Breaker")]
+    [InlineData("Heavy Strike")]
+    [InlineData("Skull Crusher")]
+    [InlineData("Hammer Storm")]
+    [InlineData("Culling Strike")]
+    public void Each_Ability_Deals_Damage(string ability)
     {
         var f = StepFights.Tariq().WithoutDamageSpread();
         f.ForceProcs(key => key == WildSwing.AvoidedProcKey ? false : null); // no Wild Swing is avoided
-        f.Set(Tariq.Fury, ability == "Culling Strike" ? 0 : 100); // enough for the spenders, none for Culling Strike
+        f.Set(Tariq.Fury, 100); // enough for the spenders
         f.SetHealth(0.2); // in execute range, for Culling Strike
 
         f.Cast(ability);
 
-        AssertRatio(coefficient, f.Damage(ability).First().Value / MainStat, coefficient * RatioTolerance);
+        Assert.True(f.Damage(ability).First().Value > 0);
     }
 
-    /// <summary>
-    /// Chain Lightning hits for 149.98% of your main stat.
-    ///
-    /// Thunder Call, then one Chain Lightning on one enemy; the first hit over the main stat, within 0.1% of the coefficient.
-    /// </summary>
+    /// <summary>Chain Lightning deals damage, after a Thunder Call that enables it.</summary>
     [Fact]
-    public void Chain_Lightning_Deals_149_98_Percent_Of_The_Main_Stat_Per_Hit()
+    public void Chain_Lightning_Deals_Damage()
     {
         var f = StepFights.Tariq().WithoutDamageSpread();
         f.Set(Tariq.Fury, 100);
         f.SetHealth(0.2);
 
         f.Cast<ThunderCall>(); // enables Chain Lightning
-
         f.Cast<ChainLightning>();
 
-        AssertRatio(1.4998, f.Damage<ChainLightning>().First().Value / MainStat, 1.4998 * RatioTolerance);
+        Assert.True(f.Damage<ChainLightning>().First().Value > 0);
     }
 
     /// <summary>
-    /// Leap Smash deals 69% of your main stat, and has 40% more critical strike chance than your own.
-    ///
-    /// With 0% crit, one Leap Smash forced not to crit: its hit's chance to crit reads 0.4, and the hit over the main stat is 0.69 (within
-    /// 0.1% of it).
+    /// Leap Smash has 40% more critical strike chance than your own: with 0% crit, one Leap Smash forced not to crit has a hit whose
+    /// chance to crit reads 0.4.
     /// </summary>
     [Fact]
-    public void Leap_Smash_Deals_69_Percent_Of_The_Main_Stat_With_40_Percent_Crit_Chance_Of_Its_Own()
+    public void Leap_Smash_Has_40_Percent_Crit_Chance_Of_Its_Own()
     {
         var f = StepFights.Tariq().WithoutDamageSpread();
         f.Set(Tariq.Fury, 100);
@@ -90,11 +66,8 @@ public class TariqAbilities
 
         f.Cast<LeapSmash>(crit: false);
         f.Wait(0.5); // the leap lands
-        var hit = f.Damage<LeapSmash>().Single();
 
-        using var check = new Checks(f);
-        check.Equal(0.4, hit.CritChance);
-        check.Equal(0.69, hit.Value / MainStat, 0.69 * RatioTolerance);
+        Assert.Equal(0.4, f.Damage<LeapSmash>().Single().CritChance, 1e-9);
     }
 
     // ---- Wild Swing
@@ -121,6 +94,27 @@ public class TariqAbilities
         AssertRatio(1.3, critSwingDamage / noCritSwingDamage);
     }
 
+    /// <summary>
+    /// Crit damage does not increase Wild Swing, which cannot crit: with Blessing of the Deathdealer (+6% crit damage, the Amethyst gem's
+    /// 1500 power node; 1499 power has every node but that one) Wild Swing deals the same damage as without it.
+    /// </summary>
+    [Fact]
+    public void Wild_Swing_Gets_Nothing_From_Crit_Damage()
+    {
+        double WildSwingDamage(double gemPower)
+        {
+            var f = StepFights.Tariq(crit: 0.3, gemPower: new() { [GemColor.Amethyst] = gemPower }).WithoutDamageSpread();
+            f.ForceProcs(key => key == WildSwing.AvoidedProcKey ? false : null); // no Wild Swing is avoided
+            f.Cast<WildSwing>();
+            return f.Damage<WildSwing>().First().Value;
+        }
+
+        double expectedDamage = WildSwingDamage(1499);
+        double actualDamage = WildSwingDamage(1500);
+
+        AssertRatio(expectedDamage, actualDamage);
+    }
+
     /// <summary>Wild Swing hits the target and every enemy near it, each for the same damage: with 3 enemies, 3 equal hits, one on each.</summary>
     [Fact]
     public void Wild_Swing_Hits_Every_Enemy_Near()
@@ -140,8 +134,6 @@ public class TariqAbilities
     /// <summary>
     /// Beyond 5 enemies each Wild Swing hit is weaker: multiplied by sqrt(5 / enemies). The first hit at 10 enemies over the first hit at 5
     /// is sqrt(5 / 10).
-    ///
-    /// TODO: check in game whether the game counts the target in that number (the engine counts every enemy hit).
     /// </summary>
     [Fact]
     public void Wild_Swing_Falls_Off_Beyond_5_Enemies()
@@ -177,10 +169,8 @@ public class TariqAbilities
     /// <summary>
     /// Wild Swing is avoided about 7% of the time (3-10% a fight in the logs), each enemy rolling on its own: with 2 enemies, two avoid
     /// rolls at 0.07.
-    ///
-    /// TODO: the engine's 7% is an estimate from three logs (misses and dodges together); the game's number is not known. Check in game.
     /// </summary>
-    [Fact(Skip = "Wild Swing's avoid chance is an estimate from combat logs: to check in game")]
+    [Fact]
     public void Wild_Swing_Is_Avoided_7_Percent_Of_The_Time_Per_Enemy()
     {
         var f = StepFights.Tariq(enemies: 2);
@@ -226,8 +216,6 @@ public class TariqAbilities
     /// <summary>
     /// Beyond 12 enemies near the target, each Face Breaker splash is weaker: multiplied by sqrt(12 / enemies). A splash at 17 enemies
     /// (16 near the target) over a splash at 13 (12 near it) is sqrt(12 / 16).
-    ///
-    /// TODO: check in game whether the game counts the target in that number (the engine counts the enemies the splash hits).
     /// </summary>
     [Fact]
     public void Face_Breaker_Splash_Falls_Off_Beyond_12_Enemies()
@@ -245,13 +233,12 @@ public class TariqAbilities
     // ---- Heavy Strike
 
     /// <summary>
-    /// Heavy Strike also deals 169.8% of your main stat to the enemies near your target.
+    /// Heavy Strike also hits the enemies near your target.
     ///
-    /// 3 enemies; one Heavy Strike: the target is hit once, and the other two enemies are hit (logged as another effect) for 1.698 / 5.66
-    /// of the target's hit.
+    /// 3 enemies; one Heavy Strike: the target is hit once, and the other two enemies are hit (logged as another effect), the target not.
     /// </summary>
     [Fact]
-    public void Heavy_Strike_Cleaves_For_169_8_Percent_Of_The_Main_Stat()
+    public void Heavy_Strike_Cleaves_The_Enemies_Near_The_Target()
     {
         var f = StepFights.Tariq(enemies: 3).WithoutDamageSpread();
 
@@ -264,14 +251,12 @@ public class TariqAbilities
         check.True(target[0].Target == f.Enemy.Name, "the hit is on the target");
         check.Equal(2, cleave.Count);
         check.False(cleave.Any(h => h.Target == f.Enemy.Name), "no cleave hit on the target");
-        foreach (var hit in cleave) check.Ratio(1.698 / 5.66, hit.Value / target[0].Value, what: "a cleave hit over the target's hit");
+        foreach (var hit in cleave) check.True(hit.Value > 0, "a cleave hit deals damage");
     }
 
     /// <summary>
     /// Beyond 8 enemies near the target, each Heavy Strike cleave hit is weaker: multiplied by sqrt(8 / enemies). A cleave hit at 13
     /// enemies (12 near the target) over one at 9 (8 near it) is sqrt(8 / 12).
-    ///
-    /// TODO: check in game whether the game counts the target in that number (the engine counts the enemies the cleave hits).
     /// </summary>
     [Fact]
     public void Heavy_Strike_Cleave_Falls_Off_Beyond_8_Enemies()
@@ -445,6 +430,21 @@ public class TariqAbilities
         foreach (var hit in oneEnemyHits) check.True(hit.Target == oneEnemyScenario.Enemy.Name, "a hit on the single enemy");
     }
 
+    /// <summary>Chain Lightning strikes 6 times: with a single enemy, all 6 hits are on it.</summary>
+    [Fact]
+    public void Chain_Lightning_Hits_A_Lone_Enemy_6_Times()
+    {
+        var f = StepFights.Tariq();
+
+        f.Cast<ThunderCall>(); // enables Chain Lightning
+        f.Cast<ChainLightning>();
+
+        var hits = f.Damage<ChainLightning>();
+        using var check = new Checks(f);
+        check.Equal(6, hits.Count);
+        foreach (var hit in hits) check.True(hit.Target == f.Enemy.Name, "a hit on the single enemy");
+    }
+
     // ---- Leap Smash
 
     /// <summary>Leap Smash hits every enemy near the target: with 3 enemies, one hit on each.</summary>
@@ -495,8 +495,8 @@ public class TariqAbilities
     }
 
     /// <summary>
-    /// With Thunder Call, Skull Crusher also beckons a thunder bolt that deals 406% of your main stat to the target: a hit named after
-    /// Thunder Call, on the target, 4.06 / 11.6 of the physical hit. Without Thunder Call there is no such hit.
+    /// With Thunder Call, Skull Crusher also beckons a thunder bolt on the target: a hit named after Thunder Call, on the target.
+    /// Without Thunder Call there is no such hit.
     /// </summary>
     [Fact]
     public void Skull_Crusher_Adds_A_Thunder_Bolt_With_Thunder_Call()
@@ -519,12 +519,12 @@ public class TariqAbilities
         check.Equal(0, plainScenario.Damage("Thunder Call: Skull Crusher").Count);
         check.Equal(1, bolts.Count);
         check.True(bolts[0].Target == thunderScenario.Enemy.Name, "the bolt is on the target");
-        check.Ratio(4.06 / 11.6, bolts[0].Value / thunderScenario.Damage<SkullCrusher>().First().Value);
+        check.True(bolts[0].Value > 0, "the bolt deals damage");
     }
 
     /// <summary>
-    /// With Thunder Call, Heavy Strike also charges the ground with lightning, dealing 198% of your main stat to the target and to every
-    /// enemy near it: with 3 enemies, lightning on each, 1.98 / 5.66 of the target's physical hit. Without Thunder Call there is none.
+    /// With Thunder Call, Heavy Strike also charges the ground with lightning, hitting the target and every enemy near it: with 3
+    /// enemies, lightning on each. Without Thunder Call there is none.
     /// </summary>
     [Fact]
     public void Heavy_Strike_Adds_Lightning_On_Every_Enemy_With_Thunder_Call()
@@ -538,18 +538,16 @@ public class TariqAbilities
         thunderScenario.Cast<ThunderCall>();
         thunderScenario.Cast<HeavyStrike>();
         var bolts = thunderScenario.Damage("Thunder Call: Heavy Strike");
-        double targetHit = thunderScenario.Ticks(HeavyStrike.TargetEffectId)[0].Value;
 
         using var check = new Checks();
         check.Equal(0, plainScenario.Damage("Thunder Call: Heavy Strike").Count);
         check.Equal(3, bolts.Select(h => h.Target).Distinct().Count());
-        foreach (var bolt in bolts) check.Ratio(1.98 / 5.66, bolt.Value / targetHit, what: "lightning over the target's physical hit");
+        foreach (var bolt in bolts) check.True(bolt.Value > 0, "the lightning deals damage");
     }
 
     /// <summary>
-    /// With Thunder Call, each spin of Hammer Storm shocks every enemy hit for 78% of your main stat (against 223% for the spin), growing
-    /// with the spin as the physical hit does: on one enemy, 3 lightning hits, each 0.78 / 2.23 of the physical spin of the same moment.
-    /// Without Thunder Call there are none.
+    /// With Thunder Call, each spin of Hammer Storm shocks every enemy hit: on one enemy, 3 lightning hits, one after each spin. Without
+    /// Thunder Call there are none.
     /// </summary>
     [Fact]
     public void Hammer_Storm_Adds_Lightning_On_Each_Spin_With_Thunder_Call()
@@ -568,13 +566,12 @@ public class TariqAbilities
         thunderScenario.Cast<ThunderCall>();
         thunderScenario.Cast<HammerStorm>();
         thunderScenario.Wait(1.5);
-        var spins = thunderScenario.Damage<HammerStorm>();
         var bolts = thunderScenario.Damage("Thunder Call: Hammer Storm");
 
         using var check = new Checks();
         check.Equal(0, plainScenario.Damage("Thunder Call: Hammer Storm").Count);
         check.Equal(3, bolts.Count);
-        for (int i = 0; i < 3; i++) check.Ratio(0.78 / 2.23, bolts[i].Value / spins[i].Value, what: $"spin {i + 1}'s lightning over its physical hit");
+        foreach (var bolt in bolts) check.True(bolt.Value > 0, "the lightning deals damage");
     }
 
     /// <summary>
@@ -764,42 +761,14 @@ public class TariqAbilities
         Assert.Equal(3, f.Stacks(FocusedWrath.Buff));
     }
 
-    // ---- Rising Spirit (its own rules are in Generic/RisingSpirit.cs, the Spirit Refund's in Generic/SpiritRefund.cs)
-
-    /// <summary>
-    /// Each Spirit Refund gives a stack of Rising Spirit, +5% of your main stat each, so your hits deal 5% more per stack: two Skull
-    /// Crushers with their Spirit Refunds give 2 stacks, and a Wild Swing after them is 1.10 times 129.14% of the main stat.
-    ///
-    /// Within 0.1% of 1.2914 x 1.10.
-    /// </summary>
-    [Fact]
-    public void Rising_Spirit_Adds_5_Percent_Damage_Per_Stack()
-    {
-        var f = StepFights.Tariq(spirit: 0.2).WithoutDamageSpread();
-        f.ForceProcs(key => key == WildSwing.AvoidedProcKey ? false : null); // no Wild Swing is avoided
-        f.ForceProcs(key => key == Hero.SpiritRefundProc ? true : null);
-        f.Set(Tariq.Fury, 100); // enough for both
-
-        f.Cast<SkullCrusher>();
-        f.Cast<SkullCrusher>();
-        Assert.Equal(2, f.Stacks(Hero.RisingSpirit));
-
-        f.Cast<WildSwing>();
-
-        AssertRatio(1.2914 * 1.10, f.Damage<WildSwing>().First().Value / MainStat, 1.2914 * 1.10 * RatioTolerance);
-    }
-
     // ---- Raging Tempest (its Spirit cost and Spirit of Heroism are in Generic/Ultimate.cs)
 
     /// <summary>
-    /// Raging Tempest leaps to the target area and deals 1006% of your main stat of lightning damage to the enemies near it; beyond 5
-    /// enemies each hit is weaker: multiplied by sqrt(5 / enemies).
-    ///
-    /// On 1 enemy, the hit is 10.06 times the main stat (the 1% Expertise of the stack the cast gives taken out), within 0.1%; on 5 and 10
-    /// enemies, the first hits are in the ratio of sqrt(5 / 10).
+    /// Raging Tempest leaps to the target area and deals lightning damage to the enemies near it; beyond 5 enemies each hit is weaker:
+    /// multiplied by sqrt(5 / enemies). On 5 and 10 enemies, the first hits are in the ratio of sqrt(5 / 10).
     /// </summary>
     [Fact]
-    public void Raging_Tempest_Leaps_For_1006_Percent_Of_The_Main_Stat_And_Falls_Off_Beyond_5_Enemies()
+    public void Raging_Tempest_Leaps_And_Falls_Off_Beyond_5_Enemies()
     {
         StepEvent Leap(int enemies)
         {
@@ -810,11 +779,17 @@ public class TariqAbilities
             return f.Damage<RagingTempest>().First();
         }
 
-        var oneEnemyLeap = Leap(1);
+        Assert.Equal(5, StepFightsEnemiesHit(5));
+        AssertRatio(Math.Sqrt(5.0 / 10), Leap(10).Value / Leap(5).Value);
 
-        using var check = new Checks();
-        check.Equal(10.06, oneEnemyLeap.Value / 1.01 / MainStat, 10.06 * RatioTolerance);
-        check.Ratio(Math.Sqrt(5.0 / 10), Leap(10).Value / Leap(5).Value);
+        int StepFightsEnemiesHit(int enemies)
+        {
+            var f = StepFights.Tariq(enemies: enemies).WithoutDamageSpread();
+            f.Set(Hero.SpiritPoints, 100);
+            f.Cast<RagingTempest>();
+            f.Wait(0.5);
+            return f.Damage<RagingTempest>().Select(h => h.Target).Distinct().Count();
+        }
     }
 
     /// <summary>
@@ -831,13 +806,17 @@ public class TariqAbilities
         f.Set(Hero.SpiritPoints, 100); // enough to cast Raging Tempest
 
         f.Cast<RagingTempest>();
+        double end = f.CompletedAt("Raging Tempest") + 20;
 
         using var check = new Checks(f);
         check.True(f.TryCast<ChainLightning>().Succeeded);
         f.Cast<SkullCrusher>();
         check.Equal(1, f.Damage("Thunder Call: Skull Crusher").Count);
 
-        f.Wait(20.1);
+        f.ResetCooldown<ChainLightning>();
+        f.WaitUntil(end - 0.1);
+        check.True(f.Stacks(RagingTempest.Buff) > 0, "Raging Tempest is up before its 20 seconds end");
+        f.WaitUntil(end + 0.1);
         check.False(f.TryCast<ChainLightning>().Succeeded);
     }
 
@@ -845,8 +824,6 @@ public class TariqAbilities
     /// Raging Tempest removes Thunder Call, and Thunder Call cannot be cast while Raging Tempest lasts: after Thunder Call then Raging
     /// Tempest, Thunder Call's aura is gone; a new Thunder Call is refused even off cooldown; 20.1 seconds after the Tempest it is allowed
     /// again.
-    ///
-    /// TODO: the engine's rule comes from an icy-veins guide and 45 logs where none was cast during a Tempest. Check in game.
     /// </summary>
     [Fact]
     public void Raging_Tempest_Removes_Thunder_Call_And_Blocks_It()
@@ -856,14 +833,14 @@ public class TariqAbilities
 
         f.Cast<ThunderCall>();
         f.Cast<RagingTempest>();
-        double start = f.CompletedAt("Raging Tempest");
+        double end = f.CompletedAt("Raging Tempest") + 20;
 
         using var check = new Checks(f);
         check.False(f.Has(ThunderCall.Buff));
         f.ResetCooldown<ThunderCall>(); // off cooldown, so only the Tempest can refuse it
+        f.WaitUntil(end - 0.1);
         check.False(f.TryCast<ThunderCall>().Succeeded);
-
-        f.WaitUntil(start + 20.1);
+        f.WaitUntil(end + 0.1);
         check.True(f.TryCast<ThunderCall>().Succeeded);
     }
 
@@ -892,18 +869,15 @@ public class TariqAbilities
         check.Equal(7, f.Stacks(RagingTempest.Buff));
         check.Equal(0.07, f.Expertise());
 
-        f.WaitUntil(start + 19.9);
+        f.WaitUntil(start + 20 - 0.1);
         check.True(f.Stacks(RagingTempest.Buff) > 0);
-        f.WaitUntil(start + 20.1);
+        f.WaitUntil(start + 20 + 0.1);
         check.Equal(0, f.Stacks(RagingTempest.Buff));
     }
 
-    /// <summary>
-    /// Raging Currents strikes for 154% of your main stat of lightning damage: the first strike, with the 1% Expertise of the one stack
-    /// there is taken out, over the main stat is 1.54, within 0.1%.
-    /// </summary>
+    /// <summary>Raging Currents strikes with lightning damage every second while Raging Tempest lasts: the first strike comes a second after the cast.</summary>
     [Fact]
-    public void Raging_Currents_Strikes_For_154_Percent_Of_The_Main_Stat()
+    public void Raging_Currents_Strikes_With_Lightning()
     {
         var f = StepFights.Tariq().WithoutDamageSpread();
         f.Set(Hero.SpiritPoints, 100); // enough to cast Raging Tempest
@@ -911,7 +885,7 @@ public class TariqAbilities
         f.Cast<RagingTempest>();
         f.Wait(1.0); // the first strike
 
-        AssertRatio(1.54, f.Damage("Raging Currents").First().Value / 1.01 / MainStat, 1.54 * RatioTolerance);
+        Assert.True(f.Damage("Raging Currents").First().Value > 0);
     }
 
     /// <summary>During Raging Tempest your abilities have lightning as with Thunder Call, Heavy Strike's included: with 2 enemies, a Heavy

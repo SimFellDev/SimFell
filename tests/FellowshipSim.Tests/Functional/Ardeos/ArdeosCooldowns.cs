@@ -52,6 +52,8 @@ public class ArdeosCooldowns
 
     /// <summary>
     /// Fire Ball has 2 charges of 30 seconds, and haste speeds the recharge: a charge comes back in 30 / (1 + haste) seconds.
+    ///
+    /// Haste is an acceleration: the charge keeps its 30 seconds and recharges 1 + haste times as fast (recovery rate 1 + haste).
     /// </summary>
     [Theory]
     [InlineData(0.0)]
@@ -64,6 +66,7 @@ public class ArdeosCooldowns
         f.Cast<FireBall>();
         double end = f.CompletedAt("Fire Ball") + 30.0 / (1 + haste);
 
+        Assert.Equal(1 + haste, f.AccelerationRate<FireBall>());
         f.WaitUntil(end - 0.1);
         Assert.Equal(1, f.Charges<FireBall>());
         f.WaitUntil(end + 0.1);

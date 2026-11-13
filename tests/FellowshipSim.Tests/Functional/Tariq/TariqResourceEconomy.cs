@@ -197,20 +197,19 @@ public class TariqResourceEconomy
         Assert.Equal([12.0], f.Spends("Fury").Select(spend => spend.Value));
     }
 
-    /// <summary>Focused Wrath lasts 15 seconds, then its stacks are gone and the spenders cost full price: 16 seconds after it, a Skull
-    /// Crusher spends 25.</summary>
+    /// <summary>Focused Wrath lasts 15 seconds from the cast: its stacks are up before they end and gone after.</summary>
     [Fact]
     public void Focused_Wrath_Lasts_15_Seconds()
     {
         var f = StepFights.Tariq();
 
         f.Cast<FocusedWrath>();
-        f.Wait(16);
-        f.Set(Tariq.Fury, 100);
+        double end = f.CompletedAt("Focused Wrath") + 15;
 
-        f.Cast<SkullCrusher>();
-
-        Assert.Equal([25.0], f.Spends("Fury").Select(spend => spend.Value));
+        f.WaitUntil(end - 0.1);
+        Assert.True(f.Stacks(FocusedWrath.Buff) > 0);
+        f.WaitUntil(end + 0.1);
+        Assert.Equal(0, f.Stacks(FocusedWrath.Buff));
     }
 
     // ---- Spirit Refund

@@ -19,6 +19,9 @@ public class TariqCooldowns
     /// Face Breaker has a 6 second cooldown, Heavy Strike 8, Culling Strike 6, Chain Lightning 8 and Leap Smash 20, and haste shortens
     /// them: base / (1 + haste).
     ///
+    /// Haste is a cooldown reduction here, applied once at the cast (the length is divided by 1 + haste): the cooldown then runs in real
+    /// time, with no acceleration (recovery rate 1). Charge cooldowns are different: their haste is an acceleration.
+    ///
     /// Thunder Call is cast first (for Chain Lightning) and the enemy is at 20% health (for Culling Strike).
     /// </summary>
     [Theory]
@@ -42,6 +45,7 @@ public class TariqCooldowns
         f.Cast(ability);
         double end = f.CompletedAt(ability) + cooldown / (1 + haste);
 
+        Assert.Equal(1.0, f.AccelerationRate(ability)); // a reduction at the cast, not an acceleration
         f.WaitUntil(end - 0.1);
         Assert.False(f.IsReady(ability));
         f.WaitUntil(end + 0.1);
@@ -50,7 +54,7 @@ public class TariqCooldowns
 
     /// <summary>
     /// Wild Swing has a 1.5 second cooldown, Skull Crusher 1 and Hammer Storm 1.5, all shortened by haste: they are ready again when the
-    /// global cooldown ends, however high your haste.
+    /// global cooldown ends, however high your haste. Haste shortens them at the cast, with no acceleration (recovery rate 1).
     ///
     /// Two casts in a row with 100 Fury, the second right after the first (it throws if the ability is still on cooldown).
     /// </summary>
@@ -67,6 +71,7 @@ public class TariqCooldowns
         f.Set(Tariq.Fury, 100); // enough for both casts
 
         f.Cast(ability);
+        Assert.Equal(1.0, f.AccelerationRate(ability)); // a reduction at the cast, not an acceleration
         f.Cast(ability);
 
         Assert.Equal(2, f.CastsCompleted(ability).Count);

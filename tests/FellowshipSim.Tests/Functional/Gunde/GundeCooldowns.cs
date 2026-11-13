@@ -15,6 +15,9 @@ public class GundeCooldowns
     /// <summary>
     /// Reaver's Edge has a 5 second cooldown, Blood Arc 9, Heart Splitter 12 and Grim Carve 15, and haste shortens them:
     /// base / (1 + haste).
+    ///
+    /// Haste is a cooldown reduction here, applied once at the cast (the length is divided by 1 + haste): the cooldown then runs in real
+    /// time, with no acceleration (recovery rate 1). Charge cooldowns are different: their haste is an acceleration.
     /// </summary>
     [Theory]
     [InlineData("Reaver's Edge", 5, 0.0)]
@@ -32,6 +35,7 @@ public class GundeCooldowns
         f.Cast(ability);
         double end = f.CompletedAt(ability) + cooldown / (1 + haste);
 
+        Assert.Equal(1.0, f.AccelerationRate(ability)); // a reduction at the cast, not an acceleration
         f.WaitUntil(end - 0.1);
         Assert.False(f.IsReady(ability));
         f.WaitUntil(end + 0.1);
@@ -41,8 +45,6 @@ public class GundeCooldowns
     /// <summary>
     /// The cooldowns of Rupture (60 seconds), Slaughter (30), Reign in Blood (90), Owed in Blood (3), Butcher's Hook (30), Jawbreaker (16)
     /// and Reckless Abandon (30) are not shortened by haste.
-    ///
-    /// Jawbreaker's 16 seconds is game data (ability 1244); no logged interval is shorter.
     /// </summary>
     [Theory]
     [InlineData("Rupture", 60, 0.0)]

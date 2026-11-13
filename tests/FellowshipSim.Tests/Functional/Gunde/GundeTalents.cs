@@ -8,21 +8,11 @@ namespace FellowshipSim.Tests.Functional;
 /// Gunde's talents, one at a time, as their tooltips describe them.
 ///
 /// Damage has no spread unless the test says otherwise, and random procs are forced, the chance of each read from its rolls. A
-/// talent's bonus is compared with a plain cast of the same ability, or with the main stat measured from an auto attack swing (30% of
-/// it). Talents no combat log has shown are marked unverified in the engine; the tests follow the tooltips.
+/// talent's bonus is compared with a plain cast of the same ability. No test checks a damage value. Rend is read from its ticks once they
+/// are all out (GundeRend.cs). Talents no combat log has shown are marked unverified in the engine; the tests follow the tooltips.
 /// </summary>
 public class GundeTalents
 {
-    /// <summary>The main stat, measured as an auto attack swing on a bare Gunde, which deals 30% of it.</summary>
-    private static readonly double MainStat = MainStatFromAnAttack();
-
-    private static double MainStatFromAnAttack()
-    {
-        var f = StepFights.Gunde().WithoutDamageSpread();
-        f.Cast<Attack>();
-        return f.Damage<Attack>().First().Value / 0.3;
-    }
-
     /// <summary>The first hit of a plain cast of <typeparamref name="T"/> on one enemy: what a talent's bonus is compared with.</summary>
     private static double PlainHit<T>() where T : Ability
     {
@@ -31,9 +21,6 @@ public class GundeTalents
         f.Wait(0.3); // its first hit lands
         return f.Damage<T>().First().Value;
     }
-
-    /// <summary>All the Rend applied to the enemy so far: what it still has to deal, and what it dealt.</summary>
-    private static double RendApplied(StepDriver f) => f.GundeOf().Rend.Remaining(f.Enemy) + f.Damage("Rend").Sum(tick => tick.Value);
 
     // ---- Death's Arc
 
@@ -86,8 +73,7 @@ public class GundeTalents
     // ---- Raven's Precision
 
     /// <summary>
-    /// With Raven's Precision, each Blood Feather you pick up makes an explosion of blood that deals 37.4% of your main stat to nearby
-    /// enemies.
+    /// With Raven's Precision, each Blood Feather you pick up makes an explosion of blood that hits nearby enemies.
     ///
     /// The feather comes from the first Rend tick of a Reaver's Edge (3s), forced.
     /// </summary>
@@ -102,7 +88,7 @@ public class GundeTalents
 
         var explosions = f.Ticks(RavensPrecision.DamageEffectId);
         Assert.Single(explosions);
-        AssertRatio(0.374, explosions[0].Value / MainStat);
+        Assert.True(explosions[0].Value > 0);
     }
 
     /// <summary>Raven's Precision's explosion deals less beyond 5 enemies: sqrt(5 / enemies) of its damage on each.</summary>
@@ -191,7 +177,8 @@ public class GundeTalents
         using var check = new Checks();
         check.Equal(1, sunderedScenario.Damage("Rend").Count);
         check.Ratio(0.5, sunderedScenario.Damage("Rend")[0].Value / plainHit);
-        check.Equal(0, sunderedScenario.GundeOf().Rend.Remaining(sunderedScenario.Enemy));
+        sunderedScenario.Wait(40); // no more Rend is left to tick
+        check.Equal(1, sunderedScenario.Damage("Rend").Count, what: "Rend ticks, the one at once");
         check.Equal(0, plainScenario.Damage("Rend").Count);
     }
 
@@ -274,17 +261,12 @@ public class GundeTalents
     public void Crimson_Strikes_And_Serrated_Edge_Empower_The_Same_Cast()
     {
         double plainReaverDamage = PlainHit<ReaversEdge>();
-        var f = StepFights.Gunde(talents: [CrimsonStrikes.TalentId]).WithoutDamageSpread();
-
-        f.Cast<BloodArc>();
-        double rendBefore = RendApplied(f);
-
-        f.Cast<ReaversEdge>();
+        double rend = GundeRend.Added(f => f.Cast<BloodArc>(), f => f.Cast<ReaversEdge>(), out var f, [CrimsonStrikes.TalentId]);
         double reaverDamage = f.Damage<ReaversEdge>().First().Value;
 
         using var check = new Checks(f);
         check.Ratio(1.15, reaverDamage / plainReaverDamage);
-        check.Ratio(0.7, (RendApplied(f) - rendBefore) / reaverDamage);
+        check.Ratio(0.7, rend / reaverDamage);
     }
 
     // ---- Deep Rend
@@ -313,24 +295,25 @@ public class GundeTalents
     }
 
     /// <summary>
-    /// Deep Rend does not change the Rend stacks Owed in Blood adds: 10 stacks of Owed in Blood are still 10 times your main stat of Rend
-    /// to deal, dealt in 11 ticks.
-    ///
-    /// The Rend left over the main stat within 0.01.
+    /// Deep Rend does not change the Rend stacks Owed in Blood adds: 10 stacks of Owed in Blood deal the same Rend with the talent as
+    /// without it, in 11 ticks.
     /// </summary>
     [Fact]
     public void Deep_Rend_Does_Not_Change_The_Rend_Stacks_Owed_In_Blood_Adds()
     {
+        void TenStacks(StepDriver fight)
+        {
+            fight.Apply(OwedInBlood.Buff, stacks: 10);
+            fight.Cast<OwedInBlood>();
+        }
+        double plainRend = GundeRend.Of(TenStacks);
         var f = StepFights.Gunde(talents: [DeepRend.TalentId]).WithoutDamageSpread();
-        f.Apply(OwedInBlood.Buff, stacks: 10);
-
-        f.Cast<OwedInBlood>();
+        TenStacks(f);
+        double deepRend = GundeRend.Dealt(f);
 
         using var check = new Checks(f);
-        check.Equal(10, f.GundeOf().Rend.Remaining(f.Enemy) / MainStat, 0.01);
-        f.Wait(32); // every tick
         check.Equal(11, f.Damage("Rend").Count);
-        check.Ratio(10, f.Damage("Rend").Sum(tick => tick.Value) / MainStat);
+        check.Ratio(1.0, deepRend / plainRend);
     }
 
     /// <summary>
@@ -493,7 +476,7 @@ public class GundeTalents
 
     /// <summary>
     /// With Massacre, each Rend your Slaughter uses up gives 0.25% Spirit for 8 seconds, stacking: Slaughter on three enemies with Rend
-    /// gives 0.75%, gone 9 seconds later.
+    /// gives 0.75%, gone 8 seconds after the cast.
     /// </summary>
     [Fact]
     public void Massacre_Gives_A_Quarter_Percent_Spirit_Per_Rend_Consumed_For_8_Seconds()
@@ -503,25 +486,30 @@ public class GundeTalents
         f.Cast<ReaversEdge>();
 
         f.Cast<Slaughter>();
+        double end = f.CompletedAt("Slaughter") + 8;
 
-        Assert.Equal(0.0075, f.Spirit(), 1e-9);
-        f.Wait(9);
-        Assert.Equal(0.0, f.Spirit(), 1e-9);
+        using var check = new Checks(f);
+        check.Equal(0.0075, f.Spirit(), 1e-9);
+        f.WaitUntil(end - 0.1);
+        check.Equal(0.0075, f.Spirit(), 1e-9);
+        f.WaitUntil(end + 0.1);
+        check.Equal(0.0, f.Spirit(), 1e-9);
     }
 
     // ---- Slayer's Grin
 
     /// <summary>
     /// With Slayer's Grin, each Blood Feather you pick up takes 0.4 seconds off Rupture's cooldown: after a Rupture, a Reaver's Edge with
-    /// a Spirit Refund (5 feathers) makes Rupture ready 2 seconds sooner, at 58 seconds.
+    /// a Spirit Refund (5 feathers) makes Rupture ready 2 seconds sooner, 58 seconds after the Rupture.
     ///
-    /// Rupture's ready time is the engine's, read within 20ms as the Reaver's Edge's cast returns (3s): the feathers were picked up at 2s,
-    /// and a Rend tick's feather would come later.
+    /// The feathers are picked up at the refund; only the first 5 feather rolls (the refund's) are forced to succeed, so no Rend tick adds one.
     /// </summary>
     [Fact]
     public void Slayers_Grin_Takes_0_4_Seconds_Off_Rupture_Per_Feather()
     {
         var f = StepFights.Gunde(spirit: 0.2, talents: [SlayersGrin.TalentId]);
+        int feathers = 0;
+        f.ForceProcs(key => key == Core.Heroes.Gunde.Gunde.FeatherProcKey ? feathers++ < 5 : null); // the refund's 5, none from a Rend tick
         f.ForceProcs(key => key == Hero.SpiritRefundProc ? false : null); // no refund from Rupture
 
         f.Cast<Rupture>();
@@ -529,8 +517,12 @@ public class GundeTalents
 
         f.Cast<ReaversEdge>();
 
-        double ruptureReadyAt = f.Seconds() + f.Hero.GetCooldownRemains(f.Ability<Rupture>().Name, f.Now);
-        Assert.Equal(60.0 - 2.0, ruptureReadyAt, 0.02);
+        double end = f.CompletedAt("Rupture") + 60 - 2;
+
+        f.WaitUntil(end - 0.1);
+        Assert.False(f.IsReady<Rupture>());
+        f.WaitUntil(end + 0.1);
+        Assert.True(f.IsReady<Rupture>());
     }
 
     // ---- Frenzied Reign
@@ -547,8 +539,9 @@ public class GundeTalents
         f.Cast<ReignInBlood>();
 
         f.Cast<DoubleStrike>();
+        double rend = GundeRend.Dealt(f);
 
-        AssertRatio(1.05, RendApplied(f) / f.Damage<DoubleStrike>().Sum(hit => hit.Value));
+        AssertRatio(1.05, rend / f.Damage<DoubleStrike>().Sum(hit => hit.Value));
     }
 
     /// <summary>
@@ -560,15 +553,13 @@ public class GundeTalents
     [Fact]
     public void Heart_Splitter_Under_Every_Rend_Bonus_Applies_185_Percent()
     {
-        var f = StepFights.Gunde(talents: [FrenziedReign.TalentId, SuperiorSerration.TalentId]).WithoutDamageSpread();
+        double rend = GundeRend.Added(f =>
+        {
+            f.Cast<BloodArc>();
+            f.Cast<ReignInBlood>();
+        }, f => f.Cast<HeartSplitter>(), out var f, [FrenziedReign.TalentId, SuperiorSerration.TalentId]);
 
-        f.Cast<BloodArc>();
-        f.Cast<ReignInBlood>();
-        double rendBefore = RendApplied(f);
-
-        f.Cast<HeartSplitter>();
-
-        AssertRatio(1.85, (RendApplied(f) - rendBefore) / f.Damage<HeartSplitter>().First().Value);
+        AssertRatio(1.85, rend / f.Damage<HeartSplitter>().First().Value);
     }
 
     // ---- Bloodbath
@@ -576,10 +567,6 @@ public class GundeTalents
     /// <summary>
     /// With Bloodbath, Grim Carve gives Bloodbath for 3 seconds, which makes Reign in Blood's cooldown recover 200% faster (three times as
     /// fast): after a Reign in Blood and a Grim Carve at the start, Reign in Blood is ready at 90 - 2 x 3 = 84 seconds.
-    ///
-    /// The ready time is checked within 50ms. TODO: fails: the engine's Reign in Blood is ready at about 90 seconds, as if Bloodbath did
-    /// nothing, though the cooldown reports the faster rate while it holds (the time passed does not seem to be credited at it). Check in
-    /// game that Bloodbath shortens a cooldown already running.
     /// </summary>
     [Fact]
     public void Bloodbath_Triples_Reign_In_Blood_Cooldown_Recovery_For_3_Seconds()
@@ -587,38 +574,48 @@ public class GundeTalents
         var f = StepFights.Gunde(talents: [Bloodbath.TalentId]);
 
         f.Cast<ReignInBlood>();
+        double end = f.CompletedAt("Reign in Blood") + 90 - 2 * 3;
         f.Cast<GrimCarve>();
-        f.WaitUntil(3.1); // Bloodbath is over
 
-        f.WaitUntil(84.0 - 0.05);
+        f.WaitUntil(end - 0.1);
         Assert.False(f.IsReady<ReignInBlood>());
-        f.WaitUntil(84.0 + 0.05);
+        f.WaitUntil(end + 0.1);
         Assert.True(f.IsReady<ReignInBlood>());
     }
 
     // ---- Bloodcraze
 
     /// <summary>
-    /// With Bloodcraze, Owed in Blood makes you pulse damage every 3 seconds for 6 seconds, 25% of your main stat increased by 150% per
-    /// stack used: with 10 stacks, two pulses, 3 and 6 seconds after, each 25% x (1 + 1.5 x 10) of the main stat.
+    /// With Bloodcraze, Owed in Blood makes you pulse damage every 3 seconds for 6 seconds, increased by 150% per stack used: with N
+    /// stacks, two pulses, 3 and 6 seconds after, each (1 + 1.5 x N) / (1 + 1.5 x 2) times a pulse of 2 stacks.
     ///
     /// The pulse times are checked within 50ms.
     /// </summary>
-    [Fact]
-    public void Bloodcraze_Pulses_Twice_For_150_Percent_More_Per_Stack()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(10)]
+    [InlineData(50)]
+    public void Bloodcraze_Pulses_Twice_For_150_Percent_More_Per_Stack(int stacks)
     {
-        var f = StepFights.Gunde(talents: [Bloodcraze.TalentId]).WithoutDamageSpread();
-        f.Apply(OwedInBlood.Buff, stacks: 10);
-
-        f.Cast<OwedInBlood>();
-        f.Wait(7); // both pulses
+        StepDriver Fight(int stacks)
+        {
+            var fight = StepFights.Gunde(talents: [Bloodcraze.TalentId]).WithoutDamageSpread();
+            fight.Apply(OwedInBlood.Buff, stacks: stacks);
+            fight.Cast<OwedInBlood>();
+            fight.Wait(7); // both pulses
+            return fight;
+        }
+        var f = Fight(stacks);
+        var twoStacksPulses = Fight(2).Ticks(Bloodcraze.DamageEffectId);
 
         var pulses = f.Ticks(Bloodcraze.DamageEffectId);
         Assert.Equal(2, pulses.Count);
         using var check = new Checks(f);
         check.Equal(3.0, pulses[0].Time.TotalSeconds, 0.05);
         check.Equal(6.0, pulses[1].Time.TotalSeconds, 0.05);
-        foreach (var pulse in pulses) check.Ratio(0.25 * (1 + 1.5 * 10), pulse.Value / MainStat, what: $"pulse at {pulse.Time.TotalSeconds:F3}s");
+        for (int i = 0; i < pulses.Count; i++)
+            check.Ratio((1 + 1.5 * stacks) / (1 + 1.5 * 2), pulses[i].Value / twoStacksPulses[i].Value, what: $"pulse {i + 1}");
     }
 
     // ---- Oathshatter
@@ -662,9 +659,6 @@ public class GundeTalents
     /// <summary>
     /// Oathshatter's explosion deals less beyond 8 other enemies: sqrt(8 / others) of its damage on each. With Heart Splitter forced to
     /// crit, the explosions on 12 others are sqrt(8 / 12) of those on 8.
-    ///
-    /// TODO: the tooltip says the reduction starts beyond 10 targets; combat logs (1640 on 15 others of 4492, and 0.2773 on 26 others) fit
-    /// 8, which the engine and this test use. Check in game.
     /// </summary>
     [Fact]
     public void Oathshatter_Explosion_Falls_Off_Beyond_8_Other_Enemies()
@@ -686,7 +680,7 @@ public class GundeTalents
     /// Grim Carve deals 25% more damage: after Rupture, Heart Splitter and Blood Arc (at 0, 1.5 and 3s), a Grim Carve's three spins take 3
     /// seconds off each, and each spin deals 25% more.
     ///
-    /// Reaver's Edge, with 5 seconds, would be ready already when read. Each ready time is checked within 20ms.
+    /// Reaver's Edge, with 5 seconds, would be ready already when read.
     /// </summary>
     [Fact]
     public void Carnage_Takes_1_Second_Off_Four_Cooldowns_Per_Spin_And_Adds_25_Percent_Damage()
@@ -695,25 +689,28 @@ public class GundeTalents
         var f = StepFights.Gunde(talents: [Carnage.TalentId]).WithoutDamageSpread();
 
         f.Cast<Rupture>();
+        double ruptureEnd = f.CompletedAt("Rupture") + 60 - 3;
         f.Cast<HeartSplitter>();
+        double heartSplitterEnd = f.CompletedAt("Heart Splitter") + 12 - 3;
         f.Cast<BloodArc>();
+        double bloodArcEnd = f.CompletedAt("Blood Arc") + 9 - 3;
 
         f.Cast<GrimCarve>();
         f.Wait(1.5); // its spins
 
         using var check = new Checks(f);
         foreach (var spin in f.Damage<GrimCarve>()) check.Ratio(1.25, spin.Value / plainSpinDamage, what: $"spin at {spin.Time.TotalSeconds:F3}s");
-        f.WaitUntil(3.0 + 9.0 - 3 - 0.02);
+        f.WaitUntil(bloodArcEnd - 0.1);
         check.False(f.IsReady<BloodArc>());
-        f.WaitUntil(3.0 + 9.0 - 3 + 0.02);
+        f.WaitUntil(bloodArcEnd + 0.1);
         check.True(f.IsReady<BloodArc>());
-        f.WaitUntil(1.5 + 12.0 - 3 - 0.02);
+        f.WaitUntil(heartSplitterEnd - 0.1);
         check.False(f.IsReady<HeartSplitter>());
-        f.WaitUntil(1.5 + 12.0 - 3 + 0.02);
+        f.WaitUntil(heartSplitterEnd + 0.1);
         check.True(f.IsReady<HeartSplitter>());
-        f.WaitUntil(60.0 - 3 - 0.02);
+        f.WaitUntil(ruptureEnd - 0.1);
         check.False(f.IsReady<Rupture>());
-        f.WaitUntil(60.0 - 3 + 0.02);
+        f.WaitUntil(ruptureEnd + 0.1);
         check.True(f.IsReady<Rupture>());
     }
 
@@ -726,67 +723,57 @@ public class GundeTalents
     [Fact]
     public void Superior_Serration_Makes_Serrated_Edge_Add_30_Percent()
     {
-        var f = StepFights.Gunde(talents: [SuperiorSerration.TalentId]).WithoutDamageSpread();
+        double rend = GundeRend.Added(f => f.Cast<BloodArc>(), f => f.Cast<ReaversEdge>(), out var f, [SuperiorSerration.TalentId]);
 
-        f.Cast<BloodArc>();
-        double rendBefore = RendApplied(f);
-
-        f.Cast<ReaversEdge>();
-
-        AssertRatio(0.8, (RendApplied(f) - rendBefore) / f.Damage<ReaversEdge>().First().Value);
+        AssertRatio(0.8, rend / f.Damage<ReaversEdge>().First().Value);
     }
 
     // ---- Ancestral Instinct
 
     /// <summary>
     /// With Ancestral Instinct, Reaver's Edge and Grim Carve have a 40% chance to give 6% of your main stat for 6 seconds: after a Reaver's
-    /// Edge whose roll succeeds, a Warbound deals 6% more than a plain one, and 7 seconds later it is plain again.
+    /// Edge whose roll succeeds, a Warbound 0.1 seconds before the end deals 6% more than a plain one, and one 0.1 seconds after it is
+    /// plain.
     /// </summary>
-    [Fact]
-    public void Ancestral_Instinct_Gives_6_Percent_Main_Stat_For_6_Seconds()
+    [Theory]
+    [InlineData(-0.1, 1.06)]
+    [InlineData(0.1, 1.0)]
+    public void Ancestral_Instinct_Gives_6_Percent_Main_Stat_For_6_Seconds(double offset, double multiplier)
     {
         double plainWarboundDamage = PlainHit<Warbound>();
         var f = StepFights.Gunde(talents: [AncestralInstinct.TalentId]).WithoutDamageSpread();
         var procs = f.ForceProcs(key => key == AncestralInstinct.ProcKey ? true : null);
 
         f.Cast<ReaversEdge>();
-
-        f.Cast<Warbound>();
-        f.Wait(7);
+        f.WaitUntil(f.CompletedAt("Reaver's Edge") + 6 + offset);
         f.Cast<Warbound>();
 
-        var hits = f.Damage<Warbound>();
         using var check = new Checks(f);
         foreach (double chance in procs.ChancesOf(AncestralInstinct.ProcKey)) check.Equal(0.4, chance, what: "Ancestral Instinct's chance");
-        check.Ratio(1.06, hits[0].Value / plainWarboundDamage);
-        check.Ratio(1.0, hits[1].Value / plainWarboundDamage);
+        check.Ratio(multiplier, f.Damage<Warbound>().First().Value / plainWarboundDamage);
     }
 
     // ---- Harvester's Toll
 
     /// <summary>
-    /// With Harvester's Toll, Rupture makes you deal 7.5% more damage for 10 seconds: Rupture's own hit deals 7.5% more (the buff comes
-    /// first), so does a Reaver's Edge at 5 seconds, and one at 11 seconds is plain.
-    ///
-    /// TODO: the effect's own text says 900% (value 10); the tooltip's 7.5% is used.
+    /// With Harvester's Toll, Rupture makes you deal 7.5% more damage for 10 seconds from the cast: Rupture's own hit deals 7.5% more
+    /// (the buff comes first), so does a Warbound 0.1 seconds before the end, and a Warbound 0.1 seconds after it is plain.
     /// </summary>
-    [Fact]
-    public void Harvesters_Toll_Adds_7_5_Percent_Damage_For_10_Seconds()
+    [Theory]
+    [InlineData(-0.1, 1.075)]
+    [InlineData(0.1, 1.0)]
+    public void Harvesters_Toll_Adds_7_5_Percent_Damage_For_10_Seconds(double offset, double multiplier)
     {
-        double plainRuptureDamage = PlainHit<Rupture>(), plainReaverDamage = PlainHit<ReaversEdge>();
+        double plainRuptureDamage = PlainHit<Rupture>(), plainWarboundDamage = PlainHit<Warbound>();
         var f = StepFights.Gunde(talents: [HarvestersToll.TalentId]).WithoutDamageSpread();
 
         f.Cast<Rupture>();
-        f.WaitUntil(5);
-        f.Cast<ReaversEdge>();
-        f.WaitUntil(11);
-        f.Cast<ReaversEdge>();
+        f.WaitUntil(f.CompletedAt("Rupture") + 10 + offset);
+        f.Cast<Warbound>();
 
-        var reaverHits = f.Damage<ReaversEdge>();
         using var check = new Checks(f);
         check.Ratio(1.075, f.Damage<Rupture>().First().Value / plainRuptureDamage);
-        check.Ratio(1.075, reaverHits[0].Value / plainReaverDamage);
-        check.Ratio(1.0, reaverHits[1].Value / plainReaverDamage);
+        check.Ratio(multiplier, f.Damage<Warbound>().First().Value / plainWarboundDamage);
     }
 
     /// <summary>

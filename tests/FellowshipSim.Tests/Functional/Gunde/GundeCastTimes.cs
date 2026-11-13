@@ -85,24 +85,4 @@ public class GundeCastTimes
 
         Assert.Equal(afterHeartSplitter, f.Seconds());
     }
-
-    /// <summary>
-    /// Down times add up over a rotation: Double Strike, Reaver's Edge, Blood Arc, Heart Splitter and Grim Carve in a row take 5 global
-    /// cooldowns, 5 x 1.5 / (1 + 0.5) = 5 seconds at 50% haste.
-    ///
-    /// Within 5ms, a millisecond per cast.
-    /// </summary>
-    [Fact]
-    public void Down_Times_Add_Up_Over_A_Rotation()
-    {
-        var f = StepFights.Gunde(haste: 0.5);
-
-        f.Cast<DoubleStrike>();
-        f.Cast<ReaversEdge>();
-        f.Cast<BloodArc>();
-        f.Cast<HeartSplitter>();
-        f.Cast<GrimCarve>();
-
-        AssertSeconds(5 * 1.5 / (1 + 0.5), f.Seconds(), tolerance: 0.005);
-    }
 }

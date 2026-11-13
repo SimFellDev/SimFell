@@ -18,11 +18,8 @@ public class GundeResourceEconomy
 
     /// <summary>
     /// You start a fight with no stack of Owed in Blood.
-    ///
-    /// TODO: the engine starts every fight with one stack (one of the hero's "situational" auras, kept up all fight for replays), so a
-    /// sim's Owed in Blood is castable at once. Check in game whether any fight starts with a stack.
     /// </summary>
-    [Fact(Skip = "To check in game: does a fight start with a stack of Owed in Blood? The engine gives one (a situational aura kept up all fight, for replays).")]
+    [Fact]
     public void A_Fight_Starts_With_No_Owed_In_Blood()
     {
         var f = StepFights.Gunde();
@@ -63,8 +60,6 @@ public class GundeResourceEconomy
 
     /// <summary>
     /// Each Rend tick has a 15% chance to spawn a Blood Feather.
-    ///
-    /// TODO: the game data has no chance; the engine's 15% is an estimate from one combat log. Check in game.
     /// </summary>
     [Fact(Skip = "The chance of a Blood Feather per Rend tick is unknown (the engine's 15% is an estimate from one log)")]
     public void A_Rend_Tick_Has_A_Chance_Of_A_Blood_Feather()
@@ -132,19 +127,21 @@ public class GundeResourceEconomy
         check.True(f.TryCast<OwedInBlood>().Succeeded);
     }
 
-    /// <summary>Owed in Blood's stacks last 90 seconds, and there can be at most 150: 200 stacks gained one by one leave 150, still there at
-    /// 89 seconds and gone at 91.</summary>
+    /// <summary>Owed in Blood's stacks last 90 seconds, and there can be at most 150: 200 stacks gained one by one leave 150, still there 0.1 seconds
+    /// before the 90 seconds are over and gone 0.1 seconds after.</summary>
     [Fact]
     public void Owed_In_Blood_Stacks_Last_90_Seconds_Up_To_150()
     {
         var f = StepFights.Gunde();
         for (int i = 0; i < 200; i++) f.Hero.Auras.Apply(OwedInBlood.Buff, f.Now); // one stack each, as a feather gives; f.Apply sets the stacks instead
 
+        double end = f.Seconds() + 90;
+
         using var check = new Checks(f);
         check.Equal(150, f.Stacks(OwedInBlood.Buff));
-        f.WaitUntil(89);
+        f.WaitUntil(end - 0.1);
         check.Equal(150, f.Stacks(OwedInBlood.Buff));
-        f.WaitUntil(91);
+        f.WaitUntil(end + 0.1);
         check.Equal(0, f.Stacks(OwedInBlood.Buff));
     }
 
@@ -169,7 +166,7 @@ public class GundeResourceEconomy
     /// <summary>
     /// Each cast of an ability that applies Rend rolls a single Spirit Refund, however many hits it lands and enemies it strikes.
     ///
-    /// 3 enemies, so an area ability strikes several. TODO: confirm in the game that it is one roll per cast, as the user expects.
+    /// 3 enemies, so an area ability strikes several.
     /// </summary>
     [Theory]
     [InlineData("Double Strike")]
@@ -192,8 +189,8 @@ public class GundeResourceEconomy
     }
 
     /// <summary>
-    /// Abilities that do not apply Rend do not roll a Spirit Refund: with Rend already on the enemy, the auto attack, Warbound and
-    /// Slaughter give no roll and no Spirit Point.
+    /// Abilities that do not apply Rend do not roll a Spirit Refund: with Rend already on the enemy (put there by Owed in Blood, which
+    /// rolls none), the auto attack, Warbound and Slaughter give no roll and no Spirit Point.
     /// </summary>
     [Fact]
     public void Abilities_That_Apply_No_Rend_Do_Not_Roll_A_Spirit_Refund()
@@ -201,9 +198,8 @@ public class GundeResourceEconomy
         var f = StepFights.Gunde(spirit: 0.2);
         var procs = f.ForceProcs(key => key == Hero.SpiritRefundProc ? true : null);
 
-        f.Cast<ReaversEdge>(); // Rend on the enemy
-        procs.Rolls.Clear(); // Reaver's Edge's own roll
-        f.Set(Hero.SpiritPoints, 0); // and its Spirit Point
+        f.Apply(OwedInBlood.Buff, stacks: 10);
+        f.Cast<OwedInBlood>(); // Rend on the enemy
 
         f.Cast<Attack>();
         f.Cast<Warbound>();

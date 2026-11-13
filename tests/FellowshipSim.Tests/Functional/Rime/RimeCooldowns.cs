@@ -47,7 +47,11 @@ public class RimeCooldowns
 
     // ---- Cold Snap's charges
 
-    /// <summary>A Cold Snap charge takes 12 seconds to come back, and sped up by haste: 12 / (1 + haste).</summary>
+    /// <summary>
+    /// A Cold Snap charge takes 12 seconds to come back, and sped up by haste: 12 / (1 + haste).
+    ///
+    /// Haste is an acceleration: the charge keeps its 12 seconds and recharges 1 + haste times as fast (recovery rate 1 + haste).
+    /// </summary>
     [Theory]
     [InlineData(0.0)]
     [InlineData(0.2)]
@@ -59,6 +63,7 @@ public class RimeCooldowns
         f.Cast<ColdSnap>();
         double end = f.CompletedAt("Cold Snap") + 12.0 / (1 + haste);
 
+        Assert.Equal(1 + haste, f.AccelerationRate<ColdSnap>());
         f.WaitUntil(end - 0.1);
         Assert.Equal(1, f.Charges<ColdSnap>());
         f.WaitUntil(end + 0.1);
@@ -87,7 +92,8 @@ public class RimeCooldowns
 
     /// <summary>
     /// Blessing of the Commander's cooldown reduction and haste combine on Cold Snap's charges: with the rank 10 node (12%), a charge
-    /// comes back in 12 x (1 - 0.12) / (1 + haste) seconds.
+    /// comes back in 12 x (1 - 0.12) / (1 + haste) seconds: the reduction cuts the 12 seconds once, and haste accelerates the recharge
+    /// (recovery rate 1 + haste).
     ///
     /// The Emerald gem's power unlocks every node up to rank 10. Blessing of the Commander on its own belongs in a gear test over every hero.
     /// </summary>
@@ -101,6 +107,7 @@ public class RimeCooldowns
         f.Cast<ColdSnap>();
         double end = f.CompletedAt("Cold Snap") + 12.0 * (1 - 0.12) / (1 + haste);
 
+        Assert.Equal(1 + haste, f.AccelerationRate<ColdSnap>());
         f.WaitUntil(end - 0.1);
         Assert.Equal(1, f.Charges<ColdSnap>());
         f.WaitUntil(end + 0.1);

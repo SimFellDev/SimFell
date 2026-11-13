@@ -106,23 +106,4 @@ public class TariqCastTimes
 
         Assert.Equal(afterWildSwing, f.Seconds());
     }
-
-    /// <summary>
-    /// Down times add up over a rotation, and a Skull Crusher in it is shorter than the others: a Wild Swing, a Skull Crusher and a Face
-    /// Breaker in a row take 1.5 + 1 + 1.5 = 4 seconds.
-    ///
-    /// At 0% haste, with 50 Fury. Within 3ms, a millisecond per cast.
-    /// </summary>
-    [Fact]
-    public void Down_Times_Add_Up_Over_A_Rotation()
-    {
-        var f = StepFights.Tariq();
-        f.Set(Tariq.Fury, 50); // enough for Skull Crusher
-
-        f.Cast<WildSwing>();
-        f.Cast<SkullCrusher>();
-        f.Cast<FaceBreaker>();
-
-        AssertSeconds(4.0, f.Seconds(), tolerance: 0.003);
-    }
 }

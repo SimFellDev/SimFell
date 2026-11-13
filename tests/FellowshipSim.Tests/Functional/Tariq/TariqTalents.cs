@@ -70,11 +70,12 @@ public class TariqTalents
     {
         var f = WithTalent(RideTheLightning.TalentId);
 
-        f.Cast<ThunderCall>(); // at 0s, off the global cooldown
+        f.Cast<ThunderCall>();
+        double end = f.CompletedAt("Thunder Call") + 21;
 
-        f.WaitUntil(20.9);
+        f.WaitUntil(end - 0.1);
         Assert.Equal(0.05, f.Haste(), 1e-9);
-        f.WaitUntil(21.1);
+        f.WaitUntil(end + 0.1);
         Assert.Equal(0.0, f.Haste(), 1e-9);
     }
 
@@ -90,10 +91,11 @@ public class TariqTalents
     {
         var f = StepFights.Tariq(talents: [RideTheLightning.TalentId]);
 
-        f.Cast<ThunderCall>(); // at 0s, off the global cooldown
-        f.WaitUntil(21.1); // Thunder Call is over
+        f.Cast<ThunderCall>();
+        double end = f.CompletedAt("Thunder Call") + 21;
+        f.WaitUntil(end + 0.1); // Thunder Call is over
         double furyAtTheEnd = f.Amount(Tariq.Fury);
-        f.WaitUntil(25.1);
+        f.WaitUntil(end + 4.1);
 
         using var check = new Checks(f);
         check.True(furyAtTheEnd >= 30.0 && furyAtTheEnd <= 31.7);
@@ -110,14 +112,15 @@ public class TariqTalents
         var f = StepFights.Tariq(talents: [RideTheLightning.TalentId]);
         f.Set(Hero.SpiritPoints, 100); // enough to cast Raging Tempest
 
-        f.Cast<RagingTempest>(); // at 0s, off the global cooldown
+        f.Cast<RagingTempest>();
+        double end = f.CompletedAt("Raging Tempest") + 20;
 
-        f.WaitUntil(5);
+        f.WaitUntil(end - 15);
         Assert.True(f.Amount(Tariq.Fury) > 5);
 
-        f.WaitUntil(20.1); // Raging Tempest is over
+        f.WaitUntil(end + 0.1); // Raging Tempest is over
         double furyAtTheEnd = f.Amount(Tariq.Fury);
-        f.WaitUntil(25.1);
+        f.WaitUntil(end + 5.1);
         Assert.Equal(furyAtTheEnd, f.Amount(Tariq.Fury), 1e-9);
     }
 
@@ -162,9 +165,10 @@ public class TariqTalents
         double cast = f.CompletedAt("Heavy Strike");
         Assert.Equal(5, f.Stacks(SquareHammer.Stacks));
 
-        f.WaitUntil(cast + 19.9);
+        double end = cast + 20;
+        f.WaitUntil(end - 0.1);
         Assert.Equal(5, f.Stacks(SquareHammer.Stacks));
-        f.WaitUntil(cast + 20.1);
+        f.WaitUntil(end + 0.1);
         Assert.Equal(0, f.Stacks(SquareHammer.Stacks));
     }
 
@@ -202,13 +206,14 @@ public class TariqTalents
         f.Apply(SquareHammer.Stacks, stacks: 2); // as 2 Heavy Strikes would
         Assert.Equal(0.0, f.Expertise(), 1e-9);
 
-        f.Cast<SkullCrusher>(); // at 0s, over at 1s
+        f.Cast<SkullCrusher>();
+        double end = f.CompletedAt("Skull Crusher") + 4;
 
         AssertRatio(1.08, f.Damage<SkullCrusher>().First().Value / plainDamage);
         Assert.Equal(0.08, f.Expertise(), 1e-9);
-        f.WaitUntil(3.9);
+        f.WaitUntil(end - 0.1);
         Assert.Equal(0.08, f.Expertise(), 1e-9);
-        f.WaitUntil(4.1);
+        f.WaitUntil(end + 0.1);
         Assert.Equal(0.0, f.Expertise(), 1e-9);
     }
 
@@ -608,9 +613,10 @@ public class TariqTalents
         Assert.Equal(5, f.Stacks(FarBeyondDriven.Buff));
         Assert.Equal(0.075, f.Spirit(), 1e-9);
 
-        f.WaitUntil(cast + 19.9);
+        double end = cast + 20;
+        f.WaitUntil(end - 0.1);
         Assert.Equal(0.075, f.Spirit(), 1e-9);
-        f.WaitUntil(cast + 20.1);
+        f.WaitUntil(end + 0.1);
         Assert.Equal(0.0, f.Spirit(), 1e-9);
     }
 
@@ -618,8 +624,7 @@ public class TariqTalents
 
     /// <summary>
     /// With Kill Em All, your offensive abilities have a 10% chance to reset Heavy Strike's cooldown and give you 2 stacks of Kill Em All
-    /// for 8 seconds: with Heavy Strike on cooldown, a Wild Swing that procs makes it ready at once and gives 2 stacks, there 7.9 seconds
-    /// after the cast and gone 0.2 later.
+    /// for 8 seconds: with Heavy Strike on cooldown, a Wild Swing that procs makes it ready at once and gives 2 stacks, which last 8 seconds.
     ///
     /// The proc is forced; its chance, 0.1, is rolled for each offensive cast, but not for Thunder Call or Focused Wrath.
     /// </summary>
@@ -637,15 +642,15 @@ public class TariqTalents
         Assert.DoesNotContain(procs.Rolls.Skip(1), r => r.Key == KillEmAll.ProcKey); // the first roll is Heavy Strike's
 
         proc = true;
-        double procAt = f.Seconds();
         f.Cast<WildSwing>();
 
         Assert.Equal(2, f.Stacks(KillEmAll.Buff));
         Assert.Equal(0.1, procs.ChancesOf(KillEmAll.ProcKey).Last(), 1e-9);
         Assert.Equal(0.0, f.Hero.GetCooldownRemains("Heavy Strike", f.Now), 1e-9);
-        f.WaitUntil(procAt + 7.9);
+        double end = f.CompletedAt("Wild Swing") + 8;
+        f.WaitUntil(end - 0.1);
         Assert.Equal(2, f.Stacks(KillEmAll.Buff));
-        f.WaitUntil(procAt + 8.1);
+        f.WaitUntil(end + 0.1);
         Assert.Equal(0, f.Stacks(KillEmAll.Buff));
     }
 
@@ -737,12 +742,13 @@ public class TariqTalents
         f.ForceProcs(key => key == AceOfSpades.ProcKey ? false : null); // no free Chain Lightning
 
         f.Cast<ChainLightning>();
+        double end = f.CompletedAt("Chain Lightning") + 8;
         f.Cast<ChainLightning>();
         Assert.False(f.TryCast<ChainLightning>().Succeeded);
 
-        f.WaitUntil(7.9);
+        f.WaitUntil(end - 0.1);
         Assert.False(f.TryCast<ChainLightning>().Succeeded);
-        f.WaitUntil(8.1);
+        f.WaitUntil(end + 0.1);
         Assert.True(f.TryCast<ChainLightning>().Succeeded);
     }
 
