@@ -181,6 +181,15 @@ public class SimcLanguageServerTests
     }
 
     [Fact]
+    public void The_Affixes_Key_Lists_The_Affixes_Without_Those_Listed()
+    {
+        Assert.Contains("affixes", Items(Hero + "aff|"));
+        Assert.Equal(["anomalous_orbs", "storm_shield"], Items(Hero + "affixes=|"));
+        Assert.Equal(["storm_shield"], Items(Hero + "affixes=anomalous_orbs,|"));
+        Assert.Contains("anomalous_orbs", Items(Hero + "affixes=anom|"));
+    }
+
+    [Fact]
     public void A_File_With_No_Hero_Line_Lists_The_Heroes()
     {
         Assert.Contains("rime", Items("ri|"));

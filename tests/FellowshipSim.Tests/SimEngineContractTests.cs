@@ -113,6 +113,10 @@ public class SimEngineContractTests
         var sent = JsonSerializer.Deserialize<SimSettings>(JsonSerializer.Serialize(settings, Web), Web)!;
 
         Assert.Equal(settings.Dungeon!.Format(), sent.Dungeon!.Format());
+        // A dungeon's affixes round-trip through JSON.
+        var affixed = settings with { Dungeon = settings.Dungeon with { Affixes = ["anomalous_orbs", "storm_shield"] } };
+        Assert.Equal(["anomalous_orbs", "storm_shield"],
+            JsonSerializer.Deserialize<SimSettings>(JsonSerializer.Serialize(affixed, Web), Web)!.Dungeon!.Affixes);
         var result = await _engine.SimulateAsync(SimcProfile.Parse(Profile), settings);
         Assert.Equal(JsonSerializer.Serialize(result, Web), JsonSerializer.Serialize(await _engine.SimulateAsync(SimcProfile.Parse(Profile), sent), Web));
         Assert.True(result.BossDps > 0);

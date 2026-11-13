@@ -52,7 +52,7 @@ public class DungeonReaderTests
     // The fight runs from 100 s to 400 s. The pack is met at 110 s and dies by 150 s; Koros is met at 180 s and dies at
     // 300 s; two orbs spawn at 200 s and 201.5 s, in combat with Koros, and die at 230 s; the NPC of no creature dies at
     // 149 s, and the party's NPC at 141 s.
-    private static string Fight(string contacts, string deaths) => $$"""
+    private static string Fight(string contacts, string deaths, string affixes = "") => $$"""
         {
           "report_code": "abc",
           "fight": {
@@ -61,6 +61,7 @@ public class DungeonReaderTests
             "enemyNPCs": [ { "id": {{PackActor}}, "gameID": {{Pack.Creature}} }, { "id": {{KorosActor}}, "gameID": {{Koros}} },
                            { "id": {{OrbActor}}, "gameID": {{Orb}} }, { "id": {{MysteryActor}}, "gameID": 999999 } ]
           },
+          {{(affixes.Length > 0 ? $"\"affixes\": [{affixes}]," : "")}}
           "contact_player": { "id": 3, "name": "Arck", "hero": "Xavian" },
           "enemy_contacts": [ {{contacts}} ],
           "enemy_deaths": [ {{deaths}} ]
@@ -84,15 +85,16 @@ public class DungeonReaderTests
         Death(OrbActor, 2, Orb, "Anomalous Orb 2", 230000),
         Death(KorosActor, 1, Koros, "Ancient Koros", 300000));
 
-    private static DungeonProfile Read(string contacts, string deaths)
+    private static DungeonProfile Read(string contacts, string deaths, string affixes = "")
     {
-        using var document = JsonDocument.Parse(Fight(contacts, deaths));
+        using var document = JsonDocument.Parse(Fight(contacts, deaths, affixes));
         return DungeonReader.FromFight(document.RootElement);
     }
 
     // A line of a creature's enemies, with the seconds after their pull's start at which they enter combat and die.
     private static EnemyGroup Line(int count, CodexCreature creature, double firstSeen = 0, double? dies = null) =>
-        new(count, creature.Name, creature.SpiritPoints, HitPoints: Math.Round(creature.BaseHealth, 2), FirstSeenSeconds: firstSeen, DiesSeconds: dies);
+        new(count, creature.Name, creature.SpiritPoints, creature.Id == AnomalousOrbGameCreature.ID, Math.Round(creature.BaseHealth, 2),
+            FirstSeenSeconds: firstSeen, DiesSeconds: dies);
 
     [Fact]
     public void A_Pack_Met_At_Its_Placements_Is_One_Pull_Until_Its_Last_Death()
@@ -116,6 +118,22 @@ public class DungeonReaderTests
         Assert.True(dungeon.Pull("2")!.Final);
         Assert.Equal("Ancient Koros, 1:20 in the log", dungeon.Pull("2")!.Comment);
         Assert.Equal("From FellowshipLogs report abc, fight 7 (5:00), with Arck's damage events.\nEnemies without game data: Mystery.", dungeon.Comment);
+    }
+
+    [Fact]
+    public void The_Import_Writes_The_Affixes_The_Engine_Models_And_Each_Orb_As_A_Priority_Target()
+    {
+        // The dungeonstart event's affixes 4, 6, 24, 25 and 22: the engine models 24 (Anomalous Orbs) and 25 (Storm Shield).
+        var dungeon = Read(Contacts, Deaths, "4, 6, 24, 25, 22");
+        Assert.Equal(["anomalous_orbs", "storm_shield"], dungeon.Affixes);
+        Assert.Contains("\naffixes=anomalous_orbs,storm_shield\n", dungeon.Format());
+        var orbs = Assert.Single(dungeon.Pull("3")!.Groups);
+        Assert.True(orbs.Priority);
+        Assert.Contains("name=Anomalous Orb,spirit_points=0,priority=1,", dungeon.Format());
+        Assert.All(dungeon.Pulls.Where(p => p.Name != "3").SelectMany(p => p.Groups), g => Assert.False(g.Priority));
+        // A fight without them has none.
+        Assert.Empty(Read(Contacts, Deaths).Affixes);
+        Assert.Empty(Read(Contacts, Deaths, "4, 6, 16").Affixes);
     }
 
     [Fact]
