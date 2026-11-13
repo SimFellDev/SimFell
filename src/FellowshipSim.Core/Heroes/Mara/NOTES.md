@@ -51,6 +51,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   frame, a 2,023 tick and a 14,326 crit, gives 2,606. The ticks never crit (effect 2364's preset `Empty`).
 - **Blocked hits** (hit type 4; 40 in fight 19, Queen's Fang and auto attacks): the logged amount is what the block
   left, so a replay compares the engine's hit with the amount plus the blocked part.
+- **An enemy's damage reduction:** the log's `mitigated` on a hit is what the enemy took off it, the block included (on a blocked
+  hit it is the blocked part and 1: Fc8v6yWxD14GQMnV fight 19 @ 32.008, blocked 29,604, mitigated 29,605), and amount and mitigated
+  make up the log's `unmitigatedAmount`. gd6ByNrf81jc9aWw fight 3 (Silken Hollow) has 1,104 of Mara's 16,995 hits with 45% to 55%
+  mitigated and no block, on every enemy hit at 260 to 280 s, 300 to 320 s, 360 to 380 s and 420 to 440 s (@ 303.867: Arachnid
+  Assault on enemy 55.2, amount 2,488, mitigated 2,082), and 3tM2NRFDCnhkqdx6 fight 7 (Silken Hollow) has 185. The log over the
+  engine there was 0.823, 0.598, 0.772 and 0.856 against 0.97 to 1.05 in the other windows. A replay compares the engine's hit with
+  the amount plus the mitigated part, and a hit deals the amount: a crit's damage over time takes a share of that amount (Amethyst
+  Splinter and Vexira's Venom in fight 3 are 0.944 and 0.952 of a share of the unmitigated amount, and 1.000 and 1.001 of a share of
+  the amount). Fight 3's exact replay goes from 104.1% of the log to 99.9%.
 
 ## Timing
 
