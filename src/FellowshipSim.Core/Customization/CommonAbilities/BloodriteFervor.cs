@@ -49,7 +49,11 @@ public class BloodriteFervor : Ability
     /// `GMMC_GemAugmentation.CalculateBaseMagnitude` gives 1 - Blessing of the Artisan's `CooldownReduction` (Diamond slot 5:
     /// offset 810 with the Small effect, row `GemBonus.RelicCooldownReductionBonus.Small.CooldownReductionPercentage`; offset
     /// 1130 with the Medium one, row `...Medium.CooldownReductionPercentage`), else 1. Its query (`CrGetAllActiveEffectsForQuery`,
-    /// 0x14521FDC0) runs over every character in the process. The engine reads the hero's own gems alone.
+    /// 0x14521FDC0) runs over every character in the process. The engine reads the hero's own gems alone. `DT_GemDefinitions` row
+    /// Diamond: node 5 at `RequiredGemPower` 450 grants `GE_GemBonus_RelicCooldownReductionBonusSmall`, node 10 at 1500
+    /// `GE_GemBonus_RelicCooldownReductionBonusMedium`. Neither effect has a `TargetTagRequirementsGameplayEffectComponent`, so both
+    /// apply to Mara: their `Character.PrimaryAttribute.Strength` is in the deprecated `ApplicationTagRequirements` field (definition
+    /// +0x4B0, read by no routine but the constructor 0x144A63AB0 and the destructor 0x144A65000).
     /// </summary>
     public override void TriggerCooldown(SimulationContext ctx, double cooldownMultiplier = 1.0)
     {
