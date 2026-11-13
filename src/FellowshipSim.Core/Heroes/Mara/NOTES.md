@@ -436,6 +436,17 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
 
+- **Free dice below the log:** over the 34 Mara fights of `data/fights`, free dice is 92.8% of the log, with the log at the 97.1%
+  point of the engine's runs (measure pass-03, 20 runs a fight). Free dice rolls Spirit Refund with the engine's dice and keeps the
+  log's casts, so a logged finisher after a logged refund the engine's run lacks is forced with no Combo Point. T2qLPpmMkrAtJ9B1
+  fight 18, seed 1: 175 casts forced with no Combo Point (Arachnid Assault 85, Queen's Fang 84, Hemorrhaging Strike 6) and 129 short
+  of Energy. In that run the finishers and the damage of their crits are 86.5% to 88.2% of the log (Arachnid Assault 86.5%, Queen's
+  Fang 88.2%, Vexira's Venom 87.1%, Amethyst Splinter 88.1%) with the log's crit rates (81.5% against 83.4% for Arachnid Assault),
+  and the generators and poisons 98.7% to 99.0% (Skittering Blades, Volatile Poison). Over the 20 runs of pass-03 the finishers' sources
+  are 90.9% to 94.2% and the generators' and poisons' 99.0% to 101.1%. Free dice takes from the log the targets of a hit on several
+  enemies or with a target of its own choosing, and a defensive proc's hit (`FreeDiceOutcomeSource`), and no roll a logged cast depends
+  on. Sources checked: `FreeDiceOutcomeSource` and `FreeDiceReplay`.
+
 ## Not yet checked against a log
 
 Red Ledger, Corrosive Spill, Bloodrush, Efficient Killer, Gushing Blood, Maiden's Doom, Seething Burst, Hemotoxin,

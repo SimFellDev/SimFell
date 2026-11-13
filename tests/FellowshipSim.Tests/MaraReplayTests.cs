@@ -39,7 +39,28 @@ public class MaraReplayTests(ITestOutputHelper output)
                 var options = int.TryParse(Environment.GetEnvironmentVariable("MARA_FREEDICE_SEED"), out int seed)
                     ? new ReplayOptions { StopOnFirstFailure = false, FreeDiceSeed = seed, ForceCasts = true }
                     : new ReplayOptions { StopOnFirstFailure = false };
+                bool freeDice = options.FreeDiceSeed != null;
+                // A free-dice run: each damage ID's hits, crits and damage against the log's.
+                var tallies = new Dictionary<int, (string Name, int Hits, int Crits, double Damage)>();
+                if (freeDice)
+                {
+                    hero.OnDamageDealt += (in dmg) =>
+                    {
+                        var t = tallies.GetValueOrDefault(dmg.AbilityId, (Name: dmg.AbilityName, Hits: 0, Crits: 0, Damage: 0.0));
+                        tallies[dmg.AbilityId] = (t.Name, t.Hits + 1, t.Crits + (dmg.IsCrit ? 1 : 0), t.Damage + dmg.Amount);
+                    };
+                }
                 var result = new ReplayDriver(hero, script, options).Run();
+                if (freeDice)
+                {
+                    foreach (var g in script.Observations.Damage.GroupBy(d => d.AbilityId).OrderByDescending(g => g.Sum(d => d.TotalAmount)))
+                    {
+                        var t = tallies.GetValueOrDefault(g.Key);
+                        output.WriteLine($"free dice {g.Key,-9} {g.First().AbilityName,-22} log {g.Count(),6} hits {g.Count(d => d.Crit) / (double)g.Count(),6:P1} crit " +
+                                         $"{g.Sum(d => d.TotalAmount),12:N0}  engine {t.Hits,6} hits {(t.Hits == 0 ? 0 : t.Crits / (double)t.Hits),6:P1} crit {t.Damage,12:N0}");
+                    }
+                    continue;
+                }
                 var (engineDamage, logDamage) = ReplayReportWriter.DamageTotals(result);
                 output.WriteLine($"{player.Name} {reportCode} fight {fightId}: {result.MatchedLogHits}/{result.LogHits} hits, " +
                                  $"damage {engineDamage / logDamage:P1} of log, {result.PassedSteps}/{result.Steps.Count} clean steps, " +
