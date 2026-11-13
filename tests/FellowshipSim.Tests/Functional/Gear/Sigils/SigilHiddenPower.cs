@@ -28,11 +28,7 @@ public class SigilHiddenPower
         f.ForceProcs(key => key == HiddenPower.ProcKey ? true : null);
         double plainMainStat = f.MainStat();
 
-        for (int cast = 0; cast < 5; cast++)
-        {
-            f.FillResources(); // enough to cast it
-            f.CastWhenReady(ability);
-        }
+        for (int cast = 0; cast < 5; cast++) f.CastWhenReady(ability);
         double start = f.CompletedAt(ability);
 
         using var check = new Checks(f);
@@ -90,5 +86,29 @@ public class SigilHiddenPower
         f.WaitUntil(start + 15 + 0.1);
         f.Cast("Frost Bolt");
         Assert.Equal(1, f.Stacks(HiddenPower.Stack));
+    }
+
+    /// <summary>
+    /// The casts during Power Revealed roll nothing, so the first cast after it rolls for the whole time since the roll that gave Power
+    /// Revealed: 2.6 procs per minute times that many seconds, not the chance of one cast's worth of time.
+    /// </summary>
+    [Fact]
+    public void The_First_Roll_After_Power_Revealed_Counts_The_Time_Since_The_Roll_That_Gave_It()
+    {
+        var f = StepFights.Of("Rime", augmentations: [new(HiddenPower.SigilId, 1)]);
+        var procs = f.ForceProcs(key => key == HiddenPower.ProcKey ? true : null);
+
+        for (int cast = 0; cast < 5; cast++) f.Cast("Frost Bolt");
+        double lastRoll = f.CompletedAt("Frost Bolt");
+        do f.Cast("Frost Bolt"); // the casts during Power Revealed, then the first one after it
+        while (f.Seconds() < lastRoll + 15 + 0.1);
+        double firstAfter = f.CompletedAt("Frost Bolt");
+
+        var chances = procs.ChancesOf(HiddenPower.ProcKey);
+
+        using var check = new Checks(f);
+        check.Equal(6, chances.Count, what: "rolls: 5, none during Power Revealed, 1 after");
+        check.Ratio(HiddenPower.ProcsPerMinute * (firstAfter - lastRoll) / 60, chances[5]);
+        check.True(chances[5] > 5 * chances[4], "far above an ordinary roll's chance");
     }
 }

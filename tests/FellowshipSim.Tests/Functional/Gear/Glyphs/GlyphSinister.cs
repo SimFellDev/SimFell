@@ -79,9 +79,7 @@ public class GlyphSinister
     // ---- Core hits a talent triggers
 
     /// <summary>
-    /// The Sinister reaches the Bursting Ice you cast, but not the Bursting Ice pulses Bursting Swallows triggers.
-    ///
-    /// Per the user. Combat logs show Bursting Ice's pulses without the glyph: those of a talent.
+    /// The Sinister reaches the Bursting Ice you cast, but not the Bursting Ice pulses or Bursting Swallows triggers.
     /// </summary>
     [Theory]
     [InlineData(true, 0.24, Skip = "Per the user: whether The Sinister reaches Bursting Ice is not known")]
@@ -111,8 +109,6 @@ public class GlyphSinister
 
     /// <summary>
     /// The Sinister reaches the frogs of the Fire Frogs you cast, but not the frogs Pyrophibian Frenzy spawns.
-    ///
-    /// Per the user.
     /// </summary>
     [Theory]
     [InlineData(true, 0.24, Skip = "Per the user: whether The Sinister reaches Fire Frogs is not known")]

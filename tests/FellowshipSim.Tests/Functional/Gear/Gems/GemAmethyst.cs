@@ -26,7 +26,7 @@ public class GemAmethyst
     [InlineData(80, 0.4, 0.0)]
     [InlineData(600, 1.0, 0.15 - 0.05)]
     [InlineData(600, 0.4, 0.0)]
-    public void Sealed_Fate_Gives_5_Percent_Crit_Chance_Against_Enemies_Above_Half_Health(double power, double health, double bonus)
+    public void Sealed_Fate_Gives_Crit_Chance_Against_Enemies_Above_Half_Health(double power, double health, double bonus)
     {
         var belowScenario = Fight(power - 1);
         belowScenario.SetHealth(health);
@@ -40,7 +40,7 @@ public class GemAmethyst
     [Theory]
     [InlineData(150, 8)]
     [InlineData(800, 24 - 8)]
-    public void Berserkers_Zeal_Gives_8_Crit_Rating(double power, double rating)
+    public void Berserkers_Zeal_Gives_Crit_Rating(double power, double rating)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -52,7 +52,7 @@ public class GemAmethyst
     [Theory]
     [InlineData(300, 0.02)]
     [InlineData(1250, 0.06 - 0.02)]
-    public void Killer_Instinct_Gives_2_Percent_Crit_Chance(double power, double bonus)
+    public void Killer_Instinct_Gives_Crit_Chance(double power, double bonus)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -69,7 +69,7 @@ public class GemAmethyst
     [InlineData("Gunde", "Double Strike", 1500, 1.06 / 1.02)]
     [InlineData("Mara", "Skittering Blades", 1500, 1.06 / 1.02)]
     [InlineData("Tariq", "Heavy Strike", 1500, 1.06 / 1.02)]
-    public void Blessing_Of_The_Deathdealer_Makes_Critical_Strikes_Deal_2_Percent_More(string hero, string ability, double power,
+    public void Blessing_Of_The_Deathdealer_Makes_Critical_Strikes_Deal_X_Percent_More(string hero, string ability, double power,
         double ratio)
     {
         double FirstCriticalHit(double gemPower)

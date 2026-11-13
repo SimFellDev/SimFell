@@ -86,14 +86,11 @@ public class GlyphPhilosopher
     }
 
     /// <summary>
-    /// A second Major ability during The Philosopher restarts its 8 seconds and keeps 30% of the time it had left: Ice Blitz, then Winter's
-    /// Blessing right after, lasts about 10.4 seconds.
-    ///
-    /// TODO: confirm in the game data. The 30% is measured from combat logs (every refresh with over 2.4 seconds left ends 10.42 seconds
-    /// later).
+    /// A second Major ability during The Philosopher restarts its 8 seconds and keeps the time it had left, up to 130% of the base duration.
+    /// Ice Blitz, then Winter's Blessing right after, lasts about 10.4 seconds.
     /// </summary>
     [Fact]
-    public void A_Second_Major_Ability_Keeps_30_Percent_Of_The_Philosophers_Time_Left()
+    public void The_Philosophers_Has_Pandemic_Time_Extension_On_Refresh()
     {
         var f = Fight("Rime", rank: 4, spirit: 0.4);
 
@@ -101,7 +98,7 @@ public class GlyphPhilosopher
         double first = f.CompletedAt("Ice Blitz");
         f.Cast("Winter's Blessing");
         double second = f.CompletedAt("Winter's Blessing");
-        double end = second + 8 + 0.3 * (first + 8 - second);
+        double end = second + 8 * 1.3;
 
         f.WaitUntil(end - 0.1);
         Assert.True(f.Has(ThePhilosopher.Buff));

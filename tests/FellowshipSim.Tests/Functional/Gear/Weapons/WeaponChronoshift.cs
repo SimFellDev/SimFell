@@ -158,8 +158,6 @@ public class WeaponChronoshift
     /// <summary>
     /// Asha's Arcane Embrace gives +700% cooldown acceleration: your other cooldowns recover 8 times as fast during the channel, so its 3
     /// seconds take 24 seconds off them.
-    ///
-    /// Per the user: the tooltip's 800% is wrong. Each hero's major ability, cast just before Chronoshift, is the other cooldown.
     /// </summary>
     [Theory]
     [InlineData("Rime", "Ice Blitz", 60.0)]

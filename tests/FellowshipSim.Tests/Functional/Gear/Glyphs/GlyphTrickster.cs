@@ -30,11 +30,9 @@ public class GlyphTrickster
     }
 
     /// <summary>
-    /// The Trickster's crit chance lasts 4 seconds.
-    ///
-    /// Measured from the start of the Power ability's cast, as the engine has it.
+    /// The Trickster's crit chance lasts 4 seconds, measured from the cast start.
     /// </summary>
-    [Fact(Skip = "Per the user: whether the 4 seconds run from the start or the end of the cast is not known")]
+    [Fact]
     public void The_Tricksters_Crit_Chance_Lasts_4_Seconds()
     {
         var f = StepFights.Of("Rime", glyphs: [new(TheTrickster.GlyphId, 4)]);
@@ -70,7 +68,7 @@ public class GlyphTrickster
     }
 
     /// <summary>A second Power ability refreshes The Trickster's 4 seconds: the crit chance does not stack.</summary>
-    [Fact(Skip = "Per the user: whether the 4 seconds run from the start or the end of the cast is not known")]
+    [Fact]
     public void A_Second_Power_Ability_Refreshes_The_Trickster()
     {
         var f = StepFights.Of("Rime", glyphs: [new(TheTrickster.GlyphId, 4)]);

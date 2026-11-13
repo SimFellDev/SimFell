@@ -38,8 +38,6 @@ public class WeaponIciclesOfAnzhyr
 
     /// <summary>
     /// Each wave of Icicles of An'zhyr hits every enemy, and beyond 15 enemies each takes sqrt(15 / enemies) of it.
-    ///
-    /// From combat logs.
     /// </summary>
     [Theory]
     [InlineData("Rime", 15)]

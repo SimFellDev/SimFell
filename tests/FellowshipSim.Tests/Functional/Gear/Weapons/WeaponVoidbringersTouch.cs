@@ -129,7 +129,7 @@ public class WeaponVoidbringersTouch
     /// An eruption at the cap deals 4250% of your main stat as a critical strike (x2), raised by your Expertise and your class's balancing
     /// aura like any other hit.
     ///
-    /// Per the user: Expertise scales the eruption. 10000% Expertise, as above.
+    /// 10000% Expertise, as above.
     /// </summary>
     [Theory]
     [InlineData("Rime", "Frost Bolt", 1.04)]

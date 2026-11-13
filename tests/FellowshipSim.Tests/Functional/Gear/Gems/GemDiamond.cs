@@ -45,7 +45,7 @@ public class GemDiamond
     [Theory]
     [InlineData(80, 4)]
     [InlineData(600, 12)]
-    public void Harmonious_Soul_Stacks_Up_To_4_Times(double power, int maxStacks)
+    public void Harmonious_Soul_Stacks_Up_To_Its_Cap(double power, int maxStacks)
     {
         var f = Fight(power, enemies: maxStacks + 2);
         var soul = power < 600 ? Diamond.HarmoniousSoulSmall : Diamond.HarmoniousSoulMedium;
@@ -93,7 +93,7 @@ public class GemDiamond
     [Theory]
     [InlineData(150, 4)]
     [InlineData(800, 8 * 1.02)]
-    public void Stoics_Teachings_Gives_4_Main_Stat(double power, double extra)
+    public void Stoics_Teachings_Gives_Main_Stat(double power, double extra)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -105,7 +105,7 @@ public class GemDiamond
     [Theory]
     [InlineData(300, 1.02)]
     [InlineData(1250, 1.06 / 1.02)]
-    public void Ancients_Wisdom_Gives_2_Percent_Main_Stat(double power, double ratio)
+    public void Ancients_Wisdom_Gives_X_Percent_Main_Stat(double power, double ratio)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);

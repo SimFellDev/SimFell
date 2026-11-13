@@ -16,17 +16,15 @@ public class GemSapphire
     private static StepDriver Fight(double power, string hero = "Rime") =>
         StepFights.Of(hero, gemPower: new() { [GemColor.Sapphire] = power });
 
-    /// <summary>Ancestral Surge gives you 10 more Spirit Points (30 at rank II): 110 at most instead of 100.</summary>
+    /// <summary>Ancestral Surge gives you 10 more Spirit Points (30 at rank II): the most you can hold is 110 instead of 100.</summary>
     [Theory]
     [InlineData(80, 110)]
     [InlineData(600, 130)]
-    public void Ancestral_Surge_Gives_10_More_Spirit_Points(double power, double spiritPoints)
+    public void Ancestral_Surge_Gives_More_Spirit_Points(double power, double spiritPoints)
     {
         var f = Fight(power);
 
-        f.FillResources(); // up to the most it holds
-
-        Assert.Equal(spiritPoints, f.Amount(Hero.SpiritPoints));
+        Assert.Equal(spiritPoints, f.Max(Hero.SpiritPoints));
     }
 
     /// <summary>
@@ -35,7 +33,7 @@ public class GemSapphire
     [Theory]
     [InlineData(80, 1.08)]
     [InlineData(600, 1.24 / 1.08)]
-    public void Ancestral_Surge_Gives_8_Percent_Main_Stat_During_Spirit_Of_Heroism(double power, double ratio)
+    public void Ancestral_Surge_Gives_X_Percent_Main_Stat_During_Spirit_Of_Heroism(double power, double ratio)
     {
         var belowScenario = Fight(power - 1);
         belowScenario.ForceProcs(key => key == Hero.SpiritRefundProc ? false : null); // its Rising Spirit would add main stat
@@ -60,7 +58,7 @@ public class GemSapphire
     [Theory]
     [InlineData(150, 8)]
     [InlineData(800, 24 - 8)]
-    public void Mystics_Intuition_Gives_8_Spirit_Rating(double power, double rating)
+    public void Mystics_Intuition_Gives_Spirit_Rating(double power, double rating)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -72,7 +70,7 @@ public class GemSapphire
     [Theory]
     [InlineData(300, 0.02)]
     [InlineData(1250, 0.06 - 0.02)]
-    public void Oracles_Foresight_Gives_2_Percent_Spirit(double power, double bonus)
+    public void Oracles_Foresight_Gives_Spirit(double power, double bonus)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -80,11 +78,14 @@ public class GemSapphire
         Assert.Equal(bonus, nodeScenario.Spirit() - belowScenario.Spirit(), 1e-9);
     }
 
-    /// <summary>Blessing of the Prophet makes your ultimate cost 5% less (15% at rank II): 95 Spirit Points instead of 100.</summary>
+    /// <summary>
+    /// Blessing of the Prophet makes your ultimate cost 5% less (15% at rank II): 95 Spirit Points instead of 100. Cast from the most Spirit
+    /// you can hold, it leaves that much minus the cost.
+    /// </summary>
     [Theory]
     [InlineData(450, 95)]
     [InlineData(1500, 85)]
-    public void Blessing_Of_The_Prophet_Makes_Your_Ultimate_Cost_5_Percent_Less(double power, double cost)
+    public void Blessing_Of_The_Prophet_Makes_Your_Ultimate_Cost_X_Percent_Less(double power, double cost)
     {
         var f = Fight(power);
 
@@ -93,6 +94,11 @@ public class GemSapphire
         check.False(f.TryCast("Wrath of Winter").Succeeded);
         f.Set(Hero.SpiritPoints, cost);
         check.True(f.TryCast("Wrath of Winter").Succeeded);
+
+        // Check that cost not only gates the usage of ability, but also consumes the correct amount of spirit points
+        f.Set(Hero.SpiritPoints, f.Max(Hero.SpiritPoints));
+        f.Cast("Wrath of Winter");
+        check.Equal(f.Max(Hero.SpiritPoints) - cost, f.Amount(Hero.SpiritPoints));
     }
 
     /// <summary>Blessing of the Prophet makes Spirit of Heroism last 6 seconds longer (18 at rank II): 26 seconds instead of 20.</summary>
@@ -104,7 +110,7 @@ public class GemSapphire
     [InlineData("Gunde", "Bloodbound Spirit", 1500, 38.0)]
     [InlineData("Mara", "Matriarch Macabre", 1500, 38.0)]
     [InlineData("Tariq", "Raging Tempest", 1500, 38.0)]
-    public void Blessing_Of_The_Prophet_Makes_Spirit_Of_Heroism_Last_6_Seconds_Longer(string hero, string ultimate, double power,
+    public void Blessing_Of_The_Prophet_Makes_Spirit_Of_Heroism_Last_Longer(string hero, string ultimate, double power,
         double seconds)
     {
         var f = Fight(power, hero);

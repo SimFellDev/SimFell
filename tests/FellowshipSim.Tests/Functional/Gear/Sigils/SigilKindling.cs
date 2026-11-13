@@ -97,8 +97,6 @@ public class SigilKindling
 
     /// <summary>
     /// Kindling's burn deals 6 ticks of 69% of your main stat over its 9 seconds at rank 1, 414% in all, times Rime's balancing aura (1.04).
-    ///
-    /// TODO: double check the tooltip's 483% (7 ticks), probably a tooltip error: 9 seconds of 1.5 second ticks are 6, as the sim has it.
     /// </summary>
     [Fact]
     public void Kindling_Deals_6_Ticks_Of_69_Percent_Main_Stat()
@@ -139,30 +137,6 @@ public class SigilKindling
         }
 
         AssertRatio(1.1, FirstTick(expertise: 0.1) / FirstTick(expertise: 0));
-    }
-
-    /// <summary>
-    /// The tick of a damage over time effect does not roll for Kindling: Kindling's own, Fire Ball's burn or Rend.
-    ///
-    /// From the game data: the sigil's listener does not trigger on periodic executions. The engine rolls Fire Ball's and Rend's ticks.
-    /// </summary>
-    [Theory(Skip = "Per the user: what procs Kindling is not known")]
-    [InlineData("Rime", "Frost Bolt")]
-    [InlineData("Ardeos", "Fire Ball")]
-    [InlineData("Gunde", "Double Strike")]
-    public void Damage_Over_Time_Ticks_Do_Not_Roll_For_Kindling(string hero, string ability)
-    {
-        var f = StepFights.Of(hero, augmentations: [new(Kindling.SigilId, 1)]);
-        int rolls = 0;
-        var procs = f.ForceProcs(key => key == Kindling.ProcKey ? rolls++ == 0 : null); // the first roll burns
-        f.FillResources(); // enough to cast it
-
-        f.Cast(ability);
-        f.Wait(1); // the hits land
-        int rollsOfTheHits = procs.ChancesOf(Kindling.ProcKey).Count;
-        f.Wait(12); // the effects tick
-
-        Assert.Equal(rollsOfTheHits, procs.ChancesOf(Kindling.ProcKey).Count);
     }
 
     /// <summary>

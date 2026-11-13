@@ -1,3 +1,4 @@
+using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Heroes.Mara;
 using FellowshipSim.Core.Heroes.Mara.Abilities;
 using FellowshipSim.Core.Heroes.Mara.Talents;
@@ -239,7 +240,7 @@ public class MaraTalents
             f.Set(Mara.Energy, 200); // enough for every strike
             f.Set(Mara.ComboPoints, 1); // enough to cast Hemorrhaging Strike
             f.Cast<HemorrhagingStrike>(enemy);
-            f.Wait(1.1); // Hemorrhaging Strike's 2 second cooldown, with the global cooldown
+            f.Wait(1.1); // the global cooldown
         }
 
         f.Cast<SkitteringBlades>();
@@ -266,6 +267,34 @@ public class MaraTalents
         check.Seconds(2.5, (ticks[1].Time - ticks[0].Time).TotalSeconds);
     }
 
+    /// <summary>
+    /// With Bloodrush and From the Shadows, the two speed-ups multiply the bleed's period: every 3 x 0.87 / 1.2 seconds shortened by
+    /// haste, floor(15 / tick) full ticks over the 15 seconds of a 1 Combo Point bleed, plus a partial one for the time left (at least 0.1
+    /// seconds).
+    ///
+    /// From the game data and a combat log, as PR #61 reads them: each scales the bleed's tick period, From the Shadows by 0.87 and
+    /// Bloodrush by 1 / 1.2, and fjrCax7VzGmMZw6h fight 26 has its ticks 0.722 to 0.739 of 3 seconds / haste apart (0.87 / 1.2 = 0.725).
+    /// </summary>
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(0.1)]
+    [InlineData(0.2)]
+    public void Bloodrush_And_From_The_Shadows_Multiply_The_Bleeds_Tick_Period(double haste)
+    {
+        double tick = 3 * 0.87 / 1.2 / (1 + haste);
+        var f = StepFights.Mara(haste: haste, talents: [Bloodrush.TalentId], legendaries: [FromTheShadows.CapeItemId]);
+        f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
+        f.Set(Mara.ComboPoints, 1); // a 15 second bleed
+
+        f.Cast<HemorrhagingStrike>();
+        f.Wait(20); // the bleed is over
+
+        var ticks = f.Damage("Hemorrhage");
+        using var check = new Checks(f);
+        check.Equal(FullTicks(15, tick) + PartialTick(15, tick, 0.1), ticks.Count);
+        check.Seconds(tick, ticks[1].Time.TotalSeconds - ticks[0].Time.TotalSeconds);
+    }
+
     // ---- Gushing Blood
 
     /// <summary>
@@ -285,6 +314,146 @@ public class MaraTalents
         f.Cast<HemorrhagingStrike>();
 
         Assert.Equal(5, f.MaraOf().Hemorrhage.ActiveCount(f.Context));
+    }
+
+    /// <summary>
+    /// With Gushing Blood, the bleeds a Hemorrhaging Strike puts on the other enemies during Maiden of Death last as long as the struck
+    /// enemy's: a strike at 1 Combo Point on a bleeding enemy gives it 15 seconds plus the time it had left, up to 30% of 15, and the
+    /// copies run out with it.
+    ///
+    /// From the game data and a combat log, as PR #61 reads them: the talent copies the struck enemy's bleed as the strike left it, and
+    /// fjrCax7VzGmMZw6h fight 26 @ 24.677 has a 39 second bleed on the struck enemy and on 4 others.
+    /// </summary>
+    [Fact]
+    public void Gushing_Blood_Copies_Last_As_Long_As_The_Struck_Enemys_Bleed()
+    {
+        var f = StepFights.Mara(enemies: 3, talents: [GushingBlood.TalentId]);
+        var others = f.Enemies().Where(enemy => enemy != f.Enemy).ToList();
+
+        f.Set(Mara.ComboPoints, 1); // a 15 second bleed
+        f.Cast<HemorrhagingStrike>(); // before Maiden of Death: on the target alone
+        double firstEnd = f.CompletedAt("Hemorrhaging Strike") + 15;
+        f.Cast<MaidenOfDeath>();
+        f.Set(Mara.ComboPoints, 1);
+        f.Cast<HemorrhagingStrike>();
+        double struck = f.CompletedAt("Hemorrhaging Strike");
+        double end = struck + 15 + Math.Min(firstEnd - struck, 0.3 * 15);
+
+        f.WaitUntil(end - 0.1);
+
+        using var check = new Checks(f);
+        check.True(f.HasDebuff("Hemorrhage", on: f.Enemy));
+        foreach (var enemy in others) check.True(f.HasDebuff("Hemorrhage", on: enemy), what: "a copy before the struck enemy's bleed ends");
+
+        f.WaitUntil(end + 0.1);
+
+        check.False(f.HasDebuff("Hemorrhage", on: f.Enemy));
+        foreach (var enemy in others) check.False(f.HasDebuff("Hemorrhage", on: enemy), what: "a copy after the struck enemy's bleed ends");
+    }
+
+    /// <summary>
+    /// With Gushing Blood, a Hemorrhaging Strike during Maiden of Death still carries over up to 30% of the time left, on the struck enemy
+    /// and on another enemy that was bleeding: two enemies with a 30 second bleed, then Maiden of Death and a strike at 6 Combo Points on
+    /// the first, and both bleeds end 30 + 9 = 39 seconds after it.
+    ///
+    /// From a combat log: in fjrCax7VzGmMZw6h fight 26 (Mara player 23, 6 Combo Point strikes), all 218 struck enemies that were bleeding
+    /// and 164 of the 167 other enemies that were bleeding get a 39 second bleed during Maiden of Death (@ 28.816: the struck enemy and 3
+    /// others with 34.9 seconds left). No other enemy in that log had under 9 seconds left, so whether such an enemy gets the struck enemy's
+    /// duration or its own carry-over is not shown.
+    /// </summary>
+    [Fact]
+    public void Gushing_Blood_Keeps_The_30_Percent_Carry_Over_On_Every_Bleeding_Enemy()
+    {
+        var f = StepFights.Mara(enemies: 2, talents: [GushingBlood.TalentId]);
+        var struck = f.Enemies()[0];
+        var other = f.Enemies()[1];
+
+        f.Set(Mara.ComboPoints, 6); // a 30 second bleed
+        f.Cast<HemorrhagingStrike>(struck);
+        f.Set(Mara.ComboPoints, 6);
+        f.Cast<HemorrhagingStrike>(other);
+        f.Cast<MaidenOfDeath>();
+        f.Set(Mara.ComboPoints, 6);
+        f.Cast<HemorrhagingStrike>(struck);
+        double end = f.CompletedAt("Hemorrhaging Strike") + 39;
+
+        f.WaitUntil(end - 0.1);
+
+        using var check = new Checks(f);
+        check.True(f.HasDebuff("Hemorrhage", on: struck));
+        check.True(f.HasDebuff("Hemorrhage", on: other));
+
+        f.WaitUntil(end + 0.1);
+
+        check.False(f.HasDebuff("Hemorrhage", on: struck));
+        check.False(f.HasDebuff("Hemorrhage", on: other));
+    }
+
+    /// <summary>
+    /// With Gushing Blood, From the Shadows and Bloodrush, a Hemorrhaging Strike during Maiden of Death gives the struck enemy and the
+    /// other enemy a bleed whose period has From the Shadows' 0.87 twice: 3 x 0.87 x 0.87 / 1.2 seconds shortened by haste, first tick
+    /// included, against 3 x 0.87 / 1.2 outside Maiden of Death.
+    ///
+    /// From a combat log: in fjrCax7VzGmMZw6h fight 26 (Mara player 23, the one Mara player with all three), the 2,227 pairs of a copy's
+    /// ticks with nothing between them are 0.635 of 3 seconds / haste apart at the median (0.87 x 0.87 / 1.2 = 0.631), and 0.722 to 0.739
+    /// after a refresh outside Maiden of Death. In the game, Gushing Blood copies the struck enemy's bleed after From the Shadows has
+    /// shortened its period, and From the Shadows shortens the copy's again.
+    /// </summary>
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(0.2)]
+    public void Gushing_Blood_Copies_Take_From_The_Shadows_Twice(double haste)
+    {
+        double tick = 3 * 0.87 * 0.87 / 1.2 / (1 + haste);
+        var f = StepFights.Mara(haste: haste, enemies: 2,
+            talents: [GushingBlood.TalentId, Bloodrush.TalentId], legendaries: [FromTheShadows.CapeItemId]);
+        f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
+        var struck = f.Enemies()[0];
+        var other = f.Enemies()[1];
+
+        f.Cast<MaidenOfDeath>();
+        f.Set(Mara.ComboPoints, 1); // a 15 second bleed
+        f.Cast<HemorrhagingStrike>(struck);
+        double strike = f.CompletedAt("Hemorrhaging Strike");
+        f.Wait(5); // two ticks
+
+        using var check = new Checks(f);
+        foreach (var enemy in new[] { struck, other })
+        {
+            var ticks = f.Damage("Hemorrhage").Where(hit => hit.Target == enemy.Name).ToList();
+            check.True(ticks.Count >= 2, what: $"two ticks on {enemy.Name}");
+            check.Seconds(strike + tick, ticks[0].Time.TotalSeconds, what: $"first tick on {enemy.Name}");
+            check.Seconds(tick, ticks[1].Time.TotalSeconds - ticks[0].Time.TotalSeconds, what: $"tick period on {enemy.Name}");
+        }
+    }
+
+    /// <summary>
+    /// With Gushing Blood, each Hemorrhaging Strike during Maiden of Death puts a new bleed on the struck enemy, which restarts its ticks,
+    /// even with no other enemy around: recast on every global cooldown while Maiden of Death lasts, the bleed deals no tick, and the first
+    /// tick comes 3 seconds after the last strike.
+    ///
+    /// From a combat log: fjrCax7VzGmMZw6h fight 26 (Mara player 23) logs every strike in Maiden of Death as a refresh, a removal and an
+    /// application of the bleed on the struck enemy, 27 of them with no other enemy, and the next tick comes about one period after the
+    /// strike; outside Maiden of Death a strike is a refresh alone and the ticks keep their schedule.
+    /// </summary>
+    [Fact]
+    public void Gushing_Blood_Restarts_The_Bleeds_Ticks_On_Each_Strike_During_Maiden_Of_Death()
+    {
+        var f = StepFights.Mara(talents: [GushingBlood.TalentId]);
+
+        f.Cast<MaidenOfDeath>();
+        while (f.Has(MaidenOfDeath.Buff)) // a strike on every global cooldown
+        {
+            f.FillResources(); // Energy and Combo Points for the strike
+            f.Cast<HemorrhagingStrike>();
+        }
+        double last = f.CompletedAt("Hemorrhaging Strike");
+        f.Wait(3.5); // the first tick
+
+        var ticks = f.Damage("Hemorrhage");
+        using var check = new Checks(f);
+        check.Equal(1, ticks.Count);
+        check.Seconds(last + 3, ticks[0].Time.TotalSeconds);
     }
 
     /// <summary>

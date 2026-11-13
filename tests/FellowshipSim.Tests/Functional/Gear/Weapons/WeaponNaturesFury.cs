@@ -41,7 +41,7 @@ public class WeaponNaturesFury
     [InlineData("Elarion", 1.08)]
     public void Each_Natures_Fury_Hit_Deals_1397_7_Percent_Main_Stat(string hero, double balancing)
     {
-        var f = StepFights.Of(hero, weaponAbilityId: NaturesFury.AbilityId).WithoutDamageSpread();
+        var f = StepFights.Of(hero, enemies: 4, weaponAbilityId: NaturesFury.AbilityId).WithoutDamageSpread(); // 4 enemies: a hit each
 
         f.Cast<NaturesFury>(crit: false); // its own 30% crit chance would roll
         f.Wait(1); // the bounces land
@@ -63,7 +63,7 @@ public class WeaponNaturesFury
     [InlineData("Elarion")]
     public void Natures_Furys_First_Hit_Deals_Twice_As_Much(string hero)
     {
-        var f = StepFights.Of(hero, weaponAbilityId: NaturesFury.AbilityId).WithoutDamageSpread();
+        var f = StepFights.Of(hero, enemies: 4, weaponAbilityId: NaturesFury.AbilityId).WithoutDamageSpread(); // 4 enemies: a hit each
 
         f.Cast<NaturesFury>(crit: false); // its own 30% crit chance would roll
         f.Wait(1); // the bounces land
@@ -80,7 +80,7 @@ public class WeaponNaturesFury
     [InlineData("Elarion")]
     public void Natures_Fury_Has_30_Percent_More_Crit_Chance(string hero)
     {
-        var f = StepFights.Of(hero, crit: 0.2, weaponAbilityId: NaturesFury.AbilityId);
+        var f = StepFights.Of(hero, crit: 0.2, enemies: 4, weaponAbilityId: NaturesFury.AbilityId); // 4 enemies: a hit each
 
         f.Cast<NaturesFury>(crit: false);
         f.Wait(1); // the bounces land
@@ -93,9 +93,8 @@ public class WeaponNaturesFury
     }
 
     /// <summary>
-    /// Nature's Fury bounces up to 4 times in all, the first on your target, however many enemies there are.
-    ///
-    /// A bounce can strike an enemy already hit, so the test does not count the enemies hit.
+    /// Among 6 enemies, Nature's Fury hits 4 times in all, the first on your target. With 4 enemies or more it hits 4 of them; with fewer,
+    /// each once (below).
     /// </summary>
     [Theory]
     [InlineData("Rime")]
@@ -113,5 +112,27 @@ public class WeaponNaturesFury
         using var check = new Checks(f);
         check.Equal(4, hits.Count);
         check.True(hits[0].Target == f.Enemy.Name);
+    }
+
+    /// <summary>
+    /// Nature's Fury bounces only once to each enemy: with 1, 2 or 3 enemies it hits each of them once, and no more.
+    /// </summary>
+    [Theory]
+    [InlineData("Rime", 1)]
+    [InlineData("Rime", 2)]
+    [InlineData("Rime", 3)]
+    public void Natures_Fury_Bounces_Only_Once_To_Each_Enemy(string hero, int enemies)
+    {
+        var f = StepFights.Of(hero, enemies: enemies, weaponAbilityId: NaturesFury.AbilityId);
+
+        f.Cast<NaturesFury>();
+        f.Wait(1); // the bounces land
+
+        var hits = f.Damage<NaturesFury>();
+
+        using var check = new Checks(f);
+        check.Equal(enemies, hits.Count, what: "hits");
+        check.Equal(enemies, hits.Select(hit => hit.Target).Distinct().Count(), what: "enemies hit");
+        check.True(hits[0].Target == f.Enemy.Name, "the first hit is on your target");
     }
 }

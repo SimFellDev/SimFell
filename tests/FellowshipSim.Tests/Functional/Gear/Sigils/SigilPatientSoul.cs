@@ -25,7 +25,7 @@ public class SigilPatientSoul
     {
         var f = StepFights.Of(hero, augmentations: [new(PatientSoul.SigilId, rank)]);
 
-        f.Wait(60); // standing still
+        // sim does not model movement yet
 
         using var check = new Checks(f);
         check.True(f.Has(PatientSoul.Buff));

@@ -22,7 +22,7 @@ public class GemEmerald
     [Theory]
     [InlineData(80, 0.05)]
     [InlineData(600, 0.15)]
-    public void First_Strike_Gives_5_Percent_Expertise_On_Your_First_Hit(double power, double bonus)
+    public void First_Strike_Gives_Expertise_On_Your_First_Hit(double power, double bonus)
     {
         var f = Fight(power);
         double expertiseBefore = f.Expertise();
@@ -74,7 +74,7 @@ public class GemEmerald
     [Theory]
     [InlineData(150, 8)]
     [InlineData(800, 24 - 8)]
-    public void Vanguards_Resolve_Gives_8_Expertise_Rating(double power, double rating)
+    public void Vanguards_Resolve_Gives_Expertise_Rating(double power, double rating)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -86,7 +86,7 @@ public class GemEmerald
     [Theory]
     [InlineData(300, 0.02)]
     [InlineData(1250, 0.06 - 0.02)]
-    public void Tacticians_Accumen_Gives_2_Percent_Expertise(double power, double bonus)
+    public void Tacticians_Accumen_Gives_Expertise(double power, double bonus)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -108,7 +108,7 @@ public class GemEmerald
     [InlineData("Gunde", "Slaughter", 30.0, 1500, 0.12)]
     [InlineData("Mara", "Maiden of Death", 60.0, 1500, 0.12)]
     [InlineData("Tariq", "Thunder Call", 45.0, 1500, 0.12)]
-    public void Blessing_Of_The_Commander_Makes_Your_Cooldowns_4_Percent_Shorter(string hero, string major, double cooldown,
+    public void Blessing_Of_The_Commander_Makes_Your_Cooldowns_X_Percent_Shorter(string hero, string major, double cooldown,
         double power, double cut)
     {
         var f = Fight(power, hero);

@@ -32,9 +32,6 @@ public class LegendaryStatsTests
     /// <summary>
     /// Wearing a legendary item, your cooldowns recover 10% faster (Strand of Eternity): a cooldown of c seconds is ready c / 1.1 seconds
     /// after the cast.
-    ///
-    /// Each row is a cooldown that haste does not shorten, so only the recovery bonus moves it. Weapon abilities ignore it (Rime's
-    /// NOTES.md, Chronoshift), and how it meets Event Horizon is in ElarionEventHorizonCooldown.cs.
     /// </summary>
     [Theory]
     [InlineData("Rime", "Ice Blitz", 60.0)]
@@ -97,9 +94,6 @@ public class LegendaryStatsTests
     /// <summary>
     /// Mote of Creation's 10% adds to Rising Spirit's 5% per stack rather than multiplying it: with a legendary item and 5 stacks, your
     /// main stat is 1 + 0.1 + 0.25 times the bare hero's.
-    ///
-    /// Both are Additive modifiers of the game's PrimaryAttributeMultiplier (effects 3085 and 3115), summed before they multiply; Rime's
-    /// combat logs confirm the sum (Rime's NOTES.md, Rising Spirit).
     /// </summary>
     [Fact]
     public void Mote_Of_Creation_Adds_To_Rising_Spirits_Bonus()

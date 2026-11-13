@@ -68,18 +68,22 @@ public class SigilHuntersFocus
     }
 
     /// <summary>
-    /// Only targeted offensive abilities give Hunter's Focus: Ice Blitz, which only buffs you, does not.
-    ///
-    /// TODO: confirm in the game what counts as a targeted offensive ability (area abilities, effect ticks, abilities that pick their own
-    /// target). The engine counts any ability with damage of its own, as its cast completes.
+    /// Only targeted offensive abilities give Hunter's Focus: Ice Blitz, which only buffs you, does not, and neither do Ardeos's Fire Ball
+    /// and Detonate.
     /// </summary>
-    [Fact]
-    public void Only_Targeted_Offensive_Abilities_Give_Hunters_Focus()
+    [Theory]
+    [InlineData("Rime", "Ice Blitz")]
+    [InlineData("Ardeos", "Fire Ball")]
+    [InlineData("Ardeos", "Detonate")]
+    public void Only_Targeted_Offensive_Abilities_Give_Hunters_Focus(string hero, string ability)
     {
-        var f = StepFights.Of("Rime", augmentations: [new(HuntersFocus.SigilId, 1)]);
+        var f = StepFights.Of(hero, augmentations: [new(HuntersFocus.SigilId, 1)]);
+        f.FillResources(); // enough to cast it
+        if (ability == "Detonate") f.Cast("Searing Blaze"); // Detonate only hits a burning enemy
+        double hasteBefore = f.Haste();
 
-        f.Cast("Ice Blitz");
+        f.Cast(ability);
 
-        Assert.Equal(0, f.Haste(), 1e-9);
+        Assert.Equal(hasteBefore, f.Haste(), 1e-9);
     }
 }

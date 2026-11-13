@@ -14,21 +14,21 @@ public class MaraLegendaries
     // ---- From the Shadows
 
     /// <summary>
-    /// With From the Shadows, Hemorrhaging Strike's bleed ticks 15% faster, for the same duration: every 3 / 1.15 seconds shortened by
-    /// haste, floor(15 / tick) full ticks over the 15 seconds of a 1 Combo Point bleed, plus a partial one for the time left (at least 0.1
-    /// seconds).
+    /// With From the Shadows, Hemorrhaging Strike's bleed ticks faster, for the same duration: its period is 0.87 of 3 seconds, shortened
+    /// by haste, floor(15 / tick) full ticks over the 15 seconds of a 1 Combo Point bleed, plus a partial one for the time left (at least
+    /// 0.1 seconds).
     ///
-    /// From the engine (FromTheShadows.cs, the tooltip's "ticks faster" with 15% from the game data), marked UNVERIFIED: no log has this
-    /// legendary. TODO: confirm the 15% in a log with From the Shadows.
+    /// From the game data and a combat log, as PR #61 reads them: ability 1589 multiplies the bleed's tick period by 0.87, and
+    /// fjrCax7VzGmMZw6h fight 26 has its ticks 0.722 to 0.739 of 3 seconds / haste apart with Bloodrush (0.87 / 1.2 = 0.725).
     /// </summary>
     [Theory]
     [InlineData(0.0)]
     [InlineData(0.1)]
     [InlineData(0.2)]
     [InlineData(0.3)]
-    public void From_The_Shadows_Makes_The_Bleed_Tick_15_Percent_Faster(double haste)
+    public void From_The_Shadows_Makes_The_Bleeds_Tick_Period_87_Percent(double haste)
     {
-        double tick = 3 / 1.15 / (1 + haste);
+        double tick = 3 * 0.87 / (1 + haste);
         var f = StepFights.Mara(haste: haste, legendaries: [FromTheShadows.CapeItemId]);
         f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         f.Set(Mara.ComboPoints, 1); // a 15 second bleed

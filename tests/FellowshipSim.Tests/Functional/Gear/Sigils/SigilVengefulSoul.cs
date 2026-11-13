@@ -4,8 +4,9 @@ namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
 /// Vengeful Soul (sigil 5): "Your critical strikes have a chance to increase your Main Stat by 3.0% / 5.1% / 7.2% / 9.3% for 8 seconds. If
-/// you are below 50% health when Vengeful Soul triggers, you are also healed [...]" (ranks 1 to 4). The heal is not tested: the sim takes
-/// no damage.
+/// you are below 50% health when Vengeful Soul triggers, you are also healed [...]" (ranks 1 to 4).
+/// 
+/// The heal is not tested: the sim takes no damage.
 /// </summary>
 public class SigilVengefulSoul
 {

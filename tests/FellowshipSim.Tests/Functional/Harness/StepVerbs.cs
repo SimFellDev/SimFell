@@ -75,6 +75,22 @@ public static class StepVerbs
         enemy.CurrentHealth = enemy.MaxHealth * fraction;
     }
 
+    /// <summary>
+    /// Puts a boss in combat or takes it out, as a dungeon fight does when one arrives or dies: every enemy's <c>IsBoss</c>, the fight's
+    /// <c>Boss</c> flag, and the hero's boss-only auras (Blessing of the Conqueror) on or off. A step fight starts with the boss auras on
+    /// and no boss flag set, so a test of a boss rule sets it either way first.
+    /// </summary>
+    public static void Boss(this StepDriver f, bool inCombat)
+    {
+        f.Context.Boss = inCombat;
+        foreach (var enemy in f.Context.AllEnemies) enemy.IsBoss = inCombat;
+        foreach (var aura in f.Hero.BossAuras)
+        {
+            if (inCombat) f.Hero.Auras.Apply(aura, f.Now);
+            else f.Hero.Auras.Remove(aura, f.Now);
+        }
+    }
+
     // ---- Auras
 
     /// <summary>Whether <paramref name="aura"/> is up on the hero, or on <paramref name="on"/> (e.g. <c>f.Enemy</c>).</summary>
@@ -107,6 +123,9 @@ public static class StepVerbs
         SettleRegeneration(f, resource);
         return f.Hero.ResourceAmount(resource);
     }
+
+    /// <summary>The most <paramref name="resource"/> the hero can hold now (100 for Spirit Points before any gem or talent raises it).</summary>
+    public static double Max(this StepDriver f, ResourceDef resource) => f.Hero.Resources.Get(resource).Max;
 
     /// <summary>Sets a resource directly: a set-up shortcut (e.g. 100 Spirit Points so Wrath of Winter can be cast). Elarion's Focus
     /// regenerated so far is counted first, so it is not added on top later.</summary>

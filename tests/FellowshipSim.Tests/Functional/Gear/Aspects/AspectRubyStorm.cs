@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Customization.Aspects;
+using FellowshipSim.Core.Heroes.Rime.Abilities;
 
 namespace FellowshipSim.Tests.Functional;
 
@@ -41,21 +42,50 @@ public class AspectRubyStorm
         AssertRatio(share, f.Damage(Storm)[0].Value / f.Health());
     }
 
-    /// <summary>A Ruby Storm scales with nothing but your health: not with main stat or Expertise, and it never crits.</summary>
+    /// <summary>A Ruby Storm's damage grows with your Expertise: 50% Expertise makes it 50% more.</summary>
     [Fact]
-    public void A_Ruby_Storm_Scales_With_Nothing_But_Your_Health()
+    public void A_Ruby_Storm_Gets_Bonus_Damage_From_Expertise()
     {
-        var f = Fight("Rime", rank: 4, crit: 1.0, mainStat: 5000, expertise: 0.5);
+        double Storm1(double expertise)
+        {
+            var f = Fight("Rime", rank: 4, expertise: expertise);
+            f.ForceProcs(key => key == RubyStorm.ProcKey ? true : null);
+            f.Cast("Frost Bolt");
+            f.Wait(1); // the storm lands
+            return f.Damage(Storm)[0].Value;
+        }
+
+        AssertRatio(1.5, Storm1(0.5) / Storm1(0));
+    }
+
+    /// <summary>A Ruby Storm can crit.</summary>
+    [Fact]
+    public void A_Ruby_Storm_Can_Crit()
+    {
+        var f = Fight("Rime", rank: 4, crit: 1.0);
         f.ForceProcs(key => key == RubyStorm.ProcKey ? true : null);
 
         f.Cast("Frost Bolt");
         f.Wait(1); // the storm lands
 
-        var storm = f.Damage(Storm)[0];
+        Assert.Equal(1.0, f.Damage(Storm)[0].CritChance);
+    }
 
-        using var check = new Checks(f);
-        check.Ratio(0.07, storm.Value / f.Health());
-        check.Equal(0, storm.CritChance);
+    /// <summary>A Ruby Storm gets the damage bonuses of other effects: Ice Blitz makes it deal 20% more.</summary>
+    [Fact]
+    public void A_Ruby_Storm_Gets_Bonus_Damage_From_Other_Effects()
+    {
+        double Storm1(bool blitz)
+        {
+            var f = Fight("Rime", rank: 4);
+            f.ForceProcs(key => key == RubyStorm.ProcKey ? true : null);
+            if (blitz) f.Apply(IceBlitz.Buff);
+            f.Cast("Frost Bolt");
+            f.Wait(1); // the storm lands
+            return f.Damage(Storm)[0].Value;
+        }
+
+        AssertRatio(IceBlitz.BuffDamage, Storm1(true) / Storm1(false));
     }
 
     /// <summary>A cast rolls for a Ruby Storm once, however many hits it makes: Bursting Ice and its pulses roll once.</summary>

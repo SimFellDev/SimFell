@@ -6,7 +6,9 @@ namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
 /// Willful Momentum (sigil 39): "Your Spirit Rating is increased by 7 / 11 / 17 / 23. Whenever you trigger a Spirit Refund your Main Stat
-/// is increased by 1.5% / 2.6% / 3.7% / 4.8% for 4 seconds" (ranks 1 to 4). A rating point is 0.16%. Spirit Refunds are forced.
+/// is increased by 1.5% / 2.6% / 3.7% / 4.8% for 4 seconds" (ranks 1 to 4). A rating point is 0.16%.
+/// 
+/// Spirit Refunds are forced.
 /// </summary>
 public class SigilWillfulMomentum
 {
@@ -41,8 +43,7 @@ public class SigilWillfulMomentum
     /// <summary>
     /// A Spirit Refund gives you Willful Momentum: 1.5% / 2.6% / 3.7% / 4.8% more main stat.
     ///
-    /// Compared with the same refund without the sigil, which gives the same Rising Spirit stack. TODO: confirm in the game that the two
-    /// multiply, as the engine's main stat layers have it (Hero.PrimaryAttribute).
+    /// Compared with the same refund without the sigil, which gives the same Rising Spirit stack.
     /// </summary>
     [Theory]
     [InlineData("Rime", "Glacial Blast", 1, 0.015)]
@@ -65,6 +66,37 @@ public class SigilWillfulMomentum
         momentumScenario.Wait(0.5); // the refund lands
 
         AssertRatio(1 + bonus, momentumScenario.MainStat() / plainScenario.MainStat());
+    }
+
+    /// <summary>
+    /// The Spirit Refund of a cast gives Willful Momentum and Rising Spirit to that same cast: its hit deals more main stat's worth, by
+    /// both buffs.
+    ///
+    /// Compared with the same cast, with the sigil, whose Spirit Refund fails.    
+    /// </summary>
+    [Theory]
+    [InlineData("Rime", "Glacial Blast", 1, 0.015)]
+    [InlineData("Rime", "Glacial Blast", 4, 0.048)]
+    [InlineData("Ardeos", "Detonate", 4, 0.048)]
+    [InlineData("Elarion", "Highwind Arrow", 4, 0.048)]
+    [InlineData("Gunde", "Rupture", 4, 0.048, Skip = "Per the user: to double check in the game; the engine rolls a Rend cast's Spirit Refund after its first hit")]
+    [InlineData("Mara", "Queen's Fang", 4, 0.048)]
+    [InlineData("Tariq", "Skull Crusher", 4, 0.048)]
+    public void Willful_Momentum_Raises_The_Hit_Of_The_Cast_That_Gave_The_Spirit_Refund(string hero, string spender, int rank, double bonus)
+    {
+        double FirstHit(bool refund)
+        {
+            var f = StepFights.Of(hero, augmentations: StepFights.Ranked(WillfulMomentum.SigilId, rank)).WithoutDamageSpread();
+            f.ForceProcs(key => key == Hero.SpiritRefundProc ? refund : null);
+            f.FillResources(); // enough to cast the spender
+            f.Set(Hero.SpiritPoints, 0); // room for the refund's Spirit Points
+            if (spender == "Detonate") f.Cast("Searing Blaze"); // Detonate only hits a burning enemy
+            f.Cast(spender);
+            f.Wait(3); // the hits land
+            return f.Damage(spender)[0].Value;
+        }
+
+        AssertRatio((1 + 0.05) * (1 + bonus), FirstHit(refund: true) / FirstHit(refund: false));
     }
 
     /// <summary>Willful Momentum lasts 4 seconds.</summary>

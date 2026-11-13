@@ -93,8 +93,6 @@ public class AspectEmeraldJudgement
 
     /// <summary>
     /// An Emerald Spike gives the Emerald gem's First Strike again, as a first hit would: its 15 seconds start over when the spike lands.
-    ///
-    /// From combat logs. Rime with Emerald at 80 gem power hits once for First Strike, then a spike lands 10 seconds later.
     /// </summary>
     [Fact]
     public void An_Emerald_Spike_Starts_First_Strike_Again()

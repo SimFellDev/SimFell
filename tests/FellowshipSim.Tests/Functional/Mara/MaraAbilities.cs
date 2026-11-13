@@ -165,6 +165,62 @@ public class MaraAbilities
         AssertRatio(0.9841, f.Damage("Hemorrhage").First().Value / MainStat, 0.9841 * RatioTolerance);
     }
 
+    /// <summary>
+    /// A Hemorrhaging Strike on a bleeding enemy gives the bleed its new duration plus the time it had left, up to 30% of the new duration
+    /// (130% at most): 12 + 3 seconds per Combo Point, plus min(time left, 0.3 x that). A short strike on a long bleed shortens it.
+    ///
+    /// Checked in game by the user. The rows: the cap reached, the time left under the cap, and a 1 Combo Point strike on a 30 second bleed.
+    /// </summary>
+    [Theory]
+    [InlineData(6, 5.0, 6)]
+    [InlineData(1, 12.0, 6)]
+    [InlineData(6, 1.0, 1)]
+    public void Refreshing_The_Bleed_Carries_Over_Up_To_30_Percent(int firstPoints, double wait, int points)
+    {
+        var f = StepFights.Mara();
+
+        f.Set(Mara.ComboPoints, firstPoints);
+        f.Cast<HemorrhagingStrike>();
+        double firstEnd = f.CompletedAt("Hemorrhaging Strike") + 12 + 3 * firstPoints;
+        f.Wait(wait);
+        f.Set(Mara.ComboPoints, points);
+        f.Cast<HemorrhagingStrike>();
+        double refresh = f.CompletedAt("Hemorrhaging Strike");
+        double duration = 12 + 3 * points;
+        double end = refresh + duration + Math.Min(firstEnd - refresh, 0.3 * duration);
+
+        f.WaitUntil(end - 0.1);
+        Assert.True(f.HasDebuff("Hemorrhage"));
+        f.WaitUntil(end + 0.1);
+        Assert.False(f.HasDebuff("Hemorrhage"));
+    }
+
+    /// <summary>
+    /// A Hemorrhaging Strike on a bleeding enemy refreshes the bleed and keeps its ticks on time: recast on every global cooldown for 12
+    /// seconds, the bleed still ticks every 3 seconds from the first strike.
+    ///
+    /// From combat logs (Mara's NOTES.md: "A refresh keeps the tick timing").
+    /// </summary>
+    [Fact]
+    public void Recasting_Hemorrhaging_Strike_Keeps_The_Bleeds_Ticks_On_Time()
+    {
+        var f = StepFights.Mara();
+
+        f.FillResources(); // Energy and Combo Points for the strike
+        f.Cast<HemorrhagingStrike>();
+        double first = f.CompletedAt("Hemorrhaging Strike");
+        while (f.Seconds() < first + 12) // a recast on every global cooldown
+        {
+            f.FillResources();
+            f.Cast<HemorrhagingStrike>();
+        }
+
+        var ticks = f.Damage("Hemorrhage").Where(tick => tick.Time.TotalSeconds < first + 12.5).ToList();
+        using var check = new Checks(f);
+        check.Equal(4, ticks.Count);
+        for (int i = 0; i < ticks.Count; i++) check.Seconds(first + 3 * (i + 1), ticks[i].Time.TotalSeconds, what: $"tick {i + 1}");
+    }
+
     // ---- Area damage
 
     /// <summary>
@@ -301,6 +357,36 @@ public class MaraAbilities
         using var check = new Checks(f);
         check.Equal(1, ticks.Select(tick => tick.Target).Where(target => target != null).Distinct().Count(target => target == second.Name));
         check.False(ticks.Any(tick => tick.Time > f.Now - SimTime.FromSeconds(8) && tick.Target == first.Name));
+    }
+
+    /// <summary>
+    /// Putting Seething Poison back on an enemy that has it restarts its ticks: Brooding Shadows and Widow's Bite chained on one enemy, a
+    /// Widow's Bite on every global cooldown for 10 seconds, deal no tick, and the first tick comes 2 seconds after the last Widow's Bite.
+    ///
+    /// Checked in game by the user. The cooldowns are reset between casts, so the chain goes on past the charges.
+    /// </summary>
+    [Fact]
+    public void Renewing_Seething_Poison_Restarts_Its_Ticks()
+    {
+        var f = StepFights.Mara();
+
+        f.Cast<BroodingShadows>(); // into Stealth
+        f.Cast<WidowsBite>();
+        double first = f.CompletedAt("Widow's Bite");
+        while (f.Seconds() < first + 10) // a Widow's Bite from Stealth on every global cooldown
+        {
+            f.ResetCooldown<BroodingShadows>(); // past its 2 charges
+            f.ResetCooldown<WidowsBite>(); // past its 3 charges
+            f.Cast<BroodingShadows>();
+            f.Cast<WidowsBite>();
+        }
+        double last = f.CompletedAt("Widow's Bite");
+        f.Wait(3); // the first tick
+
+        var ticks = f.Damage("Seething Poison");
+        using var check = new Checks(f);
+        check.Equal(1, ticks.Count);
+        check.Seconds(last + 2, ticks[0].Time.TotalSeconds);
     }
 
     /// <summary>

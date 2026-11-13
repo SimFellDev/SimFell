@@ -27,7 +27,7 @@ public class GemTopaz
     [InlineData(80, 0.26, 0.03)]
     [InlineData(80, 0.34, 0.0)]
     [InlineData(600, 0.26, 0.09)]
-    public void Adrenaline_Rush_Gives_3_Percent_Haste_On_Hitting_An_Enemy_At_30_Percent_Health(double power, double health, double bonus)
+    public void Adrenaline_Rush_Gives_Haste_On_Hitting_An_Enemy_At_30_Percent_Health(double power, double health, double bonus)
     {
         var f = Fight(power);
         f.SetHealth(health);
@@ -60,7 +60,7 @@ public class GemTopaz
     [Theory]
     [InlineData(150, 8)]
     [InlineData(800, 24 - 8)]
-    public void Thiefs_Alacrity_Gives_8_Haste_Rating(double power, double rating)
+    public void Thiefs_Alacrity_Gives_Haste_Rating(double power, double rating)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -72,7 +72,7 @@ public class GemTopaz
     [Theory]
     [InlineData(300, 0.02)]
     [InlineData(1250, 0.06 - 0.02)]
-    public void Feline_Grace_Gives_2_Percent_Haste(double power, double bonus)
+    public void Feline_Grace_Gives_Haste(double power, double bonus)
     {
         var belowScenario = Fight(power - 1);
         var nodeScenario = Fight(power);
@@ -91,7 +91,7 @@ public class GemTopaz
     [InlineData("Gunde", "Bloodbound Spirit", 1500, 0.06 - 0.02)]
     [InlineData("Mara", "Matriarch Macabre", 1500, 0.06 - 0.02)]
     [InlineData("Tariq", "Raging Tempest", 1500, 0.06 - 0.02)]
-    public void Blessing_Of_The_Virtuoso_Keeps_2_Percent_Haste_Outside_Spirit_Of_Heroism(string hero, string ultimate, double power,
+    public void Blessing_Of_The_Virtuoso_Keeps_Haste_Outside_Spirit_Of_Heroism(string hero, string ultimate, double power,
         double bonus)
     {
         var belowScenario = Fight(power - 1, hero);

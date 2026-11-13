@@ -5,9 +5,6 @@ namespace FellowshipSim.Tests.Functional;
 /// <summary>
 /// Rising Spirit, the buff every Spirit Refund gives: +5% main stat per stack, up to 10 stacks, for 10 seconds. Each test runs over every
 /// hero.
-///
-/// The stacks are put on the hero directly, except where the rule is about what a further Spirit Refund does: there it comes from the
-/// hero's spender, as in Generic/SpiritRefund.cs, which has the refund's own rules.
 /// </summary>
 public class RisingSpirit
 {

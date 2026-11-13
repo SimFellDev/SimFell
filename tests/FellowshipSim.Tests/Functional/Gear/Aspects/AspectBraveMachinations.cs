@@ -62,7 +62,7 @@ public class AspectBraveMachinations
     }
 
     /// <summary>
-    /// The cooldown comes off once per cast, however many hits crit: Icicles of An'zhyr's 9 crits on 3 enemies take 30% off.
+    /// The cooldown comes off once per cast, however many hits crit: Icicles of An'zhyr's crits on 3 enemies take 30% off, once.
     /// </summary>
     [Fact]
     public void Brave_Machinations_Takes_The_Cooldown_Off_Once_Per_Cast()
@@ -74,9 +74,11 @@ public class AspectBraveMachinations
         double end = f.CompletedAt("Icicles of An'zhyr") + 40 * (1 - 0.30);
 
         f.WaitUntil(end - 0.1);
-        Assert.False(f.IsReady("Icicles of An'zhyr"));
+        using var check = new Checks(f);
+        check.Equal(9, f.Damage("Icicles of An'zhyr").Count(hit => hit.IsCrit), what: "crits");
+        check.False(f.IsReady("Icicles of An'zhyr"));
         f.WaitUntil(end + 0.1);
-        Assert.True(f.IsReady("Icicles of An'zhyr"));
+        check.True(f.IsReady("Icicles of An'zhyr"));
     }
 
     /// <summary>
@@ -99,8 +101,6 @@ public class AspectBraveMachinations
 
     /// <summary>
     /// A critical strike of Icicles of An'zhyr's curse, its damage over time, takes nothing off the cooldown.
-    ///
-    /// Per the user. TODO: check in the datamine. The hero's 100% crit makes the curse's ticks crit; the waves are forced not to.
     /// </summary>
     [Fact]
     public void A_Critical_Strike_Of_The_Icicles_Curse_Takes_Nothing_Off()

@@ -6,8 +6,9 @@ namespace FellowshipSim.Tests.Functional;
 
 /// <summary>
 /// The Mystic (glyph 706): "Your Power abilities gain 0.3% / 0.5% / 0.8% / 1.2% increased power for every 3% Spirit you have, up to 50%
-/// Spirit" (ranks 1 to 4). A hit with the glyph is compared with the same hit without it, at the same Spirit; Spirit Refunds are forced
-/// off.
+/// Spirit" (ranks 1 to 4).
+/// 
+/// A hit with the glyph is compared with the same hit without it, at the same Spirit.
 /// </summary>
 public class GlyphMystic
 {
@@ -15,7 +16,6 @@ public class GlyphMystic
     private static double FirstHit(string hero, string ability, int rank, double spirit)
     {
         var f = StepFights.Of(hero, spirit: spirit, glyphs: StepFights.Ranked(TheMystic.GlyphId, rank)).WithoutDamageSpread();
-        f.ForceProcs(key => key == Hero.SpiritRefundProc ? false : null);
         f.FillResources(); // enough to cast it
 
         if (ability == "Detonate") f.Cast("Searing Blaze"); // Detonate only hits a burning enemy
@@ -27,9 +27,6 @@ public class GlyphMystic
 
     /// <summary>
     /// Your Power abilities deal more by The Mystic's power for every 3% Spirit you have, up to 50% Spirit: x (1 + power x Spirit / 3%).
-    ///
-    /// TODO: confirm in the game that Ardeos's Detonate, a Power ability, gets it. The engine gives it nothing: Detonate deals its effects'
-    /// damage per second, which no Power multiplier reaches.
     /// </summary>
     [Theory]
     [InlineData("Rime", "Ice Comet", 1, 0.003, 0.3)]
@@ -44,7 +41,7 @@ public class GlyphMystic
     [InlineData("Gunde", "Rupture", 4, 0.012, 0.3)]
     [InlineData("Mara", "Queen's Fang", 4, 0.012, 0.3)]
     [InlineData("Tariq", "Skull Crusher", 4, 0.012, 0.3)]
-    public void The_Mystic_Raises_Power_Abilities_For_Every_3_Percent_Spirit(string hero, string power, int rank, double powerPerStep,
+    public void The_Mystic_Raises_Power_Abilities_For_Every_Step_Of_Spirit(string hero, string power, int rank, double powerPerStep,
         double spirit)
     {
         double plainHit = FirstHit(hero, power, rank: 0, spirit);
