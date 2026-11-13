@@ -30,15 +30,14 @@ public abstract class GundeAbility : Ability
     public event Action<SimulationContext>? Pulsed;
 
     /// <summary>
-    /// The cast's Rend: its share plus Reign in Blood's, and Serrated Edge's, which the cast uses up. Combat logs
-    /// (n7zxK8harZT2wjDB fight 9, Chains#3 @ 108.0): Grim Carve uses Serrated Edge as it is cast and every spin gets it
-    /// (each spin adds the full Serrated Edge share of its damage).
+    /// The cast's Rend: its share and Serrated Edge's, which the cast uses up. Combat logs (n7zxK8harZT2wjDB fight 9,
+    /// Chains#3 @ 108.0): Grim Carve uses Serrated Edge as it is cast and every spin gets it (each spin adds the full
+    /// Serrated Edge share of its damage). Reign in Blood's share counts at each hit (<see cref="RendCast.ShareAt"/>).
     /// </summary>
     protected RendCast BeginRend(SimulationContext ctx)
     {
         var now = ctx.CurrentTime;
         double share = RendShare;
-        foreach (var bonus in Gunde.RendShareBonuses) share += bonus(now);
         if (TakesRendEmpowerments && Gunde.Auras.HasAura(BloodArc.SerratedEdge, now))
         {
             share += Gunde.SerratedEdgeShare;
@@ -49,7 +48,7 @@ public abstract class GundeAbility : Ability
         {
             foreach (var empower in Gunde.RendCastMultipliers) multiplier *= empower(ctx, this);
         }
-        return new RendCast(Gunde, share * RendShareScaler, multiplier);
+        return new RendCast(Gunde, share, RendShareScaler, multiplier);
     }
 
     /// <summary>
@@ -91,13 +90,31 @@ public abstract class GundeAbility : Ability
 /// The Rend of one cast: the share of its hits' damage that becomes Rend, and the multiplier the cast took on all its
 /// hits (Crimson Strikes). Its first landed hit rolls the cast's Spirit Refund (<see cref="Gunde.RendCastLanded"/>).
 /// </summary>
-public sealed class RendCast(Gunde gunde, double share, double damageMultiplier = 1.0)
+/// <param name="share">The ability's share and Serrated Edge's, fixed at the cast.</param>
+/// <param name="scaler">The multiplier on the whole share, Reign in Blood's included (Bloodbound Spirit's <c>DotScaler</c>).</param>
+public sealed class RendCast(Gunde gunde, double share, double scaler = 1.0, double damageMultiplier = 1.0)
 {
     private bool _landed;
 
-    public double Share { get; } = share;
-
     public double DamageMultiplier { get; } = damageMultiplier;
+
+    /// <summary>
+    /// The share of a hit landing now: the cast's share plus Reign in Blood's and Frenzied Reign's as the hit lands, times
+    /// the scaler. Blueprint GA_Gunde_Passive_PerTargetAccumulatedBleed_Monitor (build 26320967) tests Reign in Blood's
+    /// granted tag on each damage event it handles (offsets 1068 and 2732) and adds the bonuses before the scaler (offsets
+    /// 3498, 3573 and 3749). Combat logs (Rend's debuff stacks, 20 fights of patch 0.5.0.0): a Grim Carve spin after Reign
+    /// in Blood ends adds 0.49 of its damage from a cast in it (median, 497 spins in 16 fights, 8vb2pTAhFQRcktaD fight 2
+    /// and PFtrX9RZJxmv1QfT fight 2 among them), and a spin in it adds 1.05 from a cast before it (219 spins in 13 fights,
+    /// 67qwcRKCWYFzyxPA fight 6 and VP9bnawhd6prjfKN fight 8 among them). Bloodbound Spirit's pulses alike: 1.00 out of it
+    /// from a cast in it (66 pulses, 9 fights), 2.08 in it from a cast before it (585 pulses, 13 fights, XQHxvNmwRp8TcMJG
+    /// fights 2 and 3 among them).
+    /// </summary>
+    public double ShareAt(SimTime now)
+    {
+        double total = share;
+        foreach (var bonus in gunde.RendShareBonuses) total += bonus(now);
+        return total * scaler;
+    }
 
     public void Landed(SimulationContext ctx, EnemyTarget target, double dealt)
     {
@@ -107,6 +124,6 @@ public sealed class RendCast(Gunde gunde, double share, double damageMultiplier 
             _landed = true;
             gunde.RendCastLanded(ctx);
         }
-        gunde.Rend.Apply(ctx, target, dealt * Share);
+        gunde.Rend.Apply(ctx, target, dealt * ShareAt(ctx.CurrentTime));
     }
 }

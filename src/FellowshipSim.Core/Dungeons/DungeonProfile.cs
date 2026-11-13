@@ -15,7 +15,8 @@ namespace FellowshipSim.Core.Dungeons;
 /// pull.1+=/count=5,name=Imp,spirit_points=3,hit_points=7857
 /// pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=11546,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
 /// pull.ghouls=/duration=45,downtime=20
-/// pull.ghouls+=/count=4,name=Ghoul
+/// pull.ghouls+=/count=4,name=Ghoul,dies=30
+/// pull.ghouls+=/count=2,name=Ghoul,first_seen=12.5
 /// pull.last_boss=/duration=90,final=1,pull_with=ghouls,offset_pct=50
 /// pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
 /// </code>
@@ -27,7 +28,9 @@ namespace FellowshipSim.Core.Dungeons;
 /// <c>pull.X=/</c> starts pull X and <c>pull.X+=/</c> adds a line to it. A line is
 /// an enemy group (<c>count=</c>), a boss (<c>boss.N</c>) or the pull's options; a group line can also have pull options.
 /// Group values: <c>count</c>, <c>name</c>, <c>spirit_points</c>, <c>priority</c>, <c>hit_points</c>,
-/// <c>interrupt_ability</c>, <c>cooldown</c> and <c>cast_time</c>. Pull options: <c>duration</c> (every pull has one), <c>downtime</c>,
+/// <c>interrupt_ability</c>, <c>cooldown</c>, <c>cast_time</c>, and <c>first_seen</c> and <c>dies</c>, the seconds after the
+/// pull's start at which the group's enemies enter combat (0 unless given) and die (the pull's <c>duration</c> unless
+/// given). Pull options: <c>duration</c> (every pull has one), <c>downtime</c>,
 /// <c>final</c>, <c>chain_with</c> and <c>pull_with</c> with one trigger at most (<c>offset_ms</c>, <c>offset_pct</c>,
 /// <c>after_deaths</c>, <c>after_deaths_total</c>). A name with a comma is quoted.
 /// </summary>
@@ -53,7 +56,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
 
     /// <summary>The values of an enemy group line.</summary>
     public static IReadOnlyList<string> GroupKeys { get; } =
-        ["count", "name", "spirit_points", "priority", "hit_points", "interrupt_ability", "cooldown", "cast_time"];
+        ["count", "name", "spirit_points", "priority", "hit_points", "interrupt_ability", "cooldown", "cast_time", "first_seen", "dies"];
 
     /// <summary>The options of a pull, on its options line or a group line.</summary>
     public static IReadOnlyList<string> PullKeys { get; } =
@@ -284,7 +287,8 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         int? count = boss ? 1 : null;
         string? name = null;
         double cooldown = 0, castTime = EnemyCast.DefaultCastSeconds;
-        double? hitPoints = null, spirit = null;
+        double? hitPoints = null, spirit = null, dies = null;
+        double firstSeen = 0;
         bool priority = false, groupValues = false;
         string? ability = null;
         foreach (string option in parts)
@@ -304,6 +308,8 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                 case "interrupt_ability": ability = Unquote(v); groupValues = true; break;
                 case "cooldown": cooldown = Number(key, v); groupValues = true; break;
                 case "cast_time": castTime = Number(key, v); groupValues = true; break;
+                case "first_seen": firstSeen = Number(key, v); groupValues = true; break;
+                case "dies": dies = Number(key, v); groupValues = true; break;
                 case "duration": pull.Duration = Number(key, v); break;
                 case "downtime": pull.Downtime = Number(key, v); break;
                 case "final": pull.Final = Integer(key, v) != 0; break;
@@ -325,7 +331,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         if ((cooldown > 0 || castTime != EnemyCast.DefaultCastSeconds) && ability == null)
             throw new FormatException("cooldown and cast_time need interrupt_ability");
         pull.Groups.Add(new EnemyGroup(n, name ?? "", spirit, priority, hitPoints, boss,
-            ability != null ? new EnemyCast(ability, cooldown, castTime) : null));
+            ability != null ? new EnemyCast(ability, cooldown, castTime) : null, FirstSeenSeconds: firstSeen, DiesSeconds: dies));
     }
 
     /// <summary>The profile's text, which <see cref="Parse"/> reads back to the same profile.</summary>
@@ -364,6 +370,8 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                         .Append(",cooldown=").Append(N(cast.CooldownSeconds))
                         .Append(",cast_time=").Append(N(cast.CastSeconds));
                 }
+                if (g.FirstSeenSeconds != 0) text.Append(",first_seen=").Append(N(g.FirstSeenSeconds));
+                if (g.DiesSeconds is { } dies) text.Append(",dies=").Append(N(dies));
                 text.Append('\n');
             }
         }

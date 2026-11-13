@@ -1,4 +1,7 @@
 using FellowshipSim.Core;
+using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Editing;
+using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Gunde;
@@ -36,6 +39,36 @@ public class GundeRendTests
             double tickRate = deepRend ? 1.1 : 1.0;
             Assert.Equal(strengths * strength * tickRate, hero.Rend.Remaining(enemy), 6);
         }
+    }
+
+    [Fact]
+    public void An_Action_List_Reads_Rend_Stacks_On_The_Target()
+    {
+        var vocabulary = AplVocabulary.For("Gunde");
+        Assert.Contains(vocabulary.Auras, a => a.Slug == "rend" && a.Name == Rend.Debuff.Name);
+        foreach (string condition in new[] { "debuff.rend.stack>=200", "dot.rend.stack>=200", "active_dot.rend>=3" })
+        {
+            var check = vocabulary.Check(condition);
+            Assert.Null(check.Error);
+            Assert.DoesNotContain(check.Tokens, t => t.Problem != null);
+        }
+        Assert.Contains(Completions.For(vocabulary, "debuff.re"), c => c.Text == "rend");
+
+        var (hero, ctx, enemy) = Fight([]);
+        var stacks = AplParser.ParseExpression("debuff.rend.stack");
+        var bound = BoundExpression.Bind(stacks, hero);
+        Assert.Equal(0, stacks.EvaluateNumeric(hero, ctx));
+        Assert.Equal(0, bound.EvaluateNumeric(ctx));
+
+        hero.Rend.Apply(ctx, enemy, 7 * hero.PrimaryAttribute(ctx.CurrentTime));
+        Assert.Equal(enemy.Auras.GetStacks(Rend.Debuff, ctx.CurrentTime), stacks.EvaluateNumeric(hero, ctx));
+        Assert.Equal(7, stacks.EvaluateNumeric(hero, ctx));
+        Assert.Equal(7, bound.EvaluateNumeric(ctx));
+
+        // Slaughter takes every stack.
+        hero.GetAbility<Slaughter>()!.Execute(ctx, enemy);
+        Assert.Equal(0, stacks.EvaluateNumeric(hero, ctx));
+        Assert.Equal(0, bound.EvaluateNumeric(ctx));
     }
 
     [Fact]

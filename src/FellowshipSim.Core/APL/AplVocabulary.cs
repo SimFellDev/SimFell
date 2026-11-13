@@ -35,7 +35,7 @@ public enum AplTokenKind
     Comment,
     /// <summary>A list's prefix (<c>actions.aoe</c>), or the list a run_action_list or call_action_list names.</summary>
     List,
-    /// <summary>An argument's key, a target selection, a variable op, or an action that controls the list (run_action_list).</summary>
+    /// <summary>An argument's key, a target selection, a variable op, or an action that casts nothing (run_action_list, variable, switch_target).</summary>
     Keyword,
 }
 

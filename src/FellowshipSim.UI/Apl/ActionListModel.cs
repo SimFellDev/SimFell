@@ -30,6 +30,9 @@ public static partial class ActionListModel
     /// <summary>variable changes a variable and casts nothing.</summary>
     public static bool IsVariableAction(EditorAction action) => action.Ability == AplVariable.ActionName;
 
+    /// <summary>switch_target sets the hero's current target and casts nothing.</summary>
+    public static bool IsSwitchTargetAction(EditorAction action) => action.Ability == AplSwitchTarget.ActionName;
+
     /// <summary>The op's words in an action's title: "Set", "Add to", "Subtract from" or "Reset".</summary>
     public static string VariableOpName(AplVariableOp op) => op switch
     {
@@ -55,6 +58,7 @@ public static partial class ActionListModel
             var variable = action.Variable ?? new AplDocumentVariable("");
             return $"{VariableOpName(variable.Op)} variable: {(string.IsNullOrWhiteSpace(variable.Name) ? "name it" : variable.Name.Trim())}";
         }
+        if (IsSwitchTargetAction(action)) return AplSwitchTarget.Label;
         string name = AbilityName(v, action.Ability);
         return name.Length > 0 ? name : "Pick an ability";
     }

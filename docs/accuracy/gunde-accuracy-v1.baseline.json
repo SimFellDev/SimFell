@@ -1,0 +1,906 @@
+{
+  "Hero": "Gunde",
+  "Label": "baseline",
+  "Patch": "0.5.0.0",
+  "CreatedAt": "2026-11-10T06:44:15.1394666Z",
+  "Fights": 20,
+  "LogHits": 222536,
+  "MatchedHits": 222083,
+  "LogDamage": 957942300,
+  "ExactDamage": 944709959.3701617,
+  "FreeDiceLogDamage": 957854427,
+  "FreeDiceMean": 945148075.4682858,
+  "MeanFreeDiceLogPercentile": 0.5835,
+  "FightResults": [
+    {
+      "ReportCode": "2NwV9b6jdhFnzXJk",
+      "FightId": 2,
+      "FightName": "Silken Hollow",
+      "FightDate": "2026-10-31T13:45:44Z",
+      "PlayerName": "M.",
+      "LogHits": 12198,
+      "MatchedHits": 12183,
+      "LogDamage": 54879585,
+      "ExactDamage": 53607900.97684281,
+      "PassedSteps": 833,
+      "TotalSteps": 1705,
+      "ForcedCasts": 22,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 51123173.4561709,
+      "FreeDiceLogPercentile": 0.98
+    },
+    {
+      "ReportCode": "67qwcRKCWYFzyxPA",
+      "FightId": 6,
+      "FightName": "Godfall Quarry",
+      "FightDate": "2026-11-01T16:40:20Z",
+      "PlayerName": "Jello",
+      "LogHits": 9049,
+      "MatchedHits": 9017,
+      "LogDamage": 36901779,
+      "ExactDamage": 35821240.322725974,
+      "PassedSteps": 609,
+      "TotalSteps": 1367,
+      "ForcedCasts": 17,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 36209390.25436687,
+      "FreeDiceLogPercentile": 0.72
+    },
+    {
+      "ReportCode": "7w6mAjpTVgD14aHQ",
+      "FightId": 11,
+      "FightName": "Stormwatch",
+      "FightDate": "2026-11-03T03:10:19Z",
+      "PlayerName": "Chudalingus",
+      "LogHits": 7501,
+      "MatchedHits": 7494,
+      "LogDamage": 28822415,
+      "ExactDamage": 28223437.42499011,
+      "PassedSteps": 692,
+      "TotalSteps": 1298,
+      "ForcedCasts": 45,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 26677752.353261765,
+      "FreeDiceLogPercentile": 0.99
+    },
+    {
+      "ReportCode": "7w6mAjpTVgD14aHQ",
+      "FightId": 12,
+      "FightName": "Godfall Quarry",
+      "FightDate": "2026-11-03T03:39:20Z",
+      "PlayerName": "Chudalingus",
+      "LogHits": 6724,
+      "MatchedHits": 6679,
+      "LogDamage": 28204970,
+      "ExactDamage": 27558652.493689768,
+      "PassedSteps": 614,
+      "TotalSteps": 1194,
+      "ForcedCasts": 37,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 26007549.803034186,
+      "FreeDiceLogPercentile": 0.99
+    },
+    {
+      "ReportCode": "8vb2pTAhFQRcktaD",
+      "FightId": 2,
+      "FightName": "Wraithtide Vault",
+      "FightDate": "2026-10-27T18:34:35Z",
+      "PlayerName": "Solomio",
+      "LogHits": 16634,
+      "MatchedHits": 16599,
+      "LogDamage": 72228207,
+      "ExactDamage": 71528725.42800532,
+      "PassedSteps": 1583,
+      "TotalSteps": 3171,
+      "ForcedCasts": 61,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 74597531.17119814,
+      "FreeDiceLogPercentile": 0.08
+    },
+    {
+      "ReportCode": "Ab1yCxVcNBHPz6t8",
+      "FightId": 7,
+      "FightName": "Cithrel\u0027s Fall",
+      "FightDate": "2026-11-07T23:21:57Z",
+      "PlayerName": "Azif",
+      "LogHits": 14553,
+      "MatchedHits": 14526,
+      "LogDamage": 81673605,
+      "ExactDamage": 79904911.74404325,
+      "PassedSteps": 2265,
+      "TotalSteps": 3253,
+      "ForcedCasts": 42,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 76359511.97687034,
+      "FreeDiceLogPercentile": 1
+    },
+    {
+      "ReportCode": "AFan1VtPvjYW3y7K",
+      "FightId": 4,
+      "FightName": "Empyrean Sands",
+      "FightDate": "2026-11-06T16:35:30Z",
+      "PlayerName": "M.",
+      "LogHits": 10045,
+      "MatchedHits": 10037,
+      "LogDamage": 43478310,
+      "ExactDamage": 42326697.196544334,
+      "PassedSteps": 604,
+      "TotalSteps": 1433,
+      "ForcedCasts": 56,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 42549218.65439293,
+      "FreeDiceLogPercentile": 0.79
+    },
+    {
+      "ReportCode": "CPNgLQD4Htynkh2G",
+      "FightId": 6,
+      "FightName": "Wraithtide Vault",
+      "FightDate": "2026-10-30T22:12:32Z",
+      "PlayerName": "M.",
+      "LogHits": 18792,
+      "MatchedHits": 18762,
+      "LogDamage": 92141565,
+      "ExactDamage": 89422616.13814998,
+      "PassedSteps": 1986,
+      "TotalSteps": 3649,
+      "ForcedCasts": 53,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 87875344.96971871,
+      "FreeDiceLogPercentile": 1
+    },
+    {
+      "ReportCode": "CwmX2Tb8GA6hyc1v",
+      "FightId": 8,
+      "FightName": "Wraithtide Vault",
+      "FightDate": "2026-10-31T04:25:22Z",
+      "PlayerName": "Chudalingus",
+      "LogHits": 17584,
+      "MatchedHits": 17520,
+      "LogDamage": 67193528,
+      "ExactDamage": 64513645.778739735,
+      "PassedSteps": 1510,
+      "TotalSteps": 2902,
+      "ForcedCasts": 65,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 63302907.76507349,
+      "FreeDiceLogPercentile": 1
+    },
+    {
+      "ReportCode": "DrabZB8wYcQ4fx6m",
+      "FightId": 33,
+      "FightName": "Xul, The Blood Monolith",
+      "FightDate": "2026-11-08T01:14:10Z",
+      "PlayerName": "TTV TheSpryFrog",
+      "LogHits": 8341,
+      "MatchedHits": 8319,
+      "LogDamage": 21085170,
+      "ExactDamage": 21496925.25463703,
+      "PassedSteps": 683,
+      "TotalSteps": 1585,
+      "ForcedCasts": 31,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 22503585.422763098,
+      "FreeDiceLogPercentile": 0
+    },
+    {
+      "ReportCode": "DYL3Ph6Fkgp8jVbw",
+      "FightId": 1,
+      "FightName": "Godfall Quarry",
+      "FightDate": "2026-10-28T19:27:08Z",
+      "PlayerName": "M.",
+      "LogHits": 7935,
+      "MatchedHits": 7911,
+      "LogDamage": 33199181,
+      "ExactDamage": 32325007.835430186,
+      "PassedSteps": 555,
+      "TotalSteps": 1223,
+      "ForcedCasts": 3,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 32034970.27903822,
+      "FreeDiceLogPercentile": 0.84
+    },
+    {
+      "ReportCode": "h7FpWxARG61jt9yD",
+      "FightId": 1,
+      "FightName": "Cithrel\u0027s Fall",
+      "FightDate": "2026-11-01T14:06:46Z",
+      "PlayerName": "coffee",
+      "LogHits": 10184,
+      "MatchedHits": 10166,
+      "LogDamage": 41264386,
+      "ExactDamage": 41983741.846810155,
+      "PassedSteps": 1022,
+      "TotalSteps": 2373,
+      "ForcedCasts": 94,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 45335148.61216163,
+      "FreeDiceLogPercentile": 0
+    },
+    {
+      "ReportCode": "Hzc78X3TFPvMVnhb",
+      "FightId": 3,
+      "FightName": "Cithrel\u0027s Fall",
+      "FightDate": "2026-10-31T23:01:03Z",
+      "PlayerName": "Snelhest",
+      "LogHits": 11067,
+      "MatchedHits": 11055,
+      "LogDamage": 46902279,
+      "ExactDamage": 48426426.062014975,
+      "PassedSteps": 953,
+      "TotalSteps": 2773,
+      "ForcedCasts": 121,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 49676136.835023664,
+      "FreeDiceLogPercentile": 0
+    },
+    {
+      "ReportCode": "PFtrX9RZJxmv1QfT",
+      "FightId": 2,
+      "FightName": "Cithrel\u0027s Fall",
+      "FightDate": "2026-10-27T20:02:59Z",
+      "PlayerName": "Pandasama",
+      "LogHits": 10699,
+      "MatchedHits": 10695,
+      "LogDamage": 44745894,
+      "ExactDamage": 45511045.63970683,
+      "PassedSteps": 967,
+      "TotalSteps": 2464,
+      "ForcedCasts": 84,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 49017153.199139446,
+      "FreeDiceLogPercentile": 0
+    },
+    {
+      "ReportCode": "VP9bnawhd6prjfKN",
+      "FightId": 6,
+      "FightName": "Wraithtide Vault",
+      "FightDate": "2026-10-31T05:28:38Z",
+      "PlayerName": "ttvBIGtime",
+      "LogHits": 16365,
+      "MatchedHits": 16347,
+      "LogDamage": 71628301,
+      "ExactDamage": 71062548.97345212,
+      "PassedSteps": 1815,
+      "TotalSteps": 3256,
+      "ForcedCasts": 57,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 73254381.53119582,
+      "FreeDiceLogPercentile": 0.17
+    },
+    {
+      "ReportCode": "VP9bnawhd6prjfKN",
+      "FightId": 8,
+      "FightName": "Urrak Markets",
+      "FightDate": "2026-10-31T07:03:42Z",
+      "PlayerName": "ttvBIGtime",
+      "LogHits": 9082,
+      "MatchedHits": 9076,
+      "LogDamage": 31737221,
+      "ExactDamage": 31710681.8983965,
+      "PassedSteps": 685,
+      "TotalSteps": 1447,
+      "ForcedCasts": 100,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 32762603.161655992,
+      "FreeDiceLogPercentile": 0.17
+    },
+    {
+      "ReportCode": "WLxVtYNH93cgM6jC",
+      "FightId": 12,
+      "FightName": "Silken Hollow",
+      "FightDate": "2026-11-01T16:33:10Z",
+      "PlayerName": "Azif",
+      "LogHits": 8661,
+      "MatchedHits": 8629,
+      "LogDamage": 44852817,
+      "ExactDamage": 44397430.41218337,
+      "PassedSteps": 980,
+      "TotalSteps": 1527,
+      "ForcedCasts": 16,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 42436882.962329954,
+      "FreeDiceLogPercentile": 0.95
+    },
+    {
+      "ReportCode": "XQHxvNmwRp8TcMJG",
+      "FightId": 2,
+      "FightName": "Xurath, Fist of the Warden",
+      "FightDate": "2026-10-30T14:19:57Z",
+      "PlayerName": "Solomio",
+      "LogHits": 10002,
+      "MatchedHits": 10002,
+      "LogDamage": 36555468,
+      "ExactDamage": 35576407.23197087,
+      "PassedSteps": 684,
+      "TotalSteps": 1395,
+      "ForcedCasts": 5,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 35268076.303559184,
+      "FreeDiceLogPercentile": 0.83
+    },
+    {
+      "ReportCode": "XQHxvNmwRp8TcMJG",
+      "FightId": 3,
+      "FightName": "Overlord Varux",
+      "FightDate": "2026-10-30T14:58:44Z",
+      "PlayerName": "Solomio",
+      "LogHits": 8999,
+      "MatchedHits": 8946,
+      "LogDamage": 46609374,
+      "ExactDamage": 45522464.98394186,
+      "PassedSteps": 692,
+      "TotalSteps": 1508,
+      "ForcedCasts": 11,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 43142553.311777174,
+      "FreeDiceLogPercentile": 1
+    },
+    {
+      "ReportCode": "z4btLWmnaZHfCYVN",
+      "FightId": 9,
+      "FightName": "Scrofa, Wild Incarnate",
+      "FightDate": "2026-11-01T09:30:42Z",
+      "PlayerName": "\u9F20\u9F20\u6EDA",
+      "LogHits": 8121,
+      "MatchedHits": 8120,
+      "LogDamage": 33838245,
+      "ExactDamage": 33789451.727886446,
+      "PassedSteps": 695,
+      "TotalSteps": 1569,
+      "ForcedCasts": 46,
+      "FreeDiceRuns": 100,
+      "FreeDiceMean": 35014203.445553996,
+      "FreeDiceLogPercentile": 0.16
+    }
+  ],
+  "Abilities": [
+    {
+      "Id": 1003239,
+      "Name": "Exsanguinate",
+      "LogHits": 32284,
+      "MatchedHits": 32283,
+      "EngineOnlyHits": 0,
+      "LogDamage": 467377056,
+      "ExactDamage": 448341229.8583285,
+      "NormalN": 32283,
+      "NormalRatio": 1.0593814006029374,
+      "CritN": 0,
+      "CritRatio": 0,
+      "FreeDiceLogDamage": 467377056,
+      "FreeDiceMean": 452993402.94709086
+    },
+    {
+      "Id": 2286,
+      "Name": "Rend",
+      "LogHits": 42184,
+      "MatchedHits": 42104,
+      "EngineOnlyHits": 639,
+      "LogDamage": 145662438,
+      "ExactDamage": 148329755.13117248,
+      "NormalN": 42104,
+      "NormalRatio": 1.0093523078185749,
+      "CritN": 0,
+      "CritRatio": 0,
+      "FreeDiceLogDamage": 145662438,
+      "FreeDiceMean": 178187227.48694527
+    },
+    {
+      "Id": 1003237,
+      "Name": "Slaughter",
+      "LogHits": 14398,
+      "MatchedHits": 14398,
+      "EngineOnlyHits": 52,
+      "LogDamage": 91940805,
+      "ExactDamage": 87039700.70364739,
+      "NormalN": 14398,
+      "NormalRatio": 1.0660161518337425,
+      "CritN": 0,
+      "CritRatio": 0,
+      "FreeDiceLogDamage": 91940805,
+      "FreeDiceMean": 48136207.31952115
+    },
+    {
+      "Id": 2262,
+      "Name": "Grim Carve",
+      "LogHits": 42832,
+      "MatchedHits": 42816,
+      "EngineOnlyHits": 0,
+      "LogDamage": 70456854,
+      "ExactDamage": 76126142.9540456,
+      "NormalN": 22769,
+      "NormalRatio": 0.9318689443294716,
+      "CritN": 20047,
+      "CritRatio": 0.930867267318638,
+      "FreeDiceLogDamage": 70456854,
+      "FreeDiceMean": 79296406.41524403
+    },
+    {
+      "Id": 2291,
+      "Name": "Blood Arc",
+      "LogHits": 30396,
+      "MatchedHits": 30388,
+      "EngineOnlyHits": 0,
+      "LogDamage": 68853242,
+      "ExactDamage": 69039876.37171826,
+      "NormalN": 15317,
+      "NormalRatio": 0.9969455853121223,
+      "CritN": 15071,
+      "CritRatio": 0.9969846992567811,
+      "FreeDiceLogDamage": 68853242,
+      "FreeDiceMean": 71107273.5615968
+    },
+    {
+      "Id": 2294,
+      "Name": "Heart Splitter",
+      "LogHits": 5800,
+      "MatchedHits": 5800,
+      "EngineOnlyHits": 0,
+      "LogDamage": 47096347,
+      "ExactDamage": 48819588.39916704,
+      "NormalN": 992,
+      "NormalRatio": 0.984104895665964,
+      "CritN": 4808,
+      "CritRatio": 0.9668787703247113,
+      "FreeDiceLogDamage": 47047719,
+      "FreeDiceMean": 48905308.44387494
+    },
+    {
+      "Id": 2290,
+      "Name": "Reaver\u0027s Edge",
+      "LogHits": 21963,
+      "MatchedHits": 21959,
+      "EngineOnlyHits": 0,
+      "LogDamage": 31739109,
+      "ExactDamage": 31803707.981417917,
+      "NormalN": 12187,
+      "NormalRatio": 0.9976067398679345,
+      "CritN": 9772,
+      "CritRatio": 0.9984272997752696,
+      "FreeDiceLogDamage": 31739109,
+      "FreeDiceMean": 32221689.503922332
+    },
+    {
+      "Id": 2293,
+      "Name": "Rupture",
+      "LogHits": 562,
+      "MatchedHits": 562,
+      "EngineOnlyHits": 0,
+      "LogDamage": 10430789,
+      "ExactDamage": 10298994.730413018,
+      "NormalN": 301,
+      "NormalRatio": 1.00618730386228,
+      "CritN": 261,
+      "CritRatio": 1.0081803913431646,
+      "FreeDiceLogDamage": 10410278,
+      "FreeDiceMean": 10227917.572394118
+    },
+    {
+      "Id": 160,
+      "Name": "Fated Strike",
+      "LogHits": 2946,
+      "MatchedHits": 2943,
+      "EngineOnlyHits": 450,
+      "LogDamage": 6887122,
+      "ExactDamage": 7165964.6662968015,
+      "NormalN": 1398,
+      "NormalRatio": 1.049565960886565,
+      "CritN": 1545,
+      "CritRatio": 1.0496942563991183,
+      "FreeDiceLogDamage": 6883013,
+      "FreeDiceMean": 6258634.403991898
+    },
+    {
+      "Id": 2296,
+      "Name": "Bloodbound Spirit",
+      "LogHits": 3891,
+      "MatchedHits": 3891,
+      "EngineOnlyHits": 0,
+      "LogDamage": 5944012,
+      "ExactDamage": 6027871.910224203,
+      "NormalN": 2135,
+      "NormalRatio": 0.977916932350096,
+      "CritN": 1756,
+      "CritRatio": 0.9848420083655277,
+      "FreeDiceLogDamage": 5944012,
+      "FreeDiceMean": 6132165.927326155
+    },
+    {
+      "Id": 1249,
+      "Name": "Attack",
+      "LogHits": 19415,
+      "MatchedHits": 19415,
+      "EngineOnlyHits": 0,
+      "LogDamage": 4518652,
+      "ExactDamage": 4720072.390237168,
+      "NormalN": 10840,
+      "NormalRatio": 0.884902876168963,
+      "CritN": 8575,
+      "CritRatio": 1.0037424164058826,
+      "FreeDiceLogDamage": 4511017,
+      "FreeDiceMean": 4753036.57764611
+    },
+    {
+      "Id": 1000093,
+      "Name": "Emerald Judgement",
+      "LogHits": 615,
+      "MatchedHits": 615,
+      "EngineOnlyHits": 0,
+      "LogDamage": 4006964,
+      "ExactDamage": 4038310.7075283853,
+      "NormalN": 322,
+      "NormalRatio": 0.9963011984160535,
+      "CritN": 293,
+      "CritRatio": 0.9946918540311264,
+      "FreeDiceLogDamage": 4006964,
+      "FreeDiceMean": 3977014.6685959315
+    },
+    {
+      "Id": 2301,
+      "Name": "Double Strike",
+      "LogHits": 4386,
+      "MatchedHits": 4386,
+      "EngineOnlyHits": 2,
+      "LogDamage": 2860717,
+      "ExactDamage": 2850528.2793003796,
+      "NormalN": 2479,
+      "NormalRatio": 1.0001488143403927,
+      "CritN": 1907,
+      "CritRatio": 1.0041490978064613,
+      "FreeDiceLogDamage": 2853971,
+      "FreeDiceMean": 2867441.9647509544
+    },
+    {
+      "Id": 2299,
+      "Name": "Warbound",
+      "LogHits": 699,
+      "MatchedHits": 358,
+      "EngineOnlyHits": 0,
+      "LogDamage": 117178,
+      "ExactDamage": 56090.87651854802,
+      "NormalN": 192,
+      "NormalRatio": 1.106875179305491,
+      "CritN": 166,
+      "CritRatio": 1.0637115090100009,
+      "FreeDiceLogDamage": 117089,
+      "FreeDiceMean": 32367.927080817088
+    },
+    {
+      "Id": 2284,
+      "Name": "Butcher\u0027s Hook",
+      "LogHits": 165,
+      "MatchedHits": 165,
+      "EngineOnlyHits": 0,
+      "LogDamage": 51015,
+      "ExactDamage": 52124.41014269666,
+      "NormalN": 86,
+      "NormalRatio": 1.006472911905057,
+      "CritN": 79,
+      "CritRatio": 1.0025272053729894,
+      "FreeDiceLogDamage": 50860,
+      "FreeDiceMean": 51980.74830417696
+    }
+  ],
+  "Issues": [
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Grim Carve (2262)",
+      "Count": 14878,
+      "Example": "Grim Carve on 6.1 at 30.024: log 867 vs engine 969"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Exsanguinate (1003239)",
+      "Count": 11375,
+      "Example": "Exsanguinate on 7.1 at 21.474: log 10447 vs engine 9344"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Trait : Focused Haste (1002141) wrong stacks",
+      "Count": 6577,
+      "Example": "Pre-cast Trait : Focused Haste (1002141): engine 3 stacks vs log 1"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Rend (2286)",
+      "Count": 3478,
+      "Example": "Rend on 6.1 at 52.630: log 2261 vs engine 2514"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Inspired Allegiance (1002112) extra in engine",
+      "Count": 3156,
+      "Example": "Pre-cast Inspired Allegiance (1002112): engine 1 stacks vs log 0"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Rend (2286)",
+      "Count": 3059,
+      "Example": "Rend on 11.2 at 22.476: log 565 vs engine 433"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Slaughter (1003237)",
+      "Count": 2055,
+      "Example": "Slaughter on 12.1 at 257.884: log 25685 vs engine 23211"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Grim Carve (2262)",
+      "Count": 1384,
+      "Example": "Grim Carve on 9.1 at 25.316: log 2118 (crit) vs engine 1919"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Attack (1249)",
+      "Count": 1313,
+      "Example": "Attack on 9.2 at 20.471: log 0 vs engine 158"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Blood Arc (2291)",
+      "Count": 1015,
+      "Example": "Blood Arc on 8.1 at 16.899: log 955 vs engine 1191"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Heart Splitter (2294)",
+      "Count": 954,
+      "Example": "Heart Splitter on 9.2 at 37.669: log 5305 (crit) vs engine 6019"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Owed in Blood (1003245) wrong stacks",
+      "Count": 767,
+      "Example": "Pre-cast Owed in Blood (1003245): engine 8 stacks vs log 6"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Fated Strike (160)",
+      "Count": 736,
+      "Example": "Fated Strike on 9.1 at 19.772: log 2061 (crit) vs engine 1783"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Blood Arc (2291)",
+      "Count": 661,
+      "Example": "Blood Arc on 9.1 at 36.902: log 2976 (crit) vs engine 2690"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Reaver\u0027s Edge (2290)",
+      "Count": 661,
+      "Example": "Reaver\u0027s Edge on 8.1 at 63.922: log 790 vs engine 906"
+    },
+    {
+      "Category": "Hits",
+      "Subject": "extra engine hit: Rend (2286)",
+      "Count": 639,
+      "Example": "Engine hit Rend (2286) on 12.1 has no matching log hit"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Reaver\u0027s Edge (2290)",
+      "Count": 575,
+      "Example": "Reaver\u0027s Edge on 5.2 at 32.126: log 1011 vs engine 915"
+    },
+    {
+      "Category": "Hits",
+      "Subject": "extra engine hit: Fated Strike (160)",
+      "Count": 450,
+      "Example": "Engine hit Fated Strike (160) on 9.2 has no matching log hit"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "The Wayfarer (1003184) extra in engine",
+      "Count": 350,
+      "Example": "Pre-cast The Wayfarer (1003184): engine 1 stacks vs log 0"
+    },
+    {
+      "Category": "Hits",
+      "Subject": "missing engine hit: Warbound (2299)",
+      "Count": 341,
+      "Example": "Log hit Warbound (2299) on 26.2 at 821.047 for 120 was never produced by the engine"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Double Strike (2301)",
+      "Count": 276,
+      "Example": "Double Strike on 9.2 at 42.108: log 882 (crit) vs engine 789"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "The Wayfarer (1003184) missing in engine",
+      "Count": 273,
+      "Example": "Pre-cast The Wayfarer (1003184): engine 0 stacks vs log 1"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Attack (1249)",
+      "Count": 268,
+      "Example": "Attack on 9.2 at 53.630: log 173 vs engine 156"
+    },
+    {
+      "Category": "Cooldown",
+      "Subject": "on cooldown: Blood Arc",
+      "Count": 266,
+      "Example": "Log casts Blood Arc on the engine\u0027s cooldown (0.02s remaining)"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Bloodbound Spirit (2296)",
+      "Count": 260,
+      "Example": "Bloodbound Spirit on 11.3 at 164.113: log 1903 (crit) vs engine 2147"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Slaughter (1003237)",
+      "Count": 232,
+      "Example": "Slaughter on 13.4 at 558.521: log 1285 vs engine 1458"
+    },
+    {
+      "Category": "Ticks",
+      "Subject": "tick count: Slaughter",
+      "Count": 227,
+      "Example": "Slaughter (from 113.011s) fired 10 ticks; the log has 9 of them"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Exsanguinate (1003239)",
+      "Count": 165,
+      "Example": "Exsanguinate on 37.2 at 159.050: log 15385 vs engine 17388"
+    },
+    {
+      "Category": "Hits",
+      "Subject": "extra engine multi-target hit: 2299",
+      "Count": 146,
+      "Example": "Engine multi-target hit 2299 at 193.995s has no log hits"
+    },
+    {
+      "Category": "Cooldown",
+      "Subject": "on cooldown: Grim Carve",
+      "Count": 141,
+      "Example": "Log casts Grim Carve on the engine\u0027s cooldown (0.08s remaining)"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too low: Warbound (2299)",
+      "Count": 131,
+      "Example": "Warbound on 33.1 at 106.550: log 163 vs engine 125"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Trait : Focused Haste (1002141) extra in engine",
+      "Count": 130,
+      "Example": "Pre-cast Trait : Focused Haste (1002141): engine 1 stacks vs log 0"
+    },
+    {
+      "Category": "Cooldown",
+      "Subject": "on cooldown: Heart Splitter",
+      "Count": 128,
+      "Example": "Log casts Heart Splitter on the engine\u0027s cooldown (0.08s remaining)"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Crimson Strikes (1003224) extra in engine",
+      "Count": 118,
+      "Example": "Pre-cast Crimson Strikes (1003224): engine 1 stacks vs log 0"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Reckless Abandon (1003247) missing in engine",
+      "Count": 101,
+      "Example": "Pre-cast Reckless Abandon (1003247): engine 0 stacks vs log 1"
+    },
+    {
+      "Category": "Damage",
+      "Subject": "damage too high: Double Strike (2301)",
+      "Count": 99,
+      "Example": "Double Strike on 8.1 at 116.685: log 396 vs engine 460"
+    },
+    {
+      "Category": "Cooldown",
+      "Subject": "on cooldown: Attack",
+      "Count": 85,
+      "Example": "Log casts Attack on the engine\u0027s cooldown (0.00s remaining)"
+    },
+    {
+      "Category": "Hits",
+      "Subject": "extra engine multi-target hit: 2291",
+      "Count": 83,
+      "Example": "Engine multi-target hit 2291 at 785.851s has no log hits"
+    },
+    {
+      "Category": "Hits",
+      "Subject": "missing engine hit: Rend (2286)",
+      "Count": 80,
+      "Example": "Log hit Rend (2286) on 19.47 at 749.318 for 63 was never produced by the engine"
+    },
+    {
+      "Category": "Auras",
+      "Subject": "Harmounious Soul - Medium (1001960) wrong stacks",
+      "Count": 78,
+      "Example": "Pre-cast Harmounious Soul - Medium (1001960): engine 3 stacks vs log 2"
+    }
+  ],
+  "UnmodeledAbilities": {
+    "Bloodrite Fervor": 12,
+    "Conjure Portal": 7,
+    "Rejuvenate": 4,
+    "Firing Cannon": 1
+  },
+  "UnmodeledCustomizations": [],
+  "Procs": [
+    {
+      "Key": "ancestral_instinct",
+      "Rolls": 3997,
+      "ExpectedProcs": 1598.8000000000088,
+      "Procs": 1590
+    },
+    {
+      "Key": "bleeding_hearts",
+      "Rolls": 4406,
+      "ExpectedProcs": 1101.5,
+      "Procs": 1294
+    },
+    {
+      "Key": "blood_feather",
+      "Rolls": 57855,
+      "ExpectedProcs": 19744.749999999975,
+      "Procs": 1756
+    },
+    {
+      "Key": "deaths_arc",
+      "Rolls": 292,
+      "ExpectedProcs": 87.59999999999953,
+      "Procs": 85
+    },
+    {
+      "Key": "dragonbone_dice",
+      "Rolls": 4674,
+      "ExpectedProcs": 43.409162623734034,
+      "Procs": 32
+    },
+    {
+      "Key": "emerald_judgement",
+      "Rolls": 221916,
+      "ExpectedProcs": 615.3205900885674,
+      "Procs": 615
+    },
+    {
+      "Key": "grim_harvest",
+      "Rolls": 1488,
+      "ExpectedProcs": 89.27999999999933,
+      "Procs": 85
+    },
+    {
+      "Key": "hidden_power",
+      "Rolls": 3581,
+      "ExpectedProcs": 181.34392964224958,
+      "Procs": 189
+    },
+    {
+      "Key": "inspired_allegiance",
+      "Rolls": 30210,
+      "ExpectedProcs": 637.3011856199039,
+      "Procs": 610
+    },
+    {
+      "Key": "spirit_refund",
+      "Rolls": 18402,
+      "ExpectedProcs": 2401.051020562119,
+      "Procs": 2384
+    },
+    {
+      "Key": "undying_heart",
+      "Rolls": 41062,
+      "ExpectedProcs": 402.74504250719997,
+      "Procs": 311
+    },
+    {
+      "Key": "vengeful_soul",
+      "Rolls": 40101,
+      "ExpectedProcs": 1132.7003110895482,
+      "Procs": 1114
+    }
+  ]
+}

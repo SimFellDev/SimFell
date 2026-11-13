@@ -262,6 +262,26 @@ public class SimcLanguageServerTests
     }
 
     [Fact]
+    public void A_Switch_Target_Line_Has_Its_Tokens_Its_Problem_And_Its_Completions()
+    {
+        const string gunde = "gunde=\"x\"\n";
+        string text = gunde + "actions+=/switch_target,target_if=target.is_boss\nactions+=/switch_target";
+        var check = Language.Check(null, text)!;
+        var keywords = check.Tokens.Where(t => t.Kind == AplTokenKind.Keyword).Select(t => text.Substring(t.Start, t.Length)).ToList();
+        Assert.Equal(2, keywords.Count(k => k == AplSwitchTarget.ActionName));
+        Assert.Contains(AplActionLine.TargetIfKey, keywords);
+
+        // The line without target_if is the file's one problem.
+        var diagnostic = SimcLanguageServer.Diagnostics(text, check).Single()!;
+        Assert.Contains("`switch_target` needs `target_if=<expression>`", (string)diagnostic["message"]!);
+        Assert.Equal(2, (int)diagnostic["range"]!["start"]!["line"]!);
+
+        Assert.Contains(AplSwitchTarget.ActionName, Items(gunde + "actions+=/sw|"));
+        Assert.Equal([AplActionLine.ConditionKey, AplActionLine.TargetIfKey], Items(gunde + "actions+=/switch_target,|"));
+        Assert.Contains("max", Items(gunde + "actions+=/switch_target,target_if=ma|"));
+    }
+
+    [Fact]
     public void Every_Profile_Key_Reads()
     {
         foreach (string key in SimcProfile.Keys)

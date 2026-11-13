@@ -121,6 +121,7 @@ public static partial class ListEdits
         .. v.Abilities.Select(a => Item(a.Slug, AplTokenKind.Cooldown, a.Name == a.Slug ? "" : a.Name)),
         .. v.ListActions.Select(a => Item(a, AplTokenKind.Keyword)),
         Item(AplVariable.ActionName, AplTokenKind.Keyword),
+        Item(AplSwitchTarget.ActionName, AplTokenKind.Keyword),
     ];
 
     private static List<Completion> Keys(AplVocabulary v, string action)
@@ -128,6 +129,7 @@ public static partial class ListEdits
         var keys = new List<string> { AplActionLine.ConditionKey };
         if (v.ListActions.Contains(action)) keys.Add(AplActionLine.ListNameKey);
         else if (action == AplVariable.ActionName) keys.AddRange([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey]);
+        else if (action == AplSwitchTarget.ActionName) keys.Add(AplActionLine.TargetIfKey);
         else keys.AddRange([AplActionLine.TargetIfKey, AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey]);
         if (v.Channels.Any(c => c.Slug == action)) keys.AddRange([AplActionLine.InterruptIfKey, AplActionLine.InterruptImmediateKey]);
         return keys.Select(k => Item(k, AplTokenKind.Keyword)).ToList();

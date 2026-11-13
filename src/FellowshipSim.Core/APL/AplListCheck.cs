@@ -174,9 +174,9 @@ public static class AplListCheck
         [PropertyExpression.ChannelTicksProperty, PropertyExpression.ChannelSecondsProperty, PropertyExpression.ChannelPercentProperty];
 
     /// <summary>
-    /// An action that controls the list instead of casting: run_action_list, call_action_list, variable, and an action the
-    /// engine skips (snapshot_stats).
+    /// An action that controls the list instead of casting: run_action_list, call_action_list, variable, switch_target, and
+    /// an action the engine skips (snapshot_stats).
     /// </summary>
     private static bool IsControl(AplVocabulary v, string action) =>
-        v.ListActions.Contains(action) || action == AplVariable.ActionName || AplParser.SkippedActions.Contains(action);
+        v.ListActions.Contains(action) || action is AplVariable.ActionName or AplSwitchTarget.ActionName || AplParser.SkippedActions.Contains(action);
 }

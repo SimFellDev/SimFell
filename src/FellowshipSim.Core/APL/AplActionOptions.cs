@@ -20,6 +20,7 @@ public static class AplActionOptions
             $"For a channeled ability: the channel this action started stops when the expression is true and an action above this one is ready to cast. The check runs right after each tick of the channel, once the global cooldown has ended. The expression reads {PropertyExpression.ChannelTicksProperty} (the ticks so far), {PropertyExpression.ChannelSecondsProperty} (seconds since the channel started) and {PropertyExpression.ChannelPercentProperty} (the part of the channel duration gone, in percent).")),
         ($"{AplActionLine.InterruptImmediateKey}=1", new("Interrupt immediately",
             $"With {AplActionLine.InterruptIfKey}: the channel stops the moment the expression is true, with no wait for a tick or the global cooldown.")),
+        ($"{AplSwitchTarget.ActionName},{AplActionLine.TargetIfKey}=<expression>", new(AplSwitchTarget.Label, AplSwitchTarget.Description)),
         .. Enum.GetValues<AplListAction>().Select(a =>
             ($"{a.Name()},{AplActionLine.ListNameKey}=<list>", new AplDoc(a == AplListAction.Run ? "Run action list" : "Call action list", a.Description()))),
         ($"{AplVariable.ActionName},{AplVariable.NameKey}=<name>", new("Set a variable", $"Changes the variable {PropertyExpression.VariableScope}.<name> and casts nothing. In the editor, the action type Set a variable has the name, op, value and default as fields.")),

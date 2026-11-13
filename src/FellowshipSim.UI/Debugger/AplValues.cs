@@ -27,6 +27,8 @@ public static class AplValues
         AplStepOutcome.VariableKept => $"Kept {Number(step.Value ?? 0)}",
         AplStepOutcome.ListEntered => "Entered",
         AplStepOutcome.ListRunning => "Already running",
+        AplStepOutcome.TargetSwitched => $"Target switched to {step.Target}",
+        AplStepOutcome.TargetKept => "Target kept",
         _ => step.Outcome.ToString(),
     };
 }

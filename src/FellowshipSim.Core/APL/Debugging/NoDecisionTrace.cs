@@ -7,6 +7,7 @@ internal readonly struct NoDecisionTrace : IAplDecisionTrace
     public void VariableSet(BoundAplVariable step, SimulationContext ctx) { }
     public void ListAction(BoundAplListAction step, SimulationContext ctx, AplStepOutcome outcome) { }
     public void ListEnded() { }
+    public void SwitchTarget(BoundAplSwitchTarget step, SimulationContext ctx) { }
     public void Action(BoundAplAction step, SimulationContext ctx, bool canExecute) { }
     public void Cast(CastAttempt attempt) { }
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FellowshipSim.Core.APL;
+using FellowshipSim.Core.APL.Debugging;
 using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
@@ -154,6 +155,25 @@ public class SimEngineContractTests
         var trace = await _engine.TraceFightAsync(SimcProfile.Parse(Profile), new SimSettings(Iterations: 1, DurationSeconds: 30, TargetCount: 2));
         Assert.NotEmpty(trace.Decisions);
         AssertRoundTrip(trace, SimChunks.Json);
+    }
+
+    [Fact]
+    public async Task A_Traced_Fight_With_A_Target_Switch_Reads_Back_From_Its_Json()
+    {
+        // Gunde on a pull whose boss enters combat 5 s after its trash.
+        var build = JsonSerializer.Deserialize<CharacterBuild>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "gunde_character.json")))!;
+        var dungeon = new DungeonProfile("Test", 600, [new DungeonPull("1",
+            [new EnemyGroup(1, "Trash Mob", HitPoints: 10_000, DiesSeconds: 20), new EnemyGroup(1, "Boss", HitPoints: 60_000, Boss: true, FirstSeenSeconds: 5)],
+            30, Final: true)]);
+        var profile = new SimcProfile(build, "actions=switch_target,target_if=target.is_boss\nactions+=/attack\n");
+
+        var trace = await _engine.TraceFightAsync(profile, new SimSettings(Iterations: 1, DurationSeconds: dungeon.TimeLimitSeconds, Dungeon: dungeon));
+        Assert.Contains(trace.Decisions.SelectMany(d => d.Steps), s => s.Outcome == AplStepOutcome.TargetSwitched && s.Target == "Boss");
+        Assert.Contains(trace.Decisions.SelectMany(d => d.Steps), s => s.Outcome == AplStepOutcome.TargetKept);
+        AssertRoundTrip(trace, SimChunks.Json);
+        var read = JsonSerializer.Deserialize<AplFightTrace>(JsonSerializer.Serialize(trace, SimChunks.Json), SimChunks.Json)!;
+        Assert.Equal(trace.Decisions.SelectMany(d => d.Steps).Select(s => (s.Outcome, s.Target)), read.Decisions.SelectMany(d => d.Steps).Select(s => (s.Outcome, s.Target)));
     }
 
     [Fact]

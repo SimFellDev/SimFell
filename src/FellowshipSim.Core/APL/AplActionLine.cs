@@ -16,7 +16,8 @@ public sealed record AplArgument(string Key, IAplExpression Value)
 /// <summary>
 /// One action line as written: <c>actions.&lt;list&gt;+=/&lt;name&gt;,&lt;key&gt;=&lt;expr&gt;,target_if=&lt;selection&gt;:&lt;expr&gt;,if=&lt;expr&gt;</c>.
 /// <see cref="List"/> is the list's name (<c>aoe</c> for <c>actions.aoe</c>, <see cref="DefaultList"/> for <c>actions</c>).
-/// <see cref="Name"/> is an ability or an action that controls the list (<c>run_action_list</c>).
+/// <see cref="Name"/> is an ability or an action that casts nothing (<c>run_action_list</c>, <c>variable</c>,
+/// <c>switch_target</c>).
 /// </summary>
 public sealed record AplActionLine(string List, string Name, IAplExpression? Condition, AplTargetIf? TargetIf, IReadOnlyList<AplArgument> Arguments)
 {

@@ -127,7 +127,7 @@
                 @for (int g = 0; g < Pull.Groups.Count; g++)
                 {
                     int index = g;
-                    <EnemyGroupBox @key="index" Group="Pull.Groups[index]" CanDelete="Pull.Groups.Count > 1"
+                    <EnemyGroupBox @key="index" Group="Pull.Groups[index]" PullSeconds="Pull.DurationSeconds" CanDelete="Pull.Groups.Count > 1"
                                    OnChange="group => SetGroups(groups => groups[index] = group)"
                                    OnDuplicate="() => SetGroups(groups => groups.Insert(index + 1, groups[index]))"
                                    OnDelete="() => SetGroups(groups => groups.RemoveAt(index))" />

@@ -10,7 +10,7 @@ public enum AplStepOutcome
     Cast,
     /// <summary>The condition was false at the target.</summary>
     ConditionFalse,
-    /// <summary><c>target_if</c> found no enemy.</summary>
+    /// <summary><c>target_if</c> found no enemy, or a <c>switch_target</c> action had no enemy in combat.</summary>
     NoTarget,
     /// <summary>The condition held and the ability could not be cast: a cooldown, a resource or a cast already running.</summary>
     NotReady,
@@ -27,4 +27,8 @@ public enum AplStepOutcome
     ListEntered,
     /// <summary>A list action named a list running in this decision, so it was skipped.</summary>
     ListRunning,
+    /// <summary>A <c>switch_target</c> action set the hero's current target to its pick (<see cref="AplStepTrace.Target"/>).</summary>
+    TargetSwitched,
+    /// <summary>A <c>switch_target</c> action's pick was the hero's current target already.</summary>
+    TargetKept,
 }

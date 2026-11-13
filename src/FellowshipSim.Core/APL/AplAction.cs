@@ -7,7 +7,7 @@ public class AplAction
 {
     public string AbilityName { get; init; } = string.Empty;
     public IAplExpression? Condition { get; init; }
-    /// <summary>Target selection of the cast; null keeps the hero's current target.</summary>
+    /// <summary>Target selection of the cast, or of a <c>switch_target</c>; null keeps the hero's current target.</summary>
     public AplTargetIf? TargetIf { get; init; }
     public string RawLine { get; init; } = string.Empty;
     /// <summary>The line's number in its action-list text, from 1; 0 for an action not read from a text.</summary>
@@ -17,6 +17,11 @@ public class AplAction
     public string? ListName { get; init; }
     /// <summary>Set for <c>variable</c>, which sets a variable and casts nothing.</summary>
     public AplVariable? Variable { get; init; }
+    /// <summary>
+    /// True for <c>switch_target</c> (<see cref="AplSwitchTarget"/>), which sets the hero's current target to the
+    /// <see cref="TargetIf"/> pick and casts nothing.
+    /// </summary>
+    public bool SwitchTarget { get; init; }
 
     /// <summary><c>use_off_gcd=1</c>: a candidate while the global cooldown or the reaction after it runs (<see cref="AplDecisionHold.GlobalCooldown"/>).</summary>
     public bool UseOffGcd { get; init; }

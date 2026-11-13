@@ -6,7 +6,8 @@ This page has the **Action lists** page's editor, the action list text and the *
 
 The **Action lists** page edits an action list without writing its text. Each action has an
 ability, a condition, a target and a comment; drag the handle or use the arrows to change the order. An action's **Type**
-is an ability to cast, **Run action list** or **Call action list** with the list to run, or **Set a variable** with the
+is an ability to cast, **Run action list** or **Call action list** with the list to run, **Switch target** with the
+enemy the hero targets from then on, or **Set a variable** with the
 variable's name, its op (set, add to, subtract from or reset), its value and its default at the start of each fight;
 conditions read the variable as `variable.<name>`. An ability's **Timing** switches are **Use off the global cooldown**
 (`use_off_gcd=1`) and **Use while casting** (`use_while_casting=1`). A channeled ability also has **Interrupt if**
@@ -36,6 +37,18 @@ A target picks the enemy for the cast, written `target_if=` in the text:
 - `target_if=debuff.<name>.down`: the first enemy where it is true; the action is skipped when there is none
 
 `target.*` and `debuff.*` in the action's `if` read the enemy picked.
+
+The hero's target is one enemy until that enemy dies, and then the first enemy in combat. `switch_target` (**Switch
+target** as the action's **Type**) sets the target to its `target_if` pick among the enemies in combat, and casts nothing:
+
+- `switch_target,target_if=target.is_boss`: the first boss in combat is the target from this action on
+- `switch_target,target_if=max:target.health.pct,if=active_enemies>1`: with two enemies or more in combat, the enemy with
+  the most health is the target
+
+The decision goes on at the next action, and the actions after it read the new target. The target stays that enemy until it
+dies or another `switch_target` runs. The action's `if` reads the enemy picked. The target stays as it is when no enemy
+is in combat, when the expression is true for no enemy (the first form), when the `if` is false, and when the pick is the
+target already. A decision while a cast or a channel runs skips the action.
 
 A decision runs whenever the hero is free to cast. Two options of an ability action add decisions while a hold runs, as
 in SimulationCraft:
@@ -104,7 +117,8 @@ The **APL Debugger** fights one fight of a build with an action list and keeps e
 
 Each decision shows its time, the ability it cast and its target, and the action lines it read in order, indented for
 each list entered. Each line has its outcome: **Cast**, **Condition false**, **Not ready** (a cooldown, a resource or a
-cast already running), **No target**, **Cast refused**, a variable's value, or a list **Entered**. A line opens to show
+cast already running), **No target**, **Cast refused**, a variable's value, a list **Entered**, or for a `switch_target`
+**Target switched to** the enemy or **Target kept**. A line opens to show
 its condition as a tree of expressions with each one's value, and its `target_if` value at each enemy. A side of
 `&` or `|` the decision never read shows as not read. A **Cast refused** line opens to the engine's reason, such as the
 global cooldown, or to each proc gained inside the proc reaction time. Beside the lines are the hero's resources, buffs, the global cooldown left, cooldowns and variables, and

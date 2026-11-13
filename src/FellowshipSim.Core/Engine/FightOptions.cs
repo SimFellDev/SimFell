@@ -6,7 +6,8 @@ namespace FellowshipSim.Core.Engine;
 /// How each fight of a sim runs. A fight is a <see cref="Dungeon"/>'s pulls, or training dummies for the whole sim duration
 /// when <see cref="Dungeon"/> is null. <see cref="LengthVariance"/> spreads a value over ± that share of it (0.2: 240 to
 /// 360 s of a 300 s sim), the same for a seed in every run: the training dummies' fight length, or a dungeon pull's
-/// <see cref="DungeonPull.DurationSeconds"/>. A dungeon fight lasts until its last pull ends, or to its time limit.
+/// <see cref="DungeonPull.DurationSeconds"/> and its groups' <see cref="EnemyGroup.FirstSeenSeconds"/> and
+/// <see cref="EnemyGroup.DiesSeconds"/>. A dungeon fight lasts until its last pull ends, or to its time limit.
 /// <see cref="HealthFollowsTime"/> takes the training dummies from full health at the start to none at the fight's end,
 /// whatever damage they take, so health-gated effects come at their share of the fight. <see cref="StartingSpirit"/> is the
 /// hero's Spirit Points as the fight starts. <see cref="Boss"/> is true for training dummies that are bosses: without one, the

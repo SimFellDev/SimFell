@@ -9,7 +9,7 @@ namespace FellowshipSim.Tests;
 /// <summary>
 /// Reads the dungeon of a fight with one player's damage events, as <c>FellowshipLogsReports.GetDungeonFightAsync</c>
 /// returns it, against the game data placements of Cithrel's Fall: a pack met at its placements, Ancient Koros, and spawns of a
-/// creature with no placement.
+/// creature with no placement, each enemy with its own first contact and death.
 /// </summary>
 public class DungeonReaderTests
 {
@@ -90,6 +90,10 @@ public class DungeonReaderTests
         return DungeonReader.FromFight(document.RootElement);
     }
 
+    // A line of a creature's enemies, with the seconds after their pull's start at which they enter combat and die.
+    private static EnemyGroup Line(int count, CodexCreature creature, double firstSeen = 0, double? dies = null) =>
+        new(count, creature.Name, creature.SpiritPoints, HitPoints: Math.Round(creature.BaseHealth, 2), FirstSeenSeconds: firstSeen, DiesSeconds: dies);
+
     [Fact]
     public void A_Pack_Met_At_Its_Placements_Is_One_Pull_Until_Its_Last_Death()
     {
@@ -101,8 +105,11 @@ public class DungeonReaderTests
         Assert.Equal(30, dungeon.Difficulty);
         var creature = GameCreatures.ById(Pack.Creature)!;
         var pack = dungeon.Pull("1")!;
-        Assert.Equal([new EnemyGroup(2, creature.Name, creature.SpiritPoints, HitPoints: Math.Round(creature.BaseHealth, 2))], pack.Groups);
+        // Each enemy has its own time in combat: the first from the pull's start to its death 30 s in, the second from its
+        // first contact 1 s in to the pull's last death.
+        Assert.Equal([Line(1, creature, dies: 30), Line(1, creature, firstSeen: 1)], pack.Groups);
         Assert.Equal(40, pack.DurationSeconds);
+        Assert.Equal("2 " + creature.Name + ", 0:10 in the log", pack.Comment);
         // Koros is met 30 s after the pack's last death.
         Assert.Equal(30, dungeon.Pull("2")!.DowntimeSeconds);
         Assert.Equal(120, dungeon.Pull("2")!.DurationSeconds);
@@ -122,6 +129,50 @@ public class DungeonReaderTests
         Assert.Equal(30, orbs.DurationSeconds);
         // The orbs come 20 s into Koros.
         Assert.Equal(new PullJoin("3", OffsetMs: 20_000), dungeon.Pull("2")!.Join);
+        // Both die at the pull's last death, and a boss's line has the pull's times.
+        Assert.Null(orbs.Groups[0].DiesSeconds);
+        Assert.Equal(Line(1, GameCreatures.ById(Koros)!) with { Boss = true }, Assert.Single(dungeon.Pull("2")!.Groups));
+    }
+
+    [Fact]
+    public void Enemies_Of_One_Creature_Within_Two_Seconds_Of_Each_Other_Are_One_Line_With_Their_Mean_Times()
+    {
+        // Three orbs in combat with Koros: the first two are met 0.6 s apart and die 1.2 s apart, and the third is met 3 s
+        // after the first and dies 10 s after it.
+        string contacts = string.Join(", ",
+            Contact(KorosActor, 1, 180000, KorosPlacement, 300000),
+            Contact(OrbActor, 1, 200000, 0, 0, 230000),
+            Contact(OrbActor, 2, 200600, 0, 0, 231200),
+            Contact(OrbActor, 3, 203000, 0, 0, 240000));
+        string deaths = string.Join(", ",
+            Death(OrbActor, 1, Orb, "Anomalous Orb 1", 230000),
+            Death(OrbActor, 2, Orb, "Anomalous Orb 2", 231200),
+            Death(OrbActor, 3, Orb, "Anomalous Orb 3", 240000),
+            Death(KorosActor, 1, Koros, "Ancient Koros", 300000));
+        var dungeon = Read(contacts, deaths);
+        Assert.Null(dungeon.Problem());
+        Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
+        var orb = GameCreatures.ById(Orb)!;
+        var orbs = dungeon.Pull("2")!;
+        Assert.Equal(40, orbs.DurationSeconds);
+        Assert.Equal([Line(2, orb, firstSeen: 0.3, dies: 30.6), Line(1, orb, firstSeen: 3)], orbs.Groups);
+        Assert.Equal("3 " + orb.Name + ", 1:40 in the log", orbs.Comment);
+        // The lines have the enemies' seconds in combat: 30 s, 30.6 s and 37 s.
+        Assert.Equal(97.6, orbs.EnemySeconds, 9);
+        Assert.Contains(",first_seen=0.3,dies=30.6", dungeon.Format());
+    }
+
+    [Fact]
+    public void An_Enemy_With_One_Contact_And_No_Death_Is_In_Combat_For_A_Tenth_Of_A_Second()
+    {
+        string contacts = string.Join(", ",
+            Contact(KorosActor, 1, 180000, KorosPlacement, 300000),
+            Contact(OrbActor, 1, 200000, 0, 0, 200000));
+        var dungeon = Read(contacts, Death(KorosActor, 1, Koros, "Ancient Koros", 300000));
+        Assert.Null(dungeon.Problem());
+        var orbs = dungeon.Pull("2")!;
+        Assert.Equal(0.1, orbs.DurationSeconds);
+        Assert.Equal([Line(1, GameCreatures.ById(Orb)!)], orbs.Groups);
     }
 
     [Fact]
@@ -147,6 +198,27 @@ public class DungeonReaderTests
         var dungeon = Read(contacts, Deaths);
         Assert.Equal(2, dungeon.Pull("1")!.EnemyCount);
         Assert.Equal(40, dungeon.Pull("1")!.DurationSeconds);
+        // The enemy without contact is in the pull from its start to its own death, the pull's last.
+        var creature = GameCreatures.ById(Pack.Creature)!;
+        Assert.Equal([Line(1, creature, dies: 30), Line(1, creature)], dungeon.Pull("1")!.Groups);
+    }
+
+    [Fact]
+    public void An_Enemy_Dying_Without_Contact_Before_Its_Pulls_Last_Death_Has_Its_Own_Death()
+    {
+        // The second enemy of the pack never meets the player, and dies at 125 s, 15 s into the pull.
+        string contacts = string.Join(", ",
+            Contact(PackActor, 1, 110000, Pack.Placements[0], 140000),
+            Contact(KorosActor, 1, 180000, KorosPlacement, 300000));
+        string deaths = string.Join(", ",
+            Death(PackActor, 1, Pack.Creature, "Pack 1", 140000),
+            Death(PackActor, 2, Pack.Creature, "Pack 2", 125000),
+            Death(KorosActor, 1, Koros, "Ancient Koros", 300000));
+        var dungeon = Read(contacts, deaths);
+        Assert.Null(dungeon.Problem());
+        var creature = GameCreatures.ById(Pack.Creature)!;
+        Assert.Equal(30, dungeon.Pull("1")!.DurationSeconds);
+        Assert.Equal([Line(1, creature, dies: 15), Line(1, creature)], dungeon.Pull("1")!.Groups);
     }
 
     [Fact]

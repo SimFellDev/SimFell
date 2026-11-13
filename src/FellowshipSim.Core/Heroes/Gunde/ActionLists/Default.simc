@@ -1,11 +1,7 @@
 # Gunde's default action list: FellowSimc's SimC list (apl/gunde/gunde_apl.simc) in SimFell's names.
-# Left out: the Carrion Onslaught legendary's lines (the engine did not have it when the list was made), Earthbreaker (a
-# weapon the engine does not have) and the Rend stack checks (the engine does not show Rend to action lists): the Heart
-# Splitter line at 200 Rend stacks goes, and the Slaughter line keeps the rest of its condition.
 actions.precombat=snapshot_stats
-# Swing the weapon whenever the swing timer allows.
-actions=attack
-# Interrupt a casting target.
+actions=switch_target,target_if=target.is_boss
+actions+=/attack
 actions+=/jawbreaker,if=target.casting
 actions+=/bloodbound_spirit,if=buff.reign_in_blood.up
 actions+=/reign_in_blood
@@ -21,6 +17,7 @@ actions+=/grim_carve,if=buff.grim_harvest.up
 actions+=/heart_splitter,if=full_recharge_time<=gcd.max*3&(active_enemies<3|talent.oathshatter)
 actions+=/heart_splitter,if=buff.serrated_edge.up&(active_enemies<3|talent.oathshatter)&(talent.darkening_hearts&target.health.pct<=30|legendary.bleeding_hearts)
 actions+=/slaughter,if=(!talent.massacre|!blessing.the_philosopher)&(!cooldown.heart_splitter.up|active_enemies>2&!talent.oathshatter)&!cooldown.grim_carve.up&debuff.open_wounds.up&!legendary.bleeding_hearts
+actions+=/slaughter,if=legendary.bleeding_hearts&!cooldown.grim_carve.up&(target.is_boss&debuff.rend.stack>=200&debuff.open_wounds.up&debuff.open_wounds.remains<6&prev_gcd.heart_splitter|!target.is_boss&target.health.pct<=20&cooldown.heart_splitter.charges=0&debuff.rend.stack>=170)
 actions+=/grim_carve
 actions+=/blood_arc
 actions+=/fated_strike

@@ -1,16 +1,20 @@
 @using FellowshipSim.Core.APL
 @using FellowshipSim.Core.APL.Expressions
 @using System.Globalization
-@* The fields of an open action: its type, ability, list or variable, condition, target and other arguments. *@
+@*
+    The fields of an open action: its type, ability, list or variable, condition, target and other arguments. A Switch
+    target action has the condition and the target alone, and its target is always a selection.
+*@
 <div class="detail">
     <label for="@($"{Id}-type")">Type</label>
-    <select id="@($"{Id}-type")" value="@(ListAction || VariableAction ? Action.Ability : "")" @onchange="e => ChangeType((string?)e.Value ?? string.Empty)">
+    <select id="@($"{Id}-type")" value="@(ListAction || VariableAction || SwitchAction ? Action.Ability : "")" @onchange="e => ChangeType((string?)e.Value ?? string.Empty)">
         <option value="">Cast an ability</option>
         @foreach (string name in Vocabulary.ListActions)
         {
             <option @key="name" value="@name">@ActionListModel.ListActionName(name)</option>
         }
         <option value="@AplVariable.ActionName">Set a variable</option>
+        <option value="@AplSwitchTarget.ActionName">@AplSwitchTarget.Label</option>
     </select>
 
     @if (ListAction)
@@ -65,7 +69,7 @@
         <input id="@($"{Id}-default")" type="number" step="any" class="default" value="@ConditionBuilder.Number(Variable.Default)"
                @onchange="e => ChangeDefault((string?)e.Value)" />
     }
-    else
+    else if (!SwitchAction)
     {
         <label for="@($"{Id}-ability")">Ability</label>
         <select id="@($"{Id}-ability")" value="@Action.Ability" @onchange="e => ChangeAbility((string?)e.Value ?? string.Empty)">
@@ -93,34 +97,40 @@
 
     @if (!ListAction && !VariableAction)
     {
-        <label for="@($"{Id}-target")">Target</label>
-        <select id="@($"{Id}-target")" value="@(Action.TargetSelection?.ToString() ?? "")" @onchange="e => ChangeTarget((string?)e.Value)">
-            <option value="">Current target</option>
+        <label for="@($"{Id}-target")" data-tooltip="@(SwitchAction ? AplSwitchTarget.Description : null)">Target</label>
+        <select id="@($"{Id}-target")" value="@(Selection?.ToString() ?? "")" @onchange="e => ChangeTarget((string?)e.Value)">
+            @if (!SwitchAction)
+            {
+                <option value="">Current target</option>
+            }
             @foreach (var s in Vocabulary.TargetSelections)
             {
                 <option @key="s.Selection" value="@s.Selection.ToString()">@s.Label</option>
             }
         </select>
-        <label hidden="@(Action.TargetSelection == null)">Target by</label>
-        <div hidden="@(Action.TargetSelection == null)">
+        <label hidden="@(Selection == null)">Target by</label>
+        <div hidden="@(Selection == null)">
             <ConditionField Vocabulary="Vocabulary" Value="@Action.TargetExpression" Label="Target by" Lead=""
                             Placeholder="@($"Value for each enemy. Example: debuff.{Vocabulary.Auras.FirstOrDefault()?.Slug ?? "name"}.remains")"
                             OnChange="expression => Change(a => a with { TargetExpression = expression })" />
         </div>
 
-        <label>Timing</label>
-        <div class="switches">
-            <label class="switch">
-                <input type="checkbox" checked="@Action.UseOffGcd" @onchange="e => Change(a => a with { UseOffGcd = e.Value is true })" />
-                <span data-tooltip="@OptionTip(AplActionLine.UseOffGcdKey)">Use off the global cooldown</span>
-            </label>
-            <label class="switch">
-                <input type="checkbox" checked="@Action.UseWhileCasting" @onchange="e => Change(a => a with { UseWhileCasting = e.Value is true })" />
-                <span data-tooltip="@OptionTip(AplActionLine.UseWhileCastingKey)">Use while casting</span>
-            </label>
-        </div>
+        @if (!SwitchAction)
+        {
+            <label>Timing</label>
+            <div class="switches">
+                <label class="switch">
+                    <input type="checkbox" checked="@Action.UseOffGcd" @onchange="e => Change(a => a with { UseOffGcd = e.Value is true })" />
+                    <span data-tooltip="@OptionTip(AplActionLine.UseOffGcdKey)">Use off the global cooldown</span>
+                </label>
+                <label class="switch">
+                    <input type="checkbox" checked="@Action.UseWhileCasting" @onchange="e => Change(a => a with { UseWhileCasting = e.Value is true })" />
+                    <span data-tooltip="@OptionTip(AplActionLine.UseWhileCastingKey)">Use while casting</span>
+                </label>
+            </div>
+        }
 
-        @if (Channel)
+        @if (!SwitchAction && Channel)
         {
             <label data-tooltip="@InterruptIfTip">Interrupt if</label>
             <div>
@@ -170,6 +180,11 @@
     private bool ListAction => ActionListModel.IsListAction(Vocabulary, Action);
 
     private bool VariableAction => ActionListModel.IsVariableAction(Action);
+
+    private bool SwitchAction => ActionListModel.IsSwitchTargetAction(Action);
+
+    // A Switch target action's target is a selection: the first enemy where, unless the action has another.
+    private AplTargetSelection? Selection => Action.TargetSelection ?? (SwitchAction ? AplTargetSelection.First : null);
 
     private AplDocumentVariable Variable => Action.Variable ?? new AplDocumentVariable("");
 
@@ -224,10 +239,21 @@
         string? firstOther = OtherLists.FirstOrDefault()?.Name;
         Change(a => type switch
         {
-            "" => a with { Ability = "", ActionList = null, Variable = null },
+            // A Switch target action with no expression yet has no target to keep.
+            "" => a with
+            {
+                Ability = "", ActionList = null, Variable = null,
+                TargetSelection = string.IsNullOrWhiteSpace(a.TargetExpression) ? null : a.TargetSelection,
+            },
             AplVariable.ActionName => a with
             {
                 Ability = type, ActionList = null, TargetSelection = null, TargetExpression = null, Variable = a.Variable ?? new AplDocumentVariable(""),
+                UseOffGcd = false, UseWhileCasting = false, InterruptIf = null, InterruptImmediate = false,
+            },
+            // The action keeps an ability action's target.
+            AplSwitchTarget.ActionName => a with
+            {
+                Ability = type, ActionList = null, TargetSelection = a.TargetSelection ?? AplTargetSelection.First, Variable = null,
                 UseOffGcd = false, UseWhileCasting = false, InterruptIf = null, InterruptImmediate = false,
             },
             _ => a with

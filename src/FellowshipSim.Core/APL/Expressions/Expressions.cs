@@ -104,7 +104,7 @@ public class PropertyExpression : IAplExpression
                 (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0),
             ["target.health"] = new(new("Target health", "The current health of the target. 0 if there is no target."),
                 (_, ctx) => ctx.Player.CurrentTarget?.CurrentHealth ?? 0.0),
-            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: from its health loss per second since it arrived, the end of its pull duration, or the end of a training dummy fight. The end of the fight before a dungeon enemy with hit points takes damage. 0 if there is no target."),
+            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: from its health loss per second since it arrived, its group's dies or the end of its pull duration, or the end of a training dummy fight. The end of the fight before a dungeon enemy with hit points takes damage. 0 if there is no target."),
                 (_, ctx) => SecondsUntil(ctx, Countdowns["target.time_to_die"](ctx))),
             ["target.is_boss"] = new(new("Target is a boss", "1 if the target is a boss. Otherwise 0."),
                 (_, ctx) => ctx.Player.CurrentTarget is { IsBoss: true } ? 1.0 : 0.0),
