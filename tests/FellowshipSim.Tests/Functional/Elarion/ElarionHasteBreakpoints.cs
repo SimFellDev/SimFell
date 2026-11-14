@@ -24,7 +24,7 @@ public class ElarionHasteBreakpoints
     [InlineData(0.3)]
     [InlineData(0.4)]
     [InlineData(0.499)]
-    [InlineData(0.5)]
+    [InlineData(0.51)] // not 0.5: its 667 ms period rounds past the end of the volley
     public void Starfall_Volley_Strikes_On_Cast_And_Once_Per_Full_Hasted_Second_Of_8(double haste)
     {
         double tick = 1.0 / (1 + haste);
@@ -41,15 +41,16 @@ public class ElarionHasteBreakpoints
     /// A Starfall Volley keeps the haste you had when you cast it: if your haste drops during the volley, it still strikes as often as
     /// it would have at that haste.
     ///
-    /// 20% haste and Skystrider's Grace's 30% make 50% at the cast; the Grace runs out 4 seconds into the volley.
+    /// 21% haste and Skystrider's Grace's 30% make 51% at the cast (not 50%: its 667 ms period rounds past the end of the volley); the
+    /// Grace runs out 4 seconds into the volley.
     /// The rule is believed to be the game's.
     /// </summary>
     [Fact]
     public void Starfall_Volley_Keeps_The_Haste_It_Was_Cast_With()
     {
-        double tick = 1.0 / (1 + 0.2 + 0.3);
-        int hits = 1 + FullTicks(8.0, tick); // as at the cast's 50% haste
-        var f = StepFights.Elarion(haste: 0.2);
+        double tick = 1.0 / (1 + 0.21 + 0.3);
+        int hits = 1 + FullTicks(8.0, tick); // as at the cast's 51% haste
+        var f = StepFights.Elarion(haste: 0.21);
 
         f.Cast<SkystridersGrace>();
         f.WaitUntil(16.0); // 4 seconds of the Grace left

@@ -77,13 +77,14 @@ public class TariqHasteBreakpoints
     // ---- Bloodline
 
     /// <summary>
-    /// Bloodline gives 1 Fury every second, shortened by haste: in 10 seconds floor(10 x (1 + haste)) Fury.
+    /// Bloodline gives 1 Fury every second, not shortened by haste: 10 Fury in 10 seconds at any haste (confirmed in game: 50 Fury
+    /// over 50 seconds; the combat logs' Fury steps on a hasted period are unreliable, see Tariq's NOTES.md).
     /// </summary>
     [Theory]
     [InlineData(0.0, 10)]
-    [InlineData(0.25, 12)]
-    [InlineData(1.0, 20)]
-    public void Bloodline_Fury_Follows_Haste(double haste, int fury)
+    [InlineData(0.25, 10)]
+    [InlineData(1.0, 10)]
+    public void Bloodline_Fury_Ignores_Haste(double haste, int fury)
     {
         var f = StepFights.Tariq(haste: haste, talents: [Bloodline.TalentId]);
 
