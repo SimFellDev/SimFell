@@ -111,7 +111,7 @@ public class ElarionEventHorizonCooldown
     [InlineData(0.2)]
     public void Event_Horizon_Multiplies_Strand_Of_Eternitys_Acceleration(double haste)
     {
-        var f = StepFights.Elarion(haste: haste, legendaries: [StarstrikersAscent.HauberkItemId]);
+        var f = StepFights.Elarion(haste: haste, legendaries: [StarstrikersAscent.ChestItemId]);
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
 
         f.Cast<EventHorizon>();
@@ -134,7 +134,7 @@ public class ElarionEventHorizonCooldown
     [Fact]
     public void Legendary_Cooldown_Acceleration_Multiplies_With_Event_Horizons_And_Highwind_Arrows_Acceleration()
     {
-        var f = StepFights.Elarion(legendaries: [StarstrikersAscent.HauberkItemId]);
+        var f = StepFights.Elarion(legendaries: [StarstrikersAscent.ChestItemId]);
         f.Set(Hero.SpiritPoints, 100); // enough to cast it
 
         f.Cast<EventHorizon>();
@@ -430,7 +430,7 @@ public class ElarionEventHorizonCooldown
     /// </summary>
     private static int ExtraGcdsUntilTheVolleyIsReady(bool fusillade, double emeraldPower, double haste)
     {
-        var f = StepFights.Elarion(haste: haste, legendaries: [StarstrikersAscent.HauberkItemId], talents: fusillade ? [Fusillade.TalentId] : null,
+        var f = StepFights.Elarion(haste: haste, legendaries: [StarstrikersAscent.ChestItemId], talents: fusillade ? [Fusillade.TalentId] : null,
             gemPower: emeraldPower > 0 ? new() { [GemColor.Emerald] = emeraldPower } : null);
         f.Set(Hero.SpiritPoints, 100); // enough to cast Event Horizon
 

@@ -8,7 +8,7 @@
                 <img class="slot-icon empty" src="@EmptyIconUrl(Slot)" alt="" width="40" height="40" />
                 <h2 id="gear-picker-title" class="title">@GearSlots.Label(Slot)</h2>
             </div>
-            <span class="tempers" data-tooltip="Each temper adds 1 to each of an item's stats. Legendaries take none.">
+            <span class="tempers" data-tooltip="@TemperTooltip">
                 <span class="tempers-label">Temper</span>
                 <span class="stepper">
                     <button type="button" class="icon-button" aria-label="One fewer temper" disabled="@(Tempers <= 0)" @onclick="() => SetTempers(Tempers - 1)">−</button>
@@ -46,7 +46,7 @@
                 bool equipped = worn?.Id == item.Id;
                 <button @key="item.Id" type="button" role="option" class="picker-row item @(equipped ? "selected" : "")" aria-selected="@equipped"
                         @onclick="() => Pick(item.Id)">
-                    <img class="item-icon @(item.Legendary ? "legendary" : "")" src="@GameIcons.Url(item.Icon)" alt="" width="36" height="36" loading="lazy" />
+                    <img class="item-icon @(item.Legendary ? "legendary" : "")" src="@item.Icon" alt="" width="36" height="36" loading="lazy" />
                     <span class="item-name">
                         <span class="@(item.Legendary ? "legendary-name" : "")">@item.Name</span>
                         @if (equipped)
@@ -105,9 +105,13 @@
 
     private int Tempers => Editor.Tempers(Slot);
 
-    /// <summary>The icon of an empty <paramref name="slot"/> (the game's; legs are its waist).</summary>
-    public static string EmptyIconUrl(GearSlot slot) =>
-        GameIcons.Url($"T_Icons_Gear_{(GearSlots.Kind(slot) == GearKind.Legs ? "Waist" : GearSlots.Kind(slot).ToString())}");
+    /// <summary>What a temper adds to the slot's items: one to each stat, and the item's Stamina per temper to Stamina.</summary>
+    private string TemperTooltip => Sorted().FirstOrDefault(i => i.MaxTempers > 0) is { } item
+        ? $"Each temper adds {item.StaminaPerTemper} to an item's Stamina and {GearItem.StatPerTemper} to each of its other stats. Legendaries take none."
+        : "Legendaries take no tempers.";
+
+    /// <summary>The icon URL of an empty <paramref name="slot"/>.</summary>
+    public static string EmptyIconUrl(GearSlot slot) => GameGearData.EmptySlotIcons[GearSlots.Kind(slot)];
 
     private string Label(string column) => column == "Main" ? Editor.Catalog.MainStatShort : column;
 

@@ -8,19 +8,14 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// Sune.SingleTargetFillerMelee.Talent.ExtraDebuffFromCrit.ExtraDebuffStack 1 is the second stack, on a Sun Strike crit
 /// alone. UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class GleamingStrikes : Talent
+public partial class GleamingStrikes : Talent
 {
-    public const int TalentId = 581;
-    public const string TalentName = "Gleaming Strikes";
-    public const int ExtraStacksOnCrit = 1;
-    public const double DamagePerStack = 0.25;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
     public override void Bind(Hero hero)
     {
-        hero.GetAbility<SunStrike>()!.ExtraSunstruckOnCrit = ExtraStacksOnCrit;
-        hero.GetAbility<Omnistrike>()!.DamagePerSunstruckStack = DamagePerStack;
+        hero.GetAbility<SunStrike>()!.ExtraSunstruckOnCrit = Constants.ExtraDebuffFromCritExtraDebuffStack;
+        hero.GetAbility<Omnistrike>()!.DamagePerSunstruckStack = Constants.AoeMeleeDamageBoostAndManaRefundDebuffAoeMeleeBonusDamagePerStack;
     }
 }

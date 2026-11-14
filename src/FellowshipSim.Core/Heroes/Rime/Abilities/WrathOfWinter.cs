@@ -6,11 +6,8 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// Ability 1023 (Spirit ability) / effect 1387: increases damage and gives a Winter Orb at a fixed interval; grants
 /// Spirit of Heroism (effect 2253, a Haste bonus).
 /// </summary>
-public class WrathOfWinter : RimeAbility
+public partial class WrathOfWinter : RimeAbility
 {
-    public const int AbilityId = 1023;
-    public const string AbilityName = "Wrath of Winter";
-    public const double CastTimeSeconds = 1.5;
     public const int BuffEffectId = 1387;
     public const double BuffSeconds = 20.0;
     public const double BuffDamage = 1.2;
@@ -19,9 +16,9 @@ public class WrathOfWinter : RimeAbility
     public static readonly AuraDef Buff = AuraDef.Effect("Wrath of Winter", BuffEffectId, BuffSeconds,
         modifiers: StatModifier.More(StatType.DamageScale, BuffDamage));
 
-    public WrathOfWinter(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
+    public WrathOfWinter(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
         // Combat logs: cast inside a Cold Snap's global cooldown (yMAZVJL9hTpFjqbC fight 7 @ 27.284).
         IgnoresGcd = true;
     }

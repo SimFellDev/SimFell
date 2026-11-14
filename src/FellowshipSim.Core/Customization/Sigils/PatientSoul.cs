@@ -7,12 +7,9 @@ namespace FellowshipSim.Core.Customization.Sigils;
 /// effects (2149, 2150), both MaxHealth MultiplyCompound <see cref="MaxHealthMultiplier"/>; combat logs show 2150 (an
 /// Ardeos combatantinfo of RawGearStatsTests, whose logged health has it).
 /// </summary>
-public class PatientSoul : Sigil
+public partial class PatientSoul : Sigil
 {
-    public const int SigilId = 46;
-    public const string SigilName = "Patient Soul";
     public const int BuffEffectId = 2150;
-    public static readonly double[] ExpertiseRatingByRank = [12, 22, 32, 42];
     /// <summary>Max health, every rank (game data effects 2149 and 2150).</summary>
     public const double MaxHealthMultiplier = 1.05;
 
@@ -22,6 +19,6 @@ public class PatientSoul : Sigil
     public override string Name => SigilName;
 
     public override void Bind(Hero hero) =>
-        hero.SituationalAuras.Add(Buff.WithModifiers(StatModifier.Add(StatType.ExpertiseRating, ForRank(ExpertiseRatingByRank)),
+        hero.SituationalAuras.Add(Buff.WithModifiers(StatModifier.Add(StatType.ExpertiseRating, ForRank(Constants.BuffAdditionalExpertiseRatingByRank)),
             StatModifier.More(StatType.MaxHealth, MaxHealthMultiplier)));
 }

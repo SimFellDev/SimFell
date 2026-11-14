@@ -27,7 +27,7 @@ public class MaraLegendaries
     public void From_The_Shadows_Makes_The_Bleeds_Tick_Period_87_Percent(double haste)
     {
         double tick = 3 * 0.87 / (1 + haste);
-        var f = StepFights.Mara(haste: haste, legendaries: [FromTheShadows.CapeItemId]);
+        var f = StepFights.Mara(haste: haste, legendaries: [FromTheShadows.HeadItemId]);
         f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         f.Set(Mara.ComboPoints, 1); // a 15 second bleed
 
@@ -47,7 +47,7 @@ public class MaraLegendaries
     [Fact]
     public void From_The_Shadows_Has_A_15_Percent_Chance_On_Each_Hit_On_A_Bleeding_Enemy()
     {
-        var f = StepFights.Mara(legendaries: [FromTheShadows.CapeItemId]);
+        var f = StepFights.Mara(legendaries: [FromTheShadows.HeadItemId]);
         var procs = f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // only to read the chance
 
         f.Cast<Backstab>();
@@ -73,7 +73,7 @@ public class MaraLegendaries
     [Fact]
     public void From_The_Shadows_Clone_Strikes_A_Queens_Fang_At_6_Combo_Points()
     {
-        var plainScenario = StepFights.Mara(legendaries: [FromTheShadows.CapeItemId]).WithoutDamageSpread();
+        var plainScenario = StepFights.Mara(legendaries: [FromTheShadows.HeadItemId]).WithoutDamageSpread();
         plainScenario.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         plainScenario.Set(Mara.ComboPoints, 1); // enough to cast Hemorrhaging Strike
 
@@ -82,7 +82,7 @@ public class MaraLegendaries
         plainScenario.Cast<QueensFang>();
         double ownQueensFangDamage = plainScenario.Damage<QueensFang>().Single().Value;
 
-        var cloneScenario = StepFights.Mara(legendaries: [FromTheShadows.CapeItemId]).WithoutDamageSpread();
+        var cloneScenario = StepFights.Mara(legendaries: [FromTheShadows.HeadItemId]).WithoutDamageSpread();
         bool summoned = false;
         cloneScenario.ForceProcs(key => key == FromTheShadows.ProcKey ? !summoned && (summoned = true) : null); // the first roll procs, no other
         cloneScenario.Set(Mara.ComboPoints, 1); // enough to cast Hemorrhaging Strike
@@ -111,7 +111,7 @@ public class MaraLegendaries
     public void Bloodrush_And_From_The_Shadows_Multiply_The_Bleeds_Tick_Period(double haste)
     {
         double tick = 3 * 0.87 / 1.2 / (1 + haste);
-        var f = StepFights.Mara(haste: haste, talents: [Bloodrush.TalentId], legendaries: [FromTheShadows.CapeItemId]);
+        var f = StepFights.Mara(haste: haste, talents: [Bloodrush.TalentId], legendaries: [FromTheShadows.HeadItemId]);
         f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         f.Set(Mara.ComboPoints, 1); // a 15 second bleed
 
@@ -136,7 +136,7 @@ public class MaraLegendaries
     {
         double tick = 3 * 0.87 * 0.87 / 1.2 / (1 + haste);
         var f = StepFights.Mara(haste: haste, enemies: 2,
-            talents: [GushingBlood.TalentId, Bloodrush.TalentId], legendaries: [FromTheShadows.CapeItemId]);
+            talents: [GushingBlood.TalentId, Bloodrush.TalentId], legendaries: [FromTheShadows.HeadItemId]);
         f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         var struck = f.Enemies()[0];
         var other = f.Enemies()[1];
@@ -167,7 +167,7 @@ public class MaraLegendaries
     [InlineData(0.2)]
     public void From_The_Shadows_Applies_Twice_To_The_Bleed_Gushing_Blood_Copies(double haste)
     {
-        var f = StepFights.Mara(haste: haste, enemies: 2, talents: [GushingBlood.TalentId], legendaries: [FromTheShadows.CapeItemId]);
+        var f = StepFights.Mara(haste: haste, enemies: 2, talents: [GushingBlood.TalentId], legendaries: [FromTheShadows.HeadItemId]);
         f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         var struck = f.Enemies()[0];
         var other = f.Enemies()[1];
@@ -203,7 +203,7 @@ public class MaraLegendaries
     [InlineData("Backstab", true, false)]
     public void Vexiras_Venom_Comes_From_Queens_Fang_And_Arachnid_Assault_Crits(string ability, bool crit, bool venom)
     {
-        var f = StepFights.Mara(legendaries: [VexirasVenom.WristItemId]);
+        var f = StepFights.Mara(legendaries: [VexirasVenom.LegsItemId]);
         f.Set(Mara.ComboPoints, 3); // enough to cast a finisher
 
         f.Cast(ability, crit: crit);
@@ -219,7 +219,7 @@ public class MaraLegendaries
     [InlineData("Arachnid Assault")]
     public void Vexiras_Venom_Ticks_Deal_28_Percent_Of_The_Crit_Over_3(string ability)
     {
-        var f = StepFights.Mara(legendaries: [VexirasVenom.WristItemId]).WithoutDamageSpread();
+        var f = StepFights.Mara(legendaries: [VexirasVenom.LegsItemId]).WithoutDamageSpread();
         f.Set(Mara.ComboPoints, 3); // enough to cast a finisher
 
         f.Cast(ability, crit: true);
@@ -242,7 +242,7 @@ public class MaraLegendaries
     public void Vexiras_Venom_Ticks_Every_Hasted_2_Seconds_For_6_Seconds_With_A_Partial(double haste)
     {
         double tick = 2 / (1 + haste);
-        var f = StepFights.Mara(haste: haste, legendaries: [VexirasVenom.WristItemId]).WithoutDamageSpread();
+        var f = StepFights.Mara(haste: haste, legendaries: [VexirasVenom.LegsItemId]).WithoutDamageSpread();
         f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
 
         f.Cast<QueensFang>(crit: true);
@@ -260,7 +260,7 @@ public class MaraLegendaries
     [Fact]
     public void Vexiras_Venom_Lasts_6_Seconds()
     {
-        var f = StepFights.Mara(legendaries: [VexirasVenom.WristItemId]);
+        var f = StepFights.Mara(legendaries: [VexirasVenom.LegsItemId]);
         f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
 
         f.Cast<QueensFang>(crit: true);
@@ -279,7 +279,7 @@ public class MaraLegendaries
     [Fact]
     public void Vexiras_Venom_Restarts_Its_6_Seconds_On_A_New_Crit()
     {
-        var f = StepFights.Mara(legendaries: [VexirasVenom.WristItemId]);
+        var f = StepFights.Mara(legendaries: [VexirasVenom.LegsItemId]);
         f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
 
         f.Cast<QueensFang>(crit: true);
@@ -301,7 +301,7 @@ public class MaraLegendaries
     [Fact]
     public void Vexiras_Venom_Keeps_Its_Tick_Timing_On_A_New_Crit()
     {
-        var f = StepFights.Mara(legendaries: [VexirasVenom.WristItemId]);
+        var f = StepFights.Mara(legendaries: [VexirasVenom.LegsItemId]);
         f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
 
         f.Cast<QueensFang>(crit: true);
@@ -325,7 +325,7 @@ public class MaraLegendaries
     {
         (double TickOverCrit, bool ClonesCrit) Venom(double crit)
         {
-            var f = StepFights.Mara(crit: crit, legendaries: [VexirasVenom.WristItemId]).WithoutDamageSpread();
+            var f = StepFights.Mara(crit: crit, legendaries: [VexirasVenom.LegsItemId]).WithoutDamageSpread();
             f.Set(Hero.SpiritPoints, 100); // enough to cast Matriarch Macabre
 
             f.Cast<MatriarchMacabre>();
@@ -353,7 +353,7 @@ public class MaraLegendaries
     [Fact]
     public void Vexiras_Venom_Ticks_Never_Crit()
     {
-        var f = StepFights.Mara(crit: 1.0, legendaries: [VexirasVenom.WristItemId]);
+        var f = StepFights.Mara(crit: 1.0, legendaries: [VexirasVenom.LegsItemId]);
         f.Set(Mara.ComboPoints, 3); // enough to cast Queen's Fang
 
         f.Cast<QueensFang>();
@@ -371,7 +371,7 @@ public class MaraLegendaries
     /// <see cref="CastRefundingQueensFang"/>.</summary>
     private static StepDriver DrenchedInBloodFight()
     {
-        var f = StepFights.Mara(spirit: 0.2, legendaries: [DrenchedInBlood.RingItemId]);
+        var f = StepFights.Mara(spirit: 0.2, legendaries: [DrenchedInBlood.ChestItemId]);
         f.ForceProcs(key => key == Hero.SpiritRefundProc ? true : null);
         return f;
     }

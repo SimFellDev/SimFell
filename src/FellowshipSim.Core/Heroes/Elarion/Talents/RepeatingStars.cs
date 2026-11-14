@@ -6,13 +6,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// Talent 124: Multishot reduces the cooldown of Starfall Volley. Empowered Multishot reduces the
 /// cooldown by more.
 /// </summary>
-public class RepeatingStars : Talent
+public partial class RepeatingStars : Talent
 {
-    public const int TalentId = 124;
-    public const string TalentName = "Repeating Stars";
-    public const double ReductionSeconds = 1.5;
-    public const double EmpoweredReductionSeconds = 3.0;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -20,6 +15,6 @@ public class RepeatingStars : Talent
     {
         if (hero.GetAbility<Multishot>() is not { } multishot) return;
         multishot.Cast += (ctx, empowered) =>
-            hero.ReduceCooldown<StarfallVolley>(SimTime.FromSeconds(empowered ? EmpoweredReductionSeconds : ReductionSeconds), ctx.CurrentTime);
+            hero.ReduceCooldown<StarfallVolley>(SimTime.FromSeconds(empowered ? Constants.CooldownReductionEmpoweredCooldownReductionInSeconds : Constants.CooldownReductionInSeconds), ctx.CurrentTime);
     }
 }

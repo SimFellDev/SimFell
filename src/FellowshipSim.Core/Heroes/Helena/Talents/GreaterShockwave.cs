@@ -8,23 +8,18 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// Warmaster.MeleeAoeSlow.Talent.IncreasedToughnessAndDamage.AdditionalToughnessBasedOnMax 0.1. The bonus is taken to grow
 /// in step with the share of the maximum Toughness, read at the cast.
 /// </summary>
-public class GreaterShockwave : Talent
+public partial class GreaterShockwave : Talent
 {
-    public const int TalentId = 643;
-    public const string TalentName = "Greater Shockwave";
-    public const double ToughnessShare = 0.1;
-    public const double DamageAtFullToughness = 0.3;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
     public override void Bind(Hero hero)
     {
         if (hero is not Helena helena || hero.GetAbility<Shockwave>() is not { } shockwave) return;
-        shockwave.BonusToughnessShare += ToughnessShare;
+        shockwave.BonusToughnessShare += Constants.IncreasedToughnessAndDamageAdditionalToughnessBasedOnMax;
         hero.OnCastResolving += cast =>
         {
-            if (cast.Ability is Shockwave) cast.DamageMultiplier *= 1.0 + DamageAtFullToughness * helena.ToughnessShare;
+            if (cast.Ability is Shockwave) cast.DamageMultiplier *= 1.0 + Constants.IncreasedToughnessAndDamageDamageMultiplierDamageMultiplierAtFullToughness * helena.ToughnessShare;
         };
     }
 }

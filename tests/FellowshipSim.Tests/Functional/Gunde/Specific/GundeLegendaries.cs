@@ -19,7 +19,7 @@ public class GundeLegendaries
     [InlineData(true, 5)]
     public void Bloody_Mess_Makes_Grim_Carve_Spin_2_More_Times(bool legendary, int spins)
     {
-        var f = StepFights.Gunde(legendaries: legendary ? [BloodyMess.HelmItemId] : null);
+        var f = StepFights.Gunde(legendaries: legendary ? [BloodyMess.HeadItemId] : null);
 
         f.Cast<GrimCarve>();
         f.Wait(3.0); // every spin
@@ -37,11 +37,11 @@ public class GundeLegendaries
     [Fact]
     public void Bloody_Mess_Spins_All_Count_For_Carnage()
     {
-        var spinsAlone = StepFights.Gunde(legendaries: [BloodyMess.HelmItemId]).WithoutDamageSpread();
+        var spinsAlone = StepFights.Gunde(legendaries: [BloodyMess.HeadItemId]).WithoutDamageSpread();
         spinsAlone.Cast<GrimCarve>();
         spinsAlone.Wait(3.0); // every spin
 
-        var f = StepFights.Gunde(talents: [Carnage.TalentId], legendaries: [BloodyMess.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Gunde(talents: [Carnage.TalentId], legendaries: [BloodyMess.HeadItemId]).WithoutDamageSpread();
         f.Cast<Rupture>();
         double ruptureEnd = f.CompletedAt("Rupture") + (60 - 5) / f.AccelerationRate<Rupture>();
         f.Cast<HeartSplitter>();
@@ -72,7 +72,7 @@ public class GundeLegendaries
     [InlineData(true, 2)]
     public void Bleeding_Hearts_Gives_Heart_Splitter_2_Charges(bool legendary, int charges)
     {
-        var f = StepFights.Gunde(legendaries: legendary ? [BleedingHearts.HarnessItemId] : null);
+        var f = StepFights.Gunde(legendaries: legendary ? [BleedingHearts.ChestItemId] : null);
         Assert.Equal(charges, f.Charges<HeartSplitter>());
 
         for (int cast = 0; cast < charges; cast++) f.Cast<HeartSplitter>();
@@ -86,7 +86,7 @@ public class GundeLegendaries
     [Fact]
     public void Bleeding_Hearts_Has_A_25_Percent_Chance_Of_An_Extra_Strike()
     {
-        var f = StepFights.Gunde(legendaries: [BleedingHearts.HarnessItemId]);
+        var f = StepFights.Gunde(legendaries: [BleedingHearts.ChestItemId]);
         var procs = f.ForceProcs(key => key == BleedingHearts.ProcKey ? false : null); // only to read the chance
 
         f.Cast<HeartSplitter>();
@@ -103,7 +103,7 @@ public class GundeLegendaries
     [InlineData(true, 2)]
     public void Bleeding_Hearts_Extra_Strike_Hits_Again_With_Its_Own_Exsanguinate(bool proc, int strikes)
     {
-        var f = StepFights.Gunde(legendaries: [BleedingHearts.HarnessItemId]);
+        var f = StepFights.Gunde(legendaries: [BleedingHearts.ChestItemId]);
         f.ForceProcs(key => key == BleedingHearts.ProcKey ? proc : null);
 
         f.Cast<HeartSplitter>();
@@ -125,7 +125,7 @@ public class GundeLegendaries
     [InlineData(0.5, 0.0)]
     public void Bleeding_Hearts_Gives_Heart_Splitter_100_Percent_Crit_Above_80_Percent_Health(double health, double critChance)
     {
-        var f = StepFights.Gunde(legendaries: [BleedingHearts.HarnessItemId]);
+        var f = StepFights.Gunde(legendaries: [BleedingHearts.ChestItemId]);
         f.ForceProcs(key => key == BleedingHearts.ProcKey ? false : null); // a single strike
         f.SetHealth(health);
 

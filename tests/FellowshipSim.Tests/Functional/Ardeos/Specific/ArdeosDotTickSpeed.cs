@@ -23,7 +23,7 @@ public class ArdeosDotTickSpeed
     {
         var f = ability switch
         {
-            "Apocalypse" => StepFights.Ardeos(haste: haste, legendaries: [Explosivo.HelmItemId]),
+            "Apocalypse" => StepFights.Ardeos(haste: haste, legendaries: [Explosivo.ChestItemId]),
             // Crackling Inferno's burn comes from a crit
             "Infernal Wave" => StepFights.Ardeos(haste: haste, talents: [CracklingInferno.TalentId], crit: 1.0),
             _ => StepFights.Ardeos(haste: haste),

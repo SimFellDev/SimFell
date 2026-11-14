@@ -14,19 +14,15 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// re-snapshots in the cast's frame. In the Agility damage calculation, source attributes are
 /// snapshots, target attributes are read at the strike, and each application rolls its own crit.
 /// </summary>
-public class MatriarchMacabre : MaraAbility
+public partial class MatriarchMacabre : MaraAbility
 {
-    public const int AbilityId = 1420;
-    public const string AbilityName = "Matriarch Macabre";
     public const int BuffEffectId = 2039;
-    public const double BuffSeconds = 20.0;
-    public const double BuffDamage = 1.2;
     public const int Clones = 2;
     public const double ClonePower = 0.5;
     public const double CloneDelaySeconds = 0.335;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Matriarch Macabre", BuffEffectId, BuffSeconds,
-        modifiers: StatModifier.More(StatType.DamageScale, BuffDamage));
+    public static readonly AuraDef Buff = AuraDef.Effect("Matriarch Macabre", BuffEffectId, AbilityDuration,
+        modifiers: StatModifier.More(StatType.DamageScale, Constants.DamageIncreaseBuffDamageScaler));
 
     /// <summary>
     /// The name of a shadowy clone's hits of <paramref name="abilityName"/>: the log ID is the ability's, the name tells
@@ -34,7 +30,7 @@ public class MatriarchMacabre : MaraAbility
     /// </summary>
     public static string CloneHitName(string abilityName) => abilityName + " (shadowy clone)";
 
-    public MatriarchMacabre(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
+    public MatriarchMacabre(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         IgnoresGcd = true;
     }

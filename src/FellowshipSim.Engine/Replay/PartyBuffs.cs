@@ -34,8 +34,8 @@ public static class PartyBuffs
     [
         // Inspired Allegiance (sigil 2): Haste rating for the giver and allies, by the giver's rank.
         new(AuraDef.Effect(InspiredAllegiance.SigilName, InspiredAllegiance.BuffEffectId,
-                modifiers: StatModifier.Add(StatType.HasteRating, InspiredAllegiance.HasteRatingByRank[0])),
-            InspiredAllegiance.HasteRatingByRank, InspiredAllegiance.SigilName, InspiredAllegiance.SigilId),
+                modifiers: StatModifier.Add(StatType.HasteRating, InspiredAllegiance.Constants.BuffAdditionalHasteRatingByRank[0])),
+            InspiredAllegiance.Constants.BuffAdditionalHasteRatingByRank, InspiredAllegiance.SigilName, InspiredAllegiance.SigilId),
 
         // Imbued Blood: Expertise per stack.
         new(AuraDef.Effect("Imbued Blood", ImbuedBloodEffectId, maxStacks: 15, modifiers: StatModifier.Add(StatType.Expertise, 0.01))),

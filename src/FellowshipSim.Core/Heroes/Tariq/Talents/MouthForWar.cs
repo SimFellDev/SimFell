@@ -6,10 +6,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// Talent 80: "When your Leap Smash ability deals damage, you are granted a stack of Focused Wrath." The stack comes per cast
 /// that hits an enemy.
 /// </summary>
-public class MouthForWar : Talent
+public partial class MouthForWar : Talent
 {
-    public const int TalentId = 80;
-    public const string TalentName = "Mouth for War";
 
     public override string Name => TalentName;
     public override int Id => TalentId;

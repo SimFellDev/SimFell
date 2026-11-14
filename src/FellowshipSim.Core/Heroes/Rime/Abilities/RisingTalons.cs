@@ -7,15 +7,13 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// all Winter Orbs. It is an Ice Comet for talents (Avalanche, the spender crit buffs), so it builds on
 /// <see cref="IceComet"/> and changes only the cost and the waves of spikes.
 /// </summary>
-public class RisingTalons : IceComet
+public partial class RisingTalons : IceComet
 {
-    public new const int AbilityId = 2224;
-    public new const string AbilityName = "Rising Talons";
     /// <summary>Per ice spike (a fraction of Ice Comet's).</summary>
-    public new const double Coefficient = 2.114;
+    public const double Coefficient = 2.114;
 
     /// <summary>Combat logs: each spike loses damage as a square-root falloff beyond <see cref="TargetThreshold"/> targets.</summary>
-    public new const double TargetThreshold = 12;
+    public const double TargetThreshold = 12;
 
     /// <summary>
     /// Combat logs (10 Rime logs, 626 casts): one wave of spikes per Winter Orb; the first erupts a fixed delay after the

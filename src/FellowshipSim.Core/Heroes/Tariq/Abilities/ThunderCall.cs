@@ -5,20 +5,16 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// be used during Global Cooldown." Effect 1772: "Your attacks are enhanced by lightning and you have access to your Chain
 /// Lightning ability."
 /// </summary>
-public class ThunderCall : TariqAbility
+public partial class ThunderCall : TariqAbility
 {
-    public const int AbilityId = 1235;
-    public const string AbilityName = "Thunder Call";
-    /// <summary>Game data cooldown, scaled by cooldown reduction and recovery only.</summary>
-    public const double CooldownSeconds = 45.0;
     public const int BuffEffectId = 1772;
-    public const double BuffSeconds = 21.0;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Thunder Call", BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect("Thunder Call", BuffEffectId, AbilityDuration);
 
-    public ThunderCall(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public ThunderCall(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        // Scaled by cooldown reduction and recovery only.
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 

@@ -26,7 +26,7 @@ public class ElarionLegendaries
     [InlineData(false)]
     public void A_Spirit_Refund_Has_A_50_Percent_Chance_To_Reset_The_Barrage_And_Give_Impending_Heartseeker(bool proc)
     {
-        var f = StepFights.Elarion(legendaries: [StarstrikersAscent.HauberkItemId]);
+        var f = StepFights.Elarion(legendaries: [StarstrikersAscent.ChestItemId]);
         var procs = f.ForceProcs(key => key == Hero.SpiritRefundProc ? true // the barrage's Focus refunded
             : key == StarstrikersAscent.ProcKey ? proc
             : null);
@@ -51,7 +51,7 @@ public class ElarionLegendaries
     [Fact]
     public void Chained_Refunds_Keep_Impending_Heartseeker_Going_On_Barrages()
     {
-        var f = StepFights.Elarion(spirit: 0.25, legendaries: [StarstrikersAscent.HauberkItemId]).WithoutDamageSpread();
+        var f = StepFights.Elarion(spirit: 0.25, legendaries: [StarstrikersAscent.ChestItemId]).WithoutDamageSpread();
         f.ForceProcs(key => key == Hero.SpiritRefundProc || key == StarstrikersAscent.ProcKey); // every other proc off
 
         for (int i = 0; i < 3; i++) f.Cast<HeartseekerBarrage>(); // each ready again: the refund reset it
@@ -76,7 +76,7 @@ public class ElarionLegendaries
     [Fact]
     public void Highwind_Arrow_Afflicts_Its_Target_With_Shimmer_For_9_Seconds()
     {
-        var f = StepFights.Elarion(legendaries: [Shimmer.HelmItemId]);
+        var f = StepFights.Elarion(legendaries: [Shimmer.HeadItemId]);
 
         f.Cast<HighwindArrow>();
         double end = f.Damage<HighwindArrow>().Single().Time.TotalSeconds + 9.0;
@@ -94,7 +94,7 @@ public class ElarionLegendaries
     [Fact]
     public void Highwind_Arrow_Ricochets_Afflict_Their_Enemies_With_Shimmer()
     {
-        var f = StepFights.Elarion(enemies: 4, legendaries: [Shimmer.HelmItemId]);
+        var f = StepFights.Elarion(enemies: 4, legendaries: [Shimmer.HeadItemId]);
 
         f.Cast<HighwindArrow>();
         f.Wait(0.5); // the ricochets land
@@ -114,7 +114,7 @@ public class ElarionLegendaries
     [Fact]
     public void A_New_Shimmer_Adds_A_Stack_And_Restarts_The_9_Seconds()
     {
-        var f = StepFights.Elarion(legendaries: [Shimmer.HelmItemId]);
+        var f = StepFights.Elarion(legendaries: [Shimmer.HeadItemId]);
 
         f.Cast<HighwindArrow>();
         f.WaitUntil(5.0); // the first Shimmer still up
@@ -134,7 +134,7 @@ public class ElarionLegendaries
     [Fact]
     public void Each_Shimmer_Stack_Raises_Damage_By_8_Percent_Up_To_3_Stacks()
     {
-        var f = StepFights.Elarion(legendaries: [Shimmer.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Elarion(legendaries: [Shimmer.HeadItemId]).WithoutDamageSpread();
 
         for (int i = 0; i < 5; i++)
         {
@@ -165,7 +165,7 @@ public class ElarionLegendaries
     [InlineData(true, 11.0)]
     public void Astronomers_Hail_Makes_Starfall_Volley_Last_3_Seconds_Longer(bool legendary, double duration)
     {
-        var f = StepFights.Elarion(legendaries: legendary ? [AstronomersHail.LeggingsItemId] : []);
+        var f = StepFights.Elarion(legendaries: legendary ? [AstronomersHail.LegsItemId] : []);
 
         f.Cast<StarfallVolley>();
         double end = f.CompletedAt("Starfall Volley") + duration;
@@ -183,7 +183,7 @@ public class ElarionLegendaries
     [Fact]
     public void Astronomers_Hail_Doubles_Starfall_Volley_Damage_On_Its_Main_Target()
     {
-        var f = StepFights.Elarion(enemies: 2, legendaries: [AstronomersHail.LeggingsItemId]).WithoutDamageSpread();
+        var f = StepFights.Elarion(enemies: 2, legendaries: [AstronomersHail.LegsItemId]).WithoutDamageSpread();
 
         f.Cast<StarfallVolley>();
         f.Wait(0.5); // the first strike lands
@@ -206,7 +206,7 @@ public class ElarionLegendaries
     [InlineData(3)]
     public void Each_Multishot_Extends_Starfall_Volley_By_A_Quarter_Of_A_Second(int multishots)
     {
-        var f = StepFights.Elarion(legendaries: [AstronomersHail.LeggingsItemId]);
+        var f = StepFights.Elarion(legendaries: [AstronomersHail.LegsItemId]);
 
         f.Cast<StarfallVolley>();
         double end = f.CompletedAt("Starfall Volley") + 11.0 + 0.25 * multishots;

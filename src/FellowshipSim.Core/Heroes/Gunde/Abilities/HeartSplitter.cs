@@ -9,12 +9,8 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// Rend still to deal: with the Rend already dealt in it, Exsanguinate comes out above the logs (Y4wpb2f3gc8LqJDX
 /// fight 25, 1375 hits), without it much nearer. It neither crits nor takes damage multipliers.
 /// </summary>
-public class HeartSplitter : GundeAbility
+public partial class HeartSplitter : GundeAbility
 {
-    public const int AbilityId = 2294;
-    public const string AbilityName = "Heart Splitter";
-    public const double Coefficient = 4.7;
-    public const double CooldownSeconds = 12.0;
     public const double RendShareOfDamage = 1.0;
     public const int ExsanguinateEffectId = 3239;
     public const string ExsanguinateName = "Exsanguinate";
@@ -31,16 +27,16 @@ public class HeartSplitter : GundeAbility
 
     private bool _lastHitCrit;
 
-    public HeartSplitter(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public HeartSplitter(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = Constants.DamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         RendShare = RendShareOfDamage;
         Hit += (in hit) => _lastHitCrit = hit.IsCrit;
     }
 
     /// <summary>Bleeding Hearts: "Your Heart Splitter ability has additional Charges".</summary>
-    public void SetCharges(int charges) => SetCooldown(CooldownSeconds, charges, scalesWithHaste: true);
+    public void SetCharges(int charges) => SetCooldown(AbilityCooldown, charges, scalesWithHaste: true);
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {

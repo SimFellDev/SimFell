@@ -176,8 +176,7 @@ else
     private double Change(SimRun run) => Base.Result.MeanDps > 0 ? (run.Result.MeanDps / Base.Result.MeanDps - 1) * 100 : 0;
 
     /// <summary>The 95% margin of a run's mean DPS.</summary>
-    private static double Margin(SimRun run) =>
-        run.Result.Iterations > 0 ? 1.96 * run.Result.StandardDeviation / Math.Sqrt(run.Result.Iterations) : 0;
+    private static double Margin(SimRun run) => run.Result.Margin;
 
     /// <summary>The 95% margin of the difference between a run's mean DPS and the baseline's.</summary>
     private double DifferenceMargin(SimRun run) => Math.Sqrt(Margin(run) * Margin(run) + Margin(Base) * Margin(Base));

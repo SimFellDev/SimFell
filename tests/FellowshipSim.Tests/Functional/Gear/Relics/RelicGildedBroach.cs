@@ -24,7 +24,7 @@ public class RelicGildedBroach
     public void Gilded_Broach_Gives_5_Percent_Main_Stat(string hero)
     {
         var plainScenario = StepFights.Of(hero);
-        var broachScenario = StepFights.Of(hero, relics: [GildedBroach.OrbItemId]);
+        var broachScenario = StepFights.Of(hero, relics: [GildedBroach.RelicItemId]);
 
         AssertRatio(1.05, broachScenario.MainStat() / plainScenario.MainStat());
     }

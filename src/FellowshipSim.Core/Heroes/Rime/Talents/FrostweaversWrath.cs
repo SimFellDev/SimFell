@@ -10,19 +10,13 @@ namespace FellowshipSim.Core.Heroes.Rime.Talents;
 /// Orbs gained in rises. UNVERIFIED: whether the proc chance rolls per orb or per gain. A Talon Strike or Rising Talons uses one stack
 /// on its first hit alone (its first spike, its first wave), not on every spike or wave (per the user; no log has it yet).
 /// </summary>
-public class FrostweaversWrath : Talent
+public partial class FrostweaversWrath : Talent
 {
-    public const int TalentId = 191;
-    public const string TalentName = "Frostweaver's Wrath";
     public const int EffectId = 2305;
-    /// <summary>Game data: effect 2305 duration and the tooltip's duration.</summary>
-    public const double BuffSeconds = 20.0;
     public const int MaxStacks = 2;
-    public const double ProcChance = 0.2;
-    public const double CritChance = 1.0;
     public const string ProcKey = "frostweavers_wrath";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Frostweaver's Wrath", EffectId, BuffSeconds, MaxStacks) with { IsProc = true };
+    public static readonly AuraDef Buff = AuraDef.Effect("Frostweaver's Wrath", EffectId, Constants.BuffDuration, MaxStacks) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -34,7 +28,7 @@ public class FrostweaversWrath : Talent
         // Spirit Refund applied Rising Spirit, as the refunded orbs arrive.
         void Roll(ResourceDef resource, SimulationContext ctx)
         {
-            if (resource == Rime.WinterOrbsResource && ctx.Outcomes.RollProc(ProcKey, ProcChance, ctx)) hero.Auras.Apply(Buff, ctx.CurrentTime);
+            if (resource == Rime.WinterOrbsResource && ctx.Outcomes.RollProc(ProcKey, Constants.ProcChance, ctx)) hero.Auras.Apply(Buff, ctx.CurrentTime);
         }
         hero.OnResourceGained += (resource, _, _, ctx) => Roll(resource, ctx);
         hero.OnResourceRefunded += (resource, _, ctx) => Roll(resource, ctx);
@@ -47,7 +41,7 @@ public class FrostweaversWrath : Talent
         {
             if (!hero.Auras.HasAura(Buff, ctx.CurrentTime)) return 0.0;
             hero.Auras.ConsumeStack(Buff, ctx.CurrentTime);
-            return CritChance;
+            return Constants.TalentChanceOnOrbGainNextSpenderCritIncreaseBuffCritChance;
         }
         foreach (var comets in hero.Abilities.OfType<IceComet>()) comets.ImpactCritChanceBonuses.Add(UseOnImpact);
         // A Glacial Blast uses it up as its projectile strikes, too: combat logs (D1fBhVPkwYKXWbpr fight 1,
@@ -57,7 +51,7 @@ public class FrostweaversWrath : Talent
         var blast = hero.Abilities.FirstOrDefault(a => a.GetType() == typeof(GlacialBlast));
         if (blast != null)
         {
-            blast.HitCritChanceBonuses.Add(ctx => hero.Auras.HasAura(Buff, ctx.CurrentTime) ? CritChance : 0.0);
+            blast.HitCritChanceBonuses.Add(ctx => hero.Auras.HasAura(Buff, ctx.CurrentTime) ? Constants.TalentChanceOnOrbGainNextSpenderCritIncreaseBuffCritChance : 0.0);
             hero.OnDamageDealtBy(blast.DamageLogId, (in dmg) =>
             {
                 if (hero.Auras.HasAura(Buff, dmg.Timestamp)) hero.Auras.ConsumeStack(Buff, dmg.Timestamp);
@@ -68,7 +62,7 @@ public class FrostweaversWrath : Talent
         bool talonFirstSpike = false;
         if (talons != null)
         {
-            talons.HitCritChanceBonuses.Add(ctx => talonFirstSpike && hero.Auras.HasAura(Buff, ctx.CurrentTime) ? CritChance : 0.0);
+            talons.HitCritChanceBonuses.Add(ctx => talonFirstSpike && hero.Auras.HasAura(Buff, ctx.CurrentTime) ? Constants.TalentChanceOnOrbGainNextSpenderCritIncreaseBuffCritChance : 0.0);
             hero.OnDamageDealtBy(talons.DamageLogId, (in dmg) =>
             {
                 if (!talonFirstSpike) return;
@@ -86,7 +80,7 @@ public class FrostweaversWrath : Talent
             // Comets and Glacial Blasts use it up as they strike, above.
             if (cast.Ability is IceComet || cast.Ability == blast || cast.Ability is not GlacialBlast || !hero.Auras.HasAura(Buff, cast.Time)) return;
             hero.Auras.ConsumeStack(Buff, cast.Time);
-            cast.CritChance += CritChance;
+            cast.CritChance += Constants.TalentChanceOnOrbGainNextSpenderCritIncreaseBuffCritChance;
         };
     }
 }

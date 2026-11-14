@@ -64,7 +64,7 @@ public class RimeLegendaries
     [Fact]
     public void Each_Freezing_Torrent_Tick_Gives_A_Frostwyrms_Spite_Stack_For_15_Seconds()
     {
-        var f = StepFights.Rime(legendaries: [FrostwyrmsSpite.HelmItemId]);
+        var f = StepFights.Rime(legendaries: [FrostwyrmsSpite.HeadItemId]);
 
         f.Cast<FreezingTorrent>();
         f.Wait(1.0); // the last tick lands
@@ -84,7 +84,7 @@ public class RimeLegendaries
     [Fact]
     public void Frostwyrms_Spite_Stacks_Up_To_30()
     {
-        var f = StepFights.Rime(legendaries: [FrostwyrmsSpite.HelmItemId]);
+        var f = StepFights.Rime(legendaries: [FrostwyrmsSpite.HeadItemId]);
         f.Apply(FrostwyrmsSpite.Buff, stacks: 28); // the stacks of earlier torrents
 
         f.Cast<FreezingTorrent>(); // 6 ticks
@@ -103,7 +103,7 @@ public class RimeLegendaries
     {
         double ColdSnapHit(int stacks, out int stacksLeft)
         {
-            var f = StepFights.Rime(legendaries: [FrostwyrmsSpite.HelmItemId]).WithoutDamageSpread();
+            var f = StepFights.Rime(legendaries: [FrostwyrmsSpite.HeadItemId]).WithoutDamageSpread();
             if (stacks > 0) f.Apply(FrostwyrmsSpite.Buff, stacks: stacks); // the stacks of earlier torrents
 
             f.Cast<ColdSnap>();
@@ -130,7 +130,7 @@ public class RimeLegendaries
     [InlineData(5, 3, 2)]
     public void Cold_Snap_Hits_One_More_Enemy_Per_Stack_Consumed(int stacks, int enemies, int extraHits)
     {
-        var f = StepFights.Rime(enemies: enemies, legendaries: [FrostwyrmsSpite.HelmItemId]);
+        var f = StepFights.Rime(enemies: enemies, legendaries: [FrostwyrmsSpite.HeadItemId]);
         f.Apply(FrostwyrmsSpite.Buff, stacks: stacks); // the stacks of earlier torrents
 
         f.Cast<ColdSnap>();
@@ -157,7 +157,7 @@ public class RimeLegendaries
     [InlineData(8)]
     public void Each_Extra_Hit_Deals_Cold_Snaps_Damage_Reduced_Beyond_3_Enemies(int extraEnemies)
     {
-        var f = StepFights.Rime(enemies: extraEnemies + 1, legendaries: [FrostwyrmsSpite.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Rime(enemies: extraEnemies + 1, legendaries: [FrostwyrmsSpite.HeadItemId]).WithoutDamageSpread();
         f.Apply(FrostwyrmsSpite.Buff, stacks: extraEnemies); // one stack per extra enemy
 
         f.Cast<ColdSnap>();
@@ -177,7 +177,7 @@ public class RimeLegendaries
     [Fact]
     public void Cold_Snaps_Extra_Hits_Give_No_Winter_Orb()
     {
-        var f = StepFights.Rime(enemies: 4, legendaries: [FrostwyrmsSpite.HelmItemId]);
+        var f = StepFights.Rime(enemies: 4, legendaries: [FrostwyrmsSpite.HeadItemId]);
         f.Apply(FrostwyrmsSpite.Buff, stacks: 3); // one stack per extra enemy
 
         f.Cast<ColdSnap>();

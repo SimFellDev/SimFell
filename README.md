@@ -26,12 +26,33 @@ SimFell runs in three ways. They share the same engine:
 
 ## Build
 
-The engine's creatures are generated from the Codex's data export. The build downloads it into `codex-export/`, which git
-ignores, and downloads it again after a new datamine.
-
 ```
 dotnet build -c Release
 ```
+
+The engine's game data (heroes, abilities, talents, gear items and powers, creatures, dungeons and the game icons) is
+generated from the Codex's data export by `FellowshipSim.Codex.Generators`. The generated classes are committed in
+`src/FellowshipSim.Core/Generated/Codex/`, one folder per generator, and the build compiles them, so a build needs no
+export. A review shows every game data value a change touches.
+
+The generators run in a build of their own, over the export in `codex-export/` (git ignores it). Run it after a new
+datamine, a change to a generator, or a new or renamed `partial` class the generators write a half of, and commit the
+folder:
+
+```
+tools/download-codex-export.sh
+tools/regenerate-codex.sh
+dotnet test tests/FellowshipSim.Tests -c Release
+```
+
+On Windows, run the scripts in Git Bash. `regenerate-codex.sh` writes the folder again and its `codex-export.sha256`, the
+hash of the export the files are from. CI's Tests workflow checks the folder (`tools/check-codex-generated.sh`): with the
+export of `codex-export.sha256`, the regenerated folder must be the committed one; a newer export gives a warning until
+someone regenerates. Two branches regenerated from one export merge without a conflict in the folder, unless they change
+one file. After such a merge, regenerate and commit the folder.
+
+A test that checks a game data value has the value as a number. A new export with a different value fails that test,
+and the test's new number is part of the commit.
 
 On Windows the solution builds the desktop app for Windows; on macOS it builds it for Mac Catalyst.
 
@@ -116,15 +137,17 @@ fine-grained token with "Contents: Read and write" on that repository alone.
 A profile is a `.simc` file: the hero, stats, talents, traits, blessings, gear and its `actions` lines, which are the
 action list. Keep profiles in `data/profiles/<Hero>/`.
 
-A sim's profile also has the sim settings: `iterations`, `threads`, `seed`, `duration` and `targets` (training
+A sim's profile also has the sim settings: `iterations`, `target_error`, `threads`, `seed`, `duration` and `targets` (training
 dummies), `length_variance` (a fraction), `health_follows_time`, `boss`, `starting_spirit`,
-`reaction_delays` and `proc_reaction` (seconds). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
+`reaction_delays` and `proc_reaction` (seconds). `target_error` is SimulationCraft's: the sim ends once the margin of
+error of the mean DPS at 95% confidence is below that percent of the mean, checked from 100 fights on, and `iterations`
+is the most fights (1,000,000 without an `iterations` line). A dungeon fight has a dungeon's lines in place of `duration` and `targets`. The lines are in any
 order. The last line of a setting is the setting, and a `dungeon=` line starts a dungeon that replaces the one before.
 Every option of the **Sim** page is a line of this text, and a sim's job is the text alone.
 
 The **Sim** page loads a profile file or pasted text, sets iterations and the fight, and starts the sim.
 The sim's page (a tab in the desktop app) shows its progress, then its result: mean, minimum and maximum DPS, the
-standard deviation, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
+standard deviation, the margin of error, the fights by DPS, and DPS for each ability. **Save as HTML** saves the result as an HTML file. **Advanced**, at the
 end, has the sim's profile. **Load** puts its build, action list and settings in the Sim page, as a compare run's
 **Load** does.
 

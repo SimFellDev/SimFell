@@ -48,7 +48,7 @@ public class ElarionLunarlightMark
         var f = StepFights.Elarion();
         var procs = f.ForceProcs(key => key == LunarlightSalvo.ProcKey ? false : null); // only to read the chances
         f.Set(Elarion.Focus, 100); // enough to cast it
-        f.Apply(LunarlightMark.Debuff, stacks: LunarlightMark.DebuffMaxStacks, on: f.Enemy);
+        f.Apply(LunarlightMark.Debuff, stacks: LunarlightMark.Constants.MaxStacks, on: f.Enemy);
 
         f.Cast(ability);
         f.Wait(10.0); // every hit lands, the volley included

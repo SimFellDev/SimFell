@@ -113,7 +113,7 @@ public class DefensiveProcTests
         LogResourceSnapshot Energy(double time, double energy) => new()
         {
             Time = time, Event = "damage",
-            Resources = new() { ["2"] = new LogResourceValue { Amount = energy * 100, Max = Mara.MaxEnergy * 100 } },
+            Resources = new() { ["2"] = new LogResourceValue { Amount = energy * 100, Max = 200 * 100 } },
         };
         var script = Script(new ReplayObservations { Resources = [Energy(4.96, 50), Energy(5.0, 61), Energy(7.0, 110)] },
             new CharacterBuild { Hero = "Mara", PrimaryStat = 1000 });

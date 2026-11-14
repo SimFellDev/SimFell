@@ -14,17 +14,18 @@ public sealed class SimController(ISimEngine engine, ILogger<SimController> log)
 
     /// <summary>
     /// Runs a sim of the request's profile and streams <see cref="SimStreamLine"/>s: progress lines, then the result or
-    /// the error. A request with no fights or no duration is refused (400) before the stream starts. Closing the
+    /// the error. A request with no fights, no duration or a target error below 0 is refused (400) before the stream starts. Closing the
     /// connection cancels the sim.
     /// </summary>
     [HttpPost("sims")]
     public async Task Simulate([FromBody] SimRequest request)
     {
         var ct = HttpContext.RequestAborted;
-        if (request.Settings.Iterations <= 0 || request.Settings.DurationSeconds <= 0)
+        if (request.Settings.Iterations <= 0 || request.Settings.DurationSeconds <= 0 || !(request.Settings.TargetError >= 0) ||
+            !double.IsFinite(request.Settings.TargetError))
         {
             Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Response.WriteAsJsonAsync(new { error = "A sim needs at least one fight and a duration above 0 seconds." }, ct);
+            await Response.WriteAsJsonAsync(new { error = "A sim needs at least one fight, a duration above 0 seconds and a target error of at least 0." }, ct);
             return;
         }
 

@@ -176,6 +176,12 @@ public abstract class Hero : Actor
     public abstract MainStat MainStat { get; }
 
     /// <summary>
+    /// The hero's weapons from the game data: each weapon item's name by the ability its weapon power grants (the generated
+    /// <c>HeroWeapons</c>).
+    /// </summary>
+    public virtual IReadOnlyDictionary<int, string> WeaponNames { get; } = new Dictionary<int, string>();
+
+    /// <summary>
     /// Auras built at runtime (from a rank or a gem node) rather than declared as <c>public static readonly AuraDef</c>
     /// constants; see <see cref="Register"/>.
     /// </summary>

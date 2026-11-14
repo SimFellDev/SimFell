@@ -476,9 +476,10 @@ public class DungeonTests
     [Fact]
     public void A_Group_Without_Values_Takes_Its_Creatures_Game_Data()
     {
+        // Game data: Ancient Koros's BASE_HEALTH and SPIRIT_POINTS.
         var group = new EnemyGroup(1, "Ancient Koros");
-        Assert.Equal(AncientKorosGameCreature.BASE_HEALTH, group.Health);
-        Assert.Equal(AncientKorosGameCreature.SPIRIT_POINTS, group.Spirit);
+        Assert.Equal(64028.65, group.Health);
+        Assert.Equal(45, group.Spirit);
         Assert.Null(group.Problem());
         Assert.Null(new EnemyGroup(1, "No Such Creature").Health);
     }
@@ -486,8 +487,8 @@ public class DungeonTests
     [Fact]
     public void An_Enemy_Keeps_Its_Shackle_Slow_Ticks_After_Its_Pull_Duration()
     {
-        // The pull ends 3s into the Slow, 12s before the Slow runs out.
-        double pullEnds = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 3.0;
+        // The pull ends 3s into the Slow, 12s before the Slow runs out. Game data: the freeze is 3 s (weapon power 348).
+        double pullEnds = AlzeracsShackle.FreezeLandSeconds + 3.0 + 3.0;
         var dungeon = Dungeon(new DungeonPull("1", [new EnemyGroup(1, "Trash Mob", HitPoints: TrashHitPoints)], pullEnds), Boss(2, 30, final: true));
         var build = Build();
         build.WeaponAbilityId = AlzeracsShackle.AbilityId;

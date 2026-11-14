@@ -61,7 +61,7 @@ fight 9, Fc8v6yWxD14GQMnV fight 19 and YC861NTRgLbmw4Qa fight 31 on 2026-10-22/2
 ## Legendaries
 
 - Item 5898 is Explosivo for Ardeos (fights 30 and 9 show Apocalypse: Explosivo damage, effect 3175, ticking every 3s).
-- Item 5900 is Devouring Flame for Ardeos, as the bracers (item 5225) are. In fights 19 and 31, the logged Engulfing
+- Item 5900 is Devouring Flame for Ardeos. In fights 19 and 31, the logged Engulfing
   Flames damage is 1.05 and 1.16 of the replay's with Devouring Flame modeled, and 1.30 and 1.53 without it.
 - Item 5899 is Fire Toad for Ardeos (GWChJ8P7tn6fHgV3 fights 14-18, 453 explosions). A toad's explosion is logged as a
   Fire Frogs hit (effect 1827): 8.5 times a frog's hit on the main target, and 500% times sqrt(1/N) on the others, N the

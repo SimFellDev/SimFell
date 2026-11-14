@@ -10,20 +10,13 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// Sune.SingleTargetFillerMelee.Talent.AoeProcBuff.Proc.ProcChance 0.2, not the tooltip's 15%. UNVERIFIED: no combat log
 /// has this talent.
 /// </summary>
-public class SunsVerdict : Talent
+public partial class SunsVerdict : Talent
 {
-    public const int TalentId = 583;
-    public const string TalentName = "Sun's Verdict";
-    public const double Chance = 0.2;
     public const string ProcKey = "suns_verdict";
     public const int BuffEffectId = 2648;
-    public const double BuffSeconds = 12.0;
-    public const int BuffMaxStacks = 2;
     public const int BeamEffectId = 2647;
-    public const double BeamCoefficient = 1.24;
-    public const double BeamTargetThreshold = 8;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, BuffSeconds, BuffMaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, Constants.BuffDuration, Constants.StackCap);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -34,7 +27,7 @@ public class SunsVerdict : Talent
         var beams = new SunBeams(xavian);
         void Roll(SimulationContext ctx)
         {
-            if (ctx.Outcomes.RollProc(ProcKey, Chance, ctx)) hero.Auras.Apply(Buff, ctx.CurrentTime);
+            if (ctx.Outcomes.RollProc(ProcKey, Constants.ProcChance, ctx)) hero.Auras.Apply(Buff, ctx.CurrentTime);
         }
         xavian.BrilliantFlash.Flashed += (ctx, _) => Roll(ctx);
         xavian.GetAbility<BrilliantFlare>()!.Flared += Roll;
@@ -52,8 +45,8 @@ public class SunsVerdict : Talent
     {
         public SunBeams(Xavian owner) : base(owner, LogIds.Effect(BeamEffectId), "Sun Beams")
         {
-            BaseCoefficient = BeamCoefficient;
-            AoeTargetThreshold = BeamTargetThreshold;
+            BaseCoefficient = Constants.SingleTargetFillerMeleeTalentAoeProcBuffAoeDamageStrengthCoefficient;
+            AoeTargetThreshold = Constants.SingleTargetFillerMeleeTalentAoeProcBuffAoeDamageScalingTargetCountThreshold;
         }
 
         public void Strike(SimulationContext ctx, EnemyTarget target)

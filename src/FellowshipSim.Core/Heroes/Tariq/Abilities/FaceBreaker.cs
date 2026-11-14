@@ -4,14 +4,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// Ability 2239: "Instantly attack target enemy dealing physical damage to the target. Face Breaker deals part of its
 /// damage to enemies near your target. Generates Fury."
 /// </summary>
-public class FaceBreaker : TariqAbility
+public partial class FaceBreaker : TariqAbility
 {
-    public const int AbilityId = 2239;
-    public const string AbilityName = "Face Breaker";
-    /// <summary>Share of Strength.</summary>
-    public const double Coefficient = 6.18426;
-    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
-    public const double CooldownSeconds = 6.0;
     /// <summary>Game data: a share of maximum Fury.</summary>
     public const double FuryGain = 7.0;
 
@@ -21,10 +15,10 @@ public class FaceBreaker : TariqAbility
     /// <summary>Game data targetCountFalloff of ability 2241: effect 3162, with a threshold.</summary>
     public const double SplashTargetThreshold = 12;
 
-    public FaceBreaker(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public FaceBreaker(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = Constants.StrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

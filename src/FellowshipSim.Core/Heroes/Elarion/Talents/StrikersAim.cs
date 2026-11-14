@@ -5,20 +5,17 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// <summary>
 /// Talent 680: Highwind Arrow grants a stack of Striker's Aim for every Ricochet that does not find its target,
 /// granting Expertise per stack. Periodically a stack of Striker's Aim is removed. Striker's Aim is only
-/// reapplied if missing Ricochets exceed the current effect stack count. Effect 3179 (Expertise, a decay period, stacks). UNVERIFIED: no combat log has this talent.
+/// reapplied if missing Ricochets exceed the current effect stack count. Effect 3179 (Expertise, a decay period, capped
+/// stacks). UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class StrikersAim : Talent
+public partial class StrikersAim : Talent
 {
-    public const int TalentId = 680;
-    public const string TalentName = "Striker's Aim";
     public const int BuffEffectId = 3179;
-    public const double ExpertisePerStack = 0.02;
-    public const double DecaySeconds = 2.0;
     /// <summary>Final Crescendo's arrow ricochets 8 times, and each ricochet that finds no enemy gives a stack (per the user).</summary>
     public const int MaxStacks = 8;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Striker's Aim", BuffEffectId, DecaySeconds, MaxStacks,
-        StatModifier.Add(StatType.Expertise, ExpertisePerStack));
+    public static readonly AuraDef Buff = AuraDef.Effect("Striker's Aim", BuffEffectId, Constants.NoBounceBuffBuffDuration, MaxStacks,
+        StatModifier.Add(StatType.Expertise, Constants.NoBounceBuffExpertiseAdded));
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -34,7 +31,7 @@ public class StrikersAim : Talent
             Decay(ctx, hero.Auras.Get(Buff, ctx.CurrentTime)!);
         };
 
-        // One stack every `DecaySeconds`: the aura runs out at the last stack, and each earlier stack goes as the period passes.
+        // One stack every `BuffDuration`: the aura runs out at the last stack, and each earlier stack goes as the period passes.
         void Decay(SimulationContext ctx, Aura aura)
         {
             var at = aura.ExpiresAt;

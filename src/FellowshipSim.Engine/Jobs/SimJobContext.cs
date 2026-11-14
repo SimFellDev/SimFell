@@ -31,8 +31,7 @@ public sealed class SimJobContext : IProgress<SimProgress>, IProgress<string>
     /// </summary>
     public void Report(double? fraction, string? message = null) => _queue.Report(Job, fraction, message);
 
-    public void Report(SimProgress value) => Report(value.Fraction,
-        string.Format(CultureInfo.InvariantCulture, "{0:N0} of {1:N0} fights", value.CompletedFights, value.Fights));
+    public void Report(SimProgress value) => Report(value.Fraction, value.Text);
 
     public void Report(string value) => Report(null, value);
 }

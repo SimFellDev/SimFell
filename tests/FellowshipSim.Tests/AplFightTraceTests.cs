@@ -112,7 +112,7 @@ public class AplFightTraceTests
             stat_enchant_counts=crit_expertise:1/crit_haste:8
             relic1=orb_of_inner_seas,id=5926
             relic2=orb_of_hidden_riches,id=5921
-            legendary=devouring_flame,id=5225
+            legendary=devouring_flame,id=5900
             weapon=ashas_chronoshift_spire
 
             actions+=/apocalypse

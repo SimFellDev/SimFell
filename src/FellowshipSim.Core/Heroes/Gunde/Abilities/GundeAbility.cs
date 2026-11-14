@@ -17,6 +17,9 @@ public abstract class GundeAbility : Ability
     /// <summary>Share of each hit's damage added to its target's Rend (0: the ability applies no Rend).</summary>
     public double RendShare { get; protected set; }
 
+    /// <summary>Multiplier on the whole share, bonuses included (Bloodbound Spirit's <c>DotScaler</c>).</summary>
+    public double RendShareScaler { get; protected set; } = 1.0;
+
     /// <summary>
     /// Serrated Edge and Crimson Strikes empower it: every ability that applies Rend but Bloodbound Spirit ("Serrated Edge
     /// does not interact with your Bloodbound Spirit ability").
@@ -46,7 +49,7 @@ public abstract class GundeAbility : Ability
         {
             foreach (var empower in Gunde.RendCastMultipliers) multiplier *= empower(ctx, this);
         }
-        return new RendCast(Gunde, share, multiplier);
+        return new RendCast(Gunde, share * RendShareScaler, multiplier);
     }
 
     /// <summary>

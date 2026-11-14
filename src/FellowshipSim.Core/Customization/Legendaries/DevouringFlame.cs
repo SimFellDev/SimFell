@@ -8,23 +8,13 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// also causes the afflicted target to take more damage from you for each Engulfing Flames that is active on them."
 /// Item 5900 grants the same power: combat logs (Fc8v6yWxD14GQMnV fight 19, YC861NTRgLbmw4Qa fight 31) show its wearer
 /// dealing more damage to enemies with Engulfing Flames on them. Each Engulfing Flames multiplies the bonus (per the user):
-/// (1 + <see cref="DamagePerInstance"/>)^K with K of them.
+/// <see cref="Constants.BoostsIncomingDamageDamageMultiplier"/>^K with K of them.
 /// </summary>
-public class DevouringFlame : Legendary
+public partial class DevouringFlame : Legendary
 {
-    public const int PowerId = 616;
-    public const int BracersItemId = 5225;
-    public const int HelmItemId = 5900;
-    public const double DamagePerInstance = 0.07;
-
-    public override int LegendaryPowerId => PowerId;
-    public override string Name => "Devouring Flame";
-    public override string HeroName => "Ardeos";
-    public override IReadOnlyList<int> ItemIds => [BracersItemId, HelmItemId];
-
     public override void Bind(Hero hero)
     {
         if (hero is not Ardeos ardeos || ardeos.GetAbility<EngulfingFlames>()?.Dot is not { } engulfing) return;
-        hero.TargetDamageMultipliers.Add((target, _) => Math.Pow(1.0 + DamagePerInstance, ardeos.Dots.Count(target, engulfing)));
+        hero.TargetDamageMultipliers.Add((target, _) => Math.Pow(Constants.BoostsIncomingDamageDamageMultiplier, ardeos.Dots.Count(target, engulfing)));
     }
 }

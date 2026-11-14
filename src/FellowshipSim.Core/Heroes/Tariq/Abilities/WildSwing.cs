@@ -5,21 +5,11 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// enemies." Recklessness: it cannot critically strike, and its damage is increased by your critical strike chance.
 /// Generates Fury.
 /// </summary>
-public class WildSwing : TariqAbility
+public partial class WildSwing : TariqAbility
 {
-    public const int AbilityId = 1234;
-    public const string AbilityName = "Wild Swing";
-    /// <summary>Share of Strength.</summary>
-    public const double Coefficient = 1.2914;
     /// <summary>
-    /// Game data: no cooldown effect, so the cooldown is its global cooldown,
-    /// 1 / Haste snapshotted at commit, outside Cooldown Recovery.
-    /// </summary>
-    public const double CooldownSeconds = 1.5;
     /// <summary>Game data: a share of maximum Fury.</summary>
     public const double FuryGain = 3.0;
-    /// <summary>Game data targetCountFalloff: effect 1770 has <see cref="TargetThreshold"/>.</summary>
-    public const double TargetThreshold = 5;
     /// <summary>
     /// "Enemies have an increased chance to Dodge Wild Swing" (the tooltip
     /// names no total). Combat logs (3 Tariq fights): avoided Wild Swing hits are misses and dodges, and no other Tariq
@@ -28,12 +18,14 @@ public class WildSwing : TariqAbility
     public const double AvoidChance = 0.07;
     public const string AvoidedProcKey = "wild_swing_avoided";
 
-    public WildSwing(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public WildSwing(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = Constants.StrengthCoefficient;
+        // Game data: no cooldown effect, so the cooldown is its global cooldown, 1 / Haste snapshotted at commit, outside
+        // Cooldown Recovery.
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         IgnoresCooldownRecovery = true;
-        AoeTargetThreshold = TargetThreshold;
+        AoeTargetThreshold = Constants.TargetThresholdForDamageScale;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
@@ -43,7 +35,7 @@ public class WildSwing : TariqAbility
         // Combat logs (3 Tariq fights, 388 hits): no Wild Swing hit crits.
         double recklessness = 1.0 + Owner.CritChance(ctx.CurrentTime);
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, AreaAround(ctx, target), ctx);
-        double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
+        double falloff = struck.Count > Constants.TargetThresholdForDamageScale ? Math.Sqrt((double)Constants.TargetThresholdForDamageScale / struck.Count) : 1.0;
         for (int i = 0; i < struck.Count; i++)
         {
             // A swing the enemy avoids is a hit of no damage.

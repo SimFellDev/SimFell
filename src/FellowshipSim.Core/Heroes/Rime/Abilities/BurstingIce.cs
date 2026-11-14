@@ -6,29 +6,18 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// Ability 1031. Applies debuff effect 1395 (pulsing on a hasted period) whose pulses deal damage effect 1396
 /// to the target and nearby enemies and generate Anima. While it is active Rime has Winter's Embrace (effect 2303).
 /// </summary>
-public class BurstingIce : RimeAbility
+public partial class BurstingIce : RimeAbility
 {
-    public const int AbilityId = 1031;
-    public const string AbilityName = "Bursting Ice";
-    public const double Coefficient = 0.498;
-    public const double CooldownSeconds = 10.0;
-    public const double CastTimeSeconds = 2.0;
     public const int DebuffEffectId = 1395;
-    public const double DurationSeconds = 3.0;
-    public const double PulsePeriodSeconds = 0.5;
     public const int PulseEffectId = 1396;
-    public const double AnimaPerPulse = 1.0;
     public const int WintersEmbraceEffectId = 2303;
-    public const double WintersEmbraceDamage = 1.2;
-    /// <summary>Combat logs: pulses lose damage as a square-root falloff beyond <see cref="TargetThreshold"/> targets.</summary>
-    public const double TargetThreshold = 5;
 
     /// <summary>The debuff on the enemy. Action lists read it; the pulses run on their own timer.</summary>
-    public static readonly AuraDef Debuff = AuraDef.Effect("Bursting Ice", DebuffEffectId, DurationSeconds);
+    public static readonly AuraDef Debuff = AuraDef.Effect("Bursting Ice", DebuffEffectId, Constants.AoeDuration);
 
     /// <summary>"While Bursting Ice is active on an enemy you gain Winter's Embrace, causing you to deal more damage."</summary>
     public static readonly AuraDef WintersEmbrace = AuraDef.Effect("Winter's Embrace", WintersEmbraceEffectId,
-        modifiers: StatModifier.More(StatType.DamageScale, WintersEmbraceDamage));
+        modifiers: StatModifier.More(StatType.DamageScale, Constants.BuffWhileActiveDamageScaleOtherAbilities));
 
     private int _activeDebuffs;
 
@@ -44,7 +33,7 @@ public class BurstingIce : RimeAbility
     }
 
     /// <summary>The debuff's duration with its bonus.</summary>
-    public double Duration => DurationSeconds + BonusDurationSeconds;
+    public double Duration => Constants.AoeDuration + BonusDurationSeconds;
 
     private AuraDef _debuff = Debuff;
 
@@ -54,12 +43,13 @@ public class BurstingIce : RimeAbility
     /// <summary>Raised after each pulse has dealt its damage (Harrowing Ice).</summary>
     public event Action<SimulationContext>? Pulsed;
 
-    public BurstingIce(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public BurstingIce(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
-        SetCooldown(CooldownSeconds);
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = Constants.AoeDamageIntellectCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
+        SetCooldown(AbilityCooldown);
+        // Combat logs: pulses lose damage as a square-root falloff beyond this many targets.
+        AoeTargetThreshold = Constants.DamageScalingTargetCountThreshold;
         DamageLogId = LogIds.Effect(PulseEffectId);
     }
 
@@ -74,7 +64,7 @@ public class BurstingIce : RimeAbility
         double dealt = DealAoeDamage(ctx, enemies, damageMultiplier: multiplier);
         // The Anima comes after the damage, for an enemy whose 1396 application succeeded: a pulse that strikes no enemy
         // gives none.
-        if (dealt > 0) hero.AddAnima(AnimaPerPulse, ctx, target);
+        if (dealt > 0) hero.AddAnima(Constants.ResourceGainPerHit, ctx, target);
         Pulsed?.Invoke(ctx);
     }
 
@@ -120,7 +110,7 @@ public class BurstingIce : RimeAbility
             ctx.EnemyDemising += demise;
         }
         // Effect 1395 is tagged EffectType.Dot: a haste change inside a pulse repeats it a server frame later.
-        debuff = PeriodicEffect.BeginHasted(ctx, hero, Name, Duration, PulsePeriodSeconds, tickOnStart: false, partialFinalTick: true,
+        debuff = PeriodicEffect.BeginHasted(ctx, hero, Name, Duration, Constants.AoePulsePeriod, tickOnStart: false, partialFinalTick: true,
             // Combat logs (10 Rime logs, 526 debuffs): the final pulse deals the fraction of a pulse period left when the
             // debuff runs out.
             onTick: (c, fraction) =>

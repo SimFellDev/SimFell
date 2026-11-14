@@ -9,18 +9,13 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// crit chance, constant Talent.CooldownProc.Buff.CritChanceIncrease 0). Combat logs (XyGpcHjNaAzgk7mW fight 20 @ 29.724):
 /// the Omnistrike removes Golden Hour and applies 1 stack of Omega Reprieval.
 /// </summary>
-public class GoldenHour : Talent
+public partial class GoldenHour : Talent
 {
-    public const int TalentId = 578;
-    public const string TalentName = "Golden Hour";
-    public const double FlashDamageMultiplier = 1.5;
-    public const double Chance = 0.06;
     public const string ProcKey = "golden_hour";
     public const int BuffEffectId = 2661;
-    public const double BuffSeconds = 12.0;
     public const int OmegaStacks = 1;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, Constants.BuffCritChanceIncreaseDuration);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -29,7 +24,7 @@ public class GoldenHour : Talent
     {
         var xavian = (Xavian)hero;
         var omnistrike = xavian.GetAbility<Omnistrike>()!;
-        xavian.BrilliantFlash.AddDamageMultiplier(FlashDamageMultiplier);
+        xavian.BrilliantFlash.AddDamageMultiplier(Constants.InstantSingleTargetHealOrDamageTalentPowerScaler);
         omnistrike.Struck += ctx =>
         {
             if (!hero.Auras.HasAura(Buff, ctx.CurrentTime)) return;
@@ -38,7 +33,7 @@ public class GoldenHour : Talent
         };
         xavian.OffensiveAbilityUsed += (ctx, _) =>
         {
-            if (!ctx.Outcomes.RollProc(ProcKey, Chance, ctx)) return;
+            if (!ctx.Outcomes.RollProc(ProcKey, Constants.ProcChance, ctx)) return;
             hero.CooldownOf(omnistrike).ResetAll();
             hero.Auras.Apply(Buff, ctx.CurrentTime);
         };

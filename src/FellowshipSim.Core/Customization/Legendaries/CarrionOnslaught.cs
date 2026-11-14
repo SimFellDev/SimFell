@@ -36,7 +36,7 @@ public class CarrionOnslaught : Legendary
     public static readonly AuraDef Buff = AuraDef.Effect(EffectName, BuffEffectId, EffectSeconds);
 
     /// <summary>The Blood Feathers still to drop, a stack each.</summary>
-    public static readonly AuraDef Feathers = AuraDef.Effect(EffectName, FeathersEffectId, EffectSeconds, OwedInBlood.MaxStacks);
+    public static readonly AuraDef Feathers = AuraDef.Effect(EffectName, FeathersEffectId, EffectSeconds, OwedInBlood.Constants.MaxStacks);
 
     public override int LegendaryPowerId => PowerId;
     public override string Name => EffectName;
@@ -69,7 +69,7 @@ public class CarrionOnslaught : Legendary
             int feathers = (int)Math.Round((double)consumed / StacksPerFeather);
             consumed = 0;
             if (feathers == 0) return;
-            hero.Auras.Apply(Feathers, ctx.CurrentTime, setStacks: Math.Min(feathers, OwedInBlood.MaxStacks));
+            hero.Auras.Apply(Feathers, ctx.CurrentTime, setStacks: Math.Min(feathers, OwedInBlood.Constants.MaxStacks));
             PeriodicEffect.Begin(ctx, EffectName, EffectSeconds, TickSeconds, tickOnStart: true, partialFinalTick: false,
                 onTick: (c, _) =>
                 {

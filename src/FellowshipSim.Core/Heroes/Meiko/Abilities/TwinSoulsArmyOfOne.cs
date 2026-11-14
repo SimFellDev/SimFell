@@ -8,10 +8,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// Spirit Points and grants Spirit of Heroism (+30% Haste). Effect 1547 is the buff; the strikes are
 /// <see cref="SiblingOfWind"/>.
 /// </summary>
-public class TwinSoulsArmyOfOne : MeikoAbility
+public partial class TwinSoulsArmyOfOne : MeikoAbility
 {
-    public const int AbilityId = 1110;
-    public const string AbilityName = "Twin Souls: Army of One";
     public const int BuffEffectId = 1547;
     public const double BuffSeconds = 20.0;
     /// <summary>Effect 1547: DamageScale x1.2.</summary>
@@ -20,7 +18,7 @@ public class TwinSoulsArmyOfOne : MeikoAbility
     public static readonly AuraDef Buff = AuraDef.Effect("Twin Souls: Army of One", BuffEffectId, BuffSeconds,
         modifiers: StatModifier.More(StatType.DamageScale, BuffDamage));
 
-    public TwinSoulsArmyOfOne(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
+    public TwinSoulsArmyOfOne(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         IgnoresGcd = true;
         Sibling = new SiblingOfWind(owner);

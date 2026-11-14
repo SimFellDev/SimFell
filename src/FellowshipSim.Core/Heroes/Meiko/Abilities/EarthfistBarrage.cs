@@ -9,21 +9,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// (7Zmfx9gq6HjvThzc fight 2) have it cast 2.4-11 seconds apart (237.301, 239.672, 242.543, 250.895), against the game
 /// data's 45 second cooldown.
 /// </summary>
-public class EarthfistBarrage : MeikoFinisher
+public partial class EarthfistBarrage : MeikoFinisher
 {
-    public const int AbilityId = 1112;
-    public const string AbilityName = "Earthfist Barrage";
-    /// <summary>Placeholder EarthBarrTickDmg: 126.96% of Agility.</summary>
-    public const double PunchCoefficient = 1.2696;
-    /// <summary>Placeholder EarthBarrFinalDmg: 293.83% of Agility.</summary>
-    public const double UppercutCoefficient = 2.9383;
-    /// <summary>Game data channelTime 1.</summary>
-    public const double ChannelSeconds = 1.0;
-    /// <summary>
-    /// Game data channelTick 0.25 (EarthBarrPeriod 0.25), not hasted: combat logs (27 fights) put the 5 hits 0.04, 0.27,
-    /// 0.54, 0.77 and 1.01 seconds after every cast, at every Haste. All 5 are logged under 1112.
-    /// </summary>
-    public const double PunchPeriodSeconds = 0.25;
     public const int Punches = 4;
     /// <summary>"+100% increased damage when it can consume a stack of Earthfall."</summary>
     public const double EarthfallMultiplier = 2.0;
@@ -44,24 +31,28 @@ public class EarthfistBarrage : MeikoFinisher
     private double _channelMultiplier = 1.0;
     private int _strikes;
 
-    public EarthfistBarrage(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power, Technique.Fist, Technique.Kick)
+    public EarthfistBarrage(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory, Technique.Fist, Technique.Kick)
     {
-        BaseCoefficient = PunchCoefficient;
-        SetChannel(ChannelSeconds, PunchPeriodSeconds);
+        BaseCoefficient = Constants.AgilityCoefficient;
+        SetChannel(AbilityChannelTime, AbilityChannelTick);
         ChannelTicksOnStart = true;
     }
 
-    /// <summary>The punches keep their 0.25 seconds at every Haste: the channel's hasted period is undone here.</summary>
-    public override double ChannelTickPeriodFor(SimulationContext ctx) => PunchPeriodSeconds * (1.0 + Owner.GetHaste(ctx.CurrentTime));
+    /// <summary>
+    /// The punches keep their <see cref="AbilityChannelTick"/> at every Haste: the channel's hasted period is undone here.
+    /// Combat logs (27 fights) put the 5 hits 0.04, 0.27, 0.54, 0.77 and 1.01 seconds after every cast, at every Haste. All
+    /// 5 are logged under 1112.
+    /// </summary>
+    public override double ChannelTickPeriodFor(SimulationContext ctx) => AbilityChannelTick * (1.0 + Owner.GetHaste(ctx.CurrentTime));
 
     protected override void Strike(SimulationContext ctx, EnemyTarget target)
     {
-        bool earthfall = Meiko.ConsumeCharge(RisingEarth.Earthfall, ctx, refundAfterSeconds: ChannelSeconds);
+        bool earthfall = Meiko.ConsumeCharge(RisingEarth.Earthfall, ctx, refundAfterSeconds: AbilityChannelTime);
         _channelMultiplier = (earthfall ? EarthfallMultiplier : 1.0) * CastDamageMultiplier;
         _strikes = 0;
         // Combat logs (27 fights): the next Combo Builder comes 1.0s or more after the cast, so the global cooldown lasts to
         // the channel's end.
-        var channelEnd = ctx.CurrentTime + SimTime.FromSeconds(ChannelSeconds);
+        var channelEnd = ctx.CurrentTime + SimTime.FromSeconds(AbilityChannelTime);
         if (Owner.GlobalCooldownEndTime < channelEnd) Owner.GlobalCooldownEndTime = channelEnd;
     }
 
@@ -69,7 +60,7 @@ public class EarthfistBarrage : MeikoFinisher
     {
         if (target is not { IsSleeping: false }) return;
         bool uppercut = _strikes++ >= Punches;
-        double multiplier = _channelMultiplier * (uppercut ? UppercutCoefficient / PunchCoefficient * UppercutMultiplier : 1.0);
+        double multiplier = _channelMultiplier * (uppercut ? Constants.FinalHitAgilityCoefficient / Constants.AgilityCoefficient * UppercutMultiplier : 1.0);
         DealDamage(ctx, target, multiplier);
         Punched?.Invoke(ctx, target);
         if (uppercut && ExplosionTargetThreshold > 0) Explode(ctx, target, multiplier);

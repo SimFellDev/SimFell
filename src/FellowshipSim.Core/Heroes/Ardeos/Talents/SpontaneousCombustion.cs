@@ -10,12 +10,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// Combat logs (Fc8v6yWxD14GQMnV fight 19, YC861NTRgLbmw4Qa fight 31): the share of grievous ticks matches the base chance
 /// at both fights' crit ratings. The model uses the base chance with no crit term.
 /// </summary>
-public class SpontaneousCombustion : Talent
+public partial class SpontaneousCombustion : Talent
 {
-    public const int TalentId = 153;
-    public const string TalentName = "Spontaneous Combustion";
-    public const double Chance = 0.10;
-    public const double CritChance = 1.0;
     public const string SearingBlazeProcKey = "spontaneous_combustion_searing_blaze";
     public const string EngulfingFlamesProcKey = "spontaneous_combustion_engulfing_flames";
 
@@ -29,5 +25,5 @@ public class SpontaneousCombustion : Talent
     }
 
     private static void Empower(DamageOverTime? dot, string procKey) =>
-        dot?.TickCritChanceBonuses.Add((ctx, instance) => ctx.Outcomes.RollProc(procKey, Chance, ctx, instance.Target) ? CritChance : 0.0);
+        dot?.TickCritChanceBonuses.Add((ctx, instance) => ctx.Outcomes.RollProc(procKey, Constants.Chance, ctx, instance.Target) ? Constants.CritChanceAdded : 0.0);
 }

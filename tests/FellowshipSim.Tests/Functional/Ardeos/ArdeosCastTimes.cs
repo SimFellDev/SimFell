@@ -63,7 +63,7 @@ public class ArdeosCastTimes
     [InlineData(0.2, true, 29.0 / 30.0)]
     public void Detonate_Takes_A_Fixed_Time_Whatever_Your_Haste(double haste, bool legendary, double busy)
     {
-        var f = StepFights.Ardeos(haste: haste, legendaries: legendary ? [Explosivo.HelmItemId] : null);
+        var f = StepFights.Ardeos(haste: haste, legendaries: legendary ? [Explosivo.ChestItemId] : null);
 
         f.Cast<SearingBlaze>(); // an effect for Detonate to detonate
         f.Set(Ardeos.Cinders, 100); // a Burning Ember to spend
@@ -86,7 +86,7 @@ public class ArdeosCastTimes
     [InlineData(true, 29.0 / 30.0)]
     public void Detonate_Cast_Again_At_Once_Repeats_At_Its_Global_Cooldown(bool legendary, double interval)
     {
-        var f = StepFights.Ardeos(legendaries: legendary ? [Explosivo.HelmItemId] : null);
+        var f = StepFights.Ardeos(legendaries: legendary ? [Explosivo.ChestItemId] : null);
 
         f.Cast<SearingBlaze>(); // an effect for Detonate to detonate
         for (int step = 0; step < 10_000 && f.CastsStarted("Detonate").Count < 6; step++)

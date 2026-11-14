@@ -9,16 +9,15 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// Carve cast before the Blood Arc uses it up too, without the bonus (that fight's 330 such spins are well below the
 /// engine's with the bonus, while the other spins are close to it).
 /// </summary>
-public class CrimsonStrikes : Talent
+public partial class CrimsonStrikes : Talent
 {
-    public const int TalentId = 768;
-    public const string TalentName = "Crimson Strikes";
+    /// <summary>The talent's and its buff's name in combat logs; <see cref="TalentName"/> is "Crimson strikes".</summary>
+    public const string LogName = "Crimson Strikes";
     public const int EffectId = 3224;
-    public const double DamageMultiplier = 1.15;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId) with { Duration = SimTime.Infinite };
+    public static readonly AuraDef Buff = AuraDef.Effect(LogName, EffectId) with { Duration = SimTime.Infinite };
 
-    public override string Name => TalentName;
+    public override string Name => LogName;
     public override int Id => TalentId;
 
     public override void Bind(Hero hero)
@@ -29,7 +28,7 @@ public class CrimsonStrikes : Talent
         {
             if (!hero.Auras.HasAura(Buff, ctx.CurrentTime)) return 1.0;
             hero.Auras.Remove(Buff, ctx.CurrentTime);
-            return DamageMultiplier;
+            return Constants.DashAttackTalentDamageMultiplier;
         });
         // Blood Arc's own pulse comes before it grants the buff.
         gunde.RendPulse += (ctx, _) => hero.Auras.Remove(Buff, ctx.CurrentTime);

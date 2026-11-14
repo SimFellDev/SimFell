@@ -56,7 +56,7 @@ public class SimcProfileTests
         var hero = HeroImporter.Import(profile.Build);
         Assert.Equal(9, hero.Talents.Count);
         Assert.Contains(SoulfrostTorrent.TalentId, profile.Build.Talents);
-        Assert.Equal([FrostwyrmsSpite.HelmItemId], profile.Build.LegendaryItemIds);
+        Assert.Equal([FrostwyrmsSpite.HeadItemId], profile.Build.LegendaryItemIds);
         Assert.DoesNotContain(hero.UnmodeledFeatures, f => f.StartsWith("Talent") || f.StartsWith("Legendary"));
         Assert.Equal(StatDiminishingReturns.FromRating(148), hero.Stats.HastePercent, 9);
         Assert.Equal(StatBlock.BaseCritChance + StatDiminishingReturns.FromRating(153), hero.Stats.CritPercent, 9);

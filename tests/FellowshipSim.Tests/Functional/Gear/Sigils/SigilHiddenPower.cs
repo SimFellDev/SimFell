@@ -108,7 +108,7 @@ public class SigilHiddenPower
 
         using var check = new Checks(f);
         check.Equal(6, chances.Count, what: "rolls: 5, none during Power Revealed, 1 after");
-        check.Ratio(HiddenPower.ProcsPerMinute * (firstAfter - lastRoll) / 60, chances[5]);
+        check.Ratio(HiddenPower.SigilProcsPerMinute * (firstAfter - lastRoll) / 60, chances[5]);
         check.True(chances[5] > 5 * chances[4], "far above an ordinary roll's chance");
     }
 }

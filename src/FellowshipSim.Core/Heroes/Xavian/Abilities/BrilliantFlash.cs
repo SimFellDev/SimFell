@@ -7,12 +7,8 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 /// Target ... When cast on an enemy, Brilliant Flash is also casted on all enemies within a large range of that enemy."
 /// BRILLIANT SPIRIT: "a chance equal to your Spirit % to trigger a Spirit Refund. When it does, you gain 50 Mana".
 /// </summary>
-public class BrilliantFlash : XavianAbility
+public partial class BrilliantFlash : XavianAbility
 {
-    public const int AbilityId = 1855;
-    public const string AbilityName = "Brilliant Flash";
-    /// <summary>Placeholder BrillFlashDmg: 255% of Strength.</summary>
-    public const double Coefficient = 2.55;
     /// <summary>Game data targetCountFalloff: effect 2565 (Brilliant Flash), threshold 3.</summary>
     public const double TargetThreshold = 3;
     /// <summary>Ability 1861's text: 50% increased power on the main target.</summary>
@@ -31,9 +27,9 @@ public class BrilliantFlash : XavianAbility
     /// <summary>Raised for each hit's damage, with its enemy (Sun's Touch).</summary>
     public event Action<SimulationContext, EnemyTarget, double>? Dealt;
 
-    public BrilliantFlash(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power)
+    public BrilliantFlash(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = Constants.DamageStrengthCoefficient;
     }
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
@@ -69,7 +65,7 @@ public class BrilliantFlash : XavianAbility
                 double multiplier = enemy == target ? EnhancedMainTargetMultiplier : falloff;
                 DealDamage(ctx, enemy, multiplier, onLanded: (c, dealt) => Dealt?.Invoke(c, enemy, dealt));
             }
-            hero.GainMana(Xavian.MaxMana * EnhancedManaShare, ctx, target);
+            hero.GainMana(Xavian.HeroMaxMana * EnhancedManaShare, ctx, target);
         }
         else
         {

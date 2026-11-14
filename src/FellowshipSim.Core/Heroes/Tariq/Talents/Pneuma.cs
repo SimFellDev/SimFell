@@ -6,10 +6,8 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// Talent 81: "Your Culling Strike generates a Spirit Point." (Culling Strike generates SpiritPoints.)
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class Pneuma : Talent
+public partial class Pneuma : Talent
 {
-    public const int TalentId = 81;
-    public const string TalentName = "Pneuma";
     public const double SpiritPoints = 1.0;
 
     public override string Name => TalentName;

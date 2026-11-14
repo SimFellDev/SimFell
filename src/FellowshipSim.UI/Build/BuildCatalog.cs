@@ -36,19 +36,22 @@ public sealed class BuildCatalog
         var heroClass = BuildHeroes.Create(hero);
         Talents = heroClass.TalentTreeSlots
             .Select(slot => new TalentOption(slot, Catalog.CreateTalent(slot.TalentId) is { } talent
-                // A talent the engine knows by its combat-log ID (Macabre Stratagem) has its icon by name.
-                ? new BuildOption(talent.Id, talent.Name, GameIcons.Talents.GetValueOrDefault(talent.Id) ?? GameIcons.Names.GetValueOrDefault(talent.Name))
+                // A talent class with no generated half has its icon by ID, and one the engine knows by its combat-log ID
+                // (Macabre Stratagem) by name.
+                ? new BuildOption(talent.Id, talent.Name,
+                    talent.Icon ?? GameIcons.Talents.GetValueOrDefault(talent.Id) ?? GameIcons.Names.GetValueOrDefault(talent.Name))
                 : new BuildOption(slot.TalentId, GameHeroData.TalentNames.GetValueOrDefault(slot.TalentId, $"Talent {slot.TalentId}"),
                     GameIcons.Talents.GetValueOrDefault(slot.TalentId), Modeled: false)))
             .ToList();
         // The hero's own weapons, by the hero's item names; a name the game data gives two of the
         // hero's weapons (Rime's An'zhyr staff is a second "Void-touched Conduit") is the engine's weapon's, else its ability's.
-        var weapons = GameHeroData.Weapons.GetValueOrDefault(hero) ?? new Dictionary<int, string>();
+        var weapons = heroClass.WeaponNames;
         Weapons = weapons
             .Select(w => (Id: w.Key, Name: weapons.Values.Count(n => n == w.Value) == 1
                 ? w.Value
                 : Catalog.CreateWeapon(w.Key)?.Name ?? GameHeroData.WeaponAbilityNames.GetValueOrDefault(w.Key, w.Value)))
-            .Select(w => new BuildOption(w.Id, w.Name, GameIcons.WeaponAbilities.GetValueOrDefault(w.Id), Modeled: Catalog.CreateWeapon(w.Id) != null))
+            .Select(w => (w.Id, w.Name, Engine: Catalog.CreateWeapon(w.Id)))
+            .Select(w => new BuildOption(w.Id, w.Name, w.Engine?.Icon ?? GameIcons.WeaponAbilities.GetValueOrDefault(w.Id), Modeled: w.Engine != null))
             .OrderBy(o => o.Name).ToList();
         // The hero's legendaries as the game has them, one per legendary item, each the engine's when it models it; an
         // engine legendary none of whose items the game data gives the hero comes by its first item.
@@ -57,23 +60,21 @@ public sealed class BuildCatalog
         var legendaries = gameLegendaries.Select(l => (Item: l.Key, Name: l.Value, Engine: Catalog.CreateLegendary(hero, l.Key)))
             .Concat(engineLegendaries.Where(e => !e.ItemIds.Any(gameLegendaries.ContainsKey)).Select(e => (Item: e.ItemIds[0], e.Name, Engine: (Legendary?)e)))
             .ToList();
-        // The hero's legendary item's icon, else the first of its other items' with one, else the power's.
+        // The engine legendary's icon, else the hero's legendary item's.
         Legendaries = legendaries
             .Select(l => new BuildOption(l.Item, l.Engine?.Name ?? l.Name,
-                GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{l.Item}")
-                ?? l.Engine?.ItemIds.Select(id => GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{id}")).FirstOrDefault(icon => icon != null)
-                ?? (l.Engine is { } engine ? GameIcons.LegendaryPowers.GetValueOrDefault(engine.LegendaryPowerId) : null),
+                l.Engine?.Icon ?? GameIcons.LegendaryItems.GetValueOrDefault($"{hero}:{l.Item}"),
                 l.Engine?.IsModeled == true))
             .OrderBy(o => Array.IndexOf(LegendarySlotOrder, o.Id) is >= 0 and var slot ? slot : LegendarySlotOrder.Length)
             .ThenBy(o => o.Name).ToList();
         _legendaryOfItem = legendaries.SelectMany(l => (l.Engine?.ItemIds ?? []).Append(l.Item).Select(id => (Item: id, Option: l.Item)))
             .DistinctBy(x => x.Item).ToDictionary(x => x.Item, x => x.Option);
         Relics = Catalog.AllRelicPassives
-            .SelectMany(r => r.Items.Select(i => new RelicOption(i.Id, i.Name, r.Name)))
+            .SelectMany(r => r.Items.Select(i => new RelicOption(i.Id, i.Name, r.Name, i.Icon)))
             .OrderBy(o => o.Name).ToList();
         var augmentations = Catalog.AllAugmentations.ToList();
         List<BuildOption> OfKind<T>() => augmentations.OfType<T>().Cast<Augmentation>()
-            .Select(t => new BuildOption(t.Id, t.Name, GameIcons.Augmentations.GetValueOrDefault(t.Id), MaxRank: GameIcons.AugmentationMaxRanks.GetValueOrDefault(t.Id, DefaultMaxRank)))
+            .Select(t => new BuildOption(t.Id, t.Name, t.Icon ?? GameIcons.Augmentations.GetValueOrDefault(t.Id), MaxRank: GameIcons.AugmentationMaxRanks.GetValueOrDefault(t.Id, DefaultMaxRank)))
             .OrderBy(o => o.Name).ToList();
         Aspects = OfKind<Aspect>();
         Sigils = OfKind<Sigil>();
@@ -84,7 +85,7 @@ public sealed class BuildCatalog
             .Select(e => new StatEnchantOption(e, e.NameFor(mainStat)))
             .ToList();
         Glyphs = Catalog.AllGlyphs
-            .Select(b => new BuildOption(b.Id, b.Name, GameIcons.Glyphs.GetValueOrDefault(b.Id), MaxRank: GameIcons.GlyphMaxRanks.GetValueOrDefault(b.Id, DefaultMaxRank)))
+            .Select(b => new BuildOption(b.Id, b.Name, b.Icon ?? GameIcons.Glyphs.GetValueOrDefault(b.Id), MaxRank: GameIcons.GlyphMaxRanks.GetValueOrDefault(b.Id, DefaultMaxRank)))
             .OrderBy(o => o.Name).ToList();
     }
 
@@ -103,7 +104,7 @@ public sealed class BuildCatalog
 
     public IReadOnlyList<BuildOption> Legendaries { get; }
 
-    // Each legendary's option (its item ID) by every item ID it comes on: a saved Vexira's Venom can be the old wristbands, 5225.
+    // Each legendary's option (its item ID) by every item ID it comes on.
     private readonly Dictionary<int, int> _legendaryOfItem;
 
     /// <summary>The ID of the <see cref="Legendaries"/> option that legendary item <paramref name="itemId"/> is, or null.</summary>
@@ -126,34 +127,37 @@ public sealed class BuildCatalog
     public static IReadOnlyList<GemColor> GemColors { get; } = Enum.GetValues<GemColor>();
 
     /// <summary>The icon's image of gem colour <paramref name="color"/>, or null.</summary>
-    public static string? GemIconUrl(GemColor color) => GameIcons.Gems.TryGetValue(color.ToString(), out var icon) ? GameIcons.Url(icon) : null;
+    public static string? GemIconUrl(GemColor color) => GameIcons.Gems.GetValueOrDefault(color.ToString());
+
+    // The icon of each log ID's own record, once per log ID.
+    private static readonly ConcurrentDictionary<int, string?> LogIdIcons = new();
 
     /// <summary>
     /// The icon's image of a damage source or aura with log ID <paramref name="logId"/> (an ability's ID, or an effect's,
-    /// talent's or augmentation's plus its offset): its own record's icon, else the first record of its name with one.
+    /// talent's or augmentation's plus its offset): its own record's icon (an engine talent's or augmentation's, else the
+    /// game data's), else the first record of its name with one.
     /// </summary>
-    public static string? IconUrl(int logId, string name)
+    public static string? IconUrl(int logId, string name) =>
+        LogIdIcons.GetOrAdd(logId, IconOfLogId) ?? GameIcons.Names.GetValueOrDefault(name);
+
+    private static string? IconOfLogId(int logId) => logId switch
     {
-        string? icon = logId switch
-        {
-            >= LogIds.AugmentationOffset => GameIcons.Augmentations.GetValueOrDefault(logId - LogIds.AugmentationOffset),
-            >= LogIds.TalentOffset => GameIcons.Talents.GetValueOrDefault(logId - LogIds.TalentOffset),
-            >= LogIds.EffectOffset => GameIcons.Effects.GetValueOrDefault(logId - LogIds.EffectOffset),
-            > 0 => GameIcons.Abilities.GetValueOrDefault(logId),
-            _ => null,
-        };
-        icon ??= GameIcons.Names.GetValueOrDefault(name);
-        return icon == null ? null : GameIcons.Url(icon);
-    }
+        >= LogIds.AugmentationOffset => Catalog.CreateAugmentation(logId - LogIds.AugmentationOffset, 1)?.Icon
+                                        ?? GameIcons.Augmentations.GetValueOrDefault(logId - LogIds.AugmentationOffset),
+        >= LogIds.TalentOffset => Catalog.CreateTalent(logId - LogIds.TalentOffset)?.Icon ?? GameIcons.Talents.GetValueOrDefault(logId - LogIds.TalentOffset),
+        >= LogIds.EffectOffset => GameIcons.Effects.GetValueOrDefault(logId - LogIds.EffectOffset),
+        > 0 => GameIcons.Abilities.GetValueOrDefault(logId),
+        _ => null,
+    };
 
     /// <summary>The icon's image of gem <paramref name="gem"/> (its colour and size), or null.</summary>
-    public static string? GemIconUrl(GemItem gem) => GameIcons.GemItems.TryGetValue(gem.Id, out var icon) ? GameIcons.Url(icon) : null;
+    public static string? GemIconUrl(GemItem gem) => GameIcons.GemItems.GetValueOrDefault(gem.Id);
 
     /// <summary>Every hero of the game (the game data's), by name; <see cref="Catalog.Heroes"/> are the ones the engine has.</summary>
     public static IReadOnlyList<string> GameHeroes { get; } = GameIcons.Heroes.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
 
     /// <summary>The hero's portrait, or null.</summary>
-    public static string? PortraitUrl(string hero) => GameIcons.Heroes.TryGetValue(hero, out var icon) ? GameIcons.Url(icon) : null;
+    public static string? PortraitUrl(string hero) => GameIcons.Heroes.GetValueOrDefault(hero);
 
     /// <summary>Talent points left to spend: <see cref="Domain.Hero.TalentPoints"/> less the cost of every pick.</summary>
     public int PointsLeft(IEnumerable<int> talents)

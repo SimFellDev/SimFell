@@ -26,7 +26,7 @@ public class RelicCovetousGreed
     [InlineData("Rime", 1, 350.0)]
     public void Covetous_Greed_Raises_Gem_Power_By_25_Percent_Rounded_Down(string hero, int slot, double power)
     {
-        int[] relics = slot == 1 ? [CovetousGreed.OrbItemId] : [0, CovetousGreed.OrbItemId];
+        int[] relics = slot == 1 ? [CovetousGreed.RelicItemId] : [0, CovetousGreed.RelicItemId];
         var f = StepFights.Of(hero, relics: relics, gemPower: new() { [GemColor.Ruby] = power });
 
         Assert.Equal(Math.Floor(power * 1.25), f.GemPower(GemColor.Ruby));

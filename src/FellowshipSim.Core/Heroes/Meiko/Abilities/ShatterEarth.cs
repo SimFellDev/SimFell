@@ -6,26 +6,21 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// standing in in the effect." 45 second cooldown, on the global cooldown. The slam is effect 1557, logged under 1115;
 /// the quake is <see cref="ShatterEarthQuake"/>.
 /// </summary>
-public class ShatterEarth : MeikoAbility
+public partial class ShatterEarth : MeikoAbility
 {
-    public const int AbilityId = 1115;
-    public const string AbilityName = "Shatter Earth";
     /// <summary>Placeholder ShatterEarthAoeDmg: 746% of Agility.</summary>
     public const double Coefficient = 7.46;
-    public const double CooldownSeconds = 45.0;
-    /// <summary>Game data targetCountFalloff: effect 1557, threshold 1.</summary>
-    public const double TargetThreshold = 1;
     /// <summary>Combat logs (27 fights): the slam lands 0.27-0.37 seconds after the cast.</summary>
     public const double LeapSeconds = 0.3;
 
     /// <summary>Shatter Earth was cast (Earthbourne, Will of Stone).</summary>
     public event Action<SimulationContext, EnemyTarget>? Slammed;
 
-    public ShatterEarth(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public ShatterEarth(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
-        AoeTargetThreshold = TargetThreshold;
+        SetCooldown(AbilityCooldown);
+        AoeTargetThreshold = Constants.TargetCountDamageScalingThreshold;
         Quake = new ShatterEarthQuake(owner);
     }
 

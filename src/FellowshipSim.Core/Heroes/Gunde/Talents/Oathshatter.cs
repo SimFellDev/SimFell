@@ -9,12 +9,8 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// on 15 others; Y4wpb2f3gc8LqJDX fight 25, four casts alike on 26 others): each other enemy takes
 /// the share with a square-root falloff beyond a threshold of others lower than the tooltip's. The explosion is logged as Exsanguinate.
 /// </summary>
-public class Oathshatter : Talent
+public partial class Oathshatter : Talent
 {
-    public const int TalentId = 762;
-    public const string TalentName = "Oathshatter";
-    public const double CritChance = 0.3;
-    public const double ExplosionShare = 0.5;
     public const double ExplosionTargetThreshold = 8;
 
     public override string Name => TalentName;
@@ -24,7 +20,7 @@ public class Oathshatter : Talent
     {
         var heartSplitter = hero.GetAbility<HeartSplitter>();
         if (heartSplitter == null) return;
-        heartSplitter.CritChanceBonus += CritChance;
+        heartSplitter.CritChanceBonus += Constants.IncreasedCritChanceAdditionalCritChance;
         int id = LogIds.Effect(HeartSplitter.ExsanguinateEffectId);
         heartSplitter.Exsanguinated += (ctx, target, damage, crit) =>
         {
@@ -34,7 +30,7 @@ public class Oathshatter : Talent
             double falloff = others.Count > ExplosionTargetThreshold ? Math.Sqrt(ExplosionTargetThreshold / others.Count) : 1.0;
             foreach (var enemy in others)
             {
-                ctx.ApplyDamage(hero, enemy, damage * ExplosionShare * falloff, id, HeartSplitter.ExsanguinateName, canCrit: false, 0.0, 1.0);
+                ctx.ApplyDamage(hero, enemy, damage * Constants.AoeDamageScaler * falloff, id, HeartSplitter.ExsanguinateName, canCrit: false, 0.0, 1.0);
             }
         };
     }

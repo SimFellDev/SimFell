@@ -7,12 +7,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// and Fire Ball also gain a chance to critically strike with their damage over time effects. Fire Ball and
 /// Fire Frogs effects then crit as the others do. UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class Firestarter : Talent
+public partial class Firestarter : Talent
 {
-    public const int TalentId = 149;
-    public const string TalentName = "Firestarter";
-    public const double CritChance = 0.20;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -20,7 +16,7 @@ public class Firestarter : Talent
     {
         ((Ardeos)hero).ForEveryDot(dot =>
         {
-            dot.CritChanceBonus += CritChance;
+            dot.CritChanceBonus += Constants.IncreasedDotCritChanceCritChanceIncrease;
             dot.TicksCanCrit = true;
         });
     }

@@ -7,11 +7,11 @@ namespace FellowshipSim.Core.Customization.Weapons;
 /// Claws (Meiko) and Zaraleth's Mournfang (Xavian). Item 5984 grants it too: The Devourer’s Hour (Aeona), Zeraleth's Scythe
 /// (Sylvie) and Zeraleth's Compendium (Vigour).
 /// </summary>
-public class ZeralethsArms : Weapon
+public partial class ZeralethsArms : Weapon
 {
     public const string WeaponName = "Zeraleth's Arms";
 
-    public override int WeaponAbilityId => ZeralethsHunger.AbilityId;
+    public override int WeaponAbilityId => WeaponPowerAbilityId;
     public override string Name => WeaponName;
 
     public override void Equip(Hero hero)

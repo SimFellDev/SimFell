@@ -7,15 +7,11 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// with AbilityType.Skill.Secondary, AbilityType.Weapon, CustomAssetTags.Mara.ResetCooldownRefillResources, AbilityType.SetBonus
 /// or AbilityType.Trait in its AbilityTags or ParentTags, and leaves the global cooldown alone.
 /// </summary>
-public class FinalStratagem : MaraAbility
+public partial class FinalStratagem : MaraAbility
 {
-    public const int AbilityId = 1468;
-    public const string AbilityName = "Final Stratagem";
-    public const double CooldownSeconds = 180.0;
-
-    public FinalStratagem(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public FinalStratagem(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 
@@ -33,8 +29,8 @@ public class FinalStratagem : MaraAbility
     {
         var hero = Mara;
         TriggerCooldown(ctx);
-        hero.GainEnergy(Mara.MaxEnergy, ctx);
-        hero.GainComboPoints(Mara.MaxComboPoints, ctx);
+        hero.GainEnergy(Mara.HeroMaxResources, ctx);
+        hero.GainComboPoints(Mara.HeroMaxResourcesSecond, ctx);
         foreach (var ability in hero.Abilities)
         {
             if (ability == this || ability.Category is AbilityCategory.Spirit or AbilityCategory.Weapon || ability is Attack) continue;

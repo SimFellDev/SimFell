@@ -60,6 +60,8 @@ public class MonteCarloChunkTests
             combinedJson.Remove(rolledPart);
         }
         Assert.Equal(wholeJson.ToJsonString(), combinedJson.ToJsonString());
+        Assert.Equal(iterations, combined.Distribution!.Counts.Sum());
+        Assert.Equal((combined.MinDps, combined.MaxDps), (combined.Distribution.Min, combined.Distribution.Max));
     }
 
     [Fact]

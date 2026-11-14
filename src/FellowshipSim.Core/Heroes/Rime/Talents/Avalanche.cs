@@ -10,15 +10,11 @@ namespace FellowshipSim.Core.Heroes.Rime.Talents;
 /// Combat logs (n7zxK8harZT2wjDB fight 9): each extra comet strikes a fixed number of server frames after
 /// the impact before it.
 /// </summary>
-public class Avalanche : Talent
+public partial class Avalanche : Talent
 {
-    public const int TalentId = 48;
-    public const string TalentName = "Avalanche";
-    public const double OneExtraChance = 0.18;
-    public const double TwoExtraChance = 0.09;
     /// <summary>The chance of at least one extra comet, and of a second one once there is one.</summary>
-    public const double AnyExtraChance = OneExtraChance + TwoExtraChance;
-    public const double SecondExtraChance = TwoExtraChance / AnyExtraChance;
+    public const double AnyExtraChance = Constants.MultiStrikeChanceToStrikeTwice + Constants.MultiStrikeChanceToStrikeTrice;
+    public const double SecondExtraChance = Constants.MultiStrikeChanceToStrikeTrice / AnyExtraChance;
     public const double CometSpacingSeconds = 5.0 / 30.0;
     public const string ProcKey = "avalanche";
     public const string SecondProcKey = "avalanche_second";

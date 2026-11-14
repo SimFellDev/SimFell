@@ -4,16 +4,11 @@ namespace FellowshipSim.Core.Heroes.Meiko.Abilities;
 /// Ability 1106, a Kick Technique finisher (Wind Kick then Earth Fist): "Perform a roundhouse kick, dealing 232.05% of
 /// Agility damage to your target and nearby enemies. Lashing Stormkick heals you for 50% of the damage it deals. AFFECTED
 /// BY STORMFALL: Lashing Stormkick deals +100% increased damage when it can consume a stack of Stormfall. Can be used
-/// during Global Cooldown". Logged under 1106.
+/// during Global Cooldown". Logged under 1106. Its damage falls off beyond <see cref="Constants.TargetThresholdForDamageScale"/>
+/// enemies (game data targetCountFalloff of effect 1537).
 /// </summary>
-public class LashingStormkick : MeikoFinisher
+public partial class LashingStormkick : MeikoFinisher
 {
-    public const int AbilityId = 1106;
-    public const string AbilityName = "Lashing Stormkick";
-    /// <summary>Placeholder LashStrmDmg: 232.05% of Agility.</summary>
-    public const double Coefficient = 2.3205;
-    /// <summary>Game data targetCountFalloff: effect 1537, threshold 8.</summary>
-    public const double TargetThreshold = 8;
     /// <summary>"+100% increased damage when it can consume a stack of Stormfall."</summary>
     public const double StormfallMultiplier = 2.0;
 
@@ -23,10 +18,10 @@ public class LashingStormkick : MeikoFinisher
     /// </summary>
     public event Action<SimulationContext, EnemyTarget, double, int, bool>? Kicked;
 
-    public LashingStormkick(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Power, Technique.Kick, Technique.Fist)
+    public LashingStormkick(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory, Technique.Kick, Technique.Fist)
     {
-        BaseCoefficient = Coefficient;
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = Constants.AgilityCoefficient;
+        AoeTargetThreshold = Constants.TargetThresholdForDamageScale;
         Hit += (in _) => _hits++;
     }
 

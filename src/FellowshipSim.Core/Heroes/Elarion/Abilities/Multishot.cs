@@ -2,7 +2,7 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 
 /// <summary>
 /// Ability 1318: "Fire multiple arrows at your enemies, each dealing physical damage to them." Instant, costs Focus; damage
-/// falls off beyond a target count (targetCountFalloff, <see cref="TargetThreshold"/>). An Empowered Multishot (Skystrider's
+/// falls off beyond a target count (targetCountFalloff, <see cref="Constants.TargetCountThreshold"/>). An Empowered Multishot (Skystrider's
 /// Supremacy, Focused Expanse) always fires a minimum number of arrows regardless of how many targets are in range, costs less
 /// Focus, and deals magic damage.
 /// Combat logs (fXyzwGcQkTrLD34R fight 4, pWmcV42K39GHTLQX fight 23, 496 casts): one arrow on each enemy around the
@@ -11,14 +11,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Abilities;
 /// to enough enemies grants a charge of Multishot holds no limit: no log shows a Multishot charge (effect 1898), and Multishot is cast
 /// with none.
 /// </summary>
-public class Multishot : ElarionAbility
+public partial class Multishot : ElarionAbility
 {
-    public const int AbilityId = 1318;
-    public const string AbilityName = "Multishot";
-    /// <summary>Share of Agility.</summary>
-    public const double Coefficient = 3.7191;
-    public const double Cost = 20.0;
-    public const double TargetThreshold = 12;
     public const double EmpoweredCostMultiplier = 0.5;
     public const int EmpoweredMinimumArrows = 3;
 
@@ -34,11 +28,11 @@ public class Multishot : ElarionAbility
     /// <summary>A Multishot was cast; the flag is true when it was Empowered (Repeating Stars, Astronomer's Hail).</summary>
     public event Action<SimulationContext, bool>? Cast;
 
-    public Multishot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public Multishot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        FocusCost = Cost;
-        AoeTargetThreshold = TargetThreshold;
+        BaseCoefficient = Constants.AgilityCoefficient;
+        FocusCost = AbilityCost;
+        AoeTargetThreshold = Constants.TargetCountThreshold;
     }
 
     /// <summary>A buff that empowers Multishot: whether it is up, and using it up for one cast.</summary>
@@ -59,7 +53,7 @@ public class Multishot : ElarionAbility
         empowering?.Use(now);
         IReadOnlyList<EnemyTarget> enemies = ctx.ActiveEnemies.Count == 0 && target is { IsSleeping: false } ? [target] : ctx.ActiveEnemies;
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, enemies, ctx);
-        double falloff = struck.Count > TargetThreshold ? Math.Sqrt(TargetThreshold / struck.Count) : 1.0;
+        double falloff = struck.Count > Constants.TargetCountThreshold ? Math.Sqrt((double)Constants.TargetCountThreshold / struck.Count) : 1.0;
         for (int i = 0; i < struck.Count; i++) DealDamage(ctx, struck[i], damageMultiplier: multiplier * falloff);
         // The arrows past one per enemy go to the enemies struck, in turn.
         if (empowered && struck.Count > 0)

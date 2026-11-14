@@ -11,14 +11,9 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// chance, and one counter for both fits worst. UNVERIFIED: the step (game data has none), taken as the one whose average
 /// is the tooltip's chance.
 /// </summary>
-public class Schism : Talent
+public partial class Schism : Talent
 {
-    public const int TalentId = 85;
-    public const string TalentName = "Schism";
-    /// <summary>Tooltip text: "chance", the average of the bad luck protected chance.</summary>
-    public const double ProcChance = 0.35;
-    public static readonly double ProcStep = BadLuckProtection.StepFor(ProcChance);
-    public const double DamageMultiplier = 2.5;
+    public static readonly double ProcStep = BadLuckProtection.StepFor(Constants.ProcChance);
     public const int MaxStacks = 2;
     public const int SkullCrusherEffectId = 1746;
     public const int HammerStormEffectId = 1747;
@@ -44,7 +39,7 @@ public class Schism : Talent
             };
             if (buff == null || !hero.Auras.HasAura(buff, cast.Time)) return;
             hero.Auras.ConsumeStack(buff, cast.Time);
-            cast.DamageMultiplier *= DamageMultiplier;
+            cast.DamageMultiplier *= buff == SkullCrusherBuff ? Constants.TalentChanceIncreasedSpenderDamageHeavySingleTargetAttackDamageMultiplier : Constants.TalentChanceIncreasedSpenderDamageAoeAttackDamageMultiplier;
         };
         // ...and may make the other one's.
         hero.OnCastCompleted += (ability, _, now) =>

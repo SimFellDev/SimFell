@@ -6,11 +6,11 @@ namespace FellowshipSim.Core.Customization.Weapons;
 /// Weapon power 348, whose weapon ability is Al'zerac's Shackle. Item 5987 grants it: Darkfrost Arms (Helena), Darkfrost
 /// Talons (Meiko) and Darkfrost Drakecarver (Xavian).
 /// </summary>
-public class DarkfrostArms : Weapon
+public partial class DarkfrostArms : Weapon
 {
     public const string WeaponName = "Darkfrost Arms";
 
-    public override int WeaponAbilityId => AlzeracsShackle.AbilityId;
+    public override int WeaponAbilityId => WeaponPowerAbilityId;
     public override string Name => WeaponName;
 
     public override void Equip(Hero hero)

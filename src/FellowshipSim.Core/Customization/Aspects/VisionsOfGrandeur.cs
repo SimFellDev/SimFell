@@ -5,11 +5,8 @@ namespace FellowshipSim.Core.Customization.Aspects;
 /// (a fraction of its default cooldown), and "Your Weapon Ability generates Spirit Points multiplied by a value equal to
 /// your Weapon Ability's default cooldown, divided by a constant" (<see cref="SpiritPointsPer30sOfCooldown"/>).
 /// </summary>
-public class VisionsOfGrandeur : Aspect
+public partial class VisionsOfGrandeur : Aspect
 {
-    public const int AspectId = 47;
-    public const string AspectName = "Visions of Grandeur";
-    public static readonly double[] WeaponCooldownFractionByRank = [0.25, 0.5, 0.75, 1.0];
     public const double SpiritPointsPer30sOfCooldown = 2.5;
 
     public override int Id => AspectId;
@@ -17,7 +14,7 @@ public class VisionsOfGrandeur : Aspect
 
     public override void Bind(Hero hero)
     {
-        double fraction = ForRank(WeaponCooldownFractionByRank);
+        double fraction = ForRank(Constants.SpiritPointsGainWeaponCooldownFractionByRank);
         hero.OnCastCompleted += (ability, _, _) =>
         {
             if (ability == hero.WeaponAbility && hero.SimContext is { } ctx)

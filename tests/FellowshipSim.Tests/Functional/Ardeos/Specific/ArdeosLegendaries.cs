@@ -21,7 +21,7 @@ public class ArdeosLegendaries
     private static double FirstDetonateHit(bool devouringFlame, int engulfingFlames)
     {
         var f = StepFights.Ardeos(
-            legendaries: devouringFlame ? [DevouringFlame.BracersItemId] : null,
+            legendaries: devouringFlame ? [DevouringFlame.LegsItemId] : null,
             mainStat: devouringFlame ? 0 : 10).WithoutDamageSpread(); // Mote of Creation's 10% of the base 100
 
         for (int i = 0; i < engulfingFlames; i++)
@@ -63,7 +63,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Fire_Toad_Gives_Each_Fire_Frog_A_20_Percent_Chance_To_Come_As_A_Toad()
     {
-        var f = StepFights.Ardeos(legendaries: [FireToad.HelmItemId]);
+        var f = StepFights.Ardeos(legendaries: [FireToad.HeadItemId]);
         var procs = f.ForceProcs(key => key == FireFrogs.ToadProcKey ? false : null); // only the chance matters
 
         f.Cast<FireFrogs>();
@@ -78,7 +78,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Fire_Toad_Makes_Fire_Frogs_Conjure_One_Toad_Besides_Its_Frogs()
     {
-        var f = StepFights.Ardeos(legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
         f.ForceProcs(key => key == FireFrogs.ToadProcKey ? false : null); // no frog comes as a toad
 
         f.Cast<FireFrogs>();
@@ -105,7 +105,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Fire_Toad_Explodes_On_Its_Target_For_9_Times_A_Frog_Attack()
     {
-        var f = StepFights.Ardeos(legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
 
         f.HitWith(f.Ability<FireFrogs>().Attack, f.Enemy); // one frog's attack
         Explode(f, f.Enemy);
@@ -127,7 +127,7 @@ public class ArdeosLegendaries
     public void Fire_Toad_Explosion_Hits_The_Enemies_Near_Its_Target_For_5_Times_Sqrt_1_Over_N(int enemies)
     {
         double share = 5.0 * Math.Sqrt(1.0 / enemies);
-        var f = StepFights.Ardeos(enemies: enemies, legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(enemies: enemies, legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
 
         f.HitWith(f.Ability<FireFrogs>().Attack, f.Enemy); // one frog's attack
         Explode(f, f.Enemy);
@@ -146,7 +146,7 @@ public class ArdeosLegendaries
     {
         double ExplosionHit(params int[] talents)
         {
-            var f = StepFights.Ardeos(talents: talents, legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+            var f = StepFights.Ardeos(talents: talents, legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
 
             Explode(f, f.Enemy);
 
@@ -165,7 +165,7 @@ public class ArdeosLegendaries
     {
         double NearbyHit(params int[] talents)
         {
-            var f = StepFights.Ardeos(enemies: 4, talents: talents, legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+            var f = StepFights.Ardeos(enemies: 4, talents: talents, legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
             var nearby = f.Enemies()[1];
 
             Explode(f, f.Enemy);
@@ -185,7 +185,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Fire_Toad_Explodes_Once_On_Its_Target_And_Every_Nearby_Enemy()
     {
-        var f = StepFights.Ardeos(enemies: 4, legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(enemies: 4, legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
 
         Explode(f, f.Enemy);
         var hits = f.Ticks(FireFrogAttack.DamageEffectId);
@@ -203,7 +203,7 @@ public class ArdeosLegendaries
     [Fact]
     public void A_Fire_Frog_That_Comes_As_A_Toad_Explodes_Once()
     {
-        var f = StepFights.Ardeos(legendaries: [FireToad.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(legendaries: [FireToad.HeadItemId]).WithoutDamageSpread();
         f.ForceProcs(key => key == FireFrogs.ToadProcKey ? true : null); // every frog comes as a toad
 
         f.Cast<FireFrogs>();
@@ -221,7 +221,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Fire_Toad_Explosion_Leaves_The_Fire_Frogs_Burn()
     {
-        var f = StepFights.Ardeos(legendaries: [FireToad.HelmItemId]);
+        var f = StepFights.Ardeos(legendaries: [FireToad.HeadItemId]);
 
         Explode(f, f.Enemy);
         f.Wait(6.0); // the burn ticks
@@ -235,7 +235,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Explosivo_Gives_Apocalypse_2_Charges()
     {
-        var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]);
+        var f = StepFights.Ardeos(legendaries: [Explosivo.ChestItemId]);
 
         Assert.Equal(2, f.Charges<Apocalypse>());
     }
@@ -244,7 +244,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Explosivo_Leaves_Apocalypses_Burn_On_Every_Enemy()
     {
-        var f = StepFights.Ardeos(enemies: 3, legendaries: [Explosivo.HelmItemId]);
+        var f = StepFights.Ardeos(enemies: 3, legendaries: [Explosivo.ChestItemId]);
 
         f.Cast<Apocalypse>();
 
@@ -257,7 +257,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Explosivos_Burn_Deals_50_Percent_Of_The_Apocalypse_Hit()
     {
-        var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(legendaries: [Explosivo.ChestItemId]).WithoutDamageSpread();
 
         f.Cast<Apocalypse>();
         f.Wait(15); // the burn ticks out
@@ -271,7 +271,7 @@ public class ArdeosLegendaries
     [Fact]
     public void Explosivos_Burns_Accumulate()
     {
-        var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]).WithoutDamageSpread();
+        var f = StepFights.Ardeos(legendaries: [Explosivo.ChestItemId]).WithoutDamageSpread();
 
         f.Cast<Apocalypse>();
         f.Cast<Apocalypse>(); // its second charge, the first burn still going
@@ -291,7 +291,7 @@ public class ArdeosLegendaries
         double rate = 1;
         double RechargeRemainingAfter(bool fireBall)
         {
-            var f = StepFights.Ardeos(legendaries: [Explosivo.HelmItemId]);
+            var f = StepFights.Ardeos(legendaries: [Explosivo.ChestItemId]);
             f.FillResources(); // enough to cast Fire Ball
             f.Cast<Apocalypse>(); // a charge now recharging
             if (fireBall) f.Cast<FireBall>();

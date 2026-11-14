@@ -30,6 +30,7 @@ jobs:
       - name: Install the WebAssembly tools
         run: dotnet workload install wasm-tools
 
+      # The site has the committed game data (src/FellowshipSim.Core/Generated/Codex).
       - name: Publish
         run: dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish
 

@@ -29,6 +29,13 @@ remove it with `cmd /c rmdir data` at the end. Never delete through it.
 cmd /c mklink /J data G:\source\SimFell\data
 ```
 
+`codex-export/` is gitignored too. A build compiles the committed game data and needs none; the hero's new `partial`
+classes get their generated halves from `tools/regenerate-codex.sh`, which reads it. Download it in the worktree:
+
+```
+tools/download-codex-export.sh
+```
+
 ## 3. Fights
 
 ```
@@ -90,6 +97,9 @@ other teammate's name, followed by its brief from this file.
   `select:mcp__fellowship-codex__find_entity,mcp__fellowship-codex__get_entity,mcp__fellowship-codex__list_types`.
   `find_entity` matches name prefixes only, so search ability and talent names; `get_entity` takes a `hero` argument.
   Each constant's comment names its source. `UNVERIFIED` marks a value no log has confirmed.
+- A new `partial` hero, ability or talent class has no generated half until `tools/regenerate-codex.sh` runs. Run it
+  after adding or renaming one, and commit `src/FellowshipSim.Core/Generated/Codex/` with the class
+  (`docs/ADDING_A_HERO.md`, "Regenerating the game data").
 - Validate with exact replay over every fight of the hero, and free dice where a proc or spread is in question:
   `ACCURACY_HERO=<Hero> ACCURACY_LABEL=<label> dotnet test tests/FellowshipSim.Tests -c Release --filter HeroAccuracyTests`.
 - Commit in steps, each `<Area>: <summary>` (`<Hero>: abilities and talents`, `Replay: <Hero>'s <resource>`), with

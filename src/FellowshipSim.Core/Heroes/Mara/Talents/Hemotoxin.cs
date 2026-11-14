@@ -12,20 +12,11 @@ namespace FellowshipSim.Core.Heroes.Mara.Talents;
 /// UNVERIFIED: no combat log has this talent; "bleed damage" is taken as the bleed's damage over the duration the
 /// Combo Points give it.
 /// </summary>
-public class Hemotoxin : Talent
+public partial class Hemotoxin : Talent
 {
-    public const int TalentId = 205;
-    public const string TalentName = "Hemotoxin";
     public const int PoisonEffectId = 2337;
     public const int BurstEffectId = 2338;
-    public const double Chance = 0.12;
-    public const double PoisonCoefficient = 0.2;
-    public const double PoisonTickSeconds = 1.5;
-    public const double PoisonSeconds = 9.0;
     public const int MaxStacks = 3;
-    public const double TargetShare = 0.75;
-    public const double NearbyShare = 0.50;
-    public const double NearbyTargetThreshold = 1;
     public const string ProcKey = "hemotoxin";
 
     public override string Name => TalentName;
@@ -41,7 +32,7 @@ public class Hemotoxin : Talent
 
         void Roll(SimulationContext ctx, EnemyTarget target)
         {
-            if (ctx.Outcomes.RollProc(ProcKey, Chance, ctx, target)) poison.AddStack(ctx, target);
+            if (ctx.Outcomes.RollProc(ProcKey, Constants.ExplosivePoisonChance, ctx, target)) poison.AddStack(ctx, target);
         }
         foreach (var backstab in mara.Abilities.OfType<Backstab>()) backstab.Struck += Roll;
         if (mara.GetAbility<WidowsBite>() is { } widowsBite) widowsBite.Struck += Roll;
@@ -53,18 +44,18 @@ public class Hemotoxin : Talent
             if (!poison.ConsumeStack(ctx, target)) return;
             var hemorrhage = mara.Hemorrhage;
             double bleed = hemorrhage.TickDamage(ctx, target) * hemorrhage.TicksIn(HemorrhagingStrike.BleedSeconds(points), ctx.CurrentTime);
-            burst.Strike(ctx, target, bleed * TargetShare);
+            burst.Strike(ctx, target, bleed * Constants.BleedToPoisonDamageMultiplier);
             var nearby = ctx.ActiveEnemiesExcept(target);
             if (nearby.Count == 0) return;
-            double falloff = nearby.Count > NearbyTargetThreshold ? Math.Sqrt(NearbyTargetThreshold / nearby.Count) : 1.0;
-            foreach (var enemy in nearby) burst.Strike(ctx, enemy, bleed * NearbyShare * falloff);
+            double falloff = nearby.Count > Constants.TargetScalingThreshold ? Math.Sqrt((double)Constants.TargetScalingThreshold / nearby.Count) : 1.0;
+            foreach (var enemy in nearby) burst.Strike(ctx, enemy, bleed * Constants.AreaDamageMultiplier * falloff);
         };
     }
 
-    /// <summary>The poison: <see cref="PoisonCoefficient"/> of Agility every <see cref="PoisonTickSeconds"/> for <see cref="PoisonSeconds"/> per stack, up to <see cref="MaxStacks"/>.</summary>
+    /// <summary>The poison: <see cref="Constants.ExplosivePoisonPoisonAgilityCoefficient"/> of Agility every <see cref="Constants.ExplosivePoisonPoisonTickInterval"/> for <see cref="Constants.ExplosivePoisonPoisonDuration"/> per stack, up to <see cref="MaxStacks"/>.</summary>
     private sealed class Poison : MaraDot
     {
-        public Poison(Mara owner) : base(owner, PoisonEffectId, TalentName, PoisonCoefficient, PoisonTickSeconds, PoisonSeconds) { }
+        public Poison(Mara owner) : base(owner, PoisonEffectId, TalentName, Constants.ExplosivePoisonPoisonAgilityCoefficient, Constants.ExplosivePoisonPoisonTickInterval, Constants.ExplosivePoisonPoisonDuration) { }
 
         public void AddStack(SimulationContext ctx, EnemyTarget target) => ApplyStack(ctx, target, MaxStacks);
     }

@@ -27,12 +27,12 @@ public static class StepFights
     /// <param name="mainStat">The main stat. Every hero's main stat works the same; what the game calls it is cosmetic.</param>
     /// <param name="expertise">Expertise as a fraction; 0 by default.</param>
     /// <param name="weaponAbilityId">The weapon ability's ID, e.g. <c>Chronoshift.AbilityId</c>; 0 for no weapon.</param>
-    /// <param name="legendaries">Item IDs of the legendary items worn, e.g. <c>Shimmer.HelmItemId</c>.</param>
+    /// <param name="legendaries">Item IDs of the legendary items worn, e.g. <c>Shimmer.HeadItemId</c>.</param>
     /// <param name="gemPower">Gem power per colour, which unlocks the gems' nodes, e.g. <c>new() { [GemColor.Emerald] = 1500 }</c>.</param>
     /// <param name="glyphs">Glyphs and their rank, e.g. <c>[new(TheMonarch.GlyphId, Rank: 4)]</c>.</param>
     /// <param name="augmentations">Aspects, sigils and protective enchants and their rank, e.g.
     /// <c>[new(RubyStorm.AspectId, Rank: 1)]</c>.</param>
-    /// <param name="relics">Item IDs of the relics worn, in the first slot then the second, e.g. <c>[UndyingHeart.OrbItemId]</c>.</param>
+    /// <param name="relics">Item IDs of the relics worn, in the first slot then the second, e.g. <c>[UndyingHeart.RelicItemId]</c>.</param>
     public static StepDriver Of(string hero, double haste = 0, int enemies = 1, int[]? talents = null, int seed = 1, double crit = 0,
         double spirit = 0, double mainStat = 0, double expertise = 0, int weaponAbilityId = 0, int[]? legendaries = null,
         Dictionary<GemColor, double>? gemPower = null, BuildEntry[]? glyphs = null, BuildEntry[]? augmentations = null,

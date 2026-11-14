@@ -7,10 +7,8 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// ability that applies Rend consumes a stack of Murder of Crows and always triggers a Spirit Refund." UNVERIFIED: no
 /// combat log has this talent.
 /// </summary>
-public class MurderOfCrows : Talent
+public partial class MurderOfCrows : Talent
 {
-    public const int TalentId = 758;
-    public const string TalentName = "Murder of Crows";
     public const int EffectId = 3250;
     public const double BuffSeconds = 12.0;
     public const int Stacks = 2;

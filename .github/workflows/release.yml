@@ -75,6 +75,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      # The release has the committed game data (src/FellowshipSim.Core/Generated/Codex).
       - name: Package
         run: dotnet run tools/package.cs -- --rid ${{ matrix.rid }} --version ${{ needs.version.outputs.version }}
       - uses: actions/upload-artifact@v7
@@ -95,8 +96,6 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      - name: Download the Codex export
-        run: tools/download-codex-export.sh
       - name: Package for every platform
         working-directory: src/FellowshipSim.VsCode
         run: |

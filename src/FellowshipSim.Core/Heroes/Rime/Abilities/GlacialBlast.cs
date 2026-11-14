@@ -3,14 +3,8 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>Ability 1028. Costs Winter Orbs. Talon Strike (Icy Talons) is built on it.</summary>
-public class GlacialBlast : RimeAbility
+public partial class GlacialBlast : RimeAbility
 {
-    public const int AbilityId = 1028;
-    public const string AbilityName = "Glacial Blast";
-    public const double Coefficient = 10.24;
-    public const double CastTimeSeconds = 1.5;
-    public const int DefaultWinterOrbCost = 2;
-
     /// <summary>Talent 38 Glacial Assault: the cast deals more damage at full stacks.</summary>
     public const double GlacialAssaultMultiplier = 1.40;
     /// <summary>Talent 38: the explosion deals a fraction of the initial damage to nearby enemies (ability 2023's text gives a different fraction).</summary>
@@ -32,12 +26,12 @@ public class GlacialBlast : RimeAbility
 
     public GlacialBlast(Rime owner) : this(owner, AbilityId, AbilityName)
     {
-        BaseCoefficient = Coefficient;
-        CastTime = SimTime.FromSeconds(CastTimeSeconds);
+        BaseCoefficient = Constants.IntellectCoefficient;
+        CastTime = SimTime.FromSeconds(AbilityCastTime);
     }
 
     /// <summary>For abilities built on Glacial Blast (Talon Strike), which set their own values.</summary>
-    protected GlacialBlast(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory.Power) { }
+    protected GlacialBlast(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory) { }
 
     protected bool GlacialAssaultReady => Rime.GlacialAssaultStacks >= 4;
 
@@ -61,9 +55,9 @@ public class GlacialBlast : RimeAbility
             reason = explain ? $"{Name} is replaced by Talon Strike (Icy Talons)" : null;
             return false;
         }
-        if (Rime.WinterOrbs < DefaultWinterOrbCost && !GlacialAssaultReady)
+        if (Rime.WinterOrbs < AbilityCost && !GlacialAssaultReady)
         {
-            reason = explain ? $"{Name} needs {DefaultWinterOrbCost} Winter Orbs (have {Rime.WinterOrbs})" : null;
+            reason = explain ? $"{Name} needs {AbilityCost} Winter Orbs (have {Rime.WinterOrbs})" : null;
             return false;
         }
         reason = null;
@@ -76,7 +70,7 @@ public class GlacialBlast : RimeAbility
         bool assault = GlacialAssaultReady;
         double multiplier = 1.0;
         if (assault) multiplier = ConsumeGlacialAssault(ctx);
-        else hero.SpendWinterOrbs(DefaultWinterOrbCost, ctx);
+        else hero.SpendWinterOrbs(AbilityCost, ctx);
 
         DealDamage(ctx, target, damageMultiplier: multiplier, onLanded: assault ? (c, dealt) => Explode(c, target, dealt) : null);
     }

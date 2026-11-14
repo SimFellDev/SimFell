@@ -4,32 +4,20 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Customization.Legendaries;
 
 /// <summary>
-/// Legendary power 397 (Rime's Harbinger of Winter Helm, item 5899): each tick of Freezing Torrent grants a stack of
-/// Frostwyrm's Spite up to a maximum, and you can move while channeling. Cold Snap consumes all stacks of
-/// Frostwyrm's Spite, increasing its damage per stack, and hits one additional enemy near your target for each stack it
-/// consumes. Frostwyrm's Spite damage is reduced beyond a target count.
+/// Legendary power 397: each tick of Freezing Torrent grants a stack of Frostwyrm's Spite up to a maximum, and you can move
+/// while channeling. Cold Snap consumes all stacks of Frostwyrm's Spite, increasing its damage per stack, and hits one
+/// additional enemy near your target for each stack it consumes. Frostwyrm's Spite damage is reduced beyond a target count.
 /// The extra hits are copies of that Cold Snap with all its bonuses but no Winter Orb (per the user), logged as effect
 /// 2265. Combat logs (PCaMVTFbZzNLrfx3 fight 5, 21 casts): the main hit takes the full bonus; each extra hit deals
 /// a share of it that falls off with N, the extra enemies hit beyond the target count.
 /// </summary>
-public class FrostwyrmsSpite : Legendary
+public partial class FrostwyrmsSpite : Legendary
 {
-    public const int PowerId = 397;
-    public const int HelmItemId = 5899;
     public const int BuffEffectId = 2264;
     public const int DamageEffectId = 2265;
     public const string DamageName = "Frostwyrm's Spite";
-    public const double BuffSeconds = 15.0;
-    public const int MaxStacks = 30;
-    public const double DamagePerStack = 0.30;
-    public const double ExtraHitTargetThreshold = 3;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Frostwyrm's Spite", BuffEffectId, BuffSeconds, MaxStacks);
-
-    public override int LegendaryPowerId => PowerId;
-    public override string Name => "Frostwyrm's Spite";
-    public override string HeroName => "Rime";
-    public override IReadOnlyList<int> ItemIds => [HelmItemId];
+    public static readonly AuraDef Buff = AuraDef.Effect("Frostwyrm's Spite", BuffEffectId, Constants.StackBuffForInstantSingleDamageBuffDuration, Constants.StackBuffForInstantSingleDamageMaxNumStacks);
 
     public override void Bind(Hero hero)
     {
@@ -59,7 +47,8 @@ public class FrostwyrmsSpite : Legendary
             consumed = 0;
             var selected = ctx.Outcomes.SelectTargets(LogIds.Effect(DamageEffectId), ctx.ActiveEnemiesExcept(target), ctx);
             int struck = Math.Min(stacks, selected.Count);
-            double falloff = struck > ExtraHitTargetThreshold ? Math.Sqrt(ExtraHitTargetThreshold / struck) : 1.0;
+            double threshold = Constants.StackBuffForInstantSingleDamageTargetCountThreshold;
+            double falloff = struck > threshold ? Math.Sqrt(threshold / struck) : 1.0;
             for (int i = 0; i < struck; i++)
             {
                 coldSnap.DealDamage(ctx, selected[i], damageMultiplier: DamageMultiplier(stacks) * falloff,
@@ -68,5 +57,5 @@ public class FrostwyrmsSpite : Legendary
         };
     }
 
-    public static double DamageMultiplier(int stacks) => 1.0 + DamagePerStack * stacks;
+    public static double DamageMultiplier(int stacks) => 1.0 + Constants.StackBuffForInstantSingleDamageInstantSingleDamageDamagePerStack * stacks;
 }

@@ -7,10 +7,8 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// of 105.56% of Agility every 2 seconds for 30 seconds). The vortex is taken as Spirited Vortex's own, under its damage
 /// ID. UNVERIFIED: no combat log has the talent.
 /// </summary>
-public class WillOfStone : Talent
+public partial class WillOfStone : Talent
 {
-    public const int TalentId = 92;
-    public const string TalentName = "Will of Stone";
 
     public override string Name => TalentName;
     public override int Id => TalentId;

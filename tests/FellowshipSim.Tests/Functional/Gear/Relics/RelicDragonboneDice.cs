@@ -24,7 +24,7 @@ public class RelicDragonboneDice
     [InlineData("Tariq", "Heavy Strike")]
     public void Dragonbone_Dice_Critical_Strikes_Give_18_Percent_Main_Stat_For_14_Seconds(string hero, string ability)
     {
-        var f = StepFights.Of(hero, relics: [DragonboneDice.OrbItemId]);
+        var f = StepFights.Of(hero, relics: [DragonboneDice.RelicItemId]);
         f.ForceProcs(key => key == DragonboneDice.ProcKey ? true : null);
         double plainMainStat = f.MainStat();
         f.FillResources(); // enough to cast it
@@ -47,7 +47,7 @@ public class RelicDragonboneDice
     [InlineData(false)]
     public void Dragonbone_Dice_Rolls_On_Critical_Strikes_Only(bool crit)
     {
-        var f = StepFights.Of("Rime", relics: [DragonboneDice.OrbItemId]);
+        var f = StepFights.Of("Rime", relics: [DragonboneDice.RelicItemId]);
         var procs = f.ForceProcs(key => key == DragonboneDice.ProcKey ? false : null); // only to count the rolls
 
         f.Cast<FrostBolt>(crit: crit);

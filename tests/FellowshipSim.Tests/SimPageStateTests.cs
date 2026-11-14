@@ -1,6 +1,7 @@
 using FellowshipSim.Core.APL;
 using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Import;
+using FellowshipSim.Engine;
 using FellowshipSim.UI.Build;
 using FellowshipSim.UI.Pages;
 using FellowshipSim.UI.Shared;
@@ -33,6 +34,25 @@ public class SimPageStateTests
         // Another build of the same hero keeps the list.
         state.Editor = new BuildEditor(BuildEditor.NewBuild("Rime"));
         Assert.Equal("own/Rime/Mine", state.ActionListValue);
+    }
+
+    [Fact]
+    public void A_Target_Error_Raises_The_Default_Iterations_To_SimulationCrafts_Most_Fights()
+    {
+        var state = new SimPageState();
+        state.SetTargetError(0.1);
+        Assert.Equal(SimProfile.DefaultTargetErrorIterations, state.Iterations);
+        state.SetTargetError(0.05);
+        Assert.Equal(SimProfile.DefaultTargetErrorIterations, state.Iterations);
+        state.SetTargetError(0);
+        Assert.Equal(SimProfile.DefaultIterations, state.Iterations);
+
+        // Iterations of the user's own stay.
+        state.Iterations = 5000;
+        state.SetTargetError(0.1);
+        Assert.Equal(5000, state.Iterations);
+        state.SetTargetError(0);
+        Assert.Equal(5000, state.Iterations);
     }
 
     // A page with every option off its default, the build unsaved and the action list its own.

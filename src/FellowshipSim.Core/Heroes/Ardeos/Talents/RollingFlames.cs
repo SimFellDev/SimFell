@@ -6,13 +6,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// Talent 226: Engulfing Flames' cooldown is reduced each time Searing Blaze deals damage to an enemy and each time
 /// Infernal Wave is cast.
 /// </summary>
-public class RollingFlames : Talent
+public partial class RollingFlames : Talent
 {
-    public const int TalentId = 226;
-    public const string TalentName = "Rolling Flames";
-    public const double PerSearingBlazeHitSeconds = 0.25;
-    public const double PerInfernalWaveSeconds = 1.0;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -23,11 +18,11 @@ public class RollingFlames : Talent
         if (engulfing == null) return;
         if (searing != null)
         {
-            searing.Hit += (in DamageContext hit) => hero.ReduceCooldown(engulfing.Name, SimTime.FromSeconds(PerSearingBlazeHitSeconds), hit.Timestamp);
+            searing.Hit += (in DamageContext hit) => hero.ReduceCooldown(engulfing.Name, SimTime.FromSeconds(Constants.InstantSingleDotReducesCooldownReductionInSeconds), hit.Timestamp);
         }
         hero.OnCastCompleted += (ability, _, now) =>
         {
-            if (ability is InfernalWave) hero.ReduceCooldown(engulfing.Name, SimTime.FromSeconds(PerInfernalWaveSeconds), now);
+            if (ability is InfernalWave) hero.ReduceCooldown(engulfing.Name, SimTime.FromSeconds(Constants.ReductionInSeconds), now);
         };
     }
 }

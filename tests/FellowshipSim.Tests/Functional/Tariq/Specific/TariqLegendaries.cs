@@ -25,7 +25,7 @@ public class TariqLegendaries
     [InlineData("Fated Strike")]
     public void Executioners_Grin_Has_A_6_Percent_Chance_On_Every_Cast(string ability)
     {
-        var f = StepFights.Tariq(enemies: 3, weaponAbilityId: FatedStrike.AbilityId, legendaries: [ExecutionersGrin.WrapsItemId]);
+        var f = StepFights.Tariq(enemies: 3, weaponAbilityId: FatedStrike.AbilityId, legendaries: [ExecutionersGrin.LegsItemId]);
         var procs = f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? false : null); // only to read the chance
 
         f.Cast(ability);
@@ -37,7 +37,7 @@ public class TariqLegendaries
     [Fact]
     public void Executioners_Grin_Lasts_8_Seconds()
     {
-        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.WrapsItemId]);
+        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.LegsItemId]);
         f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? true : null); // every cast procs
 
         f.Cast<WildSwing>();
@@ -53,7 +53,7 @@ public class TariqLegendaries
     [Fact]
     public void Executioners_Grin_Stacks_Up_To_2()
     {
-        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.WrapsItemId]);
+        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.LegsItemId]);
         f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? true : null); // every cast procs
 
         f.Cast<WildSwing>();
@@ -72,7 +72,7 @@ public class TariqLegendaries
     [InlineData(true)]
     public void Executioners_Grin_Makes_Culling_Strike_Usable_At_Full_Health(bool grin)
     {
-        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.WrapsItemId]);
+        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.LegsItemId]);
         f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? false : null); // no new proc
         if (grin) f.Apply(ExecutionersGrin.Buff); // a proc earlier
 
@@ -86,7 +86,7 @@ public class TariqLegendaries
     [Fact]
     public void Executioners_Grin_Culling_Strike_Costs_No_Fury_And_Rolls_No_Spirit_Refund()
     {
-        var f = StepFights.Tariq(spirit: 0.2, legendaries: [ExecutionersGrin.WrapsItemId]);
+        var f = StepFights.Tariq(spirit: 0.2, legendaries: [ExecutionersGrin.LegsItemId]);
         var procs = f.ForceProcs(key => key is ExecutionersGrin.ProcKey or Hero.SpiritRefundProc ? false : null); // no new proc; reads the rolls
         f.Set(Tariq.Fury, 50);
         f.SetHealth(0.2); // in execute range, where it would spend Fury
@@ -109,7 +109,7 @@ public class TariqLegendaries
     {
         double CullingStrikeHit(bool grin)
         {
-            var f = StepFights.Tariq(legendaries: [ExecutionersGrin.WrapsItemId]).WithoutDamageSpread();
+            var f = StepFights.Tariq(legendaries: [ExecutionersGrin.LegsItemId]).WithoutDamageSpread();
             f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? false : null); // no new proc
             f.SetHealth(0.2); // in execute range, for the plain one
             if (grin) f.Apply(ExecutionersGrin.Buff); // a proc earlier
@@ -126,7 +126,7 @@ public class TariqLegendaries
     [Fact]
     public void Executioners_Grin_Culling_Strike_Uses_One_Stack()
     {
-        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.WrapsItemId]);
+        var f = StepFights.Tariq(legendaries: [ExecutionersGrin.LegsItemId]);
         f.ForceProcs(key => key == ExecutionersGrin.ProcKey ? false : null); // no new proc
         f.Apply(ExecutionersGrin.Buff, stacks: 2); // two procs earlier
 
@@ -143,7 +143,7 @@ public class TariqLegendaries
     [Fact]
     public void Thundering_Vortex_Makes_Chain_Lightning_Give_1_8_Fury_Per_Hit()
     {
-        var f = StepFights.Tariq(legendaries: [ThunderingVortex.HarnessItemId]);
+        var f = StepFights.Tariq(legendaries: [ThunderingVortex.ChestItemId]);
 
         f.Cast<ThunderCall>(); // enables Chain Lightning
         f.Cast<ChainLightning>();
@@ -160,7 +160,7 @@ public class TariqLegendaries
     [Fact]
     public void Thundering_Vortex_Gives_A_Stack_Per_Chain_Lightning_Bounce()
     {
-        var f = StepFights.Tariq(enemies: 3, legendaries: [ThunderingVortex.HarnessItemId]);
+        var f = StepFights.Tariq(enemies: 3, legendaries: [ThunderingVortex.ChestItemId]);
 
         f.Cast<ThunderCall>(); // enables Chain Lightning
         f.Cast<ChainLightning>();
@@ -178,7 +178,7 @@ public class TariqLegendaries
     {
         List<double> ChainLightningHits(int stacks)
         {
-            var f = StepFights.Tariq(legendaries: [ThunderingVortex.HarnessItemId]).WithoutDamageSpread();
+            var f = StepFights.Tariq(legendaries: [ThunderingVortex.ChestItemId]).WithoutDamageSpread();
             if (stacks > 0) f.Apply(ThunderingVortex.Buff, stacks: stacks); // bounces earlier
 
             f.Cast<ThunderCall>(); // enables Chain Lightning
@@ -205,7 +205,7 @@ public class TariqLegendaries
     [InlineData(30, 15)]
     public void Thundering_Vortex_Empowered_Chain_Lightning_Uses_20_Stacks(int stacks, int left)
     {
-        var f = StepFights.Tariq(legendaries: [ThunderingVortex.HarnessItemId]);
+        var f = StepFights.Tariq(legendaries: [ThunderingVortex.ChestItemId]);
         f.Apply(ThunderingVortex.Buff, stacks: stacks); // bounces earlier
 
         f.Cast<ThunderCall>(); // enables Chain Lightning
@@ -221,7 +221,7 @@ public class TariqLegendaries
     [Fact]
     public void Thundering_Vortex_Stacks_Up_To_40()
     {
-        var f = StepFights.Tariq(enemies: 10, talents: [AceOfSpades.TalentId], legendaries: [ThunderingVortex.HarnessItemId]);
+        var f = StepFights.Tariq(enemies: 10, talents: [AceOfSpades.TalentId], legendaries: [ThunderingVortex.ChestItemId]);
         f.Set(Tariq.Fury, 100); // enough for Hammer Storm
         int rolls = 0;
         f.ForceProcs(key => key == AceOfSpades.ProcKey ? rolls++ < 10 : null); // the first spin's hit on each enemy procs, no later one
@@ -240,7 +240,7 @@ public class TariqLegendaries
     [Fact]
     public void Slayers_Mosh_Marks_Every_Enemy_Leap_Smash_Hits()
     {
-        var f = StepFights.Tariq(enemies: 3, legendaries: [SlayersMosh.HelmItemId]);
+        var f = StepFights.Tariq(enemies: 3, legendaries: [SlayersMosh.HeadItemId]);
 
         f.Cast<LeapSmash>(crit: false);
         f.Wait(0.5); // the leap lands
@@ -256,7 +256,7 @@ public class TariqLegendaries
     [Fact]
     public void Slayers_Mosh_Lasts_6_Seconds()
     {
-        var f = StepFights.Tariq(legendaries: [SlayersMosh.HelmItemId]);
+        var f = StepFights.Tariq(legendaries: [SlayersMosh.HeadItemId]);
 
         f.Cast<LeapSmash>(crit: false);
         f.Wait(0.5); // the leap lands
@@ -279,7 +279,7 @@ public class TariqLegendaries
     {
         double SkullCrusherHit(bool leap)
         {
-            var f = StepFights.Tariq(legendaries: [SlayersMosh.HelmItemId]).WithoutDamageSpread();
+            var f = StepFights.Tariq(legendaries: [SlayersMosh.HeadItemId]).WithoutDamageSpread();
             f.Set(Tariq.Fury, 100); // enough for Skull Crusher
 
             if (leap)

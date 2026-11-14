@@ -9,16 +9,11 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// them. The arrow strikes a capped number of enemies, the target and its ricochets (no cast had more hits;
 /// the game data's maximum bounces counts the first hit).
 /// </summary>
-public class FinalCrescendo : Talent
+public partial class FinalCrescendo : Talent
 {
-    public const int TalentId = 169;
-    public const string TalentName = "Final Crescendo";
     public const int BuffEffectId = 2222;
-    public const int MaxStacks = 2;
-    public const double DamageMultiplier = 2.0;
-    public const int Ricochets = 8;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Final Cresendo", BuffEffectId, maxStacks: MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect("Final Cresendo", BuffEffectId, maxStacks: Constants.StacksMoreDamageAndBouncesMaxStacks);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -29,14 +24,14 @@ public class FinalCrescendo : Talent
         hero.OnCastResolving += cast =>
         {
             if (cast.Ability != highwind) return;
-            if (hero.Auras.GetStacks(Buff, cast.Time) < MaxStacks)
+            if (hero.Auras.GetStacks(Buff, cast.Time) < Constants.StacksMoreDamageAndBouncesMaxStacks)
             {
                 hero.Auras.Apply(Buff, cast.Time);
                 return;
             }
             hero.Auras.Remove(Buff, cast.Time);
-            cast.DamageMultiplier *= DamageMultiplier;
-            highwind.CastRicochets = Ricochets;
+            cast.DamageMultiplier *= Constants.CastedProjectileHeavyDamageTalentStacksMoreDamageAndBouncesDamageMultiplier;
+            highwind.CastRicochets = Constants.CastedProjectileHeavyDamageTalentStacksMoreDamageAndBouncesMaxBounces - 1;
         };
     }
 }

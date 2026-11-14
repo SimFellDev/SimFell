@@ -5,17 +5,22 @@ unless noted. Only the two Y4wpb2f3gc8LqJDX fights (22 September 2026) are from 
 
 ## Rend
 
-- **Applications:** each hit that applies Rend adds its damage dealt times its share: 50% (100% for Heart Splitter
-  and Bloodbound Spirit), plus Reign in Blood's 30% and Frenzied Reign's 25%, plus Serrated Edge's 20% and Superior
-  Serration's 10%. Heart Splitter in Reign in Blood with Serrated Edge adds 1.85 of its damage (n7zxK8harZT2wjDB
-  fight 9 @ 16.402).
+- **Applications:** each hit that applies Rend adds its damage dealt times its share: 50% (100% for Heart Splitter),
+  plus Reign in Blood's 30% and Frenzied Reign's 25%, plus Serrated Edge's 20% and Superior Serration's 10%. Heart
+  Splitter in Reign in Blood with Serrated Edge adds 1.85 of its damage (n7zxK8harZT2wjDB fight 9 @ 16.402).
+  Bloodbound Spirit's whole share, Reign in Blood's and Frenzied Reign's included, is doubled (Blueprint, build
+  26320967): 100% alone and 160% in Reign in Blood. The replay of 7 fights comes closer to the log with it (exact
+  replay 97.5% to 97.9%).
 - **Ticks:** each application deals a tenth of its damage per tick for 10 ticks (Deep Rend: 11 ticks). The ticks come
   on the enemy's own timer, from its first application, every 3s or every 82 server frames (2.733s) with Deep Rend, not
   hasted. A later application keeps that timer. An application ends after its own ticks: Bloodfang#4's tick @ 139.560
   drops by exactly the three applications that ticked first.
-- **Stacks:** a Rend stack is a Strength of Rend still to deal. Owed in Blood adds one Rend stack per stack it holds up
-  to 15, then 0.85 per stack (18 casts above 15: 1319 Rend stacks for 1505).
-- Ticks never crit and take no damage multipliers.
+- **Stacks:** a Rend stack is a Strength of the Rend the buckets hold, Deep Rend's extra excluded, rounded (Blueprint,
+  build 26320967). Owed in Blood's large casts add fewer Rend stacks than stacks held (18 casts above 15: 1319 Rend
+  stacks for 1505). Each stack saves the Strength at its pickup (Blueprint), and that model replays the 7 fights closer
+  to the log than one stack each up to 15 and 0.85 beyond (exact replay 97.9% to 98.8%).
+- Ticks never crit and take no damage multipliers from Gunde. They take the target's incoming-damage multipliers
+  (Blueprint preset `GundeRend`); the replay's Rend calibration goes from 1.051 to 1.002 with them.
 
 ## Heart Splitter
 

@@ -1,14 +1,11 @@
 namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 
 /// <summary>Ability 1587: instant, applies Searing Blaze (<see cref="SearingBlazeDot"/>) to the target.</summary>
-public class SearingBlaze : ArdeosAbility
+public partial class SearingBlaze : ArdeosAbility
 {
-    public const int AbilityId = 1587;
-    public const string AbilityName = "Searing Blaze";
-
     public SearingBlazeDot Dot { get; }
 
-    public SearingBlaze(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public SearingBlaze(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         Dot = new SearingBlazeDot(owner);
     }

@@ -230,6 +230,40 @@
   vector-effect: non-scaling-stroke;
 }
 
+/* The DPS distribution: a bar per bin of fights, the bin of the mean DPS darker. A bin's whole column shows its
+   tooltip. */
+.legend i.bin {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--heading);
+}
+
+.legend i.bin.mean-bin {
+  opacity: 0.55;
+}
+
+.chart .bin .hover {
+  fill: transparent;
+}
+
+.chart .bin .fights {
+  fill: var(--heading);
+}
+
+.chart .bin.mean-bin .fights {
+  opacity: 0.55;
+}
+
+.chart .bin:hover .hover {
+  fill: var(--row-hover);
+}
+
+/* The max label ends at the right edge. */
+.chart .x span.end {
+  left: 100%;
+  transform: translateX(-100%);
+}
+
 /* The report's tables: small capital headings, quiet rows, figures right-aligned, the name with its icon on the left. */
 .report-table {
   width: 100%;

@@ -7,13 +7,8 @@ namespace FellowshipSim.Core.Heroes.Mara.Talents;
 /// enemies. Your Hemorrhaging Strike's Bleed deals more damage to enemies that are afflicted by your Seething Poison."
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class GushingBlood : Talent
+public partial class GushingBlood : Talent
 {
-    public const int TalentId = 122;
-    public const string TalentName = "Gushing Blood";
-    public const int ExtraEnemies = 4;
-    public const double SeethingDamage = 1.5;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -21,7 +16,7 @@ public class GushingBlood : Talent
     {
         var mara = (Mara)hero;
         mara.GetAbility<HemorrhagingStrike>()?.ExtraBleedTargets.Add((ctx, target) =>
-            hero.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime) ? ctx.ActiveEnemiesExcept(target).Take(ExtraEnemies) : []);
-        mara.Hemorrhage.TargetMultipliers.Add((enemy, ctx) => mara.SeethingPoison.IsOn(enemy, ctx) ? SeethingDamage : 1.0);
+            hero.Auras.HasAura(MaidenOfDeath.Buff, ctx.CurrentTime) ? ctx.ActiveEnemiesExcept(target).Take(Constants.AdditionalMaxTargets) : []);
+        mara.Hemorrhage.TargetMultipliers.Add((enemy, ctx) => mara.SeethingPoison.IsOn(enemy, ctx) ? Constants.ChargedDoubleAttackBuilderPoisonBleedMultiplier : 1.0);
     }
 }

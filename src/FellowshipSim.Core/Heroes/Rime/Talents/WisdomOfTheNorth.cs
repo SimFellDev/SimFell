@@ -3,12 +3,8 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>Talent 49: Ice Blitz, Flight of the Navir and Winter's Blessing cooldowns are reduced per Winter Orb spent or overflowed.</summary>
-public class WisdomOfTheNorth : Talent
+public partial class WisdomOfTheNorth : Talent
 {
-    public const int TalentId = 49;
-    public const string TalentName = "Wisdom of the North";
-    public const double ReductionPerOrbSeconds = 0.3;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -17,7 +13,7 @@ public class WisdomOfTheNorth : Talent
         Ability?[] reduced = [hero.GetAbility<IceBlitz>(), hero.GetAbility<FlightOfTheNavir>(), hero.GetAbility<WintersBlessing>()];
         void ReduceCooldowns(int orbs, SimTime now)
         {
-            var amount = SimTime.FromSeconds(ReductionPerOrbSeconds * orbs);
+            var amount = SimTime.FromSeconds(Constants.CooldownReductionPerOrbSpent * orbs);
             foreach (var ability in reduced)
             {
                 if (ability != null) hero.ReduceCooldown(ability.Name, amount, now);

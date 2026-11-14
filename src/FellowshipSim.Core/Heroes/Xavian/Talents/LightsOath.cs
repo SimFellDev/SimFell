@@ -7,16 +7,11 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// to 8 times. When you have 8 stacks of Light's Oath, your next Shining Halo deals +100% increased damage." Effect 2655
 /// (30s, 8 stacks; its own text has 200% more). UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class LightsOath : Talent
+public partial class LightsOath : Talent
 {
-    public const int TalentId = 568;
-    public const string TalentName = "Light's Oath";
     public const int BuffEffectId = 2655;
-    public const double BuffSeconds = 30.0;
-    public const int MaxStacks = 8;
-    public const double HaloDamageMultiplier = 2.0;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, BuffSeconds, MaxStacks);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, Constants.ProcDuration, Constants.ProcStackCap);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -26,10 +21,10 @@ public class LightsOath : Talent
         var xavian = (Xavian)hero;
         xavian.GetAbility<Omnistrike>()!.Struck += ctx => hero.Auras.Apply(Buff, ctx.CurrentTime);
         xavian.SolarBlades.Struck += (ctx, _) => hero.Auras.Apply(Buff, ctx.CurrentTime);
-        xavian.ShiningHalo.CastDamageMultipliers.Add(ctx => hero.Auras.GetStacks(Buff, ctx.CurrentTime) >= MaxStacks ? HaloDamageMultiplier : 1.0);
+        xavian.ShiningHalo.CastDamageMultipliers.Add(ctx => hero.Auras.GetStacks(Buff, ctx.CurrentTime) >= TalentCost ? Constants.DamageScaler : 1.0);
         xavian.ShiningHalo.Placed += ctx =>
         {
-            if (hero.Auras.GetStacks(Buff, ctx.CurrentTime) >= MaxStacks) hero.Auras.Remove(Buff, ctx.CurrentTime);
+            if (hero.Auras.GetStacks(Buff, ctx.CurrentTime) >= TalentCost) hero.Auras.Remove(Buff, ctx.CurrentTime);
         };
     }
 }

@@ -19,7 +19,7 @@ public class RelicUndyingHeart
     [InlineData("Tariq", "Heavy Strike")]
     public void Undying_Heart_Gives_25_Percent_Haste_For_20_Seconds(string hero, string ability)
     {
-        var f = StepFights.Of(hero, relics: [UndyingHeart.OrbItemId]);
+        var f = StepFights.Of(hero, relics: [UndyingHeart.RelicItemId]);
         f.ForceProcs(key => key == UndyingHeart.ProcKey ? true : null);
         f.FillResources(); // enough to cast it
 

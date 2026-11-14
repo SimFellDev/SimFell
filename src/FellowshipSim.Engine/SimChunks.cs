@@ -34,19 +34,31 @@ public sealed class SimChunks
         _settings = settings;
     }
 
-    /// <summary>The chunks of a sim with <paramref name="settings"/>.</summary>
-    public static int Count(SimSettings settings) => MonteCarloSimulator.ChunkCount(settings.Iterations);
+    /// <summary>The chunks of a sim with <paramref name="settings"/>: every chunk, or the most for a sim to a target error.</summary>
+    public static int Count(SimSettings settings) => MonteCarloSimulator.ChunkCount(settings.Iterations, settings.TargetError);
+
+    /// <summary>
+    /// The progress of a sim with <paramref name="settings"/> after <paramref name="completed"/> fights, with the margin of
+    /// error of the fights merged so far for a sim to a target error. A <paramref name="done"/> sim has every fight it fought.
+    /// </summary>
+    public static SimProgress Progress(SimSettings settings, int completed, double? error, bool done = false) =>
+        settings.TargetError > 0
+            ? new SimProgress(completed, done ? completed : settings.Iterations, error, settings.TargetError)
+            : new SimProgress(completed, settings.Iterations);
 
     /// <summary>The fights of chunk <paramref name="chunk"/>, and their totals.</summary>
     public MonteCarloChunk Run(int chunk, CancellationToken ct = default) =>
         _simulator.RunChunk(chunk, SimTime.FromSeconds(_settings.DurationSeconds), _settings.Iterations, _settings.TargetCount,
-            _settings.FirstSeed, cancellationToken: ct, fight: _settings.Fight);
+            _settings.FirstSeed, cancellationToken: ct, fight: _settings.Fight, targetError: _settings.TargetError);
 
-    /// <summary>The sim's result from every one of its chunks, in chunk order, with its typical fight rolled as <see cref="MonteCarloSimulator.Run"/> has it.</summary>
+    /// <summary>
+    /// The sim's result from its chunks in chunk order (every one, or for a sim to a target error those up to the first
+    /// that reaches it), with its typical fight rolled as <see cref="MonteCarloSimulator.Run"/> has it.
+    /// </summary>
     public SimResult Combine(IReadOnlyList<MonteCarloChunk> chunks)
     {
         var duration = SimTime.FromSeconds(_settings.DurationSeconds);
-        var combined = MonteCarloSimulator.Combine(chunks, duration, _settings.Iterations);
+        var combined = MonteCarloSimulator.Combine(chunks, duration, _settings.Iterations, targetError: _settings.TargetError);
         var result = SimResult.From(combined);
         if (combined.TypicalFight is not { } typical) return result;
         var rolled = _simulator.RollFight(typical, duration, _settings.TargetCount, _settings.FirstSeed, _settings.Fight);

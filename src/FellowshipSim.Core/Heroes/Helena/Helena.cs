@@ -8,7 +8,7 @@ namespace FellowshipSim.Core.Heroes.Helena;
 /// (<see cref="VeteranOfWar"/>). Toughness is her resource: Shield Slam, Shockwave and Shields Up raise it, and a replay
 /// takes it from the log. Abilities are in Abilities/ and talents in Talents/.
 /// </summary>
-public sealed class Helena : Hero
+public sealed partial class Helena : Hero
 {
     /// <summary>
     /// Toughness, as a share of its maximum (0 to 100). Combat logs give it as resource type 3: the amount and the maximum
@@ -16,14 +16,6 @@ public sealed class Helena : Hero
     /// Strike, Haste, Expertise, and Spirit you have further increases the final amount by 2%", ability 977).
     /// </summary>
     public static readonly ResourceDef Toughness = new("Toughness", Max: 100);
-
-    /// <summary>Class tuning: hero 22 baseAttributes BalancingDamageAura 1 (entities.jsonl v26320967), none.</summary>
-    public const double BalancingDamageAura = 1.0;
-
-    /// <summary>Health before Stamina (game data, Helena baseAttributes BaseHealth).</summary>
-    public const double BaseHealth = 2556;
-    /// <summary>Health per point of Stamina (game data, Helena baseAttributes StaminaToMaxHealthMultiplier).</summary>
-    public const double StaminaToMaxHealthMultiplier = 76.9365;
 
     /// <summary>
     /// Spirit Points per Spirit Refund: "Each time you trigger the Spirit Refund you gain 1.2 Spirit Points toward your
@@ -69,8 +61,7 @@ public sealed class Helena : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Datamine hero 22: mainStat Strength.</summary>
-    public override MainStat MainStat => MainStat.Strength;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>
     /// Multipliers on every Veteran of War reduction of one cast, read as the cast resolves (Punishing Strikes). Siegebreaker
@@ -95,9 +86,9 @@ public sealed class Helena : Hero
     public override void Initialize()
     {
         AddResource(Toughness);
-        ClassDamageTuning = BalancingDamageAura;
-        Stats.BaseHealth = BaseHealth;
-        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
+        ClassDamageTuning = HeroBalancingDamageAura;
+        Stats.BaseHealth = HeroBaseHealth;
+        Stats.StaminaToMaxHealth = HeroStaminaToMaxHealthMultiplier;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Abilities.Add(new Attack(this));

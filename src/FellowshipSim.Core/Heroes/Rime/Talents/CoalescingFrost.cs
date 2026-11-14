@@ -8,20 +8,12 @@ namespace FellowshipSim.Core.Heroes.Rime.Talents;
 /// stack on enemies around it (damage effect 2300). Values: talent text and game data. UNVERIFIED: no combat log has this talent.
 /// An example of a talent that deals its own damage: the eruption is a small ability of the talent (<see cref="Eruption"/>).
 /// </summary>
-public class CoalescingFrost : Talent
+public partial class CoalescingFrost : Talent
 {
-    public const int TalentId = 36;
-    public const string TalentName = "Coalescing Frost";
     public const int DebuffEffectId = 2306;
     public const int DamageEffectId = 2300;
     public const double DurationSeconds = 3.0;
-    public const double CoefficientPerStack = 0.56;
     public const double CritDoubleStackChance = 0.5;
-    /// <summary>
-    /// Damage falls off as sqrt(T/N) beyond T enemies: T is the game data value (game data's targetCountFalloff on effect 2300). One log fit a higher threshold better (PCaMVTFbZzNLrfx3 fight 5);
-    /// the game data is used (per the user).
-    /// </summary>
-    public const double TargetThreshold = 5;
     public const string DoubleStackProc = "coalescing_frost_double";
 
     public override string Name => TalentName;
@@ -86,20 +78,20 @@ public class CoalescingFrost : Talent
         {
             if (struck[i] != target) around++;
         }
-        double falloff = around > TargetThreshold ? Math.Sqrt(TargetThreshold / around) : 1.0;
+        double falloff = around > Constants.ChanneledBeamSingleDamageTalentDelayedAoeTargetCountThreshold ? Math.Sqrt((double)Constants.ChanneledBeamSingleDamageTalentDelayedAoeTargetCountThreshold / around) : 1.0;
         for (int i = 0; i < struck.Count; i++)
         {
             eruption.DealDamage(ctx, struck[i], damageMultiplier: state.Stacks * (struck[i] == target ? 1.0 : falloff));
         }
     }
 
-    /// <summary>The eruption's damage: <see cref="CoefficientPerStack"/> Intellect per stack, logged under effect 2300, with the falloff beyond <see cref="TargetThreshold"/> targets.</summary>
+    /// <summary>The eruption's damage: <see cref="Constants.ChanneledBeamSingleDamageTalentDelayedAoeDamageDividerToInt"/> Intellect per stack, logged under effect 2300, with the falloff beyond <see cref="Constants.ChanneledBeamSingleDamageTalentDelayedAoeTargetCountThreshold"/> targets.</summary>
     private sealed class Eruption : Ability
     {
         public Eruption(Rime owner) : base(owner, LogIds.Effect(DamageEffectId), TalentName)
         {
-            BaseCoefficient = CoefficientPerStack;
-            AoeTargetThreshold = TargetThreshold;
+            BaseCoefficient = Constants.ChanneledBeamSingleDamageTalentDelayedAoeDamageDividerToInt;
+            AoeTargetThreshold = Constants.ChanneledBeamSingleDamageTalentDelayedAoeTargetCountThreshold;
         }
 
         public override void Execute(SimulationContext ctx, EnemyTarget target) { }

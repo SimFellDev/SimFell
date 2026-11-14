@@ -5,17 +5,13 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// on every lightning hit.) Combat logs: Thunder Call: Heavy Strike
 /// does not gain it, a developer bug the engine models until the game fixes it (HeavyStrike).
 /// </summary>
-public class CrackTheSky : Talent
+public partial class CrackTheSky : Talent
 {
-    public const int TalentId = 77;
-    public const string TalentName = "Crack the Sky";
-    public const double CritChance = 0.20;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
     public override void Bind(Hero hero)
     {
-        if (hero is Tariq tariq) tariq.LightningCritChance += CritChance;
+        if (hero is Tariq tariq) tariq.LightningCritChance += Constants.TalentPassiveLightningCritChanceIncrease;
     }
 }

@@ -7,28 +7,21 @@ namespace FellowshipSim.Core.Customization.RelicPassives;
 /// (1p7AXmHfwV9CYMxR fight 30, dBgbn8wD1RxL7Kma fight 9, Fc8v6yWxD14GQMnV fight 19, fXyzwGcQkTrLD34R fight 4,
 /// pWmcV42K39GHTLQX fight 23). The roll has Haste off (game data, row ArmorSetBonus.HasteBuffOnAbilityUse.PPM).
 /// </summary>
-public class UndyingHeart : RelicPassive
+public partial class UndyingHeart : RelicPassive
 {
-    public const int RelicPassiveId = 779;
-    public const string RelicPassiveName = "Undying Heart";
-    public const int OrbItemId = 5924;
-    public const string OrbItemName = "Orb of Gathering Storms";
     public const int EffectId = 3270;
-    public const double ProcsPerMinute = 0.8;
-    public const double DurationSeconds = 20.0;
-    public const double HasteBonus = 0.25;
     public const string ProcKey = "undying_heart";
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Dark Prophecy", EffectId, DurationSeconds,
-        modifiers: StatModifier.Add(StatType.Haste, HasteBonus)) with { IsProc = true };
+    public static readonly AuraDef Buff = AuraDef.Effect("Dark Prophecy", EffectId, Constants.BuffDuration,
+        modifiers: StatModifier.Add(StatType.Haste, Constants.HasteBonus)) with { IsProc = true };
 
     public override int Id => RelicPassiveId;
     public override string Name => RelicPassiveName;
-    public override IReadOnlyList<RelicItem> Items => [new(OrbItemId, OrbItemName)];
+    public override IReadOnlyList<RelicItem> Items => RelicPassiveItems;
 
     public override void Bind(Hero hero)
     {
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute, usesHaste: false);
+        var rppm = new RealPpm(ProcKey, RelicPassiveProcsPerMinute, usesHaste: false);
         hero.OnCastCompleted += (_, _, now) =>
         {
             if (hero.SimContext is { } ctx && rppm.Roll(hero, ctx)) hero.Auras.Apply(Buff, now);

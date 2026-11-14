@@ -5,7 +5,7 @@ namespace FellowshipSim.Engine;
 /// <summary>
 /// A Monte Carlo sim's DPS: mean, lowest and highest fight, standard deviation, and each ability's mean DPS; with its
 /// damage over time, each damage source's casts, hits and crits, each buff's and debuff's uptime, one typical fight's
-/// casts and hits in order, Spirit Points over the fight, the DPS to bosses over the time of boss fighting, and a dungeon's party DPS and the hero's share of the party's damage. A result saved before those were recorded has them null.
+/// casts and hits in order, Spirit Points over the fight, the DPS to bosses over the time of boss fighting, and a dungeon's party DPS and the hero's share of the party's damage, the fights by DPS, and the target error a sim ran to. A result saved before those were recorded has them null.
 /// <see cref="TypicalFight"/> is the typical fight's index in the sim: its seed is the sim's first seed plus the index.
 /// </summary>
 public sealed record SimResult(
@@ -26,10 +26,20 @@ public sealed record SimResult(
     IReadOnlyList<HitReport>? Hits = null,
     int? TypicalFight = null,
     double? PartyDps = null,
-    double? GroupDamageShare = null)
+    double? GroupDamageShare = null,
+    DpsDistribution? Distribution = null,
+    double? TargetError = null)
 {
+    /// <summary>The margin of error of <see cref="MeanDps"/> at 95% confidence, in DPS.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double Margin => DpsMoments.MarginOf(StandardDeviation, Iterations);
+
+    /// <summary>The margin of error of <see cref="MeanDps"/> at 95% confidence, in percent of it; infinite for a mean of 0.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double MarginPercent => DpsMoments.MarginPercentOf(StandardDeviation, Iterations, MeanDps);
+
     public static SimResult From(MonteCarloResult result) => new(result.MeanDps, result.MinDps, result.MaxDps,
         result.StandardDeviation, result.AbilityDpsBreakdown, result.Iterations, result.DurationSeconds,
         result.Timeline, result.Abilities, result.Buffs, result.PrimaryTargetDps, result.Casts, result.Spirit, result.BossDps,
-        result.Hits, result.TypicalFight, result.PartyDps, result.GroupDamageShare);
+        result.Hits, result.TypicalFight, result.PartyDps, result.GroupDamageShare, result.Distribution, result.TargetError);
 }

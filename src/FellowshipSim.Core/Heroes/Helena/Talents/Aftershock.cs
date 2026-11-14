@@ -9,10 +9,8 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// 2428 (entities.jsonl v26320967). Combat logs (8 fights with the talent): Helena's hits on an enemy with the debuff
 /// deal 1.19-1.23 times what they deal without it.
 /// </summary>
-public class Aftershock : Talent
+public partial class Aftershock : Talent
 {
-    public const int TalentId = 213;
-    public const string TalentName = "Aftershock";
     public const int DebuffEffectId = 2428;
     public const double DebuffSeconds = 5.0;
     public const double DamageTaken = 1.2;

@@ -313,7 +313,7 @@ public class MaraResourceEconomy
         };
         int enemies = source is "Volatile Poison" or "Seething Burst" or "Corrosive Spill" or "Hemotoxin burst" ? 3 : 1;
         var f = StepFights.Mara(enemies: enemies, talents: talents,
-            legendaries: source == "Vexira's Venom" ? [VexirasVenom.WristItemId] : null);
+            legendaries: source == "Vexira's Venom" ? [VexirasVenom.LegsItemId] : null);
         var rolls = f.ForceProcs(key => key switch
         {
             VenomousDelight.ProcKey => false, // only to read its rolls

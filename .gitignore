@@ -28,5 +28,9 @@ src/FellowshipSim.VsCode/dist/
 src/FellowshipSim.VsCode/server/
 *.vsix
 
-# The Codex data export: Fellowship game content, downloaded and read by FellowshipSim.Core's build
+# The Codex data export (tools/download-codex-export.sh): Fellowship game content, read by tools/regenerate-codex.sh
 /codex-export/
+
+# FellowshipSim.Core's generated source files: the Codex generators' files are committed (tools/regenerate-codex.sh).
+src/FellowshipSim.Core/Generated/*
+!src/FellowshipSim.Core/Generated/Codex/

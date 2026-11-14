@@ -21,7 +21,7 @@ public class RelicAccursedTrophy
     [InlineData("Tariq", "Raging Tempest")]
     public void Accursed_Trophy_Ultimate_Gives_20_Percent_Main_Stat_For_20_Seconds(string hero, string ultimate)
     {
-        var f = StepFights.Of(hero, relics: [AccursedTrophy.OrbItemId]);
+        var f = StepFights.Of(hero, relics: [AccursedTrophy.RelicItemId]);
         double plainMainStat = f.MainStat();
         f.FillResources(); // enough to cast it
 
@@ -44,7 +44,7 @@ public class RelicAccursedTrophy
     [Fact]
     public void Accursed_Trophy_A_Second_Ultimate_Gives_A_Second_Stack_Of_Drakheims_Absolution()
     {
-        var f = StepFights.Of("Rime", relics: [AccursedTrophy.OrbItemId]);
+        var f = StepFights.Of("Rime", relics: [AccursedTrophy.RelicItemId]);
         f.FillResources(); // enough to cast it
 
         f.Cast<WrathOfWinter>();
@@ -63,7 +63,7 @@ public class RelicAccursedTrophy
     [InlineData("Ice Blitz")]
     public void Only_The_Ultimate_Gives_Drakheims_Absolution(string ability)
     {
-        var f = StepFights.Of("Rime", relics: [AccursedTrophy.OrbItemId]);
+        var f = StepFights.Of("Rime", relics: [AccursedTrophy.RelicItemId]);
         f.FillResources(); // enough to cast it
 
         f.Cast(ability);

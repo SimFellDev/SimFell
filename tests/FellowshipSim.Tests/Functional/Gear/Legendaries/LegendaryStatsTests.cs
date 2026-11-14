@@ -19,11 +19,11 @@ public class LegendaryStatsTests
     private static int InertLegendary(string hero) => hero switch
     {
         "Rime" => UndulatingSpirit.ChestItemId, // works through Winter's Blessing
-        "Ardeos" => Explosivo.HelmItemId, // works through Apocalypse and Fire Ball
-        "Elarion" => StarstrikersAscent.HauberkItemId, // works through a Spirit Refund, and the bare hero has no Spirit
-        "Gunde" => BloodyMess.HelmItemId, // works through Grim Carve
+        "Ardeos" => Explosivo.ChestItemId, // works through Apocalypse and Fire Ball
+        "Elarion" => StarstrikersAscent.ChestItemId, // works through a Spirit Refund, and the bare hero has no Spirit
+        "Gunde" => BloodyMess.HeadItemId, // works through Grim Carve
         "Mara" => DrenchedInBlood.ChestItemId, // works through a Spirit Refund, and the bare hero has no Spirit
-        "Tariq" => SlayersMosh.HelmItemId, // works through Leap Smash
+        "Tariq" => SlayersMosh.HeadItemId, // works through Leap Smash
         _ => throw new ArgumentException(hero),
     };
 

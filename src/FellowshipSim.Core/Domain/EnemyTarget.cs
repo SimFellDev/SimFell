@@ -36,6 +36,9 @@ public class EnemyTarget : Actor
     /// <summary>True for a priority target of a trash pull.</summary>
     public bool IsPriority { get; set; }
 
+    /// <summary>True for a training dummy (the game's <c>ActorTypeTags.TrainingDummy</c>).</summary>
+    public bool IsTrainingDummy { get; set; }
+
     /// <summary>
     /// From now on the health falls with <paramref name="ctx"/>'s time, from full at <paramref name="start"/> to none at
     /// <paramref name="end"/>.
