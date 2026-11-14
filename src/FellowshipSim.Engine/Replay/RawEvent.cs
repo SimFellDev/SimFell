@@ -21,7 +21,7 @@ internal struct RawEvent
     public RawSlice AbilityGameIdText;
     public int? HitType;
     public RawSlice HitTypeText;
-    public RawSlice Amount, UnmitigatedAmount, Absorbed, Blocked, Overkill, Stack, Duration, ExtraAbilityGameId, Affixes;
+    public RawSlice Amount, UnmitigatedAmount, Mitigated, Absorbed, Blocked, Overkill, Stack, Duration, ExtraAbilityGameId, Affixes;
     public bool Tick, Fake, Activation;
     public RawUnitResources SourceResources, TargetResources;
 
@@ -58,6 +58,7 @@ internal struct RawEvent
             }
             else if (reader.ValueTextEquals("amount"u8)) { reader.Read(); e.Amount = RawSlice.Read(ref reader, offset); }
             else if (reader.ValueTextEquals("unmitigatedAmount"u8)) { reader.Read(); e.UnmitigatedAmount = RawSlice.Read(ref reader, offset); }
+            else if (reader.ValueTextEquals("mitigated"u8)) { reader.Read(); e.Mitigated = RawSlice.Read(ref reader, offset); }
             else if (reader.ValueTextEquals("absorbed"u8)) { reader.Read(); e.Absorbed = RawSlice.Read(ref reader, offset); }
             else if (reader.ValueTextEquals("blocked"u8)) { reader.Read(); e.Blocked = RawSlice.Read(ref reader, offset); }
             else if (reader.ValueTextEquals("overkill"u8)) { reader.Read(); e.Overkill = RawSlice.Read(ref reader, offset); }

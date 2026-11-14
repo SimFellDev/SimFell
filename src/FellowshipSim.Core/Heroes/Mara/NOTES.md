@@ -51,6 +51,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   frame, a 2,023 tick and a 14,326 crit, gives 2,606. The ticks never crit (effect 2364's preset `Empty`).
 - **Blocked hits** (hit type 4; 40 in fight 19, Queen's Fang and auto attacks): the logged amount is what the block
   left, so a replay compares the engine's hit with the amount plus the blocked part.
+- **An enemy's damage reduction:** the log's `mitigated` on a hit is what the enemy took off it, the block included (on a blocked
+  hit it is the blocked part and 1: Fc8v6yWxD14GQMnV fight 19 @ 32.008, blocked 29,604, mitigated 29,605), and amount and mitigated
+  make up the log's `unmitigatedAmount`. gd6ByNrf81jc9aWw fight 3 (Silken Hollow) has 1,104 of Mara's 16,995 hits with 45% to 55%
+  mitigated and no block, on every enemy hit at 260 to 280 s, 300 to 320 s, 360 to 380 s and 420 to 440 s (@ 303.867: Arachnid
+  Assault on enemy 55.2, amount 2,488, mitigated 2,082), and 3tM2NRFDCnhkqdx6 fight 7 (Silken Hollow) has 185. The log over the
+  engine there was 0.823, 0.598, 0.772 and 0.856 against 0.97 to 1.05 in the other windows. A replay compares the engine's hit with
+  the amount plus the mitigated part, and a hit deals the amount: a crit's damage over time takes a share of that amount (Amethyst
+  Splinter and Vexira's Venom in fight 3 are 0.944 and 0.952 of a share of the unmitigated amount, and 1.000 and 1.001 of a share of
+  the amount). Fight 3's exact replay goes from 104.1% of the log to 99.9%.
 
 ## Timing
 
@@ -129,6 +138,33 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   5 at 2s to 3s, 3 at 3s to 4s and 218 at 5s or more, with no Final Stratagem cast in any fight.
 - **Hemorrhage:** ticks every 3s shortened by Haste, with a partial tick as it runs out. A refresh keeps the tick timing,
   and up to 30% of the new duration of the time left carries over.
+- **Hemorrhage, Seething Poison and Hemotoxin's poison on the period timer:** each enemy's effect is a damage over time on
+  the game's period timer, re-armed on a Haste change, with its partial tick from the timer's elapsed time, and a replay takes
+  each tick's time from the log (`IOutcomeSource.TickAt`), as Volatile Poison's ticks do. In the game data (build 26320967),
+  effects 1724, 1716 (`GE_Mara_ChargedDoubleAttackBuilder_Poison`) and 2337 (`GE_Mara_Talent_BleedAttackSpender_ExplosivePoison_Poison`)
+  have `EffectType.Dot` and none of `EffectLogic.TickrateNotAffectedByHaste`, `...Exclusively` or `EffectLogic.IgnorePartialTicks`.
+  Exact replay of the 34 Mara fights of `data/fights`: Hemorrhage matched 5,666 to 5,989 of 6,117 and engine-only 757 to 412,
+  Seething Poison 9,906 to 9,931 of 9,933 and 187 to 153, Hemotoxin's poison engine-only 39 to 34 (258 of 258 matched);
+  fjrCax7VzGmMZw6h fight 26 hits matched 13,465 to 13,741 of 14,211 and damage 96.7% to 98.1% of the log.
+- **Hemorrhage's tick period scaler:** each application, a refresh too, sets the scaler to 1 and multiplies it by From the
+  Shadows' 0.87, then by Bloodrush's 1 / 1.2, and the tick in progress keeps its fraction. In the game data (build 26320967), a
+  refresh replaces the spec (`ApplyGameplayEffectSpec` exe 0x144A6A660) and the period timer runs on (`NeverReset`); ability 1589
+  multiplies the scaler on every application of Mara's bleed (`GA_Mara_Passive_Talent_AoeAttackSpender_CloneAttack` offsets 15 to
+  376), and `GA_Mara_BleedAttackSpender` writes Bloodrush's after it (offset 2209). fjrCax7VzGmMZw6h fight 26 (Mara player 23, the one
+  Mara player with Bloodrush, Gushing Blood and From the Shadows): tick gap x (1 + Haste) / 3s is 0.722 to 0.739 after a refresh
+  outside Maiden of Death (@ 51.621 on enemy 77.1), 0.87 / 1.2 = 0.725, and the engine's 1 / (1 + 0.2 + 0.149) = 0.741 before.
+- **Gushing Blood's re-application:** during Maiden of Death each Hemorrhaging Strike takes the struck enemy's bleed off, then puts
+  a copy afresh on up to 4 other enemies, those without Mara's bleed first, and on the struck enemy: each copy has the struck
+  enemy's new duration, Mara's bleed on its enemy comes off first with no partial tick, From the Shadows and Bloodrush write each
+  copy's scaler on its own application, and its first tick is a whole period later. In the game data (build 26320967), ability 1517
+  (`GA_Mara_Passive_Talent_ChargedResourceRefillSelfBuff_BleedAttackSpenderBleedAoe`) listens for the bleed's application with the
+  gate on `CustomAssetTags.Mara.ChargedResourceRefillSelfBuff` (offsets 2735 to 2830), removes it (2558), clones the live spec (2629),
+  removes and applies on each target (1406, 1600) and writes Bloodrush's multiplier (1666 to 2197). fjrCax7VzGmMZw6h fight 26 (Mara
+  player 23): the 114 re-applications are all in Maiden of Death (108 on a refresh, 6 on a fresh bleed), every copy has the struck
+  enemy's duration (@ 24.677: 39000ms on 77.1 and 4 others), and the 361 first ticks after an application come 1.191s after it at
+  the median. 62 of the 114 copy the bleed to no other enemy; the engine has no positions and copies it to up to 4 enemies in its
+  own order. Exact replay of fight 26: hits matched 12,657 to 13,465 of 14,211, damage 90.0% to 96.7% of the log, Hemorrhage
+  matched 1,533 to 2,217 of 2,614 and engine-only 1,268 to 616.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.
 - **Volatile Poison:** each application and refresh rolls a duration of 6 to 8 seconds, the ticks are a sixth of it apart, shortened
   by Haste, and the poison ends with a partial tick. In the game data (build 26320967), `GMMC_Mara_AoeAttackBuilder_Poison_DurationManager`
@@ -181,6 +217,23 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   1.87s to 1.90s apart at 24.8 to 28.6, 1.70s to 1.74s at 30.4 to 39.0, 1.84s to 1.90s at 39.0 to 50.2. Prvc4XmbdHBaVRKy fight 12,
   enemy 78.9, applied at 809.717 with no removal by 855: 1.67s to 1.70s at 811.5 to 818.2, 1.84s to 1.87s at 818.2 to 827.5, 1.67s
   to 1.70s at 827.5 to 834.3.
+- **Bloodrite Fervor** (ability 185): usable during the Global Cooldown, starting none, on a 90s cooldown of its own. Over the 20
+  casts in the 34 Mara fights of `data/fights`, Mara casts it 0.77s after Skittering Blades (3M2vWr8taxVfTQFY fight 53 @ 89.555),
+  Stalker Step comes 0.30s after it (fjrCax7VzGmMZw6h fight 26 @ 67.411), and the shortest gap between two casts is 90.1s
+  (b649dhNptyW132Tm fight 5 @ 517.886). In the game data (build 26320967), the cooldown is `RelicPower.PartyMoveSpeedBuff.Cooldown`
+  times the relic cooldown gem factor (`GMMC_GemAugmentation.CalculateBaseMagnitude`: 1 - 0.08 with Blessing of the Artisan, 1 - 0.24
+  with its rank II), and effect 156 lasts 12s with MoveSpeed x1.5 alone. Before it, the replay skipped the 20 casts as unmodeled.
+- **Conjure Portal** (ability 1504): a 1.5s Global Cooldown of its own, shortened by Haste, and a 120s cooldown (game data, build
+  26320967). Over the 10 casts in the 34 Mara fights of `data/fights`, the next cast on the Global Cooldown comes 1.139s after it at
+  the least (Skittering Blades, Hwxc8TRFqPGhfjbN fight 5 @ 446.832) and 1.438s (HgamNcX24tJ3qVQA fight 21 @ 691.259).
+- **Relic Teleport** (ability 1506, the use of the portal): no global cooldown blocks it, and it starts none. It comes 0.636s and
+  0.804s after Conjure Portal (Zta3LQdvVbPJ9Whz fight 6 @ 187.280, GXFz3pZ94aQr2chV fight 3 @ 463.138), inside that Global Cooldown,
+  and inside Mara's own 1s Global Cooldown (v8rhNxVc3PwDqzBA fight 4 player 27 @ 678.493, w7khnMKAa4TxXrmC fight 23 @ 704.934). In
+  the game data (build 26320967), `GA_RelicPower_Portal_Interact` has no `GlobalCooldownGameplayEffectClass`, and the global cooldown
+  check (exe 0x1450DC780) passes an ability with none. The replay forced these 4 casts before, and forces none now.
+- **Rejuvenate** (ability 189): usable during the Global Cooldown, starting none, on a 120s cooldown, healing 0.4 of Mara's maximum
+  health (game data, build 26320967, row `RelicPower.HealthPotion.MaxHealthFraction`). The 2 casts in the 34 Mara fights of
+  `data/fights` are in WcTBrQNX46m9axqP fight 12 @ 278.213 and 625.017, and the replay skipped both as unmodeled before.
 - **Essence of the Virtuoso from Anomalous Residue:** with no Topaz power in the gear, each Residue: Topaz window gives effect 1937
   in the Residue's frame, and Spirit of Heroism takes it off and gives it back. T2qLPpmMkrAtJ9B1 fight 18 @ 383.829, 530.946 and
   1400.233; Fc8v6yWxD14GQMnV fight 19 @ 809.379, 958.352 and 1120.143. In the game data (`DT_GemDefinitions`, Topaz row), the node
@@ -291,6 +344,15 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   8.1 with a tick of Amethyst Splinter, 724.639 on 6.5, 1386.370 on 22.1. A log spike proves a roll a frame either side of it: a roll up to
   1s before, as the replay took it, gave the spike's First Strike to the hit that rolled it, and those hits' log amounts have none
   (GXFz3pZ94aQr2chV fight 3 @ 175.855: Queen's Fang 14,473 in the log, 15,978 with First Strike and 14,609 without).
+
+## Auras
+
+- **Inspired Allegiance from another player:** the log's state of an aura on Mara is her own: another player's buff on her is an
+  external aura of the replay, with that player as its source. Another player's Inspired Allegiance and Mara's own are two
+  instances, each with its own removal: CwmX2Tb8GA6hyc1v fight 8 has the other player's @ 20.204 to 28.219 and Mara's own @ 22.205
+  to 30.223. The replay's check reads Mara's own instance against the log: with both counted, the 2 Mara fights of `data/fights` with
+  the sigil had 678 `Inspired Allegiance extra in engine` issues (496 in CwmX2Tb8GA6hyc1v fight 8, 182 in w7khnMKAa4TxXrmC fight 23),
+  and with Mara's own alone they have none.
 
 ## Not yet explained
 
@@ -404,9 +466,36 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
 
+- **The tick period of Gushing Blood's copies with From the Shadows:** in fjrCax7VzGmMZw6h fight 26 (Mara player 23, the one Mara
+  player with Gushing Blood and From the Shadows), the 2,227 pairs of a copy's ticks with no event between them are 0.635 of 3s /
+  Haste apart at the median (p10 0.620, p90 0.721), 0.87 x 0.87 / 1.2 = 0.631. The engine's copies start at scaler 1 and tick 0.87 /
+  1.2 = 0.725 apart. The game data gives 0.631 when ability 1589's applied-to-target listener is registered after ability 1517's,
+  and 0.725 in the other order: the listeners run the last registered first (exe 0x144A00010, `AddUObject` 0x1449EDE80 appends),
+  each with a copy of the live spec (0x144A176A0), so with 1589 first ability 1517's clone has its 0.87 and gets it again on its
+  own application. Each passive registers its listener in its own activation with no latent node (1517 offsets 15 to 286, 1589
+  offsets 2164 to 2435). With 0.631 the exact replay of fight 26 has 13,768 hits matched and Hemorrhage 2,520 matched, 379
+  engine-only, against the engine's 13,465, 2,217 and 616. Sources checked: both ubergraphs and class defaults, the export records
+  of abilities 1517 and 1589 (no grant or activation order field). The order in which a talent's passive and a legendary power's
+  passive are granted is native and unread.
+- **Free dice below the log:** over the 34 Mara fights of `data/fights`, free dice is 92.8% of the log, with the log at the 97.1%
+  point of the engine's runs (measure pass-03, 20 runs a fight). Free dice rolls Spirit Refund with the engine's dice and keeps the
+  log's casts, so a logged finisher after a logged refund the engine's run lacks is forced with no Combo Point. T2qLPpmMkrAtJ9B1
+  fight 18, seed 1: 175 casts forced with no Combo Point (Arachnid Assault 85, Queen's Fang 84, Hemorrhaging Strike 6) and 129 short
+  of Energy. In that run the finishers and the damage of their crits are 86.5% to 88.2% of the log (Arachnid Assault 86.5%, Queen's
+  Fang 88.2%, Vexira's Venom 87.1%, Amethyst Splinter 88.1%) with the log's crit rates (81.5% against 83.4% for Arachnid Assault),
+  and the generators and poisons 98.7% to 99.0% (Skittering Blades, Volatile Poison). Over the 20 runs of pass-03 the finishers' sources
+  are 90.9% to 94.2% and the generators' and poisons' 99.0% to 101.1%. Free dice takes from the log the targets of a hit on several
+  enemies or with a target of its own choosing, and a defensive proc's hit (`FreeDiceOutcomeSource`), and no roll a logged cast depends
+  on. Sources checked: `FreeDiceOutcomeSource` and `FreeDiceReplay`.
+
 ## Not yet checked against a log
 
-Red Ledger, Corrosive Spill, Bloodrush, Efficient Killer, Gushing Blood, Maiden's Doom, Seething Burst, Hemotoxin,
+Red Ledger, Corrosive Spill, Efficient Killer, Maiden's Doom, Seething Burst, Hemotoxin,
 Arachnid Onslaught, Caustic Wounds, Puncture, Final Stratagem and From the Shadows are built from their tooltips and the
 game data (marked `UNVERIFIED` in their files). A log of a build with them would settle: the damage ID of Seething Burst,
 what Hemotoxin's "bleed damage" counts, and how From the Shadows' clone is logged.
+
+Diamond node 10 (Blessing of the Artisan - II, gem power 1500, `CooldownReduction` 0.24) is in `Diamond.cs`, and Bloodrite
+Fervor's cooldown reads node 5 alone (0.08 at 450). In the game data (build 26320967), node 10 grants
+`GE_GemBonus_RelicCooldownReductionBonusMedium` and `GMMC_GemAugmentation.CalculateBaseMagnitude` reads it at offset 1130; whether
+its effect replaces node 5's is not decoded. No Mara fight of `data/fights` has two Bloodrite Fervor casts under 90.1s apart.

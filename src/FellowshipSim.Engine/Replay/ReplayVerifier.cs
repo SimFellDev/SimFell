@@ -21,7 +21,7 @@ public sealed class ReplayVerifier
         _options = options;
         _hero = hero;
         _logAuras = logAuras;
-        if (logAuras != null) hero.Auras.OnRemoved += (aura, at) => { if (aura.LogId > 0) _engineRemoved[aura.LogId] = (at, aura.Stacks); };
+        if (logAuras != null) hero.Auras.OnRemoved += (aura, at) => { if (aura.LogId > 0 && IsOwn(aura)) _engineRemoved[aura.LogId] = (at, aura.Stacks); };
     }
 
     /// <summary>Set by the driver: issues and hits are attributed to this step.</summary>
@@ -283,10 +283,13 @@ public sealed class ReplayVerifier
         }
 
         if (_logAuras == null) return;
-        // The log shows one state per aura ID; the engine can have two auras with one ID (the hero's own Inspired Allegiance
-        // and another player's).
+        // The log's state is the hero's own auras: another player's buff on the hero is an external aura command, not one of
+        // the script's auras (ReplayScriptBuilder). The engine can have two auras with one ID (the hero's own Inspired
+        // Allegiance and another player's, whose def has that player as its source), and the check reads the hero's own.
+        // Combat logs (CwmX2Tb8GA6hyc1v fight 8 @ 20.204 to 22.205: another player's Inspired Allegiance on the Mara player,
+        // and the Mara player's own from 22.205; the engine had 1 stack against the log's 0 at 496 of 995 checks over the fight).
         var engineState = _hero.Auras.Active(ctx.CurrentTime)
-            .Where(a => _logAuras.IsTracked(a.LogId))
+            .Where(a => _logAuras.IsTracked(a.LogId) && IsOwn(a))
             .GroupBy(a => a.LogId)
             .ToDictionary(g => g.Key, g => g.Max(a => a.Stacks));
 
@@ -316,6 +319,9 @@ public sealed class ReplayVerifier
                 .Select(m => $"{a.Name} x{a.Stacks}: {m.Type} {m.Op} {m.Value:0.####}"))
             .ToList();
     }
+
+    /// <summary>The hero's own aura: no other player's buff (an external aura's def has that player as its source).</summary>
+    private static bool IsOwn(Aura aura) => aura.Def.SourceId == 0;
 
     /// <summary>A pre-cast resource: the log reading against the engine amount within the resource's tolerance.</summary>
     public void CheckResource(SimulationContext ctx, ReplayStep step, string resource, double engine, double log, double tolerance)

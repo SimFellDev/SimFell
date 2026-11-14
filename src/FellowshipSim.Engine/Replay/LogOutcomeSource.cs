@@ -4,7 +4,7 @@ namespace FellowshipSim.Engine.Replay;
 /// Answers every one of the engine's open outcomes from the combat log during an exact replay. The replay makes no random
 /// roll:
 ///   - each engine hit is matched to the log hit with the same damage ID on the same target; the log decides whether it
-///     crit, when it landed (projectile travel) and how much it dealt (<see cref="LogDamage.UnblockedAmount"/>),
+///     crit, when it landed (projectile travel) and how much it dealt (<see cref="LogDamage.DealtAmount"/>),
 ///   - each proc roll succeeds if the log shows what that proc produces (its evidence log ID) at the roll,
 ///   - each periodic tick with a damage log ID fires at the time of the log tick it reserves.
 /// <see cref="ReplayVerifier"/> compares each logged value with the engine's range for it.
@@ -185,7 +185,7 @@ public sealed class LogOutcomeSource : IOutcomeSource
     {
         var match = (LogMatch)outcome.Token!;
         _verifier.CheckHit(ctx, landed, match.Log, match.ReleasedAt);
-        return match.Log.UnblockedAmount;
+        return match.Log.DealtAmount;
     }
 
     private sealed record LogMatch(double ReleasedAt, LogDamage Log);

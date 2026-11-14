@@ -12,9 +12,6 @@ public partial class HemorrhagingStrike : Finisher
 {
     public const double Coefficient = 2.8665;
 
-    /// <summary>Enemies besides the target that the cast's bleed goes on (Gushing Blood during Maiden of Death).</summary>
-    public List<Func<SimulationContext, EnemyTarget, IEnumerable<EnemyTarget>>> ExtraBleedTargets { get; } = new();
-
     /// <summary>The strike hit its target, before the bleed goes on, with the Combo Points spent (Hemotoxin).</summary>
     public event Action<SimulationContext, EnemyTarget, int>? Struck;
 
@@ -30,11 +27,6 @@ public partial class HemorrhagingStrike : Finisher
     {
         DealDamage(ctx, target);
         Struck?.Invoke(ctx, target, points);
-        double seconds = BleedSeconds(points);
-        Mara.Hemorrhage.ApplyTo(ctx, target, seconds);
-        foreach (var extra in ExtraBleedTargets)
-        {
-            foreach (var enemy in extra(ctx, target)) Mara.Hemorrhage.ApplyTo(ctx, enemy, seconds);
-        }
+        Mara.Hemorrhage.ApplyFromStrike(ctx, target, BleedSeconds(points));
     }
 }

@@ -280,7 +280,7 @@ public sealed class ReplayDriver
                 }
                 _verifier.LogHitWithoutEngineHit(c, log, enemy);
                 result.LoggedHitsDealt++;
-                c.DealLoggedHit(_hero, enemy, log.AbilityId, log.AbilityName, log.UnblockedAmount, log.Crit);
+                c.DealLoggedHit(_hero, enemy, log.AbilityId, log.AbilityName, log.DealtAmount, log.Crit);
             }, log.AbilityName);
         }
     }

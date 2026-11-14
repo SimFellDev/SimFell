@@ -1,0 +1,112 @@
+Mara accuracy 'baseline', patch 0.5.0.0: 34 fights
+  hits matched                          99.5%
+  exact replay damage / log             99.9%
+  free dice mean / log                  92.8%
+  mean log percentile in free dice      96.4%
+
+fight                              player            hits matched  exact/log  dice/log  log pct  clean steps  forced
+3M2vWr8taxVfTQFY#53 Xul, The Blood Inkvi                    99.9%      99.7%     93.4%     100%    941/1922        9
+3tM2NRFDCnhkqdx6#7 Silken Hollow   beefy2                   99.6%     100.1%     88.7%     100%    761/1170        0
+79yJ4QqVgGpFA8vN#1 Crown of the Wi jomako                   99.7%      99.7%     93.6%     100%    816/1110        0
+b649dhNptyW132Tm#5 Sin-Magir       Culex                    99.9%     100.5%     91.5%     100%    640/861         1
+CwmX2Tb8GA6hyc1v#8 Wraithtide Vaul M3ch5ta                  99.7%      99.9%     93.6%     100%    972/2115        3
+d1LvbCpBWXRM8Hcm#14 Empyrean Sands Culex                    99.8%     100.3%     91.0%     100%    752/1138        0
+dBgbn8wD1RxL7Kma#9 Empyrean Sands  Eon                      99.8%      99.8%     94.7%      97%    391/544         0
+Fc8v6yWxD14GQMnV#19 Cithrel's Fall Culex                    99.8%     100.5%     90.0%     100%   1653/2243        1
+fjrCax7VzGmMZw6h#26 Cithrel's Fall Leknok                   89.1%      90.0%    122.0%       0%    519/1787        4
+fx4ALNyWTkY3J8Za#9 Urrak Markets   Culex                    99.9%     100.2%     90.2%     100%    878/1193        3
+gd6ByNrf81jc9aWw#3 Silken Hollow   sbt                      99.8%     104.1%     97.2%      99%    724/1087        0
+GXFz3pZ94aQr2chV#3 Empyrean Sands  Faeyurae                 99.8%     100.7%     88.2%     100%    815/1141        0
+HgamNcX24tJ3qVQA#21 Stormwatch     Faeyurae                 99.8%     100.6%     93.5%     100%    805/1148        0
+Hwxc8TRFqPGhfjbN#5 Godfall Quarry  Faeyurae                 99.9%     100.0%     93.5%     100%    739/1134        0
+mThk4v1f8WGbBd7Q#1 Wraithtide Vaul windy-iwnl               99.9%     100.0%     90.2%     100%   2073/2822        4
+nJHTLzjY8yrQmCck#5 Godfall Titan   shrwd                    99.9%      99.7%     96.6%      98%    637/869         0
+NXQnyLMF1aPrkCf2#5 Ruins of Regath jomako                   99.9%      99.3%     94.2%     100%    949/1172        1
+p8VJDcBdxa7ghqG3#124 Cithrel's Fal sbt                      99.9%      99.7%     88.9%     100%   1722/2174        0
+Prvc4XmbdHBaVRKy#12 Cithrel's Fall Gorak                    99.8%      99.9%     94.4%     100%   1175/2269        3
+pWmcV42K39GHTLQX#23 Wraithtide Vau sbt                      99.7%      99.8%     91.3%     100%   1616/2494        4
+R2Bxhvkf3rc8FH4X#1 Scryer's Peak   M3ch5ta                  99.8%     100.1%     94.0%     100%    950/1235        0
+T2qLPpmMkrAtJ9B1#18 Cithrel's Fall sbt                      99.9%      99.5%     90.4%     100%   1852/2537        1
+v8rhNxVc3PwDqzBA#4 Godfall Quarry  Victorvill               99.8%     100.3%     96.8%      91%    887/1120        2
+v8rhNxVc3PwDqzBA#4 Godfall Quarry  Watanabe                 99.8%      99.8%     95.1%     100%    905/1113        0
+W4FMxpyqbnvaNYTc#2 Noor, The Betra KOKOIA                   99.8%      99.6%     91.6%     100%   1845/2560        2
+w7khnMKAa4TxXrmC#23 Godfall Quarry windy-iwnl               99.9%     100.1%     94.4%     100%    671/1049        2
+WcTBrQNX46m9axqP#12 Sin-Magir      Sorrel                   99.7%     100.4%     94.8%      99%    828/1047        0
+WcTBrQNX46m9axqP#7 Scrofa, Wild In Sorrel                   99.5%      99.9%     98.0%      94%    820/1125        2
+X82J6bGRNBracxLg#7 Xul, The Blood  Qruza                    99.9%      99.9%     91.6%     100%   2196/2749        6
+xkGbdm8aNDwTcgjF#17 Cithrel's Fall sbt                      99.8%      99.7%     92.2%     100%   1429/1834        1
+xkGbdm8aNDwTcgjF#2 Empyrean Sands  sbt                      99.8%     100.1%     91.4%     100%    868/1105        1
+za2QymCwxMcqfH16#20 Wraithtide Vau sbt                      99.7%      99.4%     89.9%     100%   1920/2439        3
+zgxBpVKw2m71cDdk#5 Xul, The Blood  Faeyurae                 99.7%      99.5%     92.8%     100%   1177/1444        0
+Zta3LQdvVbPJ9Whz#6 Empyrean Sands  beefy2                   99.7%     100.2%     93.4%     100%    815/1150        0
+
+id        ability               log hits  matched  engine-only  log dmg        exact/log  dice/log  normal (n)       crit (n)
+1212      Arachnid Assault         77624    77244          330    659,408,298      99.8%     90.8%  0.997 (17569)    1.000 (59675)
+1201      Queen's Fang             11597    11454          104    425,124,726     100.0%     94.2%  0.988 (2967)     1.000 (8487)
+1002364   Vexira's Venom           93917    93681          265    198,127,222     100.1%     91.8%  1.002 (93681)    -
+1000101   Amethyst Splinter       120739   120702          537    119,765,260     100.3%     93.1%  1.000 (120702)   -
+1001731   Volatile Poison         108467   108130          226     46,626,495     100.0%    100.5%  1.003 (40813)    1.002 (67317)
+1213      Skittering Blades        51527    51523            0     41,535,576     100.1%    101.0%  0.998 (20061)    0.998 (31462)
+157       Sahril's Wrath            2574     2574            0     23,975,236     100.1%     90.8%  1.000 (1029)     0.998 (1545)
+1001730   Volatile Poison          11917    11917           56     19,074,342     100.4%    100.7%  1.000 (4715)     1.001 (7202)
+1001716   Seething Poison          10009     9982          160     15,865,512     100.3%     98.9%  0.996 (4268)     1.000 (5714)
+2309      Stealth Skittering B     15450    15450            0     12,172,563     100.4%    100.3%  0.997 (6070)     0.996 (9380)
+1001724   Hemorrhage                6117     4982          274      9,263,541      81.9%     76.9%  1.064 (2140)     1.053 (2842)
+155       Voidbringer's Touch         66       65            1      8,211,476     100.4%     99.5%  -                1.001 (65)
+1002338   Hemotoxin                  480      476           57      7,623,391      85.3%     62.6%  1.172 (223)      1.150 (253)
+1001585   Caustic Poison             655      655            0      6,744,743      99.3%     97.6%  -                1.007 (655)
+1207      Widow's Bite              4936     4936            0      6,541,460     100.0%    100.0%  1.001 (2066)     0.999 (2870)
+1209      Attack                   18173    18173            0      6,053,852     103.7%    102.9%  0.858 (7860)     1.002 (10313)
+1000093   Emerald Judgement          632      630            0      5,613,729     101.8%    104.0%  0.991 (282)      0.989 (348)
+1002310   Corrosive Spill            946      668          366      1,687,066     104.4%     76.2%  1.003 (369)      0.999 (299)
+1208      Hemorrhaging Strike        480      480            0      1,447,328      99.7%     98.8%  0.997 (226)      1.004 (254)
+1129      Backstab                   906      906            0      1,142,828     109.9%    110.1%  0.906 (428)      0.914 (478)
+2308      Stealth Backstab           655      655            0        914,606     109.6%    109.5%  0.907 (324)      0.916 (331)
+1000096   Diamond Strike             106      106            0        560,890      99.4%     90.7%  1.015 (57)       1.005 (49)
+1000104   Kindling                   497      463            2        265,815      97.8%    108.7%  0.942 (263)      1.003 (200)
+160       Fated Strike                81       81           18        226,583     108.7%     89.6%  1.059 (40)       1.046 (41)
+1002337   Hemotoxin                  258      258           39         45,361     110.4%    294.9%  0.968 (130)      1.026 (128)
+
+most common issues over all fights:
+ 14581 [Ticks] tick time: Amethyst Splinter: Amethyst Splinter ticks at 16.660 in the log; the engine predicts 16.604s
+ 10365 [Ticks] tick time: Volatile Poison: Volatile Poison ticks at 29.127 in the log; the engine predicts 29.084s
+ 10161 [Ticks] tick time: Vexira's Venom: Vexira's Venom ticks at 19.600 in the log; the engine predicts 19.508s
+  1696 [Damage] damage too low: Hemorrhage (1001724): Hemorrhage on 169.1 at 268.001: log 1526 (crit) vs engine 1168
+  1351 [Damage] damage too low: Volatile Poison (1001731): Volatile Poison on 96.1 at 29.127: log 552 (crit) vs engine 501
+  1177 [Auras] Trait : Focused Haste (1002141) wrong stacks: Pre-cast Trait : Focused Haste (1002141): engine 2 stacks vs log 1
+  1157 [Damage] damage too high: Attack (1209): Attack on 104.1 at 116.037: log 0 vs engine 127
+  1135 [Hits] missing engine hit: Hemorrhage (1001724): Log hit Hemorrhage (1001724) on 5.15 at 547.166 for 649 was never produced by the engine
+  1039 [Resources] Energy too low: Pre-cast Energy: engine 155.51 vs log 159.3
+   812 [Damage] damage too low: Arachnid Assault (1212): Arachnid Assault on 172.1 at 1218.856: log 14098 (crit) vs engine 11401
+   744 [Damage] damage too high: Volatile Poison (1001731): Volatile Poison on 98.20 at 847.323: log 260 (crit) vs engine 384
+   696 [Damage] damage too high: Arachnid Assault (1212): Arachnid Assault on 96.3 at 445.897: log 2459 vs engine 2821
+   678 [Auras] Inspired Allegiance (1002112) extra in engine: Pre-cast Inspired Allegiance (1002112): engine 1 stacks vs log 0
+   585 [Damage] damage too high: Skittering Blades (1213): Skittering Blades on 99.2 at 14.745: log 294 vs engine 338
+   537 [Hits] extra engine hit: Amethyst Splinter (1000101): Engine hit Amethyst Splinter (1000101) on 67.2 has no matching log hit
+   511 [Damage] damage too high: Arachnid Assault (shadowy clone) (1212): Arachnid Assault (shadowy clone) on 67.1 at 120.576: log 4163 vs engine 4673
+   380 [Hits] missing engine hit: Arachnid Assault (1212): Log hit Arachnid Assault (1212) on 104.1 at 169.763 for 9712 (crit) was never produced by the engine
+   366 [Hits] extra engine hit: Corrosive Spill (1002310): Engine hit Corrosive Spill (1002310) on 131.2 has no matching log hit
+   359 [Damage] damage too low: Arachnid Assault (shadowy clone) (1212): Arachnid Assault (shadowy clone) on 74.1 at 228.123: log 13884 (crit) vs engine 6973
+   341 [Damage] damage too high: Hemorrhage (1001724): Hemorrhage on 169.1 at 242.367: log 172 (crit) vs engine 220
+   337 [Hits] missing engine hit: Volatile Poison (1001731): Log hit Volatile Poison (1001731) on 97.13 at 174.796 for 208 (crit) was never produced by the engine
+   308 [Damage] damage too low: Skittering Blades (1213): Skittering Blades on 71.3 at 302.817: log 826 (crit) vs engine 637
+   306 [Hits] extra engine hit: Arachnid Assault (shadowy clone) (1212): Engine hit Arachnid Assault (shadowy clone) (1212) on 98.3 has no matching log hit
+   305 [Damage] damage too high: Amethyst Splinter (1000101): Amethyst Splinter on 104.1 at 125.085: log 287 vs engine 328
+   300 [Damage] damage too high: Backstab (1129): Backstab on 96.5 at 419.325: log 428 vs engine 612
+   284 [Ticks] tick count: Amethyst Splinter: Amethyst Splinter (from 21.076s) fired 54 ticks; the log has 53 of them
+   278 [Hits] missing engine hit: Corrosive Spill (1002310): Log hit Corrosive Spill (1002310) on 72.1 at 26.750 for 1017 was never produced by the engine
+   274 [Hits] extra engine hit: Hemorrhage (1001724): Engine hit Hemorrhage (1001724) on 171.1 has no matching log hit
+   265 [Hits] extra engine hit: Vexira's Venom (1002364): Engine hit Vexira's Venom (1002364) on 169.1 has no matching log hit
+   255 [Damage] damage too low: Hemotoxin (1002338): Hemotoxin on 77.1 at 28.819: log 53174 (crit) vs engine 39392
+   243 [Damage] damage too high: Stealth Skittering Blades (2309): Stealth Skittering Blades on 27.1 at 444.327: log 497 (crit) vs engine 1040
+   240 [Damage] damage too low: Amethyst Splinter (1000101): Amethyst Splinter on 96.2 at 29.900: log 1567 vs engine 1393
+   236 [Hits] missing engine hit: Vexira's Venom (1002364): Log hit Vexira's Venom (1002364) on 97.5 at 88.325 for 92 was never produced by the engine
+   235 [Ticks] tick count: Volatile Poison: Volatile Poison (from 27.950s) fired 1 ticks; the log has 0 of them
+   226 [Hits] extra engine hit: Volatile Poison (1001731): Engine hit Volatile Poison (1001731) on 36.1 has no matching log hit
+   224 [Damage] damage too high: Queen's Fang (shadowy clone) (1201): Queen's Fang (shadowy clone) on 83.1 at 34.413: log 9527 (7917 blocked) vs engine 15451
+   213 [Ticks] tick count: Vexira's Venom: Vexira's Venom (from 286.751s) fired 22 ticks; the log has 21 of them
+   212 [Damage] damage too high: Stealth Backstab (2308): Stealth Backstab on 98.17 at 740.801: log 417 vs engine 612
+   187 [Damage] damage too low: Attack (1209): Attack on 172.1 at 1363.127: log 154 vs engine 126
+   186 [Damage] damage too low: Vexira's Venom (1002364): Vexira's Venom on 101.2 at 488.581: log 5929 vs engine 2628
+
+unmodeled abilities: Bloodrite Fervor (20), Conjure Portal (10), Rejuvenate (2)

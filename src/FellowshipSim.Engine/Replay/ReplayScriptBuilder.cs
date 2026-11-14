@@ -528,6 +528,7 @@ public static class ReplayScriptBuilder
                 e.UnmitigatedAmount.WriteTo(w, Raw);
                 WriteOrZero(w, "absorbed"u8, e.Absorbed);
                 WriteOrZero(w, "blocked"u8, e.Blocked);
+                WriteOrZero(w, "mitigated"u8, e.Mitigated);
                 WriteOrZero(w, "overkill"u8, e.Overkill);
                 w.WriteBoolean("crit"u8, e.HitType is HitTypeCrit or HitTypeGrievousCrit);
                 w.WritePropertyName("hit_type"u8);

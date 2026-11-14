@@ -15,12 +15,16 @@ public class MaraReplayTests(ITestOutputHelper output)
     public async Task Mara_Fights_Replay()
     {
         var library = new ReplayLibrary(Path.Combine(TestPaths.RepositoryRoot, "data"));
+        // MARA_FIGHTS: the fights to replay, each <report>_fight<fight>_p<player>, comma separated (default: every one).
+        var only = Environment.GetEnvironmentVariable("MARA_FIGHTS")?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
         foreach (var (reportCode, fightId, playerId) in library.ListDownloadedFights())
         {
+            if (only != null && !only.Contains($"{reportCode}_fight{fightId}_p{playerId}")) continue;
             byte[] raw = await library.GetRawFightBytesAsync(null, reportCode, fightId, playerId);
             foreach (var player in ReplayScriptBuilder.Players(raw).Where(p => p.Id == playerId && p.Hero == "Mara"))
             {
-                var script = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, player.Id));
+                byte[] scriptJson = ReplayScriptBuilder.Build(raw, player.Id);
+                var script = ReplayScript.FromJson(scriptJson);
                 if (script.Character == null) continue;
                 if (Environment.GetEnvironmentVariable("MARA_CHARACTER_FOLDER") is { } characterFolder)
                 {
@@ -31,12 +35,38 @@ public class MaraReplayTests(ITestOutputHelper output)
                     File.WriteAllText(Path.Combine(characterFolder, $"profile_{reportCode}_{fightId}.simc"), new FellowshipSim.Core.Import.SimcProfile(build, "").Format());
                 }
                 var hero = ReplayDriver.CreateHero(script);
-                var options = new ReplayOptions { StopOnFirstFailure = false };
+                // MARA_FREEDICE_SEED: one free-dice run with that seed in place of the exact replay.
+                var options = int.TryParse(Environment.GetEnvironmentVariable("MARA_FREEDICE_SEED"), out int seed)
+                    ? new ReplayOptions { StopOnFirstFailure = false, FreeDiceSeed = seed, ForceCasts = true }
+                    : new ReplayOptions { StopOnFirstFailure = false };
+                bool freeDice = options.FreeDiceSeed != null;
+                // A free-dice run: each damage ID's hits, crits and damage against the log's.
+                var tallies = new Dictionary<int, (string Name, int Hits, int Crits, double Damage)>();
+                if (freeDice)
+                {
+                    hero.OnDamageDealt += (in dmg) =>
+                    {
+                        var t = tallies.GetValueOrDefault(dmg.AbilityId, (Name: dmg.AbilityName, Hits: 0, Crits: 0, Damage: 0.0));
+                        tallies[dmg.AbilityId] = (t.Name, t.Hits + 1, t.Crits + (dmg.IsCrit ? 1 : 0), t.Damage + dmg.Amount);
+                    };
+                }
                 var result = new ReplayDriver(hero, script, options).Run();
+                if (freeDice)
+                {
+                    foreach (var g in script.Observations.Damage.GroupBy(d => d.AbilityId).OrderByDescending(g => g.Sum(d => d.TotalAmount)))
+                    {
+                        var t = tallies.GetValueOrDefault(g.Key);
+                        output.WriteLine($"free dice {g.Key,-9} {g.First().AbilityName,-22} log {g.Count(),6} hits {g.Count(d => d.Crit) / (double)g.Count(),6:P1} crit " +
+                                         $"{g.Sum(d => d.TotalAmount),12:N0}  engine {t.Hits,6} hits {(t.Hits == 0 ? 0 : t.Crits / (double)t.Hits),6:P1} crit {t.Damage,12:N0}");
+                    }
+                    continue;
+                }
                 var (engineDamage, logDamage) = ReplayReportWriter.DamageTotals(result);
                 output.WriteLine($"{player.Name} {reportCode} fight {fightId}: {result.MatchedLogHits}/{result.LogHits} hits, " +
                                  $"damage {engineDamage / logDamage:P1} of log, {result.PassedSteps}/{result.Steps.Count} clean steps, " +
                                  $"{result.ForcedCasts.Count} forced casts");
+                // MARA_REVIEWS: write each Mara fight's review page and files to data/reviews.
+                if (Environment.GetEnvironmentVariable("MARA_REVIEWS") != null) library.Save(ReplayReview.Artifacts(result, script, scriptJson, player.Id));
                 Report(result, options);
                 ExactReplayAssertions.Hold(result);
             }
@@ -122,16 +152,23 @@ public class MaraReplayTests(ITestOutputHelper output)
                 }
             }
         }
-        foreach (var forced in result.ForcedCasts.GroupBy(f => f.Split(':')[0]).OrderByDescending(g => g.Count()).Take(15))
+        // Forced casts by reason, the time and amounts left out.
+        foreach (var forced in result.ForcedCasts.GroupBy(f => System.Text.RegularExpressions.Regex.Replace(f[(f.IndexOf(' ') + 1)..], @"[0-9.]+", "#"))
+                     .OrderByDescending(g => g.Count()).Take(15))
         {
             output.WriteLine($"forced {forced.Count()}: {forced.First()}");
         }
         string? folder = Environment.GetEnvironmentVariable("MARA_HITS_FOLDER");
         if (folder == null) return;
-        string dump = Path.Combine(folder, $"hits_{result.ReportCode}_{result.FightId}.csv");
+        string dump = Path.Combine(folder, $"hits_{result.ReportCode}_{result.FightId}_{result.PlayerName}.csv");
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3}",
+        // Columns: engine time, damage ID, enemy, engine amount, crit, log amount, log time, tick fraction, then from the engine's
+        // state at the hit: Haste, the enemy's aura log IDs and Mara's aura log IDs, each list joined by ';', then the hit's crit
+        // chance and the log hit's crit.
+        File.WriteAllLines(dump, result.AllHits.Select(h => string.Format(inv, "{0:F3},{1},{2},{3:F1},{4},{5},{6},{7:F3},{8:F4},{9},{10},{11:F4},{12}",
             h.EngineTime, h.AbilityId, h.Target == null ? "" : $"{h.Target.Id}.{h.Target.Instance}", h.EngineAmount, h.Crit ? 1 : 0,
-            h.Log == null ? "" : h.Log.UnblockedAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction)));
+            h.Log == null ? "" : h.Log.UnblockedAmount.ToString("F0", inv), h.Log == null ? "" : h.Log.Time.ToString("F3", inv), h.TickFraction,
+            h.State?.Hero.Haste ?? 0, string.Join(';', h.State?.Target?.Auras.Select(a => a.LogId) ?? []),
+            string.Join(';', h.State?.Hero.Auras.Select(a => a.LogId) ?? []), h.CritChance, h.Log == null ? "" : h.Log.Crit ? "1" : "0")));
     }
 }
