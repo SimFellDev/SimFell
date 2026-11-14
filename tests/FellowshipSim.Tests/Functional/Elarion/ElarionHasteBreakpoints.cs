@@ -12,22 +12,19 @@ public class ElarionHasteBreakpoints
 {
     // ---- Starfall Volley
 
-    private const string StrikesUntilTheEnd =
-        "The engine releases no arrow in the volley's last 0.3s (StarfallVolley.FallSeconds): one strike fewer at these hastes, 8 at 0";
-
     /// <summary>
     /// Starfall Volley lasts 8 seconds and strikes every second, faster with haste: once when you cast it, then once per full hasted
     /// second that fits in the 8 seconds, 1 + floor(8 x (1 + haste)).
     /// </summary>
     [Theory]
-    [InlineData(0.0, Skip = StrikesUntilTheEnd)]
+    [InlineData(0.0)]
     [InlineData(0.1)]
     [InlineData(0.2)]
-    [InlineData(0.25, Skip = StrikesUntilTheEnd)]
+    [InlineData(0.25)]
     [InlineData(0.3)]
-    [InlineData(0.4, Skip = StrikesUntilTheEnd)]
+    [InlineData(0.4)]
     [InlineData(0.499)]
-    [InlineData(0.5, Skip = StrikesUntilTheEnd)]
+    [InlineData(0.5)]
     public void Starfall_Volley_Strikes_On_Cast_And_Once_Per_Full_Hasted_Second_Of_8(double haste)
     {
         double tick = 1.0 / (1 + haste);
@@ -47,8 +44,7 @@ public class ElarionHasteBreakpoints
     /// 20% haste and Skystrider's Grace's 30% make 50% at the cast; the Grace runs out 4 seconds into the volley.
     /// The rule is believed to be the game's.
     /// </summary>
-    [Fact(Skip = "The engine re-reads haste at every change, as the game binary does for Dot effects (HastedTimer.cs), so the volley " +
-                 "slows down when the Grace runs out")]
+    [Fact]
     public void Starfall_Volley_Keeps_The_Haste_It_Was_Cast_With()
     {
         double tick = 1.0 / (1 + 0.2 + 0.3);
