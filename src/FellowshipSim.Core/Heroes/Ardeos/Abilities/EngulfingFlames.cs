@@ -11,6 +11,7 @@ public partial class EngulfingFlames : ArdeosAbility
 
     public EngulfingFlames(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         CastTime = SimTime.FromSeconds(AbilityCastTime);
         SetCooldown(AbilityCooldown, AbilityCharges);
         Dot = new EngulfingFlamesDot(owner);

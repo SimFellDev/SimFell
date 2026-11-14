@@ -15,6 +15,7 @@ public partial class Pyromania : ArdeosAbility
 
     public Pyromania(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }

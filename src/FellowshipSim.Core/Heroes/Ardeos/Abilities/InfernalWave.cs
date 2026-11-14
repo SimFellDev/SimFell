@@ -16,6 +16,7 @@ public partial class InfernalWave : ArdeosAbility
 
     public InfernalWave(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DirectDamageIntellectCoefficient;
         CastTime = SimTime.FromSeconds(AbilityCastTime);
     }

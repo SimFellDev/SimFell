@@ -45,6 +45,7 @@ public partial class BurstingIce : RimeAbility
 
     public BurstingIce(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AoeDamageIntellectCoefficient;
         CastTime = SimTime.FromSeconds(AbilityCastTime);
         SetCooldown(AbilityCooldown);

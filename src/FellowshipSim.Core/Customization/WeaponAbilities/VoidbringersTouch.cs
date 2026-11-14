@@ -25,6 +25,7 @@ public partial class VoidbringersTouch : Ability
 
     public VoidbringersTouch(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.MaxDamageCoefficient;
         SetCooldown(AbilityCooldown);
         IgnoresGcd = true;

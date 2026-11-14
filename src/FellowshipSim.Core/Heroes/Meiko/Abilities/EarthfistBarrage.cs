@@ -33,6 +33,7 @@ public partial class EarthfistBarrage : MeikoFinisher
 
     public EarthfistBarrage(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory, Technique.Fist, Technique.Kick)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
         SetChannel(AbilityChannelTime, AbilityChannelTick);
         ChannelTicksOnStart = true;

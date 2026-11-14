@@ -68,6 +68,7 @@ public partial class AlzeracsShackle : Ability
 
     public AlzeracsShackle(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         AoeTargetThreshold = TargetThreshold;
         SetCooldown(AbilityCooldown);

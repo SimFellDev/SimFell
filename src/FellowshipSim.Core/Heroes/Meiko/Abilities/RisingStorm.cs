@@ -21,6 +21,7 @@ public class RisingStorm : MeikoFinisher
 
     public RisingStorm(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core, Technique.Kick, Technique.Palm)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         AoeTargetThreshold = TargetThreshold;
     }

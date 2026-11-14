@@ -17,6 +17,7 @@ public partial class WidowsBite : MaraAbility
 
     public WidowsBite(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = RightHandCoefficient;
         SetCooldown(AbilityCooldown, AbilityCharges, scalesWithHaste: true);
         BreaksStealth = true;

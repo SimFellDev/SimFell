@@ -10,6 +10,7 @@ public partial class FrostBolt : RimeAbility
 
     public FrostBolt(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.IntellectCoefficient;
         CastTime = SimTime.FromSeconds(AbilityCastTime);
     }

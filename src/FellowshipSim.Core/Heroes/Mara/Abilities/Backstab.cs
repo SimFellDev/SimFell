@@ -19,6 +19,7 @@ public partial class Backstab : MaraAbility
     /// <summary>For the Stealth Backstab: it is built on Backstab.</summary>
     protected Backstab(Mara owner, int id, string name) : base(owner, id, name, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
         EnergyCost = AbilityCost;
         BreaksStealth = true;

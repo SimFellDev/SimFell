@@ -17,6 +17,7 @@ public class DoublePalmStrike : MeikoFinisher
 
     public DoublePalmStrike(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core, Technique.Palm, Technique.Kick)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
     }
 

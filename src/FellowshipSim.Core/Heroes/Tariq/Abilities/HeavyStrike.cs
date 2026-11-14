@@ -33,6 +33,7 @@ public class HeavyStrike : TariqAbility
 
     public HeavyStrike(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
         AoeTargetThreshold = TargetThreshold;

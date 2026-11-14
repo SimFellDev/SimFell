@@ -32,10 +32,13 @@ public class SeethingPoison : MaraDot
         Removed += (ctx, _) => Ended(ctx);
     }
 
-    /// <summary>Puts the poison on <paramref name="target"/>, taking it off the enemy that had it.</summary>
+    /// <summary>
+    /// Puts the poison on <paramref name="target"/>, taking it off the enemy that had it. Put back on the enemy that has it, it
+    /// starts again, ticks included, rather than refreshing (per the user, checked in the game).
+    /// </summary>
     public void ApplyTo(SimulationContext ctx, EnemyTarget target)
     {
-        foreach (var other in Targets(ctx).Where(e => e != target).ToList()) Remove(ctx, other);
+        foreach (var other in Targets(ctx).ToList()) Remove(ctx, other);
         Apply(ctx, target);
         Mara.Auras.Apply(PredatorsRush, ctx.CurrentTime);
     }

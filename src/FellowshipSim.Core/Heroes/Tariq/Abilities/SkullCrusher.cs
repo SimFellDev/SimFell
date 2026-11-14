@@ -21,6 +21,7 @@ public partial class SkullCrusher : TariqAbility
 
     public SkullCrusher(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.StrengthCoefficient;
         SetCooldown(CooldownSeconds, scalesWithHaste: true);
         // Game data: a shorter coefficient on the hasted global cooldown than the shared one. Combat logs (3 Tariq fights):

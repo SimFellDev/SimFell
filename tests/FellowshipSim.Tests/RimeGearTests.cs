@@ -36,9 +36,9 @@ public class RimeGearTests
         var hits = new List<(double Time, double Amount, bool Crit)>();
         hero.OnDamageDealt += (in dmg) => { if (dmg.AbilityId == NaturesFury.AbilityId) hits.Add((dmg.Timestamp.TotalSeconds, dmg.Amount, dmg.IsCrit)); };
         new MonteCarloSimulator(() => hero, AplParser.ParseScript("actions=natures_fury\nactions+=/frost_bolt"))
-            .Run(SimTime.FromSeconds(30), 1, 3, degreeOfParallelism: 1);
+            .Run(SimTime.FromSeconds(30), 1, NaturesFury.Hits, degreeOfParallelism: 1);
 
-        // One cast in the run, since the cooldown outlasts it: the hits come a bounce period apart.
+        // One cast in the run, since the cooldown outlasts it: one hit on each enemy, a bounce period apart.
         Assert.Equal(NaturesFury.Hits, hits.Count);
         for (int i = 1; i < hits.Count; i++) Assert.Equal(NaturesFury.BounceSeconds, hits[i].Time - hits[i - 1].Time, 3);
     }

@@ -22,6 +22,7 @@ public partial class SweepingStrike : HelenaAbility
 
     public SweepingStrike(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         SetCooldown(AbilityCooldown);
         AoeTargetThreshold = Constants.DamageDamageScalingTargetCountThreshold;

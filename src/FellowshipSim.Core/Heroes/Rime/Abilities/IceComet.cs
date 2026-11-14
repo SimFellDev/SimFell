@@ -36,7 +36,10 @@ public partial class IceComet : RimeAbility
     }
 
     /// <summary>For abilities built on Ice Comet (Rising Talons), which set their own values.</summary>
-    protected IceComet(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory) { }
+    protected IceComet(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory)
+    {
+        TargetedOffensive = true;
+    }
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason) =>
         MeetsRequirements(explain, out reason) && base.CanCast(ctx, explain, out reason);

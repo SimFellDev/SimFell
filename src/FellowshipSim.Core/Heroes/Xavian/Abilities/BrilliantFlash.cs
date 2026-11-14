@@ -29,6 +29,7 @@ public partial class BrilliantFlash : XavianAbility
 
     public BrilliantFlash(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficient;
     }
 

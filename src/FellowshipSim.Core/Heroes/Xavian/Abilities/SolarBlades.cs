@@ -15,6 +15,7 @@ public partial class SolarBlades : XavianAbility
 
     public SolarBlades(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficient;
         SetCooldown(AbilityCooldown, scalesWithHaste: true);
         ManaCost = AbilityCost;

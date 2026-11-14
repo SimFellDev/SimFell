@@ -11,6 +11,7 @@ public partial class DoubleStrike : GundeAbility
 
     public DoubleStrike(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficientPerHit;
         RendShare = Constants.PerTargetAccumulatedBleedDamageToDotScaler;
     }

@@ -18,6 +18,7 @@ public partial class BlindingSlash : XavianAbility
 
     public BlindingSlash(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficient;
         SetCooldown(AbilityCooldown, scalesWithHaste: true);
         AoeTargetThreshold = Constants.DamageScalingTargetCountThreshold;

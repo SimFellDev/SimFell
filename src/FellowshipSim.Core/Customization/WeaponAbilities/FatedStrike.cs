@@ -22,6 +22,7 @@ public partial class FatedStrike : Ability
 
     public FatedStrike(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         SetCooldown(AbilityCooldown);
     }

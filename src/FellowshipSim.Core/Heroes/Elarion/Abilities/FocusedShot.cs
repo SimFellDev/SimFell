@@ -14,6 +14,7 @@ public partial class FocusedShot : ElarionAbility
 
     public FocusedShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
         CastTime = SimTime.FromSeconds(AbilityCastTime);
     }

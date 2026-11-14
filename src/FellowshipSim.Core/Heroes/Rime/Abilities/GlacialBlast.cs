@@ -31,7 +31,10 @@ public partial class GlacialBlast : RimeAbility
     }
 
     /// <summary>For abilities built on Glacial Blast (Talon Strike), which set their own values.</summary>
-    protected GlacialBlast(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory) { }
+    protected GlacialBlast(Rime owner, int id, string name) : base(owner, id, name, AbilityCategory)
+    {
+        TargetedOffensive = true;
+    }
 
     protected bool GlacialAssaultReady => Rime.GlacialAssaultStacks >= 4;
 

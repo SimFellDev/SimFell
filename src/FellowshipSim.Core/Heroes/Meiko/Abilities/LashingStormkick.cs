@@ -20,6 +20,7 @@ public partial class LashingStormkick : MeikoFinisher
 
     public LashingStormkick(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory, Technique.Kick, Technique.Fist)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
         AoeTargetThreshold = Constants.TargetThresholdForDamageScale;
         Hit += (in _) => _hits++;

@@ -73,13 +73,13 @@ public class ProcReactionTests
     public void A_Debugged_Decision_Refuses_The_Cast_Of_A_Proc_Inside_The_Reaction_Time()
     {
         // Tariq's default list after a first line that reads the Executioner's Grin proc of the fixture build's legendary:
-        // in fight 5 of this run, a decision falls inside the proc reaction time of its gain.
+        // in fight 16 of this run, decisions fall inside the proc reaction time of its gain (4 of them, so a small engine change keeps one).
         var build = JsonSerializer.Deserialize<CharacterBuild>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "tariq_character.json")))!;
         var lists = AplParser.ParseScript("actions=culling_strike,if=buff.executioners_grin.up\n"
             + DefaultActionLists.Read("Tariq", DefaultActionLists.DefaultName)!);
         var trace = new MonteCarloSimulator(build, lists)
-            .TraceFight(5, SimTime.FromSeconds(180), options: new FightOptions(LengthVariance: 0.2, HealthFollowsTime: true, ProcReactionSeconds: 0.5));
+            .TraceFight(16, SimTime.FromSeconds(180), options: new FightOptions(LengthVariance: 0.2, HealthFollowsTime: true, ProcReactionSeconds: 0.5));
 
         var refused = trace.Decisions.SelectMany(d => d.Steps)
             .Where(s => s.Outcome == AplStepOutcome.CastRefused && s.Refusal!.Contains("proc reaction time")).ToList();

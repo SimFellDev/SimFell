@@ -29,6 +29,7 @@ public partial class ShieldSlam : HelenaAbility
 
     public ShieldSlam(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.StrengthCoefficient;
         SetCooldown(AbilityCooldown, AbilityCharges, scalesWithHaste: true);
         AoeTargetThreshold = Constants.TargetCountThreshold;

@@ -19,6 +19,7 @@ public class RisingEarth : MeikoFinisher
 
     public RisingEarth(Meiko owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core, Technique.Fist, Technique.Palm)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
     }
 

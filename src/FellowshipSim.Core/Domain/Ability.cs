@@ -284,13 +284,21 @@ public abstract class Ability
     /// <summary>The channel ended, naturally or because it was stopped early (<paramref name="clipped"/>).</summary>
     public virtual void OnChannelEnd(SimulationContext ctx, EnemyTarget target, bool clipped) { }
 
+    /// <summary>
+    /// A "targeted, offensive ability" (Hunter's Focus, Ruby Storm): a hero or weapon ability cast on an enemy the player
+    /// selects. Not one cast on the ground (Fire Ball), with no target (Detonate, Ice Blitz), Control, an interrupt, a taunt, a
+    /// movement ability, an auto-attack, or anything that is not an ability the player casts (procs, damage over time, summons).
+    /// Each such ability sets it in its constructor.
+    /// </summary>
+    public bool TargetedOffensive { get; protected set; }
+
     /// <summary>Damage of one hit before crit and spread.</summary>
     public virtual double BaseDamage(SimulationContext ctx, EnemyTarget? target, double damageMultiplier = 1.0)
     {
         var now = ctx.CurrentTime;
         double expertiseAmp = ScalesWithExpertise ? 1.0 + Owner.Expertise(now) : 1.0;
         return BaseCoefficient
-               * Owner.PrimaryAttribute(now)
+               * ScalingStat(now)
                * expertiseAmp
                * DamageScaleFor(ctx)
                * Owner.DamageMultiplierAgainst(target, now)
@@ -298,6 +306,12 @@ public abstract class Ability
                * DamageMultiplier
                * damageMultiplier;
     }
+
+    /// <summary>
+    /// The stat <see cref="BaseCoefficient"/> multiplies: the hero's main stat, unless an ability scales from another (Ruby
+    /// Storm's max health).
+    /// </summary>
+    protected virtual double ScalingStat(SimTime now) => Owner.PrimaryAttribute(now);
 
     /// <summary>This ability's crit multiplier at <paramref name="now"/>.</summary>
     public double CritMultiplierAt(SimTime now) => Owner.CritMultiplier(now) * CritPowerMultiplier;

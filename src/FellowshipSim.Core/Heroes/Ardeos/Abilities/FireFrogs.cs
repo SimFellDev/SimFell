@@ -44,6 +44,7 @@ public partial class FireFrogs : ArdeosAbility
 
     public FireFrogs(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         SetCooldown(AbilityCooldown);
         Attack = new FireFrogAttack(owner);
     }

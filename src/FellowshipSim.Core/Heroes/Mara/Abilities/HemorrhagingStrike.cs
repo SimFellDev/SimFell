@@ -17,6 +17,7 @@ public partial class HemorrhagingStrike : Finisher
 
     public HemorrhagingStrike(Mara owner) : base(owner, AbilityId, AbilityName)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         EnergyCost = AbilityCost;
     }

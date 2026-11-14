@@ -25,6 +25,7 @@ public partial class SunStrike : XavianAbility
 
     public SunStrike(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficient;
         Hit += (in DamageContext hit) =>
         {

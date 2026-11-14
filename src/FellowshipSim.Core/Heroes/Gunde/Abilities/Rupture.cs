@@ -16,6 +16,7 @@ public partial class Rupture : GundeAbility
 
     public Rupture(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficient;
         SetCooldown(AbilityCooldown);
         RendShare = Constants.PerTargetAccumulatedBleedDamageToDotScaler;

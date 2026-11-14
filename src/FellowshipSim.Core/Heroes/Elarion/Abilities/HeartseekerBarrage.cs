@@ -23,6 +23,7 @@ public partial class HeartseekerBarrage : ElarionAbility
 
     public HeartseekerBarrage(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
         FocusCost = Constants.Cost;
         SetCooldown(AbilityCooldown);

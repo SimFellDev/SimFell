@@ -20,6 +20,7 @@ public partial class WildSwing : TariqAbility
 
     public WildSwing(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.StrengthCoefficient;
         // Game data: no cooldown effect, so the cooldown is its global cooldown, 1 / Haste snapshotted at commit, outside
         // Cooldown Recovery.

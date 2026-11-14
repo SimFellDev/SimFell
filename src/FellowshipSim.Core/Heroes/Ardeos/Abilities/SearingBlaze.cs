@@ -7,6 +7,7 @@ public partial class SearingBlaze : ArdeosAbility
 
     public SearingBlaze(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         Dot = new SearingBlazeDot(owner);
     }
 

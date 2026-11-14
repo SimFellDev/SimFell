@@ -23,6 +23,7 @@ public partial class CelestialShot : ElarionAbility
 
     public CelestialShot(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
         FocusCost = Constants.Cost;
     }

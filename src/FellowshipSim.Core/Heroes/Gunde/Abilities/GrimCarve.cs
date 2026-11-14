@@ -22,6 +22,7 @@ public partial class GrimCarve : GundeAbility
 
     public GrimCarve(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageStrengthCoefficientPerHit;
         SetCooldown(AbilityCooldown, scalesWithHaste: true);
         AoeTargetThreshold = Constants.DamageScalingTargetCountThreshold;

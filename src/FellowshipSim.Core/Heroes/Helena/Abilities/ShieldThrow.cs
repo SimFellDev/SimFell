@@ -33,6 +33,7 @@ public partial class ShieldThrow : HelenaAbility
 
     public ShieldThrow(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.StrengthCoefficient;
         SetCooldown(AbilityCooldown, scalesWithHaste: true);
         VeteranOfWarReductions.Add((typeof(Shockwave), ShockwaveReductionSeconds));

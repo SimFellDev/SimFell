@@ -11,6 +11,7 @@ public partial class MeasuredStrike : HelenaAbility
 
     public MeasuredStrike(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.StrengthCoefficient;
         AoeTargetThreshold = Constants.DamageScalingTargetCountThreshold;
         VeteranOfWarReductions.Add((typeof(ShieldSlam), ReductionSeconds));

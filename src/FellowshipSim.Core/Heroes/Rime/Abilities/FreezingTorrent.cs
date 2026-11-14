@@ -9,6 +9,7 @@ public partial class FreezingTorrent : RimeAbility
 {
     public FreezingTorrent(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.IntellectCoefficientPerTick;
         SetCooldown(AbilityCooldown);
         SetChannel(AbilityChannelTime, AbilityChannelTick);

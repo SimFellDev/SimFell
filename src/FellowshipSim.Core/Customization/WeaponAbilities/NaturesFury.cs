@@ -5,8 +5,9 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// damage to each one ... The 1st hit from Nature's Fury has increased damage or healing. Nature's Fury has
 /// additional Critical Strike chance." Hasted cast (game data). Combat logs
 /// (JW7pzaBxMd9bNCZK fight 112 and jHDC613ZzbTYR8wW fight 21, two Vigour players): the first hit lands as the cast ends and
-/// each bounce a fixed time after the one before; a bounce can strike an enemy already hit. UNVERIFIED: no Rime log has it; the
-/// game's damage spread for it differs from the engine's usual one, which is used.
+/// each bounce a fixed time after the one before. Each enemy is hit at most once (per the user): the bounces go to enemies
+/// not hit yet, and stop when there are none. UNVERIFIED: no Rime log has it; the game's damage spread for it differs from the
+/// engine's usual one, which is used.
 /// </summary>
 public partial class NaturesFury : Ability
 {
@@ -19,6 +20,7 @@ public partial class NaturesFury : Ability
 
     public NaturesFury(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Coefficient;
         CastTime = SimTime.FromSeconds(AbilityCastTime);
         SetCooldown(AbilityCooldown);
@@ -28,14 +30,17 @@ public partial class NaturesFury : Ability
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         TriggerCooldown(ctx);
-        // The first hit lands right after the cast completes (not inside it), then each bounce.
+        // The first hit lands right after the cast completes (not inside it), then each bounce on an enemy not hit yet.
+        var hit = new List<EnemyTarget>(Hits) { target };
         ctx.Schedule(SimTime.Zero, c => DealDamage(c, target, Constants.InitialHitPowerScaler), Name);
         for (int i = 1; i < Hits; i++)
         {
             ctx.Schedule(SimTime.FromSeconds(i * BounceSeconds), c =>
             {
-                IReadOnlyList<EnemyTarget> enemies = c.ActiveEnemies.Count == 0 && target is { IsSleeping: false } ? [target] : c.ActiveEnemies;
-                if (c.Outcomes.ChooseTarget(DamageLogId, enemies, c) is { } next) DealDamage(c, next);
+                var candidates = c.ActiveEnemies.Where(e => !hit.Contains(e)).ToList();
+                if (candidates.Count == 0 || c.Outcomes.ChooseTarget(DamageLogId, candidates, c) is not { } next) return;
+                hit.Add(next);
+                DealDamage(c, next);
             }, Name);
         }
     }

@@ -8,6 +8,7 @@ public partial class EarthFist : ComboBuilder
 {
     public EarthFist(Meiko owner) : base(owner, AbilityId, AbilityName, Technique.Fist)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
     }
 

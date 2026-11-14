@@ -28,6 +28,7 @@ public partial class LunarlightMark : ElarionAbility
 
     public LunarlightMark(Elarion owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }

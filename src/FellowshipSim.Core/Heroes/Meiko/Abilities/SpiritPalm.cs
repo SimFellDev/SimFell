@@ -8,6 +8,7 @@ public partial class SpiritPalm : ComboBuilder
 {
     public SpiritPalm(Meiko owner) : base(owner, AbilityId, AbilityName, Technique.Palm)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.AgilityCoefficient;
     }
 

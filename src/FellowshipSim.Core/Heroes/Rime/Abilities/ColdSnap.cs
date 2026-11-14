@@ -7,6 +7,7 @@ public partial class ColdSnap : RimeAbility
 {
     public ColdSnap(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.DamageIntellectCoefficient;
         // "Cold Snap gains Cooldown Acceleration equal to your Haste": its charges recharge with haste added to the rate.
         SetCooldown(AbilityCooldown, AbilityCharges, scalesWithHaste: true);

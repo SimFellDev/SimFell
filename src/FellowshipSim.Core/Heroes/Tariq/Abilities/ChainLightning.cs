@@ -31,6 +31,7 @@ public partial class ChainLightning : TariqAbility
 
     public ChainLightning(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
+        TargetedOffensive = true;
         BaseCoefficient = Constants.StrengthCoefficient;
         SetCooldown(AbilityCooldown, scalesWithHaste: true);
         DamageLogId = LogIds.Effect(DamageEffectId);
