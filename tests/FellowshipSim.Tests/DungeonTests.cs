@@ -269,12 +269,12 @@ public class DungeonTests
     }
 
     [Fact]
-    public void The_Readme_Dungeon_Text_Is_A_Valid_Dungeon()
+    public void The_Documented_Dungeon_Text_Is_A_Valid_Dungeon()
     {
-        string readme = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "README.md")).Replace("\r\n", "\n");
-        int start = readme.IndexOf("\ndungeon=Default\n", StringComparison.Ordinal);
-        start = readme.LastIndexOf("```\n", start, StringComparison.Ordinal) + 4;
-        string text = readme[start..readme.IndexOf("```", start, StringComparison.Ordinal)];
+        string page = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "docs", "SIMULATING.md")).Replace("\r\n", "\n");
+        int start = page.IndexOf("\ndungeon=Default\n", StringComparison.Ordinal);
+        start = page.LastIndexOf("```\n", start, StringComparison.Ordinal) + 4;
+        string text = page[start..page.IndexOf("```", start, StringComparison.Ordinal)];
         var dungeon = DungeonProfile.Parse(text);
         Assert.Null(dungeon.Problem());
         Assert.Equal(5, dungeon.Pulls.Count);
