@@ -157,9 +157,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   outside Maiden of Death (@ 51.621 on enemy 77.1), 0.87 / 1.2 = 0.725, and the engine's 1 / (1 + 0.2 + 0.149) = 0.741 before.
 - **Gushing Blood's re-application:** during Maiden of Death each Hemorrhaging Strike takes the struck enemy's bleed off, then puts
   a copy afresh on up to 4 other enemies, those without Mara's bleed first, and on the struck enemy: each copy has the struck
-  enemy's new duration, Mara's bleed on its enemy comes off first with no partial tick, From the Shadows and Bloodrush write each
-  copy's scaler on its own application, and its first tick is a whole period later. In the game data (build 26320967), ability 1517
-  (`GA_Mara_Passive_Talent_ChargedResourceRefillSelfBuff_BleedAttackSpenderBleedAoe`) listens for the bleed's application with the
+  enemy's new duration, Mara's bleed on its enemy comes off first with no partial tick, each copy has the struck enemy's From the
+  Shadows write and gets it again on its own application, then Bloodrush's, and its first tick is a whole period later. In the
+  game data (build 26320967), ability 1517 (`GA_Mara_Passive_Talent_ChargedResourceRefillSelfBuff_BleedAttackSpenderBleedAoe`) listens for the bleed's application with the
   gate on `CustomAssetTags.Mara.ChargedResourceRefillSelfBuff` (offsets 2735 to 2830), removes it (2558), clones the live spec (2629),
   removes and applies on each target (1406, 1600) and writes Bloodrush's multiplier (1666 to 2197). fjrCax7VzGmMZw6h fight 26 (Mara
   player 23): the 114 re-applications are all in Maiden of Death (108 on a refresh, 6 on a fresh bleed), every copy has the struck
@@ -167,6 +167,14 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   the median. 62 of the 114 copy the bleed to no other enemy; the engine has no positions and copies it to up to 4 enemies in its
   own order. Exact replay of fight 26: hits matched 12,657 to 13,465 of 14,211, damage 90.0% to 96.7% of the log, Hemorrhage
   matched 1,533 to 2,217 of 2,614 and engine-only 1,268 to 616.
+- **The tick period of Gushing Blood's copies with From the Shadows:** a copy ticks at 0.87 x 0.87 / 1.2 = 0.631 of 3s / Haste.
+  In fjrCax7VzGmMZw6h fight 26 (Mara player 23, the one Mara player with Gushing Blood and From the Shadows), the 2,227 pairs of a
+  copy's ticks with no event between them are 0.635 of 3s / Haste apart at the median (p10 0.620, p90 0.721). In the game data
+  (build 26320967), the listeners run the last registered first (exe 0x144A00010, `AddUObject` 0x1449EDE80 appends), each with a
+  copy of the live spec (0x144A176A0), and ability 1589's listener runs before ability 1517's, so ability 1517's clone has its 0.87
+  and gets it again on its own application. Each passive registers its listener in its own activation with no latent node (1517
+  offsets 15 to 286, 1589 offsets 2164 to 2435). Exact replay of fight 26: hits matched 13,741 to 13,752 of 14,211, damage 98.1% to
+  98.4% of the log, Hemorrhage matched 2,493 to 2,504 of 2,614 and engine-only 374 to 416.
 - **Seething Poison:** ticks every 2s shortened by Haste; its 60s are not hasted.
 - **Volatile Poison:** each application and refresh rolls a duration of 6 to 8 seconds, the ticks are a sixth of it apart, shortened
   by Haste, and the poison ends with a partial tick. In the game data (build 26320967), `GMMC_Mara_AoeAttackBuilder_Poison_DurationManager`
@@ -469,17 +477,6 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   fight 21 @ 722.081, X82J6bGRNBracxLg fight 7 @ 1487.378, Fc8v6yWxD14GQMnV fight 19 @ 806.549). Sources checked: the removal and death
   events on those enemies and `GA_Mara_Passive_AoeAttackBuilder_Poison_Aoe` offsets 37 and 1617.
 
-- **The tick period of Gushing Blood's copies with From the Shadows:** in fjrCax7VzGmMZw6h fight 26 (Mara player 23, the one Mara
-  player with Gushing Blood and From the Shadows), the 2,227 pairs of a copy's ticks with no event between them are 0.635 of 3s /
-  Haste apart at the median (p10 0.620, p90 0.721), 0.87 x 0.87 / 1.2 = 0.631. The engine's copies start at scaler 1 and tick 0.87 /
-  1.2 = 0.725 apart. The game data gives 0.631 when ability 1589's applied-to-target listener is registered after ability 1517's,
-  and 0.725 in the other order: the listeners run the last registered first (exe 0x144A00010, `AddUObject` 0x1449EDE80 appends),
-  each with a copy of the live spec (0x144A176A0), so with 1589 first ability 1517's clone has its 0.87 and gets it again on its
-  own application. Each passive registers its listener in its own activation with no latent node (1517 offsets 15 to 286, 1589
-  offsets 2164 to 2435). With 0.631 the exact replay of fight 26 has 13,768 hits matched and Hemorrhage 2,520 matched, 379
-  engine-only, against the engine's 13,465, 2,217 and 616. Sources checked: both ubergraphs and class defaults, the export records
-  of abilities 1517 and 1589 (no grant or activation order field). The order in which a talent's passive and a legendary power's
-  passive are granted is native and unread.
 - **Free dice below the log:** over the 34 Mara fights of `data/fights`, free dice is 92.8% of the log, with the log at the 97.1%
   point of the engine's runs (measure pass-03, 20 runs a fight). Free dice rolls Spirit Refund with the engine's dice and keeps the
   log's casts, so a logged finisher after a logged refund the engine's run lacks is forced with no Combo Point. T2qLPpmMkrAtJ9B1
