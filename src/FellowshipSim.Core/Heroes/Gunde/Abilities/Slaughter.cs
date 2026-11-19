@@ -74,7 +74,7 @@ public partial class Slaughter : GundeAbility
             {
                 fired++;
                 if (enemy.IsSleeping) return;
-                c.ApplyDamage(Owner, enemy, perTick * Gunde.DamageMultiplierAgainst(enemy, c.CurrentTime), DamageLogId, Name, canCrit: false, 0.0, 1.0);
+                c.ApplyDamage(Owner, enemy, perTick * enemy.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, c.CurrentTime), DamageLogId, Name, canCrit: false, 0.0, 1.0);
                 Gunde.CheckSunderedFlesh(c, enemy, Math.Max(0, ticks - fired) * perTick);
             },
             onEnd: (c, _) => enemy.Auras.Remove(Dot, c.CurrentTime),

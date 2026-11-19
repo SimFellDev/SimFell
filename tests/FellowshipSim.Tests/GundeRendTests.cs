@@ -3,6 +3,7 @@ using FellowshipSim.Core.APL;
 using FellowshipSim.Core.APL.Editing;
 using FellowshipSim.Core.APL.Expressions;
 using FellowshipSim.Core.Domain;
+using FellowshipSim.Core.Dungeons.Affixes;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
@@ -113,6 +114,28 @@ public class GundeRendTests
         double share = (0.5 + (reignInBlood ? 0.3 : 0.0)) * 2;
         Assert.True(dealt > 0.0);
         Assert.Equal(dealt * share, hero.Rend.RawTotal(enemy), 6);
+    }
+
+    [Fact]
+    public void Slaughter_Ticks_Take_The_Targets_Damage_Taken_And_No_Target_Multiplier_Of_Gunde()
+    {
+        var (hero, ctx, enemy) = Fight([]);
+        hero.TargetDamageMultipliers.Add((_, _) => 2.0);
+        enemy.Auras.Apply(AnomalousOrbs.Instability, ctx.CurrentTime);
+        var ticks = new List<double>();
+        hero.OnDamageDealt += (in DamageContext hit) =>
+        {
+            if (hit.AbilityName == Slaughter.AbilityName) ticks.Add(hit.Amount);
+        };
+        hero.Rend.Apply(ctx, enemy, 10 * hero.PrimaryAttribute(ctx.CurrentTime));
+        double consumed = hero.Rend.Remaining(enemy);
+
+        hero.GetAbility<Slaughter>()!.Execute(ctx, enemy);
+        ctx.RunUntil(ctx.CurrentTime + SimTime.FromSeconds(Slaughter.Constants.DotPeriod));
+
+        Assert.Single(ticks);
+        double expected = consumed * 1.6 / 10 * 4;
+        Assert.InRange(ticks[0], expected * (1.0 - RandomOutcomeSource.DamageSpread), expected * (1.0 + RandomOutcomeSource.DamageSpread));
     }
 
     [Fact]
