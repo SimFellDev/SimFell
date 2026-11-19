@@ -1,5 +1,3 @@
-using FellowshipSim.Core.Customization.Gems;
-
 namespace FellowshipSim.Core.Customization.CommonAbilities;
 
 /// <summary>
@@ -11,7 +9,7 @@ namespace FellowshipSim.Core.Customization.CommonAbilities;
 /// Step follows 0.30s after it (fjrCax7VzGmMZw6h fight 26 @ 67.411), and the shortest gap between two casts is 90.1s
 /// (b649dhNptyW132Tm fight 5 @ 517.886).
 /// </summary>
-public class BloodriteFervor : Ability
+public class BloodriteFervor : RelicPower
 {
     public const int AbilityId = 185;
     public const string AbilityName = "Bloodrite Fervor";
@@ -30,34 +28,14 @@ public class BloodriteFervor : Ability
     /// </summary>
     public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, BuffSeconds);
 
-    public BloodriteFervor(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Relic)
+    public BloodriteFervor(Hero owner) : base(owner, AbilityId, AbilityName, CooldownSeconds)
     {
-        SetCooldown(CooldownSeconds);
         IgnoresGcd = true;
-        // Game data: no Haste and no Cooldown Recovery reaches a relic cooldown.
-        IgnoresCooldownRecovery = true;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
         Owner.Auras.Apply(Buff, ctx.CurrentTime);
         TriggerCooldown(ctx);
-    }
-
-    /// <summary>
-    /// The cooldown times the relic cooldown gem factor, at the cast's gem power. Game data (build 26320967):
-    /// `GMMC_GemAugmentation.CalculateBaseMagnitude` gives 1 - Blessing of the Artisan's `CooldownReduction` (Diamond slot 5:
-    /// offset 810 with the Small effect, row `GemBonus.RelicCooldownReductionBonus.Small.CooldownReductionPercentage`; offset
-    /// 1130 with the Medium one, row `...Medium.CooldownReductionPercentage`), else 1. Its query (`CrGetAllActiveEffectsForQuery`,
-    /// 0x14521FDC0) runs over every character in the process. The engine reads the hero's own gems alone. `DT_GemDefinitions` row
-    /// Diamond: node 5 at `RequiredGemPower` 450 grants `GE_GemBonus_RelicCooldownReductionBonusSmall`, node 10 at 1500
-    /// `GE_GemBonus_RelicCooldownReductionBonusMedium`. Neither effect has a `TargetTagRequirementsGameplayEffectComponent`, so both
-    /// apply to Mara: their `Character.PrimaryAttribute.Strength` is in the deprecated `ApplicationTagRequirements` field (definition
-    /// +0x4B0, read by no routine but the constructor 0x144A63AB0 and the destructor 0x144A65000).
-    /// </summary>
-    public override void TriggerCooldown(SimulationContext ctx, double cooldownMultiplier = 1.0)
-    {
-        double gemReduction = Owner.Gems.OfType<Diamond>().FirstOrDefault()?.NodeInSlot(5)?.Value("CooldownReduction") ?? 0.0;
-        Owner.CooldownOf(this).Spend(ctx.CurrentTime, Cooldown.TotalSeconds * cooldownMultiplier * (1.0 - gemReduction));
     }
 }

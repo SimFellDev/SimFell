@@ -223,15 +223,16 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   (b649dhNptyW132Tm fight 5 @ 517.886). In the game data (build 26320967), the cooldown is `RelicPower.PartyMoveSpeedBuff.Cooldown`
   times the relic cooldown gem factor (`GMMC_GemAugmentation.CalculateBaseMagnitude`: 1 - 0.08 with Blessing of the Artisan, 1 - 0.24
   with its rank II), and effect 156 lasts 12s with MoveSpeed x1.5 alone. Before it, the replay skipped the 20 casts as unmodeled.
-- **Conjure Portal** (ability 1504): a 1.5s Global Cooldown of its own, shortened by Haste, and a 120s cooldown (game data, build
-  26320967). Over the 10 casts in the 34 Mara fights of `data/fights`, the next cast on the Global Cooldown comes 1.139s after it at
+- **Conjure Portal** (ability 1504): a 1.5s Global Cooldown of its own, shortened by Haste, and a 120s cooldown times the relic
+  cooldown gem factor, with no ability cooldown reduction (game data, build 26320967). Over the 10 casts in the 34 Mara fights of `data/fights`, the next cast on the Global Cooldown comes 1.139s after it at
   the least (Skittering Blades, Hwxc8TRFqPGhfjbN fight 5 @ 446.832) and 1.438s (HgamNcX24tJ3qVQA fight 21 @ 691.259).
 - **Relic Teleport** (ability 1506, the use of the portal): no global cooldown blocks it, and it starts none. It comes 0.636s and
   0.804s after Conjure Portal (Zta3LQdvVbPJ9Whz fight 6 @ 187.280, GXFz3pZ94aQr2chV fight 3 @ 463.138), inside that Global Cooldown,
   and inside Mara's own 1s Global Cooldown (v8rhNxVc3PwDqzBA fight 4 player 27 @ 678.493, w7khnMKAa4TxXrmC fight 23 @ 704.934). In
   the game data (build 26320967), `GA_RelicPower_Portal_Interact` has no `GlobalCooldownGameplayEffectClass`, and the global cooldown
   check (exe 0x1450DC780) passes an ability with none. The replay forced these 4 casts before, and forces none now.
-- **Rejuvenate** (ability 189): usable during the Global Cooldown, starting none, on a 120s cooldown, healing 0.4 of Mara's maximum
+- **Rejuvenate** (ability 189): usable during the Global Cooldown, starting none, on a 120s cooldown times the relic cooldown gem factor, with no ability
+  cooldown reduction, healing 0.4 of Mara's maximum
   health (game data, build 26320967, row `RelicPower.HealthPotion.MaxHealthFraction`). The 2 casts in the 34 Mara fights of
   `data/fights` are in WcTBrQNX46m9axqP fight 12 @ 278.213 and 625.017, and the replay skipped both as unmodeled before.
 - **Essence of the Virtuoso from Anomalous Residue:** with no Topaz power in the gear, each Residue: Topaz window gives effect 1937
@@ -495,7 +496,6 @@ Arachnid Onslaught, Caustic Wounds, Puncture, Final Stratagem and From the Shado
 game data (marked `UNVERIFIED` in their files). A log of a build with them would settle: the damage ID of Seething Burst,
 what Hemotoxin's "bleed damage" counts, and how From the Shadows' clone is logged.
 
-Diamond node 10 (Blessing of the Artisan - II, gem power 1500, `CooldownReduction` 0.24) is in `Diamond.cs`, and Bloodrite
-Fervor's cooldown reads node 5 alone (0.08 at 450). In the game data (build 26320967), node 10 grants
-`GE_GemBonus_RelicCooldownReductionBonusMedium` and `GMMC_GemAugmentation.CalculateBaseMagnitude` reads it at offset 1130; whether
-its effect replaces node 5's is not decoded. No Mara fight of `data/fights` has two Bloodrite Fervor casts under 90.1s apart.
+Diamond node 10 (Blessing of the Artisan - II, gem power 1500, `CooldownReduction` 0.24) replaces node 5 in slot 5, so a relic
+cooldown is 1 - 0.24 from 1500. In the game data (build 26320967) `CalculateBaseMagnitude` tests the Small effect before the
+Medium one, and the removal of node 5's effect at node 10 is not decoded, so the factor at 1500 is 0.92 or 0.76.
