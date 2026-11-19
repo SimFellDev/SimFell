@@ -88,7 +88,7 @@ public class ExactReplayTests
 
         Assert.NotEmpty(recording.Outcomes);
         Assert.All(recording.Outcomes, o => Assert.Equal(1.0, o.Spread));
-        Assert.Equal(script.Observations.Damage.Sum(d => d.UnblockedAmount), driver.Context.TotalDamage, 6);
+        Assert.Equal(script.Observations.Damage.Sum(d => d.DealtAmount), driver.Context.TotalDamage, 6);
         // Every log hit is dealt once: the Frost Bolt by its engine hit, the unmodeled one by the replay.
         Assert.Equal(2, result.LogHits);
         Assert.Equal(1, result.MatchedLogHits);
