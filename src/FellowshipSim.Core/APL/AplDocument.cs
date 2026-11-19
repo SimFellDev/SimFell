@@ -8,7 +8,9 @@ namespace FellowshipSim.Core.APL;
 /// '#' lines above the action. <see cref="List"/> is the list the action belongs to. <see cref="ActionList"/> is the list
 /// a <c>run_action_list</c> or <c>call_action_list</c> action names. <see cref="Variable"/> is the variable a
 /// <c>variable</c> action changes. <see cref="UseOffGcd"/> and <see cref="UseWhileCasting"/> are an ability actions
-/// <c>use_off_gcd=1</c> and <c>use_while_casting=1</c>. <see cref="Arguments"/> holds the other arguments ("line_cd=5").
+/// <c>use_off_gcd=1</c> and <c>use_while_casting=1</c>. <see cref="InterruptIf"/> is an ability action's <c>interrupt_if</c>
+/// condition as text, and <see cref="InterruptImmediate"/> its <c>interrupt_immediate=1</c>. <see cref="Arguments"/> holds
+/// the other arguments ("line_cd=5").
 /// </summary>
 public sealed record AplDocumentAction(
     string Ability,
@@ -21,7 +23,9 @@ public sealed record AplDocumentAction(
     string? ActionList = null,
     AplDocumentVariable? Variable = null,
     bool UseOffGcd = false,
-    bool UseWhileCasting = false);
+    bool UseWhileCasting = false,
+    string? InterruptIf = null,
+    bool InterruptImmediate = false);
 
 /// <summary>
 /// The variable a <c>variable</c> action changes, as the visual editor holds it: its name, its op, its value as text
@@ -58,7 +62,7 @@ public static class AplDocument
         var arguments = syntax.Arguments
             .Where(a => !(listAction && a.Key.Equals(AplActionLine.ListNameKey, StringComparison.OrdinalIgnoreCase)))
             .Where(a => !(variableAction && VariableKeys.Contains(a.Key)))
-            .Where(a => listAction || variableAction || !FlagKeys.Contains(a.Key))
+            .Where(a => listAction || variableAction || !AbilityKeys.Contains(a.Key))
             .ToList();
         return new AplDocumentAction(
             syntax.Name,
@@ -71,11 +75,16 @@ public static class AplDocument
             listAction ? syntax.ListName : null,
             variableAction ? VariableOf(syntax) : null,
             !listAction && !variableAction && syntax.Flag(AplActionLine.UseOffGcdKey),
-            !listAction && !variableAction && syntax.Flag(AplActionLine.UseWhileCastingKey));
+            !listAction && !variableAction && syntax.Flag(AplActionLine.UseWhileCastingKey),
+            !listAction && !variableAction && syntax.Argument(AplActionLine.InterruptIfKey) is { } interruptIf
+                ? AplFormatter.Format(interruptIf, AplOperatorStyle.Words) : null,
+            !listAction && !variableAction && syntax.Flag(AplActionLine.InterruptImmediateKey));
     }
 
-    // The arguments of an ability action the editor holds as switches.
-    private static readonly HashSet<string> FlagKeys = new([AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey], StringComparer.OrdinalIgnoreCase);
+    // The arguments of an ability action the editor holds as switches and fields of their own.
+    private static readonly HashSet<string> AbilityKeys = new(
+        [AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey, AplActionLine.InterruptIfKey, AplActionLine.InterruptImmediateKey],
+        StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> VariableKeys = new([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey],
         StringComparer.OrdinalIgnoreCase);
@@ -182,6 +191,11 @@ public static class AplDocument
             {
                 if (action.UseOffGcd) arguments.Add(new AplArgument(AplActionLine.UseOffGcdKey, new Expressions.ConstantExpression(1)));
                 if (action.UseWhileCasting) arguments.Add(new AplArgument(AplActionLine.UseWhileCastingKey, new Expressions.ConstantExpression(1)));
+                if (ParseField(i, "interruptIf", action.InterruptIf, errors) is { } interruptIf)
+                {
+                    arguments.Add(new AplArgument(AplActionLine.InterruptIfKey, interruptIf));
+                    if (action.InterruptImmediate) arguments.Add(new AplArgument(AplActionLine.InterruptImmediateKey, new Expressions.ConstantExpression(1)));
+                }
             }
 
             var lines = blocks[list];

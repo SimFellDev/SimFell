@@ -9,8 +9,9 @@ ability, a condition, a target and a comment; drag the handle or use the arrows 
 is an ability to cast, **Run action list** or **Call action list** with the list to run, or **Set a variable** with the
 variable's name, its op (set, add to, subtract from or reset), its value and its default at the start of each fight;
 conditions read the variable as `variable.<name>`. An ability's **Timing** switches are **Use off the global cooldown**
-(`use_off_gcd=1`) and **Use while casting** (`use_while_casting=1`). The condition, a target's **Target by** and a
-variable's value each have **Builder** and **Text**. Each name in a
+(`use_off_gcd=1`) and **Use while casting** (`use_while_casting=1`). A channeled ability also has **Interrupt if**
+(`interrupt_if=`) and, once it has a condition, the **Interrupt immediately** switch (`interrupt_immediate=1`). The
+condition, a target's **Target by**, **Interrupt if** and a variable's value each have **Builder** and **Text**. Each name in a
 condition has a colour for its kind (buff, debuff, cooldown, resource), and a wavy underline marks a name the hero
 does not have. Conditions in the editor chain with `and`, `or` and `not`; the text has `&`, `|` and `!`. A `&`, `|`
 or `!` typed in the editor becomes its word when you leave the field. Parentheses stay as written. **Builder** shows a
@@ -44,6 +45,26 @@ in SimulationCraft:
   (Rime's `ice_blitz,use_while_casting=1`)
 
 Without them, the action waits for the global cooldown, the cast or the channel to end.
+
+An action of a channeled ability stops the channel it started part way through with `interrupt_if=<expression>`, as in
+SimulationCraft: the channel stops when the expression is true and an ability action above the channel's line is ready
+to cast. The scan for that action starts at the default list and enters `run_action_list` and `call_action_list` lists
+as a decision does; it ends at the channel's line. A `variable` action keeps its value through the scan, and the
+decision after the interrupt sets it. The check runs right after each tick of the channel, once the global
+cooldown has ended. With `interrupt_immediate=1`, the channel stops the moment both are true, with no wait for a tick or
+the global cooldown. The next decision runs
+as the channel stops, with no reaction to the channel's end. The expression reads these values of the action's own
+channel:
+
+- `ticks`: the ticks of the channel so far, for a channel with ticks
+  (`actions+=/chronoshift,interrupt_if=ticks>=1,interrupt_immediate=1`)
+- `after_sec`: seconds since the channel started, after the ability's cast time (`interrupt_if=after_sec>=1.5`)
+- `after_pct`: the part of the channel's duration gone, in percent (`interrupt_if=after_pct>=50`)
+
+Any condition reads the same values of a channel as `channel.<ability>.ticks`, `channel.<ability>.after_sec` and
+`channel.<ability>.after_pct`, each 0 while that channel does not run (Rime's
+`ice_blitz,use_while_casting=1,if=channel.freezing_torrent.ticks>=2`). The action list text marks `interrupt_if` on an
+ability with no channel, and `ticks` on a channel with no ticks.
 
 Conditions also have these values and functions:
 

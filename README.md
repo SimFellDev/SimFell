@@ -70,7 +70,7 @@ SimFell takes pull requests. For the setup, the conventions and the requirements
 
 ## License
 
-SimFell is free software under the [GNU General Public License v3.0](LICENSE)
+SimFell is free software under the [GNU Affero General Public License v3.0](LICENSE)
 
 *Fellowship*, its game data, names and icons belong to Chief Rebel. SimFell is a fan project with no affiliation to Chief Rebel or FellowshipLogs.
 

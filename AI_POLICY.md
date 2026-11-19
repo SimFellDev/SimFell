@@ -32,9 +32,9 @@ For the rules of evidence, see [Replay accuracy](docs/REPLAY_ACCURACY.md#evidenc
 
 ## Licensing
 
-- You have the right to submit the contribution under the [GNU General Public License v3.0](LICENSE).
+- You have the right to submit the contribution under the [GNU Affero General Public License v3.0](LICENSE).
 - Code an AI tool reproduces from another project keeps that project's license. Submit it only under a license
-  compatible with the GNU General Public License v3.0, and name the project in the pull request.
+  compatible with the GNU Affero General Public License v3.0, and name the project in the pull request.
 - Code ported from SimulationCraft names the SimulationCraft file it is from.
 
 ## Credentials and private data

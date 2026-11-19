@@ -66,7 +66,7 @@ else
     }
 }
 
-// The GNU General Public License's text is in every copy of the app.
+// The GNU Affero General Public License's text is in every copy of the app.
 File.Copy(Path.Combine(root, "LICENSE"), Path.Combine(app, "LICENSE.txt"));
 
 // Only the app: no debug symbols.

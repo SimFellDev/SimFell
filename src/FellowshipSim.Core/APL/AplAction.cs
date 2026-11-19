@@ -24,6 +24,12 @@ public class AplAction
     /// <summary><c>use_while_casting=1</c>: a candidate while a cast or a channel runs (<see cref="AplDecisionHold.Cast"/>).</summary>
     public bool UseWhileCasting { get; init; }
 
+    /// <summary><c>interrupt_if=&lt;expr&gt;</c>: the condition that stops the channel this action started; null for none.</summary>
+    public IAplExpression? InterruptIf { get; init; }
+
+    /// <summary><c>interrupt_immediate=1</c>: <see cref="InterruptIf"/> stops the channel with no wait for a tick or the global cooldown.</summary>
+    public bool InterruptImmediate { get; init; }
+
     /// <summary>True when the action has no condition or its condition is true at the current target.</summary>
     public bool ConditionHolds(Hero hero, SimulationContext ctx) => Condition == null || Condition.Evaluate(hero, ctx);
 
@@ -95,6 +101,7 @@ public class AplAction
 
     public override string ToString() => Variable != null ? $"{AplVariable.ActionName},{Variable}" + (Condition != null ? $",if={Condition}" : "") :
         AbilityName + (ListName != null ? $",{AplActionLine.ListNameKey}={ListName}" : "") + (UseOffGcd ? $",{AplActionLine.UseOffGcdKey}=1" : "") + (UseWhileCasting ? $",{AplActionLine.UseWhileCastingKey}=1" : "")
+        + (InterruptIf != null ? $",{AplActionLine.InterruptIfKey}={InterruptIf}" : "") + (InterruptImmediate ? $",{AplActionLine.InterruptImmediateKey}=1" : "")
         + (TargetIf != null ? $",target_if={TargetIf}" : "") + (Condition != null ? $",if={Condition}" : "");
 }
 

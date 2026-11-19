@@ -4,8 +4,8 @@ using FellowshipSim.Core.APL.Expressions;
 namespace FellowshipSim.Tests.Apl.Editor;
 
 /// <summary>
-/// A vocabulary as the editor reads it from JSON: two abilities, a resource with an alias, two auras, and a talent and a
-/// weapon (the other build scopes have no names).
+/// A vocabulary as the editor reads it from JSON: two abilities, a resource with an alias, two auras, a talent and a
+/// weapon (the other build scopes have no names), and one of the abilities as a channel with ticks.
 /// </summary>
 public static class EditorVocabulary
 {
@@ -20,5 +20,7 @@ public static class EditorVocabulary
             PropertyExpression.TalentScope => [new AplName("icy_talons", "Icy Talons")],
             PropertyExpression.WeaponScope => [new AplName("chronoshift", "Chronoshift")],
             _ => [],
-        })));
+        })),
+        [new AplName("ice_comet", "Ice Comet")],
+        ["ice_comet"]);
 }

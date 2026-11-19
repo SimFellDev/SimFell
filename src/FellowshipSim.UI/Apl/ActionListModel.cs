@@ -122,7 +122,7 @@ public static partial class ActionListModel
     public static IReadOnlyList<AplDocumentAction> DocumentActions(IReadOnlyList<ActionList> lists) =>
         lists.SelectMany(list => list.Actions.Select(a => new AplDocumentAction(
             a.Ability, a.Condition, a.TargetSelection, a.TargetExpression, a.Comment, list.Name, a.Arguments, a.ActionList, a.Variable,
-            a.UseOffGcd, a.UseWhileCasting))).ToList();
+            a.UseOffGcd, a.UseWhileCasting, a.InterruptIf, a.InterruptImmediate))).ToList();
 
     public static string ErrorText(AplVocabulary v, IReadOnlyList<ActionList> lists, IReadOnlyList<AplDocumentError> errors)
     {

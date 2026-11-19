@@ -3,7 +3,7 @@
 @implements IDisposable
 @*
     The action's target, variable value and condition, coloured, once each has stayed the same for 300 ms; its
-    use_off_gcd and use_while_casting; and a run_action_list's warning.
+    use_off_gcd and use_while_casting; its interrupt_if; and a run_action_list's warning.
 *@
 <div class="summary">@if (!string.IsNullOrWhiteSpace(_target.Text))
     {
@@ -26,6 +26,10 @@
     {
         RenderClause(__builder, "use", "while casting", null);
     }
+    @if (!string.IsNullOrWhiteSpace(_interrupt.Text))
+    {
+        RenderClause(__builder, "interrupt", Action.InterruptImmediate ? "immediately if" : "if", _interrupt);
+    }
     @if (Warning is { } warning)
     {
         <p class="field-warning">@warning</p>
@@ -40,7 +44,7 @@
 
     [Parameter, EditorRequired] public EditorAction Action { get; set; } = null!;
 
-    private DebouncedCheck _condition = null!, _target = null!, _value = null!;
+    private DebouncedCheck _condition = null!, _target = null!, _value = null!, _interrupt = null!;
 
     private string? Warning => ActionListModel.IsRunAction(Vocabulary, Action) ? ActionListModel.RunWarning(Vocabulary, Lists, Action.ActionList) : null;
 
@@ -54,6 +58,7 @@
         _condition = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(300), dispatch);
         _target = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(300), dispatch);
         _value = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(300), dispatch);
+        _interrupt = new DebouncedCheck(Editor.Checks, TimeSpan.FromMilliseconds(300), dispatch);
     }
 
     protected override void OnParametersSet()
@@ -61,6 +66,7 @@
         _condition.Set(Vocabulary.Hero, Action.Condition ?? "");
         _target.Set(Vocabulary.Hero, Action.TargetExpression ?? "");
         _value.Set(Vocabulary.Hero, Action.Variable?.Value ?? "");
+        _interrupt.Set(Vocabulary.Hero, Action.InterruptIf ?? "");
     }
 
     // A clause with no check is its keyword and label alone: a variable's reset.
@@ -85,5 +91,6 @@
         _condition.Dispose();
         _target.Dispose();
         _value.Dispose();
+        _interrupt.Dispose();
     }
 }

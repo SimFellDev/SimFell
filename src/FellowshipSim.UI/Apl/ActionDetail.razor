@@ -68,7 +68,7 @@
     else
     {
         <label for="@($"{Id}-ability")">Ability</label>
-        <select id="@($"{Id}-ability")" value="@Action.Ability" @onchange="e => Change(a => a with { Ability = (string?)e.Value ?? string.Empty })">
+        <select id="@($"{Id}-ability")" value="@Action.Ability" @onchange="e => ChangeAbility((string?)e.Value ?? string.Empty)">
             @if (Action.Ability.Length == 0)
             {
                 <option value="">Pick an ability</option>
@@ -119,6 +119,23 @@
                 <span data-tooltip="@OptionTip(AplActionLine.UseWhileCastingKey)">Use while casting</span>
             </label>
         </div>
+
+        @if (Channel)
+        {
+            <label data-tooltip="@InterruptIfTip">Interrupt if</label>
+            <div>
+                <ConditionField Vocabulary="Vocabulary" Value="@Action.InterruptIf" Label="Interrupt if" Lead=""
+                                Placeholder="@($"Never. Example: {(TickingChannel ? $"{PropertyExpression.ChannelTicksProperty} >= 1" : $"{PropertyExpression.ChannelPercentProperty} >= 50")}")"
+                                OnChange="condition => Change(a => a with { InterruptIf = condition })" />
+            </div>
+            <label hidden="@string.IsNullOrWhiteSpace(Action.InterruptIf)">Interrupt</label>
+            <div class="switches" hidden="@string.IsNullOrWhiteSpace(Action.InterruptIf)">
+                <label class="switch">
+                    <input type="checkbox" checked="@Action.InterruptImmediate" @onchange="e => Change(a => a with { InterruptImmediate = e.Value is true })" />
+                    <span data-tooltip="@OptionTip(AplActionLine.InterruptImmediateKey)">Interrupt immediately</span>
+                </label>
+            </div>
+        }
     }
 
     @if (_hasArguments)
@@ -171,6 +188,20 @@
 
     private bool KnownAbility => Vocabulary.Abilities.Any(a => a.Slug == Action.Ability);
 
+    // A channeled ability's action has Interrupt if, and its ticks when the channel has them.
+    private bool Channel => Vocabulary.Channels.Any(c => c.Slug == Action.Ability);
+
+    private bool TickingChannel => Vocabulary.TickingChannels.Contains(Action.Ability);
+
+    // The condition reference's meaning of interrupt_if.
+    private static string? InterruptIfTip =>
+        AplActionOptions.All.FirstOrDefault(o => o.Syntax.StartsWith($"{AplActionLine.InterruptIfKey}=", StringComparison.Ordinal)).Doc?.Description;
+
+    // An ability that does not channel drops the interrupt.
+    private void ChangeAbility(string ability) => Change(a => Vocabulary.Channels.Any(c => c.Slug == ability)
+        ? a with { Ability = ability }
+        : a with { Ability = ability, InterruptIf = null, InterruptImmediate = false });
+
     private bool KnownList => OtherLists.Any(l => l.Name == Action.ActionList);
 
     private string ListTip => Action.Ability == Vocabulary.ListActions[0]
@@ -197,12 +228,12 @@
             AplVariable.ActionName => a with
             {
                 Ability = type, ActionList = null, TargetSelection = null, TargetExpression = null, Variable = a.Variable ?? new AplDocumentVariable(""),
-                UseOffGcd = false, UseWhileCasting = false,
+                UseOffGcd = false, UseWhileCasting = false, InterruptIf = null, InterruptImmediate = false,
             },
             _ => a with
             {
                 Ability = type, ActionList = listAction ? a.ActionList : firstOther, TargetSelection = null, TargetExpression = null, Variable = null,
-                UseOffGcd = false, UseWhileCasting = false,
+                UseOffGcd = false, UseWhileCasting = false, InterruptIf = null, InterruptImmediate = false,
             },
         });
     }

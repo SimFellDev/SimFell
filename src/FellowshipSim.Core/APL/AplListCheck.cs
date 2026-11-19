@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using FellowshipSim.Core.APL.Expressions;
 using Superpower;
 using Superpower.Model;
 
@@ -107,7 +108,10 @@ public static class AplListCheck
                 continue;
             }
             string key = lineTokens[i + 1].ToStringValue().ToLowerInvariant();
-            tokens.Add(Span(lineTokens[i + 1], AplTokenKind.Keyword));
+            bool ability = action != null && !IsControl(v, action) && v.Abilities.Any(a => a.Slug == action);
+            tokens.Add(key is AplActionLine.InterruptIfKey or AplActionLine.InterruptImmediateKey && ability && v.Channels.All(c => c.Slug != action)
+                ? Span(lineTokens[i + 1], AplTokenKind.Unknown, $"`{action}` is not a channel; `{key}` has no effect.")
+                : Span(lineTokens[i + 1], AplTokenKind.Keyword));
             int start = i + 3, end = start;
             for (int depth = 0; end < lineTokens.Length && (depth > 0 || lineTokens[end].Kind != AplToken.Comma); end++)
             {
@@ -139,7 +143,17 @@ public static class AplListCheck
                     tokens.Add(Span(value[0], AplTokenKind.Keyword));
                     value = value[2..];
                 }
-                tokens.AddRange(v.Classified(value));
+                var classified = v.Classified(value);
+                // An action's own channel values ("ticks") read its ability's channel.
+                for (int t = 0; ability && t < value.Length; t++)
+                {
+                    if (value[t].Kind == AplToken.Identifier && ChannelValues.Contains(value[t].ToStringValue().ToLowerInvariant()))
+                    {
+                        var (kind, problem) = v.ClassifyChannel(action!, value[t].ToStringValue().ToLowerInvariant());
+                        classified[t] = classified[t] with { Kind = kind == AplTokenKind.Unknown ? kind : AplTokenKind.Named, Problem = problem };
+                    }
+                }
+                tokens.AddRange(classified);
             }
         }
 
@@ -154,6 +168,10 @@ public static class AplListCheck
             return new AplLineCheck(tokens, e.Message, at, list, listNames);
         }
     }
+
+    // The values an action reads about its own ability's channel.
+    private static readonly HashSet<string> ChannelValues =
+        [PropertyExpression.ChannelTicksProperty, PropertyExpression.ChannelSecondsProperty, PropertyExpression.ChannelPercentProperty];
 
     /// <summary>
     /// An action that controls the list instead of casting: run_action_list, call_action_list, variable, and an action the

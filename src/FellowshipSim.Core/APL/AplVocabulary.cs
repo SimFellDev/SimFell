@@ -67,7 +67,14 @@ public sealed class AplVocabulary
     public IReadOnlyList<AplName> Auras { get; }
     public IReadOnlyCollection<string> Named => PropertyExpression.Named.Keys.ToList();
     public IReadOnlyDictionary<string, IReadOnlyCollection<string>> Scopes => PropertyExpression.Scopes;
-    /// <summary>The names each scope in <see cref="Scopes"/> reads: auras for buff and debuff, abilities for cooldown and action.</summary>
+    /// <summary>The hero's channeled abilities: each action of one takes <c>interrupt_if</c>.</summary>
+    public IReadOnlyList<AplName> Channels { get; }
+    /// <summary>The slugs of <see cref="Channels"/> whose channel has ticks: <c>ticks</c> counts them.</summary>
+    public IReadOnlyList<string> TickingChannels { get; }
+    /// <summary>
+    /// The names each scope in <see cref="Scopes"/> reads: auras for buff and debuff, abilities for cooldown and action,
+    /// channeled abilities for channel.
+    /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<AplName>> ScopeNames => new Dictionary<string, IReadOnlyList<AplName>>
     {
         [PropertyExpression.BuffScope] = Auras,
@@ -75,6 +82,7 @@ public sealed class AplVocabulary
         [PropertyExpression.DotScope] = Auras,
         [PropertyExpression.CooldownScope] = Abilities,
         [PropertyExpression.ActionScope] = Abilities,
+        [PropertyExpression.ChannelScope] = Channels,
     };
     /// <summary>
     /// The names each scope in <see cref="PropertyExpression.BuildScopes"/> reads: the talents of the hero's tree, every
@@ -102,10 +110,13 @@ public sealed class AplVocabulary
     /// </summary>
     [JsonConstructor]
     public AplVocabulary(string hero, IReadOnlyList<AplName> abilities, IReadOnlyList<AplName> resources, IReadOnlyList<AplName> auras,
-        IReadOnlyList<string> repeatableAbilities, IReadOnlyDictionary<string, IReadOnlyList<AplName>> buildNames)
+        IReadOnlyList<string> repeatableAbilities, IReadOnlyDictionary<string, IReadOnlyList<AplName>> buildNames,
+        IReadOnlyList<AplName> channels, IReadOnlyList<string> tickingChannels)
     {
         Hero = hero;
         Abilities = abilities;
+        Channels = channels;
+        TickingChannels = tickingChannels;
         Resources = resources;
         Auras = auras;
         RepeatableAbilities = repeatableAbilities;
@@ -117,6 +128,8 @@ public sealed class AplVocabulary
         _hero = hero;
         Hero = heroName;
         Abilities = hero.Abilities.Select(a => new AplName(AplNames.Slug(a.Name), a.Name)).DistinctBy(n => n.Slug).ToList();
+        Channels = hero.Abilities.Where(a => a.IsChanneled).Select(a => new AplName(AplNames.Slug(a.Name), a.Name)).DistinctBy(n => n.Slug).ToList();
+        TickingChannels = hero.Abilities.Where(a => a.HasChannelTicks).Select(a => AplNames.Slug(a.Name)).Distinct().ToList();
         RepeatableAbilities = hero.Abilities
             .Where(a => a.Category != AbilityCategory.None && a.Cooldown == SimTime.Zero
                         && a.GetType().GetMethod(nameof(Ability.CanCast), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
@@ -209,8 +222,28 @@ public sealed class AplVocabulary
                 ? (AplTokenKind.Cooldown, null)
                 : (AplTokenKind.Unknown, $"{Hero} has no ability named `{property.Name}`.");
         }
+        if (property.Scope == PropertyExpression.ChannelScope) return ClassifyChannel(property.Name!, property.Property!);
         if (Auras.All(a => a.Slug != property.Name)) return (AplTokenKind.Unknown, $"{Hero} has no aura named `{property.Name}`.");
         return property.Scope == PropertyExpression.BuffScope ? (AplTokenKind.Buff, null) : (AplTokenKind.Debuff, null);
+    }
+
+    /// <summary>
+    /// The token kind of a channel value of <paramref name="ability"/>, and the problem when the hero has no such channel,
+    /// or the value is <c>ticks</c> and the channel has none.
+    /// </summary>
+    internal (AplTokenKind Kind, string? Problem) ClassifyChannel(string ability, string property)
+    {
+        if (Channels.All(c => c.Slug != ability))
+        {
+            return (AplTokenKind.Unknown, Abilities.Any(a => a.Slug == ability)
+                ? $"`{ability}` is not a channel; `{property}` reads as 0."
+                : $"{Hero} has no ability named `{ability}`.");
+        }
+        if (property == PropertyExpression.ChannelTicksProperty && !TickingChannels.Contains(ability))
+        {
+            return (AplTokenKind.Unknown, $"The channel of `{ability}` has no ticks; `{property}` reads as 0.");
+        }
+        return (AplTokenKind.Cooldown, null);
     }
 
     /// <summary>Tokens of the action list <paramref name="text"/> with their kinds, and its first line outside the grammar (<see cref="AplListCheck"/>).</summary>

@@ -16,6 +16,10 @@ public static class AplActionOptions
             "The action is also a candidate while the global cooldown runs. Without it, the action waits for the global cooldown to end.")),
         ($"{AplActionLine.UseWhileCastingKey}=1", new("Use while casting",
             "The action is also a candidate while a cast or a channel runs, for an ability off the global cooldown. Without it, the action waits for the cast or channel to end.")),
+        ($"{AplActionLine.InterruptIfKey}=<expression>", new("Interrupt if",
+            $"For a channeled ability: the channel this action started stops when the expression is true and an action above this one is ready to cast. The check runs right after each tick of the channel, once the global cooldown has ended. The expression reads {PropertyExpression.ChannelTicksProperty} (the ticks so far), {PropertyExpression.ChannelSecondsProperty} (seconds since the channel started) and {PropertyExpression.ChannelPercentProperty} (the part of the channel duration gone, in percent).")),
+        ($"{AplActionLine.InterruptImmediateKey}=1", new("Interrupt immediately",
+            $"With {AplActionLine.InterruptIfKey}: the channel stops the moment the expression is true, with no wait for a tick or the global cooldown.")),
         .. Enum.GetValues<AplListAction>().Select(a =>
             ($"{a.Name()},{AplActionLine.ListNameKey}=<list>", new AplDoc(a == AplListAction.Run ? "Run action list" : "Call action list", a.Description()))),
         ($"{AplVariable.ActionName},{AplVariable.NameKey}=<name>", new("Set a variable", $"Changes the variable {PropertyExpression.VariableScope}.<name> and casts nothing. In the editor, the action type Set a variable has the name, op, value and default as fields.")),

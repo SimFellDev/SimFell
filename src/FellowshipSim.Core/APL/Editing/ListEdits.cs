@@ -129,6 +129,7 @@ public static partial class ListEdits
         if (v.ListActions.Contains(action)) keys.Add(AplActionLine.ListNameKey);
         else if (action == AplVariable.ActionName) keys.AddRange([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey]);
         else keys.AddRange([AplActionLine.TargetIfKey, AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey]);
+        if (v.Channels.Any(c => c.Slug == action)) keys.AddRange([AplActionLine.InterruptIfKey, AplActionLine.InterruptImmediateKey]);
         return keys.Select(k => Item(k, AplTokenKind.Keyword)).ToList();
     }
 

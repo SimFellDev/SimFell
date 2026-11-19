@@ -5,7 +5,7 @@ SimFell takes contributions as pull requests to the `main` branch of
 requirements of a pull request.
 
 Every contribution follows the [AI usage policy](AI_POLICY.md) and is under the project's license, the
-[GNU General Public License v3.0](LICENSE).
+[GNU Affero General Public License v3.0](LICENSE).
 
 ## Report a problem
 

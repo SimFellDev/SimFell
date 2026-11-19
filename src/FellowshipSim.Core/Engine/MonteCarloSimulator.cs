@@ -410,6 +410,8 @@ public class MonteCarloSimulator
         while (ctx.CurrentTime < end)
         {
             if (stop != null && stop()) return true;
+            // An interrupt_if stops the channel first, so the decision after it can cast.
+            program.TryInterrupt(ctx);
             var hold = program.HoldOf(ctx);
             bool acted = Decides(program, hold) && program.TryAct(ctx);
             NoteHold(hero, ctx);
@@ -427,6 +429,8 @@ public class MonteCarloSimulator
                 var decision = acted ? ctx.CurrentTime : program.NextDecision(ctx);
                 if (decision < next) next = decision;
             }
+            var interrupt = program.NextInterruptCheck(ctx);
+            if (interrupt < next) next = interrupt;
             if (ctx.RunUntil(next < end ? next : end, stop)) return true;
         }
         return stop != null && stop();

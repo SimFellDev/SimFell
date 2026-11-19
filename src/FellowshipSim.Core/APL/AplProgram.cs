@@ -159,7 +159,12 @@ public sealed class AplProgram
             throw new InvalidOperationException($"APL: {hero.GetType().Name} has no ability named `{action.AbilityName}`.");
         }
         var targetIf = action.TargetIf == null ? null : new BoundTargetIf(action.TargetIf.Selection, BoundExpression.Bind(action.TargetIf.Expression, hero, variables));
-        return new BoundAplAction(hero, ability, condition, targetIf, action.UseOffGcd, action.UseWhileCasting);
+        var interruptIf = action.InterruptIf == null ? null : BoundExpression.Bind(action.InterruptIf, hero, variables);
+        return new BoundAplAction(hero, ability, condition, targetIf, action.UseOffGcd, action.UseWhileCasting)
+        {
+            InterruptIf = interruptIf,
+            InterruptImmediate = action.InterruptImmediate,
+        };
     }
 
     // The abilities of every build of a hero in the catalog (with every weapon's), by the hero's class.
@@ -171,6 +176,98 @@ public sealed class AplProgram
         var abilities = BuildAbilities.GetOrAdd(hero.GetType(), type => AplVocabulary.For(type.Name).Abilities);
         string key = AplNames.Slug(aplName).Replace("_", "");
         return abilities.Any(a => a.Slug.Replace("_", "") == key);
+    }
+
+    // The action that last cast a channeled ability: its channel is the hero's while the hero channels that ability.
+    private BoundAplAction? _channelAction;
+
+    // The channel whose ticks the interrupt check has seen, and how many.
+    private ActiveChannel? _seenChannel;
+    private int _ticksSeen;
+
+    /// <summary>The action with an <c>interrupt_if</c> whose channel runs now; null when no such channel runs.</summary>
+    private BoundAplAction? InterruptibleAction =>
+        _hero.CurrentChannel is { } channel && _channelAction is { InterruptIf: not null } action && channel.Ability == action.Ability ? action : null;
+
+    /// <summary>
+    /// Stops the hero's channel when the action that started it has an <c>interrupt_if</c> that is true at the channel's
+    /// target, and an ability action above that action's line is ready to cast (<see cref="SimulationContext.InterruptChannel"/>).
+    /// Without <c>interrupt_immediate=1</c>, the check runs only right after a tick of the channel once the global cooldown
+    /// has ended. True when the channel stopped.
+    /// </summary>
+    public bool TryInterrupt(SimulationContext ctx)
+    {
+        if (InterruptibleAction is not { } action) return false;
+        var channel = _hero.CurrentChannel!;
+        if (!action.InterruptImmediate)
+        {
+            if (channel != _seenChannel) (_seenChannel, _ticksSeen) = (channel, 0);
+            bool ticked = channel.Ticks.TicksFired > _ticksSeen;
+            _ticksSeen = channel.Ticks.TicksFired;
+            if (!ticked) return false;
+            double left = (_hero.GlobalCooldownEndTime - ctx.CurrentTime).TotalSeconds;
+            if (left > ctx.GlobalCooldownToleranceSeconds) return false;
+        }
+        if (!action.InterruptHolds(ctx, channel.Target)) return false;
+        if (ReadyAbove(ctx, _default, action) != Scan.Ready) return false;
+        return ctx.InterruptChannel(_hero);
+    }
+
+    /// <summary>The end of a scan for a ready action above a channel's line (<see cref="ReadyAbove"/>).</summary>
+    private enum Scan
+    {
+        /// <summary>The list ended with no ready action and without the channel's line.</summary>
+        None,
+        /// <summary>A ready ability action comes before the channel's line.</summary>
+        Ready,
+        /// <summary>The scan reached the channel's line first.</summary>
+        Channel,
+    }
+
+    // SimulationCraft's select_action with the channel's action as its context: the first ready ability action of the
+    // decision, as at the top of a decision with no hold, when it comes before the channel's own line. A variable action is
+    // left to the decision after the interrupt, so the scan changes no variable; a list action enters its list as a
+    // decision does.
+    private static Scan ReadyAbove(SimulationContext ctx, BoundAplList? list, BoundAplAction channel)
+    {
+        if (list == null || list.Running) return Scan.None;
+        list.Running = true;
+        try
+        {
+            foreach (var step in list.Steps)
+            {
+                switch (step)
+                {
+                    case BoundAplAction action when action == channel:
+                        return Scan.Channel;
+                    case BoundAplAction action:
+                        if (action.CanExecute(ctx)) return Scan.Ready;
+                        break;
+                    case BoundAplListAction listAction when !listAction.List.Running && listAction.ConditionHolds(ctx):
+                        var found = ReadyAbove(ctx, listAction.List, channel);
+                        if (found != Scan.None || listAction.Kind == AplListAction.Run) return found;
+                        break;
+                }
+            }
+            return Scan.None;
+        }
+        finally
+        {
+            list.Running = false;
+        }
+    }
+
+    /// <summary>
+    /// The next time <see cref="TryInterrupt"/> can stop the running channel: the next event (a tick is one), or with
+    /// <c>interrupt_immediate=1</c> also the time the condition can turn true with no event before it.
+    /// <see cref="SimTime.Infinite"/> when no channel with an <c>interrupt_if</c> runs.
+    /// </summary>
+    public SimTime NextInterruptCheck(SimulationContext ctx)
+    {
+        if (InterruptibleAction is not { } action) return SimTime.Infinite;
+        var next = ctx.Kernel.PeekNextTime() ?? SimTime.Infinite;
+        if (!action.InterruptImmediate) return next;
+        return Crossing.Earlier(next, Crossing.Later(ctx.CurrentTime, action.InterruptChange(ctx, _hero.CurrentChannel!.Target)));
     }
 
     /// <summary>
@@ -189,7 +286,7 @@ public sealed class AplProgram
 
     // A list already running in this decision is skipped, so lists that name each other end. An ability action that is no
     // candidate for the hold is skipped and left out of the trace.
-    private static bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, AplDecisionHold hold, TTrace trace) where TTrace : struct, IAplDecisionTrace
+    private bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, AplDecisionHold hold, TTrace trace) where TTrace : struct, IAplDecisionTrace
     {
         if (list == null || list.Running) return false;
         list.Running = true;
@@ -227,7 +324,11 @@ public sealed class AplProgram
                 if (!canExecute) continue;
                 var attempt = action.Execute(ctx);
                 trace.Cast(attempt);
-                if (attempt.Succeeded) return true;
+                if (attempt.Succeeded)
+                {
+                    if (action.Ability.IsChanneled) _channelAction = action;
+                    return true;
+                }
             }
             return false;
         }
@@ -333,6 +434,19 @@ public sealed class BoundAplAction : BoundAplStep
 
     /// <summary><c>use_while_casting=1</c>.</summary>
     public bool UseWhileCasting { get; }
+
+    /// <summary><c>interrupt_if=&lt;expr&gt;</c>: the condition that stops the channel the action started; null for none.</summary>
+    public BoundExpression? InterruptIf { get; init; }
+
+    /// <summary><c>interrupt_immediate=1</c>.</summary>
+    public bool InterruptImmediate { get; init; }
+
+    /// <summary>True when <see cref="InterruptIf"/> is true at <paramref name="target"/>, the channel's target.</summary>
+    internal bool InterruptHolds(SimulationContext ctx, EnemyTarget? target) => InterruptIf != null && EvaluateAt(ctx, target, InterruptIf);
+
+    /// <summary>The next time <see cref="InterruptIf"/> at <paramref name="target"/> can change with no event before it.</summary>
+    internal SimTime InterruptChange(SimulationContext ctx, EnemyTarget? target) =>
+        InterruptIf == null ? SimTime.Infinite : ChangeAt(ctx, target, InterruptIf);
 
     /// <summary>
     /// True when the action is a candidate in a decision under <paramref name="hold"/>. During a cast or a channel only an

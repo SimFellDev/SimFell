@@ -267,6 +267,8 @@ public static class AplParser
             ListName = listAction != null ? syntax.ListName : null,
             UseOffGcd = listAction == null && syntax.Flag(AplActionLine.UseOffGcdKey),
             UseWhileCasting = listAction == null && syntax.Flag(AplActionLine.UseWhileCastingKey),
+            InterruptIf = listAction == null ? OfAction(syntax.Argument(AplActionLine.InterruptIfKey), syntax.Name) : null,
+            InterruptImmediate = listAction == null && syntax.Flag(AplActionLine.InterruptImmediateKey),
             RawLine = line
         };
     }

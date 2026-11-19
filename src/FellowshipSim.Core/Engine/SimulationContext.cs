@@ -422,6 +422,19 @@ public class SimulationContext
         return true;
     }
 
+    /// <summary>
+    /// Stops the hero's current channel by the player's choice (an action list's <c>interrupt_if</c>): the hold of the
+    /// channel ends now, so the reaction rolled for its full length (<see cref="HoldEnds"/>) is gone, and the next cast
+    /// waits only for the global cooldown. Returns false if nothing was being channeled.
+    /// </summary>
+    public bool InterruptChannel(Hero hero)
+    {
+        if (!StopChannel(hero)) return false;
+        if (ReactionEndTime > CurrentTime) ReactionEndTime = CurrentTime;
+        if (_lastHoldEnd > CurrentTime) _lastHoldEnd = CurrentTime;
+        return true;
+    }
+
     private void FinishCast(Hero hero, Ability ability, EnemyTarget? target)
     {
         // An instant off-GCD ability used mid-cast leaves that cast running.
