@@ -162,8 +162,10 @@ or the desktop app).
   named after a legendary power: `PowerId`, the item IDs, the tuning values and the `Legendary` overrides. `Catalog` reads
   a legendary's hero and items from an instance. Its `AbilityGenerator` writes the game data's half of each `partial`
   ability class in `Heroes/<Hero>` named after an ability record of that hero: `AbilityId`, `AbilityName`, the record's
-  fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...) and the tuning values. Its
-  `TalentGenerator` writes the game data's half of each `partial` talent class in `Heroes/<Hero>` named after a talent
+  fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...) and the tuning values. A
+  class with `[Ability(<id>)]` has the record of that ID. A record with `replaces`, `subcastOf` or `triggeredBy` has
+  that ability's class as its base class, and its half has `AbilityId` and the values that differ from the base
+  ability's (`StealthBackstab`). Its `TalentGenerator` writes the game data's half of each `partial` talent class in `Heroes/<Hero>` named after a talent
   of that hero's talent slots: `TalentId`, `TalentName`, the record's fields as `Talent<Field>` (`TalentCooldown`,
   `TalentDuration`, `TalentRadius`...) and the tuning values. `Catalog` reads a talent's ID from an instance. Its
   `AugmentationGenerator` writes the game data's half of each `partial` aspect, sigil and protective enchant class named
