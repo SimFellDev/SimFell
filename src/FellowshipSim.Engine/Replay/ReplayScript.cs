@@ -156,6 +156,9 @@ public class LogDamage
     /// since the engine has neither blocks nor an enemy's damage reduction. Combat logs (gd6ByNrf81jc9aWw fight 3, Silken
     /// Hollow): 1,104 of the Mara player's 16,995 hits have 45% to 55% mitigated with no block, on every enemy hit at 260 to
     /// 280 s, 300 to 320 s, 360 to 380 s and 420 to 440 s, and the engine's hits there match the amount and the mitigated part.
+    /// On an enemy with a damage taken reduction from <see cref="PartyBuffs"/> (Greed's Embrace), the script has no mitigated
+    /// part, because the engine's hit already has the reduction (pWmcV42K39GHTLQX fight 23 @ 41061874: amount 1,022, mitigated
+    /// 4,087).
     /// </summary>
     public double UnblockedAmount => TotalAmount + Math.Max(Blocked, Mitigated);
 

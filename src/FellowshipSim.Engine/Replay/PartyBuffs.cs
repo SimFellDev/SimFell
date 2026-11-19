@@ -76,8 +76,9 @@ public static class PartyBuffs
         new(AuraDef.Effect("Vulnerable", WardstoneFocusingVulnerableEffectId,
             modifiers: StatModifier.Increased(StatType.IncomingDamageMultiplier, 4.0))),
 
-        // Greed's Embrace (Greedspawned Demon): reduced damage taken. Logs: hits fall below the engine's
-        // (pWmcV42K39GHTLQX fight 23).
+        // Greed's Embrace (Greedspawned Demon): reduced damage taken. Logs: hits fall below the engine's, and the log's
+        // mitigated part of a hit is this 0.8 (pWmcV42K39GHTLQX fight 23 @ 41061874: amount 1,022, mitigated 4,087). The
+        // replay script drops it from the comparison.
         new(AuraDef.Effect("Greed's Embrace", GreedsEmbraceEffectId,
             modifiers: StatModifier.More(StatType.IncomingDamageMultiplier, 0.2))),
 

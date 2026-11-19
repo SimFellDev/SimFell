@@ -59,7 +59,9 @@ Venomous Delight and Macabre Stratagem, and wore Sahril's Wrath.
   engine there was 0.823, 0.598, 0.772 and 0.856 against 0.97 to 1.05 in the other windows. A replay compares the engine's hit with
   the amount plus the mitigated part, and a hit deals the amount: a crit's damage over time takes a share of that amount (Amethyst
   Splinter and Vexira's Venom in fight 3 are 0.944 and 0.952 of a share of the unmitigated amount, and 1.000 and 1.001 of a share of
-  the amount). Fight 3's exact replay goes from 104.1% of the log to 99.9%.
+  the amount). Fight 3's exact replay goes from 104.1% of the log to 99.9%. On an enemy with Greed's Embrace the mitigated part
+  is that aura's 80%, which the engine already applies, so the comparison takes the amount alone: over 242 such hits in six
+  fights, the amount over the engine is 1.008.
 
 ## Timing
 
