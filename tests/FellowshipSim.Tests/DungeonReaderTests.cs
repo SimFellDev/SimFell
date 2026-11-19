@@ -123,17 +123,17 @@ public class DungeonReaderTests
     [Fact]
     public void The_Import_Writes_The_Affixes_The_Engine_Models_And_Each_Orb_As_A_Priority_Target()
     {
-        // The dungeonstart event's affixes 4, 6, 24, 25 and 22: the engine models 24 (Anomalous Orbs) and 25 (Storm Shield).
-        var dungeon = Read(Contacts, Deaths, "4, 6, 24, 25, 22");
-        Assert.Equal(["anomalous_orbs", "storm_shield"], dungeon.Affixes);
-        Assert.Contains("\naffixes=anomalous_orbs,storm_shield\n", dungeon.Format());
+        // The dungeonstart event's affixes 4, 6, 24, 25, 16 and 22: the engine models 24 (Anomalous Orbs), 25 (Storm Shield) and 16 (Ultimatum).
+        var dungeon = Read(Contacts, Deaths, "4, 6, 24, 25, 16, 22");
+        Assert.Equal(["anomalous_orbs", "storm_shield", "ultimatum"], dungeon.Affixes);
+        Assert.Contains("\naffixes=anomalous_orbs,storm_shield,ultimatum\n", dungeon.Format());
         var orbs = Assert.Single(dungeon.Pull("3")!.Groups);
         Assert.True(orbs.Priority);
         Assert.Contains("name=Anomalous Orb,spirit_points=0,priority=1,", dungeon.Format());
         Assert.All(dungeon.Pulls.Where(p => p.Name != "3").SelectMany(p => p.Groups), g => Assert.False(g.Priority));
         // A fight without them has none.
         Assert.Empty(Read(Contacts, Deaths).Affixes);
-        Assert.Empty(Read(Contacts, Deaths, "4, 6, 16").Affixes);
+        Assert.Empty(Read(Contacts, Deaths, "4, 6, 22").Affixes);
     }
 
     [Fact]

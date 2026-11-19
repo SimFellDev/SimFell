@@ -184,8 +184,8 @@ public class SimcLanguageServerTests
     public void The_Affixes_Key_Lists_The_Affixes_Without_Those_Listed()
     {
         Assert.Contains("affixes", Items(Hero + "aff|"));
-        Assert.Equal(["anomalous_orbs", "storm_shield"], Items(Hero + "affixes=|"));
-        Assert.Equal(["storm_shield"], Items(Hero + "affixes=anomalous_orbs,|"));
+        Assert.Equal(["ultimatum", "anomalous_orbs", "storm_shield"], Items(Hero + "affixes=|"));
+        Assert.Equal(["ultimatum", "storm_shield"], Items(Hero + "affixes=anomalous_orbs,|"));
         Assert.Contains("anomalous_orbs", Items(Hero + "affixes=anom|"));
     }
 

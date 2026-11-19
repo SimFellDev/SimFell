@@ -6,13 +6,14 @@ using FellowshipSim.Core.Dungeons;
 using FellowshipSim.Core.Dungeons.Affixes;
 using FellowshipSim.Core.Engine;
 using FellowshipSim.Core.Import;
+using FellowshipSim.Engine.Replay;
 
 namespace FellowshipSim.Tests;
 
 /// <summary>
 /// Dungeon affixes in a dungeon fight: the affixes key of the dungeon's text, Anomalous Orbs (an orb's priority flag,
 /// Detonate, the party's stops and the hero's interrupts, the damage it takes, its death and Anomalous Residue, the orbs by
-/// rule) and Storm Shield (its timer and Storm's Fury).
+/// rule), Storm Shield (its timer and Storm's Fury) and Ultimatum (its cooldown reduction in sims and replays).
 /// </summary>
 public class DungeonAffixTests
 {
@@ -73,7 +74,7 @@ public class DungeonAffixTests
     [Fact]
     public void The_Affixes_Key_Reads_Back_From_Its_Text()
     {
-        Assert.Equal(["anomalous_orbs", "storm_shield"], DungeonAffix.All.Select(a => a.Key));
+        Assert.Equal(["ultimatum", "anomalous_orbs", "storm_shield"], DungeonAffix.All.Select(a => a.Key));
         Assert.Contains(DungeonProfile.AffixesKey, DungeonProfile.Keys);
         var dungeon = Dungeon("pull.1=/duration=30,count=1,name=Imp,hit_points=900", "anomalous_orbs,storm_shield");
         Assert.Equal(["anomalous_orbs", "storm_shield"], dungeon.Affixes);
@@ -84,8 +85,8 @@ public class DungeonAffixTests
         var none = DungeonProfile.Parse("dungeon=Test\npull.1=/duration=30,count=1,name=Imp,hit_points=900");
         Assert.Empty(none.Affixes);
         Assert.DoesNotContain("affixes", none.Format());
-        var problem = Assert.ThrowsAny<FormatException>(() => Dungeon("pull.1=/duration=30,count=1,name=Imp,hit_points=900", "ultimatum"));
-        Assert.Contains("'ultimatum' is not a dungeon affix", problem.Message);
+        var problem = Assert.ThrowsAny<FormatException>(() => Dungeon("pull.1=/duration=30,count=1,name=Imp,hit_points=900", "truesight"));
+        Assert.Contains("'truesight' is not a dungeon affix", problem.Message);
         Assert.ThrowsAny<FormatException>(() => Dungeon("pull.1=/duration=30,count=1,name=Imp,hit_points=900", "storm_shield,storm_shield"));
     }
 
@@ -330,5 +331,80 @@ public class DungeonAffixTests
             double next = Fight(ends, "actions=attack", seed: seed).Auras.First(a => a.Fury > 0).Time;
             Assert.True(next is >= 70 + 8 and <= 72 + 8 + 1 or >= 70 + 59 + 8 and <= 70 + 72 + 8 + 1, $"Storm's Fury at {next} s");
         }
+    }
+
+    /// <summary>
+    /// <paramref name="iterations"/> fights of <paramref name="dungeon"/> on one hero: each cast's fight, ability, cooldown
+    /// reduction and the cooldown it started, and the hero.
+    /// </summary>
+    private static (List<(int Fight, string Ability, double Reduction, double Cooldown)> Casts, Hero Hero) Casts(DungeonProfile dungeon, int iterations)
+    {
+        var casts = new List<(int, string, double, double)>();
+        Hero? made = null;
+        var simulator = new MonteCarloSimulator(() =>
+        {
+            var h = HeroImporter.Import(Build("Gunde"));
+            made = h;
+            int fight = 0;
+            double last = 0;
+            h.OnCastCompleted += (ability, _, now) =>
+            {
+                if (now.TotalSeconds < last) fight++;
+                last = now.TotalSeconds;
+                if (ability.Cooldown <= SimTime.Zero || ability.CooldownScalesWithHaste) return;
+                casts.Add((fight, ability.Name, h.Stats.CooldownReductionPct, (h.CooldownOf(ability).NextChargeAt - now).TotalSeconds));
+            };
+            return h;
+        }, AplParser.ParseScript("actions=heart_splitter\nactions+=/grim_carve\nactions+=/blood_arc\nactions+=/attack"));
+        simulator.Run(SimTime.FromSeconds(dungeon.TimeLimitSeconds), iterations: iterations, firstSeed: 1, degreeOfParallelism: 1,
+            fight: new FightOptions(Dungeon: dungeon));
+        return (casts, made!);
+    }
+
+    [Fact]
+    public void Ultimatum_Adds_Its_Cooldown_Reduction_In_Each_Fight_And_Takes_It_Away_After()
+    {
+        Assert.Equal(16, DungeonAffix.ByKey("ultimatum")!.Id);
+        Assert.Equal(["ultimatum"], Dungeon("pull.1=/duration=30,count=1,name=Imp,hit_points=900", "ultimatum").Affixes);
+        const string Pull = "pull.1=/duration=60\npull.1+=/count=1,name=Trash Mob,hit_points=1000000";
+        double baseline = HeroImporter.Import(Build("Gunde")).Stats.CooldownReductionPct;
+
+        var (plain, _) = Casts(DungeonProfile.Parse($"dungeon=Test\ndifficulty=0\ntime_limit=600\n{Pull}"), 1);
+        var (casts, hero) = Casts(Dungeon(Pull, "ultimatum"), 2);
+        Assert.Equal(baseline, hero.Stats.CooldownReductionPct);
+        Assert.Equal([0, 1], casts.Select(c => c.Fight).Distinct());
+        Assert.All(casts, c => Assert.Equal(baseline + Ultimatum.CooldownReduction, c.Reduction));
+        Dictionary<string, double> First(IEnumerable<(int Fight, string Ability, double Reduction, double Cooldown)> fight) =>
+            fight.GroupBy(c => c.Ability).ToDictionary(g => g.Key, g => g.First().Cooldown);
+        var without = First(plain);
+        foreach (int fight in new[] { 0, 1 })
+        {
+            var with = First(casts.Where(c => c.Fight == fight));
+            Assert.NotEmpty(with);
+            Assert.All(with, c => Assert.True(c.Value < without[c.Key], $"{c.Key}: {c.Value} s with Ultimatum, {without[c.Key]} s without"));
+        }
+    }
+
+    [Fact]
+    public void A_Replay_Of_An_Ultimatum_Run_Has_Its_Cooldown_Reduction_Once()
+    {
+        var character = Build("Gunde");
+        var script = new ReplayScript
+        {
+            Schema = ReplayScript.SchemaVersion,
+            ReportCode = "test",
+            FightId = 1,
+            FightName = "Test",
+            DurationSeconds = 10,
+            DungeonModifierIds = [Ultimatum.AffixId],
+            Player = new ReplayPlayer { Id = 1, Name = "Tester", Hero = character.Hero },
+            Character = character,
+            Commands = [new ReplayCommand { Time = 0.5, Kind = CommandKind.EnemyArise, Enemy = new UnitRef(100, 1), Name = "Dummy", MaxHp = 1e9, Hp = 1e9 }],
+        };
+        double baseline = HeroImporter.Import(character).Stats.CooldownReductionPct;
+        var hero = ReplayDriver.CreateHero(script);
+        Assert.Equal(baseline + Ultimatum.CooldownReduction, hero.Stats.CooldownReductionPct);
+        new ReplayDriver(hero, script, new ReplayOptions { StopOnFirstFailure = false }).Run();
+        Assert.Equal(baseline + Ultimatum.CooldownReduction, hero.Stats.CooldownReductionPct);
     }
 }

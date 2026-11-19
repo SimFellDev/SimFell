@@ -20,6 +20,12 @@ public abstract class DungeonAffix
     /// <summary>The affix's effects on one dungeon fight, from its start.</summary>
     internal abstract void Begin(AffixRun run);
 
+    /// <summary>
+    /// The affix's lasting change to <paramref name="hero"/>, with no aura in the log: a replay applies it to the hero it
+    /// builds. Nothing for an affix with none.
+    /// </summary>
+    public virtual void ApplyToHero(Hero hero) { }
+
     /// <summary>Every affix the engine models, in ID order (<see cref="Catalog.DungeonAffixes"/>).</summary>
     public static IReadOnlyList<DungeonAffix> All => Catalog.DungeonAffixes;
 

@@ -19,7 +19,7 @@ public class ReplayScript
     /// <summary>When the fight was logged (UTC): balance changes in force then apply.</summary>
     [JsonPropertyName("fight_date")] public DateTime? FightDate { get; set; }
     [JsonPropertyName("duration_s")] public double DurationSeconds { get; set; }
-    /// <summary>The run's dungeon modifiers (the dungeonstart event's affixes), see <see cref="DungeonModifiers"/>.</summary>
+    /// <summary>The run's dungeon modifiers (the dungeonstart event's affixes), see <see cref="FellowshipSim.Core.Dungeons.Affixes.DungeonAffix.ApplyToHero"/>.</summary>
     [JsonPropertyName("dungeon_modifiers")] public List<int> DungeonModifierIds { get; set; } = new();
     [JsonPropertyName("player")] public ReplayPlayer Player { get; set; } = new();
     [JsonPropertyName("character")] public CharacterBuild? Character { get; set; }
