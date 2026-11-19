@@ -35,7 +35,7 @@ public class RelicPowerCooldownTests
     public void Ability_Cooldown_Reduction_Leaves_A_Relic_Cooldown_Unchanged(string ability, double cooldown)
     {
         var f = StepFights.Mara(gemPower: new() { [GemColor.Emerald] = 450 });
-        DungeonAffix.ById(Ultimatum.AffixId)!.ApplyToHero(f.Hero);
+        DungeonAffix.ById(16)!.ApplyToHero(f.Hero);
 
         Assert.True(f.Hero.Stats.CooldownReductionPct >= 0.04 + 0.10 - 1e-9);
         Assert.Equal(cooldown, CooldownAfterCast(f, ability), 6);

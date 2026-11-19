@@ -373,7 +373,7 @@ public class DungeonAffixTests
         var (casts, hero) = Casts(Dungeon(Pull, "ultimatum"), 2);
         Assert.Equal(baseline, hero.Stats.CooldownReductionPct);
         Assert.Equal([0, 1], casts.Select(c => c.Fight).Distinct());
-        Assert.All(casts, c => Assert.Equal(baseline + Ultimatum.CooldownReduction, c.Reduction));
+        Assert.All(casts, c => Assert.Equal(baseline + 0.10, c.Reduction));
         Dictionary<string, double> First(IEnumerable<(int Fight, string Ability, double Reduction, double Cooldown)> fight) =>
             fight.GroupBy(c => c.Ability).ToDictionary(g => g.Key, g => g.First().Cooldown);
         var without = First(plain);
@@ -396,15 +396,15 @@ public class DungeonAffixTests
             FightId = 1,
             FightName = "Test",
             DurationSeconds = 10,
-            DungeonModifierIds = [Ultimatum.AffixId],
+            DungeonModifierIds = [16],
             Player = new ReplayPlayer { Id = 1, Name = "Tester", Hero = character.Hero },
             Character = character,
             Commands = [new ReplayCommand { Time = 0.5, Kind = CommandKind.EnemyArise, Enemy = new UnitRef(100, 1), Name = "Dummy", MaxHp = 1e9, Hp = 1e9 }],
         };
         double baseline = HeroImporter.Import(character).Stats.CooldownReductionPct;
         var hero = ReplayDriver.CreateHero(script);
-        Assert.Equal(baseline + Ultimatum.CooldownReduction, hero.Stats.CooldownReductionPct);
+        Assert.Equal(baseline + 0.10, hero.Stats.CooldownReductionPct);
         new ReplayDriver(hero, script, new ReplayOptions { StopOnFirstFailure = false }).Run();
-        Assert.Equal(baseline + Ultimatum.CooldownReduction, hero.Stats.CooldownReductionPct);
+        Assert.Equal(baseline + 0.10, hero.Stats.CooldownReductionPct);
     }
 }
