@@ -158,16 +158,20 @@ public class MaraLegendaries
     }
 
     /// <summary>
-    /// With Gushing Blood and From the Shadows, the bleed a Hemorrhaging Strike during Maiden of Death puts on a second enemy has From the
-    /// Shadows' 0.87 twice (the engine's way of showing the game's bug): its ticks come every 3 x 0.87 x 0.87 seconds shortened by haste,
-    /// against 3 x 0.87 on the struck enemy.
+    /// With From the Shadows, a Hemorrhaging Strike during Maiden of Death on one of two enemies. With Gushing Blood, the strike
+    /// re-applies the bleed as fresh copies, to the other enemy and then to the struck one, and each copy has From the Shadows' 0.87
+    /// twice: both enemies' ticks come every 3 x 0.87 x 0.87 seconds shortened by haste. Without Gushing Blood, the struck enemy alone
+    /// has the bleed, with the 0.87 once: every 3 x 0.87 seconds.
     /// </summary>
     [Theory]
-    [InlineData(0.0)]
-    [InlineData(0.2)]
-    public void From_The_Shadows_Applies_Twice_To_The_Bleed_Gushing_Blood_Copies(double haste)
+    [InlineData(0.0, true)]
+    [InlineData(0.2, true)]
+    [InlineData(0.0, false)]
+    [InlineData(0.2, false)]
+    public void From_The_Shadows_Applies_Twice_To_The_Bleed_Gushing_Blood_Copies(double haste, bool gushingBlood)
     {
-        var f = StepFights.Mara(haste: haste, enemies: 2, talents: [GushingBlood.TalentId], legendaries: [FromTheShadows.HeadItemId]);
+        var f = StepFights.Mara(haste: haste, enemies: 2, talents: gushingBlood ? [GushingBlood.TalentId] : null,
+            legendaries: [FromTheShadows.HeadItemId]);
         f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : null); // no clone
         var struck = f.Enemies()[0];
         var other = f.Enemies()[1];
@@ -177,15 +181,67 @@ public class MaraLegendaries
         f.Cast<HemorrhagingStrike>(struck);
         f.Wait(5); // two ticks
 
-        double Period(EnemyTarget enemy)
-        {
-            var ticks = f.Damage("Hemorrhage").Where(hit => hit.Target == enemy.Name).ToList();
-            return (ticks[1].Time - ticks[0].Time).TotalSeconds;
-        }
+        List<StepEvent> Ticks(EnemyTarget enemy) => f.Damage("Hemorrhage").Where(hit => hit.Target == enemy.Name).ToList();
+        double Period(EnemyTarget enemy) => (Ticks(enemy)[1].Time - Ticks(enemy)[0].Time).TotalSeconds;
 
         using var check = new Checks(f);
-        check.Seconds(3 * 0.87 / (1 + haste), Period(struck), what: "the struck enemy's tick period");
-        check.Seconds(3 * 0.87 * 0.87 / (1 + haste), Period(other), what: "the copy's tick period");
+        double fromTheShadows = gushingBlood ? 0.87 * 0.87 : 0.87;
+        check.Seconds(3 * fromTheShadows / (1 + haste), Period(struck), what: "the struck enemy's tick period");
+        if (gushingBlood) check.Seconds(3 * fromTheShadows / (1 + haste), Period(other), what: "the copy's tick period");
+        else check.Equal(0, Ticks(other).Count, what: "ticks on the other enemy");
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst, with or without Gushing Blood and From the Shadows, and with or without Maiden of Death, on a target and one
+    /// other enemy. A Backstab gives the target the stack, then a 1 Combo Point Hemorrhaging Strike consumes it. The clone never comes,
+    /// and damage has no spread. Without From the Shadows the hero wears Vexira's Venom, whose effect stays off here (no Queen's Fang or
+    /// Arachnid Assault), so both fights have the legendaries' +10% main stat.
+    /// Returns the burst on the target and on the other enemy.
+    /// </summary>
+    private static (double Target, double Nearby) HemotoxinBurst(bool gushingBlood, bool fromTheShadows, bool maiden)
+    {
+        int[] talents = gushingBlood ? [Hemotoxin.TalentId, GushingBlood.TalentId] : [Hemotoxin.TalentId];
+        var f = StepFights.Mara(enemies: 2, talents: talents,
+            legendaries: [fromTheShadows ? FromTheShadows.HeadItemId : VexirasVenom.LegsItemId]).WithoutDamageSpread();
+        int hemotoxinRolls = 0;
+        f.ForceProcs(key => key == FromTheShadows.ProcKey ? false : key == Hemotoxin.ProcKey ? hemotoxinRolls++ == 0 : null);
+
+        if (maiden) f.Cast<MaidenOfDeath>();
+        f.Cast<Backstab>(f.Enemy); // the stack (first roll)
+        f.Set(Mara.ComboPoints, 1); // a 15 second bleed; after Maiden of Death, which gives Combo Points
+        f.Cast<HemorrhagingStrike>(f.Enemy); // consumes it
+
+        var bursts = f.Ticks(Hemotoxin.BurstEffectId);
+        Assert.Equal(2, bursts.Count);
+        return (bursts.Single(hit => hit.Target == f.Enemy.Name).Value, bursts.Single(hit => hit.Target != f.Enemy.Name).Value);
+    }
+
+    /// <summary>
+    /// Hemotoxin's burst counts the bleed's ticks with From the Shadows' 0.87 once: 1 / 0.87 times the burst without it, on the target and
+    /// on the other enemy. Maiden of Death raises it 20%, once. Gushing Blood changes nothing: the burst comes as the strike lands, before
+    /// the bleed goes on, so Gushing Blood's re-application, whose copies tick at 0.87 x 0.87, does not reach it.
+    ///
+    /// UNVERIFIED: this pins the engine's reading (<see cref="Hemotoxin"/>, <see cref="Hemorrhage.TicksIn"/>). No combat log has
+    /// Hemotoxin, so whether the game's burst reads the re-applied bleed's period, 1 / (0.87 x 0.87) with Gushing Blood during Maiden of
+    /// Death, is not known.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Hemotoxins_Burst_Takes_From_The_Shadows_Once_And_Maiden_Of_Death_Once(bool gushingBlood)
+    {
+        var withFts = HemotoxinBurst(gushingBlood, fromTheShadows: true, maiden: true);
+        var withoutFts = HemotoxinBurst(gushingBlood, fromTheShadows: false, maiden: true);
+        var withoutMaiden = HemotoxinBurst(gushingBlood, fromTheShadows: true, maiden: false);
+        var withoutGushingBlood = HemotoxinBurst(gushingBlood: false, fromTheShadows: true, maiden: true);
+
+        using var check = new Checks();
+        check.Ratio(1 / 0.87, withFts.Target / withoutFts.Target, what: "From the Shadows on the target's burst");
+        check.Ratio(1 / 0.87, withFts.Nearby / withoutFts.Nearby, what: "From the Shadows on the other enemy's burst");
+        check.Ratio(1.2, withFts.Target / withoutMaiden.Target, what: "Maiden of Death on the target's burst");
+        check.Ratio(1.2, withFts.Nearby / withoutMaiden.Nearby, what: "Maiden of Death on the other enemy's burst");
+        check.Ratio(1.0, withFts.Target / withoutGushingBlood.Target, what: "Gushing Blood on the target's burst");
+        check.Ratio(1.0, withFts.Nearby / withoutGushingBlood.Nearby, what: "Gushing Blood on the other enemy's burst");
     }
 
     // ---- Vexira's Venom
