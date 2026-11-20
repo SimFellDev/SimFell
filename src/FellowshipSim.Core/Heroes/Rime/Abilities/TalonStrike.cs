@@ -7,12 +7,10 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// Glacial Blast for talents (Glacial Assault, the spender crit buffs), so it builds on <see cref="GlacialBlast"/> and
 /// changes only the cost, the cast time and the spikes.
 /// </summary>
-public class TalonStrike : GlacialBlast
+public partial class TalonStrike : GlacialBlast
 {
-    public new const int AbilityId = 2223;
-    public new const string AbilityName = "Talon Strike";
     /// <summary>Per ice spike (a fraction of Glacial Blast's).</summary>
-    public new const double Coefficient = 4.096;
+    public const double Coefficient = 4.096;
 
     public TalonStrike(Rime owner) : base(owner, AbilityId, AbilityName)
     {

@@ -10,10 +10,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// extension never leaves an effect more than its full duration (<see cref="DotInstance.FullDurationSeconds"/>), as
 /// Incinerate's and Backdraft's.
 /// </summary>
-public class SlowBurn : Talent
+public partial class SlowBurn : Talent
 {
-    public const int TalentId = 162;
-    public const string TalentName = "Slow Burn";
     public const double ExtensionOverDurationSeconds = 3.0;
 
     public override string Name => TalentName;

@@ -94,6 +94,8 @@ public abstract class Ability
     public SimTime ChannelDuration { get; protected set; } = SimTime.Zero;
     /// <summary>Unhasted seconds between channel ticks; haste at channel start shortens it.</summary>
     public double ChannelTickPeriodSeconds { get; protected set; } = 1.0;
+    /// <summary>True for a channel with ticks: a channel's <c>ticks</c> in an action list counts them.</summary>
+    public bool HasChannelTicks => IsChanneled && ChannelTickPeriodSeconds > 0;
     public bool ChannelTicksOnStart { get; protected set; } = false;
     public bool ChannelPartialFinalTick { get; protected set; } = false;
     /// <summary>The partial final tick comes even when less than a server frame of a period is left (Freezing Torrent).</summary>

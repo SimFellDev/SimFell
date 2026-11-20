@@ -181,6 +181,15 @@ public class SimcLanguageServerTests
     }
 
     [Fact]
+    public void The_Affixes_Key_Lists_The_Affixes_Without_Those_Listed()
+    {
+        Assert.Contains("affixes", Items(Hero + "aff|"));
+        Assert.Equal(["ultimatum", "anomalous_orbs", "storm_shield"], Items(Hero + "affixes=|"));
+        Assert.Equal(["ultimatum", "storm_shield"], Items(Hero + "affixes=anomalous_orbs,|"));
+        Assert.Contains("anomalous_orbs", Items(Hero + "affixes=anom|"));
+    }
+
+    [Fact]
     public void A_File_With_No_Hero_Line_Lists_The_Heroes()
     {
         Assert.Contains("rime", Items("ri|"));
@@ -259,6 +268,26 @@ public class SimcLanguageServerTests
         var keys = Items(Hero + "actions+=/frost_bolt,|").ToList();
         Assert.Contains(AplActionLine.UseOffGcdKey, keys);
         Assert.Contains(AplActionLine.UseWhileCastingKey, keys);
+    }
+
+    [Fact]
+    public void A_Switch_Target_Line_Has_Its_Tokens_Its_Problem_And_Its_Completions()
+    {
+        const string gunde = "gunde=\"x\"\n";
+        string text = gunde + "actions+=/switch_target,target_if=target.is_boss\nactions+=/switch_target";
+        var check = Language.Check(null, text)!;
+        var keywords = check.Tokens.Where(t => t.Kind == AplTokenKind.Keyword).Select(t => text.Substring(t.Start, t.Length)).ToList();
+        Assert.Equal(2, keywords.Count(k => k == AplSwitchTarget.ActionName));
+        Assert.Contains(AplActionLine.TargetIfKey, keywords);
+
+        // The line without target_if is the file's one problem.
+        var diagnostic = SimcLanguageServer.Diagnostics(text, check).Single()!;
+        Assert.Contains("`switch_target` needs `target_if=<expression>`", (string)diagnostic["message"]!);
+        Assert.Equal(2, (int)diagnostic["range"]!["start"]!["line"]!);
+
+        Assert.Contains(AplSwitchTarget.ActionName, Items(gunde + "actions+=/sw|"));
+        Assert.Equal([AplActionLine.ConditionKey, AplActionLine.TargetIfKey], Items(gunde + "actions+=/switch_target,|"));
+        Assert.Contains("max", Items(gunde + "actions+=/switch_target,target_if=ma|"));
     }
 
     [Fact]

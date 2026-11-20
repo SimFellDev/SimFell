@@ -6,17 +6,12 @@ namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 /// Talent 79: "Each time you use Heavy Strike you gain a stack of Far Beyond Driven, increasing your
 /// Spirit. Far Beyond Driven stacks." Effect 1744.
 /// </summary>
-public class FarBeyondDriven : Talent
+public partial class FarBeyondDriven : Talent
 {
-    public const int TalentId = 79;
-    public const string TalentName = "Far Beyond Driven";
     public const int EffectId = 1744;
-    public const double BuffSeconds = 20.0;
-    public const int MaxStacks = 5;
-    public const double SpiritPerStack = 0.015;
 
-    public static readonly AuraDef Buff = AuraDef.Effect("Far Beyond Driven", EffectId, BuffSeconds, MaxStacks,
-        StatModifier.Add(StatType.Spirit, SpiritPerStack));
+    public static readonly AuraDef Buff = AuraDef.Effect("Far Beyond Driven", EffectId, Constants.TalentAutoAttackBuffDurationalStatBonusDuration, Constants.TalentAutoAttackBuffDurationalStatBonusMaxStacks,
+        StatModifier.Add(StatType.Spirit, Constants.TalentAutoAttackBuffDurationalStatBonusStatIncrease));
 
     public override string Name => TalentName;
     public override int Id => TalentId;

@@ -5,20 +5,13 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 /// your Parry chance by +8%. Aura of Solace transfers 10% of all damage taken by nearby allies to you. Can be used during
 /// Global Cooldown. Costs 10 Mana every 1.5 seconds while active." A cast turns it on, the next turns it off. Cooldown 3s.
 /// </summary>
-public class AuraOfSolace : XavianAbility
+public partial class AuraOfSolace : XavianAbility
 {
-    public const int AbilityId = 1917;
-    public const string AbilityName = "Aura of Solace";
-    public const double CooldownSeconds = 3.0;
-    /// <summary>Ability 1915 / effect 2669: 34% of Strength each pulse, period 1.5.</summary>
-    public const double Coefficient = 0.34;
     public const int DamageEffectId = 2669;
     /// <summary>
     /// Combat logs (XyGpcHjNaAzgk7mW fight 20, 1,735 hits): a pulse every 1.50s from the cast whatever the Haste.
     /// </summary>
     public const double PulseSeconds = 1.5;
-    /// <summary>Game data cost 10 Mana each pulse.</summary>
-    public const double ManaPerPulse = 10;
     /// <summary>Game data targetCountFalloff: effect 2669, threshold 8; maxTargets 20.</summary>
     public const double TargetThreshold = 8;
     /// <summary>
@@ -32,10 +25,10 @@ public class AuraOfSolace : XavianAbility
 
     private int _aura;
 
-    public AuraOfSolace(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Utility)
+    public AuraOfSolace(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        BaseCoefficient = Constants.DotDamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
         AoeTargetThreshold = TargetThreshold;
         DamageLogId = LogIds.Effect(DamageEffectId);
@@ -68,7 +61,7 @@ public class AuraOfSolace : XavianAbility
     /// <summary>One pulse: its Mana and its damage to every enemy within the radius.</summary>
     public void Pulse(SimulationContext ctx)
     {
-        Xavian.DrainMana(ManaPerPulse, ctx);
+        Xavian.DrainMana(Constants.ManaCostPerPeriod, ctx);
         if (ctx.ActiveEnemies.Count > 0) DealAoeDamage(ctx, ctx.ActiveEnemies);
     }
 

@@ -4,6 +4,7 @@
 //       SimFell.exe       Windows: the launcher (src/FellowshipSim.Launcher)
 //       SimFell.command   macOS: a start script to double-click (it opens in Terminal)
 //       simfell.sh        Linux: a start script
+//       LICENSE.txt       the repository's LICENSE
 //       Runtime/          the web app with the engine in-process, self-contained (.NET inside, nothing to install)
 //     SimFell-<rid>.zip
 //
@@ -64,6 +65,9 @@ else
         File.SetUnixFileMode(Path.Combine(runtime, "FellowshipSim.Service"), (UnixFileMode)0b111_101_101);
     }
 }
+
+// The GNU Affero General Public License's text is in every copy of the app.
+File.Copy(Path.Combine(root, "LICENSE"), Path.Combine(app, "LICENSE.txt"));
 
 // Only the app: no debug symbols.
 foreach (string pdb in Directory.EnumerateFiles(runtime, "*.pdb")) File.Delete(pdb);

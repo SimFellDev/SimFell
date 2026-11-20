@@ -3,17 +3,11 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// <summary>
 /// Ability 2291: cleaves all enemies in front of Gunde and grants Serrated Edge, which makes the next damaging ability
 /// transfer additional damage to Rend. Serrated Edge does not interact with the Bloodbound Spirit ability. Blood Arc
-/// applies Rend to the targets. Damage falls off beyond <see cref="TargetThreshold"/> enemies (game data effect 3236).
+/// applies Rend to the targets. Damage falls off beyond <see cref="Constants.DamageScalingTargetCountThreshold"/> enemies (game data effect 3236).
 /// The cooldown is shortened by Haste at the cast.
 /// </summary>
-public class BloodArc : GundeAbility
+public partial class BloodArc : GundeAbility
 {
-    public const int AbilityId = 2291;
-    public const string AbilityName = "Blood Arc";
-    public const double Coefficient = 2.7092;
-    public const double CooldownSeconds = 9.0;
-    public const double TargetThreshold = 8;
-    public const double RendShareOfDamage = 0.5;
 
     public const int SerratedEdgeEffectId = 3232;
     /// <summary>Combat logs: every Serrated Edge lasts the duration of game data effect 3232, not the tooltip's.</summary>
@@ -30,12 +24,12 @@ public class BloodArc : GundeAbility
     /// <summary>Blood Arc's hits have gone off, with its target (Crimson Strikes, Death's Arc).</summary>
     public event Action<SimulationContext, EnemyTarget>? Arced;
 
-    public BloodArc(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public BloodArc(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
-        AoeTargetThreshold = TargetThreshold;
-        RendShare = RendShareOfDamage;
+        BaseCoefficient = Constants.DamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
+        AoeTargetThreshold = Constants.DamageScalingTargetCountThreshold;
+        RendShare = Constants.PerTargetAccumulatedBleedDamageToDotScaler;
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)

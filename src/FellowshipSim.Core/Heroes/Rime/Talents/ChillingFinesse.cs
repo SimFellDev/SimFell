@@ -3,13 +3,8 @@ using FellowshipSim.Core.Heroes.Rime.Abilities;
 namespace FellowshipSim.Core.Heroes.Rime.Talents;
 
 /// <summary>Talent 43: Freezing Torrent ticks reduce Bursting Ice's cooldown; Cold Snap reduces Freezing Torrent's.</summary>
-public class ChillingFinesse : Talent
+public partial class ChillingFinesse : Talent
 {
-    public const int TalentId = 43;
-    public const string TalentName = "Chilling Finesse";
-    public const double BurstingIceReductionSeconds = 0.2;
-    public const double FreezingTorrentReductionSeconds = 1.5;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -19,11 +14,11 @@ public class ChillingFinesse : Talent
         var freezingTorrent = hero.GetAbility<FreezingTorrent>();
         hero.OnChannelTick += (ability, _, _, ctx) =>
         {
-            if (ability is FreezingTorrent && burstingIce != null) hero.ReduceCooldown(burstingIce.Name, SimTime.FromSeconds(BurstingIceReductionSeconds), ctx.CurrentTime);
+            if (ability is FreezingTorrent && burstingIce != null) hero.ReduceCooldown(burstingIce.Name, SimTime.FromSeconds(Constants.CastedDebuffAoeDamageCooldownReductionCooldownReductionPerTick), ctx.CurrentTime);
         };
         hero.OnCastCompleted += (ability, _, now) =>
         {
-            if (ability is ColdSnap && freezingTorrent != null) hero.ReduceCooldown(freezingTorrent.Name, SimTime.FromSeconds(FreezingTorrentReductionSeconds), now);
+            if (ability is ColdSnap && freezingTorrent != null) hero.ReduceCooldown(freezingTorrent.Name, SimTime.FromSeconds(Constants.InstantSingleDamageTalentReduceCooldownOnChanneledBeamReductionInSeconds), now);
         };
     }
 }

@@ -5,25 +5,17 @@ namespace FellowshipSim.Core.Heroes.Tariq.Abilities;
 /// dealt damage a total number of times. Chain Lightning does not deal damage to you. Thunder Call: You can only cast Chain
 /// Lightning while Thunder Call is active. Generates Fury per hit." Its hits are effect 1774.
 /// </summary>
-public class ChainLightning : TariqAbility
+public partial class ChainLightning : TariqAbility
 {
-    public const int AbilityId = 1237;
-    public const string AbilityName = "Chain Lightning";
-    /// <summary>Share of Strength per hit.</summary>
-    public const double Coefficient = 1.4998;
-    /// <summary>Game data cooldown, its duration scaled by Haste.</summary>
-    public const double CooldownSeconds = 8.0;
-    public const int Hits = 6;
     /// <summary>Game data: a share of maximum Fury per hit.</summary>
     public const double FuryPerHit = 1.2;
     public const int DamageEffectId = 1774;
 
     /// <summary>
     /// Combat logs (fXyzwGcQkTrLD34R fight 4, 58 casts): the first hit follows the cast by <see cref="FirstHitSeconds"/>, then a hit
-    /// follows every <see cref="BounceSeconds"/> (ability 1236 period; the log rounds each to server frames).
+    /// follows every <see cref="Constants.TimeBetweenTargets"/> (the log rounds each to server frames).
     /// </summary>
     public const double FirstHitSeconds = 0.30;
-    public const double BounceSeconds = 0.05;
 
     /// <summary>Hits added to each cast (Thunderstruck).</summary>
     public int ExtraHits { get; internal set; }
@@ -37,15 +29,15 @@ public class ChainLightning : TariqAbility
     /// <summary>The arc bounced to its next hit (Thundering Vortex).</summary>
     public event Action<SimulationContext>? Bounced;
 
-    public ChainLightning(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public ChainLightning(Tariq owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = Constants.StrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         DamageLogId = LogIds.Effect(DamageEffectId);
     }
 
     /// <summary>Ace of Spades: "Your Chain Lightning now has charges" (they recharge with haste, as native charges do).</summary>
-    internal void SetCharges(int charges) => SetCooldown(CooldownSeconds, charges, scalesWithHaste: true);
+    internal void SetCharges(int charges) => SetCooldown(AbilityCooldown, charges, scalesWithHaste: true);
 
     protected override bool CanCast(SimulationContext ctx, bool explain, out string? reason)
     {
@@ -73,13 +65,13 @@ public class ChainLightning : TariqAbility
         var hero = Tariq;
         double castMultiplier = CastDamageMultiplier;
         double castCrit = (CurrentCast?.CritChance ?? 0.0) + hero.LightningCritChance;
-        int hits = Hits + ExtraHits;
+        int hits = Constants.MaxNumOfTargets + ExtraHits;
         var hitSoFar = new HashSet<EnemyTarget>();
         EnemyTarget? last = null;
         for (int i = 0; i < hits; i++)
         {
             bool first = i == 0;
-            ctx.Schedule(SimTime.FromSeconds(FirstHitSeconds + i * BounceSeconds), c =>
+            ctx.Schedule(SimTime.FromSeconds(FirstHitSeconds + i * Constants.TimeBetweenTargets), c =>
             {
                 var next = NextTarget(c, target, first, last, hitSoFar);
                 if (next == null) return;

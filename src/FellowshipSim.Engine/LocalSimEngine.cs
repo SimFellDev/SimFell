@@ -81,10 +81,15 @@ public sealed class LocalSimEngine : ISimEngine
         {
             SimChunks.CheckDungeon(settings);
             var simulator = SimChunks.NewSimulator(profile);
+            // The error of the fights merged so far, for the progress of a sim to a target error. A boxed value is
+            // written and read whole across threads.
+            object? error = null;
             var result = simulator.Run(SimTime.FromSeconds(settings.DurationSeconds), settings.Iterations, settings.TargetCount,
                 settings.FirstSeed, settings.DegreeOfParallelism, rollTypicalFight: true,
-                progress: progress == null ? null : completed => progress.Report(new SimProgress(completed, settings.Iterations)),
-                cancellationToken: ct, fight: settings.Fight);
+                progress: progress == null ? null : completed => progress.Report(SimChunks.Progress(settings, completed, (double?)error)),
+                cancellationToken: ct, fight: settings.Fight, targetError: settings.TargetError,
+                merged: progress == null || settings.TargetError <= 0 ? null : moments => error = moments.MarginPercent);
+            progress?.Report(SimChunks.Progress(settings, result.Iterations, (double?)error, done: true));
             return SimResult.From(result);
         }, ct);
 

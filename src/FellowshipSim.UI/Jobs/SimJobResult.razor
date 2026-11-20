@@ -21,59 +21,73 @@
         <div class="tile main">
             <span>Mean DPS</span>
             <strong>@N(Result.MeanDps)</strong>
-            <em>±@MarginText at 95% confidence</em>
+            <em>DPS</em>
         </div>
         @if (Result.PrimaryTargetDps is { } primary && primary > 0 && primary < Result.MeanDps * 0.999)
         {
             <div class="tile">
                 <span>Main target DPS</span>
                 <strong>@N(primary)</strong>
-                <em>@Percent(Result.MeanDps > 0 ? primary / Result.MeanDps : 0) of the damage, to the first target</em>
+                <em>@Percent(Result.MeanDps > 0 ? primary / Result.MeanDps : 0) of damage</em>
             </div>
         }
         @if (HasBossDps(Result))
         {
+            double bossOnly = Result.BossDps!.Value;
+            bool everyEnemy = Result.BossFightDps is > 0;
             <div class="tile">
                 <span>Boss DPS</span>
-                <strong>@N(Result.BossDps!.Value)</strong>
-                <em>to bosses, over the time of boss fighting</em>
+                <strong>@N(everyEnemy ? Result.BossFightDps!.Value : bossOnly)</strong>
+                <em>@(everyEnemy ? $"{Percent(bossOnly / Result.BossFightDps!.Value)} on bosses" : "to bosses alone")</em>
             </div>
         }
         @if (Result.PartyDps is { } party)
         {
-            <div class="tile">
+            string? partyTip = PartyTip(Result);
+            <div class="@(partyTip != null ? "tile tipped" : "tile")" data-tooltip="@partyTip">
+                @if (partyTip != null)
+                {
+                    <Icon Shape="IconShape.Info" Class="tip-mark" />
+                }
                 <span>Party DPS</span>
                 <strong>@N(party)</strong>
-                <em>the health the dungeon's enemies lost each second</em>
-            </div>
-        }
-        @if (Result.GroupDamageShare is { } share)
-        {
-            <div class="tile">
-                <span>Share of group damage</span>
-                <strong>@Percent(share)</strong>
-                <em>the hero's damage, up to each enemy's health</em>
+                @if (Result.GroupDamageShare is { } share)
+                {
+                    <em>@Percent(share) of group damage</em>
+                }
             </div>
         }
         <div class="tile">
             <span>Range</span>
             <strong>@N(Result.MinDps) – @N(Result.MaxDps)</strong>
-            <em>lowest and highest fight</em>
+            <em>DPS</em>
         </div>
         <div class="tile">
             <span>Std dev</span>
             <strong>@N(Result.StandardDeviation)</strong>
-            <em>@Percent(Result.MeanDps > 0 ? Result.StandardDeviation / Result.MeanDps : 0) of the mean</em>
+            <em>@Percent(Result.MeanDps > 0 ? Result.StandardDeviation / Result.MeanDps : 0) of mean</em>
         </div>
         <div class="tile">
             <span>Mean damage</span>
             <strong>@N(Result.MeanDps * Result.DurationSeconds)</strong>
-            <em>per fight</em>
+            @if (Result.Abilities is { Count: > 0 } hitSources)
+            {
+                <em>@N(hitSources.Sum(a => a.Hits)) hits</em>
+            }
         </div>
         <div class="tile">
             <span>Fights</span>
             <strong>@N(Result.Iterations)</strong>
-            <em>@Result.DurationSeconds.ToString("0.##", CultureInfo.CurrentCulture) s each</em>
+            <em>mean @Clock(Result.DurationSeconds)</em>
+        </div>
+        <div class="tile">
+            <span>Margin of error</span>
+            <strong>±@MarginText</strong>
+            <em>±@Dps(Result.Margin) DPS</em>
+            @if (Result.TargetError is { } target)
+            {
+                <em>@TargetText(target)</em>
+            }
         </div>
     </div>
 
@@ -112,12 +126,48 @@
         </section>
     }
 
+    @if (Result.Distribution is { Counts.Count: > 0 } distribution)
+    {
+        <section class="card">
+            <div class="card-head">
+                <h3>DPS distribution</h3>
+                <span class="legend"><i class="bin"></i>Fights <i class="bin mean-bin"></i>Bin of the mean DPS</span>
+            </div>
+            <div class="chart distribution">
+                @{ double countTop = CountTop(distribution.Counts.Max()); int meanBin = distribution.BinOf(Result.MeanDps); }
+                <div class="y">@for (int i = 4; i >= 0; i--)
+                {
+                    <span>@N(countTop * i / 4)</span>
+                }</div>
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="The fights by DPS">
+                    @for (int g = 1; g < 4; g++)
+                    {
+                        <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
+                    }
+                    @for (int b = 0; b < distribution.Counts.Count; b++)
+                    {
+                        var bin = BinBar(distribution, b, countTop);
+                        <g class="@(b == meanBin ? "bin mean-bin" : "bin")" data-tooltip="@BinTip(distribution, b)">
+                            <rect x="@bin.X" y="0" width="@bin.Width" height="@Height" class="hover" />
+                            <rect x="@bin.X" y="@bin.Y" width="@bin.Width" height="@bin.Height" class="fights" />
+                        </g>
+                    }
+                </svg>
+                <div class="x">
+                    <span>min @N(distribution.Min)</span>
+                    <span style="left: @(Share(Result.MeanDps, distribution))">mean @N(Result.MeanDps)</span>
+                    <span class="end">max @N(distribution.Max)</span>
+                </div>
+            </div>
+        </section>
+    }
+
     @if (Result.Spirit is { Mean.Count: > 1, Max: > 0 } spirit)
     {
         <section class="card">
             <div class="card-head">
                 <h3>Spirit</h3>
-                <span class="legend"><i class="mean"></i>Typical fight <i class="spirit-mean"></i>Mean of every fight <i class="average"></i>Most (@N(spirit.Max))</span>
+                <span class="legend"><i class="spirit-mean"></i>Mean of every fight <i class="average"></i>Most (@N(spirit.Max))</span>
             </div>
             <div class="chart">
                 @{ double spiritTop = SpiritTop(spirit.Max); }
@@ -125,14 +175,13 @@
                 {
                     <span>@N(spiritTop * i / 4)</span>
                 }</div>
-                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="Spirit Points over the fight: one typical fight and the mean of every fight">
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="Spirit Points over the fight: the mean of every fight">
                     @for (int g = 1; g < 4; g++)
                     {
                         <line x1="0" x2="1000" y1="@(g * 60)" y2="@(g * 60)" class="grid" />
                     }
                     <line x1="0" x2="1000" y1="@Y(spirit.Max, spiritTop)" y2="@Y(spirit.Max, spiritTop)" class="average" />
                     <path d="@Line(spirit.Mean, spiritTop, nice: false)" class="spirit-mean" />
-                    <path d="@Steps(spirit.Typical, spirit.Mean.Count, spiritTop)" class="mean" />
                 </svg>
                 @TimeAxis(spirit.Mean.Count)
             </div>
@@ -474,6 +523,19 @@
     /// <summary>True when <paramref name="result"/> has a DPS to bosses apart from its mean DPS: a dungeon fight with trash.</summary>
     public static bool HasBossDps(SimResult result) => result.BossDps is > 0;
 
+    /// <summary>
+    /// The Party DPS tile's tooltip: the hero's share of the group's damage overall, in boss fights and on trash; null for a
+    /// result with no split.
+    /// </summary>
+    private static string? PartyTip(SimResult result)
+    {
+        if (result.GroupDamageShare is not { } overall) return null;
+        var parts = new List<string> { $"{Percent(overall)} overall" };
+        if (result.GroupDamageShareBossFights is { } bossFights) parts.Add($"{Percent(bossFights)} in boss fights");
+        if (result.GroupDamageShareTrash is { } trash) parts.Add($"{Percent(trash)} on trash");
+        return parts.Count > 1 ? "Share of group damage: " + string.Join(", ", parts) : null;
+    }
+
     /// <summary>The cast sequence's rows: the casts of each 30 seconds.</summary>
     private const int CastWindowSeconds = 30;
 
@@ -639,9 +701,16 @@
     private static string Width(double fraction) => Math.Clamp(fraction * 100, 0, 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
 
     /// <summary>The 95% confidence margin of the mean DPS, as a share of it.</summary>
-    private string MarginText => Result.MeanDps > 0 && Result.Iterations > 0
-        ? (1.96 * Result.StandardDeviation / Math.Sqrt(Result.Iterations) / Result.MeanDps * 100).ToString("0.00", CultureInfo.CurrentCulture) + "%"
+    private string MarginText => double.IsFinite(Result.MarginPercent)
+        ? Result.MarginPercent.ToString("0.00", CultureInfo.CurrentCulture) + "%"
         : "–";
+
+    /// <summary>A DPS to three significant figures below 100, so a small margin is not shown as 0; whole above.</summary>
+    private static string Dps(double value) => Math.Abs(value) >= 100 ? N(value)
+        : value.ToString(Math.Abs(value) >= 10 ? "0.0" : "0.00", CultureInfo.CurrentCulture);
+
+    /// <summary>The sim's target error.</summary>
+    private static string TargetText(double target) => "target ±" + target.ToString("0.###", CultureInfo.CurrentCulture) + "%";
 
     /// <summary>A thin bar for each span (start and end seconds in turn) along the fight, 1000 units wide.</summary>
     private string SpanPath(IReadOnlyList<double>? spans)
@@ -695,24 +764,37 @@
         return d.ToString();
     }
 
+    /// <summary>The distribution chart's top: <see cref="Nice"/>'s, in whole fights a quarter, so each tick is a whole count.</summary>
+    private static double CountTop(int max) => Math.Max(1, Math.Ceiling(Nice(max) / 4)) * 4;
+
+    /// <summary>A bin's bar, in the chart's 1000 by <see cref="Height"/> units, with a 2-unit gap on each side.</summary>
+    private sealed record Bar(string X, string Y, string Width, string Height);
+
+    private static Bar BinBar(DpsDistribution distribution, int bin, double top)
+    {
+        double width = 1000.0 / distribution.Counts.Count, height = distribution.Counts[bin] / top * Height;
+        string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+        return new Bar(F(bin * width + Math.Min(2, width / 4)), F(Height - height), F(width - Math.Min(4, width / 2)), F(height));
+    }
+
+    private static string BinTip(DpsDistribution distribution, int bin)
+    {
+        double width = (distribution.Max - distribution.Min) / distribution.Counts.Count;
+        int fights = distribution.Counts[bin];
+        return $"{N(distribution.Min + bin * width)} – {N(distribution.Min + (bin + 1) * width)} DPS: {N(fights)} {(fights == 1 ? "fight" : "fights")}";
+    }
+
+    /// <summary>
+    /// <paramref name="dps"/> along the distribution's axis, as a share of its width for the label's <c>left</c>; held 15%
+    /// from each end, so the mean's label stays clear of the min and max labels.
+    /// </summary>
+    private static string Share(double dps, DpsDistribution distribution) =>
+        (distribution.Max > distribution.Min ? Math.Clamp((dps - distribution.Min) / (distribution.Max - distribution.Min) * 100, 15, 85) : 50)
+            .ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
     /// <summary>The Spirit chart's top: the most Spirit Points rounded up to 40, so its quarters fall on round numbers.</summary>
     private static double SpiritTop(double max) => Math.Max(40, Math.Ceiling(max / 40) * 40);
 
-    /// <summary>
-    /// A line that holds each second's value until the next (a resource's level), along a chart of
-    /// <paramref name="seconds"/> seconds topped at <paramref name="top"/>.
-    /// </summary>
-    private static string Steps(IReadOnlyList<double> values, int seconds, double top)
-    {
-        if (values.Count == 0 || seconds < 2) return "";
-        var d = new System.Text.StringBuilder();
-        for (int i = 0; i < values.Count; i++)
-        {
-            string x = X(i, seconds), y = Y(Math.Min(values[i], top), top);
-            d.Append(i == 0 ? "M" : "H").Append(x).Append(i == 0 ? " " : "V").Append(y).Append(' ');
-        }
-        return d.Append('H').Append(X(Math.Min(values.Count, seconds - 1), seconds)).ToString();
-    }
 
     /// <summary>
     /// The time axis under a chart of <paramref name="seconds"/> values: each label at its own time along the chart

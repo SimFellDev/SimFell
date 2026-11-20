@@ -5,17 +5,13 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// Global Cooldown." UNVERIFIED: the game data's text has a Rend share placeholder, but no log shows it applying
 /// Rend.
 /// </summary>
-public class ButchersHook : GundeAbility
+public partial class ButchersHook : GundeAbility
 {
-    public const int AbilityId = 2284;
-    public const string AbilityName = "Butcher's Hook";
-    public const double Coefficient = 0.37;
-    public const double CooldownSeconds = 30.0;
 
-    public ButchersHook(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Control)
+    public ButchersHook(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        BaseCoefficient = Constants.DamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 

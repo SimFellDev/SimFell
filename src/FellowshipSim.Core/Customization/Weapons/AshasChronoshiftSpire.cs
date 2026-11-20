@@ -3,11 +3,11 @@ using FellowshipSim.Core.Customization.WeaponAbilities;
 namespace FellowshipSim.Core.Customization.Weapons;
 
 /// <summary>Asha's Chronoshift Spire: its weapon ability is Chronoshift.</summary>
-public class AshasChronoshiftSpire : Weapon
+public partial class AshasChronoshiftSpire : Weapon
 {
     public const string WeaponName = "Asha's Chronoshift Spire";
 
-    public override int WeaponAbilityId => Chronoshift.AbilityId;
+    public override int WeaponAbilityId => WeaponPowerAbilityId;
     public override string Name => WeaponName;
 
     public override void Equip(Hero hero)

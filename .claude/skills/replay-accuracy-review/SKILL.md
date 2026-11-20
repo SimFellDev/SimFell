@@ -31,7 +31,7 @@ on the branch that names any other hero is a finding of kind **contamination**, 
    `G:/source/Fellowship_Data_Extractor.<branch>-review`. It is removed with `wt remove -D` at the end; nothing from it
    is pushed.
 3. The inputs: the spec `docs/accuracy/<branch>.md`, `git log origin/main..<branch>`, `git diff origin/main...<branch>`,
-   the pull request body (`gh pr view <branch> --repo Seriousnes/SimFell`), and `docs/REPLAY_ACCURACY.md`. The
+   the pull request body (`gh pr view <branch> --repo Seriousnes/SimFell --json body --jq .body`), and `docs/REPLAY_ACCURACY.md`. The
    implementation session's transcript is no input.
 
 ## Checks

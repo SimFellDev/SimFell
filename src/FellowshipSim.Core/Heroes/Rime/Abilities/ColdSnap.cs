@@ -3,20 +3,13 @@ using FellowshipSim.Core.Heroes.Rime.Talents;
 namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 
 /// <summary>Ability 1020. Charges, cooldown accelerated by haste, generates a Winter Orb.</summary>
-public class ColdSnap : RimeAbility
+public partial class ColdSnap : RimeAbility
 {
-    public const int AbilityId = 1020;
-    public const string AbilityName = "Cold Snap";
-    public const double Coefficient = 3.145;
-    public const double CooldownSeconds = 12.0;
-    public const int Charges = 2;
-    public const int WinterOrbsGained = 1;
-
-    public ColdSnap(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public ColdSnap(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = Constants.DamageIntellectCoefficient;
         // "Cold Snap gains Cooldown Acceleration equal to your Haste": its charges recharge with haste added to the rate.
-        SetCooldown(CooldownSeconds, Charges, scalesWithHaste: true);
+        SetCooldown(AbilityCooldown, AbilityCharges, scalesWithHaste: true);
     }
 
     private FlightOfTheNavir? _flightOfTheNavir;
@@ -46,7 +39,7 @@ public class ColdSnap : RimeAbility
             TriggerCooldown(ctx);
         }
 
-        hero.GenerateWinterOrbs(WinterOrbsGained, ctx, target);
+        hero.GenerateWinterOrbs(Constants.OrbGain, ctx, target);
         DealDamage(ctx, target);
         _flightOfTheNavir?.CommandSwallows(ctx, target);
     }

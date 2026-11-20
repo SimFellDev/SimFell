@@ -61,4 +61,24 @@ public class ReplayScriptBuilderTests
             .Select(c => (c.GetProperty("t").GetDouble(), c.GetProperty("ability_id").GetInt32())).ToList();
         Assert.Equal([(0.05, 7), (0.05, 8), (0.06, 7)], casts);
     }
+
+    [Fact]
+    public void A_Hit_On_An_Enemy_With_Greeds_Embrace_Has_No_Mitigated_Part()
+    {
+        var raw = Encoding.UTF8.GetBytes($$"""
+            { "report_code": "rf7qpV3tATCx86hN", "report_start_time": 1000,
+              "fight": { "id": 6, "name": "Wraithtide Vault", "startTime": 100, "endTime": 200, "friendlyPlayers": [1] },
+              "master_data": { "actors": [ { "id": 1, "name": "Frost", "type": "Player", "subType": "Mara" },
+                { "id": 27, "name": "Greedspawned Demon", "type": "NPC" } ], "abilities": [] },
+              "events": [ {{Combatant}},
+                { "timestamp": 110, "type": "applybuff", "sourceID": 27, "targetID": 27, "abilityGameID": 1000649 },
+                { "timestamp": 120, "type": "damage", "sourceID": 1, "targetID": 27, "abilityGameID": 7, "amount": 1022, "unmitigatedAmount": 5109, "mitigated": 4087 },
+                { "timestamp": 130, "type": "removebuff", "sourceID": 27, "targetID": 27, "abilityGameID": 1000649 },
+                { "timestamp": 140, "type": "damage", "sourceID": 1, "targetID": 27, "abilityGameID": 7, "amount": 2488, "unmitigatedAmount": 4570, "mitigated": 2082 } ] }
+            """);
+        var hits = ReplayScript.FromJson(ReplayScriptBuilder.Build(raw, 1)).Observations.Damage;
+        Assert.Equal(1022, hits[0].UnblockedAmount);
+        Assert.Equal(1022, hits[0].DealtAmount);
+        Assert.Equal(4570, hits[1].UnblockedAmount);
+    }
 }

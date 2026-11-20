@@ -5,21 +5,17 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// without an already active Engulfing Flames and with the highest amount of health have the highest priority. Can be
 /// used during Global Cooldown.
 /// </summary>
-public class Pyromania : ArdeosAbility
+public partial class Pyromania : ArdeosAbility
 {
-    public const int AbilityId = 1623;
-    public const string AbilityName = "Pyromania";
-    public const double CooldownSeconds = 90.0;
-    public const int ExtraTargets = 2;
     /// <summary>
     /// The choice of each other enemy, in the order of priority: certain in a sim; a replay takes the enemies the log shows
     /// gaining Engulfing Flames at the cast.
     /// </summary>
     public const string TargetProcKey = "pyromania_target";
 
-    public Pyromania(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Major)
+    public Pyromania(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 
@@ -44,7 +40,7 @@ public class Pyromania : ArdeosAbility
         int chosen = 0;
         foreach (var enemy in _others)
         {
-            if (chosen == ExtraTargets) break;
+            if (chosen == Constants.MaxNumSpreads) break;
             if (!ctx.Outcomes.RollProc(TargetProcKey, 1.0, ctx, enemy)) continue;
             dots.Apply(ctx, _dot, enemy);
             chosen++;

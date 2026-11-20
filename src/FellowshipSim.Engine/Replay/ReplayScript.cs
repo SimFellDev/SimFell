@@ -19,7 +19,7 @@ public class ReplayScript
     /// <summary>When the fight was logged (UTC): balance changes in force then apply.</summary>
     [JsonPropertyName("fight_date")] public DateTime? FightDate { get; set; }
     [JsonPropertyName("duration_s")] public double DurationSeconds { get; set; }
-    /// <summary>The run's dungeon modifiers (the dungeonstart event's affixes), see <see cref="DungeonModifiers"/>.</summary>
+    /// <summary>The run's dungeon modifiers (the dungeonstart event's affixes), see <see cref="FellowshipSim.Core.Dungeons.Affixes.DungeonAffix.ApplyToHero"/>.</summary>
     [JsonPropertyName("dungeon_modifiers")] public List<int> DungeonModifierIds { get; set; } = new();
     [JsonPropertyName("player")] public ReplayPlayer Player { get; set; } = new();
     [JsonPropertyName("character")] public CharacterBuild? Character { get; set; }
@@ -141,17 +141,43 @@ public class LogDamage
     /// <summary>Damage the enemy's block took off the hit (hit type 4).</summary>
     [JsonPropertyName("blocked")] public double Blocked { get; set; }
 
+    /// <summary>
+    /// Damage the enemy's damage reduction took off the hit, the block included: the log's <c>mitigated</c>. On a blocked hit
+    /// it is the blocked part and 1 (Fc8v6yWxD14GQMnV fight 19 @ 32.008: blocked 29,604, mitigated 29,605), and amount and
+    /// mitigated make up the log's unmitigated amount.
+    /// </summary>
+    [JsonPropertyName("mitigated")] public double Mitigated { get; set; }
+
     /// <summary>Damage the hit dealt before absorbs.</summary>
     public double TotalAmount => Amount + Absorbed;
 
     /// <summary>
-    /// The hit's damage before absorbs and the block: what the engine's hit compares with, since the engine has no blocks.
+    /// The hit's damage before absorbs, the block and the enemy's damage reduction: what the engine's hit compares with,
+    /// since the engine has neither blocks nor an enemy's damage reduction. Combat logs (gd6ByNrf81jc9aWw fight 3, Silken
+    /// Hollow): 1,104 of the Mara player's 16,995 hits have 45% to 55% mitigated with no block, on every enemy hit at 260 to
+    /// 280 s, 300 to 320 s, 360 to 380 s and 420 to 440 s, and the engine's hits there match the amount and the mitigated part.
+    /// On an enemy with a damage taken reduction from <see cref="PartyBuffs"/> (Greed's Embrace), the script has no mitigated
+    /// part, because the engine's hit already has the reduction (pWmcV42K39GHTLQX fight 23 @ 41061874: amount 1,022, mitigated
+    /// 4,087).
     /// </summary>
-    public double UnblockedAmount => TotalAmount + Blocked;
+    public double UnblockedAmount => TotalAmount + Math.Max(Blocked, Mitigated);
 
-    /// <summary>The amount a hit check compares, for display: the unblocked amount, with the blocked part when there is one.</summary>
-    public string ComparedAmountText() =>
-        Blocked > 0 ? $"{UnblockedAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ({Blocked.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} blocked)" : TotalAmount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>
+    /// The damage an exact replay's hit deals: the hit's damage before absorbs and the block, after the enemy's damage
+    /// reduction. A crit's damage over time reads it: in gd6ByNrf81jc9aWw fight 3's windows above, Amethyst Splinter and Vexira's
+    /// Venom ticks match a share of this amount (1.000 and 1.001 over the fight) and are 0.944 and 0.952 of a share of
+    /// <see cref="UnblockedAmount"/>.
+    /// </summary>
+    public double DealtAmount => TotalAmount + Blocked;
+
+    /// <summary>The amount a hit check compares, for display: the unblocked amount, with the part the enemy took off when there is one.</summary>
+    public string ComparedAmountText()
+    {
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        if (Blocked > 0) return $"{UnblockedAmount.ToString("F0", inv)} ({Blocked.ToString("F0", inv)} blocked)";
+        if (Mitigated > 0) return $"{UnblockedAmount.ToString("F0", inv)} ({Mitigated.ToString("F0", inv)} mitigated)";
+        return TotalAmount.ToString("F0", inv);
+    }
 }
 
 public class LogAura

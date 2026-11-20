@@ -3,10 +3,8 @@ using FellowshipSim.Core.Heroes.Tariq.Abilities;
 namespace FellowshipSim.Core.Heroes.Tariq.Talents;
 
 /// <summary>Talent 89: "Your Chain Lightning bounces additional times." Combat logs: the longer chains (q3y7pWgXrjN2dftw fight 12).</summary>
-public class Thunderstruck : Talent
+public partial class Thunderstruck : Talent
 {
-    public const int TalentId = 89;
-    public const string TalentName = "Thunderstruck";
     public const int ExtraBounces = 3;
 
     public override string Name => TalentName;

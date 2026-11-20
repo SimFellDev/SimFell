@@ -5,12 +5,8 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// reduces the cooldown of your Shield Slam and Shield Throw abilities by 2 seconds." Cooldown 6s, shortened by Haste at
 /// the cast.
 /// </summary>
-public class PowerStrike : HelenaAbility
+public partial class PowerStrike : HelenaAbility
 {
-    public const int AbilityId = 982;
-    public const string AbilityName = "Power Strike";
-    public const double Coefficient = 4.034;
-    public const double CooldownSeconds = 6.0;
     public const double ReductionSeconds = 2.0;
 
     /// <summary>Multipliers on the hit against its enemy (Sharpened Blade).</summary>
@@ -19,10 +15,10 @@ public class PowerStrike : HelenaAbility
     /// <summary>Raised as the cast resolves (Sword &amp; Board).</summary>
     public event Action<SimulationContext>? Struck;
 
-    public PowerStrike(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public PowerStrike(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = Constants.StrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         VeteranOfWarReductions.Add((typeof(ShieldSlam), ReductionSeconds));
         VeteranOfWarReductions.Add((typeof(ShieldThrow), ReductionSeconds));
     }

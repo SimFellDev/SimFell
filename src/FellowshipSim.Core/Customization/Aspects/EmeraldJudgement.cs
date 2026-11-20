@@ -8,21 +8,18 @@ namespace FellowshipSim.Core.Customization.Aspects;
 /// Aspect 34 / ability 167: damage has a chance (rank PPM) to conjure an Emerald Spike for Main Stat damage
 /// (effect 93), which also triggers the Emerald gem's First Strike.
 /// </summary>
-public class EmeraldJudgement : Aspect
+public partial class EmeraldJudgement : Aspect
 {
-    public const int AspectId = 34;
-    public const string AspectName = "Emerald Judgement";
     public const int DamageEffectId = 93;
     public const string DamageName = "Emerald Judgement";
     public const double Coefficient = 8.0;
-    public static readonly double[] ProcsPerMinuteByRank = [0.8, 1.3, 1.8, 2.3];
     public const string ProcKey = "emerald_judgement";
     public override int Id => AspectId;
     public override string Name => AspectName;
 
     public override void Bind(Hero hero)
     {
-        var rppm = new RealPpm(ProcKey, ForRank(ProcsPerMinuteByRank));
+        var rppm = new RealPpm(ProcKey, ForRank(Constants.PPMByRank));
         int logId = LogIds.Effect(DamageEffectId);
         const string name = DamageName;
         const double coefficient = Coefficient;

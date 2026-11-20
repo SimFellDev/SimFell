@@ -4,12 +4,8 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 /// Ability 1854: Xavian's weapon swing, 98% of Strength (game data coefficient 0.98, spread 0.2). Combat logs record every
 /// swing as a cast; an action list uses it as soon as the swing timer allows.
 /// </summary>
-public class Attack : XavianAbility
+public partial class Attack : XavianAbility
 {
-    public const int AbilityId = 1854;
-    public const string AbilityName = "Attack";
-    public const double Coefficient = 0.98;
-
     /// <summary>
     /// Seconds between swings before Haste. The game data has no value (GA_Sune_MeleeAutoAttack ScaleTimeWithAttackSpeed).
     /// Combat logs (XyGpcHjNaAzgk7mW fight 20, about 18% Haste): swings 2.20s apart with no Haste buff, 1.80s during Spirit
@@ -26,7 +22,7 @@ public class Attack : XavianAbility
 
     public Attack(Xavian owner) : base(owner, AbilityId, AbilityName)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = Constants.StrengthCoefficient;
         SetCooldown(SwingSeconds, scalesWithHaste: true);
         IgnoresGcd = true;
     }

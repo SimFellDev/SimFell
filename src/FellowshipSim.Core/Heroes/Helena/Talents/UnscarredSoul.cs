@@ -5,12 +5,8 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// it is active take 100% Strength physical damage." The reflect is ability 1591, its hits effect 2340. An attack on Helena
 /// is a defensive proc: a replay deals each reflect hit the log has. UNVERIFIED: no log has the talent.
 /// </summary>
-public class UnscarredSoul : Talent
+public partial class UnscarredSoul : Talent
 {
-    public const int TalentId = 390;
-    public const string TalentName = "Unscarred Soul";
-    public const double ReflectCoefficient = 1.0;
-    public const double AbsorbDamageTaken = 0.8;
     public const int ReflectEffectId = 2340;
     public const string ProcKey = "unscarred_soul";
 
@@ -32,7 +28,7 @@ public class UnscarredSoul : Talent
     {
         public Reflect(Helena owner) : base(owner, LogIds.Effect(ReflectEffectId), TalentName)
         {
-            BaseCoefficient = ReflectCoefficient;
+            BaseCoefficient = Constants.StrengthCoefficient;
             DamageLogId = LogIds.Effect(ReflectEffectId);
         }
 

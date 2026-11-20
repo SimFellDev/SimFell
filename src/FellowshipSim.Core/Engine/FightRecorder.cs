@@ -127,6 +127,7 @@ internal sealed class FightRecorder
     /// </summary>
     public void WatchTargets(SimulationContext ctx)
     {
+        _ctx = ctx;
         _primary = ctx.AllEnemies.FirstOrDefault();
         foreach (var enemy in ctx.AllEnemies) Watch(enemy.Auras, onTarget: true);
         ctx.EnemySpawned += enemy => Watch(enemy.Auras, onTarget: true);
@@ -134,6 +135,9 @@ internal sealed class FightRecorder
 
     /// <summary>The fight's main target, whose damage is also added up on its own; null for a dungeon.</summary>
     private EnemyTarget? _primary;
+
+    /// <summary>The fight's context, for its boss state at each hit.</summary>
+    private SimulationContext? _ctx;
 
     /// <summary>
     /// Ends the fight at <paramref name="duration"/>: the auras still up count until then (or their expiry).
@@ -164,6 +168,7 @@ internal sealed class FightRecorder
         _damage[second] += hit.Amount;
         if (ReferenceEquals(hit.Target, _primary)) _tally.PrimaryDamage += hit.Amount;
         if (hit.Target is { IsBoss: true }) _tally.BossDamage += hit.Amount;
+        if (_ctx is { Boss: true }) _tally.BossFightDamage += hit.Amount;
         if (!ReferenceEquals(hit.AbilityName, _lastName))
         {
             _lastName = hit.AbilityName;
@@ -409,8 +414,11 @@ internal sealed class FightRecorder
         public readonly Dictionary<(string Name, bool OnTarget), AuraTally> Auras = new();
         /// <summary>The damage to each fight's first target, added up.</summary>
         public double PrimaryDamage;
-        /// <summary>The damage to bosses and the seconds of boss fighting, each added up over the fights.</summary>
-        public double BossDamage, BossSeconds;
+        /// <summary>
+        /// The damage to bosses, the damage to every enemy while a boss is in combat, and the seconds a boss is in combat,
+        /// each added up over the fights.
+        /// </summary>
+        public double BossDamage, BossFightDamage, BossSeconds;
         /// <summary>The seconds each enemy was in combat, added up over the fights and enemies.</summary>
         public double TargetSeconds;
         /// <summary>The whole seconds of the longest fight: the timeline ends there.</summary>
@@ -424,6 +432,8 @@ internal sealed class FightRecorder
         /// The party's damage, and the hero's damage to each enemy up to the health it lost, each added up over the fights.
         /// </summary>
         public double PartyDamage, HeroPartyDamage;
+        /// <summary><see cref="PartyDamage"/> and <see cref="HeroPartyDamage"/> of the boss fights' enemies (<see cref="PartyEnemy.BossFight"/>).</summary>
+        public double PartyBossFightDamage, HeroPartyBossFightDamage;
 
         /// <summary>Adds a dungeon fight's party damage up to <paramref name="end"/>.</summary>
         public void AddParty(IReadOnlyList<PartyEnemy> enemies, SimTime end)
@@ -432,9 +442,14 @@ internal sealed class FightRecorder
             if (PartyDamageSum.Length < seconds) Array.Resize(ref PartyDamageSum, seconds);
             foreach (var enemy in enemies)
             {
-                double lost = enemy.HealthLost(end);
+                double lost = enemy.HealthLost(end), hero = Math.Min(enemy.HeroDamage, lost);
                 PartyDamage += lost;
-                HeroPartyDamage += Math.Min(enemy.HeroDamage, lost);
+                HeroPartyDamage += hero;
+                if (enemy.BossFight)
+                {
+                    PartyBossFightDamage += lost;
+                    HeroPartyBossFightDamage += hero;
+                }
                 int first = Math.Max(0, (int)enemy.Start.TotalSeconds);
                 for (int s = first; s < seconds; s++)
                 {
@@ -478,11 +493,14 @@ internal sealed class FightRecorder
             Fights += other.Fights;
             PrimaryDamage += other.PrimaryDamage;
             BossDamage += other.BossDamage;
+            BossFightDamage += other.BossFightDamage;
             BossSeconds += other.BossSeconds;
             TargetSeconds += other.TargetSeconds;
             LongestSeconds = Math.Max(LongestSeconds, other.LongestSeconds);
             PartyDamage += other.PartyDamage;
             HeroPartyDamage += other.HeroPartyDamage;
+            PartyBossFightDamage += other.PartyBossFightDamage;
+            HeroPartyBossFightDamage += other.HeroPartyBossFightDamage;
             if (PartyDamageSum.Length < other.PartyDamageSum.Length) Array.Resize(ref PartyDamageSum, other.PartyDamageSum.Length);
             for (int i = 0; i < other.PartyDamageSum.Length; i++) PartyDamageSum[i] += other.PartyDamageSum[i];
             if (DamageSum.Length < other.DamageSum.Length) Array.Resize(ref DamageSum, other.DamageSum.Length);
@@ -520,12 +538,15 @@ internal sealed class FightRecorder
                 a.Value.StackCap, a.Value.LogId)).ToList(),
             PrimaryDamage = PrimaryDamage,
             BossDamage = BossDamage,
+            BossFightDamage = BossFightDamage,
             BossSeconds = BossSeconds,
             TargetSeconds = TargetSeconds,
             LongestSeconds = LongestSeconds,
             PartyDamageSum = UpToLongest(PartyDamageSum),
             PartyDamage = PartyDamage,
             HeroPartyDamage = HeroPartyDamage,
+            PartyBossFightDamage = PartyBossFightDamage,
+            HeroPartyBossFightDamage = HeroPartyBossFightDamage,
         };
 
         private T[] UpToLongest<T>(T[] perSecond) =>
@@ -543,12 +564,15 @@ internal sealed class FightRecorder
                 SpiritMax = totals.SpiritMax,
                 PrimaryDamage = totals.PrimaryDamage,
                 BossDamage = totals.BossDamage,
+                BossFightDamage = totals.BossFightDamage,
                 BossSeconds = totals.BossSeconds,
                 TargetSeconds = totals.TargetSeconds,
                 LongestSeconds = totals.LongestSeconds,
                 PartyDamageSum = totals.PartyDamageSum,
                 PartyDamage = totals.PartyDamage,
                 HeroPartyDamage = totals.HeroPartyDamage,
+                PartyBossFightDamage = totals.PartyBossFightDamage,
+                HeroPartyBossFightDamage = totals.HeroPartyBossFightDamage,
             };
             tally.Band.AddRange(totals.Band.Select(b => (b.Fight, b.Damage)));
             tally.Samples.AddRange(totals.Samples.Select(s => (s.Fight, s.Damage,

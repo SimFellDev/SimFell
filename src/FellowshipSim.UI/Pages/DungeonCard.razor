@@ -1,5 +1,6 @@
 @using System.Globalization
 @using FellowshipSim.Core.Dungeons
+@using FellowshipSim.Core.Dungeons.Affixes
 @using Microsoft.JSInterop
 
 @inject DungeonStore Store
@@ -7,7 +8,7 @@
 @inject IJSRuntime JS
 @inject DungeonImport Dungeons
 @*
-    The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment and time limit,
+    The dungeon of a dungeon fight (FightCards): its name and the saved dungeons, its comment, time limit and affixes,
     then its pulls in the order they run, each built as an action of the action-list editor. Import reads a fight's dungeon from
     its log link, or a dungeon profile from a file or pasted; Export shows the profile text.
 *@
@@ -70,6 +71,14 @@
             Time limit (s)
             <input type="number" min="1" step="any" @bind:get="State.Dungeon.TimeLimitSeconds" @bind:set="v => Change(State.Dungeon with { TimeLimitSeconds = v })" />
         </label>
+        @foreach (var affix in DungeonAffix.All)
+        {
+            string key = affix.Key;
+            <label @key="key" class="field check" data-tooltip="The run's dungeon affix @affix.Name">
+                @affix.Name
+                <input type="checkbox" @bind:get="State.Dungeon.Affixes.Contains(key)" @bind:set="on => SetAffix(key, on)" />
+            </label>
+        }
         @if (DifficultyShown)
         {
             <label class="field">
@@ -196,6 +205,12 @@
     private static string PullsText(int count) => $"{count} {(count == 1 ? "pull" : "pulls")}";
 
     private int CommentRows => Math.Max(1, (State.Dungeon.Comment ?? "").Split('\n').Length);
+
+    // The dungeon's affixes with or without one, in the order of DungeonAffix.All.
+    private Task SetAffix(string key, bool on) => Change(State.Dungeon with
+    {
+        Affixes = DungeonAffix.All.Select(a => a.Key).Where(k => k == key ? on : State.Dungeon.Affixes.Contains(k)).ToList(),
+    });
 
     private Task SetComment(string comment) => Change(State.Dungeon with { Comment = string.IsNullOrWhiteSpace(comment) ? null : comment });
 

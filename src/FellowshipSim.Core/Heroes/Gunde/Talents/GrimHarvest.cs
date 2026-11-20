@@ -7,17 +7,12 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// the cooldown of Grim Carve and grant you Grim Harvest for a time, causing your next Grim Carve to have increased
 /// Critical Strike chance." Rolled once per cast. Crit chance beyond a guaranteed crit is a grievous crit.
 /// </summary>
-public class GrimHarvest : Talent
+public partial class GrimHarvest : Talent
 {
-    public const int TalentId = 766;
-    public const string TalentName = "Grim Harvest";
     public const int EffectId = 3206;
-    public const double BuffSeconds = 8.0;
-    public const double ProcChance = 0.06;
-    public const double CritChance = 1.0;
     public const string ProcKey = "grim_harvest";
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, BuffSeconds) with { IsProc = true };
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, EffectId, TalentDuration) with { IsProc = true };
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -30,12 +25,12 @@ public class GrimHarvest : Talent
         {
             if (!hero.Auras.HasAura(Buff, ctx.CurrentTime)) return 0.0;
             hero.Auras.Remove(Buff, ctx.CurrentTime);
-            return CritChance;
+            return Constants.AddedCritChance;
         });
         hero.OnCastCompleted += (ability, _, now) =>
         {
             if (ability is not (ReaversEdge or BloodArc or HeartSplitter or Rupture) || hero.SimContext is not { } ctx) return;
-            if (!ctx.Outcomes.RollProc(ProcKey, ProcChance, ctx)) return;
+            if (!ctx.Outcomes.RollProc(ProcKey, Constants.ProcChance, ctx)) return;
             hero.CooldownOf(grimCarve).ResetAll();
             hero.Auras.Apply(Buff, now);
         };

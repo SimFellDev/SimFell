@@ -571,7 +571,7 @@ public sealed class BuildEditor(CharacterBuild build)
         }
         // A weapon of the hero's the engine does not model stays: a sim lists it as not modeled.
         if (build.WeaponAbilityId != 0 && CoreCatalog.CreateWeapon(build.WeaponAbilityId) == null
-            && GameHeroData.Weapons.GetValueOrDefault(build.Hero)?.ContainsKey(build.WeaponAbilityId) != true)
+            && !(BuildHeroes.Find(build.Hero) is { } hero && BuildCatalog.For(hero).Weapons.Any(w => w.Id == build.WeaponAbilityId)))
         {
             removed.Add($"weapon with ability {build.WeaponAbilityId}");
             build.WeaponAbilityId = 0;

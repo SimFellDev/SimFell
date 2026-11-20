@@ -139,7 +139,7 @@ Trace files are not committed.
 ## A browser worker's memory
 
 `wasm/worker-memory.mjs` runs one sim worker of the browser app in Node: the published app's .NET runtime, started as
-`sim/worker.js` starts it, with `SimWorker`'s calls. Publish the app as the Deploy web app workflow does (with AOT), then
+`sim/worker.js` starts it, with `SimWorker`'s calls. Publish the app as the Release workflow's web app job does (with AOT), then
 give the harness the publish folder and one or more workloads. The AOT publish needs the `wasm-tools` workload in the
 SDK that `global.json` selects (`dotnet --version` in the repository), and each publish goes to an empty folder: a
 reused one keeps the last build's fingerprinted `dotnet.*.js`.

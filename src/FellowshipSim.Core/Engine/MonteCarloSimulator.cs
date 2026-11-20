@@ -16,7 +16,12 @@ public class MonteCarloResult
     public Dictionary<string, double> AbilityDpsBreakdown { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Total damage of each fight, in seed order. Empty unless the run was asked to keep it.</summary>
     public IReadOnlyList<double> IterationDamage { get; init; } = [];
+    /// <summary>The fights by DPS; null for a run of no fights.</summary>
+    public DpsDistribution? Distribution { get; init; }
+    /// <summary>The fights the result has: the run's iterations, or fewer for a run that reached its target error.</summary>
     public int Iterations { get; init; }
+    /// <summary>The run's target error, in percent of the mean DPS; null for a run of every iteration.</summary>
+    public double? TargetError { get; init; }
     public double DurationSeconds { get; init; }
     /// <summary>Damage over the fight: the mean of every fight and the 5-95% band of a sample.</summary>
     public SimTimeline? Timeline { get; init; }
@@ -39,6 +44,11 @@ public class MonteCarloResult
     public double PrimaryTargetDps { get; init; }
     /// <summary>The DPS to bosses over the time of boss fighting in every fight; 0 when the fights had no enemies besides bosses, or no boss.</summary>
     public double BossDps { get; init; }
+    /// <summary>
+    /// The DPS to every enemy while a boss is in combat, over the same seconds as <see cref="BossDps"/>; 0 where
+    /// <see cref="BossDps"/> is 0.
+    /// </summary>
+    public double BossFightDps { get; init; }
     /// <summary>A dungeon's party DPS: the health its enemies lost in every fight over their lengths; null for training dummies.</summary>
     public double? PartyDps { get; init; }
     /// <summary>
@@ -46,6 +56,12 @@ public class MonteCarloResult
     /// lost; null for training dummies.
     /// </summary>
     public double? GroupDamageShare { get; init; }
+    /// <summary>
+    /// <see cref="GroupDamageShare"/> of the enemies of boss fights (a pull with a boss in it, or a pull entering combat
+    /// while a boss is in combat) and of the other enemies; null for training dummies and for fights with no such enemies.
+    /// </summary>
+    public double? GroupDamageShareBossFights { get; init; }
+    public double? GroupDamageShareTrash { get; init; }
 }
 
 /// <summary>
@@ -88,7 +104,7 @@ public class MonteCarloSimulator
     /// <see cref="MonteCarloResult.IterationDamage"/>.
     /// <para>
     /// <paramref name="progress"/> receives the count of completed fights: once per chunk of about 1% of the fights (at
-    /// most <see cref="MaxProgressBatch"/>), and <paramref name="iterations"/> last. Counts only rise, and no two calls
+    /// most <see cref="MaxProgressBatch"/>), and the result's fights last when that is more. Counts only rise, and no two calls
     /// overlap. The totals are the same on any number of threads. <paramref name="cancellationToken"/> stops the run between fights with an
     /// <see cref="OperationCanceledException"/>.
     /// </para>
@@ -96,13 +112,21 @@ public class MonteCarloSimulator
     /// (<see cref="FightOptions.Default"/> when null). A fight's DPS is its damage over its own length.
     /// <paramref name="rollTypicalFight"/> fights the typical fight once more with dice (<see cref="RollFight"/>) for the
     /// result's casts and hits; the hero's events hear that fight too.
+    /// <para>
+    /// A <paramref name="targetError"/> above 0 (percent of the mean DPS) makes <paramref name="iterations"/> the most
+    /// fights: the run ends after the first chunk, in chunk order, at which the fights so far reach it
+    /// (<see cref="DpsMoments.Reached"/>), and the result has those fights alone. The run ends at the same fight on any
+    /// number of threads. <paramref name="merged"/> receives the fights so far after each chunk, in chunk order.
+    /// </para>
     /// </summary>
     public MonteCarloResult Run(SimTime duration, int iterations = 100, int targetCount = 1, int firstSeed = 1,
         int? degreeOfParallelism = null, bool keepFightDamage = false, Action<int>? progress = null,
-        CancellationToken cancellationToken = default, FightOptions? fight = null, bool rollTypicalFight = false)
+        CancellationToken cancellationToken = default, FightOptions? fight = null, bool rollTypicalFight = false,
+        double targetError = 0, Action<DpsMoments>? merged = null)
     {
         fight ??= FightOptions.Default;
         double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
+        var fightDps = new double[iterations];
         var total = new Totals();
         var options = new ParallelOptions
         {
@@ -113,41 +137,53 @@ public class MonteCarloSimulator
 
         // Fights run in chunks of consecutive fights, and the chunks' totals merge in chunk order whatever thread ran
         // them, so a run gives the same totals to the last bit on any number of threads.
-        int chunkCount = ChunkCount(iterations);
+        int chunkCount = ChunkCount(iterations, targetError), size = ChunkSize(iterations, targetError);
         var finished = new Totals?[chunkCount];
         int nextToMerge = 0;
+        // The chunks of the result: every chunk, or those up to the one at which the target error is reached. A chunk
+        // after it that was already fighting finishes, and stays out of the result.
+        int resultChunks = chunkCount;
 
         Parallel.For(0, chunkCount, options,
             () => _idle.TryTake(out var worker) ? worker : NewWorker(),
-            (chunk, _, worker) =>
+            (chunk, state, worker) =>
             {
-                var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight, fightDamage, cancellationToken);
+                var totals = FightChunk(worker, chunk, size, duration, iterations, targetCount, firstSeed, fight, fightDamage, fightDps, 0, cancellationToken);
                 lock (finished)
                 {
                     finished[chunk] = totals;
-                    while (nextToMerge < chunkCount && finished[nextToMerge] is { } next)
+                    while (nextToMerge < resultChunks && finished[nextToMerge] is { } next)
                     {
                         total.Merge(next);
                         finished[nextToMerge++] = null;
+                        merged?.Invoke(total.Moments);
+                        if (total.Moments.Reached(targetError))
+                        {
+                            resultChunks = nextToMerge;
+                            state.Stop();
+                        }
                     }
                 }
                 reporter?.FightsDone((int)totals.Count);
                 return worker;
             },
             worker => _idle.Add(worker));
-        reporter?.Finish(iterations);
+        reporter?.Finish((int)total.Count);
         int? typical = total.Report.TypicalFight();
-        return Result(total, fightDamage, duration, iterations,
+        return Result(total, fightDamage, fightDps, duration, targetError,
             rollTypicalFight && typical is { } t ? RollFight(t, duration, targetCount, firstSeed, fight) : null);
     }
 
     /// <summary>
     /// The chunks a run of <paramref name="iterations"/> fights is split into: consecutive fights, about 1% of them each
-    /// (at most <see cref="MaxProgressBatch"/>).
+    /// (at most <see cref="MaxProgressBatch"/>). A run to a <paramref name="targetError"/> has chunks of at most
+    /// <see cref="DpsMoments.TargetErrorMinimumFights"/>, so it checks its error that often, as SimulationCraft does.
     /// </summary>
-    public static int ChunkCount(int iterations) => (iterations + ChunkSize(iterations) - 1) / ChunkSize(iterations);
+    public static int ChunkCount(int iterations, double targetError = 0) =>
+        (iterations + ChunkSize(iterations, targetError) - 1) / ChunkSize(iterations, targetError);
 
-    private static int ChunkSize(int iterations) => Math.Clamp(iterations / 100, 1, MaxProgressBatch);
+    private static int ChunkSize(int iterations, double targetError) =>
+        Math.Min(Math.Clamp(iterations / 100, 1, MaxProgressBatch), targetError > 0 ? DpsMoments.TargetErrorMinimumFights : MaxProgressBatch);
 
     /// <summary>
     /// Fights chunk <paramref name="chunk"/> (of <see cref="ChunkCount"/>) of a run, as <see cref="Run"/> would with the same
@@ -155,17 +191,17 @@ public class MonteCarloSimulator
     /// processes and still give <see cref="Run"/>'s result.
     /// </summary>
     public MonteCarloChunk RunChunk(int chunk, SimTime duration, int iterations, int targetCount = 1, int firstSeed = 1,
-        bool keepFightDamage = false, CancellationToken cancellationToken = default, FightOptions? fight = null)
+        bool keepFightDamage = false, CancellationToken cancellationToken = default, FightOptions? fight = null, double targetError = 0)
     {
         var worker = _idle.TryTake(out var idle) ? idle : NewWorker();
         try
         {
-            int size = ChunkSize(iterations);
-            double[]? fightDamage = keepFightDamage ? new double[iterations] : null;
-            var totals = FightChunk(worker, chunk, duration, iterations, targetCount, firstSeed, fight ?? FightOptions.Default,
-                fightDamage, cancellationToken);
-            int start = chunk * size;
-            return totals.ToChunk(chunk, fightDamage == null ? [] : fightDamage[start..Math.Min(iterations, start + size)]);
+            int size = ChunkSize(iterations, targetError), start = chunk * size, fights = Math.Min(iterations, start + size) - start;
+            double[]? fightDamage = keepFightDamage ? new double[fights] : null;
+            var fightDps = new double[fights];
+            var totals = FightChunk(worker, chunk, size, duration, iterations, targetCount, firstSeed, fight ?? FightOptions.Default,
+                fightDamage, fightDps, start, cancellationToken);
+            return totals.ToChunk(chunk, fightDamage ?? [], fightDps);
         }
         finally
         {
@@ -174,28 +210,36 @@ public class MonteCarloSimulator
     }
 
     /// <summary>
-    /// The result of a run from its chunks (<see cref="RunChunk"/>), every one of them, in chunk order: the same as
-    /// <see cref="Run"/> with the same arguments.
+    /// The result of a run from its chunks (<see cref="RunChunk"/>), in chunk order: the same as <see cref="Run"/> with the
+    /// same arguments. The chunks are every chunk of the run, or with a <paramref name="targetError"/> those up to the
+    /// first at which the fights so far reach it (<see cref="DpsMoments.Reached"/>).
     /// </summary>
     public static MonteCarloResult Combine(IReadOnlyList<MonteCarloChunk> chunks, SimTime duration, int iterations,
-        bool keepFightDamage = false)
+        bool keepFightDamage = false, double targetError = 0)
     {
-        if (chunks.Count != ChunkCount(iterations) || chunks.Where((c, i) => c.Index != i).Any())
-        {
-            throw new ArgumentException($"A run of {iterations} fights has {ChunkCount(iterations)} chunks, in order.", nameof(chunks));
-        }
+        string wanted = targetError > 0
+            ? $"A run of at most {iterations} fights to a {targetError}% error has its chunks in order, up to the first at which the error is reached, or all {ChunkCount(iterations, targetError)}."
+            : $"A run of {iterations} fights has {ChunkCount(iterations)} chunks, in order.";
+        if (chunks.Where((c, i) => c.Index != i).Any()) throw new ArgumentException(wanted, nameof(chunks));
         var total = new Totals();
-        foreach (var chunk in chunks) total.Merge(Totals.From(chunk));
+        bool reached = false;
+        foreach (var chunk in chunks)
+        {
+            if (reached) throw new ArgumentException(wanted, nameof(chunks));
+            total.Merge(Totals.From(chunk));
+            reached = total.Moments.Reached(targetError);
+        }
+        if (!reached && chunks.Count != ChunkCount(iterations, targetError)) throw new ArgumentException(wanted, nameof(chunks));
         double[]? fightDamage = keepFightDamage ? chunks.SelectMany(c => c.FightDamage).ToArray() : null;
-        return Result(total, fightDamage, duration, iterations);
+        return Result(total, fightDamage, chunks.SelectMany(c => c.FightDps).ToArray(), duration, targetError);
     }
 
-    // The fights of one chunk on one worker. A kept fight's damage goes in its place in fightDamage.
-    private static Totals FightChunk(Worker worker, int chunk, SimTime duration, int iterations, int targetCount, int firstSeed,
-        FightOptions fight, double[]? fightDamage, CancellationToken cancellationToken)
+    // The fights of one chunk of size fights on one worker. Fight i's DPS goes in fightDps[i - offset], and a kept fight's
+    // damage in fightDamage at the same place.
+    private static Totals FightChunk(Worker worker, int chunk, int size, SimTime duration, int iterations, int targetCount, int firstSeed,
+        FightOptions fight, double[]? fightDamage, double[] fightDps, int offset, CancellationToken cancellationToken)
     {
         int seconds = (int)Math.Ceiling(Math.Max(1.0, fight.LongestLength(duration).TotalSeconds));
-        int size = ChunkSize(iterations);
         var totals = new Totals();
         int end = Math.Min(iterations, (chunk + 1) * size);
         for (int i = chunk * size; i < end; i++)
@@ -205,7 +249,8 @@ public class MonteCarloSimulator
             var (damage, fightEnd) = Fight(worker, length, targetCount, firstSeed + i, i, seconds, fight, totals);
             double lengthSeconds = Math.Max(1.0, fightEnd.TotalSeconds);
             totals.Add(damage / lengthSeconds, damage, lengthSeconds);
-            if (fightDamage != null) fightDamage[i] = damage;
+            fightDps[i - offset] = damage / lengthSeconds;
+            if (fightDamage != null) fightDamage[i - offset] = damage;
         }
         return totals;
     }
@@ -248,16 +293,20 @@ public class MonteCarloSimulator
         return program.Log!.Trace(end.TotalSeconds, worker.Recorder.Fight.Casts);
     }
 
-    private static MonteCarloResult Result(Totals total, double[]? fightDamage, SimTime duration, int iterations,
+    // The result of the fights in total: the first total.Count fights of the run, whose DPS and kept damage lead
+    // fightDps and fightDamage.
+    private static MonteCarloResult Result(Totals total, double[]? fightDamage, double[] fightDps, SimTime duration, double targetError,
         RolledFight? rolled = null)
     {
+        int fights = (int)total.Count;
         // The fights' mean length: every fight's, or the duration for a run of none.
         double totalSeconds = total.Count > 0 ? total.LengthSum / total.Count : Math.Max(1.0, duration.TotalSeconds);
         var abilityDps = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         foreach (var (ability, totalDmg) in total.AbilityDamage)
         {
-            abilityDps[ability] = (totalDmg / iterations) / totalSeconds;
+            abilityDps[ability] = (totalDmg / fights) / totalSeconds;
         }
+        double trashPartyDamage = total.Report.PartyDamage - total.Report.PartyBossFightDamage;
 
         return new MonteCarloResult
         {
@@ -267,8 +316,10 @@ public class MonteCarloSimulator
             StandardDeviation = Math.Sqrt(total.M2 / total.Count),
             TotalMeanDamage = total.Count > 0 ? total.DamageSum / total.Count : 0,
             AbilityDpsBreakdown = abilityDps,
-            IterationDamage = fightDamage ?? [],
-            Iterations = iterations,
+            IterationDamage = fightDamage?[..fights] ?? [],
+            Distribution = DpsDistribution.Of(fightDps[..fights]),
+            Iterations = fights,
+            TargetError = targetError > 0 ? targetError : null,
             DurationSeconds = totalSeconds,
             Timeline = total.Report.Timeline(),
             Abilities = total.Report.Abilities(totalSeconds),
@@ -279,11 +330,21 @@ public class MonteCarloSimulator
             Spirit = total.Report.Spirit(),
             PrimaryTargetDps = total.LengthSum > 0 ? total.Report.PrimaryDamage / total.LengthSum : 0,
             // Only when the fights had other enemies besides their bosses: otherwise it is the mean DPS.
-            BossDps = total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999 ? total.Report.BossDamage / total.Report.BossSeconds : 0,
+            BossDps = BossFighting(total) ? total.Report.BossDamage / total.Report.BossSeconds : 0,
+            BossFightDps = BossFighting(total) ? total.Report.BossFightDamage / total.Report.BossSeconds : 0,
             PartyDps = total.Report.PartyDamage > 0 && total.LengthSum > 0 ? total.Report.PartyDamage / total.LengthSum : null,
             GroupDamageShare = total.Report.PartyDamage > 0 ? total.Report.HeroPartyDamage / total.Report.PartyDamage : null,
+            GroupDamageShareBossFights = total.Report.PartyBossFightDamage > 0
+                ? total.Report.HeroPartyBossFightDamage / total.Report.PartyBossFightDamage : null,
+            // Above the sums' rounding: a dungeon of boss fights alone has no trash share.
+            GroupDamageShareTrash = trashPartyDamage > total.Report.PartyDamage * 1e-9
+                ? (total.Report.HeroPartyDamage - total.Report.HeroPartyBossFightDamage) / trashPartyDamage : null,
         };
     }
+
+    /// <summary>True when the fights had a boss in combat for part of their length alone.</summary>
+    private static bool BossFighting(Totals total) =>
+        total.Report.BossSeconds > 0 && total.Report.BossSeconds < total.LengthSum * 0.999;
 
     private Worker NewWorker()
     {
@@ -330,6 +391,7 @@ public class MonteCarloSimulator
             {
                 var enemy = ctx.AddEnemy(100 + i, i, $"Training Dummy {i}", maxHealth: TrainingDummyHealth);
                 enemy.IsBoss = options.Boss;
+                enemy.IsTrainingDummy = true;
                 if (options.HealthFollowsTime) enemy.FollowTime(ctx, SimTime.Zero, duration);
             }
             ctx.Player.CurrentTarget = ctx.AllEnemies.First();
@@ -370,6 +432,8 @@ public class MonteCarloSimulator
         while (ctx.CurrentTime < end)
         {
             if (stop != null && stop()) return true;
+            // An interrupt_if stops the channel first, so the decision after it can cast.
+            program.TryInterrupt(ctx);
             var hold = program.HoldOf(ctx);
             bool acted = Decides(program, hold) && program.TryAct(ctx);
             NoteHold(hero, ctx);
@@ -387,6 +451,8 @@ public class MonteCarloSimulator
                 var decision = acted ? ctx.CurrentTime : program.NextDecision(ctx);
                 if (decision < next) next = decision;
             }
+            var interrupt = program.NextInterruptCheck(ctx);
+            if (interrupt < next) next = interrupt;
             if (ctx.RunUntil(next < end ? next : end, stop)) return true;
         }
         return stop != null && stop();
@@ -486,15 +552,13 @@ public class MonteCarloSimulator
             Max = Math.Max(Max, dps);
         }
 
-        /// <summary>Adds <paramref name="other"/>'s fights (Chan's parallel formula for the mean and squared deviations).</summary>
+        public DpsMoments Moments => new(Count, Mean, M2);
+
+        /// <summary>Adds <paramref name="other"/>'s fights (<see cref="DpsMoments.Merge"/> for the mean and squared deviations).</summary>
         public void Merge(Totals other)
         {
             if (other.Count == 0) return;
-            long count = Count + other.Count;
-            double delta = other.Mean - Mean;
-            Mean += delta * other.Count / count;
-            M2 += other.M2 + delta * delta * ((double)Count * other.Count / count);
-            Count = count;
+            (Count, Mean, M2) = Moments.Merge(other.Moments);
             DamageSum += other.DamageSum;
             LengthSum += other.LengthSum;
             Min = Math.Min(Min, other.Min);
@@ -507,7 +571,7 @@ public class MonteCarloSimulator
             Report.Merge(other.Report);
         }
 
-        public MonteCarloChunk ToChunk(int index, double[] fightDamage) => new()
+        public MonteCarloChunk ToChunk(int index, double[] fightDamage, double[] fightDps) => new()
         {
             Index = index,
             Count = Count,
@@ -519,6 +583,7 @@ public class MonteCarloSimulator
             LengthSum = LengthSum,
             AbilityDamage = new Dictionary<string, double>(AbilityDamage, StringComparer.OrdinalIgnoreCase),
             FightDamage = fightDamage,
+            FightDps = fightDps,
             Report = Report.ToTotals(),
         };
 

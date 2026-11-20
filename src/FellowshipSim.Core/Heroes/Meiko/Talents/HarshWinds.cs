@@ -8,14 +8,10 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// successfully dodging an attack" (Meiko.DurationalAoeDamageBuff.Talent.IncreasedDamage.DamageMultiplier 1.2 on ability
 /// 1120 and effect 1569).
 /// </summary>
-public class HarshWinds : Talent
+public partial class HarshWinds : Talent
 {
-    public const int TalentId = 98;
-    public const string TalentName = "Harsh Winds";
-    public const double VortexDamage = 1.2;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
-    public override void Bind(Hero hero) => hero.GetAbility<SpiritedVortex>()?.AddDamageMultiplier(VortexDamage);
+    public override void Bind(Hero hero) => hero.GetAbility<SpiritedVortex>()?.AddDamageMultiplier(Constants.DurationalAoeDamageBuffTalentIncreasedDamageDamageMultiplier);
 }

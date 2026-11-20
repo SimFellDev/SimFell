@@ -83,9 +83,9 @@ public sealed class AplProgram
                 inBuild.Add(action);
                 step.Line = lineOf[action];
                 if (action.Condition != null) step.ConditionProbe = AplProbe.Of(action.Condition, hero, variables);
-                if (step is BoundAplAction ability && action.TargetIf != null)
+                if (step is BoundAplAction or BoundAplSwitchTarget && action.TargetIf != null)
                 {
-                    ability.TargetIfProbe = AplProbe.Of(action.TargetIf.Expression, hero, variables);
+                    step.TargetIfProbe = AplProbe.Of(action.TargetIf.Expression, hero, variables);
                 }
                 steps.Add(step);
             }
@@ -123,6 +123,7 @@ public sealed class AplProgram
                 var change = step switch
                 {
                     BoundAplAction action => action.NextChange(ctx),
+                    BoundAplSwitchTarget switchTarget => switchTarget.NextChange(ctx),
                     // A variable is set again at the next decision, so a change of its value is a change of what reads it.
                     BoundAplVariable variable => Crossing.Earlier(variable.Condition?.NextChange(ctx) ?? SimTime.Infinite,
                         variable.Value?.NextChange(ctx) ?? SimTime.Infinite),
@@ -153,13 +154,23 @@ public sealed class AplProgram
             }
             return new BoundAplListAction(list, listAction, condition);
         }
+        if (action.SwitchTarget)
+        {
+            var pick = action.TargetIf ?? throw new InvalidOperationException($"APL: `{AplSwitchTarget.ActionName}` needs `{AplActionLine.TargetIfKey}=<expression>`.");
+            return new BoundAplSwitchTarget(new BoundTargetIf(pick.Selection, BoundExpression.Bind(pick.Expression, hero, variables)), condition);
+        }
         if (action.ResolveAbility(hero) is not { } ability)
         {
             if (AnyBuildHas(hero, action.AbilityName)) return null;
             throw new InvalidOperationException($"APL: {hero.GetType().Name} has no ability named `{action.AbilityName}`.");
         }
         var targetIf = action.TargetIf == null ? null : new BoundTargetIf(action.TargetIf.Selection, BoundExpression.Bind(action.TargetIf.Expression, hero, variables));
-        return new BoundAplAction(hero, ability, condition, targetIf, action.UseOffGcd, action.UseWhileCasting);
+        var interruptIf = action.InterruptIf == null ? null : BoundExpression.Bind(action.InterruptIf, hero, variables);
+        return new BoundAplAction(hero, ability, condition, targetIf, action.UseOffGcd, action.UseWhileCasting)
+        {
+            InterruptIf = interruptIf,
+            InterruptImmediate = action.InterruptImmediate,
+        };
     }
 
     // The abilities of every build of a hero in the catalog (with every weapon's), by the hero's class.
@@ -171,6 +182,98 @@ public sealed class AplProgram
         var abilities = BuildAbilities.GetOrAdd(hero.GetType(), type => AplVocabulary.For(type.Name).Abilities);
         string key = AplNames.Slug(aplName).Replace("_", "");
         return abilities.Any(a => a.Slug.Replace("_", "") == key);
+    }
+
+    // The action that last cast a channeled ability: its channel is the hero's while the hero channels that ability.
+    private BoundAplAction? _channelAction;
+
+    // The channel whose ticks the interrupt check has seen, and how many.
+    private ActiveChannel? _seenChannel;
+    private int _ticksSeen;
+
+    /// <summary>The action with an <c>interrupt_if</c> whose channel runs now; null when no such channel runs.</summary>
+    private BoundAplAction? InterruptibleAction =>
+        _hero.CurrentChannel is { } channel && _channelAction is { InterruptIf: not null } action && channel.Ability == action.Ability ? action : null;
+
+    /// <summary>
+    /// Stops the hero's channel when the action that started it has an <c>interrupt_if</c> that is true at the channel's
+    /// target, and an ability action above that action's line is ready to cast (<see cref="SimulationContext.InterruptChannel"/>).
+    /// Without <c>interrupt_immediate=1</c>, the check runs only right after a tick of the channel once the global cooldown
+    /// has ended. True when the channel stopped.
+    /// </summary>
+    public bool TryInterrupt(SimulationContext ctx)
+    {
+        if (InterruptibleAction is not { } action) return false;
+        var channel = _hero.CurrentChannel!;
+        if (!action.InterruptImmediate)
+        {
+            if (channel != _seenChannel) (_seenChannel, _ticksSeen) = (channel, 0);
+            bool ticked = channel.Ticks.TicksFired > _ticksSeen;
+            _ticksSeen = channel.Ticks.TicksFired;
+            if (!ticked) return false;
+            double left = (_hero.GlobalCooldownEndTime - ctx.CurrentTime).TotalSeconds;
+            if (left > ctx.GlobalCooldownToleranceSeconds) return false;
+        }
+        if (!action.InterruptHolds(ctx, channel.Target)) return false;
+        if (ReadyAbove(ctx, _default, action) != Scan.Ready) return false;
+        return ctx.InterruptChannel(_hero);
+    }
+
+    /// <summary>The end of a scan for a ready action above a channel's line (<see cref="ReadyAbove"/>).</summary>
+    private enum Scan
+    {
+        /// <summary>The list ended with no ready action and without the channel's line.</summary>
+        None,
+        /// <summary>A ready ability action comes before the channel's line.</summary>
+        Ready,
+        /// <summary>The scan reached the channel's line first.</summary>
+        Channel,
+    }
+
+    // SimulationCraft's select_action with the channel's action as its context: the first ready ability action of the
+    // decision, as at the top of a decision with no hold, when it comes before the channel's own line. A variable action is
+    // left to the decision after the interrupt, so the scan changes no variable; a list action enters its list as a
+    // decision does.
+    private static Scan ReadyAbove(SimulationContext ctx, BoundAplList? list, BoundAplAction channel)
+    {
+        if (list == null || list.Running) return Scan.None;
+        list.Running = true;
+        try
+        {
+            foreach (var step in list.Steps)
+            {
+                switch (step)
+                {
+                    case BoundAplAction action when action == channel:
+                        return Scan.Channel;
+                    case BoundAplAction action:
+                        if (action.CanExecute(ctx)) return Scan.Ready;
+                        break;
+                    case BoundAplListAction listAction when !listAction.List.Running && listAction.ConditionHolds(ctx):
+                        var found = ReadyAbove(ctx, listAction.List, channel);
+                        if (found != Scan.None || listAction.Kind == AplListAction.Run) return found;
+                        break;
+                }
+            }
+            return Scan.None;
+        }
+        finally
+        {
+            list.Running = false;
+        }
+    }
+
+    /// <summary>
+    /// The next time <see cref="TryInterrupt"/> can stop the running channel: the next event (a tick is one), or with
+    /// <c>interrupt_immediate=1</c> also the time the condition can turn true with no event before it.
+    /// <see cref="SimTime.Infinite"/> when no channel with an <c>interrupt_if</c> runs.
+    /// </summary>
+    public SimTime NextInterruptCheck(SimulationContext ctx)
+    {
+        if (InterruptibleAction is not { } action) return SimTime.Infinite;
+        var next = ctx.Kernel.PeekNextTime() ?? SimTime.Infinite;
+        if (!action.InterruptImmediate) return next;
+        return Crossing.Earlier(next, Crossing.Later(ctx.CurrentTime, action.InterruptChange(ctx, _hero.CurrentChannel!.Target)));
     }
 
     /// <summary>
@@ -188,8 +291,8 @@ public sealed class AplProgram
     }
 
     // A list already running in this decision is skipped, so lists that name each other end. An ability action that is no
-    // candidate for the hold is skipped and left out of the trace.
-    private static bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, AplDecisionHold hold, TTrace trace) where TTrace : struct, IAplDecisionTrace
+    // candidate for the hold, and a switch_target while a cast or a channel runs, is skipped and left out of the trace.
+    private bool TryAct<TTrace>(SimulationContext ctx, BoundAplList? list, AplDecisionHold hold, TTrace trace) where TTrace : struct, IAplDecisionTrace
     {
         if (list == null || list.Running) return false;
         list.Running = true;
@@ -220,6 +323,14 @@ public sealed class AplProgram
                     if (acted || listAction.Kind == AplListAction.Run) return acted;
                     continue;
                 }
+                if (step is BoundAplSwitchTarget switchTarget)
+                {
+                    // A decision while a cast or a channel runs skips the step.
+                    if (hold == AplDecisionHold.Cast) continue;
+                    trace.SwitchTarget(switchTarget, ctx);
+                    switchTarget.Run(ctx);
+                    continue;
+                }
                 var action = (BoundAplAction)step;
                 if (!action.IsCandidate(hold)) continue;
                 bool canExecute = action.CanExecute(ctx);
@@ -227,7 +338,11 @@ public sealed class AplProgram
                 if (!canExecute) continue;
                 var attempt = action.Execute(ctx);
                 trace.Cast(attempt);
-                if (attempt.Succeeded) return true;
+                if (attempt.Succeeded)
+                {
+                    if (action.Ability.IsChanneled) _channelAction = action;
+                    return true;
+                }
             }
             return false;
         }
@@ -246,7 +361,10 @@ internal sealed class BoundAplList
     public bool Running { get; set; }
 }
 
-/// <summary>One bound action line: an ability (<see cref="BoundAplAction"/>) or a list action (<see cref="BoundAplListAction"/>).</summary>
+/// <summary>
+/// One bound action line: an ability (<see cref="BoundAplAction"/>), a list action (<see cref="BoundAplListAction"/>), a
+/// <c>variable</c> (<see cref="BoundAplVariable"/>) or a <c>switch_target</c> (<see cref="BoundAplSwitchTarget"/>).
+/// </summary>
 public abstract class BoundAplStep
 {
     private protected BoundAplStep(BoundExpression? condition) => Condition = condition;
@@ -258,6 +376,12 @@ public abstract class BoundAplStep
 
     /// <summary>The condition's probe, for a program bound with <see cref="AplProgram.BindTraced"/>.</summary>
     internal AplProbe? ConditionProbe { get; set; }
+
+    /// <summary>
+    /// The <c>target_if</c> expression's probe of an ability action or a <c>switch_target</c>, for a program bound with
+    /// <see cref="AplProgram.BindTraced"/>.
+    /// </summary>
+    internal AplProbe? TargetIfProbe { get; set; }
 
     /// <summary>True when the step has no condition or its condition is true at the current target.</summary>
     public bool ConditionHolds(SimulationContext ctx) => Condition == null || Condition.Evaluate(ctx);
@@ -307,98 +431,20 @@ public sealed class BoundAplVariable : BoundAplStep
     }
 }
 
-/// <summary>A <c>target_if</c> bound to its hero.</summary>
-internal sealed record BoundTargetIf(AplTargetSelection Selection, BoundExpression Expression);
-
-/// <summary>An ability action bound to its ability, with the same target selection, condition and cast as <see cref="AplAction"/>.</summary>
-public sealed class BoundAplAction : BoundAplStep
+/// <summary>
+/// A <c>target_if</c> bound to its hero: the pick among the enemies in combat (<see cref="Select"/>) and the time the pick
+/// can change (<see cref="NextChange"/>), for an ability action's cast and for a <c>switch_target</c>.
+/// </summary>
+internal sealed record BoundTargetIf(AplTargetSelection Selection, BoundExpression Expression)
 {
-    private readonly Hero _hero;
-    private readonly BoundTargetIf? _targetIf;
-
-    internal BoundAplAction(Hero hero, Ability ability, BoundExpression? condition, BoundTargetIf? targetIf, bool useOffGcd = false,
-        bool useWhileCasting = false) : base(condition)
-    {
-        _hero = hero;
-        Ability = ability;
-        _targetIf = targetIf;
-        UseOffGcd = useOffGcd;
-        UseWhileCasting = useWhileCasting;
-    }
-
-    public Ability Ability { get; }
-
-    /// <summary><c>use_off_gcd=1</c>.</summary>
-    public bool UseOffGcd { get; }
-
-    /// <summary><c>use_while_casting=1</c>.</summary>
-    public bool UseWhileCasting { get; }
-
     /// <summary>
-    /// True when the action is a candidate in a decision under <paramref name="hold"/>. During a cast or a channel only an
-    /// ability that ignores the global cooldown is one: any other cast ends the channel or is refused.
+    /// The earliest time the pick among <paramref name="candidates"/> can change: a candidate's truth for <c>first</c>; for
+    /// <c>min</c> and <c>max</c>, the end of a candidate's curve or the first millisecond the pick differs where two
+    /// candidates' values cross.
     /// </summary>
-    public bool IsCandidate(AplDecisionHold hold) => hold switch
+    public SimTime NextChange(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates)
     {
-        AplDecisionHold.GlobalCooldown => UseOffGcd,
-        AplDecisionHold.Cast => UseWhileCasting && Ability.IgnoresGcd,
-        _ => true,
-    };
-
-    /// <summary>The <c>target_if</c> selection, or null for an action with none.</summary>
-    internal AplTargetSelection? TargetSelection => _targetIf?.Selection;
-
-    /// <summary>The <c>target_if</c> expression's probe, for a program bound with <see cref="AplProgram.BindTraced"/>.</summary>
-    internal AplProbe? TargetIfProbe { get; set; }
-
-    public bool CanExecute(SimulationContext ctx)
-    {
-        if (!TrySelectTarget(ctx, out var target)) return false;
-        if (Condition != null && !EvaluateAt(ctx, target, Condition)) return false;
-        return Ability.CanCast(ctx);
-    }
-
-    /// <summary>
-    /// Starts the action's ability, or has the engine's reason for refusing it. The cast sets the hasted global cooldown
-    /// (<see cref="SimulationContext.BeginCast"/>).
-    /// </summary>
-    public CastAttempt Execute(SimulationContext ctx)
-    {
-        if (!TrySelectTarget(ctx, out var target)) return CastAttempt.Rejected("no target");
-        if (target == null)
-        {
-            target = ctx.AddEnemy(1, 1, "Target Dummy");
-            ctx.Player.CurrentTarget = target;
-        }
-
-        return ctx.BeginCast(_hero, Ability, target);
-    }
-
-    /// <summary>
-    /// The earliest time after now at which the action's target selection, its condition at its target or its ability's
-    /// <see cref="Ability.CanCast(SimulationContext)"/> can change with no event before it.
-    /// </summary>
-    internal SimTime NextChange(SimulationContext ctx)
-    {
-        var next = Ability.NextCastChange(ctx);
-        var active = ctx.ActiveEnemies;
-        if (_targetIf != null && active.Count > 0) next = Crossing.Earlier(next, SelectionChange(ctx, active));
-        if (Condition != null)
-        {
-            TrySelectTarget(ctx, out var target);
-            next = Crossing.Earlier(next, ChangeAt(ctx, target, Condition));
-        }
-        return next;
-    }
-
-    /// <summary>
-    /// The earliest time the <c>target_if</c> pick can change: a candidate's truth for <c>first</c>; for <c>min</c> and
-    /// <c>max</c>, the end of a candidate's curve or the first millisecond the pick differs where two candidates' values
-    /// cross.
-    /// </summary>
-    private SimTime SelectionChange(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates)
-    {
-        var (selection, expression) = _targetIf!;
+        var (selection, expression) = this;
         var now = ctx.CurrentTime;
         var next = SimTime.Infinite;
         if (selection == AplTargetSelection.First)
@@ -458,7 +504,7 @@ public sealed class BoundAplAction : BoundAplStep
     /// <summary>The <c>min</c> or <c>max</c> pick among <paramref name="candidates"/> at <paramref name="time"/>, as <see cref="Select"/> picks it now.</summary>
     private EnemyTarget? PickAt(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates, SimTime time)
     {
-        var (selection, expression) = _targetIf!;
+        var (selection, expression) = this;
         EnemyTarget? best = null;
         double bestValue = 0;
         var current = ctx.Player.CurrentTarget;
@@ -482,39 +528,13 @@ public sealed class BoundAplAction : BoundAplStep
         return best;
     }
 
-    // NextChange of `expression` with `target` as the hero's current target, then restored (as EvaluateAt).
-    private static SimTime ChangeAt(SimulationContext ctx, EnemyTarget? target, BoundExpression expression)
-    {
-        var current = ctx.Player.CurrentTarget;
-        if (target == null || target == current) return expression.NextChange(ctx);
-        ctx.Player.CurrentTarget = target;
-        try
-        {
-            return expression.NextChange(ctx);
-        }
-        finally
-        {
-            ctx.Player.CurrentTarget = current;
-        }
-    }
-
     /// <summary>
-    /// Target of the cast: the <c>target_if</c> pick among the active enemies, otherwise the current target (null when
-    /// there are no enemies). False when <c>target_if</c> finds no enemy.
+    /// The pick among <paramref name="candidates"/>, as <see cref="AplTargetIf.Select"/> picks it: null when <c>first</c>
+    /// finds no enemy.
     /// </summary>
-    internal bool TrySelectTarget(SimulationContext ctx, out EnemyTarget? target)
+    public EnemyTarget? Select(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates)
     {
-        var active = ctx.ActiveEnemies;
-        target = ctx.Player.CurrentTarget ?? (active.Count > 0 ? active[0] : null);
-        if (_targetIf == null || ctx.ActiveEnemies.Count == 0) return true;
-        target = Select(ctx, ctx.ActiveEnemies);
-        return target != null;
-    }
-
-    /// <summary>The <c>target_if</c> pick among <paramref name="candidates"/>, as <see cref="AplTargetIf.Select"/> picks it.</summary>
-    private EnemyTarget? Select(SimulationContext ctx, IReadOnlyList<EnemyTarget> candidates)
-    {
-        var (selection, expression) = _targetIf!;
+        var (selection, expression) = this;
         EnemyTarget? best = null;
         double bestValue = 0;
         // By index: a foreach over the list interface allocates its enumerator.
@@ -536,8 +556,27 @@ public sealed class BoundAplAction : BoundAplStep
         return best;
     }
 
-    // With target as the hero's current target, then restored (as AplAction.AtTarget, without a closure).
-    private static bool EvaluateAt(SimulationContext ctx, EnemyTarget? target, BoundExpression expression)
+    /// <summary>NextChange of <paramref name="expression"/> with <paramref name="target"/> as the hero's current target, then restored (as <see cref="EvaluateAt"/>).</summary>
+    public static SimTime ChangeAt(SimulationContext ctx, EnemyTarget? target, BoundExpression expression)
+    {
+        var current = ctx.Player.CurrentTarget;
+        if (target == null || target == current) return expression.NextChange(ctx);
+        ctx.Player.CurrentTarget = target;
+        try
+        {
+            return expression.NextChange(ctx);
+        }
+        finally
+        {
+            ctx.Player.CurrentTarget = current;
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="expression"/> with <paramref name="target"/> as the hero's current target, then restored (as
+    /// <see cref="AplAction.AtTarget"/>, without a closure).
+    /// </summary>
+    public static bool EvaluateAt(SimulationContext ctx, EnemyTarget? target, BoundExpression expression)
     {
         var current = ctx.Player.CurrentTarget;
         if (target == null || target == current) return expression.Evaluate(ctx);
@@ -565,6 +604,112 @@ public sealed class BoundAplAction : BoundAplStep
         {
             ctx.Player.CurrentTarget = current;
         }
+    }
+}
+
+/// <summary>An ability action bound to its ability, with the same target selection, condition and cast as <see cref="AplAction"/>.</summary>
+public sealed class BoundAplAction : BoundAplStep
+{
+    private readonly Hero _hero;
+    private readonly BoundTargetIf? _targetIf;
+
+    internal BoundAplAction(Hero hero, Ability ability, BoundExpression? condition, BoundTargetIf? targetIf, bool useOffGcd = false,
+        bool useWhileCasting = false) : base(condition)
+    {
+        _hero = hero;
+        Ability = ability;
+        _targetIf = targetIf;
+        UseOffGcd = useOffGcd;
+        UseWhileCasting = useWhileCasting;
+    }
+
+    public Ability Ability { get; }
+
+    /// <summary><c>use_off_gcd=1</c>.</summary>
+    public bool UseOffGcd { get; }
+
+    /// <summary><c>use_while_casting=1</c>.</summary>
+    public bool UseWhileCasting { get; }
+
+    /// <summary><c>interrupt_if=&lt;expr&gt;</c>: the condition that stops the channel the action started; null for none.</summary>
+    public BoundExpression? InterruptIf { get; init; }
+
+    /// <summary><c>interrupt_immediate=1</c>.</summary>
+    public bool InterruptImmediate { get; init; }
+
+    /// <summary>True when <see cref="InterruptIf"/> is true at <paramref name="target"/>, the channel's target.</summary>
+    internal bool InterruptHolds(SimulationContext ctx, EnemyTarget? target) =>
+        InterruptIf != null && BoundTargetIf.EvaluateAt(ctx, target, InterruptIf);
+
+    /// <summary>The next time <see cref="InterruptIf"/> at <paramref name="target"/> can change with no event before it.</summary>
+    internal SimTime InterruptChange(SimulationContext ctx, EnemyTarget? target) =>
+        InterruptIf == null ? SimTime.Infinite : BoundTargetIf.ChangeAt(ctx, target, InterruptIf);
+
+    /// <summary>
+    /// True when the action is a candidate in a decision under <paramref name="hold"/>. During a cast or a channel only an
+    /// ability that ignores the global cooldown is one: any other cast ends the channel or is refused.
+    /// </summary>
+    public bool IsCandidate(AplDecisionHold hold) => hold switch
+    {
+        AplDecisionHold.GlobalCooldown => UseOffGcd,
+        AplDecisionHold.Cast => UseWhileCasting && Ability.IgnoresGcd,
+        _ => true,
+    };
+
+    /// <summary>The <c>target_if</c> selection, or null for an action with none.</summary>
+    internal AplTargetSelection? TargetSelection => _targetIf?.Selection;
+
+    public bool CanExecute(SimulationContext ctx)
+    {
+        if (!TrySelectTarget(ctx, out var target)) return false;
+        if (Condition != null && !BoundTargetIf.EvaluateAt(ctx, target, Condition)) return false;
+        return Ability.CanCast(ctx);
+    }
+
+    /// <summary>
+    /// Starts the action's ability, or has the engine's reason for refusing it. The cast sets the hasted global cooldown
+    /// (<see cref="SimulationContext.BeginCast"/>).
+    /// </summary>
+    public CastAttempt Execute(SimulationContext ctx)
+    {
+        if (!TrySelectTarget(ctx, out var target)) return CastAttempt.Rejected("no target");
+        if (target == null)
+        {
+            target = ctx.AddEnemy(1, 1, "Target Dummy");
+            ctx.Player.CurrentTarget = target;
+        }
+
+        return ctx.BeginCast(_hero, Ability, target);
+    }
+
+    /// <summary>
+    /// The earliest time after now at which the action's target selection, its condition at its target or its ability's
+    /// <see cref="Ability.CanCast(SimulationContext)"/> can change with no event before it.
+    /// </summary>
+    internal SimTime NextChange(SimulationContext ctx)
+    {
+        var next = Ability.NextCastChange(ctx);
+        var active = ctx.ActiveEnemies;
+        if (_targetIf != null && active.Count > 0) next = Crossing.Earlier(next, _targetIf.NextChange(ctx, active));
+        if (Condition != null)
+        {
+            TrySelectTarget(ctx, out var target);
+            next = Crossing.Earlier(next, BoundTargetIf.ChangeAt(ctx, target, Condition));
+        }
+        return next;
+    }
+
+    /// <summary>
+    /// Target of the cast: the <c>target_if</c> pick among the active enemies, otherwise the current target (null when
+    /// there are no enemies). False when <c>target_if</c> finds no enemy.
+    /// </summary>
+    internal bool TrySelectTarget(SimulationContext ctx, out EnemyTarget? target)
+    {
+        var active = ctx.ActiveEnemies;
+        target = ctx.Player.CurrentTarget ?? (active.Count > 0 ? active[0] : null);
+        if (_targetIf == null || ctx.ActiveEnemies.Count == 0) return true;
+        target = _targetIf.Select(ctx, ctx.ActiveEnemies);
+        return target != null;
     }
 
     public override string ToString() => Ability.Name;

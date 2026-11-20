@@ -6,16 +6,11 @@ namespace FellowshipSim.Core.Customization.Sigils;
 /// from other players is a party buff (Replay/PartyBuffs.cs). UNVERIFIED: the hero's own procs are not yet checked
 /// against a log.
 /// </summary>
-public class InspiredAllegiance : Sigil
+public partial class InspiredAllegiance : Sigil
 {
-    public const int SigilId = 2;
-    public const string SigilName = "Inspired Allegiance";
     public const int BuffEffectId = 2112;
     public const double BuffSeconds = 8.0;
-    public const double ProcsPerMinute = 1.2;
     public const string ProcKey = "inspired_allegiance";
-    public static readonly double[] HasteRatingByRank = [6, 10, 13, 17];
-    public static readonly double[] WeaponCooldownSecondsByRank = [1.5, 4, 6, 8];
 
     // Combat logs: the buff stays through the hero's death (4 deaths, none removed it).
     public static readonly AuraDef Buff = AuraDef.Effect(SigilName, BuffEffectId, BuffSeconds) with { KeepsOnDeath = true, IsProc = true };
@@ -25,9 +20,9 @@ public class InspiredAllegiance : Sigil
 
     public override void Bind(Hero hero)
     {
-        var buff = Buff.WithModifiers(StatModifier.Add(StatType.HasteRating, ForRank(HasteRatingByRank)));
-        double cooldownSeconds = ForRank(WeaponCooldownSecondsByRank);
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var buff = Buff.WithModifiers(StatModifier.Add(StatType.HasteRating, ForRank(Constants.BuffAdditionalHasteRatingByRank)));
+        double cooldownSeconds = ForRank(Constants.WeaponAbilityCooldownReductionInSecondsByRank);
+        var rppm = new RealPpm(ProcKey, SigilProcsPerMinute);
         hero.OnCastCompleted += (_, _, now) =>
         {
             if (hero.SimContext is not { } ctx || !rppm.Roll(hero, ctx)) return;

@@ -24,6 +24,9 @@ public class SeethingPoison : MaraDot
     public SeethingPoison(Mara owner) : base(owner, EffectId, EffectName, Coefficient, TickSeconds, PoisonSeconds)
     {
         HasCreepingDeath = true;
+        // Game data (build 26320967), `GE_Mara_ChargedDoubleAttackBuilder_Poison` class defaults: asset tag `EffectType.Dot`, with
+        // no Haste or partial tick exemption.
+        DamageOverTime = true;
         owner.EnergyRegenMultipliers.Add(now => owner.Auras.HasAura(PredatorsRush, now) ? PredatorsRushEnergyRegen : 1.0);
         owner.Hemorrhage.TargetMultipliers.Add((enemy, ctx) => IsOn(enemy, ctx) ? HemorrhageDamage : 1.0);
         Removed += (ctx, _) => Ended(ctx);
@@ -32,7 +35,7 @@ public class SeethingPoison : MaraDot
     /// <summary>Puts the poison on <paramref name="target"/>, taking it off the enemy that had it.</summary>
     public void ApplyTo(SimulationContext ctx, EnemyTarget target)
     {
-        foreach (var other in Targets(ctx).Where(e => e != target).ToList()) Remove(ctx, other, expired: false);
+        foreach (var other in Targets(ctx).Where(e => e != target).ToList()) Remove(ctx, other);
         Apply(ctx, target);
         Mara.Auras.Apply(PredatorsRush, ctx.CurrentTime);
     }

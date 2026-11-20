@@ -126,6 +126,12 @@ public static class ReplayScriptBuilder
         // Enemy health: each enemy's last sampled fraction.
         private readonly Dictionary<(int, int), double> _lastFraction = new();
 
+        private static readonly HashSet<long> DamageTakenReductionLogIds = PartyBuffs.All
+            .Where(b => b.Aura.Modifiers.Any(m => m.Type == StatType.IncomingDamageMultiplier && m.Value < 1))
+            .Select(b => (long)b.Aura.LogId)
+            .ToHashSet();
+        private readonly HashSet<(int, int)> _damageTakenReduced = new();
+
         // Player deaths.
         private bool _dead;
 
@@ -510,6 +516,12 @@ public static class ReplayScriptBuilder
                     WriteAuraFields(c, in e);
                     c.WriteString("kind"u8, "external_aura"u8);
                     EndCommand(t, KindOrder.ExternalAura, Section.Auras);
+                    if (IsEnemy(tgt) && DamageTakenReductionLogIds.Contains((long)e.AbilityGameId))
+                    {
+                        var key = (tgt!.Value, e.TargetInstance);
+                        if (e.Type is RawEventType.ApplyBuff or RawEventType.ApplyDebuff) _damageTakenReduced.Add(key);
+                        else if (e.Type is RawEventType.RemoveBuff or RawEventType.RemoveDebuff) _damageTakenReduced.Remove(key);
+                    }
                 }
                 else if (IsEnemy(tgt) && src == _playerId) WriteAura(_auras, in e);
             }
@@ -528,6 +540,8 @@ public static class ReplayScriptBuilder
                 e.UnmitigatedAmount.WriteTo(w, Raw);
                 WriteOrZero(w, "absorbed"u8, e.Absorbed);
                 WriteOrZero(w, "blocked"u8, e.Blocked);
+                if (_damageTakenReduced.Contains((tgt!.Value, e.TargetInstance))) w.WriteNumber("mitigated"u8, 0);
+                else WriteOrZero(w, "mitigated"u8, e.Mitigated);
                 WriteOrZero(w, "overkill"u8, e.Overkill);
                 w.WriteBoolean("crit"u8, e.HitType is HitTypeCrit or HitTypeGrievousCrit);
                 w.WritePropertyName("hit_type"u8);

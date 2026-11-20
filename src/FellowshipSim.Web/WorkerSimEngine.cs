@@ -46,12 +46,19 @@ public sealed class WorkerSimEngine(SimWorkerPool workers) : ISimEngine
     {
         // An action list the engine cannot run is refused here, with its reason, before any worker starts.
         SimChunks.NewSimulator(profile);
-        int chunks = SimChunks.Count(settings);
+        var chunks = new SimChunkProgress(settings);
         string json = await workers.SimulateAsync(JsonSerializer.Serialize(profile, SimChunks.Json),
-            JsonSerializer.Serialize(settings, SimChunks.Json), chunks, settings.DegreeOfParallelism,
-            done => progress?.Report(new SimProgress(done == chunks ? settings.Iterations : settings.Iterations * done / chunks, settings.Iterations)),
+            JsonSerializer.Serialize(settings, SimChunks.Json), chunks.ResultChunks, settings.DegreeOfParallelism,
+            (chunk, fights) =>
+            {
+                int resultChunks = chunks.Add(chunk, fights);
+                progress?.Report(chunks.Progress);
+                return resultChunks;
+            },
             ct);
-        return JsonSerializer.Deserialize<SimResult>(json, SimChunks.Json)!;
+        var result = JsonSerializer.Deserialize<SimResult>(json, SimChunks.Json)!;
+        progress?.Report(SimChunks.Progress(settings, result.Iterations, settings.TargetError > 0 ? result.MarginPercent : null, done: true));
+        return result;
     }
 
     public async Task<AplFightTrace> TraceFightAsync(SimcProfile profile, SimSettings settings, CancellationToken ct = default)

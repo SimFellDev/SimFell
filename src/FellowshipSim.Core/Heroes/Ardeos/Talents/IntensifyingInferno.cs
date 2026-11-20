@@ -7,12 +7,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Talents;
 /// target. Per the user, each instance counts (two Engulfing Flames count twice), despite the tooltip's "unique".
 /// UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class IntensifyingInferno : Talent
+public partial class IntensifyingInferno : Talent
 {
-    public const int TalentId = 151;
-    public const string TalentName = "Intensifying Inferno";
-    public const double DamagePerEffect = 0.15;
-
     public override string Name => TalentName;
     public override int Id => TalentId;
 
@@ -25,7 +21,7 @@ public class IntensifyingInferno : Talent
         {
             if (cast.Ability != wave || cast.Target == null) return;
             int effects = ardeos.Dots.On(cast.Target).Count;
-            cast.DamageMultiplier *= 1.0 + DamagePerEffect * effects;
+            cast.DamageMultiplier *= 1.0 + Constants.DamageIncreaseFromDotsDamageIncreasePerDot * effects;
         };
     }
 }

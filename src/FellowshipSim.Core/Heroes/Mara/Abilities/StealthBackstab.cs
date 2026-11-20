@@ -5,9 +5,9 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// and a Critical Strike chance bonus on Caustic Poison (Brooding Shadows' text). The Backstab
 /// hit itself still lands; the poison is logged as effect 1585 (<see cref="CausticPoison"/>).
 /// </summary>
-public class StealthBackstab : Backstab
+[Ability(2308)]
+public partial class StealthBackstab
 {
-    public new const int AbilityId = 2308;
     public new const string AbilityName = "Stealth Backstab";
     public const double StealthComboPoints = 6;
 

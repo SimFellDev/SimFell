@@ -18,7 +18,8 @@ public class RimeGearTests
         const string apl = "actions=bursting_ice\nactions+=/frost_bolt";
         int without = Hits(new CharacterBuild { Hero = "Rime", PrimaryStat = 1000 }, apl, h => h.GetAbility<BurstingIce>()!.DamageLogId);
         var build = new CharacterBuild { Hero = "Rime", PrimaryStat = 1000, LegendaryItemIds = [SkandisDecree.LegsItemId] };
-        Assert.Equal(SkandisDecree.BurstingIceBonusSeconds, HeroImporter.Import(build).GetAbility<BurstingIce>()!.BonusDurationSeconds);
+        // Game data: Skandi's Decree adds 2 s.
+        Assert.Equal(2, HeroImporter.Import(build).GetAbility<BurstingIce>()!.BonusDurationSeconds);
 
         // Pulses on a fixed period, so a longer debuff has proportionally more pulses.
         int with = Hits(build, apl, h => h.GetAbility<BurstingIce>()!.DamageLogId);
@@ -60,9 +61,10 @@ public class RimeGearTests
             .Run(SimTime.FromSeconds(40), 1, 1, degreeOfParallelism: 1);
 
         // Frost Bolts store far short of the cap, so the touch erupts when its duration runs out.
-        Assert.Contains(bolts, b => b.Time < VoidbringersTouch.DurationSeconds);
-        Assert.Contains(bolts, b => b.Time > VoidbringersTouch.DurationSeconds);
-        Assert.All(bolts, b => Assert.Equal(b.Time < VoidbringersTouch.DurationSeconds ? 1 : 0, b.Stacks));
+        // Game data: Voidbringer's Touch lasts 15 s.
+        Assert.Contains(bolts, b => b.Time < 15);
+        Assert.Contains(bolts, b => b.Time > 15);
+        Assert.All(bolts, b => Assert.Equal(b.Time < 15 ? 1 : 0, b.Stacks));
     }
 
     private static int Hits(CharacterBuild build, string apl, Func<Hero, int> damageId)

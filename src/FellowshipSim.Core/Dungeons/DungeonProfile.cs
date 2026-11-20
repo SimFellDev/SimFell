@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using FellowshipSim.Core.Dungeons.Affixes;
 using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.Core.Dungeons;
@@ -11,15 +12,18 @@ namespace FellowshipSim.Core.Dungeons;
 /// dungeon=Default
 /// difficulty=10
 /// time_limit=1800
+/// affixes=anomalous_orbs,storm_shield
 /// pull.1=/duration=40
 /// pull.1+=/count=5,name=Imp,spirit_points=3,hit_points=7857
 /// pull.1+=/count=1,name="Ogre Captain",spirit_points=10,priority=1,hit_points=11546,interrupt_ability="Big Cast",cooldown=20,cast_time=2.5
 /// pull.ghouls=/duration=45,downtime=20
-/// pull.ghouls+=/count=4,name=Ghoul
+/// pull.ghouls+=/count=4,name=Ghoul,dies=30
+/// pull.ghouls+=/count=2,name=Ghoul,first_seen=12.5
 /// pull.last_boss=/duration=90,final=1,pull_with=ghouls,offset_pct=50
 /// pull.last_boss+=/boss.1,name="Ancient Koros",spirit_points=45,hit_points=64029
 /// </code>
-/// A pull has a name of letters, digits and '_'. Pulls run in the order of their <c>pull.X=/</c> lines.
+/// <c>affixes</c> names the run's dungeon affixes by <see cref="DungeonAffix.Key"/>, and the fight runs each of them; a
+/// text without it has none. A pull has a name of letters, digits and '_'. Pulls run in the order of their <c>pull.X=/</c> lines.
 /// Lines starting with '#' are comments. A comment above a <c>pull.X+=/</c> enemy group line belongs to that group
 /// (<see cref="EnemyGroup.Comment"/>), a comment above any other pull line or after the last pull to the pull
 /// (<see cref="DungeonPull.Comment"/>), and any other comment to the dungeon (<see cref="Comment"/>). A pull's text starts
@@ -27,13 +31,21 @@ namespace FellowshipSim.Core.Dungeons;
 /// <c>pull.X=/</c> starts pull X and <c>pull.X+=/</c> adds a line to it. A line is
 /// an enemy group (<c>count=</c>), a boss (<c>boss.N</c>) or the pull's options; a group line can also have pull options.
 /// Group values: <c>count</c>, <c>name</c>, <c>spirit_points</c>, <c>priority</c>, <c>hit_points</c>,
-/// <c>interrupt_ability</c>, <c>cooldown</c> and <c>cast_time</c>. Pull options: <c>duration</c> (every pull has one), <c>downtime</c>,
+/// <c>interrupt_ability</c>, <c>cooldown</c>, <c>cast_time</c>, and <c>first_seen</c> and <c>dies</c>, the seconds after the
+/// pull's start at which the group's enemies enter combat (0 unless given) and die (the pull's <c>duration</c> unless
+/// given). Pull options: <c>duration</c> (every pull has one), <c>downtime</c>,
 /// <c>final</c>, <c>chain_with</c> and <c>pull_with</c> with one trigger at most (<c>offset_ms</c>, <c>offset_pct</c>,
 /// <c>after_deaths</c>, <c>after_deaths_total</c>). A name with a comma is quoted.
 /// </summary>
 public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadOnlyList<DungeonPull> Pulls,
-    int Difficulty = DungeonProfile.DefaultDifficulty, string? Comment = null)
+    int Difficulty = DungeonProfile.DefaultDifficulty, string? Comment = null, IReadOnlyList<string>? Affixes = null)
 {
+    /// <summary>The run's dungeon affixes by <see cref="DungeonAffix.Key"/>, in the order of the text.</summary>
+    public IReadOnlyList<string> Affixes { get; init; } = Affixes ?? [];
+
+    /// <summary>The key of the run's dungeon affixes.</summary>
+    public const string AffixesKey = "affixes";
+
     /// <summary>The time limit of a dungeon whose text names none, in seconds.</summary>
     public const double DefaultTimeLimitSeconds = 1800;
 
@@ -49,11 +61,11 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
     public const string CountKey = "count", ChainWithKey = "chain_with", PullWithKey = "pull_with";
 
     /// <summary>The dungeon's own keys, apart from its pulls' <c>pull.X</c>.</summary>
-    public static IReadOnlyList<string> Keys { get; } = ["dungeon", "difficulty", "time_limit"];
+    public static IReadOnlyList<string> Keys { get; } = ["dungeon", "difficulty", "time_limit", AffixesKey];
 
     /// <summary>The values of an enemy group line.</summary>
     public static IReadOnlyList<string> GroupKeys { get; } =
-        ["count", "name", "spirit_points", "priority", "hit_points", "interrupt_ability", "cooldown", "cast_time"];
+        ["count", "name", "spirit_points", "priority", "hit_points", "interrupt_ability", "cooldown", "cast_time", "first_seen", "dies"];
 
     /// <summary>The options of a pull, on its options line or a group line.</summary>
     public static IReadOnlyList<string> PullKeys { get; } =
@@ -164,6 +176,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         string? name = null;
         double timeLimit = DefaultTimeLimitSeconds;
         int difficulty = DefaultDifficulty;
+        var affixes = new List<string>();
         var pulls = new OrderedDictionary<string, PullText>();
         var dungeonComment = new List<string>();
         var comment = new List<string>();
@@ -195,6 +208,9 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                         break;
                     case "difficulty":
                         difficulty = Integer(key, value);
+                        break;
+                    case AffixesKey:
+                        affixes = AffixList(value);
                         break;
                     default:
                         if (!key.StartsWith(PullPrefix, StringComparison.Ordinal))
@@ -229,7 +245,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
             if (pull.Duration == null) throw new FormatException($"Pull {pullName} has no duration=<seconds>.");
         }
         var profile = new DungeonProfile(name, timeLimit, pulls.Select(p => p.Value.Pull(p.Key)).ToList(), difficulty,
-            JoinComment(dungeonComment));
+            JoinComment(dungeonComment), affixes);
         foreach (var (pullName, pull) in pulls)
         {
             if (pull.TriggerWithoutJoin) throw new FormatException($"Pull {pullName}: a trigger needs pull_with.");
@@ -284,7 +300,8 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         int? count = boss ? 1 : null;
         string? name = null;
         double cooldown = 0, castTime = EnemyCast.DefaultCastSeconds;
-        double? hitPoints = null, spirit = null;
+        double? hitPoints = null, spirit = null, dies = null;
+        double firstSeen = 0;
         bool priority = false, groupValues = false;
         string? ability = null;
         foreach (string option in parts)
@@ -304,6 +321,8 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                 case "interrupt_ability": ability = Unquote(v); groupValues = true; break;
                 case "cooldown": cooldown = Number(key, v); groupValues = true; break;
                 case "cast_time": castTime = Number(key, v); groupValues = true; break;
+                case "first_seen": firstSeen = Number(key, v); groupValues = true; break;
+                case "dies": dies = Number(key, v); groupValues = true; break;
                 case "duration": pull.Duration = Number(key, v); break;
                 case "downtime": pull.Downtime = Number(key, v); break;
                 case "final": pull.Final = Integer(key, v) != 0; break;
@@ -325,7 +344,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         if ((cooldown > 0 || castTime != EnemyCast.DefaultCastSeconds) && ability == null)
             throw new FormatException("cooldown and cast_time need interrupt_ability");
         pull.Groups.Add(new EnemyGroup(n, name ?? "", spirit, priority, hitPoints, boss,
-            ability != null ? new EnemyCast(ability, cooldown, castTime) : null));
+            ability != null ? new EnemyCast(ability, cooldown, castTime) : null, FirstSeenSeconds: firstSeen, DiesSeconds: dies));
     }
 
     /// <summary>The profile's text, which <see cref="Parse"/> reads back to the same profile.</summary>
@@ -336,6 +355,7 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
         text.Append("dungeon=").Append(Quote(Name)).Append('\n');
         text.Append("difficulty=").Append(N(Difficulty)).Append('\n');
         text.Append("time_limit=").Append(N(TimeLimitSeconds)).Append('\n');
+        if (Affixes.Count > 0) text.Append(AffixesKey).Append('=').Append(string.Join(',', Affixes)).Append('\n');
         foreach (var pull in Pulls)
         {
             AppendComment(text, pull.Comment);
@@ -364,6 +384,8 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
                         .Append(",cooldown=").Append(N(cast.CooldownSeconds))
                         .Append(",cast_time=").Append(N(cast.CastSeconds));
                 }
+                if (g.FirstSeenSeconds != 0) text.Append(",first_seen=").Append(N(g.FirstSeenSeconds));
+                if (g.DiesSeconds is { } dies) text.Append(",dies=").Append(N(dies));
                 text.Append('\n');
             }
         }
@@ -419,6 +441,19 @@ public sealed record DungeonProfile(string Name, double TimeLimitSeconds, IReadO
     private static int Integer(string key, string value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n)
             ? n : throw new FormatException($"{key} is a whole number, not '{value}'");
+
+    // The affixes of an affixes= value: each the key of an affix the engine models, once.
+    private static List<string> AffixList(string value)
+    {
+        var keys = value.Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
+        foreach (string key in keys)
+        {
+            if (DungeonAffix.ByKey(key) == null)
+                throw new FormatException($"'{key}' is not a dungeon affix ({string.Join(", ", DungeonAffix.All.Select(a => a.Key))})");
+        }
+        if (keys.Distinct().Count() != keys.Count) throw new FormatException("an affix is named twice");
+        return keys;
+    }
 
     private static string PullName(string value) =>
         DungeonPull.IsName(value) ? value : throw new FormatException($"'{value}' is not a pull name (letters, digits and '_')");

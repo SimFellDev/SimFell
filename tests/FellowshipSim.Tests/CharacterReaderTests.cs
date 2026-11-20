@@ -24,8 +24,8 @@ public class CharacterReaderTests
     public void The_Relics_Fill_Their_Slots_In_Gear_Order()
     {
         var build = CharacterReader.FromCombatantInfo(JsonNode.Parse(Combatant)!.AsObject(), "player", "Rime");
-        Assert.Equal(AccursedTrophy.OrbItemId, build.Relic1ItemId);
-        Assert.Equal(UndyingHeart.OrbItemId, build.Relic2ItemId);
+        Assert.Equal(AccursedTrophy.RelicItemId, build.Relic1ItemId);
+        Assert.Equal(UndyingHeart.RelicItemId, build.Relic2ItemId);
 
         var hero = HeroImporter.Import(build);
         Assert.IsType<AccursedTrophy>(hero.Relic1);

@@ -34,7 +34,7 @@ public sealed class BuildEditorTests : IDisposable
         double gear = editor.Gem(GemColor.Topaz);
         Assert.Equal(gear, editor.SheetGem(GemColor.Topaz));
 
-        editor.Relic1 = CovetousGreed.OrbItemId;
+        editor.Relic1 = CovetousGreed.RelicItemId;
         Assert.Equal(Math.Floor(gear * CovetousGreed.GemPowerBonus), editor.SheetGem(GemColor.Topaz));
         Assert.Equal(gear, editor.Gem(GemColor.Topaz));
         Assert.Equal(gear, SimcProfile.Parse(new SimcProfile(editor.Build, "").Format()).Build.GemPower[GemColor.Topaz]);
@@ -45,12 +45,12 @@ public sealed class BuildEditorTests : IDisposable
     {
         var catalog = BuildCatalog.For("rime");
         Assert.Equal(18, catalog.Talents.Count);
-        Assert.All(catalog.Talents, t => Assert.True(t.Talent.Modeled && t.Talent.Icon != null, t.Talent.Name));
+        Assert.All(catalog.Talents, t => Assert.True(t.Talent.Modeled && t.Talent.IconUrl != null, t.Talent.Name));
         // Rime's four weapons alone, by their abilities: Voidbringer's Touch, Nature's Fury, Chronoshift, Icicles of An'zhyr.
         Assert.Equal([155, 161, 1558, 1561], catalog.Weapons.Select(w => w.Id).Order());
         Assert.Contains(catalog.Legendaries, l => l.Name == "Frostwyrm's Spite");
         Assert.Contains(catalog.Legendaries, l => l.Name == "Skandi's Decree" && l.Modeled);
-        Assert.Contains(catalog.Relics, r => r.Name == AccursedTrophy.OrbItemName && r.PassiveName == AccursedTrophy.RelicPassiveName);
+        Assert.Contains(catalog.Relics, r => r.Name == AccursedTrophy.RelicItemName && r.PassiveName == AccursedTrophy.RelicPassiveName);
         Assert.All(catalog.Glyphs, g => Assert.Equal(4, g.MaxRank));
         Assert.NotNull(BuildCatalog.PortraitUrl("Rime"));
     }
@@ -61,8 +61,8 @@ public sealed class BuildEditorTests : IDisposable
         foreach (string hero in Catalog.Heroes.Keys)
         {
             var catalog = BuildCatalog.For(hero);
-            Assert.All(catalog.Talents, t => Assert.True(t.Talent.Icon != null, $"{hero}: {t.Talent.Name}"));
-            Assert.All(catalog.Legendaries, l => Assert.True(l.Icon != null, $"{hero}: {l.Name}"));
+            Assert.All(catalog.Talents, t => Assert.True(t.Talent.IconUrl != null, $"{hero}: {t.Talent.Name}"));
+            Assert.All(catalog.Legendaries, l => Assert.True(l.IconUrl != null, $"{hero}: {l.Name}"));
         }
     }
 
@@ -90,7 +90,7 @@ public sealed class BuildEditorTests : IDisposable
             var legendaries = BuildCatalog.For(hero).Legendaries;
             // Head, chest, legs.
             Assert.Equal([5899, 5898, 5900], legendaries.Select(l => l.Id));
-            Assert.All(legendaries, l => Assert.Equal(GameIcons.LegendaryItems[$"{hero}:{l.Id}"], l.Icon));
+            Assert.All(legendaries, l => Assert.Equal(GameIcons.LegendaryItems[$"{hero}:{l.Id}"], l.IconUrl));
         }
         Assert.Contains(BuildCatalog.For("Ardeos").Legendaries, l => l.Name == "Fire Toad" && l.Modeled);
         Assert.Contains(BuildCatalog.For("Gunde").Legendaries, l => l.Name == "Carrion Onslaught" && l.Modeled);
@@ -110,18 +110,17 @@ public sealed class BuildEditorTests : IDisposable
     }
 
     /// <summary>
-    /// A legendary worn on any of its items shows as picked: Lil Angst's Vexira's Venom is item 5900 (mfcJd8T6Mvw4zQqB fight
-    /// 37), its option; a build saved with the old wrist item 5225 shows the same option.
+    /// A legendary worn on its item shows as picked: Lil Angst's Vexira's Venom is item 5900 (mfcJd8T6Mvw4zQqB fight 37), its
+    /// option.
     /// </summary>
     [Fact]
-    public void A_Legendary_On_Any_Of_Its_Items_Is_Its_Option()
+    public void A_Legendary_On_Its_Item_Is_Its_Option()
     {
         var catalog = BuildCatalog.For("Mara");
         var vexiras = Assert.Single(catalog.Legendaries, l => l.Name == "Vexira's Venom");
 
         Assert.Equal(5900, vexiras.Id);
         Assert.Equal(vexiras.Id, catalog.LegendaryOption(5900));
-        Assert.Equal(vexiras.Id, catalog.LegendaryOption(5225));
         Assert.Null(catalog.LegendaryOption(null));
         Assert.Null(catalog.LegendaryOption(1));
     }

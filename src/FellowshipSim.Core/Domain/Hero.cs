@@ -176,6 +176,12 @@ public abstract class Hero : Actor
     public abstract MainStat MainStat { get; }
 
     /// <summary>
+    /// The hero's weapons from the game data: each weapon item's name by the ability its weapon power grants (the generated
+    /// <c>HeroWeapons</c>).
+    /// </summary>
+    public virtual IReadOnlyDictionary<int, string> WeaponNames { get; } = new Dictionary<int, string>();
+
+    /// <summary>
     /// Auras built at runtime (from a rank or a gem node) rather than declared as <c>public static readonly AuraDef</c>
     /// constants; see <see cref="Register"/>.
     /// </summary>
@@ -734,12 +740,19 @@ public abstract class Hero : Actor
     /// <summary>Outgoing damage multiplier from auras ("DamageScale").</summary>
     public double DamageScale(SimTime now) => Auras.Fold(StatType.DamageScale, 1.0, now);
 
-    public double DamageMultiplierAgainst(EnemyTarget? target, SimTime now)
+    /// <summary>
+    /// The hero's damage multiplier against <paramref name="target"/>: <see cref="TargetDamageMultipliers"/>, then the target's
+    /// auras' <see cref="StatType.IncomingDamageMultiplier"/> unless <paramref name="incoming"/> is false. A hit of an
+    /// effect whose calculation preset has <c>ApplyTargetIncomingDamageHealingMultipliers</c> off takes none of the target's
+    /// (presets Empty, FlatTrue and FlatDamageHealingScaling of DT_EffectCalculationPresets, build 26320967).
+    /// </summary>
+    public double DamageMultiplierAgainst(EnemyTarget? target, SimTime now, bool incoming = true)
     {
         double mult = 1.0;
         if (target != null)
         {
             foreach (var m in TargetDamageMultipliers) mult *= m(target, now);
+            if (incoming) mult *= target.Auras.Fold(StatType.IncomingDamageMultiplier, 1.0, now);
         }
         return mult;
     }

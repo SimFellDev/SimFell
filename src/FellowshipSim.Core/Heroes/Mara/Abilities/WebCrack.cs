@@ -10,20 +10,13 @@ namespace FellowshipSim.Core.Heroes.Mara.Abilities;
 /// Combat logs (23 Mara fights, 204 casts): most casts fall close to another cast. Casts in Stealth keep it. Hidden
 /// Power gains fall on a Web Crack with no other cast of Mara's nearby
 /// (pWmcV42K39GHTLQX fight 23 @ 586.597 and 876.178, T2qLPpmMkrAtJ9B1 fight 18 @ 147.822 and 813.535).
+/// The cooldown has one charge. Cooldown Reduction shortens it at the cast, Cooldown Recovery sets its rate, and Haste
+/// leaves it unchanged. Combat logs (23 Mara fights): the shortest gaps (v8rhNxVc3PwDqzBA fight 4 @ 440.448,
+/// GXFz3pZ94aQr2chV fight 3 @ 156.206) sit on the cooldown reduced by Emerald and Ultimatum and sped by Strand of Eternity,
+/// the factor of <see cref="ShadowWard.AbilityCooldown"/>.
 /// </summary>
-public class WebCrack : MaraAbility
+public partial class WebCrack : MaraAbility
 {
-    public const int AbilityId = 1128;
-    public const string AbilityName = "Web Crack";
-
-    /// <summary>
-    /// Game data ability 1128, cooldown row, one charge. Cooldown Reduction
-    /// shortens it at the cast, Cooldown Recovery sets its rate, and Haste leaves it unchanged. Combat logs (23 Mara fights):
-    /// the shortest gaps (v8rhNxVc3PwDqzBA fight 4 @ 440.448, GXFz3pZ94aQr2chV fight 3 @ 156.206) sit on the cooldown
-    /// reduced by Emerald and Ultimatum and sped by Strand of Eternity, the factor of <see cref="ShadowWard.CooldownSeconds"/>.
-    /// </summary>
-    public const double CooldownSeconds = 24.0;
-
     public const int StunEffectId = 1583;
 
     /// <summary>
@@ -34,9 +27,9 @@ public class WebCrack : MaraAbility
 
     public static readonly AuraDef Stun = AuraDef.Effect(AbilityName, StunEffectId, StunSeconds);
 
-    public WebCrack(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Control)
+    public WebCrack(Mara owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         IgnoresGcd = true;
     }
 

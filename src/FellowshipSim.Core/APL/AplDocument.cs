@@ -7,8 +7,12 @@ namespace FellowshipSim.Core.APL;
 /// One action of an action list as the visual editor holds it: expressions are text, and <see cref="Comment"/> is the
 /// '#' lines above the action. <see cref="List"/> is the list the action belongs to. <see cref="ActionList"/> is the list
 /// a <c>run_action_list</c> or <c>call_action_list</c> action names. <see cref="Variable"/> is the variable a
-/// <c>variable</c> action changes. <see cref="UseOffGcd"/> and <see cref="UseWhileCasting"/> are an ability actions
-/// <c>use_off_gcd=1</c> and <c>use_while_casting=1</c>. <see cref="Arguments"/> holds the other arguments ("line_cd=5").
+/// <c>variable</c> action changes. <see cref="TargetSelection"/> and <see cref="TargetExpression"/> are the
+/// <c>target_if</c> of an ability action's cast or of a <c>switch_target</c> action (<see cref="AplSwitchTarget"/>).
+/// <see cref="UseOffGcd"/> and <see cref="UseWhileCasting"/> are an ability actions
+/// <c>use_off_gcd=1</c> and <c>use_while_casting=1</c>. <see cref="InterruptIf"/> is an ability action's <c>interrupt_if</c>
+/// condition as text, and <see cref="InterruptImmediate"/> its <c>interrupt_immediate=1</c>. <see cref="Arguments"/> holds
+/// the other arguments ("line_cd=5").
 /// </summary>
 public sealed record AplDocumentAction(
     string Ability,
@@ -21,7 +25,9 @@ public sealed record AplDocumentAction(
     string? ActionList = null,
     AplDocumentVariable? Variable = null,
     bool UseOffGcd = false,
-    bool UseWhileCasting = false);
+    bool UseWhileCasting = false,
+    string? InterruptIf = null,
+    bool InterruptImmediate = false);
 
 /// <summary>
 /// The variable a <c>variable</c> action changes, as the visual editor holds it: its name, its op, its value as text
@@ -55,10 +61,12 @@ public static class AplDocument
         var syntax = AplParser.ParseActionSyntax(line);
         bool listAction = AplListActions.Parse(syntax.Name) != null;
         bool variableAction = syntax.Name == AplVariable.ActionName;
+        // The switches are an ability action's: any other action keeps them among its other arguments.
+        bool abilityAction = !listAction && !variableAction && syntax.Name != AplSwitchTarget.ActionName;
         var arguments = syntax.Arguments
             .Where(a => !(listAction && a.Key.Equals(AplActionLine.ListNameKey, StringComparison.OrdinalIgnoreCase)))
             .Where(a => !(variableAction && VariableKeys.Contains(a.Key)))
-            .Where(a => listAction || variableAction || !FlagKeys.Contains(a.Key))
+            .Where(a => !abilityAction || !AbilityKeys.Contains(a.Key))
             .ToList();
         return new AplDocumentAction(
             syntax.Name,
@@ -70,12 +78,17 @@ public static class AplDocument
             arguments.Count > 0 ? string.Join(",", arguments) : null,
             listAction ? syntax.ListName : null,
             variableAction ? VariableOf(syntax) : null,
-            !listAction && !variableAction && syntax.Flag(AplActionLine.UseOffGcdKey),
-            !listAction && !variableAction && syntax.Flag(AplActionLine.UseWhileCastingKey));
+            abilityAction && syntax.Flag(AplActionLine.UseOffGcdKey),
+            abilityAction && syntax.Flag(AplActionLine.UseWhileCastingKey),
+            abilityAction && syntax.Argument(AplActionLine.InterruptIfKey) is { } interruptIf
+                ? AplFormatter.Format(interruptIf, AplOperatorStyle.Words) : null,
+            abilityAction && syntax.Flag(AplActionLine.InterruptImmediateKey));
     }
 
-    // The arguments of an ability action the editor holds as switches.
-    private static readonly HashSet<string> FlagKeys = new([AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey], StringComparer.OrdinalIgnoreCase);
+    // The arguments of an ability action the editor holds as switches and fields of their own.
+    private static readonly HashSet<string> AbilityKeys = new(
+        [AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey, AplActionLine.InterruptIfKey, AplActionLine.InterruptImmediateKey],
+        StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> VariableKeys = new([AplVariable.NameKey, AplVariable.ValueKey, AplVariable.OpKey, AplVariable.DefaultKey],
         StringComparer.OrdinalIgnoreCase);
@@ -154,7 +167,9 @@ public static class AplDocument
             if (!IsName(ability)) errors.Add(new AplDocumentError(i, "ability", "Pick an ability."));
             var condition = ParseField(i, "condition", action.Condition, errors);
             var targetExpression = ParseField(i, "targetExpression", action.TargetExpression, errors);
-            if (action.TargetSelection != null && targetExpression == null && string.IsNullOrWhiteSpace(action.TargetExpression))
+            // A switch_target has a target selection, written or not: its target is the pick.
+            if ((action.TargetSelection != null || ability == AplSwitchTarget.ActionName) && targetExpression == null
+                && string.IsNullOrWhiteSpace(action.TargetExpression))
             {
                 errors.Add(new AplDocumentError(i, "targetExpression", "Enter an expression for target selection."));
             }
@@ -178,10 +193,15 @@ public static class AplDocument
                     errors.Add(new AplDocumentError(i, "actionList", "Pick an action list with at least one action."));
                 }
             }
-            else
+            else if (ability != AplSwitchTarget.ActionName)
             {
                 if (action.UseOffGcd) arguments.Add(new AplArgument(AplActionLine.UseOffGcdKey, new Expressions.ConstantExpression(1)));
                 if (action.UseWhileCasting) arguments.Add(new AplArgument(AplActionLine.UseWhileCastingKey, new Expressions.ConstantExpression(1)));
+                if (ParseField(i, "interruptIf", action.InterruptIf, errors) is { } interruptIf)
+                {
+                    arguments.Add(new AplArgument(AplActionLine.InterruptIfKey, interruptIf));
+                    if (action.InterruptImmediate) arguments.Add(new AplArgument(AplActionLine.InterruptImmediateKey, new Expressions.ConstantExpression(1)));
+                }
             }
 
             var lines = blocks[list];

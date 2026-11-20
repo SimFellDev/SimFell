@@ -8,13 +8,9 @@ namespace FellowshipSim.Core.Heroes.Gunde.Talents;
 /// as physical damage to nearby enemies (damage is reduced beyond a target threshold)." A sim picks up every feather anyway; the
 /// explosion comes with every Owed in Blood gain. UNVERIFIED: no combat log has this talent.
 /// </summary>
-public class RavensPrecision : Talent
+public partial class RavensPrecision : Talent
 {
-    public const int TalentId = 760;
-    public const string TalentName = "Raven's Precision";
     public const int DamageEffectId = 3220;
-    public const double Coefficient = 0.374;
-    public const double TargetThreshold = 5;
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -30,13 +26,13 @@ public class RavensPrecision : Talent
         };
     }
 
-    /// <summary>The explosion's damage: a share of Strength (<see cref="Coefficient"/>), logged under effect 3220, falling off beyond <see cref="TargetThreshold"/> targets.</summary>
+    /// <summary>The explosion's damage: a share of Strength (<see cref="Constants.DotTransferTalentExplosionOnPickupStrengthCoefficient"/>), logged under effect 3220, falling off beyond <see cref="Constants.DotTransferTalentExplosionOnPickupTargetThresholdScaling"/> targets.</summary>
     private sealed class Explosion : Ability
     {
         public Explosion(Gunde owner) : base(owner, LogIds.Effect(DamageEffectId), TalentName)
         {
-            BaseCoefficient = Coefficient;
-            AoeTargetThreshold = TargetThreshold;
+            BaseCoefficient = Constants.DotTransferTalentExplosionOnPickupStrengthCoefficient;
+            AoeTargetThreshold = Constants.DotTransferTalentExplosionOnPickupTargetThresholdScaling;
         }
 
         public override void Execute(SimulationContext ctx, EnemyTarget target) { }

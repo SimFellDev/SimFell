@@ -56,7 +56,7 @@
     private string OutcomeClass => Step.Outcome switch
     {
         AplStepOutcome.Cast => "cast",
-        AplStepOutcome.ListEntered or AplStepOutcome.VariableSet => "passed",
+        AplStepOutcome.ListEntered or AplStepOutcome.VariableSet or AplStepOutcome.TargetSwitched => "passed",
         _ => "skipped",
     };
 }

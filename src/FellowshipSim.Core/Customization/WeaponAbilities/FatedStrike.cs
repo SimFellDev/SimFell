@@ -8,27 +8,22 @@ namespace FellowshipSim.Core.Customization.WeaponAbilities;
 /// the strike's travel; the hits land shortly after the cast), the cleave hits are logged as 160 too, and each
 /// cleave hit on 26 other enemies is a fraction of the hit on the target, as the coefficients and the falloff give.
 /// </summary>
-public class FatedStrike : Ability
+public partial class FatedStrike : Ability
 {
-    public const int AbilityId = 160;
-    public const string AbilityName = "Fated Strike";
+    /// <summary>Game data: tuning <c>PrimaryAttributeCoefficient</c> of weapon power 354.</summary>
     public const double Coefficient = 7.39;
+    /// <summary>Game data: tuning <c>Cleave.PrimaryAttributeCoefficient</c> of weapon power 354.</summary>
     public const double CleaveCoefficient = 2.874;
-    public const double CooldownSeconds = 60.0;
-    public const double CleaveTargetThreshold = 3;
     public const int GloriousPurposeEffectId = 80;
-    public const double GloriousPurposeSeconds = 6.0;
-    /// <summary>Effect 80: CooldownRecovery Multiplicitive.</summary>
-    public const double GloriousPurposeRecovery = 3.0;
 
     /// <summary>Glorious Purpose: increased Cooldown Acceleration (the hero's other abilities; a weapon ability has its own).</summary>
-    public static readonly AuraDef GloriousPurpose = AuraDef.Effect("Glorious Purpose", GloriousPurposeEffectId, GloriousPurposeSeconds,
-        modifiers: StatModifier.Increased(StatType.CooldownRecovery, GloriousPurposeRecovery));
+    public static readonly AuraDef GloriousPurpose = AuraDef.Effect("Glorious Purpose", GloriousPurposeEffectId, Constants.BuffDuration,
+        modifiers: StatModifier.Increased(StatType.CooldownRecovery, Constants.BuffCooldownRecoveryMultiplier));
 
-    public FatedStrike(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Weapon)
+    public FatedStrike(Hero owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
     }
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
@@ -36,7 +31,7 @@ public class FatedStrike : Ability
         TriggerCooldown(ctx);
         DealDamage(ctx, target);
         var nearby = ctx.Outcomes.SelectTargets(DamageLogId, ctx.ActiveEnemiesExcept(target), ctx);
-        double falloff = nearby.Count > CleaveTargetThreshold ? Math.Sqrt(CleaveTargetThreshold / nearby.Count) : 1.0;
+        double falloff = nearby.Count > Constants.CleaveDamageFalloffTargetCountThreshold ? Math.Sqrt((double)Constants.CleaveDamageFalloffTargetCountThreshold / nearby.Count) : 1.0;
         for (int i = 0; i < nearby.Count; i++) DealDamage(ctx, nearby[i], damageMultiplier: CleaveCoefficient / Coefficient * falloff);
         Owner.Auras.Apply(GloriousPurpose, ctx.CurrentTime);
     }

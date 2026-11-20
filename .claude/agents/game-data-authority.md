@@ -35,7 +35,7 @@ SendMessage is a deferred tool: ToolSearch `select:SendMessage` loads it before 
 - The worktree's `CLAUDE.md`.
 - The worktree's `.claude/skills/datamining-fellowship/SKILL.md`: the rungs for this build, and the binary addresses
   decoded so far.
-- The `extracting-fellowship-data` and `datamining-unreal-builds` skills (Skill tool).
+- The `extracting-fellowship-data` skill (Skill tool).
 
 ## Rungs
 

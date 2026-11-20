@@ -9,6 +9,10 @@ public abstract class Weapon
     /// <summary>The weapon ability's game ID.</summary>
     public abstract int WeaponAbilityId { get; }
     public abstract string Name { get; }
+
+    /// <summary>The weapon ability's icon URL from the game data (the generated <c>WeaponPowerAbilityIcon</c>), or null.</summary>
+    public virtual string? Icon => null;
+
     public virtual Ability? Ability { get; protected set; }
 
     public virtual void Equip(Hero hero)

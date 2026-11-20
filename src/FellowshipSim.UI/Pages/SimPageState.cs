@@ -166,6 +166,8 @@ public sealed class SimPageState
         var keys = sim.SettingKeys;
         var settings = sim.Settings;
         if (keys.Contains(SimProfile.Iterations)) Iterations = settings.Iterations;
+        // A profile's iterations with no target error are a sim of every iteration: the profile has no target_error line at 0.
+        if (keys.Contains(SimProfile.TargetError) || keys.Contains(SimProfile.Iterations)) TargetError = settings.TargetError;
         if (keys.Contains(SimProfile.Threads))
         {
             Threads = Math.Clamp(settings.DegreeOfParallelism!.Value, 1, SimThreads.Available);
@@ -219,6 +221,26 @@ public sealed class SimPageState
     public SimMode Mode { get; set; } = SimMode.TrainingDummies;
 
     public int Iterations { get; set; } = SimProfile.DefaultIterations;
+
+    /// <summary>
+    /// The margin of error of the mean DPS at 95% confidence, in percent of the mean, at which a sim ends; 0 for a sim of
+    /// every iteration. With a target error, <see cref="Iterations"/> is the most fights.
+    /// </summary>
+    public double TargetError { get; set; }
+
+    /// <summary>
+    /// Sets <see cref="TargetError"/> from the page. A sim at the default iterations that gains a target error has
+    /// <see cref="SimProfile.DefaultTargetErrorIterations"/> most fights, as SimulationCraft's, and one that loses it has
+    /// the default iterations again.
+    /// </summary>
+    public void SetTargetError(double targetError)
+    {
+        if (TargetError <= 0 && targetError > 0 && Iterations == SimProfile.DefaultIterations)
+            Iterations = SimProfile.DefaultTargetErrorIterations;
+        else if (TargetError > 0 && targetError <= 0 && Iterations == SimProfile.DefaultTargetErrorIterations)
+            Iterations = SimProfile.DefaultIterations;
+        TargetError = targetError;
+    }
 
     /// <summary>The seed of a sim's first fight; fight i has this seed + i.</summary>
     public int FirstSeed { get; set; } = 1;
@@ -286,7 +308,8 @@ public sealed class SimPageState
         Boss: Boss,
         Dungeon: Mode == SimMode.Dungeon ? Dungeon : null,
         ReactionDelays: ReactionDelays,
-        ProcReactionSeconds: ProcReactionMilliseconds / 1000);
+        ProcReactionSeconds: ProcReactionMilliseconds / 1000,
+        TargetError: TargetError);
 
     public SimExtra Extra { get; set; } = SimExtra.None;
 

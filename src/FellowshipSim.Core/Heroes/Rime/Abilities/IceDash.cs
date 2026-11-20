@@ -5,16 +5,11 @@ namespace FellowshipSim.Core.Heroes.Rime.Abilities;
 /// through cooldown recovery (game data). No damage. The game data gives it a short channel; combat logs show only a
 /// cast event for it (no channel events), and it stops no channel.
 /// </summary>
-public class IceDash : RimeAbility
+public partial class IceDash : RimeAbility
 {
-    public const int AbilityId = 1024;
-    public const string AbilityName = "Ice Dash";
-    public const double CooldownSeconds = 25.0;
-    public const int Charges = 2;
-
-    public IceDash(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Movement)
+    public IceDash(Rime owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds, Charges);
+        SetCooldown(AbilityCooldown, AbilityCharges);
         IgnoresGcd = true;
     }
 

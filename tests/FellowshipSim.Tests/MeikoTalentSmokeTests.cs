@@ -84,9 +84,9 @@ public class MeikoTalentSmokeTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(TectonicImpact.TunicItemId, "more:damage:Earthfist Barrage")]
-    [InlineData(EarthenSkin.HelmItemId, "more:damage:Wind Kick")]
-    [InlineData(EverlastingSpirit.LeggingsItemId, "damage:Everlasting Spirit")]
+    [InlineData(TectonicImpact.ChestItemId, "more:damage:Earthfist Barrage")]
+    [InlineData(EarthenSkin.HeadItemId, "more:damage:Wind Kick")]
+    [InlineData(EverlastingSpirit.LegsItemId, "damage:Everlasting Spirit")]
     public void Legendary_Is_Modeled_And_Takes_Effect(int itemId, string evidence)
     {
         var (result, hero, gained) = Run(BaseTalents, 3, legendaryItemId: itemId);

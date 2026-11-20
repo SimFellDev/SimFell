@@ -85,16 +85,20 @@ public class MonteCarloSeedTests
     /// proc-per-minute roll again once RealPpm had the game's drought factor and first-proc floor. Ardeos's again once Searing
     /// Blaze kept part of its time left on a recast, Slow Burn gave its full half second and a cap, Intensifying Inferno
     /// counted each effect and Devouring Flame multiplied per Engulfing Flames. Tariq's again once health came from BaseHealth, Stamina and the max health auras (Ruby Storm).
+    /// Ardeos's again once Devouring Flame's bonus per Engulfing Flames came from the game data's damage multiplier less one.
+    /// Gunde's again once Rend, Bloodbound Spirit's share, Owed in Blood, Massacre and Sundered Flesh followed the Blueprints
+    /// of build 26320967. On the merge of main into the engine update (game data from the Codex), the rows are unchanged:
+    /// Ardeos's and Tariq's are the engine update's, Gunde's and Mara's main's.
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 2929444.08752369, 3077995.7808620073, 2829134.0571837318, 3705848.5280579049 })]
     [InlineData("Rime", 300, 1, new[] { 7807802.8056133138, 8531419.3838742785, 8084639.1539794672, 7908492.7942486135 })]
     [InlineData("Ardeos", 120, 3, new[] { 3416176.3452053526, 3513888.2134329369, 3159070.0166639746, 3238265.2998513975 })]
     [InlineData("Ardeos", 300, 1, new[] { 4969978.3232260561, 4912988.5024501747, 4687323.675213783, 4858429.3177604256 })]
-    [InlineData("Gunde", 120, 3, new[] { 4748197.3158851741, 4295319.6169056566, 4262391.2107238909, 4470118.3590960605 })]
-    [InlineData("Gunde", 300, 1, new[] { 7249581.1534622693, 7814233.1795717087, 7659215.0033817766, 7371523.7896765638 })]
-    [InlineData("Mara", 120, 3, new[] { 2560953.2346197013, 2353016.7117702793, 2897776.7017053822, 2866602.873777526 })]
-    [InlineData("Mara", 300, 1, new[] { 7895879.749682934, 6001428.5453476505, 7463940.1662859339, 7588414.1623460148 })]
+    [InlineData("Gunde", 120, 3, new[] { 4966785.2199725062, 4042900.5563242291, 5244039.8739750683, 4464852.1742762392 })]
+    [InlineData("Gunde", 300, 1, new[] { 7547800.405773351, 7639589.7083554454, 7569387.3057658253, 8274723.3283263426 })]
+    [InlineData("Mara", 120, 3, new[] { 3013945.0748772146, 2649045.3937545605, 2878172.6517641111, 2862110.1611054321 })]
+    [InlineData("Mara", 300, 1, new[] { 7022510.0781305619, 6709173.7301557567, 6977017.0757674472, 7662633.1300925035 })]
     [InlineData("Tariq", 120, 3, new[] { 1975056.465988361, 1770988.7557543414, 2311390.7997524641, 2173045.6661721431 })]
     [InlineData("Tariq", 300, 1, new[] { 3437695.7313061529, 3708298.4520335575, 3263678.2554253116, 3721164.205084838 })]
     public void Each_Seed_Gives_Its_Pinned_Totals(string hero, int seconds, int targets, double[] totals)

@@ -303,7 +303,7 @@
                     var piece = Editor.Piece(slot);
                     <div @key="slot" class="gear-slot @(item != null ? "worn" : "")">
                         <img class="slot-icon @(item == null ? "empty" : item.Legendary ? "legendary" : "")" alt="" width="40" height="40"
-                             src="@(item != null ? GameIcons.Url(item.Icon) : GearPicker.EmptyIconUrl(slot))" />
+                             src="@(item != null ? item.Icon : GearPicker.EmptyIconUrl(slot))" />
                         <span class="slot-label">@GearSlots.Label(slot)</span>
                         <button type="button" class="slot-button" aria-haspopup="dialog" aria-label="@($"{GearSlots.Label(slot)}: {item?.Name ?? "empty"}")"
                                 @onclick="() => _pickerSlot = slot">

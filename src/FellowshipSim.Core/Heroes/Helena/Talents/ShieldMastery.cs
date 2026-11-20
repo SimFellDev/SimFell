@@ -4,10 +4,8 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// Talent 208: "The cooldown of your Shields Up and Shield Throw abilities are reduced relative to the amount of damage you
 /// mitigate with Toughness."
 /// </summary>
-public class ShieldMastery : Talent
+public partial class ShieldMastery : Talent
 {
-    public const int TalentId = 208;
-    public const string TalentName = "Shield Mastery";
 
     public override string Name => TalentName;
     public override int Id => TalentId;

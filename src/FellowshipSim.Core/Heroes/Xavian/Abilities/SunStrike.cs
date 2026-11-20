@@ -5,19 +5,8 @@ namespace FellowshipSim.Core.Heroes.Xavian.Abilities;
 /// of the power. Sun Strike applies Sunstruck to your main target for 30 seconds, stacking up to 10 times. ... Sun Strike
 /// has a 15% chance to grant you 1 stack of Swift Reprieval."
 /// </summary>
-public class SunStrike : XavianAbility
+public partial class SunStrike : XavianAbility
 {
-    public const int AbilityId = 1845;
-    public const string AbilityName = "Sun Strike";
-    /// <summary>Placeholder SunstrikeDmg: 147% of Strength.</summary>
-    public const double Coefficient = 1.47;
-    /// <summary>Tooltip: enemies near the target take 15% of the power.</summary>
-    public const double SplashFraction = 0.15;
-    /// <summary>Game data targetCountFalloff: effect 2547 (Sun Strike), threshold 3.</summary>
-    public const double SplashTargetThreshold = 3;
-
-    /// <summary>Game data generates Resources 1, chance 0.15 (GA_Sune_SingleTargetFillerMelee @1649).</summary>
-    public const double SwiftReprievalChance = 0.15;
     public const string ProcKey = "sun_strike_swift_reprieval";
 
     /// <summary>Effect 2664: 30 seconds, up to 10 stacks.</summary>
@@ -34,9 +23,9 @@ public class SunStrike : XavianAbility
     /// </summary>
     public event Action<SimulationContext, EnemyTarget>? Striking;
 
-    public SunStrike(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Basic)
+    public SunStrike(Xavian owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
+        BaseCoefficient = Constants.DamageStrengthCoefficient;
         Hit += (in DamageContext hit) =>
         {
             if (hit.IsCrit && ExtraSunstruckOnCrit > 0 && hit.Target is { } struck && struck == _mainTarget)
@@ -61,10 +50,10 @@ public class SunStrike : XavianAbility
         // 20; 0.15 x sqrt(3/N) is 0.130, 0.082 and 0.058). The main target shares the damage ID, so the splash leaves it out.
         var struck = ctx.Outcomes.SelectTargets(DamageLogId, ctx.ActiveEnemiesExcept(target), ctx);
         var nearby = struck.Contains(target) ? struck.Where(e => e != target).ToList() : struck;
-        DealToEach(ctx, nearby, SplashTargetThreshold, SplashFraction);
+        DealToEach(ctx, nearby, Constants.CleaveTargetCountThreshold, Constants.CleaveDamageScaler);
         target.Auras.Apply(Sunstruck, ctx.CurrentTime, stacks: 1);
         Owner.TriggerHarmfulEffectApplied(ctx, target);
-        if (ctx.Outcomes.RollProc(ProcKey, SwiftReprievalChance, ctx)) Xavian.GrantSwiftReprieval(ctx);
+        if (ctx.Outcomes.RollProc(ProcKey, Constants.ResourceProcChance, ctx)) Xavian.GrantSwiftReprieval(ctx);
         Xavian.RaiseOffensiveAbilityUsed(ctx, this);
     }
 }

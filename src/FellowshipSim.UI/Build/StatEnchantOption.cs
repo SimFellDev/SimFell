@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Customization.StatEnchants;
+using FellowshipSim.Core.Import;
 
 namespace FellowshipSim.UI.Build;
 
@@ -6,7 +7,7 @@ namespace FellowshipSim.UI.Build;
 public sealed record StatEnchantOption(StatEnchant Enchant, string Name)
 {
     /// <summary>The icon's image on the game data CDN, or null when the game data has none.</summary>
-    public string? IconUrl => GameIcons.StatEnchants.TryGetValue(Enchant.Id, out var icon) ? GameIcons.Url(icon) : null;
+    public string? IconUrl => GameIcons.StatEnchants.GetValueOrDefault(Enchant.Id);
 
     /// <summary>"Crit + Expertise".</summary>
     public string StatsText => $"{StatName(Enchant.FirstRating)} + {StatName(Enchant.SecondRating)}";

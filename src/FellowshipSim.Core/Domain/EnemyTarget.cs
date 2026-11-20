@@ -36,6 +36,9 @@ public class EnemyTarget : Actor
     /// <summary>True for a priority target of a trash pull.</summary>
     public bool IsPriority { get; set; }
 
+    /// <summary>True for a training dummy (the game's <c>ActorTypeTags.TrainingDummy</c>).</summary>
+    public bool IsTrainingDummy { get; set; }
+
     /// <summary>
     /// From now on the health falls with <paramref name="ctx"/>'s time, from full at <paramref name="start"/> to none at
     /// <paramref name="end"/>.
@@ -96,6 +99,46 @@ public class EnemyTarget : Actor
             _nextCast = c.Schedule(cooldown, Begin, cast.Ability);
         }
         _nextCast = ctx.Schedule(cooldown, Begin, cast.Ability);
+    }
+
+    /// <summary>
+    /// The enemy begins casting <paramref name="ability"/> now, <paramref name="seconds"/> long. At its end
+    /// <paramref name="completed"/> runs, unless the cast stopped first.
+    /// </summary>
+    public void BeginCast(SimulationContext ctx, string ability, double seconds, Action<SimulationContext>? completed = null)
+    {
+        StopCast();
+        CastAbility = ability;
+        CastStart = ctx.CurrentTime;
+        CastEnd = ctx.CurrentTime + SimTime.FromSeconds(seconds);
+        CastChanged?.Invoke(ctx, this);
+        _castEnd = ctx.ScheduleAt(CastEnd, c =>
+        {
+            _castEnd = null;
+            CastAbility = null;
+            CastChanged?.Invoke(c, this);
+            completed?.Invoke(c);
+        }, ability);
+    }
+
+    /// <summary>Raised as the enemy begins a cast of <see cref="BeginCast"/> and as the cast ends, completed or stopped.</summary>
+    public event Action<SimulationContext, EnemyTarget>? CastChanged;
+
+    /// <summary>Raised as the hero interrupts the enemy's cast (<see cref="SimulationContext.Interrupt"/>).</summary>
+    public event Action<SimulationContext, EnemyTarget>? Interrupted;
+
+    /// <summary>Another party member stops the enemy's cast now. Returns false when it was not casting.</summary>
+    public bool StopCastByParty(SimulationContext ctx)
+    {
+        if (!StopCast()) return false;
+        CastChanged?.Invoke(ctx, this);
+        return true;
+    }
+
+    internal void RaiseInterrupted(SimulationContext ctx)
+    {
+        CastChanged?.Invoke(ctx, this);
+        Interrupted?.Invoke(ctx, this);
     }
 
     /// <summary>Ends the enemy's cast now with no effect. Returns false when it was not casting.</summary>

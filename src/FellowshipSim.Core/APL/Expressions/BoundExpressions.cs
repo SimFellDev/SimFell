@@ -91,6 +91,13 @@ public abstract class BoundExpression
                 var ability = AplNames.FindAbility(hero, p.Name!);
                 var read = PropertyExpression.ActionProperty(p.Property!);
                 return new BoundNamed(hero, (_, ctx) => read(ability, ctx.CurrentTime));
+            case PropertyExpression.ChannelScope:
+                var channeled = AplNames.FindAbility(hero, p.Name!);
+                if (channeled == null) return new BoundConstant(0.0);
+                return p.Property == PropertyExpression.ChannelTicksProperty ? new BoundChannelTicks(hero, channeled)
+                    : p.Property is PropertyExpression.ChannelSecondsProperty or PropertyExpression.ChannelPercentProperty
+                        ? new BoundChannelTime(hero, channeled, percent: p.Property == PropertyExpression.ChannelPercentProperty)
+                        : new BoundConstant(0.0);
             case PropertyExpression.PrevScope:
                 return AplNames.FindAbility(hero, p.Name!) is { } previous ? new BoundPrevious(previous) : new BoundConstant(0.0);
             case PropertyExpression.PrevGcdScope:
@@ -376,6 +383,44 @@ internal sealed class BoundCastRemains : BoundNumeric
     internal override TimeCurve Curve(SimulationContext ctx) =>
         IsLevel(ctx) ? TimeCurve.Constant(0.0) : TimeCurve.Line(EvaluateNumeric(ctx), -0.001);
     internal override double NumericAt(SimulationContext ctx, SimTime time) => PropertyExpression.CastRemains(ctx, time);
+}
+
+/// <summary>
+/// The ticks of <paramref name="ability"/>'s running channel (<c>channel.&lt;ability&gt;.ticks</c>); 0 while it does not run. A
+/// tick is an event.
+/// </summary>
+internal sealed class BoundChannelTicks(Hero hero, Ability ability) : BoundEventValue
+{
+    public override double EvaluateNumeric(SimulationContext ctx) =>
+        PropertyExpression.ChannelOf(hero, ability) is { } channel ? channel.Ticks.TicksFired : 0.0;
+}
+
+/// <summary>
+/// The seconds since <paramref name="ability"/>'s running channel started (<c>after_sec</c>), or the part of its duration
+/// gone in percent (<c>after_pct</c>), rising with time to the channel's end, where an event ends it; 0 while it does not
+/// run.
+/// </summary>
+internal sealed class BoundChannelTime(Hero hero, Ability ability, bool percent) : BoundNumeric
+{
+    public override double EvaluateNumeric(SimulationContext ctx) => NumericAt(ctx, ctx.CurrentTime);
+
+    internal override SimTime Until(SimulationContext ctx) =>
+        PropertyExpression.ChannelOf(hero, ability) is { } channel ? channel.Ticks.End : SimTime.Infinite;
+
+    internal override bool IsLevel(SimulationContext ctx) => PropertyExpression.ChannelOf(hero, ability) == null;
+
+    internal override TimeCurve Curve(SimulationContext ctx)
+    {
+        if (PropertyExpression.ChannelOf(hero, ability) is not { } channel) return TimeCurve.Constant(0.0);
+        double perMillisecond = percent ? 100.0 / (channel.Ticks.End - channel.Ticks.Start).Milliseconds : 0.001;
+        return TimeCurve.Line(EvaluateNumeric(ctx), perMillisecond);
+    }
+
+    internal override double NumericAt(SimulationContext ctx, SimTime time)
+    {
+        if (PropertyExpression.ChannelOf(hero, ability) is not { } channel) return 0.0;
+        return percent ? PropertyExpression.ChannelPercent(channel, time) : (time - channel.Ticks.Start).TotalSeconds;
+    }
 }
 
 /// <summary>The variables of one bound program, by name.</summary>

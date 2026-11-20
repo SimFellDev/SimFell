@@ -10,17 +10,11 @@ namespace FellowshipSim.Core.Heroes.Meiko.Talents;
 /// .InstantSelfDefensive.NumOfStacks 25. Combat logs (7Zmfx9gq6HjvThzc fight 2 @ 38.902): the Palm finisher removes the
 /// buff.
 /// </summary>
-public class WardenOfTheTemple : Talent
+public partial class WardenOfTheTemple : Talent
 {
-    public const int TalentId = 102;
-    public const string TalentName = "Warden of the Temple";
     public const int BuffEffectId = 2447;
-    public const int StacksForActivation = 3;
-    public const double DoublePalmStrikeMultiplier = 4.0;
-    public const int SerenityStacks = 25;
-    public const double SpiritedVortexMultiplier = 1.5;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, maxStacks: StacksForActivation);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, maxStacks: Constants.ConsumedBuffsToDefensiveBuffMaxStacksForActivation);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -31,16 +25,16 @@ public class WardenOfTheTemple : Talent
         meiko.ChargeConsumed += (ctx, _) => hero.Auras.Apply(Buff, ctx.CurrentTime);
         hero.OnCastResolving += cast =>
         {
-            if (cast.Ability is not (DoublePalmStrike or SpiritedVortex) || hero.Auras.GetStacks(Buff, cast.Time) < StacksForActivation) return;
+            if (cast.Ability is not (DoublePalmStrike or SpiritedVortex) || hero.Auras.GetStacks(Buff, cast.Time) < Constants.ConsumedBuffsToDefensiveBuffMaxStacksForActivation) return;
             hero.Auras.Remove(Buff, cast.Time);
             if (cast.Ability is DoublePalmStrike)
             {
-                cast.DamageMultiplier *= DoublePalmStrikeMultiplier;
-                hero.Auras.Apply(Serenity.Stacks, cast.Time, SerenityStacks);
+                cast.DamageMultiplier *= Constants.TalentConsumedBuffsToDefensiveBuffMeleeDamageImmediateSelfBuffDamageMultiplier;
+                hero.Auras.Apply(Serenity.Stacks, cast.Time, Constants.NumOfStacks);
             }
             else
             {
-                cast.DamageMultiplier *= SpiritedVortexMultiplier;
+                cast.DamageMultiplier *= Constants.TalentConsumedBuffsToDefensiveBuffDurationalAoeDamageBuffDamageMultiplier;
             }
         };
     }

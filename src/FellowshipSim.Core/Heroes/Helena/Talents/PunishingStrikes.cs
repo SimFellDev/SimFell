@@ -8,18 +8,12 @@ namespace FellowshipSim.Core.Heroes.Helena.Talents;
 /// A block is a defensive proc: a replay fires it at each gain of the buff in the log. UNVERIFIED: no log has
 /// the talent.
 /// </summary>
-public class PunishingStrikes : Talent
+public partial class PunishingStrikes : Talent
 {
-    public const int TalentId = 644;
-    public const string TalentName = "Punishing Strikes";
     public const int BuffEffectId = 3095;
-    public const int StacksPerProc = 2;
-    public const double BlockChance = 0.06;
-    public const double MeasuredStrikeDamage = 2.0;
-    public const double VeteranOfWarMultiplier = 2.0;
     public const string ProcKey = "punishing_strikes";
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, maxStacks: StacksPerProc);
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, maxStacks: Constants.MaxStacks);
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -27,15 +21,15 @@ public class PunishingStrikes : Talent
     public override void Bind(Hero hero)
     {
         if (hero is not Helena helena) return;
-        hero.AddDefensiveProc(ProcKey, (ctx, _) => hero.Auras.Apply(Buff, ctx.CurrentTime, setStacks: StacksPerProc));
+        hero.AddDefensiveProc(ProcKey, (ctx, _) => hero.Auras.Apply(Buff, ctx.CurrentTime, setStacks: Constants.StacksAtProc));
         bool empowered = false;
         hero.OnCastResolving += cast =>
         {
             empowered = cast.Ability is MeasuredStrike && hero.Auras.HasAura(Buff, cast.Time);
             if (!empowered) return;
             hero.Auras.ConsumeStack(Buff, cast.Time);
-            cast.DamageMultiplier *= MeasuredStrikeDamage;
+            cast.DamageMultiplier *= Constants.DamageMultiplier;
         };
-        helena.VeteranOfWarMultipliers.Add((_, source) => source is MeasuredStrike && empowered ? VeteranOfWarMultiplier : 1.0);
+        helena.VeteranOfWarMultipliers.Add((_, source) => source is MeasuredStrike && empowered ? Constants.CooldownReducementMultiplier : 1.0);
     }
 }

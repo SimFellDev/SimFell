@@ -144,11 +144,12 @@ public class AplEditorTests
     public void Cooldown_Reads_The_Ability_By_Its_Action_List_Name()
     {
         var (hero, ctx) = Fight(100);
+        // Game data: Cold Snap (ability 1020) has 2 charges.
         var charges = AplParser.ParseExpression("cooldown.cold_snap.charges");
-        Assert.Equal(ColdSnap.Charges, charges.EvaluateNumeric(hero, ctx));
+        Assert.Equal(2, charges.EvaluateNumeric(hero, ctx));
         Assert.True(AplParser.ParseActionLine("cold_snap")!.Execute(hero, ctx));
         ctx.RunUntil(SimTime.FromSeconds(1));
-        Assert.Equal(ColdSnap.Charges - 1, charges.EvaluateNumeric(hero, ctx));
+        Assert.Equal(1, charges.EvaluateNumeric(hero, ctx));
         Assert.True(AplParser.ParseExpression("cooldown.cold_snap.ready").Evaluate(hero, ctx));
     }
 

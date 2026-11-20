@@ -1,1 +1,4 @@
 * text=auto
+*.sh text eol=lf
+# The Codex generators write \n line endings, so a checkout has the bytes they write (tools/check-codex-generated.sh).
+src/FellowshipSim.Core/Generated/** text eol=lf

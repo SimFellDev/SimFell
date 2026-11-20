@@ -8,22 +8,15 @@ namespace FellowshipSim.Core.Heroes.Xavian.Talents;
 /// maximum, Sune.Talent.ParryCounterAttack.ManaGain), logged as effect 2651. A Parry triggers both, so they are defensive
 /// procs: a replay fires the counter-attack at each logged Counter-Attack and a stack at each stack the log gains.
 /// </summary>
-public class VanguardOfVengeance : Talent
+public partial class VanguardOfVengeance : Talent
 {
-    public const int TalentId = 580;
-    public const string TalentName = "Vanguard of Vengeance";
     public const int BuffEffectId = 2652;
-    public const double BuffSeconds = 20.0;
-    public const int MaxStacks = 20;
-    public const double SpiritPerStack = 0.005;
     public const int CounterAttackEffectId = 2651;
-    public const double CounterAttackCoefficient = 0.93;
-    public const double CounterAttackManaShare = 0.005;
     public const string CounterAttackProcKey = "counter_attack";
     public const string StackProcKey = "vanguard_of_vengeance_parry";
 
-    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, BuffSeconds, MaxStacks,
-        StatModifier.Add(StatType.Spirit, SpiritPerStack));
+    public static readonly AuraDef Buff = AuraDef.Effect(TalentName, BuffEffectId, Constants.BuffDuration, Constants.BuffStackCap,
+        StatModifier.Add(StatType.Spirit, Constants.BuffAdditionalSpiritPerStack));
 
     public override string Name => TalentName;
     public override int Id => TalentId;
@@ -37,7 +30,7 @@ public class VanguardOfVengeance : Talent
         {
             if (enemy is not { IsSleeping: false }) return;
             counter.DealDamage(ctx, enemy);
-            xavian.GainMana(Xavian.MaxMana * CounterAttackManaShare, ctx, enemy);
+            xavian.GainMana(Xavian.HeroMaxMana * Constants.ManaGain, ctx, enemy);
         });
     }
 
@@ -46,7 +39,7 @@ public class VanguardOfVengeance : Talent
     {
         public CounterAttack(Xavian owner) : base(owner, LogIds.Effect(CounterAttackEffectId), "Counter-Attack")
         {
-            BaseCoefficient = CounterAttackCoefficient;
+            BaseCoefficient = Constants.DamageStrengthCoefficient;
         }
 
         public override void Execute(SimulationContext ctx, EnemyTarget target) { }

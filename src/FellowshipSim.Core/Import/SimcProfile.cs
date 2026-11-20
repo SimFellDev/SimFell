@@ -44,7 +44,8 @@ namespace FellowshipSim.Core.Import;
 /// Lines starting with '#' are comments. <c>actions</c> lines are the profile's action list, with the comments directly
 /// above them, and the comments right after an <c>actions</c> line that end at a blank line or at the end of the text. A
 /// gear slot's line (<see cref="GearSlots.Key"/>) names the item worn there, its ID and its tempers; a relic or weapon
-/// line with an <c>id</c> and <c>tempers</c> is its slot's item too (a weapon line's name is its weapon's). <c>source</c>
+/// line with an <c>id</c> and <c>tempers</c> is its slot's item too. A weapon line's <c>id</c> is the hero's weapon item,
+/// and its weapon is that item's; a weapon line without an <c>id</c> takes its weapon from its name. <c>source</c>
 /// is the FellowshipLogs link of a build read from a log (<see cref="CharacterBuild.LogSource"/>).
 /// </summary>
 public sealed record SimcProfile(CharacterBuild Build, string ActionList)
@@ -245,11 +246,23 @@ public sealed record SimcProfile(CharacterBuild Build, string ActionList)
             }
             case "weapon":
             {
-                // A weapon the engine does not model is named by its ability.
-                string weapon = Options(value)[""];
-                build.WeaponAbilityId = Catalog.AllWeapons.FirstOrDefault(w => AplNames.Slug(w.Name) == weapon)?.WeaponAbilityId
-                                        ?? GameHeroData.WeaponAbilityNames.Where(w => AplNames.Slug(w.Value) == weapon).Select(w => (int?)w.Key).FirstOrDefault()
-                                        ?? throw new FormatException($"no weapon '{weapon}'");
+                // The item ID names the weapon and its name is ignored. A line without an ID names the weapon, or a weapon
+                // the engine does not model by its ability.
+                var options = Options(value);
+                if (options.TryGetValue("id", out string? id))
+                {
+                    int itemId = (int)Number(id);
+                    var item = GearItem.Find(build.Hero, itemId) ?? throw new FormatException($"{build.Hero} has no item {itemId}");
+                    if (item.Kind != GearKind.Weapon) throw new FormatException($"item {itemId} is a {item.Kind.ToString().ToLowerInvariant()}, not a weapon");
+                    build.WeaponAbilityId = item.WeaponAbilityId;
+                }
+                else
+                {
+                    string weapon = options[""];
+                    build.WeaponAbilityId = Catalog.AllWeapons.FirstOrDefault(w => AplNames.Slug(w.Name) == weapon)?.WeaponAbilityId
+                                            ?? GameHeroData.WeaponAbilityNames.Where(w => AplNames.Slug(w.Value) == weapon).Select(w => (int?)w.Key).FirstOrDefault()
+                                            ?? throw new FormatException($"no weapon '{weapon}'");
+                }
                 AddWornWithTempers(build, GearSlot.Weapon, value);
                 break;
             }

@@ -13,14 +13,16 @@ public sealed record CliOptions(string ProfilePath, IReadOnlyList<string> Lines,
 {
     /// <summary>
     /// The sim of <paramref name="profileText"/> with <see cref="Lines"/> at its end. Iterations and a training dummy
-    /// fight's length that neither sets are <see cref="DefaultSettings"/>'.
+    /// fight's length that neither sets are <see cref="DefaultSettings"/>', and a sim to a target error with no iterations
+    /// has <see cref="SimProfile.DefaultTargetErrorIterations"/> as its most fights.
     /// </summary>
     /// <exception cref="FormatException">The profile does not parse.</exception>
     public SimProfile Read(string profileText)
     {
         var sim = SimProfile.Parse(string.Join('\n', [profileText, .. Lines]));
         var settings = sim.Settings;
-        if (!sim.SettingKeys.Contains(SimProfile.Iterations)) settings = settings with { Iterations = DefaultSettings.Iterations };
+        // A sim to a target error with no iterations has the profile's most fights.
+        if (!sim.SettingKeys.Contains(SimProfile.Iterations) && settings.TargetError <= 0) settings = settings with { Iterations = DefaultSettings.Iterations };
         if (!sim.SettingKeys.Contains(SimProfile.Duration) && settings.Dungeon == null) settings = settings with { DurationSeconds = DefaultSettings.DurationSeconds };
         return sim with { Settings = settings };
     }
@@ -40,7 +42,9 @@ public sealed record CliOptions(string ProfilePath, IReadOnlyList<string> Lines,
 
         Options:
           --profile <file>      Profile to simulate (required). A relative path is relative to the current directory.
-          --iterations <n>      Fights (default {DefaultSettings.Iterations}).
+          --iterations <n>      Fights (default {DefaultSettings.Iterations}). With --target-error, the most fights (default {SimProfile.DefaultTargetErrorIterations:N0}).
+          --target-error <pct>  Ends the sim once the margin of error of the mean DPS at 95% confidence is below this
+                                percent of the mean, checked from {DpsMoments.TargetErrorMinimumFights} fights on (default 0: every iteration).
           --duration <seconds>  Length of each fight of training dummies (default {DefaultSettings.DurationSeconds.ToString(CultureInfo.InvariantCulture)}).
           --dungeon <name|file> Fights of a dungeon: a built-in one ({string.Join(", ", DefaultDungeons.Names)}) or a dungeon .simc file.
                                 Its pulls set the enemies, and its time limit the longest fight. Without it, the fights are training dummies.
@@ -79,6 +83,7 @@ public sealed record CliOptions(string ProfilePath, IReadOnlyList<string> Lines,
             {
                 case "--profile": profile = value; break;
                 case "--iterations": lines.Add(Line(SimProfile.Iterations, Integer(name, value, min: 1))); break;
+                case "--target-error": lines.Add(Line(SimProfile.TargetError, Percent(name, value))); break;
                 case "--duration": lines.Add(Line(SimProfile.Duration, Seconds(name, value))); break;
                 case "--dungeon": lines.Add(Dungeon(value).Format()); break;
                 case "--targets": lines.Add(Line(SimProfile.Targets, Integer(name, value, min: 1))); break;
@@ -136,6 +141,11 @@ public sealed record CliOptions(string ProfilePath, IReadOnlyList<string> Lines,
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double ms) && ms >= 0 && double.IsFinite(ms)
             ? ms
             : throw new CliUsageException($"{name} is a number of milliseconds of at least 0, not '{value}'.");
+
+    private static double Percent(string name, string value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double p) && p >= 0 && double.IsFinite(p)
+            ? p
+            : throw new CliUsageException($"{name} is a percent of at least 0, not '{value}'.");
 
     private static double Seconds(string name, string value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double s) && s > 0 && double.IsFinite(s)

@@ -1,9 +1,9 @@
 namespace FellowshipSim.Core.Import;
 
 /// <summary>
-/// The heroes a build can be made for: every hero of the game (<see cref="GameHeroData"/>). A hero the engine has
-/// (<see cref="Catalog.Heroes"/>) is its own class; one it does not have yet is a <see cref="BuildOnlyHero"/>, to edit,
-/// save and share but not to simulate.
+/// The heroes a build can be made for: every hero of the game. A hero the engine has (<see cref="Catalog.Heroes"/>) is its
+/// own class; one it does not have yet (<see cref="GameHeroData"/>) is a <see cref="BuildOnlyHero"/>, to edit, save and
+/// share but not to simulate.
 /// </summary>
 public static class BuildHeroes
 {
@@ -19,7 +19,7 @@ public static class BuildHeroes
 
     /// <summary>The hero's class, or its <see cref="BuildOnlyHero"/>; throws as <see cref="Catalog.CreateHero"/> for no hero of the game.</summary>
     public static Hero Create(string hero) => IsBuildOnly(hero)
-        ? new BuildOnlyHero(GameHeroData.TalentTrees[hero], GameHeroData.MainStats[hero])
+        ? new BuildOnlyHero(GameHeroData.TalentTrees[hero], GameHeroData.MainStats[hero], GameHeroData.Weapons[hero])
         : Catalog.CreateHero(hero);
 
     /// <summary>

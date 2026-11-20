@@ -10,6 +10,7 @@ using FellowshipSim.Core.Customization.Sigils;
 using FellowshipSim.Core.Customization.StatEnchants;
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Core.Dungeons.Affixes;
 using FellowshipSim.Core.Import;
 using FellowshipSim.Engine;
 
@@ -100,7 +101,14 @@ public static partial class SimcProfileEdits
     {
         partial = PartBefore().Match(value).Value;
         if (SimProfile.BoolSettingNames.Contains(key) || key == StatsFromOldProfile) return Words(Bools);
-        if (key == SimProfile.Dungeon) return Words([.. DefaultDungeons.Names, .. GameDungeons.All.Select(d => d.Name)]);
+        if (key == SimProfile.Dungeon) return Words([.. DefaultDungeons.Names, .. GameDungeon.All.Where(d => d.Name.Length > 0 && d.Placements.Count > 0).Select(d => d.Name)]);
+        if (key == DungeonProfile.AffixesKey)
+        {
+            // The affixes are in ','s, each once.
+            string entry = partial;
+            var listed = value.Split(',').Select(a => a.Trim()).ToHashSet();
+            return Words([.. DungeonAffix.All.Select(a => a.Key).Where(k => k == entry || !listed.Contains(k))]);
+        }
 
         if (NamesOf(key, file.ProfileHero) is { } named)
         {

@@ -1,8 +1,9 @@
 // Packages the extension: `npm run package -- [<target>|all] [--version <x.y.z>]` (win32-x64 when no target is given;
 // package.json's version when none is given). Each target's language server is published self-contained for its runtime
-// into server/, so the extension needs no .NET install and no network.
+// into server/, so the extension needs no .NET install and no network. Each package has the repository's LICENSE as
+// LICENSE.txt.
 import { execFileSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { copyFileSync, rmSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 const runtimes = {
@@ -23,6 +24,7 @@ for (const target of targets) {
 const run = (command, args) => execFileSync(command, args, { stdio: "inherit", shell: process.platform === "win32" });
 run("dotnet", ["run", "--project", "../FellowshipSim.LanguageServer", "-c", "Release", "--", "--contributes", "package.json", "../FellowshipSim.UI/wwwroot/css"]);
 run("npm", ["run", "build"]);
+copyFileSync("../../LICENSE", "LICENSE.txt");
 for (const target of targets) {
   rmSync("server", { recursive: true, force: true });
   run("dotnet", ["publish", "../FellowshipSim.LanguageServer", "-c", "Release", "-r", runtimes[target], "--self-contained",

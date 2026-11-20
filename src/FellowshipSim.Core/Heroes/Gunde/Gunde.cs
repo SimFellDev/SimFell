@@ -8,16 +8,8 @@ namespace FellowshipSim.Core.Heroes.Gunde;
 /// Splitter's Exsanguinate and Slaughter turn the Rend into damage of their own. Gunde has no resource of his own:
 /// combat logs report none for him. Abilities live in Abilities/, talents in Talents/.
 /// </summary>
-public sealed class Gunde : Hero
+public sealed partial class Gunde : Hero
 {
-    /// <summary>Class tuning: hero attribute balancingDamageAura (game data heroes record, gunde.startingStats): no class tuning.</summary>
-    public const double BalancingDamageAura = 1.0;
-
-    /// <summary>Health before Stamina (game data, Gunde baseAttributes BaseHealth).</summary>
-    public const double BaseHealth = 1767;
-    /// <summary>Health per point of Stamina (game data, Gunde baseAttributes StaminaToMaxHealthMultiplier).</summary>
-    public const double StaminaToMaxHealthMultiplier = 53.812;
-
     /// <summary>
     /// Spirit Refund (hero 9's Spirit text): "whenever you use an ability that applies Rend, causing Blood Feathers to be
     /// created on the ground near you", Rising Spirit, and a Spirit Point (game data ability 1522).
@@ -56,8 +48,7 @@ public sealed class Gunde : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Game data hero 9: mainStat Strength.</summary>
-    public override MainStat MainStat => MainStat.Strength;
+    public override MainStat MainStat => HeroMainStat;
 
     /// <summary>Every enemy's Rend.</summary>
     public Rend Rend { get; }
@@ -79,13 +70,19 @@ public sealed class Gunde : Hero
     /// <summary>A Blood Feather was picked up: Owed in Blood gained a stack, or refreshed at its maximum (Slayer's Grin, Raven's Precision).</summary>
     public event Action<SimulationContext>? FeatherCollected;
 
-    public Gunde() => Rend = new Rend(this);
+    public Gunde()
+    {
+        Rend = new Rend(this);
+        // Rend is outside the ability list, so its debuff is listed here with the hero's other auras. An action list reads
+        // its stacks on the target as debuff.rend.stack: the stacks of log debuff 1003231.
+        Register(Rend.Debuff);
+    }
 
     public override void Initialize()
     {
-        ClassDamageTuning = BalancingDamageAura;
-        Stats.BaseHealth = BaseHealth;
-        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
+        ClassDamageTuning = HeroBalancingDamageAura;
+        Stats.BaseHealth = HeroBaseHealth;
+        Stats.StaminaToMaxHealth = HeroStaminaToMaxHealthMultiplier;
         // Owed in Blood's stacks come from feathers Gunde walks over: a replay follows the log's stacks.
         SituationalAuras.Add(OwedInBlood.Buff);
 
@@ -140,10 +137,14 @@ public sealed class Gunde : Hero
             for (int i = 0; i < count; i++) Auras.Apply(OwedInBlood.Buff, c.CurrentTime);
         }, "Blood Feather");
 
-    /// <summary>Sundered Flesh: an enemy whose Rend holds more damage than its health takes it at once.</summary>
-    internal Action<SimulationContext, EnemyTarget>? SunderedFleshCheck { get; set; }
+    /// <summary>
+    /// Sundered Flesh: after a tick of Rend or Slaughter, an enemy with less health than the damage the bleed holds takes
+    /// its health at once.
+    /// </summary>
+    internal Action<SimulationContext, EnemyTarget, double>? SunderedFleshCheck { get; set; }
 
-    internal void CheckSunderedFlesh(SimulationContext ctx, EnemyTarget target) => SunderedFleshCheck?.Invoke(ctx, target);
+    /// <summary>Runs Sundered Flesh's check after a bleed's tick: <paramref name="held"/> is the damage the bleed still holds.</summary>
+    internal void CheckSunderedFlesh(SimulationContext ctx, EnemyTarget target, double held) => SunderedFleshCheck?.Invoke(ctx, target, held);
 
     public override void ResetForIteration()
     {

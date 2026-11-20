@@ -30,6 +30,18 @@ public class ActionListModelTests
         Assert.Equal("Set variable: name it", ActionListModel.ActionTitle(_v, EditorAction.New() with { Ability = AplVariable.ActionName }));
         Assert.Equal("Add to variable: orbs", ActionListModel.ActionTitle(_v,
             EditorAction.New() with { Ability = AplVariable.ActionName, Variable = new AplDocumentVariable("orbs", AplVariableOp.Add, "1") }));
+        Assert.Equal("Switch target", ActionListModel.ActionTitle(_v, EditorAction.New() with { Ability = AplSwitchTarget.ActionName }));
+    }
+
+    [Fact]
+    public void Document_actions_keep_a_switch_targets_selection_and_expression()
+    {
+        var action = new AplDocumentAction(AplSwitchTarget.ActionName, "active_enemies > 1", AplTargetSelection.Max, "target.health.pct");
+        var lists = ActionListModel.ListsOf(_v, [action]);
+
+        Assert.True(ActionListModel.IsSwitchTargetAction(lists[0].Actions[0]));
+        Assert.False(ActionListModel.IsListAction(_v, lists[0].Actions[0]));
+        Assert.Equal(action, Assert.Single(ActionListModel.DocumentActions(lists)));
     }
 
     [Theory]

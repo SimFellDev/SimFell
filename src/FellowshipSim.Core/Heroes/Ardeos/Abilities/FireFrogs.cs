@@ -5,12 +5,8 @@ namespace FellowshipSim.Core.Heroes.Ardeos.Abilities;
 /// dissipating. Each attack (<see cref="FireFrogAttack"/>) picks its enemy. Pyrophibian Frenzy spawns frogs of its
 /// own (<see cref="Spawn"/>); the Fire Toad legendary turns frogs into toads (<see cref="ToadChance"/>).
 /// </summary>
-public class FireFrogs : ArdeosAbility
+public partial class FireFrogs : ArdeosAbility
 {
-    public const int AbilityId = 1268;
-    public const string AbilityName = "Fire Frogs";
-    public const double CooldownSeconds = 45.0;
-    public const int BaseFrogs = 5;
     public const int BaseAttacksPerFrog = 3;
     /// <summary>
     /// Combat logs (yMAZVJL9hTpFjqbC fight 7, final boss 32.1 @ 570-715s, the only enemy): a lone frog attacks at a fixed
@@ -30,7 +26,7 @@ public class FireFrogs : ArdeosAbility
     public FireFrogAttack Attack { get; }
 
     /// <summary>Frogs a cast conjures (Frog Squad adds to it).</summary>
-    public int Frogs { get; set; } = BaseFrogs;
+    public int Frogs { get; set; } = Constants.FireFrogAbilityNumFrogs;
 
     /// <summary>Attacks each frog performs (Frog Squad adds to it).</summary>
     public int AttacksPerFrog { get; set; } = BaseAttacksPerFrog;
@@ -46,9 +42,9 @@ public class FireFrogs : ArdeosAbility
 
     private SimulationContext? _fight;
 
-    public FireFrogs(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public FireFrogs(Ardeos owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        SetCooldown(CooldownSeconds);
+        SetCooldown(AbilityCooldown);
         Attack = new FireFrogAttack(owner);
     }
 

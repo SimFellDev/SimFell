@@ -37,7 +37,7 @@ public class MaraCloneTests
     public void A_Clone_Keeps_Maiden_Of_Death_When_It_Ends_After_The_Cast()
     {
         var (cast, clones) = CloneHits<QueensFang>(QueensFang.AbilityName, _ => { },
-            hero => hero.Auras.Apply(MaidenOfDeath.Buff, SimTime.FromSeconds(CastTime - MaidenOfDeath.BuffSeconds + 0.2)));
+            hero => hero.Auras.Apply(MaidenOfDeath.Buff, SimTime.FromSeconds(CastTime - MaidenOfDeath.AbilityDuration + 0.2)));
 
         Assert.All(clones, clone => Assert.Equal(cast * MatriarchMacabre.ClonePower, clone, 6));
     }
@@ -81,7 +81,7 @@ public class MaraCloneTests
         ctx.Outcomes = outcomes;
 
         hero.Auras.Apply(MatriarchMacabre.Buff, ctx.CurrentTime);
-        ctx.RunUntil(SimTime.FromSeconds(CastTime - MaidenOfDeath.BuffSeconds + 0.2));
+        ctx.RunUntil(SimTime.FromSeconds(CastTime - MaidenOfDeath.AbilityDuration + 0.2));
         beforeCast?.Invoke(hero);
         ctx.RunUntil(SimTime.FromSeconds(CastTime));
         hero.GainComboPoints(6, ctx);

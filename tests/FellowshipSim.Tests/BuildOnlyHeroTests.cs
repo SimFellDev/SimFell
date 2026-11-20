@@ -38,18 +38,18 @@ public class BuildOnlyHeroTests
     }
 
     /// <summary>
-    /// The engine's trees are the game's, but for a talent the engine knows by its combat-log ID: Mara's Macabre Stratagem
-    /// (game data talent 8, combat logs talent 10000).
+    /// The engine's trees are the game's (each hero class's generated <c>HeroTalentTree</c>), but for a talent the engine
+    /// knows by its combat-log ID: Mara's Macabre Stratagem (game data talent 8, combat logs talent 10000).
     /// </summary>
     [Fact]
     public void The_Engines_Trees_Match_The_Game_Data()
     {
         var logIds = new Dictionary<int, int> { [8] = 10000 };
-        foreach (string hero in Catalog.Heroes.Keys)
+        foreach (var (hero, type) in Catalog.Heroes)
         {
-            var game = GameHeroData.TalentTrees[hero].Select(s => s with { TalentId = logIds.GetValueOrDefault(s.TalentId, s.TalentId) });
+            var tree = (TalentSlot[])type.GetField("HeroTalentTree")!.GetValue(null)!;
+            var game = tree.Select(s => s with { TalentId = logIds.GetValueOrDefault(s.TalentId, s.TalentId) });
             Assert.Equal(game, Catalog.CreateHero(hero).TalentTreeSlots);
-            Assert.Equal(GameHeroData.MainStats[hero], Catalog.CreateHero(hero).MainStat);
         }
     }
 

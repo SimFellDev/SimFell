@@ -5,12 +5,12 @@ namespace FellowshipSim.Core.Customization.Sigils;
 /// chance to burn the target, dealing a share of your Main Stat in fire damage to them over a
 /// duration" (the heal over time does not affect damage). Each application of a harmful effect rolls, a damage over time
 /// tick does not (the applied and refresh listeners at ability 172, InTriggerPeriodicExecutions
-/// false), on one hasted proc timer for every target (ScaleWithHaste true).
+/// false), on one hasted proc timer for every target (ScaleWithHaste true). Each tick is
+/// <see cref="Constants.DotFlatDamageValueByRank"/> x Main Stat (effect 104's DamageScale modifier), preset HeroMagicalOT (crits,
+/// Expertise).
 /// </summary>
-public class Kindling : Sigil
+public partial class Kindling : Sigil
 {
-    public const int SigilId = 28;
-    public const string SigilName = "Kindling";
     public const int DamageEffectId = 104;
     /// <summary>Effect 104 DurationMagnitude; not hasted.</summary>
     public const double DurationSeconds = 9.0;
@@ -19,14 +19,7 @@ public class Kindling : Sigil
     /// partial final tick (asset tag EffectType.Dot).
     /// </summary>
     public const double TickSeconds = 1.5;
-    /// <summary>Game data, the same at every rank.</summary>
-    public const double ProcsPerMinute = 2.1;
     public const string ProcKey = "kindling";
-    /// <summary>
-    /// Per tick, x Main Stat: effect 104's DamageScale modifier
-    /// (the tooltip's percentages are multiples of it), preset HeroMagicalOT (crits, Expertise).
-    /// </summary>
-    public static readonly double[] CoefficientByRank = [0.69, 1.26, 1.83, 2.40];
 
     public override int Id => SigilId;
     public override string Name => SigilName;
@@ -46,9 +39,9 @@ public class Kindling : Sigil
 
     public override void Bind(Hero hero)
     {
-        var dot = new KindlingDot(hero, ForRank(CoefficientByRank));
+        var dot = new KindlingDot(hero, ForRank(Constants.DotFlatDamageValueByRank));
         hero.DotDamageIds.Add(dot.DamageLogId);
-        var rppm = new RealPpm(ProcKey, ProcsPerMinute);
+        var rppm = new RealPpm(ProcKey, SigilProcsPerMinute);
         var burning = new Dictionary<EnemyTarget, Burn>();
         // The fight the burning enemies belong to (each sim iteration and replay has its own).
         SimulationContext? fight = null;

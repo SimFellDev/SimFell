@@ -9,7 +9,7 @@ namespace FellowshipSim.Core.Heroes.Rime;
 /// Rime, the Harbinger of Winter. Her abilities build Anima; Anima become Winter Orbs (<see cref="AnimaPerWinterOrb"/> each), which her spenders use.
 /// Abilities live in Abilities/, talents in Talents/ (each talent hooks the events below or the abilities' own events).
 /// </summary>
-public sealed class Rime : Hero
+public sealed partial class Rime : Hero
 {
     public const int MaxWinterOrbs = 5;
     public const double AnimaPerWinterOrb = 9.0;
@@ -25,14 +25,6 @@ public sealed class Rime : Hero
     {
         Aliases = ["worb"],
     };
-
-    /// <summary>Class tuning: hero attribute BalancingDamageAura (game data).</summary>
-    public const double BalancingDamageAura = 1.04;
-
-    /// <summary>Health before Stamina (game data, Rime baseAttributes BaseHealth).</summary>
-    public const double BaseHealth = 1711;
-    /// <summary>Health per point of Stamina (game data, Rime baseAttributes StaminaToMaxHealthMultiplier).</summary>
-    public const double StaminaToMaxHealthMultiplier = 53.101;
 
     /// <summary>Spirit Points per Spirit Refund (game data).</summary>
     public const double SpiritPointsPerRefund = 2.0;
@@ -52,8 +44,7 @@ public sealed class Rime : Hero
 
     public override IReadOnlyList<TalentSlot> TalentTreeSlots => TalentTree;
 
-    /// <summary>Game data hero 17: mainStat Intellect.</summary>
-    public override MainStat MainStat => MainStat.Intellect;
+    public override MainStat MainStat => HeroMainStat;
 
     public int WinterOrbs
     {
@@ -68,9 +59,9 @@ public sealed class Rime : Hero
         AddResource(Anima);
         AddResource(WinterOrbsResource);
         SpiritRefundResource = WinterOrbsResource;
-        ClassDamageTuning = BalancingDamageAura;
-        Stats.BaseHealth = BaseHealth;
-        Stats.StaminaToMaxHealth = StaminaToMaxHealthMultiplier;
+        ClassDamageTuning = HeroBalancingDamageAura;
+        Stats.BaseHealth = HeroBaseHealth;
+        Stats.StaminaToMaxHealth = HeroStaminaToMaxHealthMultiplier;
         SpiritPointsPerSpiritRefund = SpiritPointsPerRefund;
 
         Abilities.Add(new ColdSnap(this));

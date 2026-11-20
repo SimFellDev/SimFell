@@ -10,6 +10,9 @@ namespace FellowshipSim.Tests;
 /// <summary>Al'zerac's Shackle, Sahril's Aegis and Zeraleth's Hunger in a sim, on Rime with each weapon equipped.</summary>
 public class TankWeaponTests
 {
+    /// <summary>Game data: Al'zerac's Shackle's Freeze lasts 3 s (tuning <c>Stun.Duration</c> of weapon power 348).</summary>
+    private const double FreezeSeconds = 3.0;
+
     [Fact]
     public void Alzeracs_Shackle_Freezes_Then_Explodes_And_Slows()
     {
@@ -22,7 +25,7 @@ public class TankWeaponTests
         // 15s of Slow ticking every 2s.
         Assert.Equal(2, freeze.Count);
         var explodes = Assert.Single(explosion);
-        Assert.Equal(AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds, explodes.Time, 1);
+        Assert.Equal(AlzeracsShackle.FreezeLandSeconds + FreezeSeconds, explodes.Time, 1);
         Assert.True(freeze.All(f => f.Time <= explodes.Time));
         Assert.InRange(slow.Count, 7, 8);
         Assert.True(slow.All(s => s.Time > explodes.Time && s.Time <= explodes.Time + AlzeracsShackle.SlowSeconds + 0.1));
@@ -51,7 +54,8 @@ public class TankWeaponTests
 
         double without = SlowCritRate([]);
         double with = SlowCritRate([new BuildEntry(BraveMachinations.AspectId, 4)]);
-        Assert.InRange(with - without, BraveMachinations.CritChanceByRank[3] - 0.05, BraveMachinations.CritChanceByRank[3] + 0.05);
+        // Game data: Brave Machinations adds 32% weapon crit chance at rank 4.
+        Assert.InRange(with - without, 0.32 - 0.05, 0.32 + 0.05);
     }
 
     [Fact]
@@ -59,7 +63,8 @@ public class TankWeaponTests
     {
         var hits = Hits(SahrilsAegis.AbilityId, "sahrils_aegis", seconds: 30);
         var explodes = Assert.Single(hits, h => h.Id == SahrilsAegis.AbilityId);
-        Assert.Equal(SahrilsAegis.ShieldSeconds, explodes.Time, 1);
+        // Game data: the shield lasts 18 s.
+        Assert.Equal(18, explodes.Time, 1);
         Assert.True(explodes.Amount > 0);
     }
 
@@ -68,7 +73,8 @@ public class TankWeaponTests
     {
         var hits = Hits(ZeralethsHunger.AbilityId, "zeraleths_hunger", seconds: 10);
         var ticks = hits.Where(h => h.Id == ZeralethsHunger.AbilityId).ToList();
-        Assert.Equal((int)(ZeralethsHunger.ChannelSeconds / ZeralethsHunger.TickPeriodSeconds), ticks.Count);
+        // Game data: a 3 s channel ticking every 0.5 s.
+        Assert.Equal(6, ticks.Count);
         Assert.All(ticks, t => Assert.True(t.Amount > 0));
     }
 
@@ -78,7 +84,7 @@ public class TankWeaponTests
     public void Shackles_Slow_Ticks_On_An_Enemy_That_Dies_And_Stops_On_One_That_Leaves_Combat_Alive(bool dies)
     {
         // The enemy leaves combat 5s into its Slow.
-        double left = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 5.0;
+        double left = AlzeracsShackle.FreezeLandSeconds + FreezeSeconds + 5.0;
         var ticks = ShackleTicks(AlzeracsShackle.SlowEffectId, left, dies);
 
         Assert.Contains(ticks, t => t < left);
@@ -109,7 +115,7 @@ public class TankWeaponTests
         int slowId = LogIds.Effect(AlzeracsShackle.SlowEffectId);
         int beamId = LogIds.Effect(DiamondStrike.DamageEffectId);
         // The enemy dies 1s into its Slow.
-        double died = AlzeracsShackle.FreezeLandSeconds + AlzeracsShackle.FreezeSeconds + 1.0;
+        double died = AlzeracsShackle.FreezeLandSeconds + FreezeSeconds + 1.0;
         int ticksAfterDeath = 0, beamsBeforeDeath = 0, beamsAfterDeath = 0;
         for (int seed = 1; seed <= 100; seed++)
         {

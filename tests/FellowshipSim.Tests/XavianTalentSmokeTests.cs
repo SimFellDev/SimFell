@@ -83,9 +83,9 @@ public class XavianTalentSmokeTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(SolarGlare.BreastplateItemId, "debuff:Blinding Horizon")]
-    [InlineData(GrosslyIncandescent.HelmItemId, "aura:Grossly Incandescent")]
-    [InlineData(FortressInTheSands.GreavesItemId, "dps")]
+    [InlineData(SolarGlare.ChestItemId, "debuff:Blinding Horizon")]
+    [InlineData(GrosslyIncandescent.HeadItemId, "aura:Grossly Incandescent")]
+    [InlineData(FortressInTheSands.LegsItemId, "dps")]
     public void Legendary_Is_Modeled_And_Takes_Effect(int itemId, string evidence)
     {
         var (result, hero, gained) = Run(BaseTalents, 3, legendaryItemId: itemId);

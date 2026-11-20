@@ -3,13 +3,18 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 SimFell is a combat simulator for *Fellowship* (.NET 10, C# preview language version). It checks itself against
-FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara, Tariq, Elarion, Xavian, Meiko and Helena. `README.md` has setup and use. `docs/ADDING_A_HERO.md` has the engine
+FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara, Tariq, Elarion, Xavian, Meiko and Helena. `docs/DEVELOPMENT.md` has setup, `docs/SIMULATING.md` and `docs/ACTION_LISTS.md` have use, and `CONTRIBUTING.md` and `AI_POLICY.md` have the rules of a contribution. `docs/ADDING_A_HERO.md` has the engine
 layout, the hook tables and the conventions for heroes, abilities, talents and gear. Read it before adding or changing
 game content.
 
 ## Commands
 
 ```
+# the Codex generators' files again, from the Codex's data export in codex-export/ (git-ignored): after a new datamine, a
+# generator change, or a new or renamed partial class they write a half of. Then commit src/FellowshipSim.Core/Generated/Codex
+tools/download-codex-export.sh
+tools/regenerate-codex.sh
+
 # the solution (the desktop app needs the maui workload)
 dotnet build -c Release
 
@@ -30,9 +35,6 @@ dotnet test -c Release
 
 # one test class or method
 dotnet test tests/FellowshipSim.Tests -c Release --filter "FullyQualifiedName~AplParserTests"
-
-# every hero's gear items and their stats from the Codex into Core/Import/GameGearData.cs (after a new datamine)
-dotnet run tools/generate-gear.cs
 
 # one hero's current-patch fights from FellowshipLogs into data/fights (credentials from the environment or the simfell user secrets)
 dotnet run tools/fetch-fights.cs -- --hero Rime --count 15
@@ -117,7 +119,7 @@ or the desktop app).
   hosting FellowshipSim.UI, with `LocalSimEngine` in-process and the data folder in local application data. Review
   pages come from a WebView2 virtual host on Windows and a URL scheme handler on Mac Catalyst.
 - **FellowshipSim.Web** is the browser app: Blazor WebAssembly hosting FellowshipSim.UI as a static site (published to
-  simfelldev.github.io by the Deploy web app workflow), its one visitor `Visitor.DataFolderOwner`. `WorkerSimEngine` runs
+  simfelldev.github.io by the Release workflow's web app job), its one visitor `Visitor.DataFolderOwner`. `WorkerSimEngine` runs
   sims and replays on web workers (`wwwroot/sim/`), each a .NET runtime of its own calling `SimWorker`'s `[JSExport]`
   methods: a sim's chunks (`SimChunks`, `MonteCarloSimulator.RunChunk`) spread over them and combine to the same result
   as `LocalSimEngine`'s. A replay downloads its fight and replays it on a worker (`WorkerFightReviewer`, the
@@ -140,9 +142,66 @@ or the desktop app).
   them).
 - **FellowshipSim.Logs** is the FellowshipLogs client and the data folder's fights and reviews. It has no reference to
   the engine.
-- `FellowshipSim.Core`'s build keeps the Codex's data export in `codex-export/` (git-ignored) at the Codex's game build.
-  `FellowshipSim.Codex.Generators` writes each creature's `<Name>GameCreature` class and `GameDungeons`, each dungeon's
-  creature placements, from it.
+- Every Codex generated class is committed in `src/FellowshipSim.Core/Generated/Codex/<generator>/` (`Ability/`,
+  `Talent/`...), and `FellowshipSim.Core`'s build compiles it, so a build needs no export: read a class's game data half
+  there. `tools/regenerate-codex.sh` runs the generators over the Codex's data export in `codex-export/` (git-ignored, from
+  `tools/download-codex-export.sh`; a build with `RegenerateCodex=true`) and writes the folder again with
+  `codex-export.sha256`, the export's hash. CI regenerates from that export and fails when the folder changes
+  (`tools/check-codex-generated.sh`), and gives a warning for a newer export. Tests check game data values as numbers, never
+  as generated constants. A record's tuning values are in its class's nested `Constants`, each named after its tuning
+  key's segments in Pascal case (`Constants.MaxCharges`, `Constants.EnergyGainProcAgilityCoefficient`). A key's first
+  segment naming the record's own hero is dropped, and one naming another hero is that hero's name (`Firemage` is
+  `Ardeos`); `HeroSegments` has the internal names from the heroes' portraits. A hand-written member with a generated
+  field's name or `Constants` is a build error (CODEX009 and the like), and so is a hand-written constant with a
+  `Constants` member's name (CODEX039). `FellowshipSim.Codex.Generators` writes each creature's `<Name>GameCreature` class from it. Its `DungeonGenerator`
+  writes a `partial` `<Name>GameDungeon` class for each dungeon record, with or without a hand-written half for the
+  dungeon's mechanics: `DungeonId`, `DungeonName`, the record's fields as `Dungeon<Field>` (`DungeonLevelType`,
+  `DungeonQualifierTime`, `DungeonDifficulties`...), the tuning values, `DungeonPlacements` with each creature by its
+  `<Name>GameCreature` class's `ID` and a factory `() => new <Name>GameCreature()`, and the `GameDungeon` overrides. `GameDungeon.All` and `GameDungeon.ById` have every
+  dungeon. Its `LegendaryGenerator` writes the game data's half of each `partial` legendary class
+  named after a legendary power: `PowerId`, the item IDs, the tuning values and the `Legendary` overrides. `Catalog` reads
+  a legendary's hero and items from an instance. Its `AbilityGenerator` writes the game data's half of each `partial`
+  ability class in `Heroes/<Hero>` named after an ability record of that hero: `AbilityId`, `AbilityName`, the record's
+  fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...) and the tuning values. A
+  class with `[Ability(<id>)]` has the record of that ID. A record with `replaces`, `subcastOf` or `triggeredBy` has
+  that ability's class as its base class, and its half has `AbilityId` and the values that differ from the base
+  ability's (`StealthBackstab`). Its `TalentGenerator` writes the game data's half of each `partial` talent class in `Heroes/<Hero>` named after a talent
+  of that hero's talent slots: `TalentId`, `TalentName`, the record's fields as `Talent<Field>` (`TalentCooldown`,
+  `TalentDuration`, `TalentRadius`...) and the tuning values. `Catalog` reads a talent's ID from an instance. Its
+  `AugmentationGenerator` writes the game data's half of each `partial` aspect, sigil and protective enchant class named
+  after a record of its type: `<Type>Id`, `<Type>Name`, the record's fields as `<Type><Field>` (`SigilMaxRank`,
+  `AspectProcsPerMinute`, `ProtectiveEnchantDuration`...), the tuning values, and each rank run as a `double[]` named
+  after its key and `ByRank`. `Catalog` reads an augmentation's ID from an instance. Its `GlyphGenerator` writes the game
+  data's half of each `partial` glyph class named after a glyph record: `GlyphId`, `GlyphName`, `GlyphMaxRank`,
+  `GlyphAbilityRank` and the tuning values, each a constant when it is the same at every rank and otherwise a `double[]`
+  named after its key and `ByRank`. `Catalog` reads a glyph's ID and name from an instance. Its `WeaponGenerator` writes the
+  game data's half of each `partial` weapon ability class in `Customization/WeaponAbilities` named after a weapon power:
+  `WeaponPowerId`, `WeaponPowerName`, `AbilityId` and `AbilityName` of the ability the power grants under its name, that
+  ability's fields as `Ability<Field>`, and the power's tuning values. It writes `WeaponPowerId`, `WeaponPowerName` and
+  `WeaponPowerAbilityId` for each `partial` weapon class named after a weapon power or an item granting one. `Catalog`
+  reads a weapon's `WeaponAbilityId` from an instance. Its `RelicPassiveGenerator` writes the game data's half of each
+  `partial` relic passive class named after a relic passive record: `RelicPassiveId`, `RelicPassiveName`, the record's
+  fields as `RelicPassive<Field>` (`RelicPassiveCooldown`, `RelicPassiveProcsPerMinute`), the tuning values, each
+  granting item's `RelicItemId` and `RelicItemName`, and `RelicPassiveItems`. `Catalog` reads a relic passive's ID and
+  items from an instance. Its `DungeonAffixGenerator` writes the game data's half of each `partial` dungeon affix class
+  in `Dungeons/Affixes` named after a dungeon affix record: `AffixId`, `AffixName`, `AffixAbilityId`, the cast and
+  cooldowns of the affix creature's abilities (`DetonateCastTime`, `DetonateInterruptCooldown`...), each effect's
+  `<Effect>EffectId`, duration, stacks and modifiers, and the abilities' tuning values. A dungeon's `affixes=` names the
+  affixes a dungeon fight runs (`AffixRun`). Its `HeroGenerator` writes the game data's half of each `partial` hero class in `Heroes/<Hero>`
+  named after a hero record: `HeroId`, `HeroName`, the record's fields as `Hero<Field>` (`HeroTitle`, `HeroMainStat`,
+  `HeroRole`...), its base attributes as `Hero<Attribute>` (`HeroBalancingDamageAura`, `HeroMaxResources`,
+  `HeroMaxMana`...), the tuning values the hero owns, `HeroTalentTree` and `HeroWeapons`. Every icon and texture field
+  is its texture's full size image URL (`https://cdn.codex.fellowshipanalyzer.com/ui/<name>_full.webp`): `AbilityIcon`,
+  `TalentIcon`, `<Type>Icon`, `GlyphIcon`, a legendary's `PowerIcon` and `<Slot>ItemIcon`, a weapon's `WeaponPowerIcon`
+  and `WeaponPowerAbilityIcon`, `RelicPassiveIcon` and each `RelicItem`'s `Icon`, `HeroPortrait`, `HeroRoleIcon`,
+  `DungeonIcon` and `DungeonBackground`. `Talent`, `Augmentation`, `Glyph`, `Legendary` and `Weapon` have their icon in
+  `Icon`. Its `ItemGenerator` writes `GameGearData`: each hero's gear items with their stats untempered at the drop item
+  level, their most tempers, the Stamina a temper adds, their dungeons, weapon ability and icon URL, and each gear kind's
+  empty slot icon. `GameIcons` and `GameHeroData` (`Core/Import`) have the icon URLs and hero data of the records with no
+  class (talents, weapon abilities, legendary powers, relic items, and the main stats, talent trees and weapons of the
+  heroes), and the tables over every record from `GameIconGenerator`, `LegendaryGenerator` and `WeaponGenerator`:
+  abilities and effects (a sim report's damage sources and auras), icons by name, gems, stat enchants, portraits,
+  legendary items, weapon heroes and names, and highest ranks.
 - Each component has its styles in `X.razor.css` beside `X.razor`. `wwwroot/css/app.css` in FellowshipSim.UI has
   colours, fonts and element defaults; `wwwroot/css/design-system.css` has classes several components share.
 
@@ -166,3 +225,20 @@ and for the web app `visitors/` and `keys/` (the visitor cookie keys).
   flagged as old patch on import and in the reviews, and still runs. When a patch changes a mechanic, the engine takes
   the new one and drops the old: no code, values or name conversions for earlier patches. A new patch moves
   `GamePatch.Current`.
+
+## Remotes and pull requests
+
+- `origin` is the fork, `Seriousnes/SimFell`. `upstream` is `SimFellDev/SimFell`, and `gh` defaults to it. Pass
+  `--repo` on every `gh` call, because one PR number names a different PR in each repository.
+- An upstream PR: `git push origin <branch>`, then
+  `gh pr create --repo SimFellDev/SimFell --base main --head Seriousnes:<branch> --body-file <file>`.
+- The fork's `main` can lag `upstream/main`, so a fork PR can list commits from outside its branch. Before writing
+  a PR body, run `git fetch origin` and `git fetch upstream`, then read `git log <remote>/main..HEAD` for the PR's own
+  base. The body covers the branch's subject alone. Tell the user about any unrelated commits the PR lists.
+
+## Running things locally
+
+- Benchmarks and long parallel sims run at 1, 2, 4 and 8 cores. An all-core 100,000-iteration run locked up this
+  machine and crashed the terminal.
+- When the user is running `dotnet watch`, save edits and leave building and testing to the user.
+- `FellowshipSim.AppHost` and `FellowshipSim.Service` hold their `bin` folders while they run (MSB3021, MSB3027).

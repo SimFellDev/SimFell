@@ -9,13 +9,15 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 /// Rend still to deal: with the Rend already dealt in it, Exsanguinate comes out above the logs (Y4wpb2f3gc8LqJDX
 /// fight 25, 1375 hits), without it much nearer. It neither crits nor takes damage multipliers.
 /// </summary>
-public class HeartSplitter : GundeAbility
+public partial class HeartSplitter : GundeAbility
 {
-    public const int AbilityId = 2294;
-    public const string AbilityName = "Heart Splitter";
-    public const double Coefficient = 4.7;
-    public const double CooldownSeconds = 12.0;
     public const double RendShareOfDamage = 1.0;
+    /// <summary>
+    /// Exsanguinate's effect. Its calculation preset is Empty, with ApplyTargetIncomingDamageHealingMultipliers off
+    /// (GE_Gunde_HeavyMeleeDotBased_DotBonusDamage, build 26320967), so it takes none of the target's incoming-damage
+    /// multipliers. Logs: its hits on an Anomalous Orb are 0.8 to 1.3 times its hits on another enemy of the pulse in 77
+    /// of 77 pairs (Ab1yCxVcNBHPz6t8 fight 7).
+    /// </summary>
     public const int ExsanguinateEffectId = 3239;
     public const string ExsanguinateName = "Exsanguinate";
     public const double ExsanguinateShare = 0.3;
@@ -31,16 +33,16 @@ public class HeartSplitter : GundeAbility
 
     private bool _lastHitCrit;
 
-    public HeartSplitter(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Core)
+    public HeartSplitter(Gunde owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
-        BaseCoefficient = Coefficient;
-        SetCooldown(CooldownSeconds, scalesWithHaste: true);
+        BaseCoefficient = Constants.DamageStrengthCoefficient;
+        SetCooldown(AbilityCooldown, scalesWithHaste: true);
         RendShare = RendShareOfDamage;
         Hit += (in hit) => _lastHitCrit = hit.IsCrit;
     }
 
     /// <summary>Bleeding Hearts: "Your Heart Splitter ability has additional Charges".</summary>
-    public void SetCharges(int charges) => SetCooldown(CooldownSeconds, charges, scalesWithHaste: true);
+    public void SetCharges(int charges) => SetCooldown(AbilityCooldown, charges, scalesWithHaste: true);
 
     public override void Execute(SimulationContext ctx, EnemyTarget target)
     {
@@ -71,6 +73,7 @@ public class HeartSplitter : GundeAbility
         double damage = ExsanguinateShare * Gunde.Rend.Remaining(target);
         if (damage <= 0.0) return;
         Exsanguinated?.Invoke(ctx, target, damage, crit);
-        ctx.ApplyDamage(Owner, target, damage, LogIds.Effect(ExsanguinateEffectId), ExsanguinateName, canCrit: false, 0.0, 1.0);
+        ctx.ApplyDamage(Owner, target, damage, LogIds.Effect(ExsanguinateEffectId), ExsanguinateName, canCrit: false, 0.0, 1.0,
+            abilityGroup: Name);
     }
 }

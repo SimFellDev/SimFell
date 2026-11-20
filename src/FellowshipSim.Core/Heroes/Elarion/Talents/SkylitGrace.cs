@@ -8,10 +8,8 @@ namespace FellowshipSim.Core.Heroes.Elarion.Talents;
 /// reads as one merged effect that any volley's end removes; the user judges that reading of the game data wrong.
 /// The effect is not in the combat logs (fXyzwGcQkTrLD34R fight 4 has the talent), so the engine's aura is internal.
 /// </summary>
-public class SkylitGrace : Talent
+public partial class SkylitGrace : Talent
 {
-    public const int TalentId = 200;
-    public const string TalentName = "Skylit Grace";
     public const double Acceleration = 1.2;
 
     /// <summary>One stack for each Starfall Volley falling; Skystrider's Grace's cooldown reads it.</summary>

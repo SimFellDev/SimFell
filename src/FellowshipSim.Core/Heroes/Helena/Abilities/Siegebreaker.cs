@@ -5,17 +5,14 @@ namespace FellowshipSim.Core.Heroes.Helena.Abilities;
 /// doubled. While Siegebreaker is active, you take 25% reduced damage and your Shield Slam, Shield Throw and Shockwave
 /// abilities deal 25% increased damage." Grants Spirit of Heroism. The buff is effect 2192.
 /// </summary>
-public class Siegebreaker : HelenaAbility
+public partial class Siegebreaker : HelenaAbility
 {
-    public const int AbilityId = 1515;
-    public const string AbilityName = "Siegebreaker";
     public const int BuffEffectId = 2192;
-    public const double BuffSeconds = 20.0;
     public const double AbilityDamage = 1.25;
 
-    public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, BuffSeconds);
+    public static readonly AuraDef Buff = AuraDef.Effect(AbilityName, BuffEffectId, AbilityDuration);
 
-    public Siegebreaker(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory.Spirit)
+    public Siegebreaker(Helena owner) : base(owner, AbilityId, AbilityName, AbilityCategory)
     {
         IgnoresGcd = true;
         owner.AbilityDamageMultipliers.Add((ability, now) =>
