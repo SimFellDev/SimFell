@@ -433,15 +433,15 @@ public class GundeAbilities
     // ---- Owed in Blood (its stacks are in GundeResourceEconomy.cs)
 
     /// <summary>
-    /// Owed in Blood turns all your stacks into Rend stacks on the target (a Rend stack is what one stack gives, as Rend): up to 15
-    /// stacks one each, then 0.85 per stack beyond, and all its stacks are used up. 10 -> 10, 15 -> 15, 50 -> 15 + 0.85 x 35,
-    /// 150 -> 15 + 0.85 x 135.
+    /// Owed in Blood turns all your stacks into Rend stacks on the target (a Rend stack is what one stack gives, as Rend): one each, at
+    /// every count, and all its stacks are used up (Blueprints BP_Gunde_DotTransfer_Orb and GA_Gunde_DotTransfer: each stack saves a
+    /// Strength of Rend).
     /// </summary>
     [Theory]
     [InlineData(10, 10.0)]
     [InlineData(15, 15.0)]
-    [InlineData(50, 15 + 0.85 * 35)]
-    [InlineData(150, 15 + 0.85 * 135)]
+    [InlineData(50, 50.0)]
+    [InlineData(150, 150.0)]
     public void Owed_In_Blood_Turns_Stacks_Into_Rend_Stacks(int stacks, double rendStacks)
     {
         var f = StepFights.Gunde().WithoutDamageSpread();

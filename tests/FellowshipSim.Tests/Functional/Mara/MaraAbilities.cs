@@ -391,7 +391,7 @@ public class MaraAbilities
             f.Cast<WidowsBite>();
         }
         double last = f.CompletedAt("Widow's Bite");
-        f.Wait(3); // the first tick
+        f.WaitUntil(last + 3); // the first tick, and not the second
 
         var ticks = f.Damage("Seething Poison");
         using var check = new Checks(f);

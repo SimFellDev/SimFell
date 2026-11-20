@@ -19,7 +19,7 @@ public class GundeResourceEconomy
     /// <summary>
     /// You start a fight with no stack of Owed in Blood.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Per the user: low importance")]
     public void A_Fight_Starts_With_No_Owed_In_Blood()
     {
         var f = StepFights.Gunde();

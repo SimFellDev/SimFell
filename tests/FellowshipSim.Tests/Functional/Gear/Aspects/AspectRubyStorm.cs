@@ -8,6 +8,7 @@ namespace FellowshipSim.Tests.Functional;
 /// all enemies it touches equal to 2.4% / 4.0% / 5.4% / 7.0% of your Current Health" (ranks 1 to 4). The chance is forced.
 ///
 /// The sim keeps the hero at full health, so Current Health is the hero's health. The storm touches every enemy in combat.
+/// Like every hit of the hero's, it takes the hero's class tuning (<see cref="Hero.ClassDamageTuning"/>).
 /// </summary>
 public class AspectRubyStorm
 {
@@ -20,7 +21,7 @@ public class AspectRubyStorm
             augmentations: [new(RubyStorm.AspectId, rank)]).WithoutDamageSpread();
     }
 
-    /// <summary>A Ruby Storm deals 2.4% / 4.0% / 5.4% / 7.0% of your health.</summary>
+    /// <summary>A Ruby Storm deals 2.4% / 4.0% / 5.4% / 7.0% of your health, times the hero's class tuning.</summary>
     [Theory]
     [InlineData("Rime", "Frost Bolt", 1, 0.024)]
     [InlineData("Rime", "Frost Bolt", 2, 0.040)]
@@ -29,7 +30,7 @@ public class AspectRubyStorm
     [InlineData("Ardeos", "Infernal Wave", 4, 0.070)]
     [InlineData("Elarion", "Focused Shot", 4, 0.070)]
     [InlineData("Gunde", "Double Strike", 4, 0.070)]
-    [InlineData("Mara", "Skittering Blades", 4, 0.070)]
+    [InlineData("Mara", "Backstab", 4, 0.070)]
     [InlineData("Tariq", "Heavy Strike", 4, 0.070)]
     public void A_Ruby_Storm_Deals_A_Share_Of_Your_Health(string hero, string ability, int rank, double share)
     {
@@ -39,7 +40,7 @@ public class AspectRubyStorm
         f.Cast(ability);
         f.Wait(1); // the storm lands
 
-        AssertRatio(share, f.Damage(Storm)[0].Value / f.Health());
+        AssertRatio(share * f.Hero.ClassDamageTuning, f.Damage(Storm)[0].Value / f.Health());
     }
 
     /// <summary>A Ruby Storm's damage grows with your Expertise: 50% Expertise makes it 50% more.</summary>
@@ -101,7 +102,7 @@ public class AspectRubyStorm
         Assert.Single(procs.ChancesOf(RubyStorm.ProcKey));
     }
 
-    /// <summary>A Ruby Storm hits every enemy, each for the whole share.</summary>
+    /// <summary>A Ruby Storm hits every enemy, each for the whole share (times the hero's class tuning).</summary>
     [Fact]
     public void A_Ruby_Storm_Hits_Every_Enemy()
     {
@@ -115,6 +116,6 @@ public class AspectRubyStorm
 
         using var check = new Checks(f);
         check.Equal(3, storms.Count);
-        foreach (double storm in storms) check.Ratio(0.07, storm / f.Health());
+        foreach (double storm in storms) check.Ratio(0.07 * f.Hero.ClassDamageTuning, storm / f.Health());
     }
 }

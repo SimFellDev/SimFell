@@ -1,4 +1,5 @@
 using FellowshipSim.Core.Domain;
+using FellowshipSim.Core.Heroes.Gunde;
 using FellowshipSim.Core.Heroes.Gunde.Abilities;
 using FellowshipSim.Core.Heroes.Gunde.Talents;
 
@@ -154,12 +155,14 @@ public class GundeTalents
     // ---- Sundered Flesh
 
     /// <summary>
-    /// With Sundered Flesh, when your Rend holds more damage than the enemy has health left, the enemy takes it at once: an enemy with 1.4
-    /// times a Reaver's Edge's hit as health takes the whole Rend (half the hit) in one tick after the hit. Without the talent it takes
-    /// none at once.
+    /// With Sundered Flesh, after a tick of Rend, an enemy with less health left than the damage the Rend still holds takes its health
+    /// plus one at once, logged as Rend (Blueprint GA_Gunde_Passive_Talent_InstantDeathFromDot). The check runs after each tick and at
+    /// no other time: an enemy with 1.4 times a Reaver's Edge's hit as health, which the hit leaves with less health than its Rend
+    /// (half the hit), takes nothing at once from the hit. On Rend's first tick it takes the tick, then its health plus one, and no more
+    /// after it. Without the talent it takes the tick alone.
     /// </summary>
     [Fact]
-    public void Sundered_Flesh_Deals_Rend_At_Once_When_It_Exceeds_Health()
+    public void Sundered_Flesh_Deals_The_Enemys_Health_After_A_Rend_Tick_When_Rend_Exceeds_It()
     {
         double plainHit = PlainHit<ReaversEdge>();
         StepDriver Fight(int[] talents)
@@ -175,11 +178,20 @@ public class GundeTalents
         var plainScenario = Fight([]);
 
         using var check = new Checks();
-        check.Equal(1, sunderedScenario.Damage("Rend").Count);
-        check.Ratio(0.5, sunderedScenario.Damage("Rend")[0].Value / plainHit);
-        sunderedScenario.Wait(40); // no more Rend is left to tick
-        check.Equal(1, sunderedScenario.Damage("Rend").Count, what: "Rend ticks, the one at once");
-        check.Equal(0, plainScenario.Damage("Rend").Count);
+        check.Equal(0, sunderedScenario.Damage("Rend").Count, what: "Rend damage at once from the hit");
+        double healthAfterHit = sunderedScenario.Enemy.CurrentHealth;
+
+        sunderedScenario.Wait(Rend.TickSeconds);
+        plainScenario.Wait(Rend.TickSeconds);
+        var rend = sunderedScenario.Damage("Rend");
+        check.Equal(2, rend.Count, what: "Rend hits after the first tick: the tick, then Sundered Flesh's");
+        if (rend.Count == 2) check.Ratio(1.0, rend[1].Value / (healthAfterHit - rend[0].Value + 1.0));
+        check.Equal(1, plainScenario.Damage("Rend").Count, what: "Rend hits after the first tick without the talent");
+
+        // The bleed stays on the enemy and ticks on, but an enemy with no health left takes no more from Sundered Flesh.
+        sunderedScenario.Wait(40);
+        plainScenario.Wait(40);
+        check.Equal(plainScenario.Damage("Rend").Count + 1, sunderedScenario.Damage("Rend").Count, what: "Rend hits in the whole fight");
     }
 
     // ---- Crimson Strikes
@@ -298,7 +310,7 @@ public class GundeTalents
     /// Deep Rend does not change the Rend stacks Owed in Blood adds: 10 stacks of Owed in Blood deal the same Rend with the talent as
     /// without it, in 11 ticks.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Per the user: the tooltip may be wrong and Deep Rend's 1.1 on Owed in Blood's Rend may be real")]
     public void Deep_Rend_Does_Not_Change_The_Rend_Stacks_Owed_In_Blood_Adds()
     {
         void TenStacks(StepDriver fight)
