@@ -682,7 +682,7 @@ public class GundeTalents
             return f.Damage("Exsanguinate").First(hit => hit.Target != f.Enemy.Name).Value;
         }
 
-        AssertRatio(Math.Sqrt((double)Oathshatter.Constants.TargetThresholdScaling / 12.0), Explosion(13) / Explosion(9));
+        AssertRatio(Math.Sqrt(10.0 / 12.0), Explosion(13) / Explosion(9));
     }
 
     // ---- Carnage

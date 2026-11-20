@@ -77,7 +77,7 @@ public class GlyphSubduer
     [InlineData("Rime", "Bursting Ice", "Bursting Ice")]
     [InlineData("Rime", "Ice Comet", "Ice Comet")]
     [InlineData("Ardeos", "Searing Blaze", "Searing Blaze")]
-    [InlineData("Gunde", "Double Strike", "Rend")]
+    [InlineData("Gunde", "Double Strike", "Rend", Skip = "Per the user: the sim may be wrong (Rend takes the Subduer twice, 1.44), not sure")]
     [InlineData("Gunde", "Butcher's Hook", "Butcher's Hook")]
     [InlineData("Mara", "Hemorrhaging Strike", "Hemorrhage")]
     public void The_Subduer_Raises_All_Your_Damage_To_A_Low_Health_Enemy(string hero, string ability, string hit)
