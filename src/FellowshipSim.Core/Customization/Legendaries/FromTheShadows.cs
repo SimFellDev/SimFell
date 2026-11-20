@@ -10,7 +10,8 @@ namespace FellowshipSim.Core.Customization.Legendaries;
 /// (`GA_Mara_Passive_Talent_AoeAttackSpender_CloneAttack`): each application of Mara's bleed to an enemy, a refresh and a copy of
 /// Gushing Blood's re-application too, multiplies its tick period scaler by <see cref="Constants.TickPeriodMultiplier"/> (offsets
 /// 15 to 376, a `WaitGameplayEffectAppliedToTarget` on the bleed's asset tag with no ignore tag), before the applying ability's
-/// own writes. Combat logs (fjrCax7VzGmMZw6h fight 26, Mara player 23, the one Mara player with it): ticks 0.722 to 0.739 of
+/// own writes. A copy of Gushing Blood's re-application has the multiplier twice: once in the spec cloned from the struck
+/// enemy's application, and once on its own application (fight 26: 0.635 at the median). Combat logs (fjrCax7VzGmMZw6h fight 26, Mara player 23, the one Mara player with it): ticks 0.722 to 0.739 of
 /// 3s / Haste apart after a plain refresh, 0.87 / 1.2 with Bloodrush. The clone's Queen's Fang is logged as Queen's Fang
 /// (ability 1201).
 /// </summary>

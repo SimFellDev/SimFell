@@ -250,6 +250,15 @@ public static class AplParser
             return new AplAction { AbilityName = syntax.Name, Condition = syntax.Condition, Variable = ToVariable(syntax), RawLine = line };
         }
 
+        if (syntax.Name == AplSwitchTarget.ActionName)
+        {
+            if (syntax.TargetIf == null)
+            {
+                throw new ParseException($"`{syntax.Name}` needs `{AplActionLine.TargetIfKey}=<expression>`.", Position.Empty);
+            }
+            return new AplAction { AbilityName = syntax.Name, Condition = syntax.Condition, TargetIf = syntax.TargetIf, SwitchTarget = true, RawLine = line };
+        }
+
         var listAction = AplListActions.Parse(syntax.Name);
         if (listAction != null && syntax.ListName == null)
         {
@@ -267,6 +276,8 @@ public static class AplParser
             ListName = listAction != null ? syntax.ListName : null,
             UseOffGcd = listAction == null && syntax.Flag(AplActionLine.UseOffGcdKey),
             UseWhileCasting = listAction == null && syntax.Flag(AplActionLine.UseWhileCastingKey),
+            InterruptIf = listAction == null ? OfAction(syntax.Argument(AplActionLine.InterruptIfKey), syntax.Name) : null,
+            InterruptImmediate = listAction == null && syntax.Flag(AplActionLine.InterruptImmediateKey),
             RawLine = line
         };
     }

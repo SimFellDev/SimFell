@@ -25,7 +25,8 @@ public partial class SunderedFlesh : Talent
             if (target.IsTrainingDummy || target.IsSleeping || target.MaxHealth <= 0) return;
             double health = target.CurrentHealth;
             if (health <= 0.0 || health >= held) return;
-            // A forced non-crit rolls no spread: the hit is the enemy's health plus one.
+            // A forced non-crit rolls no spread: the hit is the enemy's health plus one. Its preset is Empty
+            // (GE_Gunde_Talent_InstantDeathFromDot_Damage, effect 3209, build 26320967): no incoming-damage multiplier.
             ctx.ApplyDamage(gunde, target, health + 1.0, Rend.AbilityId, Rend.AbilityName, canCrit: false, 0.0, 1.0, forcedCrit: false);
         };
     }

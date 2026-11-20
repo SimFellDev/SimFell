@@ -1,15 +1,17 @@
 using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Core.Dungeons.Affixes;
 
 namespace FellowshipSim.Core.Engine;
 
 /// <summary>
 /// One fight of a dungeon's pulls (<see cref="DungeonProfile.RunOrder"/>), to its last pull's end or its time limit. A pull
 /// starts as the fight starts, as the pull its <c>chain_with</c> names ends, or its downtime after the pull before it ends.
-/// Downtime has no enemies and no actions. Each enemy's health falls from full to none over its pull's
-/// <see cref="DungeonPull.DurationSeconds"/> (times the fight's variance scale), whatever the hero does, and the enemy dies
-/// as it reaches none. A <c>pull_with</c> offset in milliseconds scales with the duration. A pull ends as its enemies, joined
-/// ones included, are all dead. The hero's boss auras are on while a
-/// boss is in combat.
+/// Downtime has no enemies and no actions. Each enemy enters combat its group's <see cref="EnemyGroup.FirstSeenSeconds"/>
+/// after its pull starts, and its health falls from full to none by its group's <see cref="DungeonPull.DiesSeconds"/> after
+/// the pull starts (both times the fight's variance scale), whatever the hero does. The enemy dies as it reaches none. A
+/// <c>pull_with</c> offset in milliseconds scales with the duration. A pull ends as its enemies, joined ones included, are
+/// all dead. While a pull has no enemy in combat and one still to enter, the fight is as in downtime. The hero's boss auras
+/// are on while a boss is in combat.
 /// </summary>
 internal sealed class DungeonFight
 {
@@ -23,7 +25,7 @@ internal sealed class DungeonFight
     private readonly Dictionary<string, int> _enemyIds;
     private readonly SimTime _limit;
     private readonly Dictionary<EnemyTarget, Arrival> _arrivals = new(ReferenceEqualityComparer.Instance);
-    private readonly Func<bool> _runEnded;
+    private readonly Func<bool> _noEnemy, _enemyInCombat;
 
     private int _run;
     private RunState? _current;
@@ -31,10 +33,16 @@ internal sealed class DungeonFight
     private SimTime _bossSince = SimTime.Infinite;
     private double _targetSeconds, _bossSeconds;
     private SimTime _downtimeEnd;
+    private readonly AffixRun _affixes;
+    private bool _inCombat, _bossFight;
+    // The enemies the affixes spawn: their enemy id after the pulls', and the next slot.
+    private readonly int _affixEnemyId;
+    private int _affixSlot = 1;
 
     /// <summary>
     /// A fight of <paramref name="dungeon"/>: <paramref name="act"/> has the hero act until a time or until a condition
-    /// holds, and returns true when the condition stopped it. <paramref name="varianceScale"/> scales each pull duration.
+    /// holds, and returns true when the condition stopped it. <paramref name="varianceScale"/> scales each pull duration
+    /// and each group's times.
     /// </summary>
     public DungeonFight(Hero hero, SimulationContext ctx, DungeonProfile dungeon, double varianceScale, Func<SimTime, Func<bool>, bool> act)
     {
@@ -47,7 +55,10 @@ internal sealed class DungeonFight
         var order = dungeon.RunOrder() ?? throw new ArgumentException(dungeon.Problem() ?? "The pulls refer to each other in a circle.", nameof(dungeon));
         _plans = order.Select(root => new RunPlan(root, dungeon.RunMembers(root), varianceScale)).ToList();
         _enemyIds = dungeon.Pulls.Select((p, i) => (p.Name, Id: 1001 + i)).ToDictionary(x => x.Name, x => x.Id);
-        _runEnded = () => _current is { Alive: 0 };
+        _noEnemy = () => _current is { Alive: 0 };
+        _enemyInCombat = () => _current is { Alive: > 0 };
+        _affixEnemyId = 1001 + dungeon.Pulls.Count;
+        _affixes = new AffixRun(ctx, hero, dungeon, _enemyInCombat, () => _ctx.Boss, SpawnByAffix);
         ctx.EnemyDemising += Demising;
     }
 
@@ -57,6 +68,7 @@ internal sealed class DungeonFight
     /// </summary>
     public (SimTime End, double TargetSeconds, double BossSeconds, IReadOnlyList<PartyEnemy> Enemies) Run()
     {
+        foreach (string key in _dungeon.Affixes) DungeonAffix.ByKey(key)?.Begin(_affixes);
         for (_run = 0; _run < _plans.Count; _run++)
         {
             var plan = _plans[_run];
@@ -70,9 +82,10 @@ internal sealed class DungeonFight
             }
             _current = new RunState();
             Spawn(plan.Root);
-            _ctx.Player.CurrentTarget = _current.Pulls[0].Enemies.FirstOrDefault(e => !e.IsPriority) ?? _current.Pulls[0].Enemies[0];
+            var first = _current.Pulls[0].Enemies;
+            if (first.Count > 0) _ctx.Player.CurrentTarget = first.FirstOrDefault(e => !e.IsPriority) ?? first[0];
             Refresh();
-            bool ended = _act(_limit, _runEnded);
+            bool ended = Fight(_current);
             _current = null;
             if (!ended) break;
         }
@@ -81,39 +94,60 @@ internal sealed class DungeonFight
         foreach (var (enemy, arrival) in _arrivals)
         {
             if (!arrival.Gone) _targetSeconds += (end - arrival.At).TotalSeconds;
-            enemies.Add(new PartyEnemy(arrival.At, enemy.DiesAt, enemy.MaxHealth, enemy.HeroDamage));
+            enemies.Add(new PartyEnemy(arrival.At, enemy.DiesAt, enemy.MaxHealth, enemy.HeroDamage, arrival.BossFight));
         }
         if (_bossSince != SimTime.Infinite) _bossSeconds += (end - _bossSince).TotalSeconds;
         _ctx.EnemyDemising -= Demising;
+        _affixes.RaiseEnded();
         return (end, _targetSeconds, _bossSeconds, enemies);
     }
 
-    // A pull's enemies enter combat in the current run, and its join is armed.
+    // The hero fights the run to its end: true as its enemies are all dead with none still to enter, false at the time limit.
+    private bool Fight(RunState run)
+    {
+        while (true)
+        {
+            if (run.Alive > 0)
+            {
+                // After a stretch with no enemy in combat the hero has no target: an enemy in combat, one that is no
+                // priority target when there is one.
+                if (_ctx.Player.CurrentTarget is not { IsSleeping: false })
+                {
+                    var active = _ctx.ActiveEnemies;
+                    _ctx.Player.CurrentTarget = active.FirstOrDefault(e => !e.IsPriority) ?? active[0];
+                }
+                if (!_act(_limit, _noEnemy)) return false;
+            }
+            if (run.Entering.Count == 0) return true;
+            // No enemy in combat and one still to enter: no actions, as in downtime; cooldowns, regeneration and auras run on.
+            if (!_ctx.RunUntil(_limit, _enemyInCombat)) return false;
+            // The enemies entering at the time of the first one enter before the hero acts.
+            _ctx.RunUntil(_ctx.CurrentTime);
+        }
+    }
+
+    // A pull joins the current run: each group's enemies enter combat now or at the group's first_seen, and its join is armed.
     private void Spawn(DungeonPull pull)
     {
         var run = _current!;
         var state = new PullState(pull);
         run.Pulls.Add(state);
         var now = _ctx.CurrentTime;
-        var dies = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale);
-        int slot = 0;
+        bool bossFight = pull.IsBoss || BossInCombat(run);
+        int slot = 1;
         // A pull's priority targets come after its other enemies, so the hero starts on one of the others.
         foreach (var group in pull.Groups.OrderBy(g => g.Priority))
         {
-            for (int i = 0; i < group.Count; i++)
+            var dies = now + SimTime.FromSeconds(pull.DiesSeconds(group) * _varianceScale);
+            var entry = new Entry(state, group, slot, now + SimTime.FromSeconds(group.FirstSeenSeconds * _varianceScale), dies, bossFight);
+            slot += group.Count;
+            run.Count += group.Count;
+            if (group.FirstSeenSeconds > 0)
             {
-                var enemy = _ctx.AddEnemy(_enemyIds[pull.Name], ++slot, group.Name, maxHealth: group.Health!.Value * _dungeon.HealthScale);
-                enemy.IsBoss = group.Boss;
-                enemy.IsPriority = group.Priority;
-                enemy.SpiritPointValue = group.Spirit;
-                enemy.FollowTime(_ctx, now, dies);
-                _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true, died: true), "Pull duration");
-                if (group.Cast is { } cast) enemy.CastOnCooldown(_ctx, cast);
-                state.Enemies.Add(enemy);
-                _arrivals[enemy] = new Arrival(now, run, state, enemy.IsBoss && pull.Final);
-                run.Alive++;
-                run.Count++;
+                run.Entering.Add(entry);
+                _ctx.ScheduleAt(entry.At, _ => EnterLate(run, entry), "First seen");
             }
+            else Enter(run, entry);
         }
 
         if (pull.Join is not { } join) return;
@@ -122,10 +156,78 @@ internal sealed class DungeonFight
         else if (join.OffsetMs is { } ms) _ctx.Schedule(SimTime.FromMilliseconds((long)Math.Round(ms * _varianceScale)), _ => JoinNow(state), "Pull with");
         else if (join.OffsetPct is { } pct)
         {
-            // The pull's health falls to the percent at that share of its duration.
-            var at = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale * (1 - pct / 100.0));
+            // The pull's enemies' average health falls to the percent at that share of its duration.
+            var at = now + SimTime.FromSeconds(pull.DurationSeconds * _varianceScale * pull.DurationShareAtHealth(pct));
             _ctx.ScheduleAt(at, _ => JoinNow(state), "Pull with");
         }
+    }
+
+    // A group's enemies enter combat, each to die at the group's time.
+    private void Enter(RunState run, Entry entry)
+    {
+        var (state, group) = (entry.Pull, entry.Group);
+        for (int i = 0; i < group.Count; i++)
+        {
+            var enemy = _ctx.AddEnemy(_enemyIds[state.Pull.Name], entry.Slot + i, group.Name, maxHealth: group.Health!.Value * _dungeon.HealthScale);
+            enemy.IsBoss = group.Boss;
+            enemy.IsPriority = group.Priority;
+            enemy.SpiritPointValue = group.Spirit;
+            enemy.FollowTime(_ctx, entry.At, entry.Dies);
+            _ctx.ScheduleAt(entry.Dies, c => c.RemoveEnemy(enemy, defeated: true, died: true), "Enemy dies");
+            if (group.Cast is { } cast) enemy.CastOnCooldown(_ctx, cast);
+            state.Enemies.Add(enemy);
+            _arrivals[enemy] = new Arrival(entry.At, run, state, enemy.IsBoss && state.Pull.Final, entry.BossFight);
+            run.Alive++;
+            _affixes.RaiseEnemyEntered(enemy);
+        }
+    }
+
+    // An affix's enemy enters combat now in the run in progress, in a pull of the affix's enemies, and dies seconds later.
+    private EnemyTarget? SpawnByAffix(string name, double hitPoints, double seconds, bool priority, double spirit)
+    {
+        var run = _current;
+        if (run == null) return null;
+        var state = run.Pulls.FirstOrDefault(p => p.Pull.Name == AffixPullName);
+        if (state == null) run.Pulls.Add(state = new PullState(new DungeonPull(AffixPullName, [], seconds)));
+        var now = _ctx.CurrentTime;
+        var dies = now + SimTime.FromSeconds(seconds);
+        var enemy = _ctx.AddEnemy(_affixEnemyId, _affixSlot++, name, maxHealth: hitPoints * _dungeon.HealthScale);
+        enemy.IsPriority = priority;
+        enemy.SpiritPointValue = spirit;
+        enemy.FollowTime(_ctx, now, dies);
+        _ctx.ScheduleAt(dies, c => c.RemoveEnemy(enemy, defeated: true, died: true), "Enemy dies");
+        state.Enemies.Add(enemy);
+        _arrivals[enemy] = new Arrival(now, run, state, false, BossInCombat(run));
+        run.Count++;
+        run.Alive++;
+        _affixes.RaiseEnemyEntered(enemy);
+        Refresh();
+        return enemy;
+    }
+
+    // The pull of the enemies the affixes spawn in a run; no pull of the text has the name, which is no pull name.
+    private const string AffixPullName = "(affix)";
+
+    // A group with a first_seen enters the run it was to enter, once that time has come.
+    private void EnterLate(RunState run, Entry entry)
+    {
+        if (run != _current) return;
+        run.Entering.Remove(entry);
+        Enter(run, entry);
+        Refresh();
+    }
+
+    // True when a boss of the run is in combat.
+    private bool BossInCombat(RunState run)
+    {
+        foreach (var pull in run.Pulls)
+        {
+            foreach (var enemy in pull.Enemies)
+            {
+                if (enemy.IsBoss && !_arrivals[enemy].Gone) return true;
+            }
+        }
+        return false;
     }
 
     // The pull the host's pull_with names joins the host's run, once.
@@ -151,8 +253,10 @@ internal sealed class DungeonFight
         foreach (var host in run.Pulls.ToList())
         {
             if (host.Joined || host.Pull.Join is not { } join) continue;
-            bool due = run.Alive == 0
-                || join.AfterDeaths is { } deaths && host.Deaths >= deaths.Of(host.Enemies.Count)
+            // The run's enemies are all dead once none is in combat and none is still to enter. A count is of the pull's
+            // or the run's enemies, those still to enter included.
+            bool due = run.Alive == 0 && run.Entering.Count == 0
+                || join.AfterDeaths is { } deaths && host.Deaths >= deaths.Of(host.Pull.EnemyCount)
                 || join.AfterDeathsTotal is { } total && run.Deaths >= total.Of(run.Count);
             if (due) JoinNow(host);
         }
@@ -179,6 +283,16 @@ internal sealed class DungeonFight
         _ctx.Trash = trash;
         _ctx.Boss = boss;
         _ctx.FinalBoss = final;
+        if (_inCombat != (trash || boss))
+        {
+            _inCombat = trash || boss;
+            _affixes.RaiseCombatChanged();
+        }
+        if (_bossFight != boss)
+        {
+            _bossFight = boss;
+            _affixes.RaiseBossChanged();
+        }
         var now = _ctx.CurrentTime;
         if (boss && _bossSince == SimTime.Infinite) _bossSince = now;
         if (!boss && _bossSince != SimTime.Infinite)
@@ -199,8 +313,8 @@ internal sealed class DungeonFight
     }
 
     /// <summary>
-    /// Sets the next trash pull's and boss's starts and the fight's end from the current run's enemies left, the pulls it has
-    /// not joined yet, the downtime and the pulls left, each at its duration.
+    /// Sets the next trash pull's and boss's starts and the fight's end from the current run's enemies left, in combat and
+    /// still to enter, the pulls it has not joined yet, the downtime and the pulls left, each at its last enemy's death.
     /// </summary>
     private void Estimate()
     {
@@ -217,6 +331,7 @@ internal sealed class DungeonFight
                     if (!_arrivals[enemy].Gone) left = Math.Max(left, (enemy.DiesAt - now).TotalSeconds);
                 }
             }
+            foreach (var entry in _current.Entering) left = Math.Max(left, (entry.Dies - now).TotalSeconds);
             var plan = _plans[_run];
             foreach (var member in plan.Members)
             {
@@ -264,17 +379,22 @@ internal sealed class DungeonFight
             HasBoss = members.Any(m => m.IsBoss);
         }
 
-        public double SecondsOf(DungeonPull pull) => pull.DurationSeconds * _varianceScale;
+        /// <summary>The seconds from the pull's start to its last enemy's death.</summary>
+        public double SecondsOf(DungeonPull pull) => pull.EndSeconds * _varianceScale;
     }
 
-    /// <summary>The run in progress: its pulls in combat, its enemies alive, dead and in all.</summary>
+    /// <summary>
+    /// The run in progress: its pulls in combat, its groups still to enter combat, its enemies in combat and dead, and the
+    /// enemies of its pulls in all.
+    /// </summary>
     private sealed class RunState
     {
         public readonly List<PullState> Pulls = [];
+        public readonly List<Entry> Entering = [];
         public int Alive, Deaths, Count;
     }
 
-    /// <summary>A pull in combat: its enemies, their deaths, and whether its join has triggered.</summary>
+    /// <summary>A pull in combat: its enemies in combat or dead, their deaths, and whether its join has triggered.</summary>
     private sealed class PullState(DungeonPull pull)
     {
         public readonly DungeonPull Pull = pull;
@@ -283,13 +403,31 @@ internal sealed class DungeonFight
         public bool Joined;
     }
 
-    /// <summary>An enemy's arrival: its time, run and pull, whether it is the final boss, and whether it is gone.</summary>
-    private sealed class Arrival(SimTime at, RunState run, PullState pull, bool finalBoss)
+    /// <summary>
+    /// A group's entry into combat: its pull, the slot of its first enemy among the pull's, the times its enemies enter and
+    /// die, and whether they are of a boss fight (<see cref="PartyEnemy.BossFight"/>).
+    /// </summary>
+    private sealed class Entry(PullState pull, EnemyGroup group, int slot, SimTime at, SimTime dies, bool bossFight)
+    {
+        public readonly PullState Pull = pull;
+        public readonly EnemyGroup Group = group;
+        public readonly int Slot = slot;
+        public readonly SimTime At = at;
+        public readonly SimTime Dies = dies;
+        public readonly bool BossFight = bossFight;
+    }
+
+    /// <summary>
+    /// An enemy's arrival: its time, run and pull, whether it is the final boss, whether it is of a boss fight
+    /// (<see cref="PartyEnemy.BossFight"/>), and whether it is gone.
+    /// </summary>
+    private sealed class Arrival(SimTime at, RunState run, PullState pull, bool finalBoss, bool bossFight)
     {
         public readonly SimTime At = at;
         public readonly RunState Run = run;
         public readonly PullState Pull = pull;
         public readonly bool FinalBoss = finalBoss;
+        public readonly bool BossFight = bossFight;
         public bool Gone;
     }
 }

@@ -87,15 +87,16 @@ public class MonteCarloSeedTests
     /// Bloodbound Spirit's share, Owed in Blood, Massacre and Sundered Flesh followed the Blueprints of build 26320967.
     /// Rime's, Ardeos's, Gunde's and Tariq's again for the merge of the main branch, PR #53 and PR #61 into the functional tests
     /// branch, and its fixes (Hunter's Focus and Ruby Storm on targeted offensive abilities, Ruby Storm's health scaling, The
-    /// Vehement once per cast, Starfall Volley's snapshot haste).
+    /// Vehement once per cast, Starfall Volley's snapshot haste). Gunde's again for the merge of the main branch's Reign in Blood
+    /// share at each hit and Oathshatter's falloff threshold from game data.
     /// </summary>
     [Theory]
     [InlineData("Rime", 120, 3, new[] { 2929425.0346213374, 3074465.9013403784, 2816687.8423429285, 3677946.9078206043 })]
     [InlineData("Rime", 300, 1, new[] { 7807948.16236004, 8172859.749842195, 7977446.590525352, 7887182.388843213 })]
     [InlineData("Ardeos", 120, 3, new[] { 2951443.4238222046, 3511746.304512846, 3110946.868820314, 3601806.8775200658 })]
     [InlineData("Ardeos", 300, 1, new[] { 5142273.698325525, 5072464.996164897, 5114126.681789436, 5093831.268507719 })]
-    [InlineData("Gunde", 120, 3, new[] { 4551064.058743968, 4579418.726403046, 4651195.865758049, 4784575.6063602315 })]
-    [InlineData("Gunde", 300, 1, new[] { 7170839.080529111, 8224316.561811523, 7672849.796340762, 9168364.207050571 })]
+    [InlineData("Gunde", 120, 3, new[] { 4955851.3860418638, 4318267.4211898493, 5236295.8919618689, 4713079.1429793425 })]
+    [InlineData("Gunde", 300, 1, new[] { 8238439.8082974413, 7417856.4732793588, 7029927.536395221, 8405698.8268806208 })]
     [InlineData("Mara", 120, 3, new[] { 3013945.0748772146, 2649045.3937545605, 2878172.6517641111, 2862110.1611054321 })]
     [InlineData("Mara", 300, 1, new[] { 7022510.0781305619, 6709173.7301557567, 6977017.0757674472, 7662633.1300925035 })]
     [InlineData("Tariq", 120, 3, new[] { 1758424.9294189936, 2294493.2434868263, 1879263.041238824, 1998275.1455706037 })]

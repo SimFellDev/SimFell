@@ -16,13 +16,13 @@ partial class PerfectStorm
     /// <summary>Game data: the tuning values of talent 91.</summary>
     public static class Constants
     {
-        /// <summary>Game data: tuning <c>Chance, DoubleStrike.Chance, Meiko.HighDamageCleave.Talent.DoubleStrike.Chance</c> of talent 91; Lashing Stormkick (ability 1106).</summary>
+        /// <summary>Game data: tuning <c>Chance, DoubleStrike.Chance, Meiko.HighDamageCleave.Talent.DoubleStrike.Chance</c> of talent 91; Lashing Stormkick (ability 2310).</summary>
         public const double Chance = 0.25;
 
-        /// <summary>Game data: tuning <c>DamageMultiplier, DoubleStrike.DamageMultiplier, Meiko.HighDamageCleave.Talent.DoubleStrike.DamageMultiplier</c> of talent 91; Lashing Stormkick (ability 1106).</summary>
+        /// <summary>Game data: tuning <c>DamageMultiplier, DoubleStrike.DamageMultiplier, Meiko.HighDamageCleave.Talent.DoubleStrike.DamageMultiplier</c> of talent 91; Lashing Stormkick (ability 2310).</summary>
         public const int DamageMultiplier = 1;
 
-        /// <summary>Game data: tuning <c>DelayBetweenStrikes, DoubleStrike.DelayBetweenStrikes, Meiko.HighDamageCleave.Talent.DoubleStrike.DelayBetweenStrikes</c> of talent 91; Lashing Stormkick (ability 1106).</summary>
+        /// <summary>Game data: tuning <c>DelayBetweenStrikes, DoubleStrike.DelayBetweenStrikes, Meiko.HighDamageCleave.Talent.DoubleStrike.DelayBetweenStrikes</c> of talent 91; Lashing Stormkick (ability 2310).</summary>
         public const double DelayBetweenStrikes = 0.4;
 
         /// <summary>Game data: tuning <c>Meiko.DurationalMultipleTeleportDamage.Talent.TargetDebuff.IncreasedDamage</c> of talent 91; ability 1109, DamageScale Multiplicitive.</summary>

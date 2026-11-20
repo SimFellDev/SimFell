@@ -20,7 +20,8 @@ public class ListEditsTests
     public void After_The_Prefix_The_List_Has_The_Actions()
     {
         Assert.Equal(["frost_bolt"], Items("actions+=/fr"));
-        Assert.Equal([.. _v.Abilities.Select(a => a.Slug), .. _v.ListActions, AplVariable.ActionName], Items("actions.aoe+=/", always: true));
+        Assert.Equal([.. _v.Abilities.Select(a => a.Slug), .. _v.ListActions, AplVariable.ActionName, AplSwitchTarget.ActionName], Items("actions.aoe+=/", always: true));
+        Assert.Equal([AplSwitchTarget.ActionName], Items("actions+=/sw"));
         Assert.Null(Items("actions+=/"));
     }
 
@@ -37,6 +38,7 @@ public class ListEditsTests
         Assert.Equal([AplActionLine.ConditionKey, AplActionLine.TargetIfKey, AplActionLine.UseOffGcdKey, AplActionLine.UseWhileCastingKey], Items("actions+=/frost_bolt,", always: true));
         Assert.Equal([AplActionLine.ListNameKey], Items("actions+=/run_action_list,na"));
         Assert.Equal([AplVariable.ValueKey], Items("actions+=/variable,name=orbs,va"));
+        Assert.Equal([AplActionLine.ConditionKey, AplActionLine.TargetIfKey], Items("actions+=/switch_target,", always: true));
     }
 
     [Fact]
@@ -46,6 +48,7 @@ public class ListEditsTests
         Assert.Equal(["orbs"], Items("actions+=/variable,name=o"));
         Assert.Equal(["reset"], Items("actions+=/variable,name=orbs,op=res"));
         Assert.Contains("min", Items("actions+=/ice_comet,target_if=mi")!);
+        Assert.Contains("max", Items("actions+=/switch_target,target_if=ma")!);
         Assert.Equal(["chill", "glacial_assault"], Items("actions+=/frost_bolt,if=buff.", always: true));
         Assert.Equal(["chill"], Items("actions+=/frost_bolt,if=max(1,buff.ch"));
         Assert.Equal(["chill"], Items("actions+=/frost_bolt,target_if=min:debuff.ch"));

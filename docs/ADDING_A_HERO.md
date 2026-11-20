@@ -163,6 +163,33 @@ the class's game data half:
   `AbilityMaxTargets` (range, minimum range and radius in centimetres);
 - `Constants`, with each tuning value of the record (`Constants.AgilityCoefficient`, `Constants.FocusGain`).
 
+A record listed in another record's `additionalAbilities`, or with `replaces`, `subcastOf` or `triggeredBy`, is a
+version of another ability and is no class's record by its name. Its class has the attribute `[Ability(<id>)]` and a name
+of its own. When the record names a base ability, the generated half derives from that ability's class and has
+`AbilityId` and the constants and tuning values with another value than the base ability's. The base class has the
+others. A constant of the class's own part replaces the generated one, except `AbilityId`:
+
+```csharp
+[Ability(2308)]
+public partial class StealthBackstab
+{
+    public new const string AbilityName = "Stealth Backstab";
+    ...
+}
+```
+
+The generated half of it:
+
+```csharp
+partial class StealthBackstab : global::FellowshipSim.Core.Heroes.Mara.Abilities.Backstab
+{
+    public new const int AbilityId = 2308;
+    public new const global::FellowshipSim.Core.Domain.AbilityCategory AbilityCategory = global::FellowshipSim.Core.Domain.AbilityCategory.Core;
+}
+```
+
+An ID with no record of the class's hero is CODEX046, and a base ability with no class is CODEX047.
+
 A number is an `int` when it is whole and a `double` otherwise. The class's own part has
 the behaviour and the values the record does not have: log timings, proc keys, other records' effect IDs. Constants
 first, then auras, then the constructor and what the ability does:

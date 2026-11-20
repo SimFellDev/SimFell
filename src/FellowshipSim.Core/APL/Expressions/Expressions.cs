@@ -33,6 +33,7 @@ public class PropertyExpression : IAplExpression
     public const string ActiveDotScope = "active_dot";
     public const string CooldownScope = "cooldown";
     public const string ActionScope = "action";
+    public const string ChannelScope = "channel";
     public const string TalentScope = "talent";
     public const string BlessingScope = "blessing";
     public const string LegendaryScope = "legendary";
@@ -103,7 +104,7 @@ public class PropertyExpression : IAplExpression
                 (_, ctx) => ctx.Player.CurrentTarget?.HealthPercent ?? 100.0),
             ["target.health"] = new(new("Target health", "The current health of the target. 0 if there is no target."),
                 (_, ctx) => ctx.Player.CurrentTarget?.CurrentHealth ?? 0.0),
-            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: from its health loss per second since it arrived, the end of its pull duration, or the end of a training dummy fight. The end of the fight before a dungeon enemy with hit points takes damage. 0 if there is no target."),
+            ["target.time_to_die"] = new(new("Target time to die", "Seconds until the target dies: from its health loss per second since it arrived, its group's dies or the end of its pull duration, or the end of a training dummy fight. The end of the fight before a dungeon enemy with hit points takes damage. 0 if there is no target."),
                 (_, ctx) => SecondsUntil(ctx, Countdowns["target.time_to_die"](ctx))),
             ["target.is_boss"] = new(new("Target is a boss", "1 if the target is a boss. Otherwise 0."),
                 (_, ctx) => ctx.Player.CurrentTarget is { IsBoss: true } ? 1.0 : 0.0),
@@ -203,6 +204,39 @@ public class PropertyExpression : IAplExpression
             (ability, now) => ability == null ? 0.0 : ability.IsInstant ? Gcd(ability.Owner, now) : ability.GetAdjustedCastTime(now).TotalSeconds),
     };
 
+    /// <summary>Ticks of a channel: <c>channel.&lt;ability&gt;.ticks</c>.</summary>
+    public const string ChannelTicksProperty = "ticks";
+    /// <summary>Seconds since a channel started: <c>channel.&lt;ability&gt;.after_sec</c>.</summary>
+    public const string ChannelSecondsProperty = "after_sec";
+    /// <summary>Part of a channel's duration gone, in percent: <c>channel.&lt;ability&gt;.after_pct</c>.</summary>
+    public const string ChannelPercentProperty = "after_pct";
+
+    /// <summary>
+    /// Properties of the hero's running channel, by its ability's name, at a time: each reads 0 when no channel of that
+    /// ability runs.
+    /// </summary>
+    private static readonly Dictionary<string, AplDescribed<Func<ActiveChannel, SimTime, double>>> ChannelProperties = new()
+    {
+        [ChannelTicksProperty] = new(new("Channel ticks", "The number of ticks of the channel so far. 0 if the channel of the ability does not run."),
+            (channel, _) => channel.Ticks.TicksFired),
+        [ChannelSecondsProperty] = new(new("Channel time", "Seconds since the channel started, after the cast time of the ability. 0 if the channel of the ability does not run."),
+            (channel, time) => (time - channel.Ticks.Start).TotalSeconds),
+        [ChannelPercentProperty] = new(new("Channel time %", "The part of the channel duration that has gone, in percent. 0 if the channel of the ability does not run."),
+            (channel, time) => ChannelPercent(channel, time)),
+    };
+
+    /// <summary>The part of <paramref name="channel"/>'s duration gone at <paramref name="time"/>, in percent.</summary>
+    public static double ChannelPercent(ActiveChannel channel, SimTime time) =>
+        100.0 * (time - channel.Ticks.Start).TotalSeconds / (channel.Ticks.End - channel.Ticks.Start).TotalSeconds;
+
+    /// <summary>The hero's running channel when it is <paramref name="ability"/>'s; else null.</summary>
+    public static ActiveChannel? ChannelOf(Hero hero, Ability? ability) =>
+        ability != null && hero.CurrentChannel is { } channel && channel.Ability == ability ? channel : null;
+
+    /// <summary>The value of a channel property ("ticks") at <paramref name="time"/>; 0 when no channel of <paramref name="ability"/> runs, or for a property channels lack.</summary>
+    public static double ChannelProperty(Hero hero, Ability? ability, string property, SimTime time) =>
+        ChannelOf(hero, ability) is { } channel && ChannelProperties.TryGetValue(property, out var read) ? read.Value(channel, time) : 0.0;
+
     /// <summary>The scopes of "&lt;scope&gt;.&lt;name&gt;.&lt;property&gt;" paths and the properties each one has.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyCollection<string>> Scopes { get; } =
         new Dictionary<string, IReadOnlyCollection<string>>
@@ -212,6 +246,7 @@ public class PropertyExpression : IAplExpression
             [DotScope] = DebuffProperties,
             [CooldownScope] = CooldownProperties.Keys,
             [ActionScope] = ActionProperties.Keys,
+            [ChannelScope] = ChannelProperties.Keys,
         };
 
     /// <summary>
@@ -244,6 +279,7 @@ public class PropertyExpression : IAplExpression
         [DotScope] = new("Dot on target", "The same as debuff: an aura or effect from the hero on the current target."),
         [CooldownScope] = new("Cooldown", "The cooldown and charges of an ability."),
         [ActionScope] = new("Action", "The cast of an ability."),
+        [ChannelScope] = new("Channel", "The channel of an ability while it runs."),
         [ActiveDotScope] = new("Enemies with debuff", "The number of enemies in combat that have the debuff."),
         [VariableScope] = new("Variable", "The value that a variable action set in this fight. Before a variable action sets it, the value is the default of the variable."),
         [PrevScope] = new("Previous action", "1 if the last ability the hero started to cast is this ability. Otherwise 0. 0 before the first cast of the fight."),
@@ -263,6 +299,7 @@ public class PropertyExpression : IAplExpression
         DebuffScope or DotScope => PickedDoc(property) ?? AuraProperties.GetValueOrDefault(property)?.Doc,
         CooldownScope => CooldownProperties.GetValueOrDefault(property)?.Doc,
         ActionScope => ActionProperties.GetValueOrDefault(property)?.Doc,
+        ChannelScope => ChannelProperties.GetValueOrDefault(property)?.Doc,
         _ => null,
     };
 
@@ -413,6 +450,9 @@ public class PropertyExpression : IAplExpression
             case ActionScope:
                 return ActionProperty(Property!)(AplNames.FindAbility(hero, Name!), now);
 
+            case ChannelScope:
+                return ChannelProperty(hero, AplNames.FindAbility(hero, Name!), Property!, now);
+
             case { } scope when BuildScopes.TryGetValue(scope, out var has):
                 return has.Value(hero, Name!) ? 1.0 : 0.0;
         }
@@ -460,6 +500,9 @@ public class PropertyExpression : IAplExpression
         ["charges_fractional"] = ability => $"{CooldownScope}.{ability}.charges_fractional",
         ["execute_time"] = ability => $"{ActionScope}.{ability}.execute_time",
         ["cast_time"] = ability => $"{ActionScope}.{ability}.execute_time",
+        [ChannelTicksProperty] = ability => $"{ChannelScope}.{ability}.{ChannelTicksProperty}",
+        [ChannelSecondsProperty] = ability => $"{ChannelScope}.{ability}.{ChannelSecondsProperty}",
+        [ChannelPercentProperty] = ability => $"{ChannelScope}.{ability}.{ChannelPercentProperty}",
     };
 
     private static Func<TargetEffect?, SimTime, double> AuraProperty(string property) =>

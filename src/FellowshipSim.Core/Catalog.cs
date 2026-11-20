@@ -3,14 +3,15 @@ using FellowshipSim.Core.Customization.Glyphs;
 using FellowshipSim.Core.Customization.Legendaries;
 using FellowshipSim.Core.Customization.RelicPassives;
 using FellowshipSim.Core.Customization.Weapons;
+using FellowshipSim.Core.Dungeons.Affixes;
 
 namespace FellowshipSim.Core;
 
 /// <summary>
-/// Every hero, talent, augmentation, glyph, relic passive, legendary and weapon the engine has, found by their class:
+/// Every hero, talent, augmentation, glyph, relic passive, legendary, weapon and dungeon affix the engine has, found by their class:
 /// adding a class with its ID constant is all it takes for builds and combat logs to use it. Classes must have a
-/// constructor without parameters. Every hero class, and every talent, augmentation, glyph, relic passive, legendary and
-/// weapon class's constructor, are written at build time by FellowshipSim.Core.Generators' CatalogGenerator.
+/// constructor without parameters. Every hero class, and every talent, augmentation, glyph, relic passive, legendary,
+/// weapon and dungeon affix class's constructor, are written at build time by FellowshipSim.Core.Generators' CatalogGenerator.
 /// </summary>
 public static partial class Catalog
 {
@@ -18,6 +19,9 @@ public static partial class Catalog
     public static IReadOnlyDictionary<string, Type> Heroes { get; } = HeroClasses.ToDictionary(h => h.Name, h => h.Type, StringComparer.OrdinalIgnoreCase);
 
     public static bool HasHero(string name) => Heroes.ContainsKey(name);
+
+    /// <summary>Every dungeon affix class, one instance each, in ID order.</summary>
+    public static IReadOnlyList<DungeonAffix> DungeonAffixes { get; } = DungeonAffixConstructors.Select(c => c()).OrderBy(a => a.Id).ToList();
 
     public static Hero CreateHero(string name) =>
         NewHero(name) ?? throw new NotSupportedException($"{name} is not supported yet (supported: {string.Join(", ", Heroes.Keys)}).");

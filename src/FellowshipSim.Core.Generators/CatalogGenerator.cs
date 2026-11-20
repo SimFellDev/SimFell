@@ -11,9 +11,9 @@ namespace FellowshipSim.Core.Generators;
 
 /// <summary>
 /// Writes the constructors <c>Catalog</c> uses: each hero class by its class name, and each talent, augmentation, glyph,
-/// legendary, weapon and relic passive class with a public constructor without parameters as a constructor in
+/// legendary, weapon, relic passive and dungeon affix class with a public constructor without parameters as a constructor in
 /// <c>TalentConstructors</c>, <c>AugmentationConstructors</c> (from its rank), <c>GlyphConstructors</c> (from its rank),
-/// <c>LegendaryConstructors</c>, <c>WeaponConstructors</c> and <c>RelicPassiveConstructors</c>. FellowshipSim.Codex.Generators
+/// <c>LegendaryConstructors</c>, <c>WeaponConstructors</c>, <c>RelicPassiveConstructors</c> and <c>DungeonAffixConstructors</c>. FellowshipSim.Codex.Generators
 /// writes a talent's <c>TalentId</c>, an augmentation's <c>&lt;Type&gt;Id</c>, a glyph's <c>GlyphId</c> and
 /// <c>GlyphName</c>, a legendary's <c>HeroName</c> and <c>ItemIds</c>, the weapon ability IDs, and a relic passive's
 /// <c>RelicPassiveId</c> and <c>RelicPassiveItems</c>. A generator never reads another's output, so <c>Catalog</c> reads
@@ -22,7 +22,7 @@ namespace FellowshipSim.Core.Generators;
 [Generator(LanguageNames.CSharp)]
 public sealed class CatalogGenerator : IIncrementalGenerator
 {
-    private enum Kind { Hero, Talent, Augmentation, Glyph, Weapon, RelicPassive, Legendary }
+    private enum Kind { Hero, Talent, Augmentation, Glyph, Weapon, RelicPassive, Legendary, DungeonAffix }
 
     private static readonly (string Base, Kind Kind)[] Bases =
     [
@@ -33,6 +33,7 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         ("FellowshipSim.Core.Customization.Weapons.Weapon", Kind.Weapon),
         ("FellowshipSim.Core.Customization.RelicPassives.RelicPassive", Kind.RelicPassive),
         ("FellowshipSim.Core.Customization.Legendaries.Legendary", Kind.Legendary),
+        ("FellowshipSim.Core.Dungeons.Affixes.DungeonAffix", Kind.DungeonAffix),
     ];
 
     /// <summary>One catalog class: its kind, full name and short name.</summary>
@@ -120,6 +121,7 @@ public sealed class CatalogGenerator : IIncrementalGenerator
         Constructors(s, "WeaponConstructors", "global::FellowshipSim.Core.Customization.Weapons.Weapon", entries.Where(e => e.Kind == Kind.Weapon));
         Constructors(s, "RelicPassiveConstructors", "global::FellowshipSim.Core.Customization.RelicPassives.RelicPassive",
             entries.Where(e => e.Kind == Kind.RelicPassive));
+        Constructors(s, "DungeonAffixConstructors", "global::FellowshipSim.Core.Dungeons.Affixes.DungeonAffix", entries.Where(e => e.Kind == Kind.DungeonAffix));
         s.AppendLine("}");
 
         spc.AddSource("Catalog.g.cs", SourceText.From(s.ToString(), Encoding.UTF8));

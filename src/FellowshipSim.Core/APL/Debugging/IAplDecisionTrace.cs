@@ -18,6 +18,9 @@ internal interface IAplDecisionTrace
     /// <summary>The list entered last has ended.</summary>
     void ListEnded();
 
+    /// <summary>A <c>switch_target</c> action before it runs.</summary>
+    void SwitchTarget(BoundAplSwitchTarget step, SimulationContext ctx);
+
     /// <summary>An ability action before its cast; <paramref name="canExecute"/> is <see cref="BoundAplAction.CanExecute"/>.</summary>
     void Action(BoundAplAction step, SimulationContext ctx, bool canExecute);
 

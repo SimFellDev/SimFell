@@ -12,6 +12,12 @@ namespace FellowshipSim.Core.Heroes.Gunde.Abilities;
 public partial class HeartSplitter : GundeAbility
 {
     public const double RendShareOfDamage = 1.0;
+    /// <summary>
+    /// Exsanguinate's effect. Its calculation preset is Empty, with ApplyTargetIncomingDamageHealingMultipliers off
+    /// (GE_Gunde_HeavyMeleeDotBased_DotBonusDamage, build 26320967), so it takes none of the target's incoming-damage
+    /// multipliers. Logs: its hits on an Anomalous Orb are 0.8 to 1.3 times its hits on another enemy of the pulse in 77
+    /// of 77 pairs (Ab1yCxVcNBHPz6t8 fight 7).
+    /// </summary>
     public const int ExsanguinateEffectId = 3239;
     public const string ExsanguinateName = "Exsanguinate";
     public const double ExsanguinateShare = 0.3;
@@ -68,6 +74,7 @@ public partial class HeartSplitter : GundeAbility
         double damage = ExsanguinateShare * Gunde.Rend.Remaining(target);
         if (damage <= 0.0) return;
         Exsanguinated?.Invoke(ctx, target, damage, crit);
-        ctx.ApplyDamage(Owner, target, damage, LogIds.Effect(ExsanguinateEffectId), ExsanguinateName, canCrit: false, 0.0, 1.0);
+        ctx.ApplyDamage(Owner, target, damage, LogIds.Effect(ExsanguinateEffectId), ExsanguinateName, canCrit: false, 0.0, 1.0,
+            abilityGroup: Name);
     }
 }

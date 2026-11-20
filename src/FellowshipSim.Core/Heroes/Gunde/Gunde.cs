@@ -70,7 +70,13 @@ public sealed partial class Gunde : Hero
     /// <summary>A Blood Feather was picked up: Owed in Blood gained a stack, or refreshed at its maximum (Slayer's Grin, Raven's Precision).</summary>
     public event Action<SimulationContext>? FeatherCollected;
 
-    public Gunde() => Rend = new Rend(this);
+    public Gunde()
+    {
+        Rend = new Rend(this);
+        // Rend is outside the ability list, so its debuff is listed here with the hero's other auras. An action list reads
+        // its stacks on the target as debuff.rend.stack: the stacks of log debuff 1003231.
+        Register(Rend.Debuff);
+    }
 
     public override void Initialize()
     {

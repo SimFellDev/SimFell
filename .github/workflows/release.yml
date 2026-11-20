@@ -1,16 +1,34 @@
-# Builds SimFell and its VS Code extension for Windows, macOS and Linux and publishes them as one release on the public
-# SimFellDev/SimFell-Releases (this repository stays private), flagged as the latest release. Each run raises the version
-# from the latest release: the patch (0.0.X) at first, or the minor (0.X.0) or major (X.0.0) when picked. The app
-# compares its version with the latest release and shows a banner when a newer one is out. The extension has the
-# release's version.
+# Releases one version of SimFell: the desktop app and its VS Code extension, the web app, or both, as the run's boxes pick.
 #
-# Run it by hand: Actions > Release > Run workflow. It needs the secret SIMFELL_RELEASE: a fine-grained token with
-# "Contents: Read and write" on SimFellDev/SimFell-Releases alone.
+# - Desktop app and VS Code extension: builds SimFell for Windows, macOS and Linux and the extension for each platform, and
+#   publishes them as one release on SimFellDev/SimFell-Releases, flagged as the latest release. The app compares its
+#   version with the latest release and shows a banner when a newer one is out.
+# - Web app: builds the browser app (src/FellowshipSim.Web) and publishes it to https://simfelldev.github.io, a static site
+#   on SimFellDev/simfelldev.github.io. Every sim and replay runs on the visitor's own computer, and their files stay in
+#   their browser.
+#
+# The tag v<version> on this repository names the run's commit, so `git log v0.0.12..v0.0.13` lists a version's commits.
+# A commit has one version: a run on a commit with a v<version> tag keeps that version, and a run on any other commit
+# raises the highest version of this repository's tags and SimFell-Releases' releases, the patch (0.0.X) at first, or
+# the minor (0.X.0) or major (X.0.0) when picked.
+#
+# Run it by hand: Actions > Release > Run workflow. It needs the secrets SIMFELL_RELEASE, a fine-grained token with
+# "Contents: Read and write" on SimFellDev/SimFell-Releases alone, and SIMFELL_PAGES, a fine-grained token with
+# "Contents: Read and write" on SimFellDev/simfelldev.github.io alone. That repository's Pages settings serve its main
+# branch, from the root.
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
+      desktop:
+        description: Desktop app and VS Code extension
+        type: boolean
+        default: true
+      web:
+        description: Web app
+        type: boolean
+        default: true
       increase:
         description: Which part of the version to raise
         type: choice
@@ -29,20 +47,38 @@ permissions:
 
 jobs:
   version:
-    name: Next version
+    name: Version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.next.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
+      tagged: ${{ steps.version.outputs.tagged }}
     steps:
-      - id: next
-        name: Raise the latest release's version
+      - id: version
+        name: The commit's version, or the next one
         env:
-          GH_TOKEN: ${{ secrets.SIMFELL_RELEASE }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASES_TOKEN: ${{ secrets.SIMFELL_RELEASE }}
           INCREASE: ${{ inputs.increase }}
+          DESKTOP: ${{ inputs.desktop }}
+          WEB: ${{ inputs.web }}
         run: |
-          # The highest vX.Y.Z tag released so far, or 0.0.0 before the first.
-          latest=$(gh release list --repo SimFellDev/SimFell-Releases --limit 1000 --json tagName --jq '.[].tagName' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n 1)
+          if [ "$DESKTOP" != true ] && [ "$WEB" != true ]; then
+            echo "::error::Pick the desktop app and VS Code extension, the web app, or both."
+            exit 1
+          fi
+          versions() { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V; }
+          own=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v" \
+            --jq ".[] | select(.object.sha == \"$GITHUB_SHA\") | .ref | ltrimstr(\"refs/tags/\")" | versions | tail -n 1)
+          if [ -n "$own" ]; then
+            echo "The commit has v$own"
+            { echo "version=$own"; echo "tagged=true"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest=$({
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v" --jq '.[].ref | ltrimstr("refs/tags/")'
+            GH_TOKEN="$RELEASES_TOKEN" gh release list --repo SimFellDev/SimFell-Releases --limit 1000 --json tagName \
+              --jq '.[].tagName'
+          } | versions | tail -n 1)
           latest=${latest:-0.0.0}
           IFS=. read -r major minor patch <<< "$latest"
           case "$INCREASE" in
@@ -51,11 +87,12 @@ jobs:
             *)      patch=$((patch + 1)) ;;
           esac
           echo "Latest $latest, next $major.$minor.$patch"
-          echo "version=$major.$minor.$patch" >> "$GITHUB_OUTPUT"
+          { echo "version=$major.$minor.$patch"; echo "tagged=false"; } >> "$GITHUB_OUTPUT"
 
   package:
     name: Package ${{ matrix.rid }}
     needs: version
+    if: inputs.desktop
     strategy:
       fail-fast: true
       matrix:
@@ -87,6 +124,7 @@ jobs:
   vscode:
     name: Package the VS Code extension
     needs: version
+    if: inputs.desktop
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -110,6 +148,7 @@ jobs:
   release:
     name: Publish ${{ needs.version.outputs.version }}
     needs: [version, package, vscode]
+    if: inputs.desktop
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -141,3 +180,65 @@ jobs:
             --title "SimFell $VERSION" \
             --notes-file notes.md \
             --latest
+
+  web:
+    name: Publish the web app ${{ needs.version.outputs.version }}
+    needs: version
+    if: inputs.web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # Ahead-of-time compiled: sims run about three times as fast as interpreted, for a larger first download.
+      - name: Install the WebAssembly tools
+        run: dotnet workload install wasm-tools
+
+      # The site has the committed game data (src/FellowshipSim.Core/Generated/Codex).
+      - name: Publish
+        run: dotnet publish src/FellowshipSim.Web -c Release -p:RunAOTCompilation=true -o publish
+
+      - name: Ready the site for GitHub Pages
+        working-directory: publish/wwwroot
+        run: |
+          # No Jekyll, which would leave out _framework and _content; and every address the app routes opens the app.
+          touch .nojekyll
+          cp index.html 404.html
+
+      - name: Push to SimFellDev/simfelldev.github.io
+        env:
+          TOKEN: ${{ secrets.SIMFELL_PAGES }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/SimFellDev/simfelldev.github.io.git" site
+          # The site is the build alone: what the last deploy left goes, the repository's own git files stay.
+          find site -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r publish/wwwroot/. site/
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "SimFell $VERSION (${GITHUB_SHA::7})" || { echo "The site is unchanged."; exit 0; }
+          git push
+
+  tag:
+    name: Tag v${{ needs.version.outputs.version }}
+    needs: [version, release, web]
+    # After every picked part has published, on a commit with no version yet.
+    if: >-
+      always() && needs.version.result == 'success' && needs.version.outputs.tagged != 'true'
+      && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Tag the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/v$VERSION" -f sha="$GITHUB_SHA"

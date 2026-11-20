@@ -20,6 +20,8 @@ public sealed class PendingHit
 
     /// <summary>The ability whose damage formula gives the numbers (null for fixed or custom numbers).</summary>
     public Ability? Ability { get; private set; }
+    /// <summary>The ability a hit with fixed numbers is part of in the report (Heart Splitter's Exsanguinate).</summary>
+    public string? Group { get; internal set; }
     /// <summary>The damage multiplier passed to <see cref="Domain.Ability.BaseDamage"/>: the hit's own times the cast's.</summary>
     public double DamageMultiplier { get; private set; }
     /// <summary>Crit chance the cast added (<see cref="CastBonus.CritChance"/>).</summary>
@@ -87,6 +89,7 @@ public sealed class PendingHit
         AbilityName = "";
         OnLanded = null;
         Ability = null;
+        Group = null;
         _compute = null;
         _fixed = default;
         _kept = false;

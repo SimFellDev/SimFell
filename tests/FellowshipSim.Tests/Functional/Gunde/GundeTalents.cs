@@ -657,11 +657,11 @@ public class GundeTalents
     }
 
     /// <summary>
-    /// Oathshatter's explosion deals less beyond 8 other enemies: sqrt(8 / others) of its damage on each. With Heart Splitter forced to
-    /// crit, the explosions on 12 others are sqrt(8 / 12) of those on 8.
+    /// Oathshatter's explosion deals less beyond 10 other enemies: sqrt(10 / others) of its damage on each. With Heart Splitter forced to
+    /// crit, the explosions on 12 others are sqrt(10 / 12) of those on 8.
     /// </summary>
     [Fact]
-    public void Oathshatter_Explosion_Falls_Off_Beyond_8_Other_Enemies()
+    public void Oathshatter_Explosion_Falls_Off_Beyond_10_Other_Enemies()
     {
         double Explosion(int enemies)
         {
@@ -670,7 +670,7 @@ public class GundeTalents
             return f.Damage("Exsanguinate").First(hit => hit.Target != f.Enemy.Name).Value;
         }
 
-        AssertRatio(Math.Sqrt(8.0 / 12.0), Explosion(13) / Explosion(9));
+        AssertRatio(Math.Sqrt((double)Oathshatter.Constants.TargetThresholdScaling / 12.0), Explosion(13) / Explosion(9));
     }
 
     // ---- Carnage

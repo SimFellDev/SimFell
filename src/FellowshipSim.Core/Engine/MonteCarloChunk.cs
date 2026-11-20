@@ -47,6 +47,8 @@ public sealed class MonteCarloChunk
         public List<AuraTotals> Auras { get; init; } = [];
         public double PrimaryDamage { get; init; }
         public double BossDamage { get; init; }
+        /// <summary>The damage to every enemy while a boss is in combat, added up.</summary>
+        public double BossFightDamage { get; init; }
         public double BossSeconds { get; init; }
         public double TargetSeconds { get; init; }
         /// <summary>The whole seconds of the longest fight.</summary>
@@ -56,6 +58,9 @@ public sealed class MonteCarloChunk
         /// <summary>The party's damage, and the hero's damage to each enemy up to the health it lost, added up.</summary>
         public double PartyDamage { get; init; }
         public double HeroPartyDamage { get; init; }
+        /// <summary>The party's damage and the hero's to the boss fights' enemies, added up.</summary>
+        public double PartyBossFightDamage { get; init; }
+        public double HeroPartyBossFightDamage { get; init; }
     }
 
     /// <summary>One of the first fights' damage each second, for the band of the damage over time.</summary>

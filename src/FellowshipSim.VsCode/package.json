@@ -4,6 +4,7 @@
   "description": "Colours, problems and completion for every line of SimFell's .simc files, from SimFell's own parsers.",
   "version": "0.1.0",
   "publisher": "simfell",
+  "license": "AGPL-3.0-only",
   "private": true,
   "engines": {
     "vscode": "^1.91.0"

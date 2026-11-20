@@ -49,7 +49,7 @@ public static class ConditionBuilder
             {
                 PropertyExpression.BuffScope => AplTokenKind.Buff,
                 PropertyExpression.DebuffScope or PropertyExpression.DotScope => AplTokenKind.Debuff,
-                PropertyExpression.CooldownScope or PropertyExpression.ActionScope => AplTokenKind.Cooldown,
+                PropertyExpression.CooldownScope or PropertyExpression.ActionScope or PropertyExpression.ChannelScope => AplTokenKind.Cooldown,
                 _ => AplTokenKind.Named,
             }, scopeNames[scope.Key], [.. scope.Value, .. AggregateProperties(scope.Key)], Description: PropertyExpression.ScopeDocs[scope.Key].Description)),
             new ConditionKind(ResourceKind, Resource.Label, AplTokenKind.Resource, v.Resources, [CurrentProperty, DeficitProperty], Description: Resource.Description),

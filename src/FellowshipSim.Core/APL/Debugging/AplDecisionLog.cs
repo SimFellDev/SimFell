@@ -51,16 +51,31 @@ internal sealed class AplDecisionLog(Hero hero, IReadOnlyList<AplTraceLine> line
 
     public void ListEnded() => _depth--;
 
+    public void SwitchTarget(BoundAplSwitchTarget step, SimulationContext ctx)
+    {
+        var pick = step.Pick(ctx);
+        var targetIf = TargetIf(step, ctx, step.TargetSelection, pick);
+        var condition = pick != null && step.ConditionProbe is { } c ? AtTarget(ctx, pick, c) : null;
+        var outcome = pick == null ? AplStepOutcome.NoTarget
+            : condition is { Value: 0.0 } ? AplStepOutcome.ConditionFalse
+            : pick == ctx.Player.CurrentTarget ? AplStepOutcome.TargetKept
+            : AplStepOutcome.TargetSwitched;
+        _steps.Add(new AplStepTrace(step.Line, _depth, outcome, condition, targetIf, pick == null ? null : Label(ctx, pick)));
+    }
+
+    // The step's target_if value at each enemy in combat, with the enemy picked; null with no enemy in combat.
+    private static AplTargetIfTrace? TargetIf(BoundAplStep step, SimulationContext ctx, AplTargetSelection selection, EnemyTarget? picked)
+    {
+        if (step.TargetIfProbe is not { } probe || ctx.ActiveEnemies.Count == 0) return null;
+        var candidates = ctx.ActiveEnemies.Select(enemy => new AplCandidateTrace(Label(ctx, enemy), AtTarget(ctx, enemy, probe))).ToList();
+        return new AplTargetIfTrace(selection, candidates, picked == null ? null : Label(ctx, picked));
+    }
+
     public void Action(BoundAplAction step, SimulationContext ctx, bool canExecute)
     {
         _action = step;
         bool found = step.TrySelectTarget(ctx, out var target);
-        AplTargetIfTrace? targetIf = null;
-        if (step.TargetIfProbe is { } probe && ctx.ActiveEnemies.Count > 0)
-        {
-            var candidates = ctx.ActiveEnemies.Select(enemy => new AplCandidateTrace(Label(ctx, enemy), AtTarget(ctx, enemy, probe))).ToList();
-            targetIf = new AplTargetIfTrace(step.TargetSelection!.Value, candidates, found && target != null ? Label(ctx, target) : null);
-        }
+        var targetIf = step.TargetSelection is { } selection ? TargetIf(step, ctx, selection, found ? target : null) : null;
         var condition = found && step.ConditionProbe is { } c ? AtTarget(ctx, target, c) : null;
         string? procRefusal = canExecute ? null : ProcReactionRefusal(step, ctx);
         var outcome = procRefusal != null ? AplStepOutcome.CastRefused

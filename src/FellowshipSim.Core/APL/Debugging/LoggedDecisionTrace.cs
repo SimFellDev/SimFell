@@ -7,6 +7,7 @@ internal readonly struct LoggedDecisionTrace(AplDecisionLog log) : IAplDecisionT
     public void VariableSet(BoundAplVariable step, SimulationContext ctx) => log.VariableSet(step, ctx);
     public void ListAction(BoundAplListAction step, SimulationContext ctx, AplStepOutcome outcome) => log.ListAction(step, ctx, outcome);
     public void ListEnded() => log.ListEnded();
+    public void SwitchTarget(BoundAplSwitchTarget step, SimulationContext ctx) => log.SwitchTarget(step, ctx);
     public void Action(BoundAplAction step, SimulationContext ctx, bool canExecute) => log.Action(step, ctx, canExecute);
     public void Cast(CastAttempt attempt) => log.Cast(attempt);
 }

@@ -24,7 +24,13 @@ namespace FellowshipSim.Codex.Generators;
 /// (<c>Constants.MaxCharges</c>), with the hero of the class's namespace as the record's hero. A tuning key with a field's
 /// value (<see cref="FieldTuning"/>) has no constant in <c>Constants</c>, and the field's summary names it. A class deriving from another
 /// ability class declares its <c>Constants</c> with <c>new</c>. The class's own part has the ability's behaviour. A member
-/// of the class or a base class with a constant's name, or the name <c>Constants</c>, is CODEX009. The game data is the AdditionalFiles
+/// of the class or a base class with a constant's name, or the name <c>Constants</c>, is CODEX009. A record listed in
+/// another record's <c>additionalAbilities</c>, or with <c>replaces</c>, <c>subcastOf</c> or <c>triggeredBy</c>, is no
+/// class's record by its name. A class with <c>[Ability(id)]</c> (<c>FellowshipSim.Core.Domain.AbilityAttribute</c>) has
+/// the record of that ID and hero, with or without a base class of its own part; no such record is CODEX046. When the
+/// record names a base ability, the half derives from that ability's class (no such class is CODEX047) and has
+/// <c>AbilityId</c>, the constants with another value than the base record's, and the tuning values the base record has
+/// no key of with that value. A constant of the class's own part replaces the generated one, except <c>AbilityId</c>. The game data is the AdditionalFiles
 /// <c>entities.jsonl</c> and <c>settings.json</c>, read through FellowshipAnalyzer.Codex.SDK; <see cref="CreatureGenerator"/>
 /// reports missing game data.
 /// </summary>
@@ -48,31 +54,48 @@ public sealed class AbilityGenerator : IIncrementalGenerator
         "CODEX009", "An ability constant's name is a member of the class",
         "The class {0} or a base class has a member {1}, and {1} is a constant of ability {2}; rename the member", "Codex", DiagnosticSeverity.Error, true);
 
+    private static readonly DiagnosticDescriptor NoAbilityId = new(
+        "CODEX046", "An ability class's Ability attribute names no ability record",
+        "The partial class {0} has [Ability({1})], and the game data has no ability {1} of hero {2}", "Codex", DiagnosticSeverity.Error, true);
+
+    private static readonly DiagnosticDescriptor NoBaseClass = new(
+        "CODEX047", "An ability record's base ability has no partial class",
+        "The partial class {0} has [Ability({1})], ability {1} has {2} ability {3}, and no partial ability class of hero {4} has ability {3}",
+        "Codex", DiagnosticSeverity.Error, true);
+
+    private const string AbilityAttributeType = "FellowshipSim.Core.Domain.AbilityAttribute";
+
     /// <summary>A constant of an ability record: its name, C# type and literal, its summary, and the record's field it has.</summary>
     private sealed record Constant(string Name, string Type, string Literal, string Summary, string? Field = null);
 
+    /// <summary>A tuning key of an ability record: the key, its entry's name, its owner's ability ID, and its value's literal.</summary>
+    private sealed record TuningKey(string Key, string Name, int? OwnerAbility, string Literal);
+
     /// <summary>
-    /// An ability record: its ID, name, class name, heroes, whether it has a category, its field constants and its tuning
-    /// values.
+    /// An ability record: its ID, name, class name, heroes, whether it has a category, its field constants, its tuning
+    /// values and keys, the ability it is a version of (<c>replaces</c>, <c>subcastOf</c> or <c>triggeredBy</c>) with that
+    /// field's name, and its <c>additionalAbilities</c>.
     /// </summary>
     private sealed record Record(int Id, string Name, string ClassName, EquatableArray<string> Heroes, bool HasCategory,
-        EquatableArray<Constant> Fields, EquatableArray<TuningEntry> Tunings);
+        EquatableArray<Constant> Fields, EquatableArray<TuningEntry> Tunings, EquatableArray<TuningKey> Keys,
+        int? BaseAbility, string? BaseField, EquatableArray<int> Additional);
 
     /// <summary>The game data's ability records, the tuning keys' first segments naming a hero, and its build date.</summary>
     private sealed record Export(EquatableArray<Record> Records, EquatableArray<HeroSegment> Segments, string? BuildDate);
 
     /// <summary>
     /// A partial ability class: its namespace, name and hero, the member names of the class and its base classes, the
-    /// class's constants and static readonly fields, the full names of its base classes (nearest first), and where it is
-    /// declared.
+    /// member names of the class alone, the class's constants and static readonly fields, the full names of its base
+    /// classes (nearest first), the ID of its <c>[Ability]</c> attribute, and where it is declared.
     /// </summary>
-    private sealed record Declared(string Namespace, string Name, string Hero, EquatableArray<string> Members, EquatableArray<string> Fields,
-        EquatableArray<string> Bases, Location? Location)
+    private sealed record Declared(string Namespace, string Name, string Hero, EquatableArray<string> Members, EquatableArray<string> Own,
+        EquatableArray<string> Fields, EquatableArray<string> Bases, int? RecordId, Location? Location)
     {
         public string FullName => Namespace + "." + Name;
 
         public bool Equals(Declared? other) => other != null && Namespace == other.Namespace && Name == other.Name && Hero == other.Hero
-            && Members.Equals(other.Members) && Fields.Equals(other.Fields) && Bases.Equals(other.Bases);
+            && Members.Equals(other.Members) && Own.Equals(other.Own) && Fields.Equals(other.Fields) && Bases.Equals(other.Bases)
+            && RecordId == other.RecordId;
 
         public override int GetHashCode() => (Namespace, Name).GetHashCode();
     }
@@ -101,12 +124,19 @@ public sealed class AbilityGenerator : IIncrementalGenerator
         return null;
     }
 
-    /// <summary>The partial class as a <see cref="Declared"/>, or null for a class not deriving from <c>Ability</c>.</summary>
+    /// <summary>
+    /// The partial class as a <see cref="Declared"/>, or null for a class with no <c>[Ability]</c> attribute and not deriving
+    /// from <c>Ability</c>. The generated half of a class with the attribute has its base class, so the class's own half
+    /// can have none.
+    /// </summary>
     private static Declared? DeclaredOf(GeneratorSyntaxContext ctx, CancellationToken ct)
     {
         var node = (ClassDeclarationSyntax)ctx.Node;
         if (ctx.SemanticModel.GetDeclaredSymbol(node, ct) is not INamedTypeSymbol type) return null;
-        bool ability = false;
+        int? recordId = type.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AbilityAttributeType)?
+            .ConstructorArguments.FirstOrDefault().Value as int?;
+        bool ability = recordId != null;
         var members = new HashSet<string>(StringComparer.Ordinal) { type.Name };
         var bases = new List<string>();
         for (var t = type; t != null; t = t.BaseType)
@@ -119,8 +149,11 @@ public sealed class AbilityGenerator : IIncrementalGenerator
         if (!ability) return null;
         string ns = NamespaceOf(node)!;
         string hero = ns.Substring(HeroesNamespace.Length).Split('.')[0];
-        return new Declared(ns, type.Name, hero, new([.. members.OrderBy(m => m, StringComparer.Ordinal)]), new([.. TuningNames.FieldsOf(type)]),
-            new([.. bases]), node.Identifier.GetLocation());
+        var own = type.GetMembers().Where(m => !m.IsImplicitlyDeclared).Select(m => m.Name).Distinct().OrderBy(m => m, StringComparer.Ordinal);
+        // A class with the attribute and no base class of its own half has System.Object as its base.
+        if (type.BaseType?.SpecialType == SpecialType.System_Object) bases.Clear();
+        return new Declared(ns, type.Name, hero, new([.. members.OrderBy(m => m, StringComparer.Ordinal)]), new([.. own]),
+            new([.. TuningNames.FieldsOf(type)]), new([.. bases]), recordId, node.Identifier.GetLocation());
     }
 
     private static Export Read(ImmutableArray<AdditionalText> files, CancellationToken ct)
@@ -160,9 +193,20 @@ public sealed class AbilityGenerator : IIncrementalGenerator
                 var fields = FieldsOf(ability);
                 var keys = FieldTuning.KeysOf(ability, fields.Select(f => f.Field).OfType<string>(), ability);
                 var merged = new HashSet<string>(keys.Values.SelectMany(k => k), StringComparer.Ordinal);
+                var tunings = TuningsOf(ability).Where(t => !merged.Contains(t.Key)).ToList();
+                var tuningKeys = tunings.Select(t =>
+                {
+                    var tuning = ability.Tuning![t.Key];
+                    return new TuningKey(t.Key, tuning.Name ?? t.Key, tuning.Owner is { Type: EntityType.Ability } owner ? owner.Id : null, t.Literal);
+                });
+                var (baseAbility, baseField) = ability.Replaces is { } replaces ? (replaces, "replaces")
+                    : ability.SubcastOf is { } subcast ? (subcast, "subcastOf")
+                    : ability.TriggeredBy is { } trigger ? (trigger, "triggeredBy")
+                    : ((EntityReference?)null, (string?)null);
                 records.Add(new Record(ability.Id, name, PascalCase(name), new([.. heroes]), ability.Category != null,
                     new([.. fields.Select(f => f.Field != null && keys.TryGetValue(f.Field, out var k) ? f with { Summary = FieldTuning.Summary(f.Summary, k) } : f)]),
-                    new([.. TuningsOf(ability).Where(t => !merged.Contains(t.Key))])));
+                    new([.. tunings]), new([.. tuningKeys]), baseAbility?.Id, baseField,
+                    new([.. (ability.AdditionalAbilities ?? []).Select(a => a.Id)])));
             }
         }
         return new Export(new([.. records.OrderBy(r => r.Id)]), HeroSegments.Of(entities, ct), buildDate);
@@ -270,11 +314,19 @@ public sealed class AbilityGenerator : IIncrementalGenerator
 
     private static void Write(SourceProductionContext context, Export export, ImmutableArray<Declared> declared)
     {
-        var byClass = export.Records.ToLookup(r => r.ClassName);
-        // The constants written for each class, so a class deriving from another declares its own with new. A base class
-        // comes before the classes deriving from it.
+        // A version of another ability is no class's record by its name: a class has it through [Ability].
+        var versions = new HashSet<int>(export.Records.SelectMany(r => r.Additional));
+        versions.UnionWith(export.Records.Where(r => r.BaseAbility != null).Select(r => r.Id));
+        var byClass = export.Records.Where(r => !versions.Contains(r.Id)).ToLookup(r => r.ClassName);
+        var byId = export.Records.ToLookup(r => r.Id);
+        // Every constant name each class has (written, inherited), so a class deriving from another declares its own with
+        // new, and the class of each record and hero.
         var written = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-        foreach (var d in declared.GroupBy(d => (d.Namespace, d.Name)).Select(g => g.First())
+        var classOf = new Dictionary<(int Id, string Hero), (Declared Class, Record Record)>();
+        var classes = declared.GroupBy(d => (d.Namespace, d.Name)).Select(g => g.First()).ToList();
+
+        // The classes of a name's record, a base class before the classes deriving from it.
+        foreach (var d in classes.Where(d => d.RecordId == null)
                      .OrderBy(d => d.Bases.Count()).ThenBy(d => d.Namespace, StringComparer.Ordinal).ThenBy(d => d.Name, StringComparer.Ordinal))
         {
             var candidates = byClass[d.Name].Where(r => r.Heroes.Contains(d.Hero)).ToList();
@@ -289,58 +341,123 @@ public sealed class AbilityGenerator : IIncrementalGenerator
                 context.ReportDiagnostic(Diagnostic.Create(SeveralAbilities, d.Location, d.Name, string.Join(", ", candidates.Select(r => r.Id)), d.Hero));
                 continue;
             }
-
-            var record = picked[0];
-            var members = new HashSet<string>(d.Members, StringComparer.Ordinal);
-            var constants = new List<Constant>
-            {
-                new("AbilityId", "int", record.Id.ToString(CultureInfo.InvariantCulture), $"{Escape(record.Name)}, ability {record.Id} of the game data."),
-                new("AbilityName", "string", Literal(record.Name), $"Game data: <c>name</c> of ability {record.Id}."),
-            };
-            constants.AddRange(record.Fields);
-            var shared = new List<(string Name, string First, string Second)>();
-            var tunings = TuningNames.Of(record.Tunings, export.Segments, [d.Hero], shared);
-            TuningNames.Report(context, d.Location, d.Name, $"ability {record.Id}", shared, d.Fields, tunings);
-
-            var source = new StringBuilder()
-                .Append("// <auto-generated> by FellowshipSim.Codex.Generators from the game data")
-                .Append(export.BuildDate != null ? $" of {export.BuildDate}" : "").Append(". </auto-generated>\n")
-                .Append("#nullable enable\n")
-                .Append("namespace ").Append(d.Namespace).Append(";\n\n")
-                .Append("partial class ").Append(d.Name).Append("\n{\n");
-            var inherited = new HashSet<string>(d.Bases.Where(written.ContainsKey).SelectMany(b => written[b]), StringComparer.Ordinal);
-            var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var constant in constants)
-            {
-                if (members.Contains(constant.Name))
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(DeclaredName, d.Location, d.Name, constant.Name, record.Id));
-                    continue;
-                }
-                if (names.Count > 0) source.Append('\n');
-                names.Add(constant.Name);
-                source.Append("    /// <summary>").Append(constant.Summary).Append("</summary>\n")
-                    .Append("    public ").Append(inherited.Contains(constant.Name) ? "new " : "").Append("const ").Append(constant.Type).Append(' ')
-                    .Append(constant.Name).Append(" = ").Append(constant.Literal).Append(";\n");
-            }
-            if (tunings.Count > 0)
-            {
-                if (members.Contains("Constants"))
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(DeclaredName, d.Location, d.Name, "Constants", record.Id));
-                }
-                else
-                {
-                    TuningNames.Write(source, $"Game data: the tuning values of ability {record.Id}.",
-                        tunings.Select(t => (t, $"Game data: tuning <c>{Escape(t.Keys)}</c> of ability {record.Id}{(t.Source.Length > 0 ? "; " + Escape(t.Source) : "")}.")),
-                        inherited.Contains("Constants"), names.Count > 0);
-                    names.Add("Constants");
-                }
-            }
-            source.Append("}\n");
-            written[d.FullName] = names;
-            context.AddSource($"{d.Namespace.Substring(HeroesNamespace.Length)}.{d.Name}.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
+            WriteClass(context, export, d, picked[0], null, null, written);
+            classOf[(picked[0].Id, d.Hero)] = (d, picked[0]);
         }
+
+        // The classes of an [Ability] record, the class of a base ability before the class of its version.
+        var pending = new List<(Declared Class, Record Record)>();
+        foreach (var d in classes.Where(d => d.RecordId != null).OrderBy(d => d.Namespace, StringComparer.Ordinal).ThenBy(d => d.Name, StringComparer.Ordinal))
+        {
+            if (byId[d.RecordId!.Value].FirstOrDefault(r => r.Heroes.Contains(d.Hero)) is { } record) pending.Add((d, record));
+            else context.ReportDiagnostic(Diagnostic.Create(NoAbilityId, d.Location, d.Name, d.RecordId, d.Hero));
+        }
+        while (pending.Count > 0)
+        {
+            var ready = pending.Where(p => p.Record.BaseAbility is not { } b || classOf.ContainsKey((b, p.Class.Hero))).ToList();
+            if (ready.Count == 0)
+            {
+                foreach (var (d, record) in pending)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(NoBaseClass, d.Location, d.Name, record.Id, record.BaseField, record.BaseAbility, d.Hero));
+                }
+                break;
+            }
+            foreach (var (d, record) in ready)
+            {
+                var (baseClass, baseRecord) = record.BaseAbility is { } b ? classOf[(b, d.Hero)] : default;
+                WriteClass(context, export, d, record, baseClass, baseRecord, written);
+                classOf[(record.Id, d.Hero)] = (d, record);
+                pending.Remove((d, record));
+            }
+        }
+    }
+
+    /// <summary>The ID, name and field constants of an ability record.</summary>
+    private static List<Constant> ConstantsOf(Record record)
+    {
+        string summary = $"{Escape(record.Name)}, ability {record.Id} of the game data"
+            + (record.BaseAbility is { } b ? $"; <c>{record.BaseField}</c> ability {b}." : ".");
+        var constants = new List<Constant>
+        {
+            new("AbilityId", "int", record.Id.ToString(CultureInfo.InvariantCulture), summary),
+            new("AbilityName", "string", Literal(record.Name), $"Game data: <c>name</c> of ability {record.Id}."),
+        };
+        constants.AddRange(record.Fields);
+        return constants;
+    }
+
+    /// <summary>
+    /// Writes the class's half of its record. With a base ability's class and record (<paramref name="baseClass"/>), the half derives
+    /// from that class and has <c>AbilityId</c>, the constants with another value than the base ability's, and the tuning
+    /// values the base ability has no key of with that value; a constant of the class's own half is its own.
+    /// </summary>
+    private static void WriteClass(SourceProductionContext context, Export export, Declared d, Record record,
+        Declared? baseClass, Record? baseRecord, Dictionary<string, HashSet<string>> written)
+    {
+        var members = new HashSet<string>(d.Members, StringComparer.Ordinal);
+        var own = new HashSet<string>(d.Own, StringComparer.Ordinal);
+        var constants = ConstantsOf(record);
+        var tuningEntries = record.Tunings.ToList();
+        if (baseClass != null && baseRecord != null)
+        {
+            members.UnionWith(baseClass.Members);
+            var baseConstants = ConstantsOf(baseRecord).ToDictionary(c => c.Name, StringComparer.Ordinal);
+            constants = [.. constants.Where(c => c.Name == "AbilityId"
+                || (!own.Contains(c.Name) && !(baseConstants.TryGetValue(c.Name, out var b) && b.Type == c.Type && b.Literal == c.Literal)))];
+            // A tuning key of the base ability with the version's value: the key itself, or for a key the base ability owns,
+            // its entry's name.
+            var inheritedKeys = new HashSet<string>(record.Keys.Where(k => baseRecord.Keys.Any(b => b.Literal == k.Literal
+                && (b.Key == k.Key || (k.OwnerAbility == baseRecord.Id && b.Key == k.Name)))).Select(k => k.Key), StringComparer.Ordinal);
+            tuningEntries = [.. tuningEntries.Where(t => !inheritedKeys.Contains(t.Key))];
+        }
+        var shared = new List<(string Name, string First, string Second)>();
+        var tunings = TuningNames.Of(tuningEntries, export.Segments, [d.Hero], shared);
+        TuningNames.Report(context, d.Location, d.Name, $"ability {record.Id}", shared, d.Fields, tunings);
+
+        var source = new StringBuilder()
+            .Append("// <auto-generated> by FellowshipSim.Codex.Generators from the game data")
+            .Append(export.BuildDate != null ? $" of {export.BuildDate}" : "").Append(". </auto-generated>\n")
+            .Append("#nullable enable\n")
+            .Append("namespace ").Append(d.Namespace).Append(";\n\n")
+            .Append("partial class ").Append(d.Name);
+        // The class's own half names its base class, or this half does.
+        if (baseClass != null && !d.Bases.Any()) source.Append(" : global::").Append(baseClass.FullName);
+        source.Append("\n{\n");
+        var inherited = new HashSet<string>(d.Bases.Where(written.ContainsKey).SelectMany(b => written[b]), StringComparer.Ordinal);
+        if (baseClass != null && written.TryGetValue(baseClass.FullName, out var baseNames)) inherited.UnionWith(baseNames);
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var constant in constants)
+        {
+            if (members.Contains(constant.Name))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(DeclaredName, d.Location, d.Name, constant.Name, record.Id));
+                continue;
+            }
+            if (names.Count > 0) source.Append('\n');
+            names.Add(constant.Name);
+            source.Append("    /// <summary>").Append(constant.Summary).Append("</summary>\n")
+                .Append("    public ").Append(inherited.Contains(constant.Name) ? "new " : "").Append("const ").Append(constant.Type).Append(' ')
+                .Append(constant.Name).Append(" = ").Append(constant.Literal).Append(";\n");
+        }
+        if (tunings.Count > 0)
+        {
+            if (members.Contains("Constants"))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(DeclaredName, d.Location, d.Name, "Constants", record.Id));
+            }
+            else
+            {
+                TuningNames.Write(source, $"Game data: the tuning values of ability {record.Id}.",
+                    tunings.Select(t => (t, $"Game data: tuning <c>{Escape(t.Keys)}</c> of ability {record.Id}{(t.Source.Length > 0 ? "; " + Escape(t.Source) : "")}.")),
+                    inherited.Contains("Constants"), names.Count > 0);
+                names.Add("Constants");
+            }
+        }
+        source.Append("}\n");
+        names.UnionWith(inherited);
+        written[d.FullName] = names;
+        context.AddSource($"{d.Namespace.Substring(HeroesNamespace.Length)}.{d.Name}.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
     }
 
     /// <summary>The name's words, each starting upper case, with letters and digits only.</summary>

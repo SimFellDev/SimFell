@@ -44,7 +44,7 @@ public static class Completions
             {
                 PropertyExpression.BuffScope => AplTokenKind.Buff,
                 PropertyExpression.DebuffScope or PropertyExpression.DotScope => AplTokenKind.Debuff,
-                PropertyExpression.CooldownScope or PropertyExpression.ActionScope => AplTokenKind.Cooldown,
+                PropertyExpression.CooldownScope or PropertyExpression.ActionScope or PropertyExpression.ChannelScope => AplTokenKind.Cooldown,
                 _ => AplTokenKind.Named,
             };
             foreach (var name in scopeNames[scope])

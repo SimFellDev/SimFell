@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 SimFell is a combat simulator for *Fellowship* (.NET 10, C# preview language version). It checks itself against
-FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara, Tariq, Elarion, Xavian, Meiko and Helena. `README.md` has setup and use. `docs/ADDING_A_HERO.md` has the engine
+FellowshipLogs combat logs. The heroes are Rime, Ardeos, Gunde, Mara, Tariq, Elarion, Xavian, Meiko and Helena. `docs/DEVELOPMENT.md` has setup, `docs/SIMULATING.md` and `docs/ACTION_LISTS.md` have use, and `CONTRIBUTING.md` and `AI_POLICY.md` have the rules of a contribution. `docs/ADDING_A_HERO.md` has the engine
 layout, the hook tables and the conventions for heroes, abilities, talents and gear. Read it before adding or changing
 game content.
 
@@ -119,7 +119,7 @@ or the desktop app).
   hosting FellowshipSim.UI, with `LocalSimEngine` in-process and the data folder in local application data. Review
   pages come from a WebView2 virtual host on Windows and a URL scheme handler on Mac Catalyst.
 - **FellowshipSim.Web** is the browser app: Blazor WebAssembly hosting FellowshipSim.UI as a static site (published to
-  simfelldev.github.io by the Deploy web app workflow), its one visitor `Visitor.DataFolderOwner`. `WorkerSimEngine` runs
+  simfelldev.github.io by the Release workflow's web app job), its one visitor `Visitor.DataFolderOwner`. `WorkerSimEngine` runs
   sims and replays on web workers (`wwwroot/sim/`), each a .NET runtime of its own calling `SimWorker`'s `[JSExport]`
   methods: a sim's chunks (`SimChunks`, `MonteCarloSimulator.RunChunk`) spread over them and combine to the same result
   as `LocalSimEngine`'s. A replay downloads its fight and replays it on a worker (`WorkerFightReviewer`, the
@@ -162,8 +162,10 @@ or the desktop app).
   named after a legendary power: `PowerId`, the item IDs, the tuning values and the `Legendary` overrides. `Catalog` reads
   a legendary's hero and items from an instance. Its `AbilityGenerator` writes the game data's half of each `partial`
   ability class in `Heroes/<Hero>` named after an ability record of that hero: `AbilityId`, `AbilityName`, the record's
-  fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...) and the tuning values. Its
-  `TalentGenerator` writes the game data's half of each `partial` talent class in `Heroes/<Hero>` named after a talent
+  fields as `Ability<Field>` (`AbilityCategory`, `AbilityCooldown`, `AbilityCastTime`...) and the tuning values. A
+  class with `[Ability(<id>)]` has the record of that ID. A record with `replaces`, `subcastOf` or `triggeredBy` has
+  that ability's class as its base class, and its half has `AbilityId` and the values that differ from the base
+  ability's (`StealthBackstab`). Its `TalentGenerator` writes the game data's half of each `partial` talent class in `Heroes/<Hero>` named after a talent
   of that hero's talent slots: `TalentId`, `TalentName`, the record's fields as `Talent<Field>` (`TalentCooldown`,
   `TalentDuration`, `TalentRadius`...) and the tuning values. `Catalog` reads a talent's ID from an instance. Its
   `AugmentationGenerator` writes the game data's half of each `partial` aspect, sigil and protective enchant class named
@@ -181,7 +183,11 @@ or the desktop app).
   `partial` relic passive class named after a relic passive record: `RelicPassiveId`, `RelicPassiveName`, the record's
   fields as `RelicPassive<Field>` (`RelicPassiveCooldown`, `RelicPassiveProcsPerMinute`), the tuning values, each
   granting item's `RelicItemId` and `RelicItemName`, and `RelicPassiveItems`. `Catalog` reads a relic passive's ID and
-  items from an instance. Its `HeroGenerator` writes the game data's half of each `partial` hero class in `Heroes/<Hero>`
+  items from an instance. Its `DungeonAffixGenerator` writes the game data's half of each `partial` dungeon affix class
+  in `Dungeons/Affixes` named after a dungeon affix record: `AffixId`, `AffixName`, `AffixAbilityId`, the cast and
+  cooldowns of the affix creature's abilities (`DetonateCastTime`, `DetonateInterruptCooldown`...), each effect's
+  `<Effect>EffectId`, duration, stacks and modifiers, and the abilities' tuning values. A dungeon's `affixes=` names the
+  affixes a dungeon fight runs (`AffixRun`). Its `HeroGenerator` writes the game data's half of each `partial` hero class in `Heroes/<Hero>`
   named after a hero record: `HeroId`, `HeroName`, the record's fields as `Hero<Field>` (`HeroTitle`, `HeroMainStat`,
   `HeroRole`...), its base attributes as `Hero<Attribute>` (`HeroBalancingDamageAura`, `HeroMaxResources`,
   `HeroMaxMana`...), the tuning values the hero owns, `HeroTalentTree` and `HeroWeapons`. Every icon and texture field

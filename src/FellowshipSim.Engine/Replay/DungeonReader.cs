@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using FellowshipSim.Core.Domain;
 using FellowshipSim.Core.Dungeons;
+using FellowshipSim.Core.Dungeons.Affixes;
 
 using static FellowshipSim.Engine.Replay.RawFightValue;
 
@@ -24,13 +25,20 @@ namespace FellowshipSim.Engine.Replay;
 /// <item>Each pack and spawn group is a pull, numbered by its start: the first contact of its enemies. Its duration runs
 /// from there to its enemies' last death. A pull starting while the pulls before it are in combat is taken in by the pull
 /// before it with <c>pull_with</c> at the offset of its start; any other pull starts its downtime after those pulls end.</item>
-/// <item>A group is the enemies of one creature in a pull, with the creature's name, base health, Spirit Points and rank
+/// <item>A group is enemies of one creature in a pull, with the creature's name, base health, Spirit Points and rank
 /// (<see cref="GameCreatures.ById"/>). A boss is a creature of rank Boss, and the last pull with a boss is final. An enemy
 /// whose gameID has no creature is left out and named in the dungeon's comment.</item>
+/// <item>Each enemy has its own time in combat, in seconds after its pull's start: <c>first_seen</c> at its first contact
+/// and <c>dies</c> at its death. An enemy dying without contact is in its pull from the pull's start. A pull's enemies of
+/// one creature within <see cref="LineSeconds"/> of each other in both are one group with the mean of each, and each boss
+/// is a group of its own. A group's value is in the text when it differs from its default, 0 for <c>first_seen</c> and the
+/// pull's duration for <c>dies</c>, at the text's 0.1 s.</item>
 /// <item>The difficulty is the Eternal level of the fight's <c>difficultyLevel</c>, the game's difficulty number
 /// (<see cref="DifficultyScaling.WithDifficulty"/>), and the name is its <c>gameZone</c>'s.</item>
 /// <item>The time limit is <see cref="TimeLimitShare"/> of the run's length, and at least
 /// <see cref="DungeonProfile.DefaultTimeLimitSeconds"/>.</item>
+/// <item>The affixes are those of the fight's <c>affixes</c> (its <c>dungeonstart</c> event's) the engine models
+/// (<see cref="DungeonAffix.All"/>). Each Anomalous Orb line is a priority target (<c>priority=1</c>).</item>
 /// </list>
 /// </summary>
 public static class DungeonReader
@@ -50,6 +58,14 @@ public static class DungeonReader
 
     /// <summary>The most seconds between the first contacts of two spawns of one group.</summary>
     public const double SpawnSeconds = 3;
+
+    /// <summary>
+    /// The most seconds between the first contacts, and between the deaths, of two enemies of one line. Source: FellowshipLogs
+    /// report Ab1yCxVcNBHPz6t8, fight 7, a run of 26 minutes: its 125 enemies are 92 lines at 2 seconds, 121 lines when a
+    /// line's enemies have the same times, and 69 lines when a line is a pull's enemies of one creature. At 2 seconds its
+    /// 52 pulls' last deaths are 8 seconds early in all, since a line has the mean of its enemies' deaths.
+    /// </summary>
+    public const double LineSeconds = 2;
 
     /// <summary>The dungeon of a fight with one player's damage events, as <c>FellowshipLogsReports.GetDungeonFightAsync</c> returns it.</summary>
     public static DungeonProfile FromFight(JsonElement dungeonFight)
@@ -125,27 +141,25 @@ public static class DungeonReader
             g.Add(creature, first, last);
         }
         if (groups.Count == 0) throw new ArgumentException("The fight has no enemy the player met.");
-        // An enemy dying without contact is in the group in combat nearest its death.
+        // An enemy dying without contact is in the group in combat nearest its death, from the group's start.
         foreach (var (key, died) in deaths)
         {
             if (met.Contains(key) || Creature(key) is not { } creature) continue;
-            groups.Values.MinBy(g => g.Distance(died))!.Add(creature, died, died);
+            groups.Values.MinBy(g => g.Distance(died))!.Add(creature, null, died);
         }
 
         var pulls = groups.Values.OrderBy(g => g.Start).ToList();
-        int lastBossPull = pulls.FindLastIndex(p => p.Creatures.Any(IsBoss));
+        int lastBossPull = pulls.FindLastIndex(p => p.Enemies.Any(e => IsBoss(e.Creature)));
         var profilePulls = new List<DungeonPull>();
         double inCombatUntil = double.NegativeInfinity;
         for (int i = 0; i < pulls.Count; i++)
         {
             var pull = pulls[i];
             string name = (i + 1).ToString(CultureInfo.InvariantCulture);
-            var enemyGroups = pull.Creatures
-                .GroupBy(c => c.Id)
-                .Select(g => new EnemyGroup(g.Count(), g.First().Name, g.First().SpiritPoints, HitPoints: Math.Round(g.First().BaseHealth, 2),
-                    Boss: IsBoss(g.First())))
-                // A boss line is one boss.
-                .SelectMany(g => g.Boss ? Enumerable.Repeat(g with { Count = 1 }, g.Count) : [g])
+            double duration = Math.Max(0.1, Math.Round(pull.End - pull.Start, 1));
+            var creatures = pull.Enemies.GroupBy(e => e.Creature.Id).Select(g => (g.First().Creature, Enemies: g.ToList())).ToList();
+            var enemyGroups = creatures
+                .SelectMany(c => Lines(c.Creature, c.Enemies.Select(e => ((e.First ?? pull.Start) - pull.Start, e.Last - pull.Start)), duration))
                 .OrderBy(g => g.Boss)
                 .ToList();
             double downtime = 0;
@@ -157,9 +171,9 @@ public static class DungeonReader
             }
             else if (i > 0) downtime = Math.Round(pull.Start - inCombatUntil, 1);
             inCombatUntil = Math.Max(inCombatUntil, pull.End);
-            var bosses = pull.Creatures.Where(IsBoss).Select(c => c.Name).Distinct().ToList();
-            string label = bosses.Count > 0 ? string.Join(" and ", bosses) : string.Join(", ", enemyGroups.Select(g => $"{g.Count} {g.Name}"));
-            profilePulls.Add(new DungeonPull(name, enemyGroups, Math.Max(0.1, Math.Round(pull.End - pull.Start, 1)), downtime,
+            var bosses = creatures.Where(c => IsBoss(c.Creature)).Select(c => c.Creature.Name).Distinct().ToList();
+            string label = bosses.Count > 0 ? string.Join(" and ", bosses) : string.Join(", ", creatures.Select(c => $"{c.Enemies.Count} {c.Creature.Name}"));
+            profilePulls.Add(new DungeonPull(name, enemyGroups, duration, downtime,
                 Final: i == lastBossPull, Comment: $"{label}, {Clock(pull.Start)} in the log"));
         }
 
@@ -170,23 +184,59 @@ public static class DungeonReader
         string comment = $"From FellowshipLogs report {Str(raw["report_code"])}, fight {Num(fight["id"])} ({Clock(seconds)}), " +
                          $"with {Str(raw["contact_player"]["name"])}'s damage events.";
         if (leftOut.Count > 0) comment += $"\nEnemies without game data: {string.Join(", ", leftOut)}.";
-        return new DungeonProfile(zone.Length > 0 ? zone : Str(fight["name"]), timeLimit, profilePulls, difficulty, comment);
+        // The run's affixes the engine models, in the order of the log.
+        var affixes = raw["affixes"].Items.Select(a => DungeonAffix.ById(Int(a) ?? 0)?.Key).OfType<string>().Distinct().ToList();
+        return new DungeonProfile(zone.Length > 0 ? zone : Str(fight["name"]), timeLimit, profilePulls, difficulty, comment, affixes);
+    }
+
+    /// <summary>
+    /// The lines of one creature's enemies in a pull <paramref name="duration"/> seconds long, from each enemy's seconds
+    /// after the pull's start at its first contact and its death: a line for each boss, and a line for the other enemies
+    /// within <see cref="LineSeconds"/> of each other in both, with the mean of each. A value is in the line when it
+    /// differs from its default at the text's 0.1 s.
+    /// </summary>
+    private static IEnumerable<EnemyGroup> Lines(CodexCreature creature, IEnumerable<(double FirstSeen, double Dies)> enemies, double duration)
+    {
+        bool boss = IsBoss(creature);
+        var lines = new List<List<(double FirstSeen, double Dies)>>();
+        foreach (var enemy in enemies.OrderBy(e => e.FirstSeen).ThenBy(e => e.Dies))
+        {
+            var line = boss ? null : lines.FirstOrDefault(l => l.All(other =>
+                Math.Abs(other.FirstSeen - enemy.FirstSeen) <= LineSeconds && Math.Abs(other.Dies - enemy.Dies) <= LineSeconds));
+            if (line == null) lines.Add(line = []);
+            line.Add(enemy);
+        }
+        foreach (var line in lines)
+        {
+            double firstSeen = Math.Round(line.Average(e => e.FirstSeen), 1), dies = Math.Min(duration, Math.Round(line.Average(e => e.Dies), 1));
+            if (dies <= firstSeen)
+            {
+                // An enemy with one contact and no death, or dying as its pull starts: in combat for the text's 0.1 s.
+                dies = Math.Max(dies, 0.1);
+                firstSeen = Math.Min(firstSeen, Math.Round(dies - 0.1, 1));
+            }
+            yield return new EnemyGroup(line.Count, creature.Name, creature.SpiritPoints, creature.Id == AnomalousOrbGameCreature.ID,
+                HitPoints: Math.Round(creature.BaseHealth, 2), Boss: boss, FirstSeenSeconds: firstSeen, DiesSeconds: dies == duration ? null : dies);
+        }
     }
 
     private static bool IsBoss(CodexCreature creature) => creature.Rank == CreatureRank.Boss;
 
     private static string Clock(double seconds) => $"{(int)(seconds / 60)}:{(int)(seconds % 60):00}";
 
-    /// <summary>A pack or spawn group in the log: its enemies' creatures, its first contact and its last death, in seconds.</summary>
+    /// <summary>
+    /// A pack or spawn group in the log: its enemies, each with its creature, its first contact (null for an enemy dying
+    /// without contact) and its death, and the group's first contact and last death, in seconds.
+    /// </summary>
     private sealed class Group(double start)
     {
-        public readonly List<CodexCreature> Creatures = [];
+        public readonly List<(CodexCreature Creature, double? First, double Last)> Enemies = [];
         public double Start = start, End = start;
 
-        public void Add(CodexCreature creature, double first, double last)
+        public void Add(CodexCreature creature, double? first, double last)
         {
-            Creatures.Add(creature);
-            Start = Math.Min(Start, first);
+            Enemies.Add((creature, first, last));
+            Start = Math.Min(Start, first ?? last);
             End = Math.Max(End, last);
         }
 

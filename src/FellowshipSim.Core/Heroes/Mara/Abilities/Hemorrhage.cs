@@ -72,28 +72,36 @@ public class Hemorrhage : MaraDot
     /// </summary>
     private double ApplicationPeriodScaler()
     {
+        double scaler = ListenerPeriodScaler();
+        foreach (double m in AbilityPeriodMultipliers) scaler *= m;
+        return scaler;
+    }
+
+    private double ListenerPeriodScaler()
+    {
         double scaler = 1.0;
         foreach (double m in ApplicationPeriodMultipliers) scaler *= m;
-        foreach (double m in AbilityPeriodMultipliers) scaler *= m;
         return scaler;
     }
 
     /// <summary>
     /// Takes the struck enemy's bleed off and applies a copy of it afresh to <paramref name="others"/>, then to the struck
-    /// enemy: each copy has the bleed's duration left, takes Mara's bleed off its enemy first, gets the writes of the tick period
-    /// scaler on its own application, and has its first tick one period after it. Game data (build 26320967), ability 1517
+    /// enemy: each copy has the bleed's duration left, takes Mara's bleed off its enemy first, has the struck application's
+    /// listener writes of the tick period scaler and gets the writes again on its own application, and has its first tick one
+    /// period after it. Game data (build 26320967), ability 1517
     /// (`GA_Mara_Passive_Talent_ChargedResourceRefillSelfBuff_BleedAttackSpenderBleedAoe`): offset 2558 removes the struck
     /// enemy's bleed, 2629 clones the live spec (the refreshed duration), 1406 removes Mara's bleed from each target, 1600 applies
     /// the clone, and 1666 to 2197 write Bloodrush's multiplier on each copy. A removal by these routes has no partial tick
     /// (`CheckDuration` exe 0x144A6FAB0 alone gives one). The applied-to-target listeners run the last registered first (exe
-    /// 0x144A00010), and the order of ability 1517's listener and the other listeners of the application is unread: the engine
-    /// runs ability 1517's first, so each copy starts at scaler 1, and a listener after it finds the struck enemy's bleed removed.
+    /// 0x144A00010), and ability 1589's listener runs before ability 1517's. Ability 1517's clone therefore has the application's
+    /// listener writes, and each copy gets them again on its own application. Combat logs (fjrCax7VzGmMZw6h fight 26, Mara player
+    /// 23): a copy's ticks are 0.635 of 3s / Haste apart at the median, 0.87 x 0.87 / 1.2 = 0.631.
     /// </summary>
     private void Reapply(SimulationContext ctx, Instance source, IReadOnlyList<EnemyTarget> others)
     {
         var struck = source.Target;
         double duration = Math.Max(0.0, (source.End - ctx.CurrentTime).TotalSeconds);
-        double scaler = ApplicationPeriodScaler();
+        double scaler = ListenerPeriodScaler() * ApplicationPeriodScaler();
         Remove(ctx, struck);
         foreach (var enemy in others.Where(e => e != struck).Append(struck))
         {

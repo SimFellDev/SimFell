@@ -250,6 +250,7 @@ public class SimulationContext
     {
         string? ability = enemy.CastAbility;
         if (ability == null || !enemy.StopCast()) return false;
+        enemy.RaiseInterrupted(this);
         Player.TriggerInterrupt(this, enemy, ability);
         return true;
     }
@@ -422,6 +423,19 @@ public class SimulationContext
         return true;
     }
 
+    /// <summary>
+    /// Stops the hero's current channel by the player's choice (an action list's <c>interrupt_if</c>): the hold of the
+    /// channel ends now, so the reaction rolled for its full length (<see cref="HoldEnds"/>) is gone, and the next cast
+    /// waits only for the global cooldown. Returns false if nothing was being channeled.
+    /// </summary>
+    public bool InterruptChannel(Hero hero)
+    {
+        if (!StopChannel(hero)) return false;
+        if (ReactionEndTime > CurrentTime) ReactionEndTime = CurrentTime;
+        if (_lastHoldEnd > CurrentTime) _lastHoldEnd = CurrentTime;
+        return true;
+    }
+
     private void FinishCast(Hero hero, Ability ability, EnemyTarget? target)
     {
         // An instant off-GCD ability used mid-cast leaves that cast running.
@@ -499,13 +513,15 @@ public class SimulationContext
 
     /// <summary>
     /// Deals one hit with fixed numbers (no dependence on the moment it lands). A <paramref name="snapshot"/> hit lands
-    /// with the time of its release.
+    /// with the time of its release. A hit with an <paramref name="abilityGroup"/> is part of that ability in the report.
     /// </summary>
     public double ApplyDamage(Hero source, EnemyTarget? target, double baseDamage, int abilityId, string abilityName,
-        bool canCrit, double critChance, double critMultiplier, bool? forcedCrit = null, bool snapshot = false)
+        bool canCrit, double critChance, double critMultiplier, bool? forcedCrit = null, bool snapshot = false,
+        string? abilityGroup = null)
     {
         var hit = RentHit(source, target, abilityId, abilityName, canCrit, forcedCrit, onLanded: null, snapshot);
         hit.FromNumbers(new HitNumbers(baseDamage, critChance, critMultiplier));
+        hit.Group = abilityGroup;
         return ApplyDamage(hit);
     }
 
@@ -589,7 +605,7 @@ public class SimulationContext
         CurrentHit = outer;
 
         double critChance = landed.ForcedCrit is { } forced ? (forced ? 1.0 : 0.0) : landed.CanCrit ? landed.CritChance : 0.0;
-        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance, hit.Ability?.Name);
+        Deal(hit.Source, hit.Target, hit.AbilityId, hit.AbilityName, dealt, outcome.IsCrit, critChance, hit.Group ?? hit.Ability?.Name);
         Outcomes.HitFinished(this);
         onLanded?.Invoke(this, dealt);
         ReturnHit(hit);

@@ -12,8 +12,8 @@ namespace FellowshipSim.Tests;
 
 /// <summary>
 /// Dungeon fights: the dungeon profile's text and its problems, the pulls in turn with their enemies, joins, chains and
-/// downtime, enemies dying at their pull durations, the party's damage, enemy casts and interrupts, the dungeon_event and target
-/// conditions that read them, and old action-list names in the new ones.
+/// downtime, enemies dying at their pull durations, groups entering combat and dying at their own times, the party's damage,
+/// enemy casts and interrupts, the dungeon_event and target conditions that read them, and old action-list names in the new ones.
 /// </summary>
 public class DungeonTests
 {
@@ -48,7 +48,7 @@ public class DungeonTests
     }
 
     // One fight of the dungeon with the action list, its deaths and hits recorded.
-    private static FightLog Fight(DungeonProfile dungeon, string actions, string hero = "Rime", int seed = 1)
+    private static FightLog Fight(DungeonProfile dungeon, string actions, string hero = "Rime", int seed = 1, double lengthVariance = 0)
     {
         var deaths = new List<(double, EnemyTarget)>();
         var hits = new List<Hit>();
@@ -70,9 +70,16 @@ public class DungeonTests
         deaths.Clear();
         hits.Clear();
         var result = simulator.Run(SimTime.FromSeconds(dungeon.TimeLimitSeconds), iterations: 1, firstSeed: seed, degreeOfParallelism: 1,
-            fight: new FightOptions(Dungeon: dungeon));
+            fight: new FightOptions(LengthVariance: lengthVariance, Dungeon: dungeon));
         return new FightLog(result, deaths, hits);
     }
+
+    // Gunde's weapon swing alone: one hit on the target each swing.
+    private const string Swings = "actions=attack";
+
+    // A group of trash named 'name' with the seconds after its pull's start at which its enemies enter combat and die.
+    private static EnemyGroup Trash(string name, int count, double firstSeen = 0, double? dies = null, bool priority = false) =>
+        new(count, name, 3, priority, TrashHitPoints, FirstSeenSeconds: firstSeen, DiesSeconds: dies);
 
     private const string FrostBolts = "actions+=/frost_bolt";
 
@@ -269,12 +276,12 @@ public class DungeonTests
     }
 
     [Fact]
-    public void The_Readme_Dungeon_Text_Is_A_Valid_Dungeon()
+    public void The_Documented_Dungeon_Text_Is_A_Valid_Dungeon()
     {
-        string readme = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "README.md")).Replace("\r\n", "\n");
-        int start = readme.IndexOf("\ndungeon=Default\n", StringComparison.Ordinal);
-        start = readme.LastIndexOf("```\n", start, StringComparison.Ordinal) + 4;
-        string text = readme[start..readme.IndexOf("```", start, StringComparison.Ordinal)];
+        string page = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "docs", "SIMULATING.md")).Replace("\r\n", "\n");
+        int start = page.IndexOf("\ndungeon=Default\n", StringComparison.Ordinal);
+        start = page.LastIndexOf("```\n", start, StringComparison.Ordinal) + 4;
+        string text = page[start..page.IndexOf("```", start, StringComparison.Ordinal)];
         var dungeon = DungeonProfile.Parse(text);
         Assert.Null(dungeon.Problem());
         Assert.Equal(5, dungeon.Pulls.Count);
@@ -305,6 +312,13 @@ public class DungeonTests
     [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,final=1", "Pull 1: only a pull with a boss is the final boss.")]
     [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,interrupt_ability=B,cooldown=2,cast_time=3", "Pull 1: A: the cast time is more than 0 seconds and at most the cooldown.")]
     [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,interrupt_ability=B", "Pull 1: A: the cooldown is more than 0 seconds.")]
+    [InlineData("dungeon=X\npull.1=/duration=10,count=1,name=A,hit_points=1,first_seen=-1", "Pull 1: A: first_seen is 0 seconds or more.")]
+    [InlineData("dungeon=X\npull.1=/duration=10,count=1,name=A,hit_points=1,first_seen=5,dies=5", "Pull 1: A: dies is more than first_seen.")]
+    [InlineData("dungeon=X\npull.1=/boss.1,name=A,hit_points=1,dies=0,duration=10", "Pull 1: A: dies is more than first_seen.")]
+    [InlineData("dungeon=X\npull.1=/duration=10,count=1,name=A,hit_points=1,dies=10.5", "Pull 1: A: dies is at most the pull's duration.")]
+    [InlineData("dungeon=X\npull.1=/duration=10,count=1,name=A,hit_points=1,first_seen=10", "Pull 1: A: first_seen is less than the pull's duration.")]
+    [InlineData("dungeon=X\npull.1=/duration=10,count=1,name=A,hit_points=1,first_seen=soon", "first_seen is a number, not 'soon'")]
+    [InlineData("dungeon=X\npull.1=/duration=10,dies=5", "an enemy group line starts with count= or boss.N")]
     [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,offset_ms=5", "Pull 1: a trigger needs pull_with.")]
     [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,offset_ms=5,offset_pct=50\npull.2=/duration=1,count=1,name=A,hit_points=1", "pull_with has one trigger at most")]
     [InlineData("dungeon=X\npull.1=/duration=1,count=1,name=A,hit_points=1,pull_with=2,offset_pct=100\npull.2=/duration=1,count=1,name=A,hit_points=1", "offset_pct is more than 0 and less than 100")]
@@ -714,6 +728,33 @@ public class DungeonTests
     }
 
     [Fact]
+    public void A_Boss_Fights_DPS_Has_The_Damage_To_Every_Enemy_While_A_Boss_Is_In_Combat()
+    {
+        // Trash 1 is the hero's first target, and the boss joins it at once. Trash 3 comes after the boss.
+        var dungeon = Dungeon(Trash(1, 1, 10) with { Join = new PullJoin("2") }, Boss(2, 30), Trash(3, 1, 10));
+        double bossFight = 0, boss = 0;
+        var simulator = new MonteCarloSimulator(() =>
+        {
+            var h = HeroImporter.Import(Build());
+            h.OnDamageDealt += (in DamageContext hit) =>
+            {
+                if (hit.SimContext is not { Boss: true }) return;
+                bossFight += hit.Amount;
+                if (hit.Target is { IsBoss: true }) boss += hit.Amount;
+            };
+            return h;
+        }, AplParser.ParseScript(FrostBolts));
+        var result = simulator.Run(SimTime.FromSeconds(600), iterations: 1, degreeOfParallelism: 1, fight: new FightOptions(Dungeon: dungeon));
+
+        Assert.True(boss > 0);
+        Assert.True(bossFight > boss);
+        Assert.Equal(boss / bossFight, result.BossDps / result.BossFightDps, 9);
+        // The boss's pull is the boss fight's, and trash 1 and 3 are trash: the share overall is between the two.
+        double bossFights = result.GroupDamageShareBossFights!.Value, trash = result.GroupDamageShareTrash!.Value;
+        Assert.InRange(result.GroupDamageShare!.Value, Math.Min(bossFights, trash) - 1e-12, Math.Max(bossFights, trash) + 1e-12);
+    }
+
+    [Fact]
     public void Target_Conditions_Read_The_Enemy_And_Its_Pull()
     {
         var hero = HeroImporter.Import(Build());
@@ -769,5 +810,186 @@ public class DungeonTests
         ctx.RunUntil(SimTime.FromSeconds(60));
         Assert.Equal(0, enemy.HealthPercent, 6);
         Assert.Equal(SimTime.FromSeconds(60), enemy.DiesAt);
+    }
+
+    [Fact]
+    public void A_Groups_First_Seen_And_Dies_Read_Back_From_Its_Text()
+    {
+        const string text = """
+            dungeon=X
+            pull.2=/duration=123.2,pull_with=3,offset_ms=2704
+            pull.2+=/count=2,name=Frozen Remnant,spirit_points=1,hit_points=3373.88,dies=54.6
+            pull.2+=/count=1,name=Raging Ice Elemental,spirit_points=4,hit_points=10241.59,first_seen=12.5
+            pull.2+=/boss.1,name=Eira,hit_points=21337.11,first_seen=20,dies=98.4
+            pull.3=/duration=30,count=3,name=Ice Shardling,hit_points=3373.88
+            """;
+        var dungeon = DungeonProfile.Parse(text);
+        var pull = dungeon.Pull("2")!;
+        Assert.Equal(new EnemyGroup(2, "Frozen Remnant", 1, HitPoints: 3373.88, DiesSeconds: 54.6), pull.Groups[0]);
+        Assert.Equal(new EnemyGroup(1, "Raging Ice Elemental", 4, HitPoints: 10241.59, FirstSeenSeconds: 12.5), pull.Groups[1]);
+        Assert.Equal(new EnemyGroup(1, "Eira", HitPoints: 21337.11, Boss: true, FirstSeenSeconds: 20, DiesSeconds: 98.4), pull.Groups[2]);
+        // A group dies at its own time, or at its pull's duration.
+        Assert.Equal([54.6, 123.2, 98.4], pull.Groups.Select(pull.DiesSeconds));
+        Assert.Equal(123.2, pull.EndSeconds);
+        Assert.Equal(2 * 54.6 + (123.2 - 12.5) + (98.4 - 20), pull.EnemySeconds, 9);
+        Assert.Equal("""
+            dungeon=X
+            difficulty=10
+            time_limit=1800
+            pull.2=/duration=123.2,pull_with=3,offset_ms=2704
+            pull.2+=/count=2,name=Frozen Remnant,spirit_points=1,hit_points=3373.88,dies=54.6
+            pull.2+=/count=1,name=Raging Ice Elemental,spirit_points=4,hit_points=10241.59,first_seen=12.5
+            pull.2+=/boss.1,name=Eira,hit_points=21337.11,first_seen=20,dies=98.4
+            pull.3=/duration=30
+            pull.3+=/count=3,name=Ice Shardling,hit_points=3373.88
+
+            """.Replace("\r\n", "\n"), dungeon.Format());
+        Assert.Equal(dungeon.Format(), DungeonProfile.Parse(dungeon.Format()).Format());
+        // The values go through JSON with the rest of the dungeon, as a sim's settings do.
+        var sent = JsonSerializer.Deserialize<DungeonProfile>(JsonSerializer.Serialize(dungeon, JsonSerializerOptions.Web), JsonSerializerOptions.Web)!;
+        Assert.Equal(dungeon.Format(), sent.Format());
+        Assert.Equal(pull.Groups, sent.Pull("2")!.Groups);
+    }
+
+    [Fact]
+    public void An_Enemy_Enters_Combat_At_Its_Groups_First_Seen_And_Dies_At_Its_Dies()
+    {
+        // Two enemies from the pull's start to 10 s, and one from 4 s to the pull's 30 s.
+        var dungeon = Dungeon(new DungeonPull("1", [Trash("Early", 2, dies: 10), Trash("Late", 1, firstSeen: 4)], 30));
+        var log = Fight(dungeon, Swings, hero: "Gunde");
+        Assert.All(log.Deaths.Where(d => d.Enemy.Name == "Early"), d => Assert.Equal(10, d.Time, 3));
+        Assert.Equal(30, Assert.Single(log.Deaths, d => d.Enemy.Name == "Late").Time, 3);
+        Assert.Equal(3, log.Deaths.Count);
+        Assert.Equal(30, log.Result.DurationSeconds, 3);
+        // The action list sees the enemies in combat alone.
+        Assert.Contains(log.Hits, h => h.Time < 4);
+        Assert.Contains(log.Hits, h => h.Time > 4 && h.Time < 10);
+        Assert.Contains(log.Hits, h => h.Time > 10);
+        Assert.All(log.Hits.Where(h => h.Time < 4), h => Assert.Equal(2, h.Active));
+        Assert.All(log.Hits.Where(h => h.Time > 4 && h.Time < 10), h => Assert.Equal(3, h.Active));
+        Assert.All(log.Hits.Where(h => h.Time > 10), h => Assert.Equal(1, h.Active));
+        // Each enemy's health falls from full at its own entry to none at its own death.
+        Assert.All(log.Hits.Where(h => h.Enemy.Name == "Early"), h => Assert.Equal(100 * (1 - h.Time / 10), h.HealthPct, 1e-6));
+        Assert.Contains(log.Hits, h => h.Enemy.Name == "Late");
+        Assert.All(log.Hits.Where(h => h.Enemy.Name == "Late"), h => Assert.Equal(100 * (1 - (h.Time - 4) / 26), h.HealthPct, 1e-6));
+        // The party's damage is the three enemies' health.
+        Assert.Equal(3 * TrashHitPoints * DifficultyScaling.Base.Health / 30, log.Result.PartyDps!.Value, 6);
+    }
+
+    [Fact]
+    public void A_Groups_First_Seen_And_Dies_Vary_With_The_Length_Variance()
+    {
+        var dungeon = Dungeon(new DungeonPull("1", [Trash("Early", 1, dies: 10), Trash("Late", 1, firstSeen: 4)], 30));
+        var options = new FightOptions(LengthVariance: 0.2, Dungeon: dungeon);
+        int seed = Enumerable.Range(1, 100).First(s => options.VarianceScale(s) < 0.9);
+        double scale = options.VarianceScale(seed);
+        var log = Fight(dungeon, Swings, hero: "Gunde", seed: seed, lengthVariance: 0.2);
+        // The fight's times are whole milliseconds.
+        Assert.Equal(10 * scale, Assert.Single(log.Deaths, d => d.Enemy.Name == "Early").Time, 0.001);
+        Assert.Equal(30 * scale, Assert.Single(log.Deaths, d => d.Enemy.Name == "Late").Time, 0.001);
+        Assert.Equal(30 * scale, log.Result.DurationSeconds, 0.001);
+        Assert.All(log.Hits.Where(h => h.Time < 4 * scale - 0.001), h => Assert.Equal(1, h.Active));
+        Assert.All(log.Hits.Where(h => h.Time > 4 * scale + 0.001 && h.Time < 10 * scale - 0.001), h => Assert.Equal(2, h.Active));
+        Assert.Contains(log.Hits, h => h.Enemy.Name == "Late");
+        Assert.All(log.Hits.Where(h => h.Enemy.Name == "Late"), h => Assert.Equal(100 * (1 - (h.Time - 4 * scale) / (26 * scale)), h.HealthPct, 0.01));
+    }
+
+    [Fact]
+    public void A_Pull_With_No_Enemy_In_Combat_And_One_Still_To_Enter_Is_As_Downtime()
+    {
+        // The first enemy dies at 10 s and the second enters at 25 s: no enemy is in combat between. The boss comes as
+        // the pull ends at its 40 s.
+        var dungeon = Dungeon(new DungeonPull("1", [Trash("Early", 1, dies: 10), Trash("Late", 1, firstSeen: 25)], 40),
+            Boss(2, 10, final: true) with { ChainWith = "1" });
+        var log = Fight(dungeon, Swings, hero: "Gunde");
+        Assert.Equal(10, Assert.Single(log.Deaths, d => d.Enemy.Name == "Early").Time, 3);
+        Assert.Equal(40, Assert.Single(log.Deaths, d => d.Enemy.Name == "Late").Time, 3);
+        // The run does not end with its first enemy's death: the boss enters at 40 s and the fight ends at 50 s.
+        Assert.InRange(log.FirstHitOn(2), 40, 42);
+        Assert.Equal(50, log.DeathOf(2), 3);
+        Assert.Equal(50, log.Result.DurationSeconds, 3);
+        // The hero acts before and after the stretch, and takes no action in it.
+        Assert.Contains(log.Result.Casts, c => c.Time < 10);
+        Assert.Contains(log.Result.Casts, c => c.Time >= 25 && c.Time < 27);
+        Assert.DoesNotContain(log.Result.Casts, c => c.Time > 10.001 && c.Time < 25);
+        Assert.DoesNotContain(log.Hits, h => h.Time > 10.001 && h.Time < 25);
+        Assert.All(log.Hits.Where(h => h.Time > 25 && h.Time < 40), h => Assert.True(h.Enemy.Name == "Late" && h.Active == 1 && h.Trash && !h.Boss));
+        // No enemy loses health in the stretch: the rolling party DPS falls to 0 by its end.
+        Assert.Equal(0, log.Result.Timeline!.PartyDps![24], 6);
+    }
+
+    [Fact]
+    public void A_Pull_Whose_Enemies_All_Enter_Late_Starts_With_No_Enemy_In_Combat()
+    {
+        // The priority target and the other enemy enter together at 5 s: the hero starts on the other one.
+        var dungeon = Dungeon(new DungeonPull("1", [Trash("Priority Mob", 1, firstSeen: 5, priority: true), Trash("Mob", 1, firstSeen: 5)], 20));
+        var log = Fight(dungeon, Swings, hero: "Gunde");
+        Assert.InRange(log.Hits[0].Time, 5, 7);
+        Assert.Equal("Mob", log.Hits[0].Enemy.Name);
+        Assert.Equal(2, log.Hits[0].Active);
+        Assert.DoesNotContain(log.Result.Casts, c => c.Time < 5);
+        Assert.All(log.Deaths, d => Assert.Equal(20, d.Time, 3));
+        Assert.Equal(20, log.Result.DurationSeconds, 3);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_Join_Waits_For_The_Enemies_Still_To_Enter(bool afterDeaths)
+    {
+        // The host's first enemy dies at 10 s with its second still to enter at 25 s. An offset after the host's end
+        // triggers as its last enemy dies, and a death count of 100% is of both its enemies: pull 2 joins at 40 s.
+        var join = afterDeaths ? new PullJoin("2", AfterDeaths: new DeathCount(100, Percent: true)) : new PullJoin("2", OffsetMs: 60_000);
+        var dungeon = Dungeon(new DungeonPull("1", [Trash("Early", 1, dies: 10), Trash("Late", 1, firstSeen: 25)], 40, Join: join), Trash(2, 1, 5));
+        var log = Fight(dungeon, Swings, hero: "Gunde");
+        Assert.InRange(log.FirstHitOn(2), 40, 42);
+        Assert.Equal(45, log.DeathOf(2), 3);
+        Assert.Equal(45, log.Result.DurationSeconds, 3);
+    }
+
+    [Fact]
+    public void Countdowns_Cover_The_Enemies_Still_To_Enter()
+    {
+        // The pull's last enemy enters at 20 s and dies at its 30 s; the boss starts 5 s after.
+        var dungeon = Dungeon(new DungeonPull("1", [Trash("Early", 1, dies: 10), Trash("Late", 1, firstSeen: 20)], 30),
+            Boss(2, 10) with { DowntimeSeconds = 5 });
+        var log = Fight(dungeon, Swings, hero: "Gunde");
+        Assert.Contains(log.Hits, h => h.Enemy.Name == "Early");
+        Assert.All(log.Hits.Where(h => h.Enemy.Id == 1001), h => Assert.Equal(35, h.NextBossAt.TotalSeconds, 3));
+    }
+
+    [Fact]
+    public void A_Health_Trigger_Reads_The_Average_Health_Of_Enemies_With_Their_Own_Times()
+    {
+        // Without the values the average health falls with the duration.
+        var plain = Trash(1, 3, 40);
+        Assert.Equal(1 - 30 / 100.0, plain.DurationShareAtHealth(30));
+        Assert.Equal(1 - 85 / 100.0, plain.DurationShareAtHealth(85));
+        // One enemy from 0 to 10 s and one from 20 to 40 s: the average is 75% at 5 s, 50% from 10 to 20 s and 25% at 30 s.
+        var pull = new DungeonPull("1", [Trash("Early", 1, dies: 10), Trash("Late", 1, firstSeen: 20)], 40);
+        Assert.Equal(5.0 / 40, pull.DurationShareAtHealth(75), 9);
+        Assert.Equal(10.0 / 40, pull.DurationShareAtHealth(50), 9);
+        Assert.Equal(30.0 / 40, pull.DurationShareAtHealth(25), 9);
+        // Pull 2 joins as the host's average health falls to 25%, at 30 s.
+        var log = Fight(Dungeon(pull with { Join = new PullJoin("2", OffsetPct: 25) }, Trash(2, 1, 4)), Swings, hero: "Gunde");
+        Assert.Equal(34, log.DeathOf(2), 3);
+    }
+
+    [Fact]
+    public void A_Group_Dying_At_Its_Pulls_Duration_Fights_As_A_Group_Without_The_Value()
+    {
+        // The default dungeon with each group's dies written out as its pull's duration: the same fights.
+        var dungeon = DefaultDungeons.Default;
+        var written = dungeon with
+        {
+            Pulls = dungeon.Pulls.Select(p => p with { Groups = p.Groups.Select(g => g with { DiesSeconds = p.DurationSeconds }).ToList() }).ToList(),
+        };
+        Assert.Contains("dies=", written.Format());
+        Assert.DoesNotContain("dies=", dungeon.Format());
+        Assert.DoesNotContain("first_seen=", dungeon.Format());
+        MonteCarloResult Run(DungeonProfile d) =>
+            new MonteCarloSimulator(Build("Gunde"), AplParser.ParseScript(DefaultActionLists.Read("Gunde", DefaultActionLists.DefaultName)!))
+                .Run(SimTime.FromSeconds(d.TimeLimitSeconds), iterations: 3, degreeOfParallelism: 1, fight: new FightOptions(LengthVariance: 0.2, Dungeon: d));
+        Assert.Equal(JsonSerializer.Serialize(Run(dungeon)), JsonSerializer.Serialize(Run(written)));
     }
 }

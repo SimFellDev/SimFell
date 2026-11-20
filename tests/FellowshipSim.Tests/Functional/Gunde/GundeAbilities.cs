@@ -171,12 +171,12 @@ public class GundeAbilities
     }
 
     /// <summary>
-    /// A cast takes its Rend share once, when it starts, for all its hits: Reign in Blood ending between the start of a Grim Carve and its
-    /// spins does not change the share of the spins. A Grim Carve 0.1 seconds before Reign in Blood ends, whose 3 spins all land after
-    /// the end (the first 0.17 seconds in), adds 50% + 30% of every spin to Rend.
+    /// A hit takes Reign in Blood's Rend share as it lands, not when its cast starts: Reign in Blood ending between the start of a Grim
+    /// Carve and its spins takes its share off the spins. A Grim Carve 0.1 seconds before Reign in Blood ends, whose 3 spins all land
+    /// after the end (the first 0.17 seconds in), adds 50% of every spin to Rend.
     /// </summary>
     [Fact]
-    public void A_Cast_Keeps_Its_Rend_Share_For_All_Its_Hits()
+    public void A_Hit_Takes_Reign_In_Blood_Rend_Share_As_It_Lands()
     {
         var f = StepFights.Gunde().WithoutDamageSpread();
 
@@ -188,7 +188,7 @@ public class GundeAbilities
 
         using var check = new Checks(f);
         check.True(spins.All(spin => spin.Time.TotalSeconds > f.CompletedAt("Reign in Blood") + 12), "every spin lands after the end");
-        check.Ratio(0.8, f.Damage("Rend").Sum(tick => tick.Value) / spins.Sum(spin => spin.Value));
+        check.Ratio(0.5, f.Damage("Rend").Sum(tick => tick.Value) / spins.Sum(spin => spin.Value));
     }
 
     /// <summary>The auto attack and Warbound apply no Rend.</summary>

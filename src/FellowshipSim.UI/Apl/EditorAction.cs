@@ -17,7 +17,9 @@ public sealed record EditorAction(
     string? ActionList = null,
     AplDocumentVariable? Variable = null,
     bool UseOffGcd = false,
-    bool UseWhileCasting = false)
+    bool UseWhileCasting = false,
+    string? InterruptIf = null,
+    bool InterruptImmediate = false)
 {
     private static int _nextKey;
 
@@ -27,7 +29,8 @@ public sealed record EditorAction(
     /// <summary>An action with a new key and the fields of <paramref name="action"/>.</summary>
     public static EditorAction From(AplDocumentAction action) => new(
         Interlocked.Increment(ref _nextKey), action.Ability, action.Condition, action.TargetSelection, action.TargetExpression,
-        action.Comment, action.Arguments, action.ActionList, action.Variable, action.UseOffGcd, action.UseWhileCasting);
+        action.Comment, action.Arguments, action.ActionList, action.Variable, action.UseOffGcd, action.UseWhileCasting,
+        action.InterruptIf, action.InterruptImmediate);
 
     /// <summary>An action with a new key and the fields of this action.</summary>
     public EditorAction Duplicate() => this with { Key = Interlocked.Increment(ref _nextKey) };

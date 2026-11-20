@@ -1,8 +1,9 @@
+@using System.Globalization
 @using FellowshipSim.Core.Dungeons
 @using FellowshipSim.Core.Domain
 @*
     One enemy group of a pull as a tinted box: its kind on the top-left edge, its duplicate and delete buttons on the
-    top-right edge, its values and its comment.
+    top-right edge, its values and its comment. First seen and Dies are empty for the pull's start and its duration.
 *@
 <div class="group">
     <div class="group-start">
@@ -38,6 +39,14 @@
             Hit points
             <input type="number" min="1" step="any" placeholder="@(GameCreatures.ByName(Group.Name)?.BaseHealth.ToString("0.##") ?? "Required")" @bind:get="Group.HitPoints" @bind:set="SetHitPoints" />
         </label>
+        <label class="value short" data-tooltip="Seconds after the pull starts at which @(Group.Boss ? "the boss enters" : "these enemies enter") combat">
+            First seen (s)
+            <input type="number" min="0" step="any" placeholder="0" @bind:get="FirstSeen" @bind:set="SetFirstSeen" />
+        </label>
+        <label class="value short" data-tooltip="Seconds after the pull starts at which @(Group.Boss ? "the boss dies" : "these enemies die"); the pull's duration unless given">
+            Dies (s)
+            <input type="number" min="0" step="any" placeholder="@PullSeconds.ToString("0.##", CultureInfo.InvariantCulture)" @bind:get="Group.DiesSeconds" @bind:set="SetDies" />
+        </label>
         <label class="value check">
             Priority
             <input type="checkbox" @bind:get="Group.Priority" @bind:set="SetPriority" />
@@ -64,6 +73,9 @@
 @code {
     [Parameter, EditorRequired] public EnemyGroup Group { get; set; } = null!;
 
+    /// <summary>The duration of the group's pull, in seconds: its enemies die then unless the group has its own time.</summary>
+    [Parameter, EditorRequired] public double PullSeconds { get; set; }
+
     [Parameter] public EventCallback<EnemyGroup> OnChange { get; set; }
 
     [Parameter] public EventCallback OnDuplicate { get; set; }
@@ -87,6 +99,13 @@
     private Task SetSpirit(double? spirit) => OnChange.InvokeAsync(Group with { SpiritPoints = spirit is { } s ? Math.Max(0, s) : null });
 
     private Task SetHitPoints(double? hitPoints) => OnChange.InvokeAsync(Group with { HitPoints = hitPoints is > 0 ? hitPoints : null });
+
+    // An empty box for the pull's start.
+    private double? FirstSeen => Group.FirstSeenSeconds > 0 ? Group.FirstSeenSeconds : null;
+
+    private Task SetFirstSeen(double? seconds) => OnChange.InvokeAsync(Group with { FirstSeenSeconds = seconds is > 0 ? seconds.Value : 0 });
+
+    private Task SetDies(double? seconds) => OnChange.InvokeAsync(Group with { DiesSeconds = seconds is > 0 ? seconds : null });
 
     private Task SetPriority(bool priority) => OnChange.InvokeAsync(Group with { Priority = priority });
 

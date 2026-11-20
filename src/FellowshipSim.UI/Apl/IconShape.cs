@@ -29,4 +29,6 @@ public enum IconShape
     Refresh,
     /// <summary>A play arrow against a bar: one fight stepped through in the APL Debugger.</summary>
     Debug,
+    /// <summary>An i in a circle: a tooltip on the element.</summary>
+    Info,
 }

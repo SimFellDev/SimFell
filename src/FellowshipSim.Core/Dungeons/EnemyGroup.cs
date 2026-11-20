@@ -4,7 +4,9 @@ namespace FellowshipSim.Core.Dungeons;
 /// <see cref="Count"/> enemies of one kind in a pull, each with the values here: <see cref="Name"/>, the
 /// <see cref="SpiritPoints"/> it is worth and <see cref="HitPoints"/>, its health before the difficulty's scale. Each is the
 /// game data value of the one creature named <see cref="Name"/> when null (<see cref="Spirit"/> and <see cref="Health"/>).
-/// The health falls over the pull's <see cref="DungeonPull.DurationSeconds"/>. A <see cref="Boss"/> group is one boss.
+/// The enemies enter combat <see cref="FirstSeenSeconds"/> after the pull starts and die <see cref="DiesSeconds"/> after it
+/// starts, or at the pull's <see cref="DungeonPull.DurationSeconds"/> when null (<see cref="DungeonPull.DiesSeconds"/>).
+/// The health falls from full to none between the two. A <see cref="Boss"/> group is one boss.
 /// <see cref="Priority"/> marks priority targets. <see cref="Cast"/> is the interruptible cast of each enemy.
 /// <see cref="Comment"/> is the '#' lines above the group's line.
 /// </summary>
@@ -16,7 +18,9 @@ public sealed record EnemyGroup(
     double? HitPoints = null,
     bool Boss = false,
     EnemyCast? Cast = null,
-    string? Comment = null)
+    string? Comment = null,
+    double FirstSeenSeconds = 0,
+    double? DiesSeconds = null)
 {
     /// <summary>
     /// Each enemy's health before the difficulty's scale: <see cref="HitPoints"/>, or the <see cref="CodexCreature.BaseHealth"/>
@@ -39,6 +43,8 @@ public sealed record EnemyGroup(
         { SpiritPoints: { } spirit } when !(spirit >= 0) => "the Spirit Points are 0 or more",
         { HitPoints: { } hp } when !(hp > 0) => "the hit points are more than 0",
         { Health: null } => "the enemy has hit_points, or the name of one creature of the game data",
+        _ when !(FirstSeenSeconds >= 0) => "first_seen is 0 seconds or more",
+        { DiesSeconds: { } dies } when !(dies > FirstSeenSeconds) => "dies is more than first_seen",
         { Cast: { } cast } when cast.Problem() is { } problem => problem,
         _ => null,
     };

@@ -61,7 +61,7 @@ double logSeconds = (double)log["fightSeconds"]!, simSeconds = result.DurationSe
 var sb = new StringBuilder();
 sb.AppendLine($"{label}: {iterations} iterations, {simSeconds:F0} s fights against the log's {logSeconds:F0} s.");
 // A sim with more enemies alive than the run has more hits of every area ability, whatever the action list.
-double simAlive = (profile.Settings.Dungeon?.Pulls.Sum(p => p.EnemyCount * p.DurationSeconds) ?? 0) / simSeconds;
+double simAlive = (profile.Settings.Dungeon?.Pulls.Sum(p => p.EnemySeconds) ?? 0) / simSeconds;
 sb.AppendLine($"Mean enemies alive: sim {simAlive:F1}, log {(double)log["meanAlive"]!:F1}.");
 sb.AppendLine($"Hero DPS: sim {result.MeanDps:N0} ± {result.Margin:N0}, log {(double)log["heroDamage"]! / logSeconds:N0} ({result.MeanDps / ((double)log["heroDamage"]! / logSeconds) - 1:+0.0%;-0.0%}).");
 sb.AppendLine();
