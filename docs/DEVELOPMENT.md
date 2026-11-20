@@ -119,9 +119,11 @@ takes no API client from them. Locally its build takes the repository's `setting
 dotnet run --project src/FellowshipSim.Web
 ```
 
-The **Deploy web app** workflow (Actions, run by hand) publishes it ahead-of-time compiled to
+The **Release** workflow (Actions, run by hand) with **Web app** checked publishes it ahead-of-time compiled to
 https://simfelldev.github.io, from the public SimFellDev/simfelldev.github.io. It needs the secret `SIMFELL_PAGES`, a
-fine-grained token with "Contents: Read and write" on that repository alone.
+fine-grained token with "Contents: Read and write" on that repository alone. **Desktop app and VS Code extension**
+publishes the release zips and extensions on SimFellDev/SimFell-Releases. A run tags its commit `v<version>`, and a
+second run on that commit has the same version.
 
 ## The two checks
 
