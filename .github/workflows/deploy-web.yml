@@ -17,6 +17,8 @@ jobs:
   deploy:
     name: Build and publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -55,3 +57,16 @@ jobs:
           git add -A
           git commit -m "SimFell ${GITHUB_SHA::7}" || { echo "The site is unchanged."; exit 0; }
           git push
+
+      # The tag web-<UTC time> on this repository names the deployed commit, so `git log web-<previous>..web-<latest>`
+      # lists a deploy's commits. A commit has one tag: a commit with a tag already keeps it, and a release of a deployed
+      # commit replaces its web- tag with v<version>.
+      - name: Tag the deployed commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/" \
+            --jq ".[] | select(.object.sha == \"$GITHUB_SHA\") | .ref")
+          if [ -n "$existing" ]; then echo "The commit has the tag ${existing#refs/tags/}."; exit 0; fi
+          tag="web-$(date -u +%Y%m%d-%H%M%S)"
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/$tag" -f sha="$GITHUB_SHA"
